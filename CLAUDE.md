@@ -18,7 +18,7 @@ It must:
 (update the library, book metadata, tags, bulk ops, dedupe, enrich) and a **single book** (extract
 content — whole book or a chunk — and keyword/semantic search *within* one book). Semantic search
 spans both: **across the whole library OR one book separately** — a `scope: library|book` param, not
-extra tools (see `TOOLS.md`).
+extra tools (see `docs/TOOLS.md`).
 
 In one line: every useful tool the field has *plus* meaning-based search (library- *and* book-scoped)
 *plus* safe, hardened writes.
@@ -36,7 +36,7 @@ In one line: every useful tool the field has *plus* meaning-based search (librar
 - **GUI-concurrency lock is real (reproduced).** With the app open, direct `calibredb`/SQLite/DB-API
   access is refused or dangerous. Safe live paths: Content Server HTTP (reads) or `calibredb`
   routed *through* the server URL. Treat the DB as **read-mostly**; never race the GUI on writes.
-  **Write path RESOLVED** (`CAPABILITIES.md` §2): route writes through the running server — shell
+  **Write path RESOLVED** (`docs/CAPABILITIES.md` §2): route writes through the running server — shell
   `calibredb --with-library http://localhost:8080/#Lib` (it speaks `/cdb/cmd` for us), the server
   permitting writes via `--enable-local-write`; a direct `/cdb/set-fields` HTTP client is a LATER opt.
 - **`-32602` serialization bug** (our Cowork failure) is client-side, confirmed, unfixed. Defense =
@@ -54,7 +54,7 @@ In one line: every useful tool the field has *plus* meaning-based search (librar
 - **Zod** for input schemas (with the coercion layer above).
 - **Semantic search:** `@huggingface/transformers` 4.2.0, **in-memory brute-force cosine** persisted as
   SQLite BLOBs, mean-pool+normalize. EN+RU → model **LOCKED to multilingual `paraphrase-multilingual-MiniLM`
-  from day 1** (`TOOLS.md` #5); only M-series latency left to measure. Sub-book chunks carry a
+  from day 1** (`docs/TOOLS.md` #5); only M-series latency left to measure. Sub-book chunks carry a
   `{book_id, location}` payload → also powers per-book semantic search (`scope=book`).
 - **Clean Architecture:** keep tool logic (schemas, handlers, embedding/DB code) free of SDK types.
 - Package via **npx** + **MCPB** bundle for Claude Desktop.
@@ -63,10 +63,10 @@ In one line: every useful tool the field has *plus* meaning-based search (librar
 
 Baseline = the **capability surface** of FaceDeer (full read/write/convert/import/export +
 per-library permission model) — **18 = a capability target, not a tool-count target**. See
-`RESEARCH.md` §5.0 for the verified inventory and the coverage table.
+`docs/RESEARCH.md` §5.0 for the verified inventory and the coverage table.
 
 **Tool-count target: keep the model-facing surface ≤ ~20 task/intent tools.** Field + research
-evidence (`DESIGN.md` §9.1): selection accuracy degrades as the number of *confusable* tools per
+evidence (`docs/DESIGN.md` §9.1): selection accuracy degrades as the number of *confusable* tools per
 query grows (OpenAI's "<20" is a soft heuristic; the measured degradation zone is ~30–50 similar
 tools — we must stay under it). So **don't 1:1-mirror calibredb subcommands as tools**; fold related
 operations into fewer **task/intent** tools (e.g. one `calibre_recover_metadata` doing
@@ -83,7 +83,7 @@ ISBN→OpenLibrary→GoogleBooks internally, not three chainable tools). Cheap e
 - **preview-first** bulk operations (FaceDeer's `bulk_update_metadata` defaults to ALL books — unsafe)
 - serialization-hardened `update_book` / `bulk_update_metadata`
 
-> **Consolidated & LOCKED in `TOOLS.md`** (14 v1 tools — this list is the *capability rationale*, not
+> **Consolidated & LOCKED in `docs/TOOLS.md`** (14 v1 tools — this list is the *capability rationale*, not
 > the build list). Name mapping: `metadata_enrichment`+`isbn_tools` → `calibre_recover_metadata`;
 > `compare_books` → a mode of `calibre_find_duplicates`; `missing_book_scout` → folded into
 > `calibre_quality_report`; bulk → `calibre_bulk_update` (required `ids`/`query`, no all-books
@@ -110,35 +110,35 @@ ISBN→OpenLibrary→GoogleBooks internally, not three chainable tools). Cheap e
 
 ## Project artifacts
 
-- `RESEARCH.md` — the foundation report (6 sections: capability inventory, MCP best practices, server comparison, §5 tool catalog + §5.0 FaceDeer coverage, open questions). §5/§6 superseded downstream (see below).
-- `CAPABILITIES.md` — deep capability + Content-Server-API analysis; **resolves the write path/auth, PDF-extraction, and `/ajax` stability questions** and maps GPL plugins → port-the-algorithm differentiators.
-- `local-groundtruth.md` — firsthand probes of this machine's Calibre (CLI subcommands, GUI lock, Content Server `/ajax/` shapes).
-- `calibredb_help.txt` — full `calibredb` v9.10 CLI dump.
-- Decision docs (see **Status**): `DESIGN.md`, `TOOLS.md` (build list of record), `DISTRIBUTION.md`, `INTERACTIVITY.md`.
+- `docs/RESEARCH.md` — the foundation report (6 sections: capability inventory, MCP best practices, server comparison, §5 tool catalog + §5.0 FaceDeer coverage, open questions). §5/§6 superseded downstream (see below).
+- `docs/CAPABILITIES.md` — deep capability + Content-Server-API analysis; **resolves the write path/auth, PDF-extraction, and `/ajax` stability questions** and maps GPL plugins → port-the-algorithm differentiators.
+- `docs/local-groundtruth.md` — firsthand probes of this machine's Calibre (CLI subcommands, GUI lock, Content Server `/ajax/` shapes).
+- `docs/calibredb_help.txt` — full `calibredb` v9.10 CLI dump.
+- Decision docs (see **Status**): `docs/DESIGN.md`, `docs/TOOLS.md` (build list of record), `docs/DISTRIBUTION.md`, `docs/INTERACTIVITY.md`.
 
 ## Working rules
 
 - English for all code, comments, docs (per global policy). Respond to Artem casually, concise, in markdown.
 - **Cite first-party sources; flag anything unconfirmed** — don't trust memory for versions/APIs/tool lists.
-- `RESEARCH.md` §6 open questions are mostly **resolved** (write path/auth, PDF extraction, `/ajax`
-  stability → `CAPABILITIES.md`; RU model → `TOOLS.md` #5). Two remain for **implementation time**:
+- `docs/RESEARCH.md` §6 open questions are mostly **resolved** (write path/auth, PDF extraction, `/ajax`
+  stability → `docs/CAPABILITIES.md`; RU model → `docs/TOOLS.md` #5). Two remain for **implementation time**:
   the exact `-32602` failure point and transformers.js cache/cold-start. Resolve those during the slice.
 
 ## Status
 
-- ✅ **Research phase complete** (`RESEARCH.md`).
-- ✅ **Capability + API analysis complete** (`CAPABILITIES.md`) — resolved the write path
+- ✅ **Research phase complete** (`docs/RESEARCH.md`).
+- ✅ **Capability + API analysis complete** (`docs/CAPABILITIES.md`) — resolved the write path
   (`/cdb/cmd` HTTP + `--enable-local-write`, or `calibredb --with-library URL`), PDF-extraction
   (PyMuPDF primary), `/ajax` stability tiers, and plugin reuse (port GPL algorithms, don't wrap).
-- ✅ **Design decisions captured** (`DESIGN.md`) — ideas from *The MCP Standard* (Sekar) folded in:
+- ✅ **Design decisions captured** (`docs/DESIGN.md`) — ideas from *The MCP Standard* (Sekar) folded in:
   capability model, namespaced routing-policy descriptions, ResourceLink + pagination, return-not-throw
   `isError` contract, disable-write-tools + elicitation, injection fencing + execFile-array calls,
   semantic-search architecture.
-- ✅ **Final tool list LOCKED** (`TOOLS.md`) — 14 v1 tools + LATER-deferred set (convert/export/
+- ✅ **Final tool list LOCKED** (`docs/TOOLS.md`) — 14 v1 tools + LATER-deferred set (convert/export/
   library-wide-rag/etc.). **Amended 2026-06-27:** per-book keyword + semantic search added via a
   `scope: library|book` param (no new tools) so search serves both the catalog and single-book surfaces.
-- ✅ **Distribution LOCKED** (`DISTRIBUTION.md`) — local-run package; npm + MCPB + Registry
+- ✅ **Distribution LOCKED** (`docs/DISTRIBUTION.md`) — local-run package; npm + MCPB + Registry
   (`io.github.caelum29/calibre-mcp`); stdio-only (Cowork via Desktop bridge); embeddings opt-in.
-- 🔬 **Interactivity researched** (`INTERACTIVITY.md`) — MCP Apps (SEP-1865) in-chat widgets; §9.3
+- 🔬 **Interactivity researched** (`docs/INTERACTIVITY.md`) — MCP Apps (SEP-1865) in-chat widgets; §9.3
   gate now OPEN (Claude Desktop renders them). Cover board = strongest early candidate; **v1-vs-LATER OPEN**.
-- ⏭️ **Next: scaffold the TS server** per `DESIGN.md` §7 (thin calibre client first, then vertical slice).
+- ⏭️ **Next: scaffold the TS server** per `docs/DESIGN.md` §7 (thin calibre client first, then vertical slice).
