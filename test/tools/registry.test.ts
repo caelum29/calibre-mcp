@@ -9,7 +9,8 @@ describe("tool registry", () => {
     const names = allTools.map((t) => t.name);
     expect(new Set(names).size).toBe(names.length);
   });
-  it("ships only read tools in the v1 slice (no write gate triggered)", () => {
-    expect(allTools.filter((t) => t.write)).toHaveLength(0);
+  it("marks calibre_update_book as the gated write tool", () => {
+    const writes = allTools.filter((t) => t.write).map((t) => t.name);
+    expect(writes).toEqual(["calibre_update_book"]);
   });
 });

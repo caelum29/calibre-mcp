@@ -7,6 +7,7 @@ import { searchTool } from "./calibre_search.js";
 import { getBookTool } from "./calibre_get_book.js";
 import { getContentTool } from "./calibre_get_content.js";
 import { listCategoriesTool } from "./calibre_list_categories.js";
+import { updateBookTool } from "./calibre_update_book.js";
 
 export { defineTool } from "./define.js";
 
@@ -16,4 +17,5 @@ export const allTools: AnyToolDescriptor[] = [
   getBookTool,
   getContentTool,
   listCategoriesTool,
+  updateBookTool,
 ];
