@@ -28,7 +28,7 @@ A direct HTTP/remote transport for Cowork is explicitly **deferred** (would mean
    Claude Code CLI (native), Cowork (via the Desktop bridge). No HTTP transport in v1.
 2. **Embeddings model = opt-in.** Base server stays light and dependency-thin. Semantic search
    (`calibre_semantic_search` + `calibre_build_index`) is an explicit opt-in: the model
-   (`paraphrase-multilingual-MiniLM`) downloads on first index build into an explicit `cacheDir`.
+   (`multilingual-e5-small`, q8 ~118 MB) downloads on first index build into an explicit `cacheDir`.
    Server runs fully without it; semantic tools surface a clear "run build-index to enable" message.
 3. **Identity = `io.github.caelum29/calibre-mcp`** (reverse-DNS, tied to GitHub `caelum29`);
    npm package name `calibre-mcp`.

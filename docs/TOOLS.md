@@ -18,8 +18,11 @@
    `calibre_update_book` (clean read/write separation, no hidden writes).
 4. **`quality_report` stays folded** (audit + missing-scout + reading-level) — one tool, but the
    description must name all three modes so routing stays sharp. Revisit if eval shows confusion.
-5. **Semantic model = multilingual from day 1** (`paraphrase-multilingual-MiniLM`). Library is ~half
-   RU; not worth shipping English-only then re-indexing. (Still measure latency on M-series — §Open.)
+5. **Semantic model = multilingual from day 1** (`multilingual-e5-small`; swapped from
+   `paraphrase-multilingual-MiniLM` on 2026-06-28). Library is ~half RU; not worth shipping
+   English-only then re-indexing. e5-small is same 384-dim/footprint but has a 512-token window
+   (vs MiniLM's 128, which truncates most technical paragraphs) and a verified RU retrieval score;
+   requires `query:`/`passage:` prefixes. See `docs/SEMANTIC-SEARCH.md`. (Still measure latency — §Open.)
 6. **PDF extractor = graceful-degrade.** Prefer external PyMuPDF/pdftotext; fall back to Calibre
    (`ebook-convert`, lower quality) when absent. Not a hard dependency.
 7. **Per-book search is v1** (Artem, 2026-06-27). The goal wants semantic + keyword search "across
@@ -99,8 +102,9 @@ Conventions: all namespaced `calibre_*`. Inputs Zod-coerced (`z.coerce.number`,
 
 ## Open params (decide during implementation, not blocking the list)
 
-- **RU model latency** on M-series — measure `paraphrase-multilingual-MiniLM` cold-start + per-book
-  embed; if unacceptable, evaluate a smaller multilingual or quantization.
+- **RU model latency** on M-series — measure `multilingual-e5-small` (q8) cold-start + per-book
+  embed; if recall is short or the 512-token cap bites, the documented escape hatch is
+  `gte-multilingual-base` (768-dim, 8192 ctx) — see `docs/SEMANTIC-SEARCH.md` §1.
 - **PDF extractor presence** — detect PyMuPDF/pdftotext at startup; log the chosen path to stderr.
 - **`compare` mode shape** — confirm `find_duplicates(mode:compare, ids:[a,b])` ergonomics vs a
   dedicated verb once we see real agent usage.

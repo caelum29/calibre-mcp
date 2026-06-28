@@ -184,8 +184,9 @@ The case study confirms our planned approach — keep it simple:
   search** (`calibre_semantic_search scope=book`, `TOOLS.md` #6) — the book-scoped surface of the
   macro goal, at marginal extra cost over the library index.
 - **Same embedding model for index *and* query.** Lock the model id in **one config constant** used
-  by both paths (the EN+RU multilingual choice is **RESOLVED → `paraphrase-multilingual-MiniLM` from
-  day 1**, `TOOLS.md` #5; only M-series latency left to measure). A mismatch silently destroys recall.
+  by both paths (the EN+RU multilingual choice is **RESOLVED → `multilingual-e5-small`**, swapped from
+  `paraphrase-multilingual-MiniLM` on 2026-06-28; `TOOLS.md` #5, `SEMANTIC-SEARCH.md` §1). Note e5
+  needs `query:`/`passage:` prefixes — bake into the embed wrapper. A mismatch silently destroys recall.
 - **In-memory brute-force cosine, top-k≈3 is adequate** at ~801 books. Don't reach for Qdrant/
   Weaviate (LATER, only if the library grows ~10×).
 - **Empty-result sentinel.** Return a clear structured "no relevant match" (low top-similarity)

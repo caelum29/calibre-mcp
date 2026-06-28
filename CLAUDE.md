@@ -53,9 +53,11 @@ In one line: every useful tool the field has *plus* meaning-based search (librar
   Do **not** wait for SDK v2 (alpha); isolate the SDK behind a thin layer to de-risk migration.
 - **Zod** for input schemas (with the coercion layer above).
 - **Semantic search:** `@huggingface/transformers` 4.2.0, **in-memory brute-force cosine** persisted as
-  SQLite BLOBs, mean-pool+normalize. EN+RU → model **LOCKED to multilingual `paraphrase-multilingual-MiniLM`
-  from day 1** (`docs/TOOLS.md` #5); only M-series latency left to measure. Sub-book chunks carry a
-  `{book_id, location}` payload → also powers per-book semantic search (`scope=book`).
+  SQLite BLOBs, mean-pool+normalize. EN+RU → model **LOCKED to `multilingual-e5-small`** (was
+  `paraphrase-multilingual-MiniLM`; swapped 2026-06-28 — same 384-dim/footprint but 512-token window vs
+  128 and a verified RU retrieval benchmark; needs `query:`/`passage:` prefixes). Full pipeline
+  (extraction, chunking, hybrid retrieval) in **`docs/SEMANTIC-SEARCH.md`**; latency left to measure.
+  Sub-book chunks carry a `{book_id, location}` payload → also powers per-book semantic search (`scope=book`).
 - **Clean Architecture:** keep tool logic (schemas, handlers, embedding/DB code) free of SDK types.
 - Package via **npx** + **MCPB** bundle for Claude Desktop.
 
