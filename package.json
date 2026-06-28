@@ -1,0 +1,40 @@
+{
+  "name": "calibre-mcp",
+  "version": "0.0.0",
+  "description": "The most capable Calibre MCP server — full read/write tool surface plus library- and book-scoped semantic search.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Artem (caelum29)",
+  "bin": {
+    "calibre-mcp": "dist/run-stdio.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx watch src/run-stdio.ts",
+    "start": "node dist/run-stdio.js",
+    "inspect": "tsc -p tsconfig.json && mcp-inspector node dist/run-stdio.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.29.0",
+    "zod": "4.4.3"
+  },
+  "optionalDependencies": {
+    "@huggingface/transformers": "4.2.0"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/inspector": "0.22.0",
+    "@types/node": "24.13.2",
+    "tsx": "4.22.4",
+    "typescript": "5.9.3",
+    "vitest": "4.1.9"
+  }
+}

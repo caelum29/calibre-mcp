@@ -1,0 +1,19 @@
+# MCP config — contains the YouTube Data API key
+.mcp.json
+
+# deps & build
+node_modules/
+dist/
+
+# embeddings index & local data
+*.sqlite
+*.sqlite-journal
+data/
+
+# editor / OS
+.DS_Store
+.idea/*
+!.idea/.gitignore
+
+# logs
+*.log

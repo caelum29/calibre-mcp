@@ -1,0 +1,1431 @@
+================ calibredb list ================
+Usage: calibredb list [options]
+
+List the books available in the calibre database.
+
+
+Whenever you pass arguments to calibredb that have spaces in them, enclose the arguments in quotation marks. For example: "/some path/with spaces"
+
+Options:
+  -f FIELDS, --fields=FIELDS
+                        The fields to display when listing books in the
+                        database. Should be a comma separated list of fields.
+                        Available fields: author_sort, authors, comments,
+                        cover, formats, identifiers, isbn, languages,
+                        last_modified, pubdate, publisher, rating, series,
+                        series_index, size, tags, template, timestamp, title,
+                        uuid
+                        Default: title,authors. The special field "all" can be
+                        used to select all fields. In addition to the builtin
+                        fields above, custom fields are also available as
+                        *field_name, for example, for a custom field #rating,
+                        use the name: *rating
+
+  --sort-by=SORT_BY     The field by which to sort the results. You can
+                        specify multiple fields by separating them with
+                        commas.
+                        Available fields: author_sort, authors, comments,
+                        cover, formats, identifiers, isbn, languages,
+                        last_modified, pubdate, publisher, rating, series,
+                        series_index, size, tags, template, timestamp, title,
+                        uuid
+                        Default: id. In addition to the builtin fields above,
+                        custom fields are also available as *field_name, for
+                        example, for a custom field #rating, use the name:
+                        *rating
+
+  --ascending           Sort results in ascending order
+
+  -s SEARCH, --search=SEARCH
+                        Filter the results by the search query. For the format
+                        of the search query, please see the search related
+                        documentation in the User Manual. Default is to do no
+                        filtering.
+
+  -w LINE_WIDTH, --line-width=LINE_WIDTH
+                        The maximum width of a single line in the output.
+                        Defaults to detecting screen size.
+
+  --separator=SEPARATOR
+                        The string used to separate fields. Default is a
+                        space.
+
+  --prefix=PREFIX       The prefix for all file paths. Default is the absolute
+                        path to the library folder.
+
+  --limit=LIMIT         The maximum number of results to display. Default: all
+
+  --for-machine         Generate output in JSON format, which is more suitable
+                        for machine parsing. Causes the line width and
+                        separator options to be ignored.
+
+  --template=TEMPLATE   The template to run if "template" is in the field
+                        list. Note that templates are ignored while connecting
+                        to a calibre server. Default: None
+
+  -t TEMPLATE_FILE, --template_file=TEMPLATE_FILE
+                        Path to a file containing the template to run if
+                        "template" is in the field list. Default: None
+
+  --template_heading=TEMPLATE_HEADING
+                        Heading for the template column. Default: template.
+                        This option is ignored if the option --for-machine is
+                        set
+
+
+  GLOBAL OPTIONS:
+    --library-path=LIBRARY_PATH, --with-library=LIBRARY_PATH
+                        Path to the calibre library. Default is to use the
+                        path stored in the settings. You can also connect to a
+                        calibre Content server to perform actions on remote
+                        libraries. To do so use a URL of the form:
+                        http://hostname:port/#library_id for example,
+                        http://localhost:8080/#mylibrary. library_id is the
+                        library id of the library you want to connect to on
+                        the Content server. You can use the special library_id
+                        value of - to get a list of library ids available on
+                        the server. For details on how to setup access via a
+                        Content server, see https://manual.calibre-
+                        ebook.com/generated/en/calibredb.html.
+
+    -h, --help          show this help message and exit
+
+    --version           show program's version number and exit
+
+    --username=USERNAME
+                        Username for connecting to a calibre Content server
+
+    --password=PASSWORD
+                        Password for connecting to a calibre Content server.
+                        To read the password from standard input, use the
+                        special value: <stdin>. To read the password from a
+                        file, use: <f:/path/to/file> (i.e. <f: followed by the
+                        full path to the file and a trailing >). The angle
+                        brackets in the above are required, remember to escape
+                        them or use quotes for your shell.
+
+    --timeout=TIMEOUT   The timeout, in seconds, when connecting to a calibre
+                        library over the network. The default is two minutes.
+
+
+Created by Kovid Goyal <kovid@kovidgoyal.net>
+
+================ calibredb add ================
+Usage: calibredb add [options] file1 file2 file3 ...
+
+Add the specified files as books to the database. You can also specify folders, see
+the folder related options below.
+
+
+Whenever you pass arguments to calibredb that have spaces in them, enclose the arguments in quotation marks. For example: "/some path/with spaces"
+
+Options:
+  -d, --duplicates      Add books to database even if they already exist.
+                        Comparison is done based on book titles and authors.
+                        Note that the --automerge option takes precedence.
+
+  -m AUTOMERGE, --automerge=AUTOMERGE
+                        If books with similar titles and authors are found,
+                        merge the incoming formats (files) automatically into
+                        existing book records. A value of "ignore" means
+                        duplicate formats are discarded. A value of
+                        "overwrite" means duplicate formats in the library are
+                        overwritten with the newly added files. A value of
+                        "new_record" means duplicate formats are placed into a
+                        new book record.
+
+  -e, --empty           Add an empty book (a book with no formats)
+
+  -t TITLE, --title=TITLE
+                        Set the title of the added book(s)
+
+  -a AUTHORS, --authors=AUTHORS
+                        Set the authors of the added book(s)
+
+  -i ISBN, --isbn=ISBN  Set the ISBN of the added book(s)
+
+  -I IDENTIFIER, --identifier=IDENTIFIER
+                        Set the identifiers for this book, e.g. -I asin:XXX -I
+                        isbn:YYY
+
+  -T TAGS, --tags=TAGS  Set the tags of the added book(s)
+
+  -s SERIES, --series=SERIES
+                        Set the series of the added book(s)
+
+  -S SERIES_INDEX, --series-index=SERIES_INDEX
+                        Set the series number of the added book(s)
+
+  -c COVER, --cover=COVER
+                        Path to the cover to use for the added book
+
+  -l LANGUAGES, --languages=LANGUAGES
+                        A comma separated list of languages (best to use
+                        ISO639 language codes, though some language names may
+                        also be recognized)
+
+
+  GLOBAL OPTIONS:
+    --library-path=LIBRARY_PATH, --with-library=LIBRARY_PATH
+                        Path to the calibre library. Default is to use the
+                        path stored in the settings. You can also connect to a
+                        calibre Content server to perform actions on remote
+                        libraries. To do so use a URL of the form:
+                        http://hostname:port/#library_id for example,
+                        http://localhost:8080/#mylibrary. library_id is the
+                        library id of the library you want to connect to on
+                        the Content server. You can use the special library_id
+                        value of - to get a list of library ids available on
+                        the server. For details on how to setup access via a
+                        Content server, see https://manual.calibre-
+                        ebook.com/generated/en/calibredb.html.
+
+    -h, --help          show this help message and exit
+
+    --version           show program's version number and exit
+
+    --username=USERNAME
+                        Username for connecting to a calibre Content server
+
+    --password=PASSWORD
+                        Password for connecting to a calibre Content server.
+                        To read the password from standard input, use the
+                        special value: <stdin>. To read the password from a
+                        file, use: <f:/path/to/file> (i.e. <f: followed by the
+                        full path to the file and a trailing >). The angle
+                        brackets in the above are required, remember to escape
+                        them or use quotes for your shell.
+
+    --timeout=TIMEOUT   The timeout, in seconds, when connecting to a calibre
+                        library over the network. The default is two minutes.
+
+
+  ADDING FROM FOLDERS:
+    Options to control the adding of books from folders. By default only
+    files that have extensions of known e-book file types are added.
+
+    -1, --one-book-per-directory
+                        Assume that each folder has only a single logical book
+                        and that all files in it are different e-book formats
+                        of that book
+
+    -r, --recurse       Process folders recursively
+
+    --ignore=GLOB PATTERN
+                        A filename (glob) pattern, files matching this pattern
+                        will be ignored when scanning folders for files. Can
+                        be specified multiple times for multiple patterns. For
+                        example: *.pdf will ignore all PDF files
+
+    --add=GLOB PATTERN  A filename (glob) pattern, files matching this pattern
+                        will be added when scanning folders for files, even if
+                        they are not of a known e-book file type. Can be
+                        specified multiple times for multiple patterns.
+
+
+Created by Kovid Goyal <kovid@kovidgoyal.net>
+
+================ calibredb remove ================
+Usage: calibredb remove ids
+
+Remove the books identified by ids from the database. ids should be a comma separated list of id numbers (you can get id numbers by using the search command). For example, 23,34,57-85 (when specifying a range, the last number in the range is not included).
+
+
+Whenever you pass arguments to calibredb that have spaces in them, enclose the arguments in quotation marks. For example: "/some path/with spaces"
+
+Options:
+  --permanent           Do not use the Trash
+
+
+  GLOBAL OPTIONS:
+    --library-path=LIBRARY_PATH, --with-library=LIBRARY_PATH
+                        Path to the calibre library. Default is to use the
+                        path stored in the settings. You can also connect to a
+                        calibre Content server to perform actions on remote
+                        libraries. To do so use a URL of the form:
+                        http://hostname:port/#library_id for example,
+                        http://localhost:8080/#mylibrary. library_id is the
+                        library id of the library you want to connect to on
+                        the Content server. You can use the special library_id
+                        value of - to get a list of library ids available on
+                        the server. For details on how to setup access via a
+                        Content server, see https://manual.calibre-
+                        ebook.com/generated/en/calibredb.html.
+
+    -h, --help          show this help message and exit
+
+    --version           show program's version number and exit
+
+    --username=USERNAME
+                        Username for connecting to a calibre Content server
+
+    --password=PASSWORD
+                        Password for connecting to a calibre Content server.
+                        To read the password from standard input, use the
+                        special value: <stdin>. To read the password from a
+                        file, use: <f:/path/to/file> (i.e. <f: followed by the
+                        full path to the file and a trailing >). The angle
+                        brackets in the above are required, remember to escape
+                        them or use quotes for your shell.
+
+    --timeout=TIMEOUT   The timeout, in seconds, when connecting to a calibre
+                        library over the network. The default is two minutes.
+
+
+Created by Kovid Goyal <kovid@kovidgoyal.net>
+
+================ calibredb add_format ================
+Usage: calibredb add_format [options] id ebook_file
+
+Add the e-book in ebook_file to the available formats for the logical book identified by id. You can get id by using the search command. If the format already exists, it is replaced, unless the do not replace option is specified.
+
+Whenever you pass arguments to calibredb that have spaces in them, enclose the arguments in quotation marks. For example: "/some path/with spaces"
+
+Options:
+  --dont-replace        Do not replace the format if it already exists
+
+  --as-extra-data-file  Add the file as an extra data file to the book, not an
+                        ebook format
+
+
+  GLOBAL OPTIONS:
+    --library-path=LIBRARY_PATH, --with-library=LIBRARY_PATH
+                        Path to the calibre library. Default is to use the
+                        path stored in the settings. You can also connect to a
+                        calibre Content server to perform actions on remote
+                        libraries. To do so use a URL of the form:
+                        http://hostname:port/#library_id for example,
+                        http://localhost:8080/#mylibrary. library_id is the
+                        library id of the library you want to connect to on
+                        the Content server. You can use the special library_id
+                        value of - to get a list of library ids available on
+                        the server. For details on how to setup access via a
+                        Content server, see https://manual.calibre-
+                        ebook.com/generated/en/calibredb.html.
+
+    -h, --help          show this help message and exit
+
+    --version           show program's version number and exit
+
+    --username=USERNAME
+                        Username for connecting to a calibre Content server
+
+    --password=PASSWORD
+                        Password for connecting to a calibre Content server.
+                        To read the password from standard input, use the
+                        special value: <stdin>. To read the password from a
+                        file, use: <f:/path/to/file> (i.e. <f: followed by the
+                        full path to the file and a trailing >). The angle
+                        brackets in the above are required, remember to escape
+                        them or use quotes for your shell.
+
+    --timeout=TIMEOUT   The timeout, in seconds, when connecting to a calibre
+                        library over the network. The default is two minutes.
+
+
+Created by Kovid Goyal <kovid@kovidgoyal.net>
+
+================ calibredb remove_format ================
+Usage: 
+calibredb remove_format [options] id fmt
+
+Remove the format fmt from the logical book identified by id. You can get id by using the search command. fmt should be a file extension like LRF or TXT or EPUB. If the logical book does not have fmt available, do nothing.
+
+
+Whenever you pass arguments to calibredb that have spaces in them, enclose the arguments in quotation marks. For example: "/some path/with spaces"
+
+Options:
+  GLOBAL OPTIONS:
+    --library-path=LIBRARY_PATH, --with-library=LIBRARY_PATH
+                        Path to the calibre library. Default is to use the
+                        path stored in the settings. You can also connect to a
+                        calibre Content server to perform actions on remote
+                        libraries. To do so use a URL of the form:
+                        http://hostname:port/#library_id for example,
+                        http://localhost:8080/#mylibrary. library_id is the
+                        library id of the library you want to connect to on
+                        the Content server. You can use the special library_id
+                        value of - to get a list of library ids available on
+                        the server. For details on how to setup access via a
+                        Content server, see https://manual.calibre-
+                        ebook.com/generated/en/calibredb.html.
+
+    -h, --help          show this help message and exit
+
+    --version           show program's version number and exit
+
+    --username=USERNAME
+                        Username for connecting to a calibre Content server
+
+    --password=PASSWORD
+                        Password for connecting to a calibre Content server.
+                        To read the password from standard input, use the
+                        special value: <stdin>. To read the password from a
+                        file, use: <f:/path/to/file> (i.e. <f: followed by the
+                        full path to the file and a trailing >). The angle
+                        brackets in the above are required, remember to escape
+                        them or use quotes for your shell.
+
+    --timeout=TIMEOUT   The timeout, in seconds, when connecting to a calibre
+                        library over the network. The default is two minutes.
+
+
+Created by Kovid Goyal <kovid@kovidgoyal.net>
+
+================ calibredb show_metadata ================
+Usage: 
+calibredb show_metadata [options] id
+
+Show the metadata stored in the calibre database for the book identified by id.
+id is an id number from the search command.
+
+
+Whenever you pass arguments to calibredb that have spaces in them, enclose the arguments in quotation marks. For example: "/some path/with spaces"
+
+Options:
+  --as-opf              Print metadata in OPF form (XML)
+
+
+  GLOBAL OPTIONS:
+    --library-path=LIBRARY_PATH, --with-library=LIBRARY_PATH
+                        Path to the calibre library. Default is to use the
+                        path stored in the settings. You can also connect to a
+                        calibre Content server to perform actions on remote
+                        libraries. To do so use a URL of the form:
+                        http://hostname:port/#library_id for example,
+                        http://localhost:8080/#mylibrary. library_id is the
+                        library id of the library you want to connect to on
+                        the Content server. You can use the special library_id
+                        value of - to get a list of library ids available on
+                        the server. For details on how to setup access via a
+                        Content server, see https://manual.calibre-
+                        ebook.com/generated/en/calibredb.html.
+
+    -h, --help          show this help message and exit
+
+    --version           show program's version number and exit
+
+    --username=USERNAME
+                        Username for connecting to a calibre Content server
+
+    --password=PASSWORD
+                        Password for connecting to a calibre Content server.
+                        To read the password from standard input, use the
+                        special value: <stdin>. To read the password from a
+                        file, use: <f:/path/to/file> (i.e. <f: followed by the
+                        full path to the file and a trailing >). The angle
+                        brackets in the above are required, remember to escape
+                        them or use quotes for your shell.
+
+    --timeout=TIMEOUT   The timeout, in seconds, when connecting to a calibre
+                        library over the network. The default is two minutes.
+
+
+Created by Kovid Goyal <kovid@kovidgoyal.net>
+
+================ calibredb set_metadata ================
+Usage: 
+calibredb set_metadata [options] book_id [/path/to/metadata.opf]
+
+Set the metadata stored in the calibre database for the book identified by
+book_id from the OPF file metadata.opf. book_id is a book id number from the
+search command. You can get a quick feel for the OPF format by using the
+--as-opf switch to the show_metadata command. You can also set the metadata of
+individual fields with the --field option. If you use the --field option, there
+is no need to specify an OPF file.
+
+
+Whenever you pass arguments to calibredb that have spaces in them, enclose the arguments in quotation marks. For example: "/some path/with spaces"
+
+Options:
+  -f FIELD, --field=FIELD
+                        The field to set. Format is field_name:value, for
+                        example: --field tags:tag1,tag2. Use --list-fields to
+                        get a list of all field names. You can specify this
+                        option multiple times to set multiple fields. Note:
+                        For languages you must use the ISO639 language codes
+                        (e.g. en for English, fr for French and so on). For
+                        identifiers, the syntax is --field
+                        identifiers:isbn:XXXX,doi:YYYYY. For boolean (yes/no)
+                        fields use true and false or yes and no.
+
+  -l, --list-fields     List the metadata field names that can be used with
+                        the --field option
+
+
+  GLOBAL OPTIONS:
+    --library-path=LIBRARY_PATH, --with-library=LIBRARY_PATH
+                        Path to the calibre library. Default is to use the
+                        path stored in the settings. You can also connect to a
+                        calibre Content server to perform actions on remote
+                        libraries. To do so use a URL of the form:
+                        http://hostname:port/#library_id for example,
+                        http://localhost:8080/#mylibrary. library_id is the
+                        library id of the library you want to connect to on
+                        the Content server. You can use the special library_id
+                        value of - to get a list of library ids available on
+                        the server. For details on how to setup access via a
+                        Content server, see https://manual.calibre-
+                        ebook.com/generated/en/calibredb.html.
+
+    -h, --help          show this help message and exit
+
+    --version           show program's version number and exit
+
+    --username=USERNAME
+                        Username for connecting to a calibre Content server
+
+    --password=PASSWORD
+                        Password for connecting to a calibre Content server.
+                        To read the password from standard input, use the
+                        special value: <stdin>. To read the password from a
+                        file, use: <f:/path/to/file> (i.e. <f: followed by the
+                        full path to the file and a trailing >). The angle
+                        brackets in the above are required, remember to escape
+                        them or use quotes for your shell.
+
+    --timeout=TIMEOUT   The timeout, in seconds, when connecting to a calibre
+                        library over the network. The default is two minutes.
+
+
+Created by Kovid Goyal <kovid@kovidgoyal.net>
+
+================ calibredb export ================
+Usage: calibredb export [options] ids
+
+Export the books specified by ids (a comma separated list) to the filesystem.
+The export operation saves all formats of the book, its cover and metadata (in
+an OPF file). Any extra data files associated with the book are also saved.
+You can get id numbers from the search command.
+
+
+Whenever you pass arguments to calibredb that have spaces in them, enclose the arguments in quotation marks. For example: "/some path/with spaces"
+
+Options:
+  --all                 Export all books in database, ignoring the list of
+                        ids.
+
+  --to-dir=TO_DIR       Export books to the specified folder. Default is .
+
+  --single-dir          Export all books into a single folder
+
+  --progress            Report progress
+
+  --dont-asciiize       Have calibre convert all non English characters into
+                        English equivalents for the file names. This is useful
+                        if saving to a legacy filesystem without full support
+                        for Unicode filenames. Specifying this switch will
+                        turn this behavior off.
+
+  --dont-update-metadata
+                        Normally, calibre will update the metadata in the
+                        saved files from what is in the calibre library. Makes
+                        saving to disk slower. Specifying this switch will
+                        turn this behavior off.
+
+  --dont-write-opf      Normally, calibre will write the metadata into a
+                        separate OPF file along with the actual e-book files.
+                        Specifying this switch will turn this behavior off.
+
+  --dont-save-cover     Normally, calibre will save the cover in a separate
+                        file along with the actual e-book files. Specifying
+                        this switch will turn this behavior off.
+
+  --dont-save-extra-files
+                        Save any data files associated with the book when
+                        saving the book Specifying this switch will turn this
+                        behavior off.
+
+  --timefmt=TIMEFMT     The format in which to display dates. %d - day, %b -
+                        month, %m - month number, %Y - year. Default is: %b,
+                        %Y
+
+  --template=TEMPLATE   The template to control the filename and folder
+                        structure of the saved files. Default is
+                        "{author_sort}/{title}/{title} - {authors}" which will
+                        save books into a per-author subfolder with filenames
+                        containing title and author. Available controls are:
+                        {author_sort, authors, id, isbn, languages,
+                        last_modified, pages, pubdate, publisher, rating,
+                        series, series_index, tags, timestamp, title}
+
+  --formats=FORMATS     Comma separated list of formats to save for each book.
+                        By default all available formats are saved.
+
+  --replace-whitespace  Replace whitespace with underscores.
+
+  --to-lowercase        Convert paths to lowercase.
+
+
+  GLOBAL OPTIONS:
+    --library-path=LIBRARY_PATH, --with-library=LIBRARY_PATH
+                        Path to the calibre library. Default is to use the
+                        path stored in the settings. You can also connect to a
+                        calibre Content server to perform actions on remote
+                        libraries. To do so use a URL of the form:
+                        http://hostname:port/#library_id for example,
+                        http://localhost:8080/#mylibrary. library_id is the
+                        library id of the library you want to connect to on
+                        the Content server. You can use the special library_id
+                        value of - to get a list of library ids available on
+                        the server. For details on how to setup access via a
+                        Content server, see https://manual.calibre-
+                        ebook.com/generated/en/calibredb.html.
+
+    -h, --help          show this help message and exit
+
+    --version           show program's version number and exit
+
+    --username=USERNAME
+                        Username for connecting to a calibre Content server
+
+    --password=PASSWORD
+                        Password for connecting to a calibre Content server.
+                        To read the password from standard input, use the
+                        special value: <stdin>. To read the password from a
+                        file, use: <f:/path/to/file> (i.e. <f: followed by the
+                        full path to the file and a trailing >). The angle
+                        brackets in the above are required, remember to escape
+                        them or use quotes for your shell.
+
+    --timeout=TIMEOUT   The timeout, in seconds, when connecting to a calibre
+                        library over the network. The default is two minutes.
+
+
+Created by Kovid Goyal <kovid@kovidgoyal.net>
+
+================ calibredb catalog ================
+
+================ calibredb saved_searches ================
+Usage: calibredb saved_searches [options] (list|add|remove)
+
+Manage the saved searches stored in this database.
+If you try to add a query with a name that already exists, it will be
+replaced.
+
+Syntax for adding:
+
+calibredb saved_searches add search_name search_expression
+
+Syntax for removing:
+
+calibredb saved_searches remove search_name
+
+
+Whenever you pass arguments to calibredb that have spaces in them, enclose the arguments in quotation marks. For example: "/some path/with spaces"
+
+Options:
+  GLOBAL OPTIONS:
+    --library-path=LIBRARY_PATH, --with-library=LIBRARY_PATH
+                        Path to the calibre library. Default is to use the
+                        path stored in the settings. You can also connect to a
+                        calibre Content server to perform actions on remote
+                        libraries. To do so use a URL of the form:
+                        http://hostname:port/#library_id for example,
+                        http://localhost:8080/#mylibrary. library_id is the
+                        library id of the library you want to connect to on
+                        the Content server. You can use the special library_id
+                        value of - to get a list of library ids available on
+                        the server. For details on how to setup access via a
+                        Content server, see https://manual.calibre-
+                        ebook.com/generated/en/calibredb.html.
+
+    -h, --help          show this help message and exit
+
+    --version           show program's version number and exit
+
+    --username=USERNAME
+                        Username for connecting to a calibre Content server
+
+    --password=PASSWORD
+                        Password for connecting to a calibre Content server.
+                        To read the password from standard input, use the
+                        special value: <stdin>. To read the password from a
+                        file, use: <f:/path/to/file> (i.e. <f: followed by the
+                        full path to the file and a trailing >). The angle
+                        brackets in the above are required, remember to escape
+                        them or use quotes for your shell.
+
+    --timeout=TIMEOUT   The timeout, in seconds, when connecting to a calibre
+                        library over the network. The default is two minutes.
+
+
+Created by Kovid Goyal <kovid@kovidgoyal.net>
+
+================ calibredb add_custom_column ================
+Usage: calibredb add_custom_column [options] label name datatype
+
+Create a custom column. label is the machine friendly name of the column. Should
+not contain spaces or colons. name is the human friendly name of the column.
+datatype is one of: bool, comments, composite, datetime, enumeration, float, int, rating, series, text
+
+
+Whenever you pass arguments to calibredb that have spaces in them, enclose the arguments in quotation marks. For example: "/some path/with spaces"
+
+Options:
+  --is-multiple         This column stores tag like data (i.e. multiple comma
+                        separated values). Only applies if datatype is text.
+
+  --display=DISPLAY     A dictionary of options to customize how the data in
+                        this column will be interpreted. This is a JSON
+                        string. For enumeration columns, use
+                        --display="{\"enum_values\":[\"val1\", \"val2\"]}"
+                        There are many options that can go into the display
+                        variable.The options by column type are:
+                        composite: composite_template, composite_sort,
+                        make_category,contains_html, use_decorations
+                        datetime: date_format
+                        enumeration: enum_values, enum_colors, use_decorations
+                        int, float: number_format
+                        text: is_names, use_decorations
+                        The best way to find legal combinations is to create a
+                        custom column of the appropriate type in the GUI then
+                        look at the backup OPF for a book (ensure that a new
+                        OPF has been created since the column was added). You
+                        will see the JSON for the "display" for the new column
+                        in the OPF.
+
+
+  GLOBAL OPTIONS:
+    --library-path=LIBRARY_PATH, --with-library=LIBRARY_PATH
+                        Path to the calibre library. Default is to use the
+                        path stored in the settings. You can also connect to a
+                        calibre Content server to perform actions on remote
+                        libraries. To do so use a URL of the form:
+                        http://hostname:port/#library_id for example,
+                        http://localhost:8080/#mylibrary. library_id is the
+                        library id of the library you want to connect to on
+                        the Content server. You can use the special library_id
+                        value of - to get a list of library ids available on
+                        the server. For details on how to setup access via a
+                        Content server, see https://manual.calibre-
+                        ebook.com/generated/en/calibredb.html.
+
+    -h, --help          show this help message and exit
+
+    --version           show program's version number and exit
+
+    --username=USERNAME
+                        Username for connecting to a calibre Content server
+
+    --password=PASSWORD
+                        Password for connecting to a calibre Content server.
+                        To read the password from standard input, use the
+                        special value: <stdin>. To read the password from a
+                        file, use: <f:/path/to/file> (i.e. <f: followed by the
+                        full path to the file and a trailing >). The angle
+                        brackets in the above are required, remember to escape
+                        them or use quotes for your shell.
+
+    --timeout=TIMEOUT   The timeout, in seconds, when connecting to a calibre
+                        library over the network. The default is two minutes.
+
+
+Created by Kovid Goyal <kovid@kovidgoyal.net>
+
+================ calibredb custom_columns ================
+Usage: calibredb custom_columns [options]
+
+List available custom columns. Shows column labels and ids.
+
+
+Whenever you pass arguments to calibredb that have spaces in them, enclose the arguments in quotation marks. For example: "/some path/with spaces"
+
+Options:
+  -d, --details         Show details for each column.
+
+
+  GLOBAL OPTIONS:
+    --library-path=LIBRARY_PATH, --with-library=LIBRARY_PATH
+                        Path to the calibre library. Default is to use the
+                        path stored in the settings. You can also connect to a
+                        calibre Content server to perform actions on remote
+                        libraries. To do so use a URL of the form:
+                        http://hostname:port/#library_id for example,
+                        http://localhost:8080/#mylibrary. library_id is the
+                        library id of the library you want to connect to on
+                        the Content server. You can use the special library_id
+                        value of - to get a list of library ids available on
+                        the server. For details on how to setup access via a
+                        Content server, see https://manual.calibre-
+                        ebook.com/generated/en/calibredb.html.
+
+    -h, --help          show this help message and exit
+
+    --version           show program's version number and exit
+
+    --username=USERNAME
+                        Username for connecting to a calibre Content server
+
+    --password=PASSWORD
+                        Password for connecting to a calibre Content server.
+                        To read the password from standard input, use the
+                        special value: <stdin>. To read the password from a
+                        file, use: <f:/path/to/file> (i.e. <f: followed by the
+                        full path to the file and a trailing >). The angle
+                        brackets in the above are required, remember to escape
+                        them or use quotes for your shell.
+
+    --timeout=TIMEOUT   The timeout, in seconds, when connecting to a calibre
+                        library over the network. The default is two minutes.
+
+
+Created by Kovid Goyal <kovid@kovidgoyal.net>
+
+================ calibredb remove_custom_column ================
+Usage: calibredb remove_custom_column [options] label
+
+Remove the custom column identified by label. You can see available
+columns with the custom_columns command.
+
+
+Whenever you pass arguments to calibredb that have spaces in them, enclose the arguments in quotation marks. For example: "/some path/with spaces"
+
+Options:
+  -f, --force           Do not ask for confirmation
+
+
+  GLOBAL OPTIONS:
+    --library-path=LIBRARY_PATH, --with-library=LIBRARY_PATH
+                        Path to the calibre library. Default is to use the
+                        path stored in the settings. You can also connect to a
+                        calibre Content server to perform actions on remote
+                        libraries. To do so use a URL of the form:
+                        http://hostname:port/#library_id for example,
+                        http://localhost:8080/#mylibrary. library_id is the
+                        library id of the library you want to connect to on
+                        the Content server. You can use the special library_id
+                        value of - to get a list of library ids available on
+                        the server. For details on how to setup access via a
+                        Content server, see https://manual.calibre-
+                        ebook.com/generated/en/calibredb.html.
+
+    -h, --help          show this help message and exit
+
+    --version           show program's version number and exit
+
+    --username=USERNAME
+                        Username for connecting to a calibre Content server
+
+    --password=PASSWORD
+                        Password for connecting to a calibre Content server.
+                        To read the password from standard input, use the
+                        special value: <stdin>. To read the password from a
+                        file, use: <f:/path/to/file> (i.e. <f: followed by the
+                        full path to the file and a trailing >). The angle
+                        brackets in the above are required, remember to escape
+                        them or use quotes for your shell.
+
+    --timeout=TIMEOUT   The timeout, in seconds, when connecting to a calibre
+                        library over the network. The default is two minutes.
+
+
+Created by Kovid Goyal <kovid@kovidgoyal.net>
+
+================ calibredb set_custom ================
+Usage: calibredb set_custom [options] column id value
+
+Set the value of a custom column for the book identified by id.
+You can get a list of ids using the search command.
+You can get a list of custom column names using the custom_columns
+command.
+
+
+Whenever you pass arguments to calibredb that have spaces in them, enclose the arguments in quotation marks. For example: "/some path/with spaces"
+
+Options:
+  -a, --append          If the column stores multiple values, append the
+                        specified values to the existing ones, instead of
+                        replacing them.
+
+
+  GLOBAL OPTIONS:
+    --library-path=LIBRARY_PATH, --with-library=LIBRARY_PATH
+                        Path to the calibre library. Default is to use the
+                        path stored in the settings. You can also connect to a
+                        calibre Content server to perform actions on remote
+                        libraries. To do so use a URL of the form:
+                        http://hostname:port/#library_id for example,
+                        http://localhost:8080/#mylibrary. library_id is the
+                        library id of the library you want to connect to on
+                        the Content server. You can use the special library_id
+                        value of - to get a list of library ids available on
+                        the server. For details on how to setup access via a
+                        Content server, see https://manual.calibre-
+                        ebook.com/generated/en/calibredb.html.
+
+    -h, --help          show this help message and exit
+
+    --version           show program's version number and exit
+
+    --username=USERNAME
+                        Username for connecting to a calibre Content server
+
+    --password=PASSWORD
+                        Password for connecting to a calibre Content server.
+                        To read the password from standard input, use the
+                        special value: <stdin>. To read the password from a
+                        file, use: <f:/path/to/file> (i.e. <f: followed by the
+                        full path to the file and a trailing >). The angle
+                        brackets in the above are required, remember to escape
+                        them or use quotes for your shell.
+
+    --timeout=TIMEOUT   The timeout, in seconds, when connecting to a calibre
+                        library over the network. The default is two minutes.
+
+
+Created by Kovid Goyal <kovid@kovidgoyal.net>
+
+================ calibredb restore_database ================
+Usage: calibredb restore_database [options]
+
+Restore this database from the metadata stored in OPF files in each
+folder of the calibre library. This is useful if your metadata.db file
+has been corrupted.
+
+WARNING: This command completely regenerates your database. You will lose
+all saved searches, user categories, plugboards, stored per-book conversion
+settings, and custom recipes. Restored metadata will only be as accurate as
+what is found in the OPF files.
+
+
+Whenever you pass arguments to calibredb that have spaces in them, enclose the arguments in quotation marks. For example: "/some path/with spaces"
+
+Options:
+  -r, --really-do-it    Really do the recovery. The command will not run
+                        unless this option is specified.
+
+
+  GLOBAL OPTIONS:
+    --library-path=LIBRARY_PATH, --with-library=LIBRARY_PATH
+                        Path to the calibre library. Default is to use the
+                        path stored in the settings. You can also connect to a
+                        calibre Content server to perform actions on remote
+                        libraries. To do so use a URL of the form:
+                        http://hostname:port/#library_id for example,
+                        http://localhost:8080/#mylibrary. library_id is the
+                        library id of the library you want to connect to on
+                        the Content server. You can use the special library_id
+                        value of - to get a list of library ids available on
+                        the server. For details on how to setup access via a
+                        Content server, see https://manual.calibre-
+                        ebook.com/generated/en/calibredb.html.
+
+    -h, --help          show this help message and exit
+
+    --version           show program's version number and exit
+
+    --username=USERNAME
+                        Username for connecting to a calibre Content server
+
+    --password=PASSWORD
+                        Password for connecting to a calibre Content server.
+                        To read the password from standard input, use the
+                        special value: <stdin>. To read the password from a
+                        file, use: <f:/path/to/file> (i.e. <f: followed by the
+                        full path to the file and a trailing >). The angle
+                        brackets in the above are required, remember to escape
+                        them or use quotes for your shell.
+
+    --timeout=TIMEOUT   The timeout, in seconds, when connecting to a calibre
+                        library over the network. The default is two minutes.
+
+
+Created by Kovid Goyal <kovid@kovidgoyal.net>
+
+================ calibredb check_library ================
+Usage: calibredb check_library [options]
+
+Perform some checks on the filesystem representing a library. Reports are invalid_titles, extra_titles, invalid_authors, extra_authors, missing_formats, extra_formats, extra_files, missing_covers, extra_covers, malformed_formats, malformed_paths, failed_folders
+
+
+Whenever you pass arguments to calibredb that have spaces in them, enclose the arguments in quotation marks. For example: "/some path/with spaces"
+
+Options:
+  -c, --csv             Output in CSV
+
+  -r REPORT, --report=REPORT
+                        Comma-separated list of reports.
+                        Default: all
+
+  -e EXTS, --ignore_extensions=EXTS
+                        Comma-separated list of extensions to ignore.
+                        Default: all
+
+  -n NAMES, --ignore_names=NAMES
+                        Comma-separated list of names to ignore.
+                        Default: all
+
+  --vacuum-fts-db       Vacuum the full text search database. This can be very
+                        slow and memory intensive, depending on the size of
+                        the database.
+
+
+  GLOBAL OPTIONS:
+    --library-path=LIBRARY_PATH, --with-library=LIBRARY_PATH
+                        Path to the calibre library. Default is to use the
+                        path stored in the settings. You can also connect to a
+                        calibre Content server to perform actions on remote
+                        libraries. To do so use a URL of the form:
+                        http://hostname:port/#library_id for example,
+                        http://localhost:8080/#mylibrary. library_id is the
+                        library id of the library you want to connect to on
+                        the Content server. You can use the special library_id
+                        value of - to get a list of library ids available on
+                        the server. For details on how to setup access via a
+                        Content server, see https://manual.calibre-
+                        ebook.com/generated/en/calibredb.html.
+
+    -h, --help          show this help message and exit
+
+    --version           show program's version number and exit
+
+    --username=USERNAME
+                        Username for connecting to a calibre Content server
+
+    --password=PASSWORD
+                        Password for connecting to a calibre Content server.
+                        To read the password from standard input, use the
+                        special value: <stdin>. To read the password from a
+                        file, use: <f:/path/to/file> (i.e. <f: followed by the
+                        full path to the file and a trailing >). The angle
+                        brackets in the above are required, remember to escape
+                        them or use quotes for your shell.
+
+    --timeout=TIMEOUT   The timeout, in seconds, when connecting to a calibre
+                        library over the network. The default is two minutes.
+
+
+Created by Kovid Goyal <kovid@kovidgoyal.net>
+
+================ calibredb list_categories ================
+Usage: calibredb list_categories [options]
+
+Produce a report of the category information in the database. The
+information is the equivalent of what is shown in the Tag browser.
+
+
+Whenever you pass arguments to calibredb that have spaces in them, enclose the arguments in quotation marks. For example: "/some path/with spaces"
+
+Options:
+  -i, --item_count      Output only the number of items in a category instead
+                        of the counts per item within the category
+
+  -c, --csv             Output in CSV
+
+  --dialect=DIALECT     The type of CSV file to produce. Choices: excel,
+                        excel-tab, unix
+
+  -r REPORT, --categories=REPORT
+                        Comma-separated list of category lookup names.
+                        Default: all
+
+  -w WIDTH, --width=WIDTH
+                        The maximum width of a single line in the output.
+                        Defaults to detecting screen size.
+
+
+  GLOBAL OPTIONS:
+    --library-path=LIBRARY_PATH, --with-library=LIBRARY_PATH
+                        Path to the calibre library. Default is to use the
+                        path stored in the settings. You can also connect to a
+                        calibre Content server to perform actions on remote
+                        libraries. To do so use a URL of the form:
+                        http://hostname:port/#library_id for example,
+                        http://localhost:8080/#mylibrary. library_id is the
+                        library id of the library you want to connect to on
+                        the Content server. You can use the special library_id
+                        value of - to get a list of library ids available on
+                        the server. For details on how to setup access via a
+                        Content server, see https://manual.calibre-
+                        ebook.com/generated/en/calibredb.html.
+
+    -h, --help          show this help message and exit
+
+    --version           show program's version number and exit
+
+    --username=USERNAME
+                        Username for connecting to a calibre Content server
+
+    --password=PASSWORD
+                        Password for connecting to a calibre Content server.
+                        To read the password from standard input, use the
+                        special value: <stdin>. To read the password from a
+                        file, use: <f:/path/to/file> (i.e. <f: followed by the
+                        full path to the file and a trailing >). The angle
+                        brackets in the above are required, remember to escape
+                        them or use quotes for your shell.
+
+    --timeout=TIMEOUT   The timeout, in seconds, when connecting to a calibre
+                        library over the network. The default is two minutes.
+
+
+Created by Kovid Goyal <kovid@kovidgoyal.net>
+
+================ calibredb backup_metadata ================
+Usage: calibredb backup_metadata [options]
+
+Backup the metadata stored in the database into individual OPF files in each
+books folder. This normally happens automatically, but you can run this
+command to force re-generation of the OPF files, with the --all option.
+
+Note that there is normally no need to do this, as the OPF files are backed up
+automatically, every time metadata is changed.
+
+
+Whenever you pass arguments to calibredb that have spaces in them, enclose the arguments in quotation marks. For example: "/some path/with spaces"
+
+Options:
+  --all                 Normally, this command only operates on books that
+                        have out of date OPF files. This option makes it
+                        operate on all books.
+
+
+  GLOBAL OPTIONS:
+    --library-path=LIBRARY_PATH, --with-library=LIBRARY_PATH
+                        Path to the calibre library. Default is to use the
+                        path stored in the settings. You can also connect to a
+                        calibre Content server to perform actions on remote
+                        libraries. To do so use a URL of the form:
+                        http://hostname:port/#library_id for example,
+                        http://localhost:8080/#mylibrary. library_id is the
+                        library id of the library you want to connect to on
+                        the Content server. You can use the special library_id
+                        value of - to get a list of library ids available on
+                        the server. For details on how to setup access via a
+                        Content server, see https://manual.calibre-
+                        ebook.com/generated/en/calibredb.html.
+
+    -h, --help          show this help message and exit
+
+    --version           show program's version number and exit
+
+    --username=USERNAME
+                        Username for connecting to a calibre Content server
+
+    --password=PASSWORD
+                        Password for connecting to a calibre Content server.
+                        To read the password from standard input, use the
+                        special value: <stdin>. To read the password from a
+                        file, use: <f:/path/to/file> (i.e. <f: followed by the
+                        full path to the file and a trailing >). The angle
+                        brackets in the above are required, remember to escape
+                        them or use quotes for your shell.
+
+    --timeout=TIMEOUT   The timeout, in seconds, when connecting to a calibre
+                        library over the network. The default is two minutes.
+
+
+Created by Kovid Goyal <kovid@kovidgoyal.net>
+
+================ calibredb clone ================
+Usage: calibredb clone path/to/new/library
+
+Create a clone of the current library. This creates a new, empty library that has all the
+same custom columns, Virtual libraries and other settings as the current library.
+
+The cloned library will contain no books. If you want to create a full duplicate, including
+all books, then simply use your filesystem tools to copy the library folder.
+
+
+Whenever you pass arguments to calibredb that have spaces in them, enclose the arguments in quotation marks. For example: "/some path/with spaces"
+
+Options:
+  GLOBAL OPTIONS:
+    --library-path=LIBRARY_PATH, --with-library=LIBRARY_PATH
+                        Path to the calibre library. Default is to use the
+                        path stored in the settings. You can also connect to a
+                        calibre Content server to perform actions on remote
+                        libraries. To do so use a URL of the form:
+                        http://hostname:port/#library_id for example,
+                        http://localhost:8080/#mylibrary. library_id is the
+                        library id of the library you want to connect to on
+                        the Content server. You can use the special library_id
+                        value of - to get a list of library ids available on
+                        the server. For details on how to setup access via a
+                        Content server, see https://manual.calibre-
+                        ebook.com/generated/en/calibredb.html.
+
+    -h, --help          show this help message and exit
+
+    --version           show program's version number and exit
+
+    --username=USERNAME
+                        Username for connecting to a calibre Content server
+
+    --password=PASSWORD
+                        Password for connecting to a calibre Content server.
+                        To read the password from standard input, use the
+                        special value: <stdin>. To read the password from a
+                        file, use: <f:/path/to/file> (i.e. <f: followed by the
+                        full path to the file and a trailing >). The angle
+                        brackets in the above are required, remember to escape
+                        them or use quotes for your shell.
+
+    --timeout=TIMEOUT   The timeout, in seconds, when connecting to a calibre
+                        library over the network. The default is two minutes.
+
+
+Created by Kovid Goyal <kovid@kovidgoyal.net>
+
+================ calibredb embed_metadata ================
+Usage: 
+calibredb embed_metadata [options] book_id
+
+Update the metadata in the actual book files stored in the calibre library from
+the metadata in the calibre database.  Normally, metadata is updated only when
+exporting files from calibre, this command is useful if you want the files to
+be updated in place. Note that different file formats support different amounts
+of metadata. You can use the special value 'all' for book_id to update metadata
+in all books. You can also specify many book ids separated by spaces and id ranges
+separated by hyphens. For example: calibredb embed_metadata 1 2 10-15 23
+
+Whenever you pass arguments to calibredb that have spaces in them, enclose the arguments in quotation marks. For example: "/some path/with spaces"
+
+Options:
+  -f ONLY_FORMATS, --only-formats=ONLY_FORMATS
+                        Only update metadata in files of the specified format.
+                        Specify it multiple times for multiple formats. By
+                        default, all formats are updated.
+
+
+  GLOBAL OPTIONS:
+    --library-path=LIBRARY_PATH, --with-library=LIBRARY_PATH
+                        Path to the calibre library. Default is to use the
+                        path stored in the settings. You can also connect to a
+                        calibre Content server to perform actions on remote
+                        libraries. To do so use a URL of the form:
+                        http://hostname:port/#library_id for example,
+                        http://localhost:8080/#mylibrary. library_id is the
+                        library id of the library you want to connect to on
+                        the Content server. You can use the special library_id
+                        value of - to get a list of library ids available on
+                        the server. For details on how to setup access via a
+                        Content server, see https://manual.calibre-
+                        ebook.com/generated/en/calibredb.html.
+
+    -h, --help          show this help message and exit
+
+    --version           show program's version number and exit
+
+    --username=USERNAME
+                        Username for connecting to a calibre Content server
+
+    --password=PASSWORD
+                        Password for connecting to a calibre Content server.
+                        To read the password from standard input, use the
+                        special value: <stdin>. To read the password from a
+                        file, use: <f:/path/to/file> (i.e. <f: followed by the
+                        full path to the file and a trailing >). The angle
+                        brackets in the above are required, remember to escape
+                        them or use quotes for your shell.
+
+    --timeout=TIMEOUT   The timeout, in seconds, when connecting to a calibre
+                        library over the network. The default is two minutes.
+
+
+Created by Kovid Goyal <kovid@kovidgoyal.net>
+
+================ calibredb search ================
+Usage: calibredb search [options] search expression
+
+Search the library for the specified search term, returning a comma separated
+list of book ids matching the search expression. The output format is useful
+to feed into other commands that accept a list of ids as input.
+
+The search expression can be anything from calibre's powerful search query
+language, for example: calibredb search author:asimov 'title:"i robot"'
+
+
+Whenever you pass arguments to calibredb that have spaces in them, enclose the arguments in quotation marks. For example: "/some path/with spaces"
+
+Options:
+  -l LIMIT, --limit=LIMIT
+                        The maximum number of results to return. Default is
+                        all results.
+
+
+  GLOBAL OPTIONS:
+    --library-path=LIBRARY_PATH, --with-library=LIBRARY_PATH
+                        Path to the calibre library. Default is to use the
+                        path stored in the settings. You can also connect to a
+                        calibre Content server to perform actions on remote
+                        libraries. To do so use a URL of the form:
+                        http://hostname:port/#library_id for example,
+                        http://localhost:8080/#mylibrary. library_id is the
+                        library id of the library you want to connect to on
+                        the Content server. You can use the special library_id
+                        value of - to get a list of library ids available on
+                        the server. For details on how to setup access via a
+                        Content server, see https://manual.calibre-
+                        ebook.com/generated/en/calibredb.html.
+
+    -h, --help          show this help message and exit
+
+    --version           show program's version number and exit
+
+    --username=USERNAME
+                        Username for connecting to a calibre Content server
+
+    --password=PASSWORD
+                        Password for connecting to a calibre Content server.
+                        To read the password from standard input, use the
+                        special value: <stdin>. To read the password from a
+                        file, use: <f:/path/to/file> (i.e. <f: followed by the
+                        full path to the file and a trailing >). The angle
+                        brackets in the above are required, remember to escape
+                        them or use quotes for your shell.
+
+    --timeout=TIMEOUT   The timeout, in seconds, when connecting to a calibre
+                        library over the network. The default is two minutes.
+
+
+Created by Kovid Goyal <kovid@kovidgoyal.net>
+
+================ calibredb fts_index ================
+Usage: calibredb fts_index [options] enable/disable/status/reindex
+
+Control the Full text search indexing process.
+
+enable
+    Turns on FTS indexing for this library
+disable
+    Turns off FTS indexing for this library
+status
+    Shows the current indexing status
+reindex
+    Can be used to re-index either particular books or
+    the entire library. To re-index particular books
+    specify the book ids as additional arguments after the
+    reindex command. If no book ids are specified the
+    entire library is re-indexed.
+
+
+Whenever you pass arguments to calibredb that have spaces in them, enclose the arguments in quotation marks. For example: "/some path/with spaces"
+
+Options:
+  --wait-for-completion
+                        Wait till all books are indexed, showing indexing
+                        progress periodically
+
+  --indexing-speed=INDEXING_SPEED
+                        The speed of indexing. Use fast for fast indexing
+                        using all your computers resources and slow for less
+                        resource intensive indexing. Note that the speed is
+                        reset to slow after every invocation.
+
+
+  GLOBAL OPTIONS:
+    --library-path=LIBRARY_PATH, --with-library=LIBRARY_PATH
+                        Path to the calibre library. Default is to use the
+                        path stored in the settings. You can also connect to a
+                        calibre Content server to perform actions on remote
+                        libraries. To do so use a URL of the form:
+                        http://hostname:port/#library_id for example,
+                        http://localhost:8080/#mylibrary. library_id is the
+                        library id of the library you want to connect to on
+                        the Content server. You can use the special library_id
+                        value of - to get a list of library ids available on
+                        the server. For details on how to setup access via a
+                        Content server, see https://manual.calibre-
+                        ebook.com/generated/en/calibredb.html.
+
+    -h, --help          show this help message and exit
+
+    --version           show program's version number and exit
+
+    --username=USERNAME
+                        Username for connecting to a calibre Content server
+
+    --password=PASSWORD
+                        Password for connecting to a calibre Content server.
+                        To read the password from standard input, use the
+                        special value: <stdin>. To read the password from a
+                        file, use: <f:/path/to/file> (i.e. <f: followed by the
+                        full path to the file and a trailing >). The angle
+                        brackets in the above are required, remember to escape
+                        them or use quotes for your shell.
+
+    --timeout=TIMEOUT   The timeout, in seconds, when connecting to a calibre
+                        library over the network. The default is two minutes.
+
+
+Created by Kovid Goyal <kovid@kovidgoyal.net>
+
+================ calibredb fts_search ================
+Usage: calibredb fts_search [options] search expression
+
+Do a full text search on the entire library or a subset of it.
+
+
+
+Whenever you pass arguments to calibredb that have spaces in them, enclose the arguments in quotation marks. For example: "/some path/with spaces"
+
+Options:
+  --include-snippets    Include snippets of the text surrounding each match.
+                        Note that this makes searching much slower.
+
+  --match-start-marker=MATCH_START_MARKER
+                        The marker used to indicate the start of a matched
+                        word inside a snippet
+
+  --match-end-marker=MATCH_END_MARKER
+                        The marker used to indicate the end of a matched word
+                        inside a snippet
+
+  --do-not-match-on-related-words
+                        Only match on exact words not related words. So
+                        correction will not match correcting.
+
+  --restrict-to=RESTRICT_TO
+                        Restrict the searched books, either using a search
+                        expression or ids. For example: ids:1,2,3 to restrict
+                        by ids or search:tag:foo to restrict to books having
+                        the tag foo.
+
+  --output-format=OUTPUT_FORMAT
+                        The format to output the search results in. Either
+                        "text" for plain text or "json" for JSON output.
+
+  --indexing-threshold=INDEXING_THRESHOLD
+                        How much of the library must be indexed before
+                        searching is allowed, as a percentage. Defaults to 90
+
+
+  GLOBAL OPTIONS:
+    --library-path=LIBRARY_PATH, --with-library=LIBRARY_PATH
+                        Path to the calibre library. Default is to use the
+                        path stored in the settings. You can also connect to a
+                        calibre Content server to perform actions on remote
+                        libraries. To do so use a URL of the form:
+                        http://hostname:port/#library_id for example,
+                        http://localhost:8080/#mylibrary. library_id is the
+                        library id of the library you want to connect to on
+                        the Content server. You can use the special library_id
+                        value of - to get a list of library ids available on
+                        the server. For details on how to setup access via a
+                        Content server, see https://manual.calibre-
+                        ebook.com/generated/en/calibredb.html.
+
+    -h, --help          show this help message and exit
+
+    --version           show program's version number and exit
+
+    --username=USERNAME
+                        Username for connecting to a calibre Content server
+
+    --password=PASSWORD
+                        Password for connecting to a calibre Content server.
+                        To read the password from standard input, use the
+                        special value: <stdin>. To read the password from a
+                        file, use: <f:/path/to/file> (i.e. <f: followed by the
+                        full path to the file and a trailing >). The angle
+                        brackets in the above are required, remember to escape
+                        them or use quotes for your shell.
+
+    --timeout=TIMEOUT   The timeout, in seconds, when connecting to a calibre
+                        library over the network. The default is two minutes.
+
+
+Created by Kovid Goyal <kovid@kovidgoyal.net>
+

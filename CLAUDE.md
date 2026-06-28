@@ -1,0 +1,144 @@
+# CLAUDE.md — Calibre MCP Server
+
+<!-- Project memory for the calibre-mcp build. Goal, constraints, and the evidence base
+     a design/implementation session needs before writing any code. -->
+
+## Macro goal
+
+Build **the most capable Calibre MCP server in existence** — a single, reliable
+TypeScript server that replaces the current two-server hack (`FaceDeer/calibre_full_mcp_server`
+for reads + `shell-command-mcp`/`calibredb` for writes) running in Claude Desktop today.
+
+It must:
+1. **Match the full tool surface of every known Calibre MCP server** (feature parity baseline).
+2. **Add semantic search** — the headline differentiator no existing TS server has.
+3. **Fix the write path** that breaks in Cowork (`MCP error -32602`, args-as-strings).
+
+**Two surfaces (Artem's framing).** The server works at two scopes: the **catalog/library**
+(update the library, book metadata, tags, bulk ops, dedupe, enrich) and a **single book** (extract
+content — whole book or a chunk — and keyword/semantic search *within* one book). Semantic search
+spans both: **across the whole library OR one book separately** — a `scope: library|book` param, not
+extra tools (see `TOOLS.md`).
+
+In one line: every useful tool the field has *plus* meaning-based search (library- *and* book-scoped)
+*plus* safe, hardened writes.
+
+## Target environment (ground-truth, do not re-derive)
+
+- Calibre **9.10**, macOS Apple Silicon (macOS 26 beta), Node **v24**.
+- Library: **~801 books** in `Programming Books` (default) + a `Reaserch Books` lib, under `~/Documents/Books/`.
+- Mostly **PDF/EPUB, technical, EN + RU**. Many have raw filenames (`795731065`, `top.dvi`, `B0CZS7H23N.pdf`) → metadata recovery matters.
+- Calibre **GUI is normally running** + Content Server live on `:8080`.
+- Clients: Claude Desktop, Claude Code CLI, Cowork. Transport: **stdio**.
+
+## Hard constraints / gotchas (these killed earlier attempts)
+
+- **GUI-concurrency lock is real (reproduced).** With the app open, direct `calibredb`/SQLite/DB-API
+  access is refused or dangerous. Safe live paths: Content Server HTTP (reads) or `calibredb`
+  routed *through* the server URL. Treat the DB as **read-mostly**; never race the GUI on writes.
+  **Write path RESOLVED** (`CAPABILITIES.md` §2): route writes through the running server — shell
+  `calibredb --with-library http://localhost:8080/#Lib` (it speaks `/cdb/cmd` for us), the server
+  permitting writes via `--enable-local-write`; a direct `/cdb/set-fields` HTTP client is a LATER opt.
+- **`-32602` serialization bug** (our Cowork failure) is client-side, confirmed, unfixed. Defense =
+  **Zod coercion** on every input: `z.coerce.number()`, `z.preprocess(JSON.parse, …)` for arrays/objects,
+  unions for ids. **Never** `z.coerce.boolean()` on `"false"`.
+- **stdout is sacred** on stdio — all logs to **stderr**. One stray `console.log` corrupts the stream.
+- **FTS is book-level only** (no PDF page / EPUB spine location) and **not enabled** on this library yet.
+  Calibre has **no OCR**; PDF is the worst conversion/extraction input.
+- **Writes gated by default** — read-only unless an explicit env flag + per-tool `annotations` allow it.
+
+## Tech stack (decided in research, confirm in design)
+
+- **`@modelcontextprotocol/sdk` 1.29.0** (protocol `2025-11-25`), `registerTool` + `outputSchema`/`structuredContent`.
+  Do **not** wait for SDK v2 (alpha); isolate the SDK behind a thin layer to de-risk migration.
+- **Zod** for input schemas (with the coercion layer above).
+- **Semantic search:** `@huggingface/transformers` 4.2.0, **in-memory brute-force cosine** persisted as
+  SQLite BLOBs, mean-pool+normalize. EN+RU → model **LOCKED to multilingual `paraphrase-multilingual-MiniLM`
+  from day 1** (`TOOLS.md` #5); only M-series latency left to measure. Sub-book chunks carry a
+  `{book_id, location}` payload → also powers per-book semantic search (`scope=book`).
+- **Clean Architecture:** keep tool logic (schemas, handlers, embedding/DB code) free of SDK types.
+- Package via **npx** + **MCPB** bundle for Claude Desktop.
+
+## Tool surface to build
+
+Baseline = the **capability surface** of FaceDeer (full read/write/convert/import/export +
+per-library permission model) — **18 = a capability target, not a tool-count target**. See
+`RESEARCH.md` §5.0 for the verified inventory and the coverage table.
+
+**Tool-count target: keep the model-facing surface ≤ ~20 task/intent tools.** Field + research
+evidence (`DESIGN.md` §9.1): selection accuracy degrades as the number of *confusable* tools per
+query grows (OpenAI's "<20" is a soft heuristic; the measured degradation zone is ~30–50 similar
+tools — we must stay under it). So **don't 1:1-mirror calibredb subcommands as tools**; fold related
+operations into fewer **task/intent** tools (e.g. one `calibre_recover_metadata` doing
+ISBN→OpenLibrary→GoogleBooks internally, not three chainable tools). Cheap evidence-backed wins:
+**namespacing**, **tool consolidation**, lean tool-def token budgets, sharp **descriptions** (the
+10x selection lever). At ≤20 we do **not** need RAG-over-tools / MCP-Zero machinery internally.
+
+**Differentiators to add on top (our niche — no existing TS server combines these):**
+- `semantic_search` + embeddings index build/refresh
+- `metadata_enrichment` (Open Library / Google Books) — for raw-filename books
+- `isbn_tools` (extract/validate ISBN from book text)
+- `find_duplicates` / `compare_books` (with merge-safety scoring)
+- `missing_book_scout` / `quality_report`
+- **preview-first** bulk operations (FaceDeer's `bulk_update_metadata` defaults to ALL books — unsafe)
+- serialization-hardened `update_book` / `bulk_update_metadata`
+
+> **Consolidated & LOCKED in `TOOLS.md`** (14 v1 tools — this list is the *capability rationale*, not
+> the build list). Name mapping: `metadata_enrichment`+`isbn_tools` → `calibre_recover_metadata`;
+> `compare_books` → a mode of `calibre_find_duplicates`; `missing_book_scout` → folded into
+> `calibre_quality_report`; bulk → `calibre_bulk_update` (required `ids`/`query`, no all-books
+> default). Per-book keyword + semantic search added via a `scope` param (no new tools).
+
+## Reusable code (licensing)
+
+**Decision (2026-06-27): our server is MIT/Apache (permissive), clean-room.** Operating rules:
+- ✅ Call Calibre as a *program* (shell `calibredb`, Content Server HTTP, `ebook-convert`,
+  `fetch-ebook-metadata`) — mere use, GPL does not propagate. This is our primary interface.
+- ✅ Read Calibre/plugin GPL source to *understand the contract* (`/cdb/cmd` arg shapes in
+  `src/calibre/db/cli/cmd_*.py`, encoding in `utils/serialize.py`, query grammar in `db/search.py`,
+  `check_isbn`/`author_to_author_sort` in `ebooks/metadata/`).
+- ✅ Reimplement algorithms *independently* from the manual / observed behavior / well-known formulas
+  (ISBN checksum, Flesch/Fog, SHA dedupe). **Do NOT line-by-line translate GPL code** (Calibre or
+  kiwidude/JimmXinu plugins — all GPL-3.0) into TS; that would force our server to be GPL.
+- ✅ Copy freely from permissive sources only (below).
+
+- **calibre_tools** (alexchilton, Apache-2.0) — semantic search (MPS), ISBN, dedupe algorithms.
+- **mekk.calibre** (BSD, dormant 2017) — `calibre_guess_and_add_isbn`, `calibre_report_duplicates` algorithms (idea/algorithm only, pre-FTS5).
+- **FaceDeer** (MIT) — permission model + write type-normalization; **NOT calibredb-based** (it uses a `calibre-debug` internal-API worker).
+- **ajtudela / trieloff** (Apache-2.0) — clean validation pattern; macOS `calibredb` timeout handling.
+- **sandraschi / chepetime** — **idea-only** (no license): portmanteau tools, FTS location resolution, RAG, TS structure.
+
+## Project artifacts
+
+- `RESEARCH.md` — the foundation report (6 sections: capability inventory, MCP best practices, server comparison, §5 tool catalog + §5.0 FaceDeer coverage, open questions). §5/§6 superseded downstream (see below).
+- `CAPABILITIES.md` — deep capability + Content-Server-API analysis; **resolves the write path/auth, PDF-extraction, and `/ajax` stability questions** and maps GPL plugins → port-the-algorithm differentiators.
+- `local-groundtruth.md` — firsthand probes of this machine's Calibre (CLI subcommands, GUI lock, Content Server `/ajax/` shapes).
+- `calibredb_help.txt` — full `calibredb` v9.10 CLI dump.
+- Decision docs (see **Status**): `DESIGN.md`, `TOOLS.md` (build list of record), `DISTRIBUTION.md`, `INTERACTIVITY.md`.
+
+## Working rules
+
+- English for all code, comments, docs (per global policy). Respond to Artem casually, concise, in markdown.
+- **Cite first-party sources; flag anything unconfirmed** — don't trust memory for versions/APIs/tool lists.
+- `RESEARCH.md` §6 open questions are mostly **resolved** (write path/auth, PDF extraction, `/ajax`
+  stability → `CAPABILITIES.md`; RU model → `TOOLS.md` #5). Two remain for **implementation time**:
+  the exact `-32602` failure point and transformers.js cache/cold-start. Resolve those during the slice.
+
+## Status
+
+- ✅ **Research phase complete** (`RESEARCH.md`).
+- ✅ **Capability + API analysis complete** (`CAPABILITIES.md`) — resolved the write path
+  (`/cdb/cmd` HTTP + `--enable-local-write`, or `calibredb --with-library URL`), PDF-extraction
+  (PyMuPDF primary), `/ajax` stability tiers, and plugin reuse (port GPL algorithms, don't wrap).
+- ✅ **Design decisions captured** (`DESIGN.md`) — ideas from *The MCP Standard* (Sekar) folded in:
+  capability model, namespaced routing-policy descriptions, ResourceLink + pagination, return-not-throw
+  `isError` contract, disable-write-tools + elicitation, injection fencing + execFile-array calls,
+  semantic-search architecture.
+- ✅ **Final tool list LOCKED** (`TOOLS.md`) — 14 v1 tools + LATER-deferred set (convert/export/
+  library-wide-rag/etc.). **Amended 2026-06-27:** per-book keyword + semantic search added via a
+  `scope: library|book` param (no new tools) so search serves both the catalog and single-book surfaces.
+- ✅ **Distribution LOCKED** (`DISTRIBUTION.md`) — local-run package; npm + MCPB + Registry
+  (`io.github.caelum29/calibre-mcp`); stdio-only (Cowork via Desktop bridge); embeddings opt-in.
+- 🔬 **Interactivity researched** (`INTERACTIVITY.md`) — MCP Apps (SEP-1865) in-chat widgets; §9.3
+  gate now OPEN (Claude Desktop renders them). Cover board = strongest early candidate; **v1-vs-LATER OPEN**.
+- ⏭️ **Next: scaffold the TS server** per `DESIGN.md` §7 (thin calibre client first, then vertical slice).
