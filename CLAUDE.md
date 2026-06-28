@@ -169,9 +169,10 @@ ISBN→OpenLibrary→GoogleBooks internally, not three chainable tools). Cheap e
     `ToolDeps.extractor`. **Probe-locked mappers:** fts JSON `{book_id,format,title,authors}` with an
     `Integration status` stdout prefix; set_metadata refusal = exit 1 + `Forbidden` (stderr).
 - ⏭️ **Pending live verification (needs Artem's setup):** `brew install poppler` and/or `pip install pymupdf`
-  (PDF text — only ebook-convert present now, so PDF currently falls back to it); `calibredb fts_index
-  --enable` (FTS index — snippet search times out without it → tool returns the actionable message);
-  Content Server **--enable-local-write** (write round-trip — currently refused as expected).
+  (PDF text — **poppler `pdftotext` now installed → preferred PDF backend, verified live**; PyMuPDF
+  optional); **enable FTS indexing** via the Calibre GUI (Preferences → Searching → Full text search) —
+  the CLI `calibredb … fts_index enable` route is itself a *write* and is **Forbidden** without local-write,
+  so use the GUI toggle; Content Server **--enable-local-write** (write round-trip — currently refused as expected).
 - ⏭️ **Next tools:** semantic search + `calibre_build_index` (#5/#6, the differentiator), then
   `calibre_find_duplicates`/`calibre_quality_report`/`calibre_recover_metadata`, then `calibre_bulk_update`
   (destructive → elicitation).

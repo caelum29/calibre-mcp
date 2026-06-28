@@ -228,7 +228,8 @@ export const searchTool = defineTool({
       // full-text index isn't ready (snippet requests hang/time out without an index).
       if (err instanceof CalibreCliError) {
         return toolError(
-          `Full-text search isn't ready for this library. Enable + build the index once, then retry: calibredb fts_index --enable --with-library ${deps.config.serverUrl}/#<Library>.`,
+          "Full-text search isn't ready for this library. Enable indexing in Calibre " +
+            "(Preferences → Searching → Full text search), wait for it to finish, then retry.",
         );
       }
       const msg = err instanceof Error ? err.message : String(err);
