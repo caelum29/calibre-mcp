@@ -149,5 +149,27 @@ ISBN→OpenLibrary→GoogleBooks internally, not three chainable tools). Cheap e
   Typecheck/tests green (32 tests); verified end-to-end against the live Content Server.
   **Correction folded in:** SDK 1.29.0 `CallToolResult` has no top-level `nextCursor` → cursors ride
   in `structuredContent` (`docs/DESIGN.md` §2 amended; `src/tools/cursor.ts`).
-- ⏭️ **Next:** read tier — `calibre_get_content` (#3, brings in PDF/EPUB extraction) + `calibre_list_categories`
-  (#4); then the gated write tools, starting with `calibre_update_book` (exercises the write-gate live).
+- ✅ **Increment 2 complete** (2026-06-28, branch `feat/get-content-categories-write`, 5 staged commits) —
+  three new tools + the FTS/book search branches. **94 tests green.**
+  - `calibre_get_content` (#3) — capped, fenced excerpts walkable via a `ContentCursor`
+    (`src/tools/content-{chunk,cursor}.ts`). Extraction subsystem `src/calibre/extract.ts`: startup
+    backend detection (pdftotext > PyMuPDF bridge `scripts/pymupdf_extract.py` > ebook-convert; logged
+    to stderr), download→convert→**cache** (`os.tmpdir`, sha256 key, LRU) — page-2 cache hit ~26ms live.
+  - `calibre_list_categories` (#4) — `/ajax/categories` + `categoryItemsByUrl` (hex node url verbatim);
+    `matchCategory` synonym resolver; valueFilter regex (client-side filter+paginate).
+  - `calibre_update_book` (#11, **first `write:true`**) — `calibredb set_metadata` via the server URL;
+    field allowlist (+`#custom`), applied diff + no-op, write-refusal→actionable message
+    (`src/calibre/metadata-fields.ts`). Live-verified the gate: ABSENT when `CALIBRE_MCP_ENABLE_WRITE`
+    off, PRESENT when on.
+  - `calibre_search` — `mode=fts` (library, grouped resource_links + fenced snippets) and `scope=book`
+    (in-book FTS, forces fts) wired; `client.ftsSearch` + pure `buildFtsArgs`/`parseFtsResults`.
+  - Infra: `http.downloadToFile`, `client.calibredb` now throws `CalibreCliError` (carries stdout+stderr),
+    `ToolDeps.extractor`. **Probe-locked mappers:** fts JSON `{book_id,format,title,authors}` with an
+    `Integration status` stdout prefix; set_metadata refusal = exit 1 + `Forbidden` (stderr).
+- ⏭️ **Pending live verification (needs Artem's setup):** `brew install poppler` and/or `pip install pymupdf`
+  (PDF text — only ebook-convert present now, so PDF currently falls back to it); `calibredb fts_index
+  --enable` (FTS index — snippet search times out without it → tool returns the actionable message);
+  Content Server **--enable-local-write** (write round-trip — currently refused as expected).
+- ⏭️ **Next tools:** semantic search + `calibre_build_index` (#5/#6, the differentiator), then
+  `calibre_find_duplicates`/`calibre_quality_report`/`calibre_recover_metadata`, then `calibre_bulk_update`
+  (destructive → elicitation).
