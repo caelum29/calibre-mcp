@@ -1,0 +1,170 @@
+// Content Server read client — the preferred read path (fast, GUI-safe, documented
+// /ajax/* API; CAPABILITIES §1). SDK-free. This is the ONLY place that knows the raw
+// /ajax JSON key names; every method maps them to domain objects and goes through
+// getJson() for uniform timeout/error handling.
+
+import type { Config } from "../config.js";
+import type { Book, Identifiers } from "../domain/book.js";
+import type { LibraryInfo, Category } from "../domain/library.js";
+import type { SearchParams, SearchPage } from "../domain/search.js";
+import { getJson } from "./http.js";
+import { toLibId } from "./lib-id.js";
+
+// --- Raw /ajax response shapes (loose; only the fields we read) ---
+
+interface RawLibraryInfo {
+  library_map?: Record<string, string>;
+  default_library?: string;
+}
+
+interface RawSearch {
+  total_num?: number;
+  num?: number;
+  offset?: number;
+  sort?: string;
+  book_ids?: number[];
+  library_id?: string;
+}
+
+interface RawBook {
+  application_id?: number;
+  id?: number;
+  uuid?: string;
+  title?: string;
+  authors?: string[];
+  author_sort?: string;
+  comments?: string | null;
+  identifiers?: Record<string, string>;
+  formats?: string[];
+  series?: string | null;
+  series_index?: number | null;
+  tags?: string[];
+  languages?: string[];
+  publisher?: string | null;
+  pubdate?: string | null;
+  pages?: number | null;
+  rating?: number | null;
+  last_modified?: string | null;
+}
+
+interface RawCategory {
+  name?: string;
+  url?: string;
+  count?: number;
+}
+
+export class ContentServerClient {
+  // Process-lifetime cache of libId → display name. Libraries rarely change; a
+  // rename/add mid-session goes stale until restart (acceptable for local stdio use).
+  #libMap?: Record<string, string>;
+
+  constructor(private readonly cfg: Config) {}
+
+  private get base(): string {
+    return this.cfg.serverUrl.replace(/\/+$/, "");
+  }
+
+  /** GET /ajax/library-info → {libraryMap, defaultLibrary}; caches the map. */
+  async libraryInfo(): Promise<LibraryInfo> {
+    const raw = await getJson<RawLibraryInfo>(`${this.base}/ajax/library-info`);
+    const libraryMap = raw.library_map ?? {};
+    this.#libMap = libraryMap;
+    return { libraryMap, defaultLibrary: raw.default_library ?? "" };
+  }
+
+  /**
+   * Resolve a display name ("Programming Books") to its libId ("Programming_Books")
+   * via the authoritative library_map; falls back to space→underscore substitution
+   * only if the server doesn't list it (DESIGN: don't hard-code the substitution).
+   */
+  async resolveLibraryId(display?: string): Promise<string> {
+    const name = display ?? this.cfg.defaultLibrary;
+    if (!this.#libMap) await this.libraryInfo();
+    const map = this.#libMap ?? {};
+    // If `name` already IS a libId (a key), use it directly.
+    if (map[name] !== undefined) return name;
+    for (const [libId, displayName] of Object.entries(map)) {
+      if (displayName === name) return libId;
+    }
+    return toLibId(name);
+  }
+
+  /** GET /ajax/search/{libId}?query=&num=&offset=&sort=&sort_order= → SearchPage (ids only). */
+  async search(p: SearchParams): Promise<SearchPage> {
+    const libId = await this.resolveLibraryId(p.library);
+    const url = new URL(`${this.base}/ajax/search/${encodeURIComponent(libId)}`);
+    url.searchParams.set("query", p.query);
+    if (p.num !== undefined) url.searchParams.set("num", String(p.num));
+    if (p.offset !== undefined) url.searchParams.set("offset", String(p.offset));
+    if (p.sort) url.searchParams.set("sort", p.sort);
+    if (p.sortOrder) url.searchParams.set("sort_order", p.sortOrder);
+
+    const raw = await getJson<RawSearch>(url.toString());
+    const bookIds = raw.book_ids ?? [];
+    return {
+      bookIds,
+      total: raw.total_num ?? bookIds.length,
+      num: raw.num ?? bookIds.length,
+      offset: raw.offset ?? p.offset ?? 0,
+      sort: raw.sort ?? p.sort ?? "title",
+      libraryId: raw.library_id ?? libId,
+    };
+  }
+
+  /** GET /ajax/book/{id}/{libId} → full Book. */
+  async getBook(id: number, library?: string): Promise<Book> {
+    const libId = await this.resolveLibraryId(library);
+    const url = `${this.base}/ajax/book/${id}/${encodeURIComponent(libId)}`;
+    const raw = await getJson<RawBook>(url);
+    return this.mapBook(raw, id, libId);
+  }
+
+  /** GET /ajax/books/{libId}?ids=1,2,3 → Map<id, Book|null> (batched page fetch). */
+  async booksByIds(ids: number[], library?: string): Promise<Map<number, Book | null>> {
+    const out = new Map<number, Book | null>();
+    if (ids.length === 0) return out;
+    const libId = await this.resolveLibraryId(library);
+    const url = `${this.base}/ajax/books/${encodeURIComponent(libId)}?ids=${ids.join(",")}`;
+    const raw = await getJson<Record<string, RawBook | null>>(url);
+    for (const id of ids) {
+      const entry = raw[String(id)];
+      out.set(id, entry ? this.mapBook(entry, id, libId) : null);
+    }
+    return out;
+  }
+
+  /** GET /ajax/categories/{libId} → Category[]. */
+  async categories(library?: string): Promise<Category[]> {
+    const libId = await this.resolveLibraryId(library);
+    const raw = await getJson<RawCategory[]>(
+      `${this.base}/ajax/categories/${encodeURIComponent(libId)}`,
+    );
+    return raw.map((c) => ({ name: c.name ?? "", url: c.url ?? "", count: c.count }));
+  }
+
+  /** Normalize a raw /ajax book dict → domain Book. The single /ajax-key-aware spot. */
+  private mapBook(raw: RawBook, fallbackId: number, libId: string): Book {
+    const id = raw.application_id ?? raw.id ?? fallbackId;
+    const identifiers: Identifiers = { ...(raw.identifiers ?? {}) };
+    return {
+      id,
+      uuid: raw.uuid ?? "",
+      title: raw.title ?? "",
+      authors: raw.authors ?? [],
+      authorSort: raw.author_sort,
+      comments: raw.comments ?? undefined,
+      identifiers,
+      formats: (raw.formats ?? []).map((f) => f.toLowerCase()),
+      series: raw.series ?? undefined,
+      seriesIndex: raw.series_index ?? undefined,
+      tags: raw.tags ?? [],
+      languages: raw.languages ?? [],
+      publisher: raw.publisher ?? undefined,
+      pubdate: raw.pubdate ?? undefined,
+      pages: raw.pages ?? undefined,
+      rating: raw.rating ?? undefined,
+      coverUrl: `${this.base}/get/cover/${id}/${encodeURIComponent(libId)}`,
+      lastModified: raw.last_modified ?? undefined,
+    };
+  }
+}

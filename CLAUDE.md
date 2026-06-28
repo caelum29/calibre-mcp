@@ -141,4 +141,13 @@ ISBN→OpenLibrary→GoogleBooks internally, not three chainable tools). Cheap e
   (`io.github.caelum29/calibre-mcp`); stdio-only (Cowork via Desktop bridge); embeddings opt-in.
 - 🔬 **Interactivity researched** (`docs/INTERACTIVITY.md`) — MCP Apps (SEP-1865) in-chat widgets; §9.3
   gate now OPEN (Claude Desktop renders them). Cover board = strongest early candidate; **v1-vs-LATER OPEN**.
-- ⏭️ **Next: scaffold the TS server** per `docs/DESIGN.md` §7 (thin calibre client first, then vertical slice).
+- ✅ **Scaffold slice complete** (2026-06-28) — Clean-Arch skeleton + cross-cutting primitives
+  (`src/tools/{coerce,result,cursor,resource-link,registry,define,types}.ts`), Content Server HTTP
+  read client (`src/calibre/{http,content-server,lib-id}.ts`), domain types (`src/domain/`), and the
+  first vertical slice: `calibre_list_libraries` + `calibre_search` (meta/library) + `calibre_get_book`
+  + the `calibre://book/{id}` resource. Write-gate (`reg.disable()`) wired but no write tool yet.
+  Typecheck/tests green (32 tests); verified end-to-end against the live Content Server.
+  **Correction folded in:** SDK 1.29.0 `CallToolResult` has no top-level `nextCursor` → cursors ride
+  in `structuredContent` (`docs/DESIGN.md` §2 amended; `src/tools/cursor.ts`).
+- ⏭️ **Next:** read tier — `calibre_get_content` (#3, brings in PDF/EPUB extraction) + `calibre_list_categories`
+  (#4); then the gated write tools, starting with `calibre_update_book` (exercises the write-gate live).

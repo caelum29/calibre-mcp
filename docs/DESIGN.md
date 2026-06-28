@@ -63,7 +63,12 @@ Decisions:
   `description: author + snippet`) instead of full records. The host `readResource`s only the
   books it actually needs.
 - **Cursor pagination** on list-style tools: accept `cursor: z.string().optional()`, return
-  `nextCursor` (omit when done). SDK accepts `nextCursor` on tool responses. Essential at 801 books.
+  `nextCursor` (omit when done). Essential at 801 books. **Correction (verified against SDK 1.29.0
+  types during the scaffold slice):** `CallToolResult` is `{_meta, content, structuredContent,
+  isError}` only — there is **no** top-level `nextCursor` on a tool response (it exists only on
+  `tools/list` / `resources/list`). So per-tool pagination is an **app-level convention**: carry
+  `nextCursor` inside `structuredContent` and accept it back via the `cursor` input param
+  (see `src/tools/cursor.ts`, an opaque base64url cursor bound to `{query, sort}`).
 - **Tools = operations, Resources = data.** Expose book metadata/cover/extracted-text via
   `ResourceTemplate("calibre://book/{id}")`; keep search/update/build as tools.
 - **`complete` callbacks** on resource/prompt template params for host autocomplete (book ids,

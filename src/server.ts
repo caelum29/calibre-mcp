@@ -1,40 +1,94 @@
-// Builds the McpServer and registers tools. This is the ONLY layer that imports
-// the MCP SDK (DESIGN §7) — tool logic, the calibre client, and domain code stay
-// SDK-free so the SDK can be swapped behind this seam. Transport lives in run-stdio.ts.
+// Builds the McpServer and registers tools + resources. This is the ONLY layer that
+// imports the MCP SDK (DESIGN §7) — tool logic, the calibre clients, and domain code
+// stay SDK-free so the SDK can be swapped behind this seam. Transport lives in run-stdio.ts.
 
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
+import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { loadConfig } from "./config.js";
 import { CalibreClient } from "./calibre/client.js";
+import { ContentServerClient } from "./calibre/content-server.js";
+import { readBookResource } from "./resources/book.js";
+import { allTools } from "./tools/registry.js";
+import { toolError } from "./tools/result.js";
+import type { ToolDeps } from "./tools/types.js";
 import { log } from "./logging.js";
 
 export function buildServer(): McpServer {
   const config = loadConfig();
-  const calibre = new CalibreClient(config);
+  const deps: ToolDeps = {
+    config,
+    content: new ContentServerClient(config),
+    calibre: new CalibreClient(config),
+    log,
+  };
 
-  const server = new McpServer({
-    name: "calibre-mcp",
-    version: "0.0.0",
-  });
+  const server = new McpServer(
+    { name: "calibre-mcp", version: "0.0.0" },
+    { capabilities: { tools: {}, resources: {} } },
+  );
 
-  // Connectivity probe — proves the server reaches the live Content Server.
-  // Returns-not-throws on failure per the isError contract (DESIGN §3).
+  // Register every descriptor; bridge the SDK-free ToolResult ⇄ CallToolResult. Handlers
+  // already return-not-throw; the try/catch here is a defense-in-depth safety net (DESIGN §3).
+  for (const t of allTools) {
+    const reg = server.registerTool(
+      t.name,
+      {
+        title: t.title,
+        description: t.description,
+        inputSchema: t.inputSchema,
+        outputSchema: t.outputSchema,
+        annotations: t.annotations,
+      },
+      // ToolResult is structurally a CallToolResult minus the SDK's loose index signature;
+      // cast once here (the seam) rather than weaken the shared ToolResult type.
+      async (args: unknown): Promise<CallToolResult> => {
+        try {
+          return (await t.handler(args, deps)) as CallToolResult;
+        } catch (err) {
+          log.error("tool threw", {
+            tool: t.name,
+            msg: err instanceof Error ? err.message : String(err),
+          });
+          return toolError(`internal error in ${t.name}`) as CallToolResult;
+        }
+      },
+    );
+    // Disable (not reject) write tools when the gate is off (DESIGN §4) — wired now so
+    // tool #11 drops in later with no change to this seam.
+    if (t.write && !config.writeEnabled) reg.disable();
+  }
+
+  // calibre://book/{id} — the target of search/get_book resource_links. RESOURCE CONTRACT:
+  // the read handler THROWS on failure (the SDK turns it into a protocol error), unlike tools.
+  server.registerResource(
+    "book",
+    new ResourceTemplate("calibre://book/{id}", { list: undefined }),
+    { title: "Calibre book", description: "Full metadata for one book." },
+    async (_uri, variables) => {
+      const raw = Array.isArray(variables.id) ? variables.id[0] : variables.id;
+      const id = Number(raw);
+      const r = await readBookResource(deps, id);
+      return { contents: [{ uri: r.uri, mimeType: r.mimeType, text: r.text }] };
+    },
+  );
+
+  // Connectivity probe — proves the SUBPROCESS path (calibredb --with-library URL) works,
+  // complementary to calibre_list_libraries which proves the HTTP /ajax path.
   server.registerTool(
     "calibre_ping",
     {
       title: "Calibre ping",
       description:
         "Health check: confirms the MCP server can reach the running Calibre " +
-        "Content Server. Returns library categories on success.",
+        "Content Server via calibredb. Returns library categories on success.",
       inputSchema: {},
       annotations: { readOnlyHint: true, openWorldHint: true },
     },
     async () => {
       try {
-        const out = await calibre.listLibraries();
-        const preview = out.slice(0, 500);
+        const out = await deps.calibre.listLibraries();
         return {
-          content: [{ type: "text", text: `ok\n${preview}` }],
+          content: [{ type: "text", text: `ok\n${out.slice(0, 500)}` }],
           structuredContent: { ok: true, serverUrl: config.serverUrl },
         };
       } catch (err) {
@@ -49,10 +103,8 @@ export function buildServer(): McpServer {
     },
   );
 
-  // Keep z referenced until real tools land (avoids unused-import churn).
-  void z;
-
   log.info("server built", {
+    tools: [...allTools.map((t) => t.name), "calibre_ping"],
     writeEnabled: config.writeEnabled,
     serverUrl: config.serverUrl,
   });
