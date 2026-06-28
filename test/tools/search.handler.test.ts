@@ -3,7 +3,7 @@ import { searchTool } from "../../src/tools/calibre_search.js";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
-import type { SearchPage } from "../../src/domain/search.js";
+import type { FtsHit, SearchPage } from "../../src/domain/search.js";
 import type { ToolDeps } from "../../src/tools/types.js";
 
 const book = (id: number): Book => ({
@@ -17,16 +17,27 @@ const book = (id: number): Book => ({
   languages: [],
 });
 
-// Fake deps with only the content methods the handler touches (boundary stub).
-function deps(page: SearchPage): ToolDeps {
+interface FakeOpts {
+  page?: SearchPage;
+  ftsHits?: FtsHit[];
+}
+
+// Fake deps with only the methods each branch touches (boundary stub).
+function deps(opts: FakeOpts = {}): ToolDeps {
   const content = {
-    search: async (): Promise<SearchPage> => page,
+    search: async (p: { query: string }): Promise<SearchPage> => {
+      if (p.query.startsWith("uuid:")) return { ...page(), bookIds: [99] };
+      return opts.page ?? page();
+    },
     booksByIds: async (ids: number[]) => new Map(ids.map((id) => [id, book(id)])),
+  };
+  const calibre = {
+    ftsSearch: async (): Promise<FtsHit[]> => opts.ftsHits ?? [],
   };
   return {
     config: loadConfig({}),
     content: content as unknown as ToolDeps["content"],
-    calibre: {} as unknown as ToolDeps["calibre"],
+    calibre: calibre as unknown as ToolDeps["calibre"],
     extractor: {} as unknown as ToolDeps["extractor"],
     log,
   };
@@ -42,30 +53,20 @@ const page = (over: Partial<SearchPage> = {}): SearchPage => ({
   ...over,
 });
 
-describe("calibre_search handler", () => {
-  it("degrades gracefully for unimplemented fts mode", async () => {
-    const r = await searchTool.handler(
-      { query: "x", mode: "fts", scope: "library", limit: 20 },
-      deps(page()),
-    );
-    expect(r.isError).toBe(true);
-    expect(r.content[0]).toMatchObject({ type: "text" });
-  });
-
+describe("calibre_search handler — meta/library", () => {
   it("returns one resource_link per hit plus a summary line", async () => {
     const r = await searchTool.handler(
       { query: "rust", mode: "meta", scope: "library", limit: 20 },
-      deps(page()),
+      deps({ page: page() }),
     );
     expect(r.isError).toBeFalsy();
-    // 1 summary text block + 2 resource_links
     expect(r.content.filter((c) => c.type === "resource_link")).toHaveLength(2);
   });
 
   it("emits a nextCursor when more results remain", async () => {
     const r = await searchTool.handler(
       { query: "rust", mode: "meta", scope: "library", limit: 20 },
-      deps(page({ bookIds: [1, 2], total: 5 })),
+      deps({ page: page({ bookIds: [1, 2], total: 5 }) }),
     );
     expect(r.structuredContent?.nextCursor).toBeTypeOf("string");
   });
@@ -73,7 +74,7 @@ describe("calibre_search handler", () => {
   it("omits nextCursor on the last page", async () => {
     const r = await searchTool.handler(
       { query: "rust", mode: "meta", scope: "library", limit: 20 },
-      deps(page({ bookIds: [1, 2], total: 2 })),
+      deps({ page: page({ bookIds: [1, 2], total: 2 }) }),
     );
     expect(r.structuredContent?.nextCursor).toBeUndefined();
   });
@@ -81,9 +82,54 @@ describe("calibre_search handler", () => {
   it("returns a zero-result sentinel without error", async () => {
     const r = await searchTool.handler(
       { query: "zzz", mode: "meta", scope: "library", limit: 20 },
-      deps(page({ bookIds: [], total: 0 })),
+      deps({ page: page({ bookIds: [], total: 0 }) }),
     );
     expect(r.isError).toBeFalsy();
     expect(r.structuredContent).toMatchObject({ total: 0, count: 0 });
+  });
+});
+
+describe("calibre_search handler — fts/library", () => {
+  it("groups hits by book into resource_links + fenced snippets", async () => {
+    const hits: FtsHit[] = [
+      { bookId: 1, snippet: "match one" },
+      { bookId: 1, snippet: "match two" },
+      { bookId: 2, snippet: "match three" },
+    ];
+    const r = await searchTool.handler(
+      { query: "rust", mode: "fts", scope: "library", limit: 20 },
+      deps({ ftsHits: hits }),
+    );
+    expect(r.isError).toBeFalsy();
+    expect(r.content.filter((c) => c.type === "resource_link")).toHaveLength(2);
+    const fenced = r.content.filter((c) => c.type === "text" && c.text.includes("FTS SNIPPET"));
+    expect(fenced.length).toBeGreaterThan(0);
+    expect(r.structuredContent?.mode).toBe("fts");
+  });
+
+  it("returns a zero-result message when fts has no hits", async () => {
+    const r = await searchTool.handler(
+      { query: "zzz", mode: "fts", scope: "library", limit: 20 },
+      deps({ ftsHits: [] }),
+    );
+    expect(r.isError).toBeFalsy();
+    expect(r.structuredContent).toMatchObject({ total: 0 });
+  });
+});
+
+describe("calibre_search handler — scope=book", () => {
+  it("requires bookId", async () => {
+    const r = await searchTool.handler({ query: "x", mode: "fts", scope: "book", limit: 20 }, deps());
+    expect(r.isError).toBe(true);
+    expect(r.content[0]).toMatchObject({ type: "text" });
+  });
+
+  it("returns fenced in-book snippets when given a bookId", async () => {
+    const r = await searchTool.handler(
+      { query: "ownership", mode: "fts", scope: "book", bookId: 1, limit: 20 },
+      deps({ ftsHits: [{ bookId: 1, snippet: "…ownership…" }] }),
+    );
+    expect(r.isError).toBeFalsy();
+    expect(r.structuredContent).toMatchObject({ scope: "book", bookId: 1, total: 1 });
   });
 });

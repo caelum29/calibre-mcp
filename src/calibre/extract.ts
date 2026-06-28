@@ -190,15 +190,15 @@ export class Extractor {
 
     if (fmt === "pdf") {
       if (report.pdf === "pdftotext" && report.pdftotextPath) {
-        await execFileAsync(report.pdftotextPath, pdftotextArgs(src, out), { timeout });
+        await this.#run(report.pdftotextPath, pdftotextArgs(src, out), timeout);
         return { text: await readFile(out, "utf8"), backend: "pdftotext" };
       }
       if (report.pdf === "pymupdf" && report.python3Path) {
-        await execFileAsync(report.python3Path, [pymupdfScriptPath(), src, out], { timeout });
+        await this.#run(report.python3Path, [pymupdfScriptPath(), src, out], timeout);
         return { text: await readFile(out, "utf8"), backend: "pymupdf" };
       }
       if (report.pdf === "ebook-convert" && report.ebookConvertPath) {
-        await execFileAsync(report.ebookConvertPath, ebookConvertArgs(src, out), { timeout });
+        await this.#run(report.ebookConvertPath, ebookConvertArgs(src, out), timeout);
         return { text: await readFile(out, "utf8"), backend: "ebook-convert" };
       }
       throw new Error("NO_PDF_BACKEND");
@@ -206,10 +206,26 @@ export class Extractor {
 
     // EPUB and other ebook formats → Calibre.
     if (report.epub === "ebook-convert" && report.ebookConvertPath) {
-      await execFileAsync(report.ebookConvertPath, ebookConvertArgs(src, out), { timeout });
+      await this.#run(report.ebookConvertPath, ebookConvertArgs(src, out), timeout);
       return { text: await readFile(out, "utf8"), backend: "ebook-convert" };
     }
     throw new Error("NO_EPUB_BACKEND");
+  }
+
+  /** Run a converter; raw execFile errors leak temp paths, so re-throw a coded error. */
+  async #run(bin: string, args: string[], timeout: number): Promise<void> {
+    try {
+      await execFileAsync(bin, args, { timeout, maxBuffer: 8 * 1024 * 1024 });
+    } catch (err) {
+      const e = err as NodeJS.ErrnoException & { killed?: boolean };
+      log.error("extract convert failed", {
+        bin: path.basename(bin),
+        killed: e.killed,
+        code: e.code,
+        msg: err instanceof Error ? err.message.slice(0, 300) : String(err),
+      });
+      throw new Error(e.killed ? "EXTRACT_TIMEOUT" : "EXTRACT_FAILED");
+    }
   }
 }
 

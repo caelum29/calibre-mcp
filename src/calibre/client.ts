@@ -115,9 +115,10 @@ export class CalibreClient {
    * page/spine location). Requires the library's FTS index to be enabled + built.
    */
   async ftsSearch(query: string, opts: FtsSearchOptions = {}): Promise<FtsHit[]> {
+    // FTS (esp. with snippets) is slower than metadata calls — allow more headroom.
     const { stdout } = await this.calibredb(buildFtsArgs(query, opts), {
       library: opts.library,
-      timeoutMs: opts.timeoutMs,
+      timeoutMs: opts.timeoutMs ?? 60_000,
     });
     return parseFtsResults(stdout);
   }
