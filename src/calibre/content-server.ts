@@ -5,7 +5,7 @@
 
 import type { Config } from "../config.js";
 import type { Book, Identifiers } from "../domain/book.js";
-import type { LibraryInfo, Category } from "../domain/library.js";
+import type { LibraryInfo, Category, CategoryItem, CategoryItemsPage } from "../domain/library.js";
 import type { SearchParams, SearchPage } from "../domain/search.js";
 import { getJson } from "./http.js";
 import { toLibId } from "./lib-id.js";
@@ -51,6 +51,44 @@ interface RawCategory {
   name?: string;
   url?: string;
   count?: number;
+}
+
+interface RawCategoryItem {
+  name?: string;
+  count?: number;
+  average_rating?: number;
+  url?: string;
+}
+
+interface RawCategoryItems {
+  category_name?: string;
+  total_num?: number;
+  offset?: number;
+  num?: number;
+  items?: RawCategoryItem[];
+}
+
+/** Synonyms so a caller's `field` maps to the server's display category name. */
+const FIELD_SYNONYMS: Record<string, string> = {
+  author: "authors",
+  authors: "authors",
+  tag: "tags",
+  tags: "tags",
+  language: "languages",
+  languages: "languages",
+  series: "series",
+  publisher: "publisher",
+  rating: "rating",
+};
+
+/** Resolve a caller's `field` to a category node by case-insensitive name (+ synonyms). */
+export function matchCategory(categories: Category[], field: string): Category | undefined {
+  const raw = field.trim().toLowerCase();
+  const target = FIELD_SYNONYMS[raw] ?? raw;
+  return (
+    categories.find((c) => c.name.toLowerCase() === target) ??
+    categories.find((c) => c.name.toLowerCase() === raw)
+  );
 }
 
 export class ContentServerClient {
@@ -140,6 +178,34 @@ export class ContentServerClient {
       `${this.base}/ajax/categories/${encodeURIComponent(libId)}`,
     );
     return raw.map((c) => ({ name: c.name ?? "", url: c.url ?? "", count: c.count }));
+  }
+
+  /**
+   * Fetch one category's values via a node `url` from {@link categories} (e.g.
+   * `/ajax/category/<hex>/<libId>`). The url is hex-encoded by the server — used
+   * verbatim, never hand-built. Supports `num`/`offset` paging.
+   */
+  async categoryItemsByUrl(
+    url: string,
+    opts: { num?: number; offset?: number; sort?: string } = {},
+  ): Promise<CategoryItemsPage> {
+    const u = new URL(`${this.base}${url}`);
+    if (opts.num !== undefined) u.searchParams.set("num", String(opts.num));
+    if (opts.offset !== undefined) u.searchParams.set("offset", String(opts.offset));
+    if (opts.sort) u.searchParams.set("sort", opts.sort);
+
+    const raw = await getJson<RawCategoryItems>(u.toString());
+    const items: CategoryItem[] = (raw.items ?? []).map((it) => ({
+      name: it.name ?? "",
+      count: it.count,
+      averageRating: it.average_rating,
+    }));
+    return {
+      items,
+      total: raw.total_num ?? items.length,
+      offset: raw.offset ?? opts.offset ?? 0,
+      num: raw.num ?? items.length,
+    };
   }
 
   /** Normalize a raw /ajax book dict → domain Book. The single /ajax-key-aware spot. */

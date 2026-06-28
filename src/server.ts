@@ -7,6 +7,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { loadConfig } from "./config.js";
 import { CalibreClient } from "./calibre/client.js";
 import { ContentServerClient } from "./calibre/content-server.js";
+import { Extractor } from "./calibre/extract.js";
 import { readBookResource } from "./resources/book.js";
 import { allTools } from "./tools/registry.js";
 import { toolError } from "./tools/result.js";
@@ -19,8 +20,16 @@ export function buildServer(): McpServer {
     config,
     content: new ContentServerClient(config),
     calibre: new CalibreClient(config),
+    extractor: new Extractor(config),
     log,
   };
+
+  // Detect extraction backends in the background and log the chosen path to stderr;
+  // the first calibre_get_content call awaits the same memoized promise (DESIGN open item).
+  void deps.extractor
+    .detectBackends()
+    .then((r) => log.info("extractor backends", r))
+    .catch((e) => log.warn("extractor detection failed", { msg: String(e) }));
 
   const server = new McpServer(
     { name: "calibre-mcp", version: "0.0.0" },

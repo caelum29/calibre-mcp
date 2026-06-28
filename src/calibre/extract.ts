@@ -1,0 +1,259 @@
+// Book-text extraction subsystem for calibre_get_content. Downloads a format file from
+// the Content Server (GUI-safe HTTP), converts it to plain text via the best available
+// backend, and caches the result so cursor-walking a book doesn't reconvert each page.
+//
+// Backend preference (detected at startup, logged to stderr):
+//   PDF : pdftotext (poppler) > PyMuPDF (python bridge) > ebook-convert (Calibre)
+//   EPUB/others : ebook-convert (--txt-output-formatting=markdown)
+// Calibre has no OCR — scanned PDFs extract to empty text (the tool reports that).
+
+import { execFile } from "node:child_process";
+import { createHash, randomUUID } from "node:crypto";
+import { existsSync } from "node:fs";
+import { mkdir, readFile, readdir, stat, unlink, utimes, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
+import type { Config } from "../config.js";
+import { log } from "../logging.js";
+import { downloadToFile } from "./http.js";
+
+const execFileAsync = promisify(execFile);
+
+export type PdfBackend = "pdftotext" | "pymupdf" | "ebook-convert";
+
+export interface BackendReport {
+  /** Chosen PDF extractor, or null if none is available. */
+  pdf: PdfBackend | null;
+  /** EPUB/other extractor (Calibre's ebook-convert), or null if missing. */
+  epub: "ebook-convert" | null;
+  pdftotextPath?: string;
+  python3Path?: string;
+  ebookConvertPath?: string;
+  detectedAt: string;
+}
+
+export interface ExtractedText {
+  text: string;
+  backend: string;
+  chars: number;
+  cached: boolean;
+}
+
+export interface GetTextArgs {
+  bookId: number;
+  format: string;
+  downloadUrl: string;
+  /** Cache key — include something that changes on edit (e.g. lastModified). */
+  cacheKey: string;
+  maxBytes?: number;
+  timeoutMs?: number;
+}
+
+const CACHE_DIR = path.join(tmpdir(), "calibre-mcp-cache");
+const MAX_CACHE_ENTRIES = 50;
+const MAX_CACHE_BYTES = 200 * 1024 * 1024;
+const CONVERT_TIMEOUT_MS = 120_000;
+
+// Common install locations probed first — the MCP server may be spawned with a minimal
+// PATH (e.g. from Claude Desktop) that omits Homebrew.
+const PDFTOTEXT_CANDIDATES = ["/opt/homebrew/bin/pdftotext", "/usr/local/bin/pdftotext", "/usr/bin/pdftotext"];
+const PYTHON_CANDIDATES = ["/opt/homebrew/bin/python3", "/usr/local/bin/python3", "/usr/bin/python3"];
+
+/** Extractable formats in preference order (best text structure first). */
+const FORMAT_PREFERENCE = ["epub", "pdf", "txt", "azw3", "mobi", "docx", "htmlz", "fb2", "rtf"];
+
+/** Pick a format to extract: honor `preference` if available, else first preferred present. */
+export function chooseExtractFormat(formats: string[], preference?: string): string | undefined {
+  const have = new Set(formats.map((f) => f.toLowerCase()));
+  if (preference && have.has(preference.toLowerCase())) return preference.toLowerCase();
+  for (const f of FORMAT_PREFERENCE) if (have.has(f)) return f;
+  return undefined;
+}
+
+/** pdftotext argv: UTF-8 output, quiet, src → dest. */
+export function pdftotextArgs(src: string, dest: string): string[] {
+  return ["-q", "-enc", "UTF-8", src, dest];
+}
+
+/** ebook-convert argv: markdown-formatted text. NEVER --asciiize (it transliterates Cyrillic). */
+export function ebookConvertArgs(src: string, dest: string): string[] {
+  return [src, dest, "--txt-output-formatting=markdown"];
+}
+
+/** Resolve a binary from candidate absolute paths, else fall back to the bare name (PATH). */
+function resolveBinary(candidates: string[], bareName: string): string {
+  for (const c of candidates) if (existsSync(c)) return c;
+  return bareName;
+}
+
+/** True if `python3 -c "import fitz"` succeeds (PyMuPDF importable). */
+async function python3HasFitz(python3: string): Promise<boolean> {
+  try {
+    await execFileAsync(python3, ["-c", "import fitz"], { timeout: 8_000 });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export class Extractor {
+  #report?: Promise<BackendReport>;
+
+  constructor(private readonly cfg: Config) {}
+
+  /** Detect available extraction backends (memoized for the process lifetime). */
+  detectBackends(): Promise<BackendReport> {
+    if (!this.#report) this.#report = this.#detect();
+    return this.#report;
+  }
+
+  async #detect(): Promise<BackendReport> {
+    const ebookConvertPath = path.join(path.dirname(this.cfg.calibredbPath), "ebook-convert");
+    const hasEbookConvert = existsSync(ebookConvertPath);
+
+    const pdftotextPath = resolveBinary(PDFTOTEXT_CANDIDATES, "pdftotext");
+    const hasPdftotext = PDFTOTEXT_CANDIDATES.some(existsSync) || (await binaryExists(pdftotextPath));
+
+    const python3Path = resolveBinary(PYTHON_CANDIDATES, "python3");
+    const hasFitz = await python3HasFitz(python3Path);
+
+    let pdf: PdfBackend | null = null;
+    if (hasPdftotext) pdf = "pdftotext";
+    else if (hasFitz) pdf = "pymupdf";
+    else if (hasEbookConvert) pdf = "ebook-convert";
+
+    return {
+      pdf,
+      epub: hasEbookConvert ? "ebook-convert" : null,
+      pdftotextPath: hasPdftotext ? pdftotextPath : undefined,
+      python3Path: hasFitz ? python3Path : undefined,
+      ebookConvertPath: hasEbookConvert ? ebookConvertPath : undefined,
+      detectedAt: new Date().toISOString(),
+    };
+  }
+
+  /** Cache-keyed full-text extraction. Returns cached text when available. */
+  async getText(args: GetTextArgs): Promise<ExtractedText> {
+    const report = await this.detectBackends();
+    const fmt = args.format.toLowerCase();
+    const cacheFile = path.join(CACHE_DIR, `${hashKey(args.cacheKey)}.txt`);
+
+    // Path-boundary guard: the resolved cache file must stay inside CACHE_DIR (DESIGN §5).
+    if (!path.resolve(cacheFile).startsWith(path.resolve(CACHE_DIR) + path.sep)) {
+      throw new Error("cache path escaped the cache directory");
+    }
+
+    if (existsSync(cacheFile)) {
+      try {
+        const text = await readFile(cacheFile, "utf8");
+        const now = new Date();
+        await utimes(cacheFile, now, now).catch(() => {}); // LRU touch
+        return { text, backend: "cache", chars: text.length, cached: true };
+      } catch {
+        // fall through and re-extract if the cached file is unreadable
+      }
+    }
+
+    await mkdir(CACHE_DIR, { recursive: true });
+    const tmpSrc = path.join(CACHE_DIR, `dl-${randomUUID()}.${fmt}`);
+    const tmpOut = path.join(CACHE_DIR, `tx-${randomUUID()}.txt`);
+    try {
+      await downloadToFile(args.downloadUrl, tmpSrc, {
+        maxBytes: args.maxBytes,
+        timeoutMs: args.timeoutMs,
+      });
+      const { text, backend } = await this.#convert(fmt, tmpSrc, tmpOut, report, args.timeoutMs);
+      await writeFile(cacheFile, text, "utf8");
+      await evictCache().catch(() => {});
+      return { text, backend, chars: text.length, cached: false };
+    } finally {
+      await unlink(tmpSrc).catch(() => {});
+      await unlink(tmpOut).catch(() => {});
+    }
+  }
+
+  async #convert(
+    fmt: string,
+    src: string,
+    out: string,
+    report: BackendReport,
+    timeoutMs?: number,
+  ): Promise<{ text: string; backend: string }> {
+    const timeout = timeoutMs ?? CONVERT_TIMEOUT_MS;
+
+    // Plain text needs no conversion.
+    if (fmt === "txt") {
+      return { text: await readFile(src, "utf8"), backend: "raw" };
+    }
+
+    if (fmt === "pdf") {
+      if (report.pdf === "pdftotext" && report.pdftotextPath) {
+        await execFileAsync(report.pdftotextPath, pdftotextArgs(src, out), { timeout });
+        return { text: await readFile(out, "utf8"), backend: "pdftotext" };
+      }
+      if (report.pdf === "pymupdf" && report.python3Path) {
+        await execFileAsync(report.python3Path, [pymupdfScriptPath(), src, out], { timeout });
+        return { text: await readFile(out, "utf8"), backend: "pymupdf" };
+      }
+      if (report.pdf === "ebook-convert" && report.ebookConvertPath) {
+        await execFileAsync(report.ebookConvertPath, ebookConvertArgs(src, out), { timeout });
+        return { text: await readFile(out, "utf8"), backend: "ebook-convert" };
+      }
+      throw new Error("NO_PDF_BACKEND");
+    }
+
+    // EPUB and other ebook formats → Calibre.
+    if (report.epub === "ebook-convert" && report.ebookConvertPath) {
+      await execFileAsync(report.ebookConvertPath, ebookConvertArgs(src, out), { timeout });
+      return { text: await readFile(out, "utf8"), backend: "ebook-convert" };
+    }
+    throw new Error("NO_EPUB_BACKEND");
+  }
+}
+
+/** True if the binary at `bin` is runnable (non-ENOENT). pdftotext -v exits non-zero but exists. */
+async function binaryExists(bin: string): Promise<boolean> {
+  try {
+    await execFileAsync(bin, ["-v"], { timeout: 5_000 });
+    return true;
+  } catch (err) {
+    return (err as NodeJS.ErrnoException).code !== "ENOENT";
+  }
+}
+
+/** Absolute path to the bundled PyMuPDF bridge (resolved relative to this module). */
+function pymupdfScriptPath(): string {
+  return fileURLToPath(new URL("../../scripts/pymupdf_extract.py", import.meta.url));
+}
+
+function hashKey(key: string): string {
+  return createHash("sha256").update(key).digest("hex").slice(0, 32);
+}
+
+/** LRU sweep: drop oldest cache files when over the entry/byte caps. Best-effort. */
+async function evictCache(): Promise<void> {
+  const names = await readdir(CACHE_DIR).catch(() => [] as string[]);
+  const files = names.filter((n) => n.endsWith(".txt"));
+  const entries = await Promise.all(
+    files.map(async (n) => {
+      const p = path.join(CACHE_DIR, n);
+      const s = await stat(p).catch(() => null);
+      return s ? { p, mtime: s.mtimeMs, size: s.size } : null;
+    }),
+  );
+  const live = entries.filter((e): e is NonNullable<typeof e> => e !== null);
+  let totalBytes = live.reduce((sum, e) => sum + e.size, 0);
+  if (live.length <= MAX_CACHE_ENTRIES && totalBytes <= MAX_CACHE_BYTES) return;
+
+  live.sort((a, b) => a.mtime - b.mtime); // oldest first
+  let count = live.length;
+  for (const e of live) {
+    if (count <= MAX_CACHE_ENTRIES && totalBytes <= MAX_CACHE_BYTES) break;
+    await unlink(e.p).catch(() => {});
+    totalBytes -= e.size;
+    count -= 1;
+    log.debug("evicted extract cache entry", { file: path.basename(e.p) });
+  }
+}

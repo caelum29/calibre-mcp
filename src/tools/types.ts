@@ -6,6 +6,7 @@ import type { z } from "zod";
 import type { Config } from "../config.js";
 import type { CalibreClient } from "../calibre/client.js";
 import type { ContentServerClient } from "../calibre/content-server.js";
+import type { Extractor } from "../calibre/extract.js";
 import type { log } from "../logging.js";
 
 export interface TextBlock {
@@ -44,7 +45,8 @@ export interface ToolAnnotations {
 export interface ToolDeps {
   config: Config;
   content: ContentServerClient; // HTTP /ajax reads (preferred)
-  calibre: CalibreClient; // subprocess: writes + fts (later)
+  calibre: CalibreClient; // subprocess: writes + fts
+  extractor: Extractor; // book-text extraction (download + convert + cache)
   log: typeof log;
 }
 

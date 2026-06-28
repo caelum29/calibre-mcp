@@ -27,6 +27,7 @@ function deps(page: SearchPage): ToolDeps {
     config: loadConfig({}),
     content: content as unknown as ToolDeps["content"],
     calibre: {} as unknown as ToolDeps["calibre"],
+    extractor: {} as unknown as ToolDeps["extractor"],
     log,
   };
 }
