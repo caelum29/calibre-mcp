@@ -19,6 +19,9 @@ export class CalibreCliError extends Error {
   constructor(
     readonly code: number | null,
     message: string,
+    /** Raw stderr for caller-side classification (write-refused, FTS-not-ready); never
+     *  surfaced to the model verbatim — it can contain local paths. */
+    readonly stderr?: string,
   ) {
     super(message);
     this.name = "CalibreCliError";

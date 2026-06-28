@@ -15,3 +15,20 @@ export interface Category {
   url: string;
   count?: number;
 }
+
+/** One value within a category (an author name, a tag, …) with its book count. */
+export interface CategoryItem {
+  name: string;
+  count?: number;
+  /** Opaque item id from the Content Server, when present. */
+  id?: string;
+  averageRating?: number;
+}
+
+/** One page of a category's values. */
+export interface CategoryItemsPage {
+  items: CategoryItem[];
+  total: number;
+  offset: number;
+  num: number;
+}

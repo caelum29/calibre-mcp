@@ -24,6 +24,16 @@ export interface SearchParams {
   sortOrder?: SortOrder;
 }
 
+/** One full-text-search hit. FTS is book-level, so `location` stays reserved for now. */
+export interface FtsHit {
+  bookId: number;
+  /** Surrounding snippet of matched text (untrusted book content → fence before display). */
+  snippet?: string;
+  format?: string;
+  /** Reserved: Calibre FTS yields no page/spine position today. */
+  location?: string;
+}
+
 /** One page of search results — ids only; full records are fetched on demand. */
 export interface SearchPage {
   bookIds: number[];

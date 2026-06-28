@@ -38,6 +38,11 @@ export function jsonObject<S extends z.ZodRawShape>(shape: S) {
   return z.preprocess(parseIfString, z.object(shape));
 }
 
+/** Open-keyed record arg that may arrive as a JSON string (`'{"a":"b"}'` → {a:"b"}). */
+export function jsonRecord<V extends z.ZodTypeAny>(value: V) {
+  return z.preprocess(parseIfString, z.record(z.string(), value));
+}
+
 const TRUTHY = new Set(["1", "true", "yes", "on"]);
 const FALSY = new Set(["0", "false", "no", "off", ""]);
 
