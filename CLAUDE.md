@@ -330,8 +330,12 @@ ISBN→OpenLibrary→GoogleBooks internally, not three chainable tools). Cheap e
   - **Docs:** community `README.md` (quick starts for Claude Code/Desktop JSON/MCPB/Cowork, the
     two-key write gate incl. the GUI-server-is-read-only gotcha, semantic setup, 15-tool table,
     env reference, troubleshooting), `CHANGELOG.md` (0.1.0), DISTRIBUTION.md status sync.
-  - **Release steps remaining (manual, with Artem):** flip repo public (scan history for secrets
-    first) → tag `v0.1.0` → `npm publish` → `pnpm pack:mcpb` + `gh release create` with the
-    `.mcpb` → install the `.mcpb` in Claude Desktop as the final live check. **Fast-follow:** MCP
-    Registry (`server.json` + `mcp-publisher`; unblocked once npm is live — `mcpName` already
-    shipped) and a GitHub Actions on-tag release workflow.
+  - **✅ RELEASED 2026-07-02:** repo flipped public → tag `v0.1.0` → `npm publish` (needed a
+    granular access token — the account had no 2FA; plain publish 403s) → GitHub release with the
+    `.mcpb` → post-publish `npx -y calibre-mcp@0.1.0` handshake verified against the live server.
+    **Fast-follow SHIPPED same day (PR #9):** `server.json` published live to the **MCP Registry**
+    (`io.github.caelum29/calibre-mcp` 0.1.0; `mcp-publisher login github` device flow + `publish`,
+    verified via the registry API) + `.github/workflows/{ci,release}.yml` (CI green on first run;
+    release.yml on `v*` tag: version guard → `npm publish --provenance` → `pack:mcpb` → release
+    upload → `mcp-publisher github-oidc` registry publish). **Before the next tag:** add the
+    `NPM_TOKEN` repo secret. Remaining manual check: install the `.mcpb` in Claude Desktop.
