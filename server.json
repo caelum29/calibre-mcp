@@ -1,0 +1,50 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.caelum29/calibre-mcp",
+  "description": "Calibre ebook library server: search, read content, curate metadata, semantic search, gated writes.",
+  "repository": {
+    "url": "https://github.com/caelum29/calibre-mcp",
+    "source": "github"
+  },
+  "version": "0.1.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "calibre-mcp",
+      "version": "0.1.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "CALIBRE_MCP_SERVER_URL",
+          "description": "Calibre Content Server base URL (default http://localhost:8080)",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string"
+        },
+        {
+          "name": "CALIBRE_MCP_LIBRARY",
+          "description": "Library name; empty = auto-detect the server's default library",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string"
+        },
+        {
+          "name": "CALIBRE_MCP_ENABLE_WRITE",
+          "description": "Set to 1 to enable the write tools (update/bulk-update/add/remove); off by default",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "boolean"
+        },
+        {
+          "name": "CALIBRE_MCP_CALIBREDB_PATH",
+          "description": "Path to the calibredb binary; empty = auto-discover the standard install location",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "filepath"
+        }
+      ]
+    }
+  ]
+}
