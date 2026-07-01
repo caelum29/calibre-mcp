@@ -9,6 +9,7 @@ import type { ContentServerClient } from "../calibre/content-server.js";
 import type { Extractor } from "../calibre/extract.js";
 import type { Embedder } from "../semantic/embedder.js";
 import type { IndexStore } from "../semantic/store.js";
+import type { Provider } from "../enrich/provider.js";
 import type { log } from "../logging.js";
 
 export interface TextBlock {
@@ -51,6 +52,8 @@ export interface ToolDeps {
   extractor: Extractor; // book-text extraction (download + convert + cache)
   embedder: Embedder; // semantic query/passage embedding (transformers.js, lazy)
   index: IndexStore; // SQLite BLOB vector index (node:sqlite, lazy)
+  /** External metadata providers for recovery. Defaulted in-handler; injectable for tests. */
+  providers?: Record<Provider["name"], Provider>;
   log: typeof log;
 }
 
