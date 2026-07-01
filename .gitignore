@@ -4,6 +4,10 @@
 # deps & build
 node_modules/
 dist/
+build/
+dist-mcpb/
+*.mcpb
+*.tgz
 
 # embeddings index & local data
 *.sqlite

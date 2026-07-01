@@ -101,9 +101,13 @@ export const buildIndexTool = defineTool({
     }
 
     const elapsedMs = Date.now() - started;
+    // Surface the first few failure reasons in the text block — clients that ignore
+    // structuredContent would otherwise only see an opaque "N failed".
+    const failureLines = failures.slice(0, 3).map((f) => `\n- ${f}`);
+    if (failures.length > 3) failureLines.push(`\n- …and ${failures.length - 3} more`);
     const summary =
       `Indexed ${booksIndexed}/${booksRequested} book(s) (${booksSkipped} up-to-date, ${totalChunks} chunks) in ${elapsedMs} ms.` +
-      (failures.length ? ` ${failures.length} failed.` : "") +
+      (failures.length ? ` ${failures.length} failed:${failureLines.join("")}` : "") +
       notes.map((n) => `\n- ${n}`).join("");
 
     return toolOk([{ type: "text", text: summary }], {
