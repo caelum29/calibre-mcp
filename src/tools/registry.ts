@@ -12,6 +12,7 @@ import { semanticSearchTool } from "./calibre_semantic_search.js";
 import { buildIndexTool } from "./calibre_build_index.js";
 import { findDuplicatesTool } from "./calibre_find_duplicates.js";
 import { qualityReportTool } from "./calibre_quality_report.js";
+import { recoverMetadataTool } from "./calibre_recover_metadata.js";
 
 export { defineTool } from "./define.js";
 
@@ -26,4 +27,5 @@ export const allTools: AnyToolDescriptor[] = [
   buildIndexTool,
   findDuplicatesTool,
   qualityReportTool,
+  recoverMetadataTool,
 ];
