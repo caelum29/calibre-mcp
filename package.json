@@ -12,7 +12,7 @@
     "dist"
   ],
   "engines": {
-    "node": ">=20"
+    "node": ">=22.5"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -21,7 +21,8 @@
     "inspect": "tsc -p tsconfig.json && mcp-inspector node dist/run-stdio.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:model": "RUN_MODEL_TESTS=1 vitest run test/semantic/embedder.integration.test.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.29.0",

@@ -7,6 +7,8 @@ import type { Config } from "../config.js";
 import type { CalibreClient } from "../calibre/client.js";
 import type { ContentServerClient } from "../calibre/content-server.js";
 import type { Extractor } from "../calibre/extract.js";
+import type { Embedder } from "../semantic/embedder.js";
+import type { IndexStore } from "../semantic/store.js";
 import type { log } from "../logging.js";
 
 export interface TextBlock {
@@ -47,6 +49,8 @@ export interface ToolDeps {
   content: ContentServerClient; // HTTP /ajax reads (preferred)
   calibre: CalibreClient; // subprocess: writes + fts
   extractor: Extractor; // book-text extraction (download + convert + cache)
+  embedder: Embedder; // semantic query/passage embedding (transformers.js, lazy)
+  index: IndexStore; // SQLite BLOB vector index (node:sqlite, lazy)
   log: typeof log;
 }
 
