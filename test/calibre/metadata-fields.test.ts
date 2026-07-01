@@ -3,7 +3,14 @@ import {
   buildSetMetadataArgs,
   formatFieldValue,
   isAllowedField,
+  previewBookChanges,
 } from "../../src/calibre/metadata-fields.js";
+import type { Book } from "../../src/domain/book.js";
+
+const book = (over: Partial<Book> = {}): Book => ({
+  id: 1, uuid: "u", title: "T", authors: ["A"], identifiers: {}, formats: ["pdf"],
+  tags: ["old"], languages: ["en"], ...over,
+});
 
 describe("formatFieldValue", () => {
   it("joins authors with ' & '", () => {
@@ -46,5 +53,23 @@ describe("buildSetMetadataArgs", () => {
   it("builds repeated --field argv tokens", () => {
     const args = buildSetMetadataArgs(658, { tags: ["rust"], rating: 5 });
     expect(args).toEqual(["set_metadata", "658", "--field", "tags:rust", "--field", "rating:5"]);
+  });
+});
+
+describe("previewBookChanges", () => {
+  it("flags a real change and a no-op against the current value", () => {
+    const diff = previewBookChanges(book({ tags: ["old"], publisher: "P" }), {
+      tags: ["new"],
+      publisher: "P",
+    });
+    expect(diff).toEqual([
+      { field: "tags", before: ["old"], after: ["new"], changed: true },
+      { field: "publisher", before: "P", after: "P", changed: false },
+    ]);
+  });
+
+  it("treats a custom #column (absent on Book) as a change", () => {
+    const diff = previewBookChanges(book(), { "#shelf": "to-read" });
+    expect(diff[0]).toMatchObject({ field: "#shelf", before: undefined, changed: true });
   });
 });

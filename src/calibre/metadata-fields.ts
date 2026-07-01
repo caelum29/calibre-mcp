@@ -3,6 +3,8 @@
 // INDEPENDENT reimplementation derived from `docs/calibredb_help.txt` (the documented
 // --field grammar), NOT a line-by-line port of Calibre's GPL source.
 
+import type { Book } from "../domain/book.js";
+
 /** Accepted shapes for one field's new value. */
 export type ChangeValue = string | number | string[] | Record<string, string>;
 
@@ -67,4 +69,48 @@ export function buildSetMetadataArgs(id: number, changes: Record<string, ChangeV
     args.push("--field", `${field}:${formatFieldValue(field, value)}`);
   }
   return args;
+}
+
+/**
+ * Read a Book's current value for a calibre field name. Custom `#columns` aren't carried
+ * on the Book domain object → undefined (the diff just shows the incoming value as new).
+ */
+export function bookFieldValue(book: Book, field: string): unknown {
+  switch (field) {
+    case "title": return book.title;
+    case "authors": return book.authors;
+    case "tags": return book.tags;
+    case "series": return book.series;
+    case "series_index": return book.seriesIndex;
+    case "rating": return book.rating;
+    case "publisher": return book.publisher;
+    case "pubdate": return book.pubdate;
+    case "languages": return book.languages;
+    case "comments": return book.comments;
+    case "identifiers": return book.identifiers;
+    default: return undefined;
+  }
+}
+
+/** One field's before/after for a proposed change, with a computed `changed` flag. */
+export interface FieldDiff {
+  field: string;
+  before: unknown;
+  after: ChangeValue;
+  changed: boolean;
+}
+
+/**
+ * Compute a WITHOUT-WRITING preview of what `changes` would do to a book — the diff builder
+ * behind calibre_bulk_update's `preview` mode. `changed` compares the current value against
+ * the proposed one structurally (JSON), so a value already current shows as a no-op.
+ */
+export function previewBookChanges(
+  book: Book,
+  changes: Record<string, ChangeValue>,
+): FieldDiff[] {
+  return Object.entries(changes).map(([field, after]) => {
+    const before = bookFieldValue(book, field);
+    return { field, before, after, changed: JSON.stringify(before) !== JSON.stringify(after) };
+  });
 }

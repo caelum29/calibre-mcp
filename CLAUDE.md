@@ -272,7 +272,30 @@ ISBN→OpenLibrary→GoogleBooks internally, not three chainable tools). Cheap e
     (`Not Found`). `calibre_update_book` now resolves display→libId via `content.resolveLibraryId` before the
     calibredb call. **This is the required pattern for all write tools** — resolve the libId, pass it as
     `calibredb` `opts.library`. (Earlier "refused as expected" was likely this 404, not a local-write refusal.)
-- 🎯 **v1 status: 11 of 14 tools built + merged to `main`; write path proven.** Remaining = the 3 gated
-  **write** tools: `calibre_bulk_update` (#12, `ids`/`query` required, `preview=true` default → elicitation for
-  destructive), `calibre_add_book` (#13, path whitelist), `calibre_remove_book` (#14, `confirm` required).
-  Each must resolve libId→calibredb per the pattern above and needs `--enable-local-write` + `CALIBRE_MCP_ENABLE_WRITE=1`.
+- ✅ **Increment 7 complete — v1 CODE COMPLETE** (2026-07-01, branch `feat/write-tools`) — the **3
+  remaining gated write tools**, finishing the 14-tool v1 surface. **232 tests green** (+22); typecheck
+  clean. Live write-verification pending (needs the standalone `--enable-local-write` server back up;
+  the GUI's embedded server is read-only).
+  - **Design Q1 resolved → in-band `preview`/`confirm` params** (NOT MCP elicitation): handlers stay
+    SDK-free (locked constraint), so real `elicitation/create` would leak the SDK into `ToolDeps` →
+    deferred as LATER. DESIGN §4's preview-first rule is honored via params. Q2 → loop `set_metadata`
+    per id + hard cap (HTTP batch LATER). All three follow the **libId-resolve pattern**.
+  - `calibre_bulk_update` (#12, **W**) — same `changes` across a book SET; `ids`/`query` **required**
+    (no all-books default); `preview:true` default computes the per-book diff via `previewBookChanges`
+    (new pure builder in `metadata-fields.ts`) + `selectBooks` and writes nothing; `preview:false`
+    loops `calibredb set_metadata` per id (cap `MAX_BULK`=500; refuses `capped`/over-cap selections),
+    per-book failures collected not fatal.
+  - `calibre_add_book` (#13, **W**) — `calibredb add <path>`; **path whitelist** (`src/tools/add-path.ts`
+    `validateAddPath` — `realpathSync` boundary check, rejects `..`/symlink-escape/dir/missing) against
+    `config.addRoots` (env `CALIBRE_MCP_ADD_ROOTS`, default `~/Documents/Books` + `~/Downloads`); parses
+    `Added book ids:` from stdout.
+  - `calibre_remove_book` (#14, **W**, DESTRUCTIVE) — `calibredb remove <ids>`; `confirm:true` required
+    else a **dry-run** listing what would be deleted (records + files, permanent); comma-joined id argv.
+  - Shared refactors: `bookFieldValue`+`previewBookChanges` extracted to `metadata-fields.ts`;
+    write-refusal classifier lifted to `src/tools/write-refusal.ts` (`isWriteRefused`/`WRITE_REFUSED_MESSAGE`,
+    reused by all four write tools). `registry.test.ts` write list now = the 4 gated write tools.
+  - **Deferred (additive):** real MCP elicitation; `/cdb` HTTP batch for bulk; `add --duplicates`/cover;
+    `remove` trash-vs-permanent flag.
+- 🎯 **v1 status: 14 of 14 tools built.** Write tools live-verification (bulk preview→apply + revert,
+  add→remove round-trip) pending Artem re-running the standalone `--enable-local-write` server; then
+  merge `feat/write-tools` → `main`.
