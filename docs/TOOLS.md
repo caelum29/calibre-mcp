@@ -5,6 +5,10 @@
 > *build* list. RESEARCH §5 = exploration; this = what we ship.
 > Reconciles RESEARCH.md §5 + CAPABILITIES.md §1–4 into ≤~20 task/intent tools per DESIGN.md §2 / §9.1.
 >
+> **✅ v1 BUILD COMPLETE (2026-07-01).** All 14 tools built, tested, and merged to `main`; the write
+> path is live-verified. Per-increment build log + live-verification notes live in `CLAUDE.md` §Status
+> (increments 1–7). The tables below are annotated with what actually shipped vs what deferred to LATER.
+>
 > **Two surfaces (the macro goal).** Every tool targets either the **catalog** (whole-library:
 > search, list, update, bulk, add/remove, dedupe, quality, enrich) or a **single book** (get,
 > content extraction, in-book keyword + semantic search). The search tools span both via a `scope`
@@ -40,7 +44,7 @@
 Conventions: all namespaced `calibre_*`. Inputs Zod-coerced (`z.coerce.number`,
 `z.preprocess(JSON.parse,…)`, id unions; never `z.coerce.boolean("false")`). Return-not-throw
 `isError`. Large result sets → `resource_link[]` + `nextCursor`. Writes gated behind
-`CALIBRE_MCP_WRITE`; write tools **disabled** (not rejected) when off.
+`CALIBRE_MCP_ENABLE_WRITE`; write tools **disabled** (not rejected) when off.
 
 ### Read / search (5)
 
@@ -74,12 +78,22 @@ Conventions: all namespaced `calibre_*`. Inputs Zod-coerced (`z.coerce.number`,
 
 ### Write — hardened + gated (4)
 
-| # | Tool | R/W | Access path | Input | Output |
+All four route through `calibredb --with-library <serverUrl>/#<libId>` and **must resolve the library
+**ID** (not the display name) first — the display form 404s (locked pattern, CLAUDE.md §Status). Gated
+by `CALIBRE_MCP_ENABLE_WRITE`; disabled (not rejected) when off; server needs `--enable-local-write`.
+**Destructive/bulk confirmation is in-band** (`preview`/`confirm` params) — handlers stay SDK-free, so
+true MCP `elicitation/create` is deferred to LATER (DESIGN §4).
+
+| # | Tool | R/W | Access path (shipped) | Input (shipped) | Output |
 |---|---|---|---|---|---|
-| 11 | `calibre_update_book` | W | `calibredb --with-library URL` / `/cdb set-fields` | `id`, `changes` (coerced, incl. `#custom`) | applied diff |
-| 12 | `calibre_bulk_update` | W | same | `query`/`ids` (**required, no all-books default**), `changes`, `preview?=true` | preview or applied diff |
-| 13 | `calibre_add_book` | W | `/cdb add` / calibredb | `path` (whitelisted), `metadata?`, `autoMerge?` | new id(s) |
-| 14 | `calibre_remove_book` | W | `/cdb remove` | `ids`, `formatsOnly?`, `confirm` (required) | removed ids |
+| 11 | `calibre_update_book` | W | `calibredb set_metadata` via server URL | `id`, `changes` (coerced, incl. `#custom`), `library?` | applied diff + no-op flag |
+| 12 | `calibre_bulk_update` | W | `set_metadata` looped per id (cap `MAX_BULK=500`) | `changes`, `ids?`/`query?` (**one required, no all-books default**), `preview?=true`, `library?` | preview diff (no write) or applied/failed ids |
+| 13 | `calibre_add_book` | W | `calibredb add <path>` via server URL | `path` (whitelisted to `config.addRoots`), `library?` | new id(s) |
+| 14 | `calibre_remove_book` | W | `calibredb remove <ids>` via server URL | `ids` (required), `confirm?=false` (dry-run unless true), `library?` | dry-run list or removed ids |
+
+> **Deferred write sub-features (LATER, additive):** `add_book` `metadata?`/`autoMerge?`/cover +
+> `add --duplicates`; `remove_book` `formatsOnly?` (remove a format, keep the record) + trash-vs-permanent
+> flag; `bulk_update` `/cdb` HTTP batch (vs the per-id loop); real MCP elicitation for destructive writes.
 
 ---
 
@@ -100,13 +114,15 @@ Conventions: all namespaced `calibre_*`. Inputs Zod-coerced (`z.coerce.number`,
 
 ---
 
-## Open params (decide during implementation, not blocking the list)
+## Open params — RESOLVED during implementation
 
-- **RU model latency** on M-series — measure `multilingual-e5-small` (q8) cold-start + per-book
-  embed; if recall is short or the 512-token cap bites, the documented escape hatch is
-  `gte-multilingual-base` (768-dim, 8192 ctx) — see `docs/SEMANTIC-SEARCH.md` §1.
-- **PDF extractor presence** — detect PyMuPDF/pdftotext at startup; log the chosen path to stderr.
-- **`compare` mode shape** — confirm `find_duplicates(mode:compare, ids:[a,b])` ergonomics vs a
-  dedicated verb once we see real agent usage.
-- **Book-scoped result shape** — confirm in-book hits return enough location info (chapter/offset/
-  page where available) to be actionable, and how `get_content`'s `cursor` granularity pairs with them.
+- **RU model latency** on M-series — ✅ measured: `multilingual-e5-small` cold-start ~66s (one-time HF
+  download, then cached + offline), per-book embed ~4.6s (book 658, 102 chunks). Recall verified
+  cross-lingual (EN query → RU section at cosine 0.872). Kept e5-small; the `gte-multilingual-base`
+  escape hatch stays documented in `docs/SEMANTIC-SEARCH.md` §1 but wasn't needed.
+- **PDF extractor presence** — ✅ startup backend detection (pdftotext > PyMuPDF bridge > ebook-convert),
+  logged to stderr. `poppler`'s `pdftotext` installed → preferred, verified live.
+- **`compare` mode shape** — ✅ shipped as `find_duplicates(mode:compare, ids:[…≥2])` → field-by-field
+  diff + `keep` recommendation. Fine in practice; no dedicated verb needed.
+- **Book-scoped result shape** — ✅ in-book hits return char-located passages (`{book_id, location}`).
+  PDF page / EPUB spine locations remain LATER (Calibre can't supply them; we'd compute).

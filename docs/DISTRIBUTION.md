@@ -45,7 +45,7 @@ A direct HTTP/remote transport for Cowork is explicitly **deferred** (would mean
 ### MCPB `user_config` fields (Claude Desktop one-click setup)
 - `serverUrl` (default `http://localhost:8080`)
 - `library` (default = server's default library; auto-detect via `/ajax/library-info`)
-- `enableWrite` (boolean → sets `CALIBRE_MCP_WRITE`; **default off**)
+- `enableWrite` (boolean → sets `CALIBRE_MCP_ENABLE_WRITE`; **default off**)
 - `embeddingsCacheDir` (default OS cache dir; for opt-in semantic search)
 
 ---
