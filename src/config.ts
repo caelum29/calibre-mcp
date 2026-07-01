@@ -3,15 +3,16 @@
 
 import { homedir } from "node:os";
 import path from "node:path";
+import { discoverCalibredb } from "./calibre/discover.js";
 
 export interface Config {
   /** Content Server base URL the running Calibre GUI exposes (reads + routed writes). */
   serverUrl: string;
-  /** Default library name within the Content Server (the `#Lib` fragment). */
+  /** Library name within the Content Server. Empty = auto-detect the server's default. */
   defaultLibrary: string;
   /** Master write gate. Off unless CALIBRE_MCP_ENABLE_WRITE is truthy. */
   writeEnabled: boolean;
-  /** Path to the calibredb binary (aliased on this machine inside calibre.app). */
+  /** Path to the calibredb binary (auto-discovered per platform; see calibre/discover.ts). */
   calibredbPath: string;
   /**
    * Persistent dir for the semantic index (SQLite) and the transformers.js model cache.
@@ -28,9 +29,20 @@ function truthy(v: string | undefined): boolean {
   return v === "1" || v === "true" || v === "yes";
 }
 
+/**
+ * Unset/empty/whitespace env values are all "absent" — MCPB substitutes an empty
+ * string for optional user_config fields the user left blank, and `"" ?? default`
+ * would otherwise keep the empty string.
+ */
+function envStr(v: string | undefined): string | undefined {
+  const t = v?.trim();
+  return t ? t : undefined;
+}
+
 /** Platform data dir (persists across reboots), honoring XDG / APPDATA where set. */
 function dataDir(env: NodeJS.ProcessEnv): string {
-  if (env.CALIBRE_MCP_INDEX_DIR) return env.CALIBRE_MCP_INDEX_DIR;
+  const explicit = envStr(env.CALIBRE_MCP_INDEX_DIR);
+  if (explicit) return explicit;
   if (process.platform === "darwin") {
     return path.join(homedir(), "Library", "Application Support", "calibre-mcp", "index");
   }
@@ -42,14 +54,13 @@ function dataDir(env: NodeJS.ProcessEnv): string {
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
-  const floor = Number(env.CALIBRE_MCP_SEMANTIC_FLOOR);
+  const floor = Number(envStr(env.CALIBRE_MCP_SEMANTIC_FLOOR));
   return {
-    serverUrl: env.CALIBRE_MCP_SERVER_URL ?? "http://localhost:8080",
-    defaultLibrary: env.CALIBRE_MCP_LIBRARY ?? "Programming Books",
+    serverUrl: envStr(env.CALIBRE_MCP_SERVER_URL) ?? "http://localhost:8080",
+    defaultLibrary: envStr(env.CALIBRE_MCP_LIBRARY) ?? "",
     writeEnabled: truthy(env.CALIBRE_MCP_ENABLE_WRITE),
-    calibredbPath:
-      env.CALIBRE_MCP_CALIBREDB_PATH ??
-      "/Applications/calibre.app/Contents/MacOS/calibredb",
+    // Explicit env path wins even if it doesn't exist (the user said so); else discover.
+    calibredbPath: envStr(env.CALIBRE_MCP_CALIBREDB_PATH) ?? discoverCalibredb(env),
     indexDir: dataDir(env),
     semanticFloor: Number.isFinite(floor) ? floor : 0.78,
     addRoots: addRoots(env),
@@ -58,13 +69,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
 
 /**
  * Roots calibre_add_book may import files from. Overridable via CALIBRE_MCP_ADD_ROOTS
- * (`path.delimiter`-separated); defaults to the user's book + download folders. A file
- * outside every root is refused (symlink-resolved boundary check, DESIGN §5).
+ * (`path.delimiter`-separated); defaults to the user's documents + download folders. A
+ * file outside every root is refused (symlink-resolved boundary check, DESIGN §5).
  */
 function addRoots(env: NodeJS.ProcessEnv): string[] {
-  const raw = env.CALIBRE_MCP_ADD_ROOTS;
+  const raw = envStr(env.CALIBRE_MCP_ADD_ROOTS);
   const roots = raw
     ? raw.split(path.delimiter).filter(Boolean)
-    : [path.join(homedir(), "Documents", "Books"), path.join(homedir(), "Downloads")];
+    : [path.join(homedir(), "Documents"), path.join(homedir(), "Downloads")];
   return roots.map((r) => path.resolve(r));
 }

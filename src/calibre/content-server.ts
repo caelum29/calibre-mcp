@@ -95,6 +95,8 @@ export class ContentServerClient {
   // Process-lifetime cache of libId → display name. Libraries rarely change; a
   // rename/add mid-session goes stale until restart (acceptable for local stdio use).
   #libMap?: Record<string, string>;
+  // The server's own default library (a libId), for when no library is configured.
+  #defaultLibId?: string;
 
   constructor(private readonly cfg: Config) {}
 
@@ -102,11 +104,12 @@ export class ContentServerClient {
     return this.cfg.serverUrl.replace(/\/+$/, "");
   }
 
-  /** GET /ajax/library-info → {libraryMap, defaultLibrary}; caches the map. */
+  /** GET /ajax/library-info → {libraryMap, defaultLibrary}; caches map + default. */
   async libraryInfo(): Promise<LibraryInfo> {
     const raw = await getJson<RawLibraryInfo>(`${this.base}/ajax/library-info`);
     const libraryMap = raw.library_map ?? {};
     this.#libMap = libraryMap;
+    this.#defaultLibId = raw.default_library || Object.keys(libraryMap)[0];
     return { libraryMap, defaultLibrary: raw.default_library ?? "" };
   }
 
@@ -114,11 +117,19 @@ export class ContentServerClient {
    * Resolve a display name ("Programming Books") to its libId ("Programming_Books")
    * via the authoritative library_map; falls back to space→underscore substitution
    * only if the server doesn't list it (DESIGN: don't hard-code the substitution).
+   * No name anywhere (no arg, empty config) → the server's own default library.
    */
   async resolveLibraryId(display?: string): Promise<string> {
-    const name = display ?? this.cfg.defaultLibrary;
+    const name = display || this.cfg.defaultLibrary;
     if (!this.#libMap) await this.libraryInfo();
     const map = this.#libMap ?? {};
+    if (!name) {
+      if (this.#defaultLibId) return this.#defaultLibId;
+      throw new Error(
+        `The Content Server at ${this.cfg.serverUrl} reports no libraries; ` +
+          "set CALIBRE_MCP_LIBRARY or check the server.",
+      );
+    }
     // If `name` already IS a libId (a key), use it directly.
     if (map[name] !== undefined) return name;
     for (const [libId, displayName] of Object.entries(map)) {

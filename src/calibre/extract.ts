@@ -110,8 +110,13 @@ export class Extractor {
   }
 
   async #detect(): Promise<BackendReport> {
-    const ebookConvertPath = path.join(path.dirname(this.cfg.calibredbPath), "ebook-convert");
-    const hasEbookConvert = existsSync(ebookConvertPath);
+    // ebook-convert lives beside calibredb (`.exe` on Windows). A bare "calibredb"
+    // (PATH fallback, dirname ".") means probing the sibling from PATH too.
+    const dbDir = path.dirname(this.cfg.calibredbPath);
+    const convertName = process.platform === "win32" ? "ebook-convert.exe" : "ebook-convert";
+    const ebookConvertPath = dbDir === "." ? "ebook-convert" : path.join(dbDir, convertName);
+    const hasEbookConvert =
+      dbDir === "." ? await binaryExists(ebookConvertPath) : existsSync(ebookConvertPath);
 
     const pdftotextPath = resolveBinary(PDFTOTEXT_CANDIDATES, "pdftotext");
     const hasPdftotext = PDFTOTEXT_CANDIDATES.some(existsSync) || (await binaryExists(pdftotextPath));

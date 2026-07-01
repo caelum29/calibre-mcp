@@ -78,6 +78,21 @@ describe("ContentServerClient", () => {
     expect(await client().resolveLibraryId("My Books")).toBe("lib_42");
   });
 
+  it("resolveLibraryId auto-detects the server default when nothing is configured", async () => {
+    // loadConfig({}) leaves defaultLibrary empty → the server's default_library wins.
+    expect(await client().resolveLibraryId()).toBe("Programming_Books");
+  });
+
+  it("resolveLibraryId falls back to the first library when the server has no default", async () => {
+    mocked.mockResolvedValueOnce({ library_map: { only_lib: "Only Lib" } });
+    expect(await client().resolveLibraryId()).toBe("only_lib");
+  });
+
+  it("resolveLibraryId throws an actionable error when the server reports no libraries", async () => {
+    mocked.mockResolvedValueOnce({ library_map: {} });
+    await expect(client().resolveLibraryId()).rejects.toThrow(/no libraries/i);
+  });
+
   it("maps /ajax/search to a SearchPage", async () => {
     const page = await client().search({ query: "rust", num: 3 });
     expect(page.total).toBe(84);

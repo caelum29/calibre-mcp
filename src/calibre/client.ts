@@ -8,7 +8,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import type { Config } from "../config.js";
-import { CalibreCliError } from "../domain/errors.js";
+import { CalibreCliError, CalibreNotFoundError } from "../domain/errors.js";
 import type { FtsHit } from "../domain/search.js";
 import { log } from "../logging.js";
 
@@ -80,7 +80,10 @@ export class CalibreClient {
 
   /** The `--with-library` value that routes calibredb through the live server. */
   private libraryUrl(library?: string): string {
-    const lib = library ?? this.cfg.defaultLibrary;
+    const lib = library || this.cfg.defaultLibrary;
+    // No library anywhere → fragment-less URL, letting calibredb hit the server default.
+    // Callers normally resolve the libId first (content.resolveLibraryId); this is a net.
+    if (!lib) return this.cfg.serverUrl;
     return `${this.cfg.serverUrl}/#${encodeURIComponent(lib)}`;
   }
 
@@ -102,6 +105,12 @@ export class CalibreClient {
       return { stdout, stderr };
     } catch (err) {
       const e = err as NodeJS.ErrnoException & { stdout?: string; stderr?: string };
+      if (e.code === "ENOENT") {
+        throw new CalibreNotFoundError(
+          `calibredb not found at "${this.cfg.calibredbPath}". Install Calibre ` +
+            "(https://calibre-ebook.com/download) or set CALIBRE_MCP_CALIBREDB_PATH.",
+        );
+      }
       // Forbidden/write-refused text can land on either stream; keep both for the classifier.
       const diag = [e.stdout, e.stderr].filter(Boolean).join("\n");
       const code = typeof e.code === "number" ? e.code : null;
@@ -124,8 +133,8 @@ export class CalibreClient {
   }
 
   /** Library list as JSON, proving connectivity to the live server. */
-  async listLibraries(): Promise<string> {
-    const { stdout } = await this.calibredb(["list_categories", "--csv"]);
+  async listLibraries(library?: string): Promise<string> {
+    const { stdout } = await this.calibredb(["list_categories", "--csv"], { library });
     return stdout;
   }
 }
