@@ -21,5 +21,8 @@ export const PASSAGE_PREFIX = "passage: ";
  * Bumped on any pipeline change (model, prefixes, pooling, chunking) that invalidates
  * stored vectors. The store refuses to read an index whose meta.index_version differs,
  * forcing a rebuild instead of silently mixing incompatible vectors.
+ *
+ * v2 (increment 4): added the FTS5 keyword half — a `body_stem` column + `chunk_fts`
+ * virtual table. A v1 index lacks both, so it must be rebuilt to gain hybrid search.
  */
-export const INDEX_VERSION = 1;
+export const INDEX_VERSION = 2;

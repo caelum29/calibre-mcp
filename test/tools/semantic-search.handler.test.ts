@@ -28,7 +28,18 @@ const queryEmbedder: Embedder = {
   async warmup() {},
 };
 
-function deps(store: SqliteIndexStore): ToolDeps {
+/** Embedder that throws — proves keyword mode never touches the model. */
+const throwingEmbedder: Embedder = {
+  async embedQuery() {
+    throw new Error("EMBEDDER_UNAVAILABLE");
+  },
+  async embedPassages() {
+    throw new Error("EMBEDDER_UNAVAILABLE");
+  },
+  async warmup() {},
+};
+
+function deps(store: SqliteIndexStore, embedder: Embedder = queryEmbedder): ToolDeps {
   const content = {
     resolveLibraryId: async () => LIB,
     search: async () => ({ bookIds: [], total: 0, num: 0, offset: 0, sort: "", libraryId: LIB }),
@@ -38,7 +49,7 @@ function deps(store: SqliteIndexStore): ToolDeps {
     content: content as unknown as ToolDeps["content"],
     calibre: {} as unknown as ToolDeps["calibre"],
     extractor: {} as unknown as ToolDeps["extractor"],
-    embedder: queryEmbedder,
+    embedder,
     index: store,
     log,
   };
@@ -56,7 +67,13 @@ function preloaded(): SqliteIndexStore {
   return s;
 }
 
-const args = (over: Record<string, unknown> = {}) => ({ query: "ownership", scope: "library" as const, topK: 10, ...over });
+const args = (over: Record<string, unknown> = {}) => ({
+  query: "ownership",
+  scope: "library" as const,
+  mode: "hybrid" as const,
+  topK: 10,
+  ...over,
+});
 
 describe("calibre_semantic_search handler", () => {
   it("errors with guidance when no index exists", async () => {
@@ -94,6 +111,37 @@ describe("calibre_semantic_search handler", () => {
     const r = await semanticSearchTool.handler(args({ scope: "book", bookId: 999 }), deps(preloaded()));
     expect(r.isError).toBe(true);
     expect((r.content[0] as { text: string }).text).toContain("not indexed");
+  });
+
+  it("defaults to hybrid mode", async () => {
+    const r = await semanticSearchTool.handler(args(), deps(preloaded()));
+    expect(r.structuredContent).toMatchObject({ mode: "hybrid" });
+  });
+
+  it("keyword mode matches via FTS and needs no embedding model", async () => {
+    // Query "async" hits book 2 by keyword; the throwing embedder proves the model is untouched.
+    const r = await semanticSearchTool.handler(
+      args({ query: "async", mode: "keyword" }),
+      deps(preloaded(), throwingEmbedder),
+    );
+    expect(r.isError).toBeFalsy();
+    expect(r.structuredContent).toMatchObject({ mode: "keyword" });
+    expect(r.structuredContent?.bookIds as number[]).toEqual([2]);
+    // Keyword-only results carry no cosine, so no low-confidence signal.
+    expect(r.structuredContent?.maxScore).toBeUndefined();
+  });
+
+  it("vector mode ranks by cosine only", async () => {
+    const r = await semanticSearchTool.handler(args({ mode: "vector" }), deps(preloaded()));
+    expect(r.structuredContent).toMatchObject({ mode: "vector" });
+    expect((r.structuredContent?.bookIds as number[])[0]).toBe(1);
+    expect(r.structuredContent?.maxScore as number).toBeGreaterThan(0.9);
+  });
+
+  it("guides toward keyword mode when the model is unavailable in hybrid", async () => {
+    const r = await semanticSearchTool.handler(args(), deps(preloaded(), throwingEmbedder));
+    expect(r.isError).toBe(true);
+    expect((r.content[0] as { text: string }).text).toContain('mode:"keyword"');
   });
 
   it("flags low confidence when the top score is below the floor", async () => {
