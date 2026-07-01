@@ -173,6 +173,33 @@ ISBN→OpenLibrary→GoogleBooks internally, not three chainable tools). Cheap e
   optional); **enable FTS indexing** via the Calibre GUI (Preferences → Searching → Full text search) —
   the CLI `calibredb … fts_index enable` route is itself a *write* and is **Forbidden** without local-write,
   so use the GUI toggle; Content Server **--enable-local-write** (write round-trip — currently refused as expected).
-- ⏭️ **Next tools:** semantic search + `calibre_build_index` (#5/#6, the differentiator), then
+- ✅ **Increment 3 complete** (2026-07-01, branch `feat/semantic-search`) — **the headline
+  differentiator**: vector-only semantic search, de-risk slice. **127 tests green** (+3 gated model
+  tests); **verified live** end-to-end against the Content Server.
+  - New SDK-free core `src/semantic/`: `model.ts` (locked constants — model, 384-dim, prefixes,
+    `INDEX_VERSION`), `vector.ts` (Float32-LE BLOB encode/decode **honoring `byteOffset`**, L2-norm,
+    cosine `dot`, `topK`), `embedder.ts` (`TransformersEmbedder` — **lazy dynamic-import** of the
+    optional `@huggingface/transformers`, `query:`/`passage:` prefixes baked in, mean-pool+normalize,
+    coded `EMBEDDER_UNAVAILABLE`), `chunk.ts` (char-based overlapping chunker, exact offset recovery,
+    surrogate-safe, `lengthFn` seam for the deferred token-based upgrade), `store.ts`
+    (`SqliteIndexStore` on **`node:sqlite`** — zero native deps for npx/MCPB; per-library db under a
+    persistent data dir; meta-mismatch guard; atomic `replaceBook`; brute-force cosine).
+  - `calibre_semantic_search` (#6, R) — `scope=library` ranks books (resource_links + score),
+    `scope=book` ranks passages (fenced, char-located); empty-index & not-indexed → actionable errors;
+    `lowConfidence` when top cosine < `config.semanticFloor` (0.78).
+  - `calibre_build_index` (#7, **W**) — selector **required** (`bookId|ids|query`; full-library
+    deferred); reuses `extractor.getText` cache → `chunkForEmbedding` → `[title › authors]` context
+    prepend (embedded text only; stored body stays raw so offsets match `calibre_get_content`) →
+    `embedder.embedPassages` → `store.replaceBook`; per-book failures collected, not fatal; `force`
+    re-indexes; `enableFts` accepted but **no-op + note** in v1.
+  - Wiring: `ToolDeps.{embedder,index}` (both lazy — no model load / no db file for read-only
+    sessions); `config.{indexDir,semanticFloor}`; `engines.node` → `>=22.5`; `test:model` script.
+  - **Live-verified:** transformers.js cold-start ~66s (one-time HF download, then cached & offline);
+    book 658 → 102 chunks in 4.6s offline; `"memory safety and ownership"` → the exact Ownership
+    section at cosine **0.872**; cross-lingual RU proven by the gated model test.
+  - **Deferred to next increment (all additive, no re-embed):** FTS5 + RU Snowball pre-stem + RRF
+    hybrid fusion; token-based chunking; PDF page / EPUB spine locations; worker-thread parallelism;
+    full-library build; reranking; `sqlite-vec` fast path.
+- ⏭️ **Next tools:** semantic hybrid fusion (FTS+RRF) as increment 4, then
   `calibre_find_duplicates`/`calibre_quality_report`/`calibre_recover_metadata`, then `calibre_bulk_update`
   (destructive → elicitation).
