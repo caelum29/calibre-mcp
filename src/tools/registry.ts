@@ -10,6 +10,8 @@ import { listCategoriesTool } from "./calibre_list_categories.js";
 import { updateBookTool } from "./calibre_update_book.js";
 import { semanticSearchTool } from "./calibre_semantic_search.js";
 import { buildIndexTool } from "./calibre_build_index.js";
+import { findDuplicatesTool } from "./calibre_find_duplicates.js";
+import { qualityReportTool } from "./calibre_quality_report.js";
 
 export { defineTool } from "./define.js";
 
@@ -22,4 +24,6 @@ export const allTools: AnyToolDescriptor[] = [
   updateBookTool,
   semanticSearchTool,
   buildIndexTool,
+  findDuplicatesTool,
+  qualityReportTool,
 ];

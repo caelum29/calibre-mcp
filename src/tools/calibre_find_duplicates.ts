@@ -1,0 +1,119 @@
+// calibre_find_duplicates — surface probable duplicate books so a human/agent can decide
+// what to merge. `identical`/`similar` group the library (or a subset) by a normalized key
+// with a merge-safety score; `compare` diffs an explicit id set field-by-field. READ-only:
+// it never merges — Calibre's own merge is a separate, gated write.
+
+import { z } from "zod";
+import { compareBooks, findDuplicateGroups } from "../domain/curation/duplicates.js";
+import { BookId, CursorParam, jsonArray, limitParam } from "./coerce.js";
+import { decodeCursor, encodeCursor } from "./cursor.js";
+import { defineTool } from "./define.js";
+import { bookResourceLink } from "./resource-link.js";
+import { selectBooks } from "./select-books.js";
+import { fence, toolError, toolOk } from "./result.js";
+import type { ContentBlock } from "./types.js";
+
+export const findDuplicatesTool = defineTool({
+  name: "calibre_find_duplicates",
+  title: "Find duplicates",
+  description:
+    "Find probable duplicate books. mode=identical (exact title+authors) or similar (fuzzy) group the library (or ids/query subset) with a merge-safety score; mode=compare diffs 2+ ids field-by-field. Read-only — never merges.",
+  inputSchema: {
+    mode: z.enum(["identical", "similar", "compare"]).default("identical"),
+    ids: jsonArray(BookId()).optional(),
+    query: z.string().max(512).optional(),
+    library: z.string().optional(),
+    limit: limitParam(200, 50),
+    cursor: CursorParam,
+  },
+  outputSchema: {
+    mode: z.string(),
+    groupCount: z.number().optional(),
+    offset: z.number().optional(),
+    count: z.number().optional(),
+    booksScanned: z.number().optional(),
+    capped: z.boolean().optional(),
+    nextCursor: z.string().optional(),
+    // compare mode:
+    keep: z.number().optional(),
+    mergeSafety: z.number().optional(),
+  },
+  annotations: { readOnlyHint: true, openWorldHint: true },
+  handler: async (args, deps) => {
+    try {
+      if (args.mode === "compare") {
+        if (!args.ids || args.ids.length < 2) {
+          return toolError("compare mode requires ids with at least 2 book ids.");
+        }
+        const { books } = await selectBooks(deps, { ids: args.ids, library: args.library });
+        if (books.length < 2) {
+          return toolError(`compare needs 2+ resolvable books; got ${books.length}.`);
+        }
+        const report = compareBooks(books);
+        const lines = report.diffs.map(
+          (d) => `${d.agree ? "=" : "≠"} ${d.field}: ${d.values.join(" | ")}`,
+        );
+        const text =
+          `Comparing books ${report.bookIds.join(", ")} — ` +
+          `mergeSafety ${report.mergeSafety.toFixed(2)}, recommend keeping book ${report.keep}\n` +
+          lines.join("\n");
+        return toolOk([{ type: "text", text: fence("COMPARISON", text) }], {
+          mode: "compare",
+          keep: report.keep,
+          mergeSafety: report.mergeSafety,
+          count: report.bookIds.length,
+        });
+      }
+
+      // identical | similar → group the selection.
+      const { books, total, capped } = await selectBooks(deps, {
+        ids: args.ids,
+        query: args.query,
+        library: args.library,
+      });
+      const groups = findDuplicateGroups(books, args.mode);
+
+      const cursorKey = `dup:${args.mode}:${args.query ?? ""}`;
+      const cur = decodeCursor(args.cursor);
+      const offset = cur && cur.query === cursorKey ? cur.offset : 0;
+      const pageGroups = groups.slice(offset, offset + args.limit);
+      const more = offset + pageGroups.length < groups.length;
+      const nextCursor = more
+        ? encodeCursor({ offset: offset + pageGroups.length, query: cursorKey })
+        : undefined;
+
+      const content: ContentBlock[] = [];
+      const header =
+        `${groups.length} duplicate group(s) across ${books.length} books scanned` +
+        `${capped ? ` (capped — ${total} matched)` : ""}. ` +
+        `Showing ${pageGroups.length ? offset + 1 : 0}–${offset + pageGroups.length}.\n` +
+        "binary mode (byte-level dedupe) is deferred in v1.";
+      content.push({ type: "text", text: header });
+
+      for (const g of pageGroups) {
+        const summary = g.books
+          .map((b) => `#${b.id} "${b.title}" — ${b.authors.join(", ") || "?"}`)
+          .join("\n");
+        content.push({
+          type: "text",
+          text: fence("DUP GROUP", `mergeSafety ${g.mergeSafety.toFixed(2)}\n${summary}`),
+        });
+        for (const b of g.books) {
+          content.push(bookResourceLink({ id: b.id, title: b.title, authors: b.authors }));
+        }
+      }
+
+      return toolOk(content, {
+        mode: args.mode,
+        groupCount: groups.length,
+        offset,
+        count: pageGroups.length,
+        booksScanned: books.length,
+        capped,
+        nextCursor,
+      });
+    } catch (err) {
+      return toolError(err instanceof Error ? err.message : String(err));
+    }
+  },
+});
