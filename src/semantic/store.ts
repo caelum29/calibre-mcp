@@ -12,6 +12,7 @@ import { existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import type { Config } from "../config.js";
 import { EMBED_DIM, INDEX_VERSION, MODEL_ID } from "./model.js";
+import { stemText } from "./stem.js";
 import { type Candidate, decodeVector, encodeVector, topK } from "./vector.js";
 
 /** A chunk ready to index: its span in the source text plus its embedding. */
@@ -57,10 +58,14 @@ export interface IndexStore {
   isBookIndexed(libraryId: string, bookId: number, lastModified?: string): boolean;
   /** Replace all of a book's chunks/embeddings atomically (idempotent re-index). */
   replaceBook(libraryId: string, meta: BookMeta, chunks: IndexedChunk[]): void;
-  /** Rank books by their single best-matching chunk (best chunk per book). */
+  /** Rank books by their single best-matching chunk (best chunk per book), vector cosine. */
   searchLibrary(libraryId: string, query: Float32Array, k: number): LibraryHit[];
-  /** Rank passages within one book. */
+  /** Rank passages within one book, vector cosine. */
   searchBook(libraryId: string, bookId: number, query: Float32Array, k: number): BookHit[];
+  /** Keyword half: rank books by best FTS5 bm25 match (score is negative, lower is better). */
+  searchLibraryFts(libraryId: string, stemmedQuery: string, k: number): LibraryHit[];
+  /** Keyword half: rank passages within one book by FTS5 bm25. */
+  searchBookFts(libraryId: string, bookId: number, stemmedQuery: string, k: number): BookHit[];
   stats(libraryId: string): { books: number; chunks: number };
   close(): void;
 }
@@ -83,7 +88,8 @@ CREATE TABLE IF NOT EXISTS chunks (
   book_id INTEGER NOT NULL,
   char_start INTEGER NOT NULL,
   char_end INTEGER NOT NULL,
-  body TEXT NOT NULL
+  body TEXT NOT NULL,
+  body_stem TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_chunks_book ON chunks(book_id);
 CREATE TABLE IF NOT EXISTS embeddings (
@@ -92,6 +98,25 @@ CREATE TABLE IF NOT EXISTS embeddings (
   vector BLOB NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_emb_book ON embeddings(book_id);
+
+-- Keyword half: FTS5 external-content index over chunks. body_stem holds EN+RU pre-stemmed
+-- text (recall); body holds raw text (exact/identifier matches). tokenchars keep code tokens
+-- (e.g. c++, __init__, api.v2) intact. Kept in sync with chunks via the triggers below.
+CREATE VIRTUAL TABLE IF NOT EXISTS chunk_fts USING fts5(
+  body_stem, body,
+  content='chunks', content_rowid='id',
+  tokenize='unicode61 remove_diacritics 2 tokenchars ''-_+#.'''
+);
+CREATE TRIGGER IF NOT EXISTS chunks_ai AFTER INSERT ON chunks BEGIN
+  INSERT INTO chunk_fts(rowid, body_stem, body) VALUES (new.id, new.body_stem, new.body);
+END;
+CREATE TRIGGER IF NOT EXISTS chunks_ad AFTER DELETE ON chunks BEGIN
+  INSERT INTO chunk_fts(chunk_fts, rowid, body_stem, body) VALUES('delete', old.id, old.body_stem, old.body);
+END;
+CREATE TRIGGER IF NOT EXISTS chunks_au AFTER UPDATE ON chunks BEGIN
+  INSERT INTO chunk_fts(chunk_fts, rowid, body_stem, body) VALUES('delete', old.id, old.body_stem, old.body);
+  INSERT INTO chunk_fts(rowid, body_stem, body) VALUES (new.id, new.body_stem, new.body);
+END;
 `;
 
 type Row = Record<string, unknown>;
@@ -137,11 +162,18 @@ export class SqliteIndexStore implements IndexStore {
       );
 
       const insChunk = db.prepare(
-        "INSERT INTO chunks(book_id, char_start, char_end, body) VALUES(?,?,?,?)",
+        "INSERT INTO chunks(book_id, char_start, char_end, body, body_stem) VALUES(?,?,?,?,?)",
       );
       const insEmb = db.prepare("INSERT INTO embeddings(chunk_id, book_id, vector) VALUES(?,?,?)");
       for (const c of chunks) {
-        const { lastInsertRowid } = insChunk.run(meta.bookId, c.charStart, c.charEnd, c.body);
+        // Pre-stem here so the FTS keyword half is populated by the insert trigger.
+        const { lastInsertRowid } = insChunk.run(
+          meta.bookId,
+          c.charStart,
+          c.charEnd,
+          c.body,
+          stemText(c.body),
+        );
         insEmb.run(Number(lastInsertRowid), meta.bookId, encodeVector(c.vector));
       }
       db.exec("COMMIT");
@@ -196,6 +228,61 @@ export class SqliteIndexStore implements IndexStore {
         score: h.score,
       };
     });
+  }
+
+  searchLibraryFts(libraryId: string, stemmedQuery: string, k: number): LibraryHit[] {
+    const db = this.#db(libraryId);
+    const match = ftsMatch(stemmedQuery);
+    if (!match) return [];
+    // Pull a generous pool of chunk hits, then keep the best (first, since bm25-ranked) per book.
+    const pool = Math.max(k * 20, 200);
+    const rows = db
+      .prepare(
+        `SELECT c.id AS chunk_id, c.book_id, c.char_start, c.char_end, c.body, bm25(chunk_fts) AS score
+         FROM chunk_fts JOIN chunks c ON c.id = chunk_fts.rowid
+         WHERE chunk_fts MATCH ? ORDER BY rank LIMIT ?`,
+      )
+      .all(match, pool) as Row[];
+
+    const seen = new Set<number>();
+    const out: LibraryHit[] = [];
+    for (const r of rows) {
+      const bookId = Number(r.book_id);
+      if (seen.has(bookId)) continue;
+      seen.add(bookId);
+      const book = db.prepare("SELECT title, authors FROM books WHERE book_id = ?").get(bookId) as Row;
+      out.push({
+        bookId,
+        title: String(book?.title ?? `book ${bookId}`),
+        authors: parseAuthors(book?.authors),
+        score: Number(r.score), // bm25: negative, lower (more negative) is a better match
+        snippet: String(r.body ?? "").slice(0, SNIPPET_CHARS),
+        charStart: Number(r.char_start),
+        charEnd: Number(r.char_end),
+      });
+      if (out.length >= k) break;
+    }
+    return out;
+  }
+
+  searchBookFts(libraryId: string, bookId: number, stemmedQuery: string, k: number): BookHit[] {
+    const db = this.#db(libraryId);
+    const match = ftsMatch(stemmedQuery);
+    if (!match) return [];
+    const rows = db
+      .prepare(
+        `SELECT c.id AS chunk_id, c.char_start, c.char_end, c.body, bm25(chunk_fts) AS score
+         FROM chunk_fts JOIN chunks c ON c.id = chunk_fts.rowid
+         WHERE chunk_fts MATCH ? AND c.book_id = ? ORDER BY rank LIMIT ?`,
+      )
+      .all(match, bookId, k) as Row[];
+    return rows.map((r) => ({
+      chunkId: Number(r.chunk_id),
+      charStart: Number(r.char_start),
+      charEnd: Number(r.char_end),
+      body: String(r.body ?? ""),
+      score: Number(r.score),
+    }));
   }
 
   stats(libraryId: string): { books: number; chunks: number } {
@@ -272,6 +359,17 @@ export class SqliteIndexStore implements IndexStore {
     const safe = libraryId.replace(/[^A-Za-z0-9._-]/g, "_") || "default";
     return path.join(this.cfg.indexDir, `${safe}.sqlite`);
   }
+}
+
+/**
+ * Build an FTS5 MATCH expression from an already-stemmed query. Tokens are OR-ed (recall-first;
+ * RRF and the vector half restore precision) and phrase-quoted so punctuation/operators in a
+ * token can't be parsed as FTS syntax. Returns null when the query has no searchable tokens.
+ */
+function ftsMatch(stemmed: string): string | null {
+  const toks = stemmed.split(/\s+/).filter(Boolean);
+  if (toks.length === 0) return null;
+  return toks.map((t) => `"${t.replace(/"/g, '""')}"`).join(" OR ");
 }
 
 /** authors are stored as a JSON array string; tolerate legacy/garbled values. */

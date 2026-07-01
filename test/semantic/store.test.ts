@@ -76,4 +76,49 @@ describe("SqliteIndexStore", () => {
     expect(s.stats("LibB")).toEqual({ books: 0, chunks: 0 });
     s.close();
   });
+
+  it("searchBookFts finds passages by stemmed keyword (EN + RU)", () => {
+    const s = store();
+    s.replaceBook(LIB, { bookId: 1, title: "Mixed", authors: [] }, [
+      chunk("Ownership rules and borrowing", 0, 0),
+      chunk("книга про программирование", 1, 40),
+    ]);
+    // Query stems the same way the body was stemmed: "borrowing" → "borrow".
+    const en = s.searchBookFts(LIB, 1, "borrow", 5);
+    expect(en[0]!.body).toContain("borrowing");
+    // RU inflection: query "книги" and body "книга" both stem to "книг".
+    const ru = s.searchBookFts(LIB, 1, "книг", 5);
+    expect(ru[0]!.body).toContain("книга");
+    s.close();
+  });
+
+  it("searchLibraryFts ranks the best chunk per book by bm25", () => {
+    const s = store();
+    s.replaceBook(LIB, { bookId: 1, title: "Rust", authors: [] }, [chunk("ownership and lifetimes", 0)]);
+    s.replaceBook(LIB, { bookId: 2, title: "Async", authors: [] }, [chunk("async await futures", 1)]);
+    const hits = s.searchLibraryFts(LIB, "async", 10);
+    expect(hits).toHaveLength(1);
+    expect(hits[0]!.bookId).toBe(2);
+    expect(hits[0]!.score).toBeLessThan(0); // bm25 is negative
+    s.close();
+  });
+
+  it("keeps FTS in sync when replaceBook re-indexes a book (delete trigger)", () => {
+    const s = store();
+    s.replaceBook(LIB, { bookId: 1, title: "V1", authors: [] }, [chunk("dijkstra shortest path", 0)]);
+    expect(s.searchBookFts(LIB, 1, "dijkstra", 5)).toHaveLength(1);
+    // Re-index with different text — the old chunk's FTS row must be gone, not orphaned.
+    s.replaceBook(LIB, { bookId: 1, title: "V2", authors: [] }, [chunk("gradient descent", 0)]);
+    expect(s.searchBookFts(LIB, 1, "dijkstra", 5)).toHaveLength(0);
+    expect(s.searchBookFts(LIB, 1, "gradient", 5)).toHaveLength(1);
+    s.close();
+  });
+
+  it("returns [] for a query with no searchable tokens", () => {
+    const s = store();
+    s.replaceBook(LIB, { bookId: 1, title: "T", authors: [] }, [chunk("hello", 0)]);
+    expect(s.searchBookFts(LIB, 1, "   ", 5)).toEqual([]);
+    expect(s.searchLibraryFts(LIB, "", 5)).toEqual([]);
+    s.close();
+  });
 });
