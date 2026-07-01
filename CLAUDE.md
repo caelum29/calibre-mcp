@@ -200,6 +200,27 @@ ISBN→OpenLibrary→GoogleBooks internally, not three chainable tools). Cheap e
   - **Deferred to next increment (all additive, no re-embed):** FTS5 + RU Snowball pre-stem + RRF
     hybrid fusion; token-based chunking; PDF page / EPUB spine locations; worker-thread parallelism;
     full-library build; reranking; `sqlite-vec` fast path.
-- ⏭️ **Next tools:** semantic hybrid fusion (FTS+RRF) as increment 4, then
-  `calibre_find_duplicates`/`calibre_quality_report`/`calibre_recover_metadata`, then `calibre_bulk_update`
-  (destructive → elicitation).
+- ✅ **Increment 4 complete** (2026-07-01, branch `feat/hybrid-search`, PR #1 merged first) —
+  **hybrid retrieval (FTS5 keyword half + RRF fusion)**, additive to the v3 vector schema (the
+  `chunks.body` column was kept for exactly this — **no re-embed**). **147 tests green** (+20);
+  verified live on books 889 (EN) + 187 (RU).
+  - New SDK-free pure modules: `src/semantic/stem.ts` (Node-side pre-stemming — per-token script
+    detect → Snowball `russian`/`english` via **`snowball-stemmers`** ISC pure-JS, ё→е normalize,
+    code/identifiers left raw; identical transform on ingest + query) and `src/semantic/fusion.ts`
+    (RRF, k=60, 1-based ranks, **no score normalization** — sidesteps cosine-[0,1] vs bm25-negative).
+  - `store.ts` (**INDEX_VERSION 1→2**, so v1 indexes are refused → rebuild): added a `body_stem`
+    column + `chunk_fts` FTS5 external-content vtable (`tokenize='unicode61 remove_diacritics 2
+    tokenchars ''-_+#.'''`) + AFTER INSERT/DELETE/UPDATE sync triggers; `searchLibraryFts` (best
+    chunk per book) / `searchBookFts`; bm25 kept **negative** (order by `rank`, never ABS). node:sqlite
+    **ships FTS5** (verified). Pre-stem happens at insert so the trigger populates FTS automatically.
+  - `calibre_semantic_search` gained `mode: hybrid|vector|keyword` (default **hybrid**), both scopes,
+    **no new tools**. hybrid RRF-fuses vector-top-50 + fts-top-50; `keyword` needs **no model** (the
+    embedder-unavailable fallback — error message points to it); confidence signal (`maxScore`/floor)
+    comes from the cosine half only.
+  - **Live-verified:** rebuilt 889+187 (3062 chunks, 84s, 0 failures); RU keyword `"потребители"`
+    matched `"потребителя"` (different case, shared stem `потребител`) — the pre-stemming payoff;
+    EN→RU vector `"consumer group rebalancing"` → RU `ConsumerRebalanceListener` still cross-lingual.
+  - **Still deferred:** token-based chunking; PDF page / EPUB spine locations; worker parallelism;
+    full-library build; reranking; `sqlite-vec`; `enableFts` on `calibre_build_index` (still no-op+note).
+- ⏭️ **Next tools:** `calibre_find_duplicates`/`calibre_quality_report`/`calibre_recover_metadata`,
+  then `calibre_bulk_update` (destructive → elicitation).
