@@ -20,6 +20,8 @@ export interface Config {
   indexDir: string;
   /** Min cosine score below which semantic results are flagged low-confidence. */
   semanticFloor: number;
+  /** Filesystem roots calibre_add_book may import from (path-whitelist, DESIGN §5). */
+  addRoots: string[];
 }
 
 function truthy(v: string | undefined): boolean {
@@ -50,5 +52,19 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       "/Applications/calibre.app/Contents/MacOS/calibredb",
     indexDir: dataDir(env),
     semanticFloor: Number.isFinite(floor) ? floor : 0.78,
+    addRoots: addRoots(env),
   };
+}
+
+/**
+ * Roots calibre_add_book may import files from. Overridable via CALIBRE_MCP_ADD_ROOTS
+ * (`path.delimiter`-separated); defaults to the user's book + download folders. A file
+ * outside every root is refused (symlink-resolved boundary check, DESIGN §5).
+ */
+function addRoots(env: NodeJS.ProcessEnv): string[] {
+  const raw = env.CALIBRE_MCP_ADD_ROOTS;
+  const roots = raw
+    ? raw.split(path.delimiter).filter(Boolean)
+    : [path.join(homedir(), "Documents", "Books"), path.join(homedir(), "Downloads")];
+  return roots.map((r) => path.resolve(r));
 }

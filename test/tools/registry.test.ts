@@ -9,8 +9,13 @@ describe("tool registry", () => {
     const names = allTools.map((t) => t.name);
     expect(new Set(names).size).toBe(names.length);
   });
-  it("marks calibre_update_book as the gated write tool", () => {
+  it("marks exactly the write tools as gated", () => {
     const writes = allTools.filter((t) => t.write).map((t) => t.name);
-    expect(writes).toEqual(["calibre_update_book"]);
+    expect(writes).toEqual([
+      "calibre_update_book",
+      "calibre_bulk_update",
+      "calibre_add_book",
+      "calibre_remove_book",
+    ]);
   });
 });
