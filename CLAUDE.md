@@ -299,3 +299,39 @@ ISBN→OpenLibrary→GoogleBooks internally, not three chainable tools). Cheap e
 - 🎯 **v1 status: 14 of 14 tools built.** Write tools live-verification (bulk preview→apply + revert,
   add→remove round-trip) pending Artem re-running the standalone `--enable-local-write` server; then
   merge `feat/write-tools` → `main`.
+- ✅ **Increment 8 complete — DISTRIBUTION** (2026-07-02, branch `feat/distribution`) — the
+  community-release increment: npm + MCPB packaging + README. **249 tests green** (+5 files).
+  - **De-Artem-ified** (the DISTRIBUTION "what public changes" list): `CALIBRE_MCP_LIBRARY` default
+    now **empty = auto-detect** (`resolveLibraryId()` returns the server's `default_library` from
+    `/ajax/library-info`, cached `#defaultLibId`); **cross-platform calibredb discovery**
+    (`src/calibre/discover.ts` — darwin/win32/linux well-known paths → PATH fallback; explicit env
+    wins even if nonexistent; missing binary = use-time `CalibreNotFoundError` with install hint,
+    never a boot crash); FTS paths + `calibre_ping` now **resolve libId first** (read-path twin of
+    71531d2 — display-name fragments 404); `envStr()` treats empty/whitespace env as unset (**MCPB
+    substitutes `""` for blank optional fields** — also guards `Number("")`→floor-0); version
+    single-sourced from package.json (`src/version.ts`, works from src/dist/tarball/MCPB layouts);
+    onboarding stderr probe (Content Server reachable? libraries? default?); `addRoots` default
+    broadened to `~/Documents` + `~/Downloads`; extract.ts win32 `.exe` + bare-PATH ebook-convert.
+  - **npm (v0.1.0):** repository/keywords/author/`mcpName io.github.caelum29/calibre-mcp` (Registry
+    pre-wiring), `prepublishOnly` build+test, MIT LICENSE file, **`files` now ships
+    `scripts/pymupdf_extract.py`** (real bug: `extract.ts` resolves it `../../scripts/` from dist →
+    was silently missing from the published package). Verified: `npm pack --dry-run` + tarball
+    install + MCP initialize handshake (serverInfo 0.1.0, 15 tools, probe logs).
+  - **MCPB:** `manifest.json` (spec **0.3**, validated w/ `@anthropic-ai/mcpb` 2.1.2) — 6
+    `user_config` fields → env (server_url, library, enable_write, index_dir, calibredb_path,
+    add_roots as **single** directory picker — the spec only defines array-expansion for `args`,
+    env join is undefined); `scripts/pack-mcpb.mjs` (`pnpm pack:mcpb`) stages `build/mcpb` with a
+    real `npm install --omit=dev --omit=optional` (pnpm symlinked node_modules can't be zipped;
+    embeddings excluded per locked opt-in decision) → **3.6 MB `.mcpb`** (12.1 MB unpacked).
+    Smoke-tested the staged bundle in isolation (no parent node_modules): handshake 0.1.0, 11 tools
+    (4 write tools absent w/ enable_write=false), semantic tools fail actionably. `build_index` now
+    puts failure reasons in the text block (not only structuredContent) — the exact no-embeddings
+    path MCPB users hit.
+  - **Docs:** community `README.md` (quick starts for Claude Code/Desktop JSON/MCPB/Cowork, the
+    two-key write gate incl. the GUI-server-is-read-only gotcha, semantic setup, 15-tool table,
+    env reference, troubleshooting), `CHANGELOG.md` (0.1.0), DISTRIBUTION.md status sync.
+  - **Release steps remaining (manual, with Artem):** flip repo public (scan history for secrets
+    first) → tag `v0.1.0` → `npm publish` → `pnpm pack:mcpb` + `gh release create` with the
+    `.mcpb` → install the `.mcpb` in Claude Desktop as the final live check. **Fast-follow:** MCP
+    Registry (`server.json` + `mcp-publisher`; unblocked once npm is live — `mcpName` already
+    shipped) and a GitHub Actions on-tag release workflow.
