@@ -102,7 +102,7 @@ Decisions:
   `{ content: [{ type:"text", text:"Error: …" }], isError: true }` so the LLM can adapt. Only
   resource handlers throw. Wrap every handler body in try/catch.
 - **Error text must be LLM-actionable**, not a stack trace:
-  "Writes are disabled; set `CALIBRE_MCP_WRITE=1`" — not the raw exception. Clients feed
+  "Writes are disabled; set `CALIBRE_MCP_ENABLE_WRITE=1`" — not the raw exception. Clients feed
   `error.message` back to the model (Ch. 8).
 - **Don't leak filesystem paths in errors** — full detail to stderr, generic message to the LLM.
 - **Timeouts + cancellation (~30s)** around every calibredb subprocess and Content-Server HTTP
@@ -117,7 +117,7 @@ Decisions:
 ## 4. Write-gating & confirmation (our hard safety constraint)
 
 - **Default read-only.** `getDb(readOnly = true)`-style least privilege: every data path defaults
-  to read; flip to write only inside write tools, only behind the `CALIBRE_MCP_WRITE` env flag.
+  to read; flip to write only inside write tools, only behind the `CALIBRE_MCP_ENABLE_WRITE` env flag.
 - **Disable write tools when the flag is off** (Ch. 7 `tool.disable()/enable()` pattern). Cleaner
   than runtime rejects — the LLM never sees a tool it can't use. A static boot-time check is
   enough; we don't need the book's dynamic login flow.
@@ -129,6 +129,13 @@ Decisions:
   (`elicitation/create`, check `action === 'accept'`) before mutating N books, instead of trusting
   LLM-supplied values. This is the proper backing for our **preview-first** rule (vs FaceDeer's
   unsafe "defaults to ALL books").
+  > **SHIPPED (v1, 2026-07-01) — in-band `preview`/`confirm`, NOT MCP elicitation.** Handlers are
+  > SDK-free by design (§7), and true `elicitation/create` needs the SDK at the seam, which would
+  > leak an SDK concept into `ToolDeps`. So v1 backs preview-first with plain params instead:
+  > `calibre_bulk_update` defaults `preview=true` (computes the per-book diff, writes nothing);
+  > `calibre_remove_book` requires `confirm=true` else returns a dry-run of what would be deleted.
+  > Real `elicitation/create` is deferred to LATER (a `deps.elicit?` callback passed from server.ts)
+  > if/when host support + a UX win justify crossing the seam.
 - **Never race the GUI on writes** (CLAUDE.md ground truth). Open access per-call, release in
   `finally`, never hold a handle across turns.
 - **Notify on state change** — if books are exposed as resources, fire
