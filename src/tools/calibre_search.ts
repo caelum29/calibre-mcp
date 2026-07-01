@@ -6,7 +6,7 @@
 // FTS snippets are fenced as untrusted book text.
 
 import { z } from "zod";
-import { CalibreCliError } from "../domain/errors.js";
+import { CalibreCliError, CalibreNotFoundError } from "../domain/errors.js";
 import { BookId, CursorParam, limitParam } from "./coerce.js";
 import { decodeCursor, encodeCursor } from "./cursor.js";
 import { defineTool } from "./define.js";
@@ -78,11 +78,14 @@ async function metaLibraryScope(args: SearchArgs, deps: ToolDeps): Promise<ToolR
 
 /** scope=library, mode=fts — group FTS hits by book → resource_links + fenced snippets. */
 async function ftsLibraryScope(args: SearchArgs, deps: ToolDeps): Promise<ToolResult> {
+  // calibredb's --with-library fragment needs the library ID, not the display name
+  // (the display form 404s) — resolve first, same as the write path (commit 71531d2).
+  const libId = await deps.content.resolveLibraryId(args.library);
   const hits = await deps.calibre.ftsSearch(args.query, {
     snippets: true,
     matchStartMarker: FTS_START,
     matchEndMarker: FTS_END,
-    library: args.library,
+    library: libId,
   });
 
   if (hits.length === 0) {
@@ -139,12 +142,13 @@ async function ftsLibraryScope(args: SearchArgs, deps: ToolDeps): Promise<ToolRe
 
 /** scope=book — full-text search within one book; returns fenced in-book snippets. */
 async function ftsBookScope(args: SearchArgs, deps: ToolDeps, bookId: number): Promise<ToolResult> {
+  const libId = await deps.content.resolveLibraryId(args.library);
   const hits = await deps.calibre.ftsSearch(args.query, {
     restrictToIds: [bookId],
     snippets: true,
     matchStartMarker: FTS_START,
     matchEndMarker: FTS_END,
-    library: args.library,
+    library: libId,
   });
   const snippets = hits.map((h) => h.snippet).filter((s): s is string => Boolean(s));
 
@@ -224,6 +228,8 @@ export const searchTool = defineTool({
       if (args.mode === "fts") return await ftsLibraryScope(args, deps);
       return await metaLibraryScope(args, deps);
     } catch (err) {
+      // A missing calibredb binary carries its own install hint — don't blame the index.
+      if (err instanceof CalibreNotFoundError) return toolError(err.message);
       // calibredb is only invoked on the FTS paths, so any CLI failure here means the
       // full-text index isn't ready (snippet requests hang/time out without an index).
       if (err instanceof CalibreCliError) {

@@ -30,6 +30,8 @@ function deps(opts: FakeOpts = {}): ToolDeps {
       return opts.page ?? page();
     },
     booksByIds: async (ids: number[]) => new Map(ids.map((id) => [id, book(id)])),
+    // FTS paths resolve the libId before shelling out (display-name fragments 404).
+    resolveLibraryId: async (display?: string) => display || "Programming_Books",
   };
   const calibre = {
     ftsSearch: async (): Promise<FtsHit[]> => opts.ftsHits ?? [],

@@ -27,3 +27,16 @@ export class CalibreCliError extends Error {
     this.name = "CalibreCliError";
   }
 }
+
+/**
+ * The calibredb binary itself is missing (spawn ENOENT). Distinct subclass so tool
+ * handlers surface the install hint instead of misclassifying it (e.g. as FTS-not-ready).
+ * The message deliberately names the probed path — it's the user's own config, and
+ * "install Calibre or set CALIBRE_MCP_CALIBREDB_PATH" is the whole point of the error.
+ */
+export class CalibreNotFoundError extends CalibreCliError {
+  constructor(message: string) {
+    super(null, message);
+    this.name = "CalibreNotFoundError";
+  }
+}

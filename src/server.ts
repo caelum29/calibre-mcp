@@ -15,6 +15,7 @@ import { allTools } from "./tools/registry.js";
 import { toolError } from "./tools/result.js";
 import type { ToolDeps } from "./tools/types.js";
 import { log } from "./logging.js";
+import { VERSION } from "./version.js";
 
 export function buildServer(): McpServer {
   const config = loadConfig();
@@ -35,8 +36,26 @@ export function buildServer(): McpServer {
     .then((r) => log.info("extractor backends", r))
     .catch((e) => log.warn("extractor detection failed", { msg: String(e) }));
 
+  // Onboarding probe (stderr only): tell a first-time user whether the Content Server
+  // is up before the first tool call fails. Also warms the library-map cache.
+  void deps.content
+    .libraryInfo()
+    .then((info) =>
+      log.info("content server reachable", {
+        url: config.serverUrl,
+        libraries: Object.keys(info.libraryMap).length,
+        default: info.defaultLibrary,
+      }),
+    )
+    .catch(() =>
+      log.warn(
+        `Calibre Content Server not reachable at ${config.serverUrl} — start it in ` +
+          "Calibre (Connect/share → Start Content server) or set CALIBRE_MCP_SERVER_URL",
+      ),
+    );
+
   const server = new McpServer(
-    { name: "calibre-mcp", version: "0.0.0" },
+    { name: "calibre-mcp", version: VERSION },
     { capabilities: { tools: {}, resources: {} } },
   );
 
@@ -99,7 +118,9 @@ export function buildServer(): McpServer {
     },
     async () => {
       try {
-        const out = await deps.calibre.listLibraries();
+        // Resolve the libId first — --with-library needs the ID, not the display name.
+        const libId = await deps.content.resolveLibraryId();
+        const out = await deps.calibre.listLibraries(libId);
         return {
           content: [{ type: "text", text: `ok\n${out.slice(0, 500)}` }],
           structuredContent: { ok: true, serverUrl: config.serverUrl },

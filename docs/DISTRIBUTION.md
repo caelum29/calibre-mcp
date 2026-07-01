@@ -1,6 +1,13 @@
 # DISTRIBUTION.md — Publishing & onboarding (scope of record)
 
 > **Status:** Distribution decisions LOCKED 2026-06-27 (Artem). Builds on DESIGN.md §8 packaging note.
+> **SHIPPED 2026-07-02** (branch `feat/distribution`): v0.1.0 packaging — npm metadata + LICENSE +
+> `mcpName`, MCPB `manifest.json` (spec 0.3) + `pnpm pack:mcpb` (3.6 MB bundle, embeddings excluded
+> per decision 2), community README + CHANGELOG, library auto-detect + cross-platform calibredb
+> discovery + `envStr` empty-string guards (MCPB blank-field safety), onboarding stderr probe.
+> Resolved open params: `add_roots` = single directory picker (MCPB array→env join is undefined);
+> bundle size is a non-issue at 3.6 MB. Remaining: npm publish + GitHub release (manual, after repo
+> goes public); Registry + CI = fast-follow.
 > **Core premise:** this is a **locally-run** server — every user runs it on their own machine
 > against their **own** Calibre library. NOT a hosted/shared service (each user's library + Content
 > Server live on their own box). "Public" = publish an easy-to-install package, not stand up a server.
