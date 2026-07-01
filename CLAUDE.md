@@ -222,5 +222,57 @@ ISBN→OpenLibrary→GoogleBooks internally, not three chainable tools). Cheap e
     EN→RU vector `"consumer group rebalancing"` → RU `ConsumerRebalanceListener` still cross-lingual.
   - **Still deferred:** token-based chunking; PDF page / EPUB spine locations; worker parallelism;
     full-library build; reranking; `sqlite-vec`; `enableFts` on `calibre_build_index` (still no-op+note).
-- ⏭️ **Next tools:** `calibre_find_duplicates`/`calibre_quality_report`/`calibre_recover_metadata`,
-  then `calibre_bulk_update` (destructive → elicitation).
+- ✅ **Increment 5 complete** (2026-07-01, branch `feat/curation-tools`, PR #3 merged) — the
+  **curation read pair**, clean-room TS reimplementations of the GPL Find-Duplicates / Quality-Check
+  *algorithms* (reimplemented from documented behavior, not ported). READ-only, no network. **188 tests
+  green**; live-verified against `Programming_Books` (~801 books).
+  - New pure domain `src/domain/curation/`: `normalize.ts` (`identicalKey`/`similarKey` grouping keys,
+    `authorToAuthorSort` heuristic), `duplicates.ts` (`findDuplicateGroups`, `mergeSafety` ∈ [0,1] —
+    conflicting-ISBN/language/format deductions, `compareBooks` + `keep` recommendation), `quality.ts`
+    (5 rules: `missing_metadata`, `raw_filename_title`, `isbn_invalid`, `author_sort_mismatch`,
+    `series_gaps`; `isbn.ts` checksum validators reused). Shared `src/tools/select-books.ts`
+    (`selectBooks` — ids/query → Book[], `MAX_BOOKS`=2000 cap, empty-query = all books).
+  - `calibre_find_duplicates` (#8, R) — `mode=identical|similar|compare`; grouped resource_links +
+    fenced snippets + `mergeSafety`; `compare` needs ≥2 ids → field diff; `binary` (SHA) deferred+note.
+  - `calibre_quality_report` (#9, R) — per-check counts + paginated fenced issue lines; `readability`
+    (Flesch/Fog) deferred+note. Both `readOnlyHint+openWorldHint`, no write flag.
+  - **Live-verified:** quality_report flagged **320 issues** (missing_metadata 204, author_sort_mismatch
+    111, raw_filename_title 5 — caught `795731065`, `442955403`); find_duplicates `similar` found 22 real
+    groups (edition/subtitle variants). author_sort_mismatch is chatty (heuristic, info-severity — safe).
+- ✅ **Increment 6 complete** (2026-07-01, branch `feat/recover-metadata`, PR #4 merged) — the
+  **raw-filename fix**. `calibre_recover_metadata` (#10, R) proposes real metadata for missing/raw-filename
+  books via Open Library → Google Books; **READ/preview-only** — returns a ready-to-apply `changes` object
+  for `calibre_update_book`, never writes. **210 tests green** (+22); live-verified.
+  - New pure domain `src/domain/enrich/`: `extract-isbn.ts` (clean-room scraper — labeled + bare runs,
+    checksum-filtered via `curation/isbn.ts`), `filename-guess.ts` (`looksLikeRawFilename`/`isUsableTitle`),
+    `proposal.ts` (`buildProposal` — fills only **missing/weak** fields, never clobbers, emits only
+    update_book-allowlisted keys). Isolated providers `src/enrich/`: neutral `fetchJson` (NOT the CS-branded
+    `getJson`) + `openlibrary.ts`/`googlebooks.ts`, **return-not-throw** so a dead/rate-limited provider
+    degrades to the next. `ToolDeps.providers?` seam (defaulted in-handler, injectable for tests).
+  - Lookup chain: existing valid ISBN → ISBN scraped from book text (first 20k chars via `extractor`) →
+    usable title (+first author) → else graceful "nothing to look up".
+  - **Live-verified:** book **584** `"442955403"` → scraped ISBN `9789388511773` → OL →
+    *Fundamentals of Software Engineering* (title/authors/publisher/isbn); graceful refusals on #116/#658;
+    OL title-search live; **Google Books hit HTTP 429 (daily quota)** → caught → degrades to OL (return-not-throw
+    validated live). Fixed a real bug: GB term separator was a literal `+` (→`%2B`), now a space.
+  - **Deferred (additive):** `fetch-ebook-metadata`/`ebook-meta` CLI engines, cover download, batch/bulk
+    recover, Amazon/ASIN.
+- 🎯 **v1 status: 11 of 14 tools built + merged to `main`.** Remaining = the 3 gated **write** tools:
+  `calibre_bulk_update` (#12, `ids`/`query` required, `preview=true` default → elicitation for destructive),
+  `calibre_add_book` (#13, path whitelist), `calibre_remove_book` (#14, `confirm` required).
+- ✅ **Write path VERIFIED live** (2026-07-01) — the last v1 unknown resolved. Ran a standalone
+  `calibre-server --enable-local-write --port 8080 "…/Programming Books"` (the GUI-embedded server does
+  **not** expose local-write; quit the GUI, run standalone — it still serves both libs via calibre's known-
+  library config). Proved `calibre_update_book` end-to-end: a reversible marker-tag write (persisted on
+  read-back, reverted clean) **and** applied a real `calibre_recover_metadata` proposal — book 584
+  `"442955403"` → *Fundamentals of Software Engineering* / authors / BPB Publications / isbn 9789388511773.
+  The `-32602` argv-array defense held (spaces, `authors` `&`-join, `identifiers:isbn:…` all clean).
+  - **Root-cause bug fixed (was the real blocker, NOT a Forbidden):** `calibredb --with-library` needs the
+    library **ID** (`Programming_Books`), not the display name (`Programming Books`) — the display form 404s
+    (`Not Found`). `calibre_update_book` now resolves display→libId via `content.resolveLibraryId` before the
+    calibredb call. **This is the required pattern for all write tools** — resolve the libId, pass it as
+    `calibredb` `opts.library`. (Earlier "refused as expected" was likely this 404, not a local-write refusal.)
+- 🎯 **v1 status: 11 of 14 tools built + merged to `main`; write path proven.** Remaining = the 3 gated
+  **write** tools: `calibre_bulk_update` (#12, `ids`/`query` required, `preview=true` default → elicitation for
+  destructive), `calibre_add_book` (#13, path whitelist), `calibre_remove_book` (#14, `confirm` required).
+  Each must resolve libId→calibredb per the pattern above and needs `--enable-local-write` + `CALIBRE_MCP_ENABLE_WRITE=1`.

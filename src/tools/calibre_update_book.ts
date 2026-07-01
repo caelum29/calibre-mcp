@@ -80,9 +80,13 @@ export const updateBookTool = defineTool({
 
       const before = await deps.content.getBook(numericId, args.library);
 
+      // calibredb --with-library needs the library ID (e.g. "Programming_Books"), not the
+      // display name — resolve it, or the routed write 404s ("Not Found") against the server.
+      const libId = await deps.content.resolveLibraryId(args.library);
+
       try {
         await deps.calibre.calibredb(buildSetMetadataArgs(numericId, changes), {
-          library: args.library,
+          library: libId,
         });
       } catch (err) {
         if (err instanceof CalibreCliError && WRITE_REFUSED.test(err.stderr ?? "")) {
