@@ -8,6 +8,8 @@ import { getBookTool } from "./calibre_get_book.js";
 import { getContentTool } from "./calibre_get_content.js";
 import { listCategoriesTool } from "./calibre_list_categories.js";
 import { updateBookTool } from "./calibre_update_book.js";
+import { semanticSearchTool } from "./calibre_semantic_search.js";
+import { buildIndexTool } from "./calibre_build_index.js";
 
 export { defineTool } from "./define.js";
 
@@ -18,4 +20,6 @@ export const allTools: AnyToolDescriptor[] = [
   getContentTool,
   listCategoriesTool,
   updateBookTool,
+  semanticSearchTool,
+  buildIndexTool,
 ];

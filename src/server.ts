@@ -8,6 +8,8 @@ import { loadConfig } from "./config.js";
 import { CalibreClient } from "./calibre/client.js";
 import { ContentServerClient } from "./calibre/content-server.js";
 import { Extractor } from "./calibre/extract.js";
+import { TransformersEmbedder } from "./semantic/embedder.js";
+import { SqliteIndexStore } from "./semantic/store.js";
 import { readBookResource } from "./resources/book.js";
 import { allTools } from "./tools/registry.js";
 import { toolError } from "./tools/result.js";
@@ -21,6 +23,8 @@ export function buildServer(): McpServer {
     content: new ContentServerClient(config),
     calibre: new CalibreClient(config),
     extractor: new Extractor(config),
+    embedder: new TransformersEmbedder(config), // lazy: no model load until first embed
+    index: new SqliteIndexStore(config), // lazy: no db file until first index op
     log,
   };
 
