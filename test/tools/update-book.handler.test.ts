@@ -27,6 +27,8 @@ function deps(opts: FakeOpts = {}): ToolDeps {
   const seq = [...(opts.books ?? [book(), book({ tags: ["new"] })])];
   const content = {
     getBook: async (): Promise<Book> => seq.shift() ?? book(),
+    // Write path resolves display name → libId before routing calibredb.
+    resolveLibraryId: async (name?: string): Promise<string> => name ?? "Programming_Books",
   };
   const calibre = {
     calibredb: opts.calibredb ?? (async () => ({ stdout: "", stderr: "" })),
@@ -46,7 +48,7 @@ describe("calibre_update_book handler", () => {
     await updateBookTool.handler({ id: 658, changes: { tags: ["new"] } }, deps({ calibredb: spy }));
     expect(spy).toHaveBeenCalledWith(
       ["set_metadata", "658", "--field", "tags:new"],
-      expect.objectContaining({ library: undefined }),
+      expect.objectContaining({ library: "Programming_Books" }),
     );
   });
 
