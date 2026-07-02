@@ -4,6 +4,18 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.4] — 2026-07-02
+
+### Fixed
+
+- `calibre_add_book` no longer hangs. Adding a book routed through the Content Server
+  spawned a Calibre import worker whose orphaned process kept the library write lock,
+  hanging the tool (~4 min) and stalling other tools' reads afterward. Subprocesses are
+  now run in their own process group and force-killed as a group on timeout, so nothing
+  is left holding the lock. The same hardening applies to text-extraction conversions
+  (`ebook-convert`), and `calibre_add_book` now allows up to 120s for genuinely slow
+  imports/conversions.
+
 ## [0.1.3] — 2026-07-02
 
 Hardening pass from an integration smoke-test run — no breaking changes.
