@@ -4,6 +4,32 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.3] — 2026-07-02
+
+Hardening pass from an integration smoke-test run — no breaking changes.
+
+### Added
+
+- `calibre_build_index` now supports a **keyword-only** index build path, so building
+  a search index no longer requires the optional `@huggingface/transformers`
+  (embeddings) dependency to be installed.
+
+### Fixed
+
+- `calibre_semantic_search` now gives honest, actionable messaging in keyword-only
+  mode instead of implying vector/semantic results are available.
+- `calibre_recover_metadata`'s ISBN text-scan is now bounded, so it can no longer hang
+  the stdio server on pathological book text.
+- Resolved a hang in `calibre_find_duplicates` / `calibre_quality_report` on large
+  libraries.
+
+### Performance
+
+- `select-books` now fetches `/ajax/books` in parallel batches (instead of serially)
+  and logs per-stage timing to stderr, speeding up any tool that selects books by
+  query (`calibre_bulk_update`, `calibre_find_duplicates`, `calibre_quality_report`,
+  `calibre_build_index`).
+
 ## [0.1.2] — 2026-07-02
 
 ### Fixed
