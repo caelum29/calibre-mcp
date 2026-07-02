@@ -116,6 +116,14 @@ book (`scope: book`, returns located passages). Retrieval is **hybrid** by defau
 vector cosine + stemmed keyword FTS, fused with reciprocal rank fusion. Queries in one
 language find passages in another (EN⇄RU verified).
 
+**No embeddings? Keyword search still works.** `mode: keyword` uses no model *at query
+time*, but it needs an index. If the embedding model isn’t installed (the default MCPB
+bundle ships without it), build a **keyword-only** index — `calibre_build_index` with
+`keywordOnly: true`, or it happens automatically when the model is absent — and search with
+`mode: keyword`. That path has zero ML dependencies. `mode: vector` then errors actionably
+and `mode: hybrid` degrades to keyword (with a note); rebuild with the model installed
+(`force: true`) to add semantic ranking.
+
 ## Tools
 
 | Tool | Access | What it does |
@@ -126,7 +134,7 @@ language find passages in another (EN⇄RU verified).
 | `calibre_list_categories` | read | Browse tags, authors, series, publishers, custom columns with counts |
 | `calibre_list_libraries` | read | List the libraries the Content Server exposes (+ which is default) |
 | `calibre_semantic_search` | read | Meaning-based search; `mode: hybrid\|vector\|keyword`, library- or book-scoped |
-| `calibre_build_index` | read* | Build/refresh the local semantic index for selected books (writes only a local index file) |
+| `calibre_build_index` | read* | Build/refresh the local semantic index for selected books (writes only a local index file); `keywordOnly: true` builds a model-free keyword index |
 | `calibre_find_duplicates` | read | Duplicate groups with merge-safety scores; `mode: compare` diffs two books |
 | `calibre_quality_report` | read | Audit: missing metadata, raw-filename titles, invalid ISBNs, author-sort issues, series gaps |
 | `calibre_recover_metadata` | read | Propose real metadata via Open Library → Google Books; **preview-only**, apply with `calibre_update_book` |
@@ -167,7 +175,8 @@ works. Environment variables (the Desktop bundle exposes the same settings as UI
   let indexing finish (it can take a while on large libraries).
 - **“embedding model unavailable”** — the optional `@huggingface/transformers` package
   isn’t installed (expected with the MCPB bundle). Use the npx install, or
-  `npm install @huggingface/transformers` next to the server.
+  `npm install @huggingface/transformers` next to the server. To search without it, build a
+  keyword-only index (`calibre_build_index keywordOnly=true`) and use `mode: keyword`.
 - **`calibredb` not found** — install Calibre, or set `CALIBRE_MCP_CALIBREDB_PATH` to
   the binary (macOS: `/Applications/calibre.app/Contents/MacOS/calibredb`).
 - **A PDF extracts to empty text** — it’s a scanned/image PDF; Calibre has no OCR, and

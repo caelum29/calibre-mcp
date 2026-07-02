@@ -20,7 +20,8 @@ export interface IndexedChunk {
   charStart: number;
   charEnd: number;
   body: string;
-  vector: Float32Array;
+  /** The chunk's embedding, or undefined for a keyword-only build (FTS-searchable, no vector). */
+  vector?: Float32Array;
 }
 
 /** Book identity cached in the index so results/resource_links work without a live fetch. */
@@ -54,6 +55,8 @@ export interface BookHit {
 export interface IndexStore {
   /** Cheap, side-effect-free check for an existing index (no db file is created). */
   hasIndex(libraryId: string): boolean;
+  /** True if the index holds any embedding vectors (false = a keyword-only build). */
+  hasVectors(libraryId: string): boolean;
   /** True if the book is indexed; when `lastModified` is given, also that it's up to date. */
   isBookIndexed(libraryId: string, bookId: number, lastModified?: string): boolean;
   /** Replace all of a book's chunks/embeddings atomically (idempotent re-index). */
@@ -132,6 +135,12 @@ export class SqliteIndexStore implements IndexStore {
     return existsSync(this.#file(libraryId));
   }
 
+  hasVectors(libraryId: string): boolean {
+    if (!this.hasIndex(libraryId)) return false;
+    const db = this.#db(libraryId);
+    return db.prepare("SELECT 1 FROM embeddings LIMIT 1").get() !== undefined;
+  }
+
   isBookIndexed(libraryId: string, bookId: number, lastModified?: string): boolean {
     const db = this.#db(libraryId);
     const row = db.prepare("SELECT last_modified FROM books WHERE book_id = ?").get(bookId) as
@@ -174,7 +183,9 @@ export class SqliteIndexStore implements IndexStore {
           c.body,
           stemText(c.body),
         );
-        insEmb.run(Number(lastInsertRowid), meta.bookId, encodeVector(c.vector));
+        // A keyword-only build has no vector — the chunk is still FTS-searchable via the
+        // trigger above; we just skip the embeddings row (vector search naturally excludes it).
+        if (c.vector) insEmb.run(Number(lastInsertRowid), meta.bookId, encodeVector(c.vector));
       }
       db.exec("COMMIT");
     } catch (err) {
