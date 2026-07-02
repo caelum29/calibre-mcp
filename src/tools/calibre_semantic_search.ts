@@ -3,8 +3,10 @@
 //   scope=library : rank BOOKS by their best-matching passage → resource_links + scores
 //   scope=book    : rank PASSAGES within one book → fenced excerpts with char locations
 //   mode=hybrid   : RRF-fuse the vector (cosine) and keyword (FTS5 bm25) halves — the default,
-//     best recall; mode=vector = semantic only; mode=keyword = FTS only (needs no model).
+//     best recall; mode=vector = semantic only; mode=keyword = FTS only (no model at query
+//     time — but still needs an index; a keyword-only build serves it with zero ML deps).
 // Requires an index built by calibre_build_index; returns an actionable error otherwise.
+// A keyword-only index has no vectors: mode=vector errors, mode=hybrid degrades to keyword.
 // Snippets are untrusted book text → fenced. Cosine below config.semanticFloor → low-confidence.
 
 import { z } from "zod";
@@ -27,7 +29,7 @@ export const semanticSearchTool = defineTool({
   name: "calibre_semantic_search",
   title: "Semantic search",
   description:
-    "Meaning-based search over the embeddings index. scope=library ranks books; scope=book (needs bookId) ranks passages within one book. mode=hybrid (default) fuses semantic + keyword matches; mode=vector is semantic-only; mode=keyword is exact keyword/FTS (no model needed). Build the index first with calibre_build_index.",
+    "Meaning-based search over the local index. scope=library ranks books; scope=book (needs bookId) ranks passages within one book. mode=hybrid (default) fuses semantic + keyword matches; mode=vector is semantic-only; mode=keyword is exact keyword/FTS over an already-built index (no model at query time). All modes need an index built by calibre_build_index (keyword mode works even with a keyword-only, model-free index).",
   inputSchema: {
     query: z.string().min(1).max(512),
     scope: z.enum(["library", "book"]).default("library"),
@@ -43,6 +45,7 @@ export const semanticSearchTool = defineTool({
     count: z.number().optional(),
     maxScore: z.number().optional(),
     lowConfidence: z.boolean().optional(),
+    note: z.string().optional(),
     bookIds: z.array(z.number()).optional(),
   },
   annotations: { readOnlyHint: true, openWorldHint: false },
@@ -52,25 +55,41 @@ export const semanticSearchTool = defineTool({
 
       if (!deps.index.hasIndex(libraryId)) {
         return toolError(
-          "No semantic index for this library yet. Run calibre_build_index with a bookId, ids, or query first.",
+          "No semantic index for this library yet. Run calibre_build_index with a bookId, ids, or query first (add keywordOnly=true to build a model-free keyword index).",
         );
       }
 
-      if (args.scope === "book") {
-        if (args.bookId === undefined) {
+      // A keyword-only index (built without the embedding model) has no vectors: vector mode
+      // can't run, and hybrid degrades to keyword (degrading beats erroring for the default).
+      let mode = args.mode;
+      let note: string | undefined;
+      if ((mode === "vector" || mode === "hybrid") && !deps.index.hasVectors(libraryId)) {
+        if (mode === "vector") {
+          return toolError(
+            'This index was built keyword-only (no embeddings), so vector search is unavailable. Rebuild with the model — install @huggingface/transformers, then calibre_build_index { force: true } — or use mode:"keyword".',
+          );
+        }
+        mode = "keyword";
+        note =
+          "Index built keyword-only (no embeddings) — showing keyword (FTS) matches. Rebuild with the model (calibre_build_index force=true) for semantic ranking.";
+      }
+      const effArgs: Args = { ...args, mode };
+
+      if (effArgs.scope === "book") {
+        if (effArgs.bookId === undefined) {
           return toolError("scope=book requires bookId (the book to search within).");
         }
-        const numericId = await resolveNumericId(deps, args.bookId, args.library);
-        if (numericId === undefined) return toolError(`No book with id/uuid ${args.bookId}`);
+        const numericId = await resolveNumericId(deps, effArgs.bookId, effArgs.library);
+        if (numericId === undefined) return toolError(`No book with id/uuid ${effArgs.bookId}`);
         if (!deps.index.isBookIndexed(libraryId, numericId)) {
           return toolError(
             `Book ${numericId} is not indexed. Run calibre_build_index { bookId: ${numericId} } first.`,
           );
         }
-        return await bookScope(args, deps, libraryId, numericId);
+        return await bookScope(effArgs, deps, libraryId, numericId, note);
       }
 
-      return await libraryScope(args, deps, libraryId);
+      return await libraryScope(effArgs, deps, libraryId, note);
     } catch (err) {
       return mapError(err);
     }
@@ -98,20 +117,21 @@ interface RankedPassage {
 }
 
 /** scope=library — rank books; emit resource_links + fenced snippets. */
-async function libraryScope(args: Args, deps: ToolDeps, libraryId: string) {
+async function libraryScope(args: Args, deps: ToolDeps, libraryId: string, note?: string) {
   const ranked = await rankBooks(args, deps, libraryId);
   if (ranked.length === 0) {
-    return toolOk([{ type: "text", text: `No matches for "${args.query}".` }], {
+    return toolOk([{ type: "text", text: withNote(`No matches for "${args.query}".`, note) }], {
       scope: "library",
       mode: args.mode,
       count: 0,
+      note,
       bookIds: [],
     });
   }
 
   const { maxScore, lowConfidence } = confidence(ranked, deps);
   const blocks: ContentBlock[] = [
-    { type: "text", text: header("book", ranked.length, args, maxScore, lowConfidence) },
+    { type: "text", text: withNote(header("book", ranked.length, args, maxScore, lowConfidence), note) },
   ];
   for (const r of ranked) {
     const link = bookResourceLink({ id: r.hit.bookId, title: r.hit.title, authors: r.hit.authors });
@@ -129,26 +149,33 @@ async function libraryScope(args: Args, deps: ToolDeps, libraryId: string) {
     count: ranked.length,
     maxScore,
     lowConfidence,
+    note,
     bookIds: ranked.map((r) => r.hit.bookId),
   });
 }
 
 /** scope=book — rank passages within one book; emit fenced excerpts with char spans. */
-async function bookScope(args: Args, deps: ToolDeps, libraryId: string, bookId: number) {
+async function bookScope(args: Args, deps: ToolDeps, libraryId: string, bookId: number, note?: string) {
   const ranked = await rankPassages(args, deps, libraryId, bookId);
   if (ranked.length === 0) {
-    return toolOk([{ type: "text", text: `No passages in book ${bookId} matched "${args.query}".` }], {
-      scope: "book",
-      mode: args.mode,
-      bookId,
-      count: 0,
-    });
+    return toolOk(
+      [{ type: "text", text: withNote(`No passages in book ${bookId} matched "${args.query}".`, note) }],
+      {
+        scope: "book",
+        mode: args.mode,
+        bookId,
+        count: 0,
+        note,
+      },
+    );
   }
 
   const { maxScore, lowConfidence } = confidence(ranked, deps);
-  const head =
+  const head = withNote(
     header("passage", ranked.length, args, maxScore, lowConfidence) +
-    ` Re-read any passage via calibre_get_content (cursor at its char offset).`;
+      ` Re-read any passage via calibre_get_content (cursor at its char offset).`,
+    note,
+  );
 
   const blocks: ContentBlock[] = [{ type: "text", text: head }];
   for (const r of ranked) {
@@ -158,7 +185,20 @@ async function bookScope(args: Args, deps: ToolDeps, libraryId: string, bookId: 
     });
   }
 
-  return toolOk(blocks, { scope: "book", mode: args.mode, bookId, count: ranked.length, maxScore, lowConfidence });
+  return toolOk(blocks, {
+    scope: "book",
+    mode: args.mode,
+    bookId,
+    count: ranked.length,
+    maxScore,
+    lowConfidence,
+    note,
+  });
+}
+
+/** Prepend a degrade/advisory note to a header block (kept in the text so all clients see it). */
+function withNote(text: string, note?: string): string {
+  return note ? `${note}\n${text}` : text;
 }
 
 /** Rank books per mode. hybrid RRF-fuses the two halves; vector/keyword use one half each. */
@@ -245,7 +285,7 @@ function mapError(err: unknown) {
   const m = err instanceof Error ? err.message : String(err);
   if (m === "EMBEDDER_UNAVAILABLE") {
     return toolError(
-      "Semantic (vector/hybrid) search needs the embedding model. Install it (pnpm add @huggingface/transformers), or use mode:\"keyword\" which needs no model.",
+      'Semantic (vector/hybrid) search needs the embedding model. Install it (pnpm add @huggingface/transformers), or build a keyword-only index (calibre_build_index keywordOnly=true) and search with mode:"keyword" — which needs no model.',
     );
   }
   if (m.startsWith("INDEX_INCOMPATIBLE")) {

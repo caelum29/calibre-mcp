@@ -67,6 +67,18 @@ function preloaded(): SqliteIndexStore {
   return s;
 }
 
+/** Store with two books indexed keyword-only (no vectors) — the model-free build result. */
+function keywordOnly(): SqliteIndexStore {
+  const s = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
+  s.replaceBook(LIB, { bookId: 1, title: "Book One", authors: ["A"] }, [
+    { charStart: 0, charEnd: 15, body: "ownership rules" }, // no vector
+  ]);
+  s.replaceBook(LIB, { bookId: 2, title: "Book Two", authors: ["B"] }, [
+    { charStart: 5, charEnd: 20, body: "async passage here" }, // no vector
+  ]);
+  return s;
+}
+
 const args = (over: Record<string, unknown> = {}) => ({
   query: "ownership",
   scope: "library" as const,
@@ -142,6 +154,37 @@ describe("calibre_semantic_search handler", () => {
     const r = await semanticSearchTool.handler(args(), deps(preloaded(), throwingEmbedder));
     expect(r.isError).toBe(true);
     expect((r.content[0] as { text: string }).text).toContain('mode:"keyword"');
+  });
+
+  it("keyword mode works on a keyword-only (model-free) index", async () => {
+    const r = await semanticSearchTool.handler(
+      args({ query: "async", mode: "keyword" }),
+      deps(keywordOnly(), throwingEmbedder),
+    );
+    expect(r.isError).toBeFalsy();
+    expect(r.structuredContent?.bookIds as number[]).toEqual([2]);
+  });
+
+  it("vector mode errors actionably on a keyword-only index", async () => {
+    const r = await semanticSearchTool.handler(
+      args({ mode: "vector" }),
+      deps(keywordOnly(), throwingEmbedder),
+    );
+    expect(r.isError).toBe(true);
+    const text = (r.content[0] as { text: string }).text;
+    expect(text).toContain("keyword-only");
+    expect(text).toContain("force");
+  });
+
+  it("hybrid degrades to keyword (with a note) on a keyword-only index — no model touched", async () => {
+    const r = await semanticSearchTool.handler(
+      args({ query: "async", mode: "hybrid" }),
+      deps(keywordOnly(), throwingEmbedder), // throwing embedder proves the model is never called
+    );
+    expect(r.isError).toBeFalsy();
+    expect(r.structuredContent?.bookIds as number[]).toEqual([2]);
+    expect(r.structuredContent?.note as string).toContain("keyword-only");
+    expect((r.content[0] as { text: string }).text).toContain("keyword-only");
   });
 
   it("flags low confidence when the top score is below the floor", async () => {
