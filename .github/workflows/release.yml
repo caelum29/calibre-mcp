@@ -20,11 +20,12 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: 10
+      # No registry-url here: it writes an .npmrc _authToken placeholder that overrides
+      # the OIDC trusted-publishing flow with an empty token (PUT then 404s).
       - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: pnpm
-          registry-url: "https://registry.npmjs.org"
 
       - name: Check tag matches package.json version
         run: |
