@@ -14,6 +14,11 @@ dist-mcpb/
 *.sqlite-journal
 data/
 
+# local dev only — personal Claude Code config/skills and packaging helpers,
+# not part of the public repo
+.claude/
+Makefile
+
 # editor / OS
 .DS_Store
 .idea/*
