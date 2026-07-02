@@ -4,6 +4,17 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] — 2026-07-02
+
+### Fixed
+
+- MCPB: a blank optional config field with no manifest default (e.g. **calibredb
+  binary**) could leak its raw `${user_config.x}` placeholder into the environment
+  un-substituted. The server treated that literal as a real value, so `calibredb`
+  auto-detection never ran and every call failed with `calibredb not found at
+  "${user_config.calibredb_path}"`. Blank fields now correctly fall through to
+  auto-detect (`calibredb_path`, `library`, `index_dir`, `add_roots`).
+
 ## [0.1.1] — 2026-07-02
 
 ### Added

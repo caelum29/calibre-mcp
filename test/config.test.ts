@@ -36,4 +36,17 @@ describe("loadConfig", () => {
     const cfg = loadConfig({ CALIBRE_MCP_CALIBREDB_PATH: "/nonexistent/calibredb" });
     expect(cfg.calibredbPath).toBe("/nonexistent/calibredb");
   });
+
+  it("treats an un-interpolated MCPB placeholder as unset, not a literal path", () => {
+    // A blank optional field with no manifest default can leak `${user_config.x}`.
+    const cfg = loadConfig({
+      CALIBRE_MCP_CALIBREDB_PATH: "${user_config.calibredb_path}",
+      CALIBRE_MCP_LIBRARY: "${user_config.library}",
+      CALIBRE_MCP_INDEX_DIR: "${user_config.index_dir}",
+    });
+    // Falls through to discovery / defaults instead of exec-ing the literal.
+    expect(cfg.calibredbPath).not.toBe("${user_config.calibredb_path}");
+    expect(cfg.defaultLibrary).toBe("");
+    expect(cfg.indexDir).toContain("calibre-mcp");
+  });
 });

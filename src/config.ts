@@ -32,11 +32,15 @@ function truthy(v: string | undefined): boolean {
 /**
  * Unset/empty/whitespace env values are all "absent" — MCPB substitutes an empty
  * string for optional user_config fields the user left blank, and `"" ?? default`
- * would otherwise keep the empty string.
+ * would otherwise keep the empty string. A blank field with no `default` in the
+ * manifest can instead leak the raw `${user_config.x}` placeholder un-substituted;
+ * treat that as absent too so auto-detect fallbacks (discoverCalibredb, etc.) run.
  */
 function envStr(v: string | undefined): string | undefined {
   const t = v?.trim();
-  return t ? t : undefined;
+  if (!t) return undefined;
+  if (/^\$\{[^}]+\}$/.test(t)) return undefined; // un-interpolated MCPB placeholder
+  return t;
 }
 
 /** Platform data dir (persists across reboots), honoring XDG / APPDATA where set. */
