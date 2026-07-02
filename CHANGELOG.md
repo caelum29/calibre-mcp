@@ -4,6 +4,24 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.5] — 2026-07-02
+
+### Added
+
+- **`calibre_extract_isbn`** — the kiwidude Extract-ISBN capability. Scans a book's own
+  text (front matter, then back-matter tail) for a checksum-valid ISBN and stamps it into
+  the `isbn` identifier. Gated write, preview-first: `apply=false` (default) reports the
+  ISBN found without writing; `apply=true` writes it. Merges into existing identifiers so
+  a `doi`/`asin` is never clobbered. This brings the tool count to 15.
+
+### Changed
+
+- The ISBN text-scanner (shared by `calibre_extract_isbn` and `calibre_recover_metadata`)
+  is hardened to match the kiwidude plugin's behaviour: prefer ISBN-13 over ISBN-10,
+  require a Bookland prefix (977/978/979) on 13-digit runs, reject all-same-digit runs
+  (which pass the ISBN-10 checksum), and scan front matter then the tail. This also
+  sharpens `calibre_recover_metadata`'s lookup key.
+
 ## [0.1.4] — 2026-07-02
 
 ### Fixed
