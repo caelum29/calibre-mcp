@@ -1,10 +1,21 @@
-# calibre-mcp
+# 📚 calibre-mcp
 
-[![npm](https://img.shields.io/npm/v/calibre-mcp)](https://www.npmjs.com/package/calibre-mcp)
+[![npm version](https://img.shields.io/npm/v/calibre-mcp?logo=npm&color=cb3837)](https://www.npmjs.com/package/calibre-mcp)
+[![npm downloads](https://img.shields.io/npm/dm/calibre-mcp?logo=npm&color=cb3837)](https://www.npmjs.com/package/calibre-mcp)
+[![MCP Registry](https://img.shields.io/badge/MCP_Registry-io.github.caelum29%2Fcalibre--mcp-6E56CF?logo=anthropic)](https://registry.modelcontextprotocol.io)
+[![CI](https://github.com/caelum29/calibre-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/caelum29/calibre-mcp/actions/workflows/ci.yml)
+[![Node](https://img.shields.io/node/v/calibre-mcp?logo=node.js&color=339933)](https://nodejs.org)
 [![license](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
 
-**The most capable Calibre MCP server** — connect Claude (or any MCP client) to your
-[Calibre](https://calibre-ebook.com) ebook library.
+> **The most capable Calibre MCP server in existence** — connect Claude (or any MCP client)
+> to your [Calibre](https://calibre-ebook.com) ebook library and search it by *meaning*, not
+> just keywords.
+
+Ask your AI assistant *“which of my books explain consumer-group rebalancing?”* and get the
+exact chapter — across 800+ books or inside one. Curate metadata, dedupe, and safely edit
+your library, all through natural language.
+
+## ✨ Highlights
 
 - **15 tools** covering the full surface: search, read content, browse categories, curate,
   and (opt-in) write — update metadata, bulk-edit, import, delete.
@@ -18,7 +29,7 @@
   operations preview first and require confirmation; all writes route through the
   Content Server so they never race the Calibre GUI.
 
-## Requirements
+## 📋 Requirements
 
 - **Calibre** with the **Content Server running** (in Calibre: *Connect/share → Start
   Content server*). Tested against Calibre 9.x; any recent version should work.
@@ -28,7 +39,7 @@
   (`brew install poppler`) or Python 3 with PyMuPDF (`pip install pymupdf`). Without
   them the server falls back to Calibre's `ebook-convert`.
 
-## Quick start
+## 🚀 Quick start
 
 ### Claude Code
 
@@ -73,7 +84,7 @@ Ask Claude something like *“list my calibre libraries”* or *“find books ab
 The server auto-detects your default library; if the Content Server isn’t reachable it
 logs an actionable hint to stderr.
 
-## Enabling writes
+## ✍️ Enabling writes
 
 Write tools (`calibre_update_book`, `calibre_bulk_update`, `calibre_add_book`,
 `calibre_remove_book`) are **hidden by default**. Two independent switches must be on:
@@ -98,7 +109,7 @@ Safety behavior: `calibre_bulk_update` requires an explicit book selection (`ids
 deletion removes records *and* files, permanently. `calibre_add_book` only imports files
 from whitelisted folders (`CALIBRE_MCP_ADD_ROOTS`).
 
-## Semantic search
+## 🔎 Semantic search
 
 Meaning-based search is **opt-in** and needs two things:
 
@@ -124,7 +135,7 @@ bundle ships without it), build a **keyword-only** index — `calibre_build_inde
 and `mode: hybrid` degrades to keyword (with a note); rebuild with the model installed
 (`force: true`) to add semantic ranking.
 
-## Tools
+## 🧰 Tools
 
 | Tool | Access | What it does |
 |---|---|---|
@@ -144,7 +155,7 @@ and `mode: hybrid` degrades to keyword (with a note); rebuild with the model ins
 | `calibre_remove_book` | **write, destructive** | Permanently delete books (records + files); dry-run unless confirmed |
 | `calibre_ping` | read | Health check: is Calibre reachable end-to-end? |
 
-## Configuration
+## ⚙️ Configuration
 
 Everything is optional — with a running Content Server on the default port, zero config
 works. Environment variables (the Desktop bundle exposes the same settings as UI fields):
@@ -162,7 +173,7 @@ works. Environment variables (the Desktop bundle exposes the same settings as UI
 ¹ macOS `~/Library/Application Support/calibre-mcp/index`, Windows
 `%APPDATA%\calibre-mcp\index`, Linux `$XDG_DATA_HOME/calibre-mcp/index`.
 
-## Troubleshooting
+## 🩺 Troubleshooting
 
 - **“Calibre unreachable” / connection refused** — the Content Server isn’t running.
   In Calibre: *Connect/share → Start Content server*, or point
@@ -185,7 +196,7 @@ works. Environment variables (the Desktop bundle exposes the same settings as UI
   `calibre_list_libraries`; when in doubt, leave the library unset and let the server
   pick its default.
 
-## Development
+## 🛠️ Development
 
 ```sh
 pnpm install
@@ -202,6 +213,6 @@ live in [`docs/`](./docs).
 
 Issues and PRs welcome: [github.com/caelum29/calibre-mcp](https://github.com/caelum29/calibre-mcp/issues).
 
-## License
+## 📄 License
 
 [MIT](./LICENSE) © 2026 Artem Sorochynskyi
