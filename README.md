@@ -211,7 +211,9 @@ The codebase is Clean Architecture: tool handlers, Calibre clients, and the sema
 core are SDK-free; only `src/server.ts` touches the MCP SDK. Design and research notes
 live in [`docs/`](./docs).
 
-Issues and PRs welcome: [github.com/caelum29/calibre-mcp](https://github.com/caelum29/calibre-mcp/issues).
+Questions, ideas, and setups welcome in
+[**Discussions**](https://github.com/caelum29/calibre-mcp/discussions); bug reports and PRs
+in [Issues](https://github.com/caelum29/calibre-mcp/issues).
 
 ## 📄 License
 
