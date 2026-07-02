@@ -347,3 +347,20 @@ ISBN→OpenLibrary→GoogleBooks internally, not three chainable tools). Cheap e
     ENEEDAUTH) and the workflow *filename only* with an empty environment. Release recipe now:
     bump version in package.json+manifest.json+server.json → CHANGELOG → tag `v*` → push.
     Remaining manual check: install the `.mcpb` in Claude Desktop.
+- ✅ **`calibre_extract_isbn` added (#15)** (2026-07-02, branch `feat/extract-isbn`) — the **kiwidude
+  Extract-ISBN** capability Artem asked for: scan a book's own text (front matter) for a checksum-valid
+  ISBN and stamp it into `identifiers:isbn`. **Gated WRITE, preview-first** (`apply=false` default reports
+  the find, `apply=true` writes). Clean-room — reuses our own `extractIsbns`/`scanForIsbn` (NOT a port of
+  the GPL plugin). **Read the actual plugin source** (`scan.py`/`nonpdf.py`/`config.py`) and folded its
+  algorithm *behaviours* (reimplemented) into our scanner: **prefer ISBN-13 over ISBN-10**, require a
+  Bookland prefix (**977/978/979**) on 13-digit runs, **reject all-same-digit runs** (`1111111111` DOES
+  pass the ISBN-10 checksum — a real false-positive hole we had), and **scan front matter then the tail**
+  (ISBN often on the back cover). Labeled-first stays the primary rank key (13-over-10 is secondary, so
+  the labeled-vs-bare test is unchanged). **Correctness beat the plugin implies:** merges into existing
+  identifiers before `set_metadata` (which replaces the whole map) so a `doi`/`asin` is never clobbered.
+  Refactor: the bounded ISBN text-scan (`scanForIsbn` + timeout/deadline) lifted out of
+  `calibre_recover_metadata` into shared `src/tools/isbn-scan.ts` (both tools use it; the guard refinements
+  also sharpen recover_metadata's lookup key). **270 tests green** (+11); typecheck clean. **Now 15 tools**
+  (cliff-safe under ~20). Live write-verify pending (needs the standalone `--enable-local-write` server,
+  same as the other write tools). **Deferred (additive):** configurable ISBN-13 prefixes; full spine/page
+  walk (we scan front+tail slices, not the plugin's per-file middle sweep).

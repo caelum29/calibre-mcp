@@ -9,6 +9,11 @@
 > path is live-verified. Per-increment build log + live-verification notes live in `CLAUDE.md` §Status
 > (increments 1–7). The tables below are annotated with what actually shipped vs what deferred to LATER.
 >
+> **➕ Post-v1 (2026-07-02): `calibre_extract_isbn` (#15).** The kiwidude Extract-ISBN capability — scan a
+> book's own text for a valid ISBN and stamp it into `identifiers:isbn` (gated write, preview-first,
+> merges into existing identifiers). Reuses the `scanForIsbn` text-scan shared with `recover_metadata`.
+> **Now 15 tools** (still cliff-safe under ~20).
+>
 > **Two surfaces (the macro goal).** Every tool targets either the **catalog** (whole-library:
 > search, list, update, bulk, add/remove, dedupe, quality, enrich) or a **single book** (get,
 > content extraction, in-book keyword + semantic search). The search tools span both via a `scope`
@@ -76,9 +81,9 @@ Conventions: all namespaced `calibre_*`. Inputs Zod-coerced (`z.coerce.number`,
 |---|---|---|---|---|---|
 | 10 | `calibre_recover_metadata` | R (preview) | `ebook-meta` read · OpenLibrary→GoogleBooks→`fetch-ebook-metadata` | `id`/`path`, `sources?` | **proposed** fields + confidence (apply via #11) |
 
-### Write — hardened + gated (4)
+### Write — hardened + gated (5)
 
-All four route through `calibredb --with-library <serverUrl>/#<libId>` and **must resolve the library
+All route through `calibredb --with-library <serverUrl>/#<libId>` and **must resolve the library
 **ID** (not the display name) first — the display form 404s (locked pattern, CLAUDE.md §Status). Gated
 by `CALIBRE_MCP_ENABLE_WRITE`; disabled (not rejected) when off; server needs `--enable-local-write`.
 **Destructive/bulk confirmation is in-band** (`preview`/`confirm` params) — handlers stay SDK-free, so
@@ -90,6 +95,7 @@ true MCP `elicitation/create` is deferred to LATER (DESIGN §4).
 | 12 | `calibre_bulk_update` | W | `set_metadata` looped per id (cap `MAX_BULK=500`) | `changes`, `ids?`/`query?` (**one required, no all-books default**), `preview?=true`, `library?` | preview diff (no write) or applied/failed ids |
 | 13 | `calibre_add_book` | W | `calibredb add <path>` via server URL | `path` (whitelisted to `config.addRoots`), `library?` | new id(s) |
 | 14 | `calibre_remove_book` | W | `calibredb remove <ids>` via server URL | `ids` (required), `confirm?=false` (dry-run unless true), `library?` | dry-run list or removed ids |
+| 15 | `calibre_extract_isbn` | W | scan book text (reuses `scanForIsbn`) → `set_metadata identifiers:isbn` via server URL | `id`, `apply?=false` (preview unless true), `library?` | found ISBN + current + `changed`; merges into existing identifiers |
 
 > **Deferred write sub-features (LATER, additive):** `add_book` `metadata?`/`autoMerge?`/cover +
 > `add --duplicates`; `remove_book` `formatsOnly?` (remove a format, keep the record) + trash-vs-permanent

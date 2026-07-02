@@ -17,7 +17,7 @@ your library, all through natural language.
 
 ## ✨ Highlights
 
-- **15 tools** covering the full surface: search, read content, browse categories, curate,
+- **16 tools** covering the full surface: search, read content, browse categories, curate,
   and (opt-in) write — update metadata, bulk-edit, import, delete.
 - **Semantic search** — meaning-based, hybrid vector + keyword retrieval over your whole
   library *or inside a single book*. Multilingual (English + Russian verified,
@@ -149,6 +149,7 @@ and `mode: hybrid` degrades to keyword (with a note); rebuild with the model ins
 | `calibre_find_duplicates` | read | Duplicate groups with merge-safety scores; `mode: compare` diffs two books |
 | `calibre_quality_report` | read | Audit: missing metadata, raw-filename titles, invalid ISBNs, author-sort issues, series gaps |
 | `calibre_recover_metadata` | read | Propose real metadata via Open Library → Google Books; **preview-only**, apply with `calibre_update_book` |
+| `calibre_extract_isbn` | **write** | Scan a book’s own text for a valid ISBN and set its `isbn` identifier; preview-first, apply with `apply: true` |
 | `calibre_update_book` | **write** | Set metadata fields on one book (incl. `#custom` columns); returns the applied diff |
 | `calibre_bulk_update` | **write** | Same change across a set of books; selection required, preview-first |
 | `calibre_add_book` | **write** | Import a local ebook file (path-whitelisted) |
