@@ -22,7 +22,7 @@ export const buildIndexTool = defineTool({
   name: "calibre_build_index",
   title: "Build semantic index",
   description:
-    "Build the semantic embeddings index for specific books (required: bookId, ids, or query — full-library indexing is deferred). Extracts, chunks, and embeds each book. Re-run after adding books; use force to re-index unchanged ones.",
+    "Build the semantic index for specific books (required: bookId, ids, or query — full-library indexing is deferred). Extracts, chunks, and embeds each book. Set keywordOnly=true (or when the embedding model is absent, it happens automatically) to build a keyword-only index that powers mode:\"keyword\" search with zero ML dependencies. Re-run after adding books; use force to re-index unchanged ones.",
   inputSchema: {
     bookId: BookId().optional(),
     ids: jsonArray(BookId()).optional(),
@@ -30,6 +30,7 @@ export const buildIndexTool = defineTool({
     library: z.string().optional(),
     force: CoercedBool().default(false),
     enableFts: CoercedBool().default(false),
+    keywordOnly: CoercedBool().default(false),
   },
   outputSchema: {
     booksRequested: z.number().optional(),
@@ -37,6 +38,7 @@ export const buildIndexTool = defineTool({
     booksSkipped: z.number().optional(),
     chunks: z.number().optional(),
     elapsedMs: z.number().optional(),
+    keywordOnly: z.boolean().optional(),
     failures: z.array(z.string()).optional(),
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
@@ -80,12 +82,35 @@ export const buildIndexTool = defineTool({
       return toolError(`No books resolved from the selector. ${failures.join("; ")}`.trim());
     }
 
+    // Decide the build mode up front. keywordOnly skips the model entirely; otherwise probe
+    // the embedder once (warmup does the lazy dynamic-import) so a no-embeddings install
+    // degrades to a keyword-only index instead of failing every book (the model-free default).
+    let keywordOnly = args.keywordOnly;
+    if (keywordOnly) {
+      notes.push(
+        'Keyword-only index (no embeddings): mode:"keyword" search will work; vector & hybrid semantic search need @huggingface/transformers — install it, then rebuild with force=true.',
+      );
+    } else {
+      try {
+        await deps.embedder.warmup();
+      } catch (err) {
+        if (isEmbedderUnavailable(err)) {
+          keywordOnly = true;
+          notes.push(
+            'Embedding model unavailable — built a KEYWORD-ONLY index instead (mode:"keyword" works now). Install @huggingface/transformers and rebuild with force=true for vector & hybrid semantic search.',
+          );
+        }
+        // Other warmup errors (e.g. a download hiccup) fall through — the per-book embed
+        // attempt below surfaces them as collected failures.
+      }
+    }
+
     let booksIndexed = 0;
     let booksSkipped = 0;
     let totalChunks = 0;
     for (const bookId of targets) {
       try {
-        const n = await indexBook(deps, libraryId, bookId, args.force, args.library);
+        const n = await indexBook(deps, libraryId, bookId, args.force, args.library, keywordOnly);
         if (n === "skipped") booksSkipped++;
         else {
           booksIndexed++;
@@ -106,7 +131,7 @@ export const buildIndexTool = defineTool({
     const failureLines = failures.slice(0, 3).map((f) => `\n- ${f}`);
     if (failures.length > 3) failureLines.push(`\n- …and ${failures.length - 3} more`);
     const summary =
-      `Indexed ${booksIndexed}/${booksRequested} book(s) (${booksSkipped} up-to-date, ${totalChunks} chunks) in ${elapsedMs} ms.` +
+      `${keywordOnly ? "Keyword-only indexed" : "Indexed"} ${booksIndexed}/${booksRequested} book(s) (${booksSkipped} up-to-date, ${totalChunks} chunks) in ${elapsedMs} ms.` +
       (failures.length ? ` ${failures.length} failed:${failureLines.join("")}` : "") +
       notes.map((n) => `\n- ${n}`).join("");
 
@@ -116,6 +141,7 @@ export const buildIndexTool = defineTool({
       booksSkipped,
       chunks: totalChunks,
       elapsedMs,
+      keywordOnly,
       failures,
     });
   },
@@ -128,6 +154,7 @@ async function indexBook(
   bookId: number,
   force: boolean,
   library: string | undefined,
+  keywordOnly: boolean,
 ): Promise<number | "skipped"> {
   const book = await deps.content.getBook(bookId, library);
 
@@ -153,25 +180,35 @@ async function indexBook(
   const chunks = chunkForEmbedding(extracted.text);
   if (chunks.length === 0) throw new Error("produced no chunks");
 
-  // Deterministic context prefix — captures most of contextual-retrieval's benefit at zero
-  // LLM cost. It goes into the EMBEDDED text only; the stored body stays the raw chunk so
-  // char offsets still line up with calibre_get_content.
-  const ctx = `[${book.title} › ${book.authors.join(", ")}]\n`;
-  const vectors = await deps.embedder.embedPassages(chunks.map((c) => ctx + c.body));
-
-  const indexed: IndexedChunk[] = chunks.map((c, i) => ({
-    charStart: c.charStart,
-    charEnd: c.charEnd,
-    body: c.body,
-    vector: vectors[i]!,
-  }));
+  let indexed: IndexedChunk[];
+  if (keywordOnly) {
+    // No embeddings — chunks are stored raw + pre-stemmed (in the store) for FTS keyword search.
+    indexed = chunks.map((c) => ({ charStart: c.charStart, charEnd: c.charEnd, body: c.body }));
+  } else {
+    // Deterministic context prefix — captures most of contextual-retrieval's benefit at zero
+    // LLM cost. It goes into the EMBEDDED text only; the stored body stays the raw chunk so
+    // char offsets still line up with calibre_get_content.
+    const ctx = `[${book.title} › ${book.authors.join(", ")}]\n`;
+    const vectors = await deps.embedder.embedPassages(chunks.map((c) => ctx + c.body));
+    indexed = chunks.map((c, i) => ({
+      charStart: c.charStart,
+      charEnd: c.charEnd,
+      body: c.body,
+      vector: vectors[i]!,
+    }));
+  }
   deps.index.replaceBook(
     libraryId,
     { bookId, title: book.title, authors: book.authors, lastModified: book.lastModified },
     indexed,
   );
-  deps.log.info("indexed book", { bookId, chunks: indexed.length, format: fmt });
+  deps.log.info("indexed book", { bookId, chunks: indexed.length, format: fmt, keywordOnly });
   return indexed.length;
+}
+
+/** True when an error is the coded "embedding model not installed" signal. */
+function isEmbedderUnavailable(err: unknown): boolean {
+  return (err instanceof Error ? err.message : String(err)) === "EMBEDDER_UNAVAILABLE";
 }
 
 /** Concise, LLM-actionable reason for a per-book failure (coded errors → plain English). */

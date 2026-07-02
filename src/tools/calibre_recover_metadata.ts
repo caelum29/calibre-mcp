@@ -30,6 +30,18 @@ const DEFAULT_SOURCES: Provider["name"][] = ["openlibrary", "googlebooks"];
 // Only the copyright/front matter tends to carry an ISBN — scanning the whole book invites
 // false positives and needless conversion cost.
 const ISBN_SCAN_CHARS = 20_000;
+// The ISBN text-scan is a best-effort optimization, never worth minutes. Each extraction layer
+// (download, convert) is individually bounded but their sum is not — a big/slow PDF once hung the
+// stdio server ~4 min. Cap the whole scan: this both threads through to the subprocess/download
+// timeouts (kills orphans) AND bounds the wall clock via a race (per-layer timeouts still sum).
+const ISBN_SCAN_TIMEOUT_MS = 30_000;
+
+type IsbnScanOutcome = "found" | "no-isbn" | "no-format" | "timeout" | "error";
+
+interface IsbnScanResult {
+  isbn?: string;
+  outcome: IsbnScanOutcome;
+}
 
 /** Lazily construct the real providers (no network until a method is called). */
 function providersFor(deps: ToolDeps, order: Provider["name"][]): Provider[] {
@@ -38,19 +50,50 @@ function providersFor(deps: ToolDeps, order: Provider["name"][]): Provider[] {
   return order.map((n) => map[n]).filter(Boolean);
 }
 
-/** Scan a book's first pages for a valid ISBN (best-effort; extraction failure → undefined). */
-async function scanForIsbn(deps: ToolDeps, book: Book, id: number, library?: string): Promise<string | undefined> {
+/** Sentinel used to distinguish a scan-budget timeout from an extraction error. */
+const SCAN_TIMEOUT = Symbol("isbn-scan-timeout");
+
+/** Reject after `ms`, resolving the returned canceller to clear the timer when the race settles. */
+function deadline(ms: number): { race: Promise<never>; cancel: () => void } {
+  let timer: ReturnType<typeof setTimeout>;
+  const race = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(SCAN_TIMEOUT), ms);
+  });
+  return { race, cancel: () => clearTimeout(timer) };
+}
+
+/**
+ * Scan a book's first pages for a valid ISBN (best-effort). Bounded by ISBN_SCAN_TIMEOUT_MS on
+ * two axes: `timeoutMs` threads into download+convert (SIGTERMs the subprocess / aborts the
+ * fetch), and a wall-clock race caps the summed per-layer timeouts. Never throws → the caller
+ * degrades to a title search.
+ */
+async function scanForIsbn(deps: ToolDeps, book: Book, id: number, library?: string): Promise<IsbnScanResult> {
   const fmt = chooseExtractFormat(book.formats);
-  if (!fmt) return undefined;
+  if (!fmt) return { outcome: "no-format" };
+  const { race, cancel } = deadline(ISBN_SCAN_TIMEOUT_MS);
   try {
-    const libId = await deps.content.resolveLibraryId(library);
-    const base = deps.config.serverUrl.replace(/\/+$/, "");
-    const downloadUrl = `${base}/get/${fmt.toUpperCase()}/${id}/${encodeURIComponent(libId)}`;
-    const cacheKey = `${id}:${fmt}:${book.lastModified ?? ""}`;
-    const { text } = await deps.extractor.getText({ bookId: id, format: fmt, downloadUrl, cacheKey });
-    return extractIsbns(text.slice(0, ISBN_SCAN_CHARS))[0];
-  } catch {
-    return undefined; // no backend / scanned PDF / download failure → fall back to title search
+    const work = (async () => {
+      const libId = await deps.content.resolveLibraryId(library);
+      const base = deps.config.serverUrl.replace(/\/+$/, "");
+      const downloadUrl = `${base}/get/${fmt.toUpperCase()}/${id}/${encodeURIComponent(libId)}`;
+      const cacheKey = `${id}:${fmt}:${book.lastModified ?? ""}`;
+      const { text } = await deps.extractor.getText({
+        bookId: id,
+        format: fmt,
+        downloadUrl,
+        cacheKey,
+        timeoutMs: ISBN_SCAN_TIMEOUT_MS,
+      });
+      return extractIsbns(text.slice(0, ISBN_SCAN_CHARS))[0];
+    })();
+    const isbn = await Promise.race([work, race]);
+    return isbn ? { isbn, outcome: "found" } : { outcome: "no-isbn" };
+  } catch (err) {
+    // no backend / scanned PDF / download failure / budget exceeded → fall back to title search.
+    return { outcome: err === SCAN_TIMEOUT ? "timeout" : "error" };
+  } finally {
+    cancel(); // no dangling timer once the race settles
   }
 }
 
@@ -83,7 +126,12 @@ export const recoverMetadataTool = defineTool({
       const existingIsbn = book.identifiers.isbn && isValidIsbn(book.identifiers.isbn)
         ? book.identifiers.isbn
         : undefined;
-      const isbn = existingIsbn ?? (await scanForIsbn(deps, book, numericId, args.library));
+      let scan: IsbnScanResult | undefined;
+      if (!existingIsbn) {
+        scan = await scanForIsbn(deps, book, numericId, args.library);
+        deps.log.debug("recover_metadata ISBN scan", { bookId: numericId, outcome: scan.outcome });
+      }
+      const isbn = existingIsbn ?? scan?.isbn;
       const author = book.authors.find((a) => a.trim() && a.trim().toLowerCase() !== "unknown");
 
       let lookupKey: string;
@@ -95,8 +143,15 @@ export const recoverMetadataTool = defineTool({
         lookupKey = `title:${book.title}${author ? ` / ${author}` : ""}`;
         byIsbn = false;
       } else {
+        // No lookup key at all. Tell the user why the text scan didn't rescue us so they can act.
+        const scanHint =
+          scan?.outcome === "timeout"
+            ? " and the text scan timed out before finding one"
+            : scan?.outcome === "no-format" || scan?.outcome === "error"
+              ? " and the text scan found none (no extractable text)"
+              : " (in metadata or text)";
         return toolError(
-          `Nothing to look up for book ${numericId}: no ISBN (in metadata or text) and its title ` +
+          `Nothing to look up for book ${numericId}: no ISBN${scanHint} and its title ` +
             `"${book.title}" looks like a raw filename. Add an ISBN or a real title, then retry.`,
         );
       }
