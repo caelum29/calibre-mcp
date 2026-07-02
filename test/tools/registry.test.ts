@@ -13,6 +13,7 @@ describe("tool registry", () => {
     const writes = allTools.filter((t) => t.write).map((t) => t.name);
     expect(writes).toEqual([
       "calibre_update_book",
+      "calibre_extract_isbn",
       "calibre_bulk_update",
       "calibre_add_book",
       "calibre_remove_book",

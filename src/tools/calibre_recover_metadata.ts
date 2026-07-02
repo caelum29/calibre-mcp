@@ -7,19 +7,18 @@
 // (+first author) if usable. Providers are queried in order; the first with a hit wins.
 
 import { z } from "zod";
-import { chooseExtractFormat } from "../calibre/extract.js";
 import { isValidIsbn } from "../domain/curation/isbn.js";
-import { extractIsbns } from "../domain/enrich/extract-isbn.js";
 import { isUsableTitle } from "../domain/enrich/filename-guess.js";
 import { buildProposal } from "../domain/enrich/proposal.js";
 import type { ProviderHit } from "../domain/enrich/types.js";
-import type { Book } from "../domain/book.js";
 import { createGoogleBooks } from "../enrich/googlebooks.js";
 import { createOpenLibrary } from "../enrich/openlibrary.js";
 import type { Provider } from "../enrich/provider.js";
 import { CalibreHttpError } from "../domain/errors.js";
 import { BookId, jsonArray } from "./coerce.js";
 import { defineTool } from "./define.js";
+import { scanForIsbn } from "./isbn-scan.js";
+import type { IsbnScanResult } from "./isbn-scan.js";
 import { resolveNumericId } from "./resolve-id.js";
 import { bookResourceLink } from "./resource-link.js";
 import { fence, toolError, toolOk } from "./result.js";
@@ -27,74 +26,12 @@ import type { ToolDeps } from "./types.js";
 
 const SOURCE = z.enum(["openlibrary", "googlebooks"]);
 const DEFAULT_SOURCES: Provider["name"][] = ["openlibrary", "googlebooks"];
-// Only the copyright/front matter tends to carry an ISBN — scanning the whole book invites
-// false positives and needless conversion cost.
-const ISBN_SCAN_CHARS = 20_000;
-// The ISBN text-scan is a best-effort optimization, never worth minutes. Each extraction layer
-// (download, convert) is individually bounded but their sum is not — a big/slow PDF once hung the
-// stdio server ~4 min. Cap the whole scan: this both threads through to the subprocess/download
-// timeouts (kills orphans) AND bounds the wall clock via a race (per-layer timeouts still sum).
-const ISBN_SCAN_TIMEOUT_MS = 30_000;
-
-type IsbnScanOutcome = "found" | "no-isbn" | "no-format" | "timeout" | "error";
-
-interface IsbnScanResult {
-  isbn?: string;
-  outcome: IsbnScanOutcome;
-}
 
 /** Lazily construct the real providers (no network until a method is called). */
 function providersFor(deps: ToolDeps, order: Provider["name"][]): Provider[] {
   const map =
     deps.providers ?? { openlibrary: createOpenLibrary(), googlebooks: createGoogleBooks() };
   return order.map((n) => map[n]).filter(Boolean);
-}
-
-/** Sentinel used to distinguish a scan-budget timeout from an extraction error. */
-const SCAN_TIMEOUT = Symbol("isbn-scan-timeout");
-
-/** Reject after `ms`, resolving the returned canceller to clear the timer when the race settles. */
-function deadline(ms: number): { race: Promise<never>; cancel: () => void } {
-  let timer: ReturnType<typeof setTimeout>;
-  const race = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(SCAN_TIMEOUT), ms);
-  });
-  return { race, cancel: () => clearTimeout(timer) };
-}
-
-/**
- * Scan a book's first pages for a valid ISBN (best-effort). Bounded by ISBN_SCAN_TIMEOUT_MS on
- * two axes: `timeoutMs` threads into download+convert (SIGTERMs the subprocess / aborts the
- * fetch), and a wall-clock race caps the summed per-layer timeouts. Never throws → the caller
- * degrades to a title search.
- */
-async function scanForIsbn(deps: ToolDeps, book: Book, id: number, library?: string): Promise<IsbnScanResult> {
-  const fmt = chooseExtractFormat(book.formats);
-  if (!fmt) return { outcome: "no-format" };
-  const { race, cancel } = deadline(ISBN_SCAN_TIMEOUT_MS);
-  try {
-    const work = (async () => {
-      const libId = await deps.content.resolveLibraryId(library);
-      const base = deps.config.serverUrl.replace(/\/+$/, "");
-      const downloadUrl = `${base}/get/${fmt.toUpperCase()}/${id}/${encodeURIComponent(libId)}`;
-      const cacheKey = `${id}:${fmt}:${book.lastModified ?? ""}`;
-      const { text } = await deps.extractor.getText({
-        bookId: id,
-        format: fmt,
-        downloadUrl,
-        cacheKey,
-        timeoutMs: ISBN_SCAN_TIMEOUT_MS,
-      });
-      return extractIsbns(text.slice(0, ISBN_SCAN_CHARS))[0];
-    })();
-    const isbn = await Promise.race([work, race]);
-    return isbn ? { isbn, outcome: "found" } : { outcome: "no-isbn" };
-  } catch (err) {
-    // no backend / scanned PDF / download failure / budget exceeded → fall back to title search.
-    return { outcome: err === SCAN_TIMEOUT ? "timeout" : "error" };
-  } finally {
-    cancel(); // no dangling timer once the race settles
-  }
 }
 
 export const recoverMetadataTool = defineTool({

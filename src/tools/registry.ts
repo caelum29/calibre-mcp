@@ -13,6 +13,7 @@ import { buildIndexTool } from "./calibre_build_index.js";
 import { findDuplicatesTool } from "./calibre_find_duplicates.js";
 import { qualityReportTool } from "./calibre_quality_report.js";
 import { recoverMetadataTool } from "./calibre_recover_metadata.js";
+import { extractIsbnTool } from "./calibre_extract_isbn.js";
 import { bulkUpdateTool } from "./calibre_bulk_update.js";
 import { addBookTool } from "./calibre_add_book.js";
 import { removeBookTool } from "./calibre_remove_book.js";
@@ -31,6 +32,7 @@ export const allTools: AnyToolDescriptor[] = [
   findDuplicatesTool,
   qualityReportTool,
   recoverMetadataTool,
+  extractIsbnTool,
   bulkUpdateTool,
   addBookTool,
   removeBookTool,

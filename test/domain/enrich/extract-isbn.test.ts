@@ -25,4 +25,19 @@ describe("extractIsbns", () => {
     expect(out).toEqual(["0306406152", "9780306406157"]); // labeled first, then bare, no dupes
     expect(extractIsbns(text, 1)).toHaveLength(1);
   });
+
+  it("prefers ISBN-13 over ISBN-10 when both are labeled", () => {
+    const text = "ISBN-10: 0-306-40615-2\nISBN-13: 978-0-306-40615-7";
+    expect(extractIsbns(text)[0]).toBe("9780306406157");
+  });
+
+  it("rejects all-same-digit runs that fool the ISBN-10 checksum", () => {
+    // 1111111111 and 0000000000 both satisfy Σ i·dᵢ ≡ 0 (mod 11) but are never real ISBNs.
+    expect(extractIsbns("ISBN 1111111111 or 0000000000")).toEqual([]);
+  });
+
+  it("rejects a 13-digit run without a Bookland prefix (977/978/979)", () => {
+    // 1234567890128 has a valid EAN-13 check digit but is not an ISBN (prefix 123).
+    expect(extractIsbns("barcode 1234567890128 here")).toEqual([]);
+  });
 });
