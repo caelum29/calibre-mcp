@@ -1,7 +1,8 @@
 # Release pipeline, triggered by pushing a v* tag:
 #   npm publish (with provenance) -> .mcpb on the GitHub release -> MCP Registry.
-# Requires: NPM_TOKEN repo secret (granular automation token with publish rights).
-# MCP Registry auth is OIDC — no secret needed (io.github.caelum29 namespace).
+# npm auth = Trusted Publishing (OIDC), configured on npmjs.com under the package's
+# Settings -> Trusted Publisher (repo caelum29/calibre-mcp, workflow release.yml).
+# No secrets anywhere: MCP Registry auth is also OIDC (io.github.caelum29 namespace).
 name: Release
 
 on:
@@ -33,11 +34,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
 
-      # prepublishOnly runs build + tests
+      # prepublishOnly runs build + tests; auth is OIDC (trusted publisher), no token
       - name: Publish to npm
         run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Build the MCPB bundle
         run: pnpm pack:mcpb
