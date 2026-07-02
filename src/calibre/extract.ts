@@ -18,6 +18,7 @@ import { promisify } from "node:util";
 import type { Config } from "../config.js";
 import { log } from "../logging.js";
 import { downloadToFile } from "./http.js";
+import { spawnCollect, SpawnMaxBufferError, SpawnTimeoutError } from "./spawn.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -217,19 +218,25 @@ export class Extractor {
     throw new Error("NO_EPUB_BACKEND");
   }
 
-  /** Run a converter; raw execFile errors leak temp paths, so re-throw a coded error. */
+  /**
+   * Run a converter. ebook-convert spawns conversion workers as grandchildren, so we go
+   * through {@link spawnCollect} (process-group hard-kill on timeout) — not execFile,
+   * whose timeout leaks the worker and never settles. Raw errors leak temp paths, so
+   * re-throw a coded error.
+   */
   async #run(bin: string, args: string[], timeout: number): Promise<void> {
     try {
-      await execFileAsync(bin, args, { timeout, maxBuffer: 8 * 1024 * 1024 });
+      const { code } = await spawnCollect(bin, args, { timeoutMs: timeout, maxBuffer: 8 * 1024 * 1024 });
+      if (code !== 0) throw new Error(`exit ${code}`);
     } catch (err) {
-      const e = err as NodeJS.ErrnoException & { killed?: boolean };
+      const timedOut = err instanceof SpawnTimeoutError;
       log.error("extract convert failed", {
         bin: path.basename(bin),
-        killed: e.killed,
-        code: e.code,
-        msg: err instanceof Error ? err.message.slice(0, 300) : String(err),
+        killed: timedOut,
+        code: (err as NodeJS.ErrnoException).code,
+        msg: err instanceof SpawnMaxBufferError ? "maxBuffer" : err instanceof Error ? err.message.slice(0, 300) : String(err),
       });
-      throw new Error(e.killed ? "EXTRACT_TIMEOUT" : "EXTRACT_FAILED");
+      throw new Error(timedOut ? "EXTRACT_TIMEOUT" : "EXTRACT_FAILED");
     }
   }
 }

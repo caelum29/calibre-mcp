@@ -5,14 +5,11 @@
 // Reads/writes are routed THROUGH the running Content Server URL to respect the
 // GUI-concurrency lock — never race the GUI on the on-disk DB (CLAUDE.md gotchas).
 
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import type { Config } from "../config.js";
 import { CalibreCliError, CalibreNotFoundError } from "../domain/errors.js";
 import type { FtsHit } from "../domain/search.js";
 import { log } from "../logging.js";
-
-const execFileAsync = promisify(execFile);
+import { spawnCollect, SpawnTimeoutError } from "./spawn.js";
 
 export interface CalibreClientOptions {
   /** Per-call timeout in ms. macOS calibredb can hang against a busy GUI. */
@@ -97,26 +94,35 @@ export class CalibreClient {
     opts: CalibreClientOptions = {},
   ): Promise<{ stdout: string; stderr: string }> {
     const fullArgs = ["--with-library", this.libraryUrl(opts.library), ...args];
+    let result;
     try {
-      const { stdout, stderr } = await execFileAsync(this.cfg.calibredbPath, fullArgs, {
-        timeout: opts.timeoutMs ?? 30_000,
+      result = await spawnCollect(this.cfg.calibredbPath, fullArgs, {
+        timeoutMs: opts.timeoutMs ?? 30_000,
         maxBuffer: 32 * 1024 * 1024,
       });
-      return { stdout, stderr };
     } catch (err) {
-      const e = err as NodeJS.ErrnoException & { stdout?: string; stderr?: string };
-      if (e.code === "ENOENT") {
+      if ((err as NodeJS.ErrnoException).code === "ENOENT") {
         throw new CalibreNotFoundError(
           `calibredb not found at "${this.cfg.calibredbPath}". Install Calibre ` +
             "(https://calibre-ebook.com/download) or set CALIBRE_MCP_CALIBREDB_PATH.",
         );
       }
-      // Forbidden/write-refused text can land on either stream; keep both for the classifier.
-      const diag = [e.stdout, e.stderr].filter(Boolean).join("\n");
-      const code = typeof e.code === "number" ? e.code : null;
-      log.error("calibredb failed", { args, code, diag: diag.slice(0, 500) });
-      throw new CalibreCliError(code, "calibredb command failed", diag);
+      // A hung child (worker grandchild) is now force-killed as a group and surfaced
+      // as a settled error instead of an infinite hang (spawn.ts).
+      if (err instanceof SpawnTimeoutError) {
+        log.error("calibredb timed out", { args, timeoutMs: opts.timeoutMs ?? 30_000 });
+        throw new CalibreCliError(null, "calibredb command timed out");
+      }
+      log.error("calibredb spawn failed", { args, msg: (err as Error).message });
+      throw new CalibreCliError(null, "calibredb command failed");
     }
+    if (result.code !== 0) {
+      // Forbidden/write-refused text can land on either stream; keep both for the classifier.
+      const diag = [result.stdout, result.stderr].filter(Boolean).join("\n");
+      log.error("calibredb failed", { args, code: result.code, diag: diag.slice(0, 500) });
+      throw new CalibreCliError(result.code, "calibredb command failed", diag);
+    }
+    return { stdout: result.stdout, stderr: result.stderr };
   }
 
   /**

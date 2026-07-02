@@ -49,7 +49,12 @@ export const addBookTool = defineTool({
 
       let stdout: string;
       try {
-        ({ stdout } = await deps.calibre.calibredb(["add", check.resolved], { library: libId }));
+        // Imports/conversions can legitimately exceed the 30s default; the group-kill
+        // in spawn.ts still bounds a true hang.
+        ({ stdout } = await deps.calibre.calibredb(["add", check.resolved], {
+          library: libId,
+          timeoutMs: 120_000,
+        }));
       } catch (err) {
         if (isWriteRefused(err)) return toolError(WRITE_REFUSED_MESSAGE);
         throw err;
