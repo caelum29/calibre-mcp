@@ -39,10 +39,24 @@ const fakeEmbedder: Embedder = {
   async warmup() {},
 };
 
+/** Embedder that has no model — warmup and embed both throw the coded signal. */
+const unavailableEmbedder: Embedder = {
+  async embedQuery() {
+    throw new Error("EMBEDDER_UNAVAILABLE");
+  },
+  async embedPassages() {
+    throw new Error("EMBEDDER_UNAVAILABLE");
+  },
+  async warmup() {
+    throw new Error("EMBEDDER_UNAVAILABLE");
+  },
+};
+
 interface FakeOpts {
   book?: Partial<Book>;
   getText?: () => Promise<ExtractedText>;
   store?: SqliteIndexStore;
+  embedder?: Embedder;
 }
 
 function deps(opts: FakeOpts = {}): ToolDeps {
@@ -66,7 +80,7 @@ function deps(opts: FakeOpts = {}): ToolDeps {
     content: content as unknown as ToolDeps["content"],
     calibre: {} as unknown as ToolDeps["calibre"],
     extractor: extractor as unknown as ToolDeps["extractor"],
-    embedder: fakeEmbedder,
+    embedder: opts.embedder ?? fakeEmbedder,
     index: opts.store ?? new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" })),
     log,
   };
@@ -75,6 +89,7 @@ function deps(opts: FakeOpts = {}): ToolDeps {
 const args = (over: Record<string, unknown> = {}) => ({
   force: false,
   enableFts: false,
+  keywordOnly: false,
   ...over,
 });
 
@@ -119,5 +134,35 @@ describe("calibre_build_index handler", () => {
   it("notes that enableFts is not yet implemented", async () => {
     const r = await buildIndexTool.handler(args({ bookId: 1, enableFts: true }), deps());
     expect((r.content[0] as { text: string }).text).toContain("enableFts");
+  });
+
+  it("keywordOnly=true builds without the model — chunks are FTS-searchable, no vectors", async () => {
+    const store = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
+    // The unavailable embedder proves keywordOnly never touches the model (warmup/embed would throw).
+    const r = await buildIndexTool.handler(
+      args({ bookId: 1, keywordOnly: true }),
+      deps({ store, embedder: unavailableEmbedder }),
+    );
+    expect(r.isError).toBeFalsy();
+    expect(r.structuredContent).toMatchObject({ booksIndexed: 1, keywordOnly: true });
+    expect((r.content[0] as { text: string }).text).toContain("Keyword-only indexed");
+    expect(store.isBookIndexed("Programming_Books", 1)).toBe(true);
+    expect(store.hasVectors("Programming_Books")).toBe(false);
+    // FTS keyword search still finds the indexed text.
+    expect(store.searchLibraryFts("Programming_Books", "ownership", 5).length).toBeGreaterThan(0);
+  });
+
+  it("auto-degrades to a keyword-only index when the embedding model is unavailable", async () => {
+    const store = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
+    const r = await buildIndexTool.handler(
+      args({ bookId: 1 }), // keywordOnly not requested — the warmup probe triggers the degrade
+      deps({ store, embedder: unavailableEmbedder }),
+    );
+    expect(r.isError).toBeFalsy();
+    expect(r.structuredContent).toMatchObject({ booksIndexed: 1, keywordOnly: true });
+    const text = (r.content[0] as { text: string }).text;
+    expect(text).toContain("KEYWORD-ONLY");
+    expect(text).toContain("@huggingface/transformers");
+    expect(store.hasVectors("Programming_Books")).toBe(false);
   });
 });
