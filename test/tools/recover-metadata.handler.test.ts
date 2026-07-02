@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
+import type { GetTextArgs } from "../../src/calibre/extract.js";
 import type { ProviderHit } from "../../src/domain/enrich/types.js";
 import { recoverMetadataTool } from "../../src/tools/calibre_recover_metadata.js";
 import type { ToolDeps } from "../../src/tools/types.js";
@@ -18,6 +19,8 @@ interface Fixture {
   book: Book;
   text?: string;
   hits?: ProviderHit[];
+  /** Override getText — lets a test hang forever or spy on the passed args. */
+  getText?: (args: GetTextArgs) => Promise<{ text: string; backend: string; chars: number; cached: boolean }>;
 }
 
 function deps(f: Fixture): ToolDeps {
@@ -27,7 +30,9 @@ function deps(f: Fixture): ToolDeps {
     search: async () => ({ bookIds: [] as number[], total: 0, num: 0, offset: 0, sort: "title", libraryId: "Lib" }),
   };
   const extractor = {
-    getText: async () => ({ text: f.text ?? "", backend: "test", chars: (f.text ?? "").length, cached: false }),
+    getText:
+      f.getText ??
+      (async () => ({ text: f.text ?? "", backend: "test", chars: (f.text ?? "").length, cached: false })),
   };
   const provider = (name: "openlibrary" | "googlebooks") => ({
     name,
@@ -49,6 +54,9 @@ function deps(f: Fixture): ToolDeps {
 const args = (over: Record<string, unknown> = {}) => ({ id: 1, ...over });
 
 describe("calibre_recover_metadata handler", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
   it("proposes changes from an existing ISBN and emits a resource_link", async () => {
     const fixture = { book: book({ title: "795731065", authors: ["Unknown"], identifiers: { isbn: "9780306406157" } }),
       hits: [hit({ title: "Real Title", authors: ["A. Author"], publisher: "Plenum" })] };
@@ -96,5 +104,38 @@ describe("calibre_recover_metadata handler", () => {
     expect(r.isError).toBeFalsy();
     expect(r.structuredContent).toMatchObject({ fieldCount: 0 });
     expect((r.content[0] as { text: string }).text).toContain("already complete");
+  });
+
+  it("bounds a hanging text scan and degrades gracefully instead of blocking", async () => {
+    vi.useFakeTimers();
+    // getText never resolves — the scan budget race must win. Title is a raw filename, so with
+    // no ISBN the "Nothing to look up" error fires (and mentions the timeout).
+    const fixture = {
+      book: book({ title: "795731065", formats: ["pdf"] }),
+      getText: () => new Promise<never>(() => {}), // hangs forever
+    };
+    const promise = recoverMetadataTool.handler(args(), deps(fixture));
+    await vi.advanceTimersByTimeAsync(30_000); // trip the ISBN_SCAN_TIMEOUT_MS budget
+    const r = await promise;
+    expect(r.isError).toBe(true);
+    const text = (r.content[0] as { text: string }).text;
+    expect(text).toContain("Nothing to look up");
+    expect(text).toContain("timed out");
+  });
+
+  it("threads the scan-budget timeout into getText and uses a scan result within budget", async () => {
+    const seen: number[] = [];
+    const fixture = {
+      book: book({ title: "B0CZS7H23N", formats: ["pdf"] }),
+      getText: async (a: GetTextArgs) => {
+        seen.push(a.timeoutMs ?? -1);
+        return { text: "ISBN: 978-0-306-40615-7\n", backend: "test", chars: 24, cached: false };
+      },
+      hits: [hit({ title: "Found By Text" })],
+    };
+    const r = await recoverMetadataTool.handler(args(), deps(fixture));
+    expect(r.isError).toBeFalsy();
+    expect(r.structuredContent?.lookupKey).toBe("isbn:9780306406157");
+    expect(seen).toEqual([30_000]); // ISBN_SCAN_TIMEOUT_MS passed through
   });
 });
