@@ -337,5 +337,13 @@ ISBN→OpenLibrary→GoogleBooks internally, not three chainable tools). Cheap e
     (`io.github.caelum29/calibre-mcp` 0.1.0; `mcp-publisher login github` device flow + `publish`,
     verified via the registry API) + `.github/workflows/{ci,release}.yml` (CI green on first run;
     release.yml on `v*` tag: version guard → `npm publish --provenance` → `pack:mcpb` → release
-    upload → `mcp-publisher github-oidc` registry publish). **Before the next tag:** add the
-    `NPM_TOKEN` repo secret. Remaining manual check: install the `.mcpb` in Claude Desktop.
+    upload → `mcp-publisher github-oidc` registry publish). **Pipeline PROVEN end-to-end with
+    v0.1.1** (2026-07-02): npm 0.1.1 + `.mcpb` release asset + registry `isLatest` — all from one
+    tag push, **zero secrets** (npm auth = OIDC Trusted Publishing). Hard-won OIDC gotchas (all
+    hit live): classic automation tokens can no longer publish (npm 2025 hardening); setup-node's
+    `registry-url` writes an empty `_authToken` placeholder that overrides OIDC (PUT → 404); the
+    runner npm must be ≥11.5.1 (`npm i -g npm@latest` step); the npmjs.com trusted-publisher
+    entry must name the exact repo (a `caelum29/caelum29` mis-entry → silent exchange failure →
+    ENEEDAUTH) and the workflow *filename only* with an empty environment. Release recipe now:
+    bump version in package.json+manifest.json+server.json → CHANGELOG → tag `v*` → push.
+    Remaining manual check: install the `.mcpb` in Claude Desktop.
