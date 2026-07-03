@@ -91,14 +91,20 @@ Write tools (`calibre_update_book`, `calibre_bulk_update`, `calibre_add_book`,
 
 1. **The MCP-side gate** — set `CALIBRE_MCP_ENABLE_WRITE=1` (or tick *Enable writes* in
    the Desktop bundle settings). Without it the write tools aren’t even registered.
-2. **The Calibre-side gate** — the Content Server must run with `--enable-local-write`.
-   **The server embedded in the Calibre GUI is always read-only**; you have to run a
-   standalone server instead:
+2. **The Calibre-side gate** — the Content Server must allow local writes. **By
+   default the server embedded in the Calibre GUI is read-only**, so either enable
+   the GUI option below or run a standalone server with `--enable-local-write`:
 
    ```sh
    # quit the Calibre GUI first (it holds the library lock), then:
    calibre-server --enable-local-write --port 8080 "/path/to/Calibre Library"
    ```
+
+   Or enable it on the **GUI-embedded** server without quitting the app: open
+   Calibre → **Preferences → Sharing over the net → Advanced** and tick
+   **“Allow un-authenticated local connections to make changes to the library”**
+   (i.e. permit local write access), then restart the Content Server from the GUI.
+   This is the `--enable-local-write` equivalent for the embedded server.
 
 With only the first switch on, write tools appear but Calibre refuses the write — the
 error message tells you exactly that. Reads work fine against the GUI-embedded server.

@@ -261,9 +261,12 @@ ISBN→OpenLibrary→GoogleBooks internally, not three chainable tools). Cheap e
   `calibre_bulk_update` (#12, `ids`/`query` required, `preview=true` default → elicitation for destructive),
   `calibre_add_book` (#13, path whitelist), `calibre_remove_book` (#14, `confirm` required).
 - ✅ **Write path VERIFIED live** (2026-07-01) — the last v1 unknown resolved. Ran a standalone
-  `calibre-server --enable-local-write --port 8080 "…/Programming Books"` (the GUI-embedded server does
-  **not** expose local-write; quit the GUI, run standalone — it still serves both libs via calibre's known-
-  library config). Proved `calibre_update_book` end-to-end: a reversible marker-tag write (persisted on
+  `calibre-server --enable-local-write --port 8080 "…/Programming Books"` (standalone is one way; it still
+  serves both libs via calibre's known-library config). **Correction (2026-07-03, confirmed by Artem):** the
+  GUI-embedded server *can* also allow local writes — enable **Preferences → Sharing over the net → Advanced
+  → "Allow un-authenticated local connections to make changes to the library"** and restart the CS from the
+  GUI (documented in README's *Enabling writes*). Earlier "GUI is always read-only" was the default-config
+  behavior, not a hard limit. Proved `calibre_update_book` end-to-end: a reversible marker-tag write (persisted on
   read-back, reverted clean) **and** applied a real `calibre_recover_metadata` proposal — book 584
   `"442955403"` → *Fundamentals of Software Engineering* / authors / BPB Publications / isbn 9789388511773.
   The `-32602` argv-array defense held (spaces, `authors` `&`-join, `identifiers:isbn:…` all clean).
