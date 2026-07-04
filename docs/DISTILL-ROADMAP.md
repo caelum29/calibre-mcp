@@ -94,6 +94,60 @@ This is the seed of a trace-based judge: same three probes, run by a fresh-conte
 verifier subagent, become an automated eval when the skill count grows (fresh context
 outperforms self-critique — do not let the generating agent grade itself).
 
+### E3.1 — Verifier model strategy (cascade; local/small-model-friendly)
+
+E3 as first drafted has the *generating* frontier model run the smoke test inline and
+mandatory — which its own last line argues against ("do not let the generating agent grade
+itself") and which taxes every run with tokens for self-grading of dubious quality. Split it
+by **what each check actually needs from a model**:
+
+| Check | Model requirement |
+|---|---|
+| Structural (footer present, header has `Calibre id` + `ISBN`) | **none** — `grep`/regex, not a model task |
+| Answer a smoke-query from the skill files | strong model (in-domain retrieval + synthesis) |
+| **Cross-check an answer against the source** (claim ⊆ FTS passage?) | **cheap / local model is a legitimate — arguably better — fit** |
+
+**Why grounding suits a small model.** The cross-check is a faithfulness / NLI task ("is this
+claim supported by this passage?"), not open synthesis. Verification is cheaper than
+generation, and this is a well-studied task with purpose-built small checkers (Bespoke
+**MiniCheck** ~7B, Vectara **HHEM**, Patronus **Lynx**) or a plain 7–8B local model (Qwen2.5,
+Llama) prompted `claim + source → supported | contradicted | unsupported`. Input is bounded
+({claim + FTS hit}), so a small context window is fine; it runs offline, repeatably, at zero
+API cost. This is exactly what "fresh context outperforms self-critique" wants — and fresh
+context **can be local**.
+
+**Where a local model breaks (honest limits):**
+- **Deep judgment** — "is this the *right* framework, is the author's precision preserved"
+  (Quality Rule 2) — small models are weaker here; keep this on the strong model.
+- **RU/UK** — the library is EN+RU. A small *judge* must read Russian; many 7B models are weak
+  at it (Qwen is decent, some Llama variants are not). Retrieval is already RU-safe
+  (multilingual-e5); the generative judge is the constraint.
+- Small models have higher false-pos/neg on faithfulness → never give them the final word.
+
+**The pattern is a cascade, not a replacement:**
+
+```
+frontier GENERATES → local model FLAGS grounding (cheap, every chapter)
+                   → frontier CONFIRMS only the flagged claims → regenerate
+```
+
+The local model only *flags* suspicious claims; the strong model always rewrites. You shed
+most of the cross-check cost without trusting the small model's final decision.
+
+**Architectural constraint — where a local model can actually run.** A skill is markdown
+instructions executed *inside a host agent* (Claude Code / Copilot / Amp); the skill cannot
+itself pick or spawn a model — the host does. So:
+- **Inline (read-time, Step 9.9):** you cannot force a local model; the host chooses. This is
+  the second reason (besides cost) to keep the inline smoke-query part **opt-in**, not
+  mandatory. The structural check stays mandatory (it's model-free).
+- **Deferred (MCP-side automated eval — E3's real aspiration):** *we* control the model, so a
+  local faithfulness checker (Ollama / a small classifier) is not just possible but the right
+  call — offline, CI-friendly, zero API cost.
+
+Keep the judge behind a **seam**: the skill/eval describes the *check*, not "call Claude to
+grade." Then the model is swappable — a Claude subagent today, a local checker in a CI eval
+tomorrow.
+
 ## E4 — `library-index` meta-skill
 
 One skill, regenerated from the catalog, answering "which books are already distilled
