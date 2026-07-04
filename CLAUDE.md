@@ -367,3 +367,35 @@ ISBN→OpenLibrary→GoogleBooks internally, not three chainable tools). Cheap e
   (cliff-safe under ~20). Live write-verify pending (needs the standalone `--enable-local-write` server,
   same as the other write tools). **Deferred (additive):** configurable ISBN-13 prefixes; full spine/page
   walk (we scan front+tail slices, not the plugin's per-file middle sweep).
+- ✅ **Increment "distill" complete (idea 08)** (2026-07-05, branch `feat/distill`) — the **book→Agent-Skill**
+  differentiator, resolved B2+ (skill-only, **0 new tools** — still 15). Build order from
+  `docs/prompts/ideas/08-calibre-distill-DECISION.md` (§4.1 benchmark was already done). **292 tests
+  green** (+22); typecheck clean; RU fix **verified live**.
+  - New pure module `src/domain/structure/chapters.ts` — clean port of virgiliojr94/book-to-skill's
+    chapter detector (MIT, provenance header) `_chapter_number`/`detect_structure`/`_structural_chapter_count`
+    **+ Cyrillic extensions** (their detector has no RU/UK): chapter words `глава|часть|раздел|розділ`,
+    ToC headers `оглавление|содержание|зміст`, uppercase class widened for Cyrillic. Returns **offsets**
+    (`detectChapters → {chapters:[{n,heading,startChar,endChar}], hasToc, detector}`), not just counts;
+    duplicate-number disambiguation by **largest-body occurrence** (ToC line vs real body). Kept CJK/Roman
+    fidelity. 18 table tests (prose rejection, IIII/VV round-trip, years>99, fenced-code headings, setext
+    length rule, Cyrillic, ATX fallback, offset chaining).
+  - `calibre_get_content` **+`structure` param** (§4.3, `CoercedBool().default(false)`) — when true runs the
+    same extraction path, calls `detectChapters`, returns `structuredContent {chapters:[{n,heading,startChar,
+    endChar,approxTokens,cursor}], hasToc, detector, totalChars, format, backend}` + a compact fenced chapter
+    table (NOT book text); each `cursor` pre-minted via `encodeContentCursor({offset:startChar,id,format})` so
+    the skill seeks any chapter through the existing walk. Ignores `cursor`; 0 chapters = non-error steer to
+    the plain walk. Description gained the selection-lever sentence.
+  - **Live-verified (Content Server up):** EN book 893 (AI Engineering) → **10 chapters** (matches the
+    benchmark), front matter excluded (ch.1 body @29290 not the ToC line); **RU book 187 → 14 chapters**
+    (`ГЛАВА 1..14`, ToC detected) — was **0** before the Cyrillic fix. This is the whole payoff.
+  - Companion skill `skills/calibre-distill/SKILL.md` (fork of their SKILL.md, MIT provenance) — input =
+    book id/title/query via `calibre_search`; extract.py → `get_content structure=true`; grep/sed →
+    `calibre_search`/`calibre_semantic_search scope=book` + per-chapter cursors; **Mode 5 targeted fold-in**
+    (§4.4a — topic-scoped merge via in-book search, no upstream equivalent) + **Step 9.5 library write-back**
+    (§4.4b — Topic-Index tags + distill note via gated `calibre_update_book`, preview-first, merge-don't-clobber).
+    Install = copy/symlink to `~/.claude/skills/` (MCPB can't bundle skills — noted in README).
+  - **Tool count: 15 → 15** (one param + one pure module + one skill). No INDEX_VERSION bump, no store.ts
+    change, no new deps, no writes in the core path. **Deferred (§4.5):** TS port of discovery_tax for CI;
+    chapter labels on search hits (rides idea 02 `loc_*`); "distill this shelf" batch UX; EPUB spine mode
+    (idea 02 Phase 2 `epub-spine.ts` will slot behind the detector seam); configurable extra chapter-word
+    languages.

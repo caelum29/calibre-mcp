@@ -147,7 +147,7 @@ and `mode: hybrid` degrades to keyword (with a note); rebuild with the model ins
 |---|---|---|
 | `calibre_search` | read | Find books by title/author/ISBN/tag or Calibre query syntax (`mode: meta`), or full text (`mode: fts`); `scope: book` searches inside one book |
 | `calibre_get_book` | read | Full metadata, formats, and cover link for one book (id or uuid) |
-| `calibre_get_content` | read | Read a book’s text as capped excerpts; walk the whole book via cursor |
+| `calibre_get_content` | read | Read a book’s text as capped excerpts; walk the whole book via cursor. `structure: true` returns a chapter map (headings, offsets, per-chapter cursors) — EN + RU/UK |
 | `calibre_list_categories` | read | Browse tags, authors, series, publishers, custom columns with counts |
 | `calibre_list_libraries` | read | List the libraries the Content Server exposes (+ which is default) |
 | `calibre_semantic_search` | read | Meaning-based search; `mode: hybrid\|vector\|keyword`, library- or book-scoped |
@@ -161,6 +161,24 @@ and `mode: hybrid` degrades to keyword (with a note); rebuild with the model ins
 | `calibre_add_book` | **write** | Import a local ebook file (path-whitelisted) |
 | `calibre_remove_book` | **write, destructive** | Permanently delete books (records + files); dry-run unless confirmed |
 | `calibre_ping` | read | Health check: is Calibre reachable end-to-end? |
+
+## 📚 Companion skill: calibre-distill
+
+An Agent Skill that distills a book from your library into a reusable, structured skill
+(frameworks, mental models, glossary, cheatsheet) by driving the tools above — the chapter
+map (`calibre_get_content structure=true`) plus in-book keyword + semantic search. Works on
+EN and RU/UK books, no temp files, and can optionally stamp what you learned back into the
+catalog (tags + a distill note) through the gated write tools.
+
+It ships in this repo at [`skills/calibre-distill/`](./skills/calibre-distill). Install it
+into Claude Code by copying or symlinking:
+
+```sh
+ln -s "$PWD/skills/calibre-distill" ~/.claude/skills/calibre-distill
+```
+
+Then ask, e.g., *“distill book 187 into a skill called kafka-ops”*. Note: the MCPB bundle
+can’t ship skills — install the skill separately from the MCP server.
 
 ## ⚙️ Configuration
 
