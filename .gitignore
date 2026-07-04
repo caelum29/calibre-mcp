@@ -26,3 +26,9 @@ Makefile
 
 # logs
 *.log
+
+#extra dir
+extra/*
+
+# local research/idea prompts — reference gitignored extra/ zips, kept local
+docs/prompts/

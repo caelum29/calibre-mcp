@@ -1,0 +1,5 @@
+# Re-include local research/idea prompts for tools that read .ignore
+# (Marksman LSP, ripgrep, fd). git still ignores docs/prompts/ via .gitignore —
+# git does not read this file. This only stops Marksman's false "unresolved link"
+# warnings for links that point into docs/prompts/.
+!docs/prompts/
