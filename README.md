@@ -196,6 +196,14 @@ ln -s "$PWD/skills/calibre-distill-topic" ~/.claude/skills/calibre-distill-topic
 
 Then ask, e.g., *“synthesize kafka reliability from books 187 182 571 186 into a skill.”*
 
+Generated skills can be checked with the bundled verifier — verbatim-overlap (8-gram
+shingles vs the source books), quote budget, compression floor, heading mirroring,
+cursor leaks, and attribution:
+
+```sh
+pnpm build && node scripts/legal-gate.mjs <skill-dir> --book <id> [--book <id>…]
+```
+
 ## ⚙️ Configuration
 
 Everything is optional — with a running Content Server on the default port, zero config
@@ -219,9 +227,10 @@ works. Environment variables (the Desktop bundle exposes the same settings as UI
 - **“Calibre unreachable” / connection refused** — the Content Server isn’t running.
   In Calibre: *Connect/share → Start Content server*, or point
   `CALIBRE_MCP_SERVER_URL` at the right host/port.
-- **Write refused / “Forbidden”** — the Content Server wasn’t started with
-  `--enable-local-write`. See [Enabling writes](#enabling-writes); the GUI-embedded
-  server can’t do it.
+- **Write refused / “Forbidden”** — the Content Server doesn’t allow local writes.
+  See *Enabling writes* above: run a standalone server with
+  `--enable-local-write`, or tick the GUI’s *Sharing over the net → Advanced* option
+  and restart the Content Server.
 - **Full-text search returns nothing / errors** — Calibre’s FTS index isn’t enabled for
   the library. In Calibre: *Preferences → Searching → Full text search*, enable it, and
   let indexing finish (it can take a while on large libraries).

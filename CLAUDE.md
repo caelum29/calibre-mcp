@@ -172,7 +172,8 @@ ISBN→OpenLibrary→GoogleBooks internally, not three chainable tools). Cheap e
   (PDF text — **poppler `pdftotext` now installed → preferred PDF backend, verified live**; PyMuPDF
   optional); **enable FTS indexing** via the Calibre GUI (Preferences → Searching → Full text search) —
   the CLI `calibredb … fts_index enable` route is itself a *write* and is **Forbidden** without local-write,
-  so use the GUI toggle; Content Server **--enable-local-write** (write round-trip — currently refused as expected).
+  so use the GUI toggle; Content Server **--enable-local-write** (write round-trip — RESOLVED: the earlier
+  "refusal" was the libId-404 bug; the write path is verified live, see the 2026-07-01 bullet below).
 - ✅ **Increment 3 complete** (2026-07-01, branch `feat/semantic-search`) — **the headline
   differentiator**: vector-only semantic search, de-risk slice. **127 tests green** (+3 gated model
   tests); **verified live** end-to-end against the Content Server.
@@ -277,8 +278,8 @@ ISBN→OpenLibrary→GoogleBooks internally, not three chainable tools). Cheap e
     `calibredb` `opts.library`. (Earlier "refused as expected" was likely this 404, not a local-write refusal.)
 - ✅ **Increment 7 complete — v1 CODE COMPLETE** (2026-07-01, branch `feat/write-tools`) — the **3
   remaining gated write tools**, finishing the 14-tool v1 surface. **232 tests green** (+22); typecheck
-  clean. Live write-verification pending (needs the standalone `--enable-local-write` server back up;
-  the GUI's embedded server is read-only).
+  clean. Live write-verification was pending at the time (needs local writes enabled — standalone
+  `--enable-local-write` server, or the GUI Advanced toggle per the 2026-07-03 correction above).
   - **Design Q1 resolved → in-band `preview`/`confirm` params** (NOT MCP elicitation): handlers stay
     SDK-free (locked constraint), so real `elicitation/create` would leak the SDK into `ToolDeps` →
     deferred as LATER. DESIGN §4's preview-first rule is honored via params. Q2 → loop `set_metadata`
@@ -299,9 +300,10 @@ ISBN→OpenLibrary→GoogleBooks internally, not three chainable tools). Cheap e
     reused by all four write tools). `registry.test.ts` write list now = the 4 gated write tools.
   - **Deferred (additive):** real MCP elicitation; `/cdb` HTTP batch for bulk; `add --duplicates`/cover;
     `remove` trash-vs-permanent flag.
-- 🎯 **v1 status: 14 of 14 tools built.** Write tools live-verification (bulk preview→apply + revert,
-  add→remove round-trip) pending Artem re-running the standalone `--enable-local-write` server; then
-  merge `feat/write-tools` → `main`.
+- 🎯 **v1 status: 14 of 14 tools built** (`feat/write-tools` since merged and shipped in v0.1.0).
+  Write tools live-verification (bulk preview→apply + revert, add→remove round-trip) still pending —
+  needs local writes enabled (standalone `--enable-local-write` server or the GUI Advanced toggle);
+  `calibre_update_book` itself IS live-verified (write-path bullet above).
 - ✅ **Increment 8 complete — DISTRIBUTION** (2026-07-02, branch `feat/distribution`) — the
   community-release increment: npm + MCPB packaging + README. **249 tests green** (+5 files).
   - **De-Artem-ified** (the DISTRIBUTION "what public changes" list): `CALIBRE_MCP_LIBRARY` default
@@ -364,8 +366,8 @@ ISBN→OpenLibrary→GoogleBooks internally, not three chainable tools). Cheap e
   Refactor: the bounded ISBN text-scan (`scanForIsbn` + timeout/deadline) lifted out of
   `calibre_recover_metadata` into shared `src/tools/isbn-scan.ts` (both tools use it; the guard refinements
   also sharpen recover_metadata's lookup key). **270 tests green** (+11); typecheck clean. **Now 15 tools**
-  (cliff-safe under ~20). Live write-verify pending (needs the standalone `--enable-local-write` server,
-  same as the other write tools). **Deferred (additive):** configurable ISBN-13 prefixes; full spine/page
+  (cliff-safe under ~20). Live write-verify pending (needs local writes enabled — standalone server or
+  the GUI Advanced toggle, same as the other write tools). **Deferred (additive):** configurable ISBN-13 prefixes; full spine/page
   walk (we scan front+tail slices, not the plugin's per-file middle sweep).
 - ✅ **Increment "distill" complete (idea 08)** (2026-07-05, branch `feat/distill`) — the **book→Agent-Skill**
   differentiator, resolved B2+ (skill-only, **0 new tools** — still 15). Build order from
@@ -410,8 +412,8 @@ ISBN→OpenLibrary→GoogleBooks internally, not three chainable tools). Cheap e
   char-offset cursors) and emits the D2.8 `kind: topic-aggregate` `distill.manifest.yaml`. Cross-linked
   both ways with `calibre-distill` (one line under its Modes → sibling; sibling routes single-book back).
   Modeled on the validated hand-run prototype (`docs/prompts/ideas/distill-samples/topic-kafka-reliability/`,
-  gitignored). **Deferred:** the automated D1.4 verifier (prompt 04); TS manifest emitter; chapter-file
-  layer for very large topics.
+  gitignored). **Deferred:** TS manifest emitter; chapter-file layer for very large topics. (The
+  automated D1.4 verifier shipped — next bullet.)
 - ✅ **Legal-gate verifier shipped (prompt 04 / D1.4)** (2026-07-05, branch `feat/legal-gate`, merged) —
   the mechanical half of the distill admission test. Pure SDK/IO-free module
   `src/domain/distill/legal-gate.ts`: 8-gram shingle overlap (normalized, Unicode/RU-safe, title/author
