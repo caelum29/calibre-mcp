@@ -5,6 +5,7 @@
 
 import { z } from "zod";
 import { chooseExtractFormat } from "../calibre/extract.js";
+import { detectChapters } from "../domain/structure/chapters.js";
 import { CalibreHttpError } from "../domain/errors.js";
 import { BookId, CoercedBool, CursorParam, limitParam } from "./coerce.js";
 import { chunkText } from "./content-chunk.js";
@@ -17,12 +18,13 @@ export const getContentTool = defineTool({
   name: "calibre_get_content",
   title: "Read book text",
   description:
-    "Extract a book's text as a capped, fenced excerpt; pass the returned cursor to walk the whole book. To find text inside a book, use calibre_search scope=book.",
+    "Extract a book's text as a capped, fenced excerpt; pass the returned cursor to walk the whole book. Set structure=true for a chapter map with per-chapter cursors. To find text inside a book, use calibre_search scope=book.",
   inputSchema: {
     id: BookId(),
     format: z.string().optional(),
     maxChars: limitParam(40_000, 8_000),
     sentenceAware: CoercedBool().default(true),
+    structure: CoercedBool().default(false),
     cursor: CursorParam,
     library: z.string().optional(),
   },
@@ -34,6 +36,20 @@ export const getContentTool = defineTool({
     backend: z.string().optional(),
     hasMore: z.boolean().optional(),
     nextCursor: z.string().optional(),
+    chapters: z
+      .array(
+        z.object({
+          n: z.number(),
+          heading: z.string(),
+          startChar: z.number(),
+          endChar: z.number(),
+          approxTokens: z.number(),
+          cursor: z.string(),
+        }),
+      )
+      .optional(),
+    hasToc: z.boolean().optional(),
+    detector: z.string().optional(),
   },
   annotations: { readOnlyHint: true, openWorldHint: true },
   handler: async (args, deps) => {
@@ -84,6 +100,34 @@ export const getContentTool = defineTool({
         return toolError(
           `No extractable text found in book ${numericId} (${fmt}) — likely a scanned/image PDF (Calibre has no OCR).`,
         );
+      }
+
+      // structure mode: return a chapter map (with per-chapter cursors), not book text.
+      // Ignores `cursor` — the map spans the whole book. 0 chapters is not an error.
+      if (args.structure) {
+        const struct = detectChapters(extracted.text);
+        const totalChars = extracted.text.length;
+        const chapters = struct.chapters.map((c) => ({
+          n: c.n,
+          heading: c.heading,
+          startChar: c.startChar,
+          endChar: c.endChar,
+          approxTokens: Math.round((c.endChar - c.startChar) / 4),
+          cursor: encodeContentCursor({ offset: c.startChar, id: numericId, format: fmt }),
+        }));
+        const head = `Book ${numericId} — ${fmt} via ${extracted.backend}, ${chapters.length} chapters (${struct.detector}), ToC ${struct.hasToc ? "yes" : "no"}`;
+        const body =
+          chapters.length === 0
+            ? "No chapters detected — walk the book with the plain cursor (omit structure=true)."
+            : `n | heading | ~tokens\n${chapters.map((c) => `${c.n} | ${c.heading} | ~${c.approxTokens}`).join("\n")}`;
+        return toolOk([{ type: "text", text: `${head}\n${fence("CHAPTERS", body)}` }], {
+          chapters,
+          hasToc: struct.hasToc,
+          detector: struct.detector,
+          totalChars,
+          format: fmt,
+          backend: extracted.backend,
+        });
       }
 
       // Resume only if the cursor was minted for THIS book + format (else restart at 0).

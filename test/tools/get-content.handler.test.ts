@@ -91,4 +91,49 @@ describe("calibre_get_content handler", () => {
     expect(r.isError).toBe(true);
     expect((r.content[0] as { text: string }).text).toContain("poppler");
   });
+
+  describe("structure=true", () => {
+    const chapterText = ["Chapter 1", "aaa aaa aaa", "Chapter 2", "bbb bbb bbb", "Chapter 3", "ccc ccc ccc"].join("\n");
+    const withChapters = () =>
+      deps({ getText: async () => ({ text: chapterText, backend: "pdftotext", chars: chapterText.length, cached: false }) });
+
+    it("returns a chapter map with per-chapter cursors, not book text", async () => {
+      const r = await getContentTool.handler(args({ structure: true }), withChapters());
+      expect(r.isError).toBeFalsy();
+      const text = (r.content[0] as { text: string }).text;
+      expect(text).toContain("CHAPTERS");
+      expect(text).not.toContain("aaa aaa aaa"); // book body is NOT dumped
+      const sc = r.structuredContent as { chapters?: { n: number; cursor: string }[]; detector?: string };
+      expect(sc.detector).toBe("numeric");
+      expect(sc.chapters?.map((c) => c.n)).toEqual([1, 2, 3]);
+      expect(sc.chapters?.[0]?.cursor).toBeTypeOf("string");
+    });
+
+    it("coerces string 'true'/'1' for the structure flag", async () => {
+      for (const v of ["true", "1"]) {
+        const r = await getContentTool.handler(args({ structure: v }), withChapters());
+        expect(r.isError).toBeFalsy();
+        expect((r.structuredContent as { detector?: string }).detector).toBe("numeric");
+      }
+    });
+
+    it("a per-chapter cursor seeks to that chapter in a follow-up get_content call", async () => {
+      const map = await getContentTool.handler(args({ structure: true }), withChapters());
+      const cursor = (map.structuredContent as { chapters: { cursor: string }[] }).chapters[1]!.cursor;
+      const page = await getContentTool.handler(args({ cursor }), withChapters());
+      expect(page.isError).toBeFalsy();
+      expect((page.structuredContent as { offset: number }).offset).toBe(chapterText.indexOf("Chapter 2"));
+    });
+
+    it("reports 0 chapters as a non-error with a steer to the plain walk", async () => {
+      const flat = "Just prose, no headings anywhere in this book at all.";
+      const r = await getContentTool.handler(
+        args({ structure: true }),
+        deps({ getText: async () => ({ text: flat, backend: "pdftotext", chars: flat.length, cached: false }) }),
+      );
+      expect(r.isError).toBeFalsy();
+      expect((r.structuredContent as { chapters: unknown[] }).chapters).toEqual([]);
+      expect((r.content[0] as { text: string }).text).toContain("No chapters detected");
+    });
+  });
 });
