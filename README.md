@@ -180,6 +180,22 @@ ln -s "$PWD/skills/calibre-distill" ~/.claude/skills/calibre-distill
 Then ask, e.g., *“distill book 187 into a skill called kafka-ops”*. Note: the MCPB bundle
 can’t ship skills — install the skill separately from the MCP server.
 
+### Companion skill: calibre-distill-topic
+
+A sibling skill that synthesizes **one topic across several books** (≥3) into a single
+**concept-keyed** skill — a decision framework, per-concept sections, a cross-source config
+table, an explicit *“where the sources disagree or complement”* section, and an ISBN
+bibliography that doubles as a live-source binding. Use it when you want a topic study aid
+built from a shelf of books rather than a single-book distill (single-book requests belong
+to `calibre-distill`). Ships at [`skills/calibre-distill-topic/`](./skills/calibre-distill-topic);
+install the same way:
+
+```sh
+ln -s "$PWD/skills/calibre-distill-topic" ~/.claude/skills/calibre-distill-topic
+```
+
+Then ask, e.g., *“synthesize kafka reliability from books 187 182 571 186 into a skill.”*
+
 ## ⚙️ Configuration
 
 Everything is optional — with a running Content Server on the default port, zero config
