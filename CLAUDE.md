@@ -399,3 +399,39 @@ ISBN→OpenLibrary→GoogleBooks internally, not three chainable tools). Cheap e
     chapter labels on search hits (rides idea 02 `loc_*`); "distill this shelf" batch UX; EPUB spine mode
     (idea 02 Phase 2 `epub-spine.ts` will slot behind the detector seam); configurable extra chapter-word
     languages.
+- ✅ **Topic-aggregate skill added (prompt 03 / D1.7)** (2026-07-05, branch `feat/distill-topic`) — the
+  **distributable** artifact class: new sibling skill `skills/calibre-distill-topic/SKILL.md` synthesizes
+  ONE topic across ≥3 books into a single **concept-keyed** skill (layered overview → decision framework →
+  per-concept sections → cross-source config table → mandatory **"where sources disagree/complement"** →
+  ISBN bibliography-as-L4). **0 new MCP tools** (reuses `calibre_search`/`calibre_semantic_search`/
+  `calibre_get_content structure=true`/`calibre_get_book` + optional `calibre_update_book` write-back);
+  agent-neutral; English-only artifacts, RU/UK read natively. Encodes the D1.7 validity conditions (≥3
+  sources, no source > 0.50 contribution, per-source own-words/quote-budget, `{n,heading}` L4 keys, never
+  char-offset cursors) and emits the D2.8 `kind: topic-aggregate` `distill.manifest.yaml`. Cross-linked
+  both ways with `calibre-distill` (one line under its Modes → sibling; sibling routes single-book back).
+  Modeled on the validated hand-run prototype (`docs/prompts/ideas/distill-samples/topic-kafka-reliability/`,
+  gitignored). **Deferred:** the automated D1.4 verifier (prompt 04); TS manifest emitter; chapter-file
+  layer for very large topics.
+- ✅ **Legal-gate verifier shipped (prompt 04 / D1.4)** (2026-07-05, branch `feat/legal-gate`, merged) —
+  the mechanical half of the distill admission test. Pure SDK/IO-free module
+  `src/domain/distill/legal-gate.ts`: 8-gram shingle overlap (normalized, Unicode/RU-safe, title/author
+  **allowlist** per the D1.7 empirical finding), quote budget (25 words/quote, 200/skill), ≥20×
+  compression floor (+ per-chapter variant), heading-match with L4/bibliography exemption, cursor-leak
+  probe (base64url decode), attribution check; `runLegalGate` aggregates to the manifest
+  `quality.legal_gate` keys. CLI `scripts/legal-gate.mjs <skill-dir> --book <id>…` (Content Server +
+  Extractor source pull, stderr logs, exit 0/1, writes nothing). Zero new deps, zero new tools; 25
+  table-driven tests. **Live-verified both ways:** kafka-reliability prototype → PASS on all 6 checks
+  (0 overlaps, 367.6× compression, 24 quoted words); scratch copy + one verbatim RU sentence → shingle
+  FAIL with attributed hits. Real bug found live: YAML frontmatter `description:` miscounted as a
+  40-word quote → `stripFrontmatter()` + regression test.
+- ✅ **§8 #3 RESOLVED — registry shape (D3)** (2026-07-05) — `docs/PRODUCT-DECISIONS.md` D3, design-only.
+  **Rail = git-convention on GitHub surfaced as a Claude Code plugin marketplace** (one repo +
+  `.claude-plugin/marketplace.json`; GitHub's own DMCA process IS the §512 safe-harbor story — no
+  server, no registered agent); **index = single curated regenerated file** (E4 generalized, data
+  separate from skill content); **submission = PR → CI legal-gate in a reusable workflow → merge =
+  listing** (deferred until distribution opens; the submitter-uneditable workflow is what makes gh
+  attestation mean "the gate passed this digest"); **private half = zero overhead** (skill dir drops
+  into `~/.claude/skills/`, registry machinery purely additive). Two amendments folded in:
+  `contribution_frac` must be **gate-recomputed from measured overlap, never trusted from the manifest**
+  (anti-laundering), and paraphrase-substitution needs a semantic-coverage outlier flag (e5 embedder)
+  the shingle check can't see. Open: §8 #4 topic-resolution, §8 #5 gate economics, §512(f) residual.

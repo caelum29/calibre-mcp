@@ -4,6 +4,38 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **`calibre-distill-topic` companion skill** — multi-book topic synthesis (the D1.7
+  distributable artifact class): synthesizes one topic across ≥3 library books into a
+  single concept-keyed Agent Skill with a mandatory "where the sources disagree or
+  complement" section, an ISBN bibliography-as-L4 block, and a `kind: topic-aggregate`
+  `distill.manifest.yaml`. Zero new MCP tools; cross-linked both ways with
+  `calibre-distill`.
+- **Legal-gate verifier** (`src/domain/distill/legal-gate.ts` + `scripts/legal-gate.mjs`) —
+  mechanical D1.4 admission checks for generated distill skills: 8-gram verbatim-shingle
+  overlap (with title/author allowlist), quote budget (25 words/quote, 200/skill), ≥20×
+  compression floor, heading-match (L4 block exempt), content-cursor leak detection, and
+  attribution presence. CLI reads the skill dir + manifest, pulls source text via the
+  Content Server, prints a per-check report, exits 0/1. Zero new deps, zero new tools.
+
+### Changed
+
+- **`calibre-distill` skill: Rule 7 enforced** — the Step 7 verbatim-reproduction
+  instructions (exact-syntax code examples, reproduced tables, faithful worked examples,
+  verbatim chapter headings) are replaced with re-authoring instructions; Quality Rule 7
+  gains a numeric quote budget (25 words/quote, 200/skill) and generated skills now carry
+  a mandatory attribution block ("buy the book" line included).
+
+### Docs
+
+- `docs/PRODUCT-DECISIONS.md`: D1.7 prototype-validation findings folded in; **D3**
+  resolves the registry shape (git-convention rail on GitHub surfaced as a Claude Code
+  plugin marketplace, single regenerated index file, PR → CI legal-gate submission,
+  zero-overhead private half). PRODUCT-VISION §8 items 1–3 marked resolved.
+
 ## [0.1.5] — 2026-07-02
 
 ### Added

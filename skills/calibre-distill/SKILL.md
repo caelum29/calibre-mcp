@@ -81,6 +81,10 @@ topic named.
 that slice. See the **Targeted Fold-in Workflow** (§Mode 5). This is what a flat-file
 pipeline cannot do — it needs ranked, cross-lingual retrieval.
 
+> **Synthesizing ONE topic across MULTIPLE books (≥3) into a new concept-keyed skill?**
+> That's a different artifact — use the sibling skill **`calibre-distill-topic`**, not a
+> Mode here.
+
 ---
 
 ## Skill Locations
@@ -307,8 +311,8 @@ mkdir -p "$SKILLS_HOME/<skill_name>/chapters"
 
 **`DEPTH=study` is earned with content, not a bigger number.** To reach the study budget
 honestly a chapter must add concrete material:
-- **Reproduce one worked example or artifact** under a `## Worked Example` section — the
-  single biggest lever and the main thing a learner returns for.
+- **Reconstruct one worked example** on a FRESH scenario under a `## Worked Example`
+  section — the single biggest lever and the main thing a learner returns for.
 - **Expand the "How" of each framework** into explicit steps or criteria.
 - **Add a short "Why it works / failure mode" note** to the top 1–2 frameworks.
 
@@ -316,14 +320,17 @@ If a chapter genuinely has no worked example, let it land below the study floor 
 is thin — don't pad. A `reference` chapter deliberately omits worked examples.
 
 For EACH chapter in the Step 2 map: read it via its `cursor` (Step 2.6), then create
-`$SKILLS_HOME/<skill_name>/chapters/ch<NN>-<slug>.md`.
+`$SKILLS_HOME/<skill_name>/chapters/ch<NN>-<slug>.md`. The `# Chapter N:` title should be a
+concise paraphrase of the chapter's subject, **not** the book's verbatim heading (the
+verbatim heading may appear only in the L4 footer metadata).
 
 **Adapt emphasis by `BOOK_TYPE`:** `technical` → prioritize Code Examples, Reference Tables,
-Commands & APIs; preserve exact syntax. `text` → prioritize Frameworks, Mental Models, Key
-Takeaways; skip empty technical sections.
+Commands & APIs; API/config identifiers and syntax rules are facts and stay exact, but the
+author's own example code / tables get re-authored, not copied (see the sections below).
+`text` → prioritize Frameworks, Mental Models, Key Takeaways; skip empty technical sections.
 
 ```markdown
-# Chapter N: <Full Title>
+# Chapter N: <paraphrased subject — not the book's verbatim heading>
 
 ## Core Idea
 <1–2 sentences: the single most important thing this chapter teaches>
@@ -344,17 +351,23 @@ Takeaways; skip empty technical sections.
 - **<What to avoid>**: <why it fails>
 
 ## Code Examples *(technical books only — omit if BOOK_TYPE=text)*
+<!-- Re-author a minimal example that demonstrates the same technique — fresh variable
+     names, a fresh scenario. API/config identifiers and syntax rules are facts and stay
+     exact; the author's example code does NOT get copied verbatim. -->
 ```<language>
-<key code example from this chapter>
+<a re-authored minimal example demonstrating this chapter's technique>
 ```
 - **What it demonstrates**: <one line>
 
 ## Reference Tables *(technical books only — omit if BOOK_TYPE=text)*
-<!-- Reproduce any comparison/parameter/decision table in markdown. -->
+<!-- Re-author the decision content of any comparison/parameter/decision table: parameter
+     names, values, thresholds are facts — keep them exact; the row prose and table
+     composition are re-expressed. Don't lift the author's table verbatim. -->
 
 ## Worked Example *(DEPTH=study only — omit for DEPTH=reference)*
-<!-- Reproduce one concrete example the author works through, compactly and
-     faithfully. Never copy long raw passages — reconstruct. -->
+<!-- Reconstruct the author's method on a FRESH scenario of your own — new numbers, a new
+     domain object — that exercises the same steps. Never re-tell the author's own example
+     end-to-end, and never copy raw passages. -->
 
 ## Key Takeaways
 1. <Actionable insight>
@@ -407,6 +420,14 @@ description: "Knowledge base from \"<Full Title>\" by <Author(s)>. Use when appl
 
 # <Full Title>
 **Author**: <Author(s)> | **Chapters**: <N> | **Calibre id**: <BOOK_ID> | **Generated**: <YYYY-MM-DD>
+
+## Attribution
+<!-- Mandatory. Fill every field from library metadata (Step 1); leave "—" only if truly absent. -->
+- **Title**: <Full Title>
+- **Author(s)**: <Author(s)>
+- **Publisher**: <Publisher>
+- **ISBN**: <ISBN-13>
+- This is a lossy, transformative study aid — **buy the book for the full treatment**.
 
 ## How to Use This Skill
 - **Without arguments** — load core frameworks for reference
@@ -565,5 +586,7 @@ merging** — don't fold in weak matches silently.
 5. **Front-load SKILL.md** — compaction keeps the first ~5,000 tokens; most important first.
 6. **Chapter files are on-demand** — they don't count against skill budget until loaded.
 7. **Never copy raw book text** — always synthesize (also respects the source's license).
+   Verbatim quoting is capped: **max 25 words per quote, max 200 quoted words total per
+   skill**, non-contiguous, and every quote is **always attributed** to the source.
 8. **Topic index is critical** — it's how the agent navigates to the right chapter file.
 9. **Verify before you claim** — use `calibre_search scope=book` to confirm a framework is really in the book before naming it.
