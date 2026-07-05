@@ -58,7 +58,10 @@ a recipient who doesn't still has the standalone distillate. The artifact **degr
 gracefully** — distillate for everyone, live-source for owners — which is both the UX story and
 the legal story.
 
-> **🔬 FABLE-5 DEEP-DIVE — legality.** "Transformative / lossy" is *plausible*, not free. A
+> **🔬 FABLE-5 DEEP-DIVE — legality.** ✅ **RESOLVED 2026-07-05 → [`PRODUCT-DECISIONS.md`](./PRODUCT-DECISIONS.md) D1**
+> (viable-with-guardrails, bifurcated by genre + artifact layer; own-library-only until the
+> mechanical verifier gate ships). Original question kept for the record:
+> "Transformative / lossy" is *plausible*, not free. A
 > distillate that quotes at length or mirrors the book's structure 1:1 drifts toward a
 > derivative work. **Quality Rule 7 ("never copy raw book text") is not a quality rule here —
 > it is the load-bearing legal wall.** Needs a real answer, not hand-waving: (a) what makes the
@@ -104,7 +107,11 @@ A book-skill is not one artifact drifting on one axis. Three axes move independe
 So the version key is roughly `edition × distiller-model × schema-version`, not a single
 semver. Two "v2" skills of the same book can be incomparable if they differ on axis 2 or 3.
 
-> **🔬 FABLE-5 DEEP-DIVE — versioning + provenance.** Design the version key and the update/diff
+> **🔬 FABLE-5 DEEP-DIVE — versioning + provenance.** ✅ **RESOLVED 2026-07-05 →
+> [`PRODUCT-DECISIONS.md`](./PRODUCT-DECISIONS.md) D2** (identity=ISBN-13 edition, digest +
+> comparison tuple, sidecar manifest, lineage-scoped upgrades, ISBN+headings L4 binding — raw
+> cursors never cross the wire, artifact-of-record, GitHub attestations). Original question:
+> Design the version key and the update/diff
 > story: how does a consumer know a newer skill is *strictly better* vs merely *different*?
 > How do L4 cursors (which encode `{offset,id,format}`) survive an edition change (they don't —
 > ISBN fallback per E2)? Reproducibility: is a distiller run deterministic enough to re-derive,
@@ -154,11 +161,15 @@ semver. Two "v2" skills of the same book can be incomparable if they differ on a
 
 Run these as an adversarial reasoning pass; each is a make-or-break decision left open above.
 
-1. **Legality (§3)** — is a *public* registry viable, or own-library-only? What makes the
-   distillate provably transformative; attribution/ownership obligations; jurisdiction;
-   publisher posture. **Highest stakes — decide first.**
-2. **Versioning + provenance (§5)** — the `edition × distiller × schema` key; better-vs-different
-   diffing; L4-cursor survival across editions; reproducibility; signing.
+1. ~~**Legality (§3)**~~ ✅ **RESOLVED** → [`PRODUCT-DECISIONS.md`](./PRODUCT-DECISIONS.md) **D1** —
+   viable-with-guardrails, bifurcated (technical non-fiction public / fiction + chapter-recounts
+   own-library-only); quote budget + no-lifted-code/tables + structure divergence; lawful-access
+   attestation; publishing stays own-library-only until the D1.4 mechanical verifier gate ships.
+2. ~~**Versioning + provenance (§5)**~~ ✅ **RESOLVED** → [`PRODUCT-DECISIONS.md`](./PRODUCT-DECISIONS.md)
+   **D2** — OCI-style identity/digest/tags (identity = ISBN-13 edition); `distill.manifest.yaml`
+   sidecar; auto-upgrade only within one `identity × schema × model-family` lineage; L4 binding =
+   ISBN + chapter headings (raw cursors provably non-portable AND a legal-optics liability — never
+   shared); artifact-of-record; GitHub attestations on the existing OIDC rails.
 3. **Distribution format & registry shape (§6)** — new service vs git-convention vs existing
    rail; what the package carries; decentralized vs centralized.
 4. **Topic resolution & bundle model (§4)** — task-phrase → bundle mechanism; taxonomy vs
@@ -169,6 +180,13 @@ Run these as an adversarial reasoning pass; each is a make-or-break decision lef
 
 **Recommendation (from this session):** nail #1 and #2 before any engineering — they either
 make the product or kill it. #3–#5 are engineering Artem already knows how to do.
+**Update 2026-07-05:** #1 and #2 are decided (`PRODUCT-DECISIONS.md`); #3 inherits the D2.7
+constraint (manifest = comparison authority, rail version display-only) and #5 inherits D1.4
+(the mechanical checks are the admission test's deterministic half).
+**Distribution thesis pivot (same day, D1.6+D1.7):** per-book skills stay private
+(own-library-only, raw material); **what distributes to the community is the topic-aggregate
+synthesis** (≥3 sources, per-source cap, bibliography-as-L4). The topic skill IS the §4 bundle,
+pre-synthesized — #3 and #4 should now be designed around the aggregate artifact (D2.8 sketch).
 
 ---
 
