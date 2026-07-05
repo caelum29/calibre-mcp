@@ -81,6 +81,10 @@ topic named.
 that slice. See the **Targeted Fold-in Workflow** (§Mode 5). This is what a flat-file
 pipeline cannot do — it needs ranked, cross-lingual retrieval.
 
+> **Synthesizing ONE topic across MULTIPLE books (≥3) into a new concept-keyed skill?**
+> That's a different artifact — use the sibling skill **`calibre-distill-topic`**, not a
+> Mode here.
+
 ---
 
 ## Skill Locations

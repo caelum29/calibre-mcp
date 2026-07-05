@@ -399,3 +399,16 @@ ISBN→OpenLibrary→GoogleBooks internally, not three chainable tools). Cheap e
     chapter labels on search hits (rides idea 02 `loc_*`); "distill this shelf" batch UX; EPUB spine mode
     (idea 02 Phase 2 `epub-spine.ts` will slot behind the detector seam); configurable extra chapter-word
     languages.
+- ✅ **Topic-aggregate skill added (prompt 03 / D1.7)** (2026-07-05, branch `feat/distill-topic`) — the
+  **distributable** artifact class: new sibling skill `skills/calibre-distill-topic/SKILL.md` synthesizes
+  ONE topic across ≥3 books into a single **concept-keyed** skill (layered overview → decision framework →
+  per-concept sections → cross-source config table → mandatory **"where sources disagree/complement"** →
+  ISBN bibliography-as-L4). **0 new MCP tools** (reuses `calibre_search`/`calibre_semantic_search`/
+  `calibre_get_content structure=true`/`calibre_get_book` + optional `calibre_update_book` write-back);
+  agent-neutral; English-only artifacts, RU/UK read natively. Encodes the D1.7 validity conditions (≥3
+  sources, no source > 0.50 contribution, per-source own-words/quote-budget, `{n,heading}` L4 keys, never
+  char-offset cursors) and emits the D2.8 `kind: topic-aggregate` `distill.manifest.yaml`. Cross-linked
+  both ways with `calibre-distill` (one line under its Modes → sibling; sibling routes single-book back).
+  Modeled on the validated hand-run prototype (`docs/prompts/ideas/distill-samples/topic-kafka-reliability/`,
+  gitignored). **Deferred:** the automated D1.4 verifier (prompt 04); TS manifest emitter; chapter-file
+  layer for very large topics.
