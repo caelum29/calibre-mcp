@@ -204,6 +204,41 @@ already "fold what N books say about topic X into one skill." Pipeline:
 **Versioning consequence → D2.8** (per-book `identity = isbn13` doesn't fit a multi-source
 artifact).
 
+### D1.7 validation (2026-07-05) — prototype built + shingle-checked
+
+The D1.7 thesis was validated with a **real prototype**: a `kafka-reliability` topic skill
+synthesized from 4 Calibre books (SKILL.md + a D2.8-shape `distill.manifest.yaml`), at
+`docs/prompts/ideas/distill-samples/topic-kafka-reliability/` (gitignored sample; not
+committed). Sources: book 187 *Definitive Guide* 2nd ed RU (ch7–8, contribution 0.40),
+571 *Kafka Troubleshooting in Production* (0.25), 182 *Kafka in Action* (ch3/4/6, 0.20),
+186 *Kafka Streams/ksqlDB* RU (ch4/12, 0.15).
+
+**Empirical findings that amend the spec:**
+
+a. **The D1.4 verbatim-shingle check ran for real** — 1,695 8-gram shingles vs all 4 source
+   texts: **0 prose overlaps**. The only hits were the source book's own TITLE appearing in
+   the bibliography → the verifier spec needs a **title/attribution allowlist** (otherwise
+   the mandatory bibliography self-trips the shingle gate).
+b. **L4 binding needs `n + heading` together, not heading alone.** RU numeric-detector books
+   emit bare headings ("ГЛАВА 8") that don't discriminate across chapters — the ordinal is
+   load-bearing for re-resolution (amends D2.4 / D2.8's `chapters[]` shape).
+c. **Contribution caps are realistic.** The reference book naturally dominates (0.40); the
+   ≤0.50 per-source cap (D1.7 validity condition 1) is the right shape — it constrained
+   nothing artificial while keeping the "no single book's heart" geometry.
+d. **The no-ISBN fallback (D2.1) was exercised live:** book 186 has no ISBN → the manifest
+   carries `fallback_key` + `identity_confidence: unverified` (the `isbn13 → olid/oclc →
+   work-slug flagged unverified` path, proven end-to-end).
+e. **Cost check:** topic-slice reading (~180K chars of chapters across the 4 books) vs
+   ~2.8M chars whole-book — **~15× cheaper**; the Mode 5-style targeted-slicing claim holds
+   at aggregate scale.
+
+**Cross-source synthesis proved the "original authorship" claim** — content no single-book
+distillate can have: KiA's `max.in.flight=1` ordering advice set against DG2's
+idempotence-allows-5; KTiP's page-cache gap nuancing DG2's committed-message contract. The
+distillate reconciles disagreeing sources, which is exactly the transformative, own-authorship
+posture that flips the D1 legal geometry (D1.7 rationale) — and which a faithful single-book
+recount structurally cannot produce.
+
 ---
 
 ## D2 — Versioning + provenance (§8 item 2)
@@ -366,7 +401,13 @@ digest / comparison / tags                 # unchanged from D2.1
   → `UPGRADE_CANDIDATE` (recommend, show the added sources); overlapping-but-different
   source sets → `SIBLING`.
 - L4 binding becomes an **array**: one D2.4 block (ISBN + headings) per source; each
-  degrades independently — a recipient lights up L4 only for the books they own.
+  degrades independently — a recipient lights up L4 only for the books they own. Each
+  source's `topic_chapters[]` entries must carry **`{ n, heading }` together** (D1.7
+  finding b) — the bare heading doesn't discriminate for RU numeric-detector books.
+- The prototype manifest is the **current reference shape** for the aggregate class: it
+  added `kind: topic-aggregate` (distinguishes it from the per-book D2.2 manifest) and a
+  `quote_budget` block (per-source quote accounting for the D1.3 #2 cap). Firm these into
+  the schema when §8 item 3 lands.
 - Per-book manifests (D2.2) remain the private-collection format; the topic manifest
   references them by digest when they exist locally (provenance chain: book → per-book
   distillate → topic synthesis).
