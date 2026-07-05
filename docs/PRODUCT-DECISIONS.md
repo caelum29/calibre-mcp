@@ -414,6 +414,192 @@ digest / comparison / tags                 # unchanged from D2.1
 
 ---
 
+## D3 — Distribution format & registry shape (§8 item 3)
+
+<!-- Resolved 2026-07-05 (Fable-5 session). Three-agent pass: (a) rails research (GitHub §512
+     mechanics, npm content policy, gh attestation on non-release artifacts, how existing Claude
+     Code plugin marketplaces / skill registries work), (b) an adversarial abuse/gaming/takedown
+     pass per rail, (c) a consumer install/activation-UX pass per rail. Designs for the artifact
+     that EXISTS (the topic-kafka-reliability skill + D2.8 manifest), the operating model that
+     exists (D1.6 private-first), and a solo maintainer with near-zero infra. NOT legal advice. -->
+
+### Verdict
+
+**One GitHub repo carrying a `.claude-plugin/marketplace.json` index is the whole registry.**
+The rail is **git-convention on GitHub** (the native Claude Code plugin-marketplace convention);
+the index is **a single curated, regenerated JSON file** (the E4 `library-index` generalized);
+the submission model is **PR → CI legal-gate in a reusable workflow → merge = listing**, deferred
+until distribution opens. npm is rejected as identity/namespace; a hosted service is rejected
+outright. The **manifest tuple + digest stays the sole comparison authority** (D2.7) — no rail
+version ever enters the trust path. The **same format is zero-overhead for the private "registry
+of one"**: a self-contained skill directory in `~/.claude/skills/`, no index and no CI required.
+
+Three findings reshaped the design and are load-bearing below: (1) the **curated index file is the
+real namespace AND the real gate chokepoint** — squatting, spam, and bad artifacts all have to pass
+*your listing decision*; (2) **manifest fields the gate reads are attacker-controlled** — contribution
+fractions and the ≥3-source cap are only real if the gate **recomputes** them from artifact-vs-source
+text, never trusts `sources[]`; (3) running the D1.4 gate inside a **reusable workflow the submitter
+can't edit** is what makes a GitHub attestation actually *mean* "the trusted gate passed this digest"
+(SLSA L3), instead of merely "some workflow produced this file."
+
+### D3.1 Rail — DECIDED: git-convention on GitHub, surfaced as a Claude Code plugin marketplace
+
+The registry is **one GitHub repo** with `.claude-plugin/marketplace.json`. Consumers add it with
+`/plugin marketplace add <owner>/<repo>` and install with `/plugin install <topic>@<marketplace>`;
+topic skills are subdirectories (`strict:false` + a `skills` array → no per-topic `plugin.json`
+boilerplate). This is the dominant real-world pattern (Anthropic's `claude-plugins-official`, the
+`awesome-claude-skills` indexes) and the lowest-friction consumer path (native Discover UI,
+`/plugin disable` for the L1 token-tax control, native `/plugin marketplace update`).
+
+- **Why GitHub git-convention:** §512 safe harbor comes **free** — GitHub is the service provider,
+  the skill author is the "user," so the required user-submission-platform posture (D1.6) collapses
+  to a stated takedown contact + repeat-infringer stance + delink-a-JSON-entry on notice. No
+  registered agent to run, no takedown infra, no server.
+- **Why the marketplace convention specifically:** it *is* a git-convention (a repo + a JSON index),
+  so it inherits every git/gh property (owner-scoped namespace, gh attestation, zero infra) while
+  giving Claude Code consumers a one-command install + a real update path that raw `gh release
+  download` can't.
+- **Namespace is owner-scoped, and the index file is the authority.** `caelum29/kafka-reliability`
+  can't be globally squatted the way a flat npm name can; bare high-value slugs (`kafka`, `react`)
+  are allocated **by the index (curated alias), not by submission order**.
+- **Rail version stays display-only (D2.7 honored):** the manifest `digest` + `comparison` tuple is
+  the comparison authority; git tags / marketplace pins are labels. gh attestation binds to the
+  **digest**, not to a Release or a version.
+
+*Rejected — npm as identity/namespace:* npm's Acceptable-Content policy disfavors markdown-only
+packages ("a package cannot simply be … a text document"); the registry is **immutable** (72-h
+unpublish window) which directly fights the required takedown flow; its **flat global namespace** is
+the historically most-squatted surface (crossenv → the 2026 SANDWORM_MODE Claude-Code squats); and
+`--provenance` **won't generate for a private repo**, so it's dead in the D1.6 private phase. npm
+survives only as an **optional later transport** for an `npx` installer, never as the trust or
+namespace layer. *Rejected — a hosted service:* makes the maintainer the §512 service provider
+(own registered agent, staffed takedown queue, direct-infringement liability if the harbor lapses)
+and one bulk-takedown campaign can DoS a solo operator into conservative over-removal — it throws
+away GitHub's free safe harbor for pure downside. *Rejected — a bare "awesome-list" README index:*
+same §512 story but no machine-install path and no structural home for the manifest/attestation
+flow; it's a degenerate D3.1 and is fine only as a day-0 placeholder that upgrades into the
+marketplace.json form.
+
+### D3.2 Index / discovery — DECIDED: a single curated, regenerated index file (cold-start first)
+
+Discovery is **one `marketplace.json` (+ a human-readable topic table)** that lists each topic skill
+with its slug, one-line description, source ISBNs, and a pointer to its content. This is E4's
+`library-index` scaled from "which of my books are distilled" to "which topic skills exist."
+
+- **Why an index file, not a search service:** at cold-start (≈10 skills) a regenerated file is
+  browsable natively (`/plugin` Discover), greppable, diffable, and needs no server. `gh search`
+  and GitHub topics are a free secondary discovery layer.
+- **The index is a data file separate from the skill content**, so a takedown of one skill directory
+  never nukes the index, and a fork-network DMCA sweep (GitHub has processed one notice against
+  4,195 repos) can't take the catalog with it.
+- **Semantic topic-resolution (task-phrase → bundle, §8 item 4) rides ON TOP of this index later** —
+  the index is the substrate, resolution is a separate open item. Don't over-engineer for 10,000
+  skills now; the file scales to a split-repo / static-site UI (the `claude-skill-registry` shape)
+  only if volume ever demands it.
+
+*Rejected:* a search service or DB-backed hub at cold-start (infra with no payoff at 10 skills);
+npm/GitHub *global* search as the primary entry point (no curation chokepoint, no gate-before-listing).
+
+### D3.3 Submission pipeline — DECIDED: PR → CI legal-gate in a reusable workflow → merge = listing (DEFERRED)
+
+When (if) distribution opens: a contributor **PRs a skill directory + `distill.manifest.yaml`**; CI
+runs the **D1.4 legal-gate (the `feat/legal-gate` module) inside a reusable workflow the submitter
+cannot edit**, plus manifest/ISBN validation and a SKILL.md prompt-injection lint; a passing run
+**attests over the skill digest**; merge into `marketplace.json` = published. Listing requires a
+green gate — junk never reaches discovery.
+
+- **Why a reusable (submitter-uneditable) workflow:** it moves the signing material outside submitter
+  control → the attestation reaches SLSA L3 → `gh attestation verify … --signer-workflow` now
+  genuinely certifies "the **trusted** gate ran and passed **this exact digest**," not "a workflow
+  the submitter wrote produced this file." Without it, attestation proves build provenance only and
+  vouches for nothing about content.
+- **The gate must RECOMPUTE the D1.7 contribution caps and ≥3-source rule from measured
+  artifact-vs-source overlap — never read `sources[].contribution_frac` from the manifest.** A
+  self-declared cap is theater (submitter writes `0.34/0.33/0.33`); the one-book-abridgment-padded-
+  to-fake-3-sources attack only fails if coverage is measured. Add a **minimum absolute contribution
+  floor per source** (each real source must clear it) to kill token-source padding.
+- **The mechanical gate is a syntactic substitution detector; the paraphrase-substitution boundary
+  is where a human/frontier reviewer sits (feeds §8 item 5).** A skilled paraphrase can be a
+  100%-coverage functional substitute with near-zero 8-gram overlap and a valid attribution block —
+  invisible to shingles. Mitigation: a cheap **semantic-coverage outlier flag** (reuse the shipped
+  `multilingual-e5` embedder: skill-section centroids vs each source's section centroids) routes the
+  *flagged subset only* to the grounding NLI → frontier reviewer, so the human cost stays bounded.
+- **`lawful_access` is an unverifiable, signed, logged liability-shifting claim, not a filter.** No
+  mechanical check distinguishes a distillate made from a bought EPUB from one made from a pirated
+  PDF. Its function is to (a) shift liability to the submitter and (b) feed an append-only
+  submitter→ISBN ledger that makes the repeat-infringer policy enforceable. Market it as
+  "gate-verified build," never "legality guaranteed."
+- **Curation-as-allowlist beats ranking-by-metric at this scale.** Popularity signals (stars,
+  install counts) are Sybil-cheap; the un-fakeable reputation primitive we already own is
+  **book-ownership** (L4 lights up only for owned ISBNs → ownership-weighted signals cost the
+  attacker actual book purchases). Rank/curate on that, not raw counts (sketch; firms up with §8 #5).
+
+*Rejected:* auto-merge on green (no human eye at the paraphrase-substitution boundary); trusting any
+manifest field the gate can recompute; first-party publication by the maintainer (gets no §512 safe
+harbor — the submission platform is the point).
+
+### D3.4 Install / activation UX — DECIDED: native plugin install; the topic skill IS the bundle
+
+The consumer journey: **discover** (`/plugin` Discover, native) → **verify** (provenance gated at
+publish in CI; the manifest `quality.legal_gate` stamp is visible in-artifact) → **install**
+(`/plugin install <topic>@<reg>`, one command) → **activate** (installed = active; `/plugin disable`
++ `--scope project` is the selective-loading / L1-token-tax control) → **update** (`/plugin
+marketplace update`). Consumption never requires Calibre.
+
+- **The claude-mode bundle layer collapses to single-skill install for the common case.** A
+  topic-aggregate skill is *already* the N-book synthesis, so "install topic X" **is** "activate the
+  X bundle" — there is no second bundle format. The claude-mode symlink-a-set pattern (`cm <mode>`)
+  re-earns its keep only for a **meta-bundle / "shelf"** (e.g. a Distributed-Systems shelf =
+  {consensus, replication, partitioning} topics activated together) — a genuine bundle-of-aggregates,
+  and an optional power feature, not v1.
+- **L4 "lights up for owned books" — resolved at read time via ISBN, per D2.4.** Don't own the
+  source book → the skill answers from its own L1–L3 synthesis (baseline product, no error).
+  Own it (calibre-mcp + the book) → `calibre_search(identifiers:isbn:…)` → local id →
+  `calibre_get_content(structure=true)` → **match the manifest's stored `{n, heading}` against the
+  live chapter table** → mint a **fresh local cursor** → exact quotes / full chapter text (or
+  `calibre_semantic_search scope=book` on edition drift). Every rung degrades to the one below
+  silently; the cursor is never shipped (D2.4 / D1.3 #5).
+- **Consumer-side crypto verification is gated at PUBLISH, not pushed onto the consumer.** Raw
+  `gh attestation verify` is per-file, no globs, and demands the consumer understand the manifest
+  stamp — most devs skip it (the GPG-check problem). So the CI merge check IS the verification the
+  consumer inherits. A thin **`calibre-distill install <topic>` wrapper** (clone → `gh attestation
+  verify` → assert `legal_gate: pass` → symlink into the detected skills root → lockfile for
+  `update`; the `ccpi` shape) is **DEFERRED** — build it only when consumer-side crypto or
+  **cross-host installs** (Copilot `~/.copilot/skills`, Amp `~/.config/agents/skills` — the native
+  Claude-Code plugin rail can't reach them) become hard requirements. A documented Rail-A fallback
+  (`gh release download` + `gh attestation verify` + symlink) covers non-Claude hosts and skeptics
+  meanwhile.
+
+*Rejected:* an npm `postinstall`-copy package (silently broken by `--ignore-scripts`, ambiguous
+skills-root target); a mandatory wrapper CLI at cold-start (10 skills don't justify it); shipping
+char-offset cursors for L4 (non-portable AND a legal-optics liability — D2.4).
+
+### D3.5 The private half — DECIDED: the same format is a zero-overhead "registry of one"
+
+D1.6 (private, own-library-only) is the operating model **today**, so the format must cost nothing
+locally. It does: a topic skill is a **self-contained directory** (`SKILL.md` + `distill.manifest.yaml`)
+that drops straight into `~/.claude/skills/` — **no index, no CI, no attestation, no registry**
+required to use it. The registry machinery (marketplace.json, the gate workflow, attestation) is
+**purely additive** and switches on only if distribution ever opens. The manifest still earns its
+keep privately (D2: upgrades, provenance, edition changes across your own collection), and the
+local generator MAY keep char-offset cursors in its own copy as a same-machine L4 fast path (D1.3 #5)
+— they're simply stripped from anything marked shareable. "Registry of one" = drop a directory in a
+folder; "registry of many" = the same directory, PR'd through the D3.3 gate.
+
+### D3.6 Residual open items handed forward
+
+- **Topic-resolution (task-phrase → skill/bundle)** is §8 item 4 — rides on top of the D3.2 index,
+  unresolved here.
+- **Quality-gate economics / curation** (cost per submission, false-accept tolerance, who curates,
+  Sybil resistance) is §8 item 5 — D3.3 supplies its rail-side half (reusable-workflow gate,
+  recompute-don't-trust, semantic-coverage flag → frontier on the flagged subset, ownership-weighted
+  reputation); the economics firm up there.
+- **§512(f) counter-abuse is weak** (the *Lenz* subjective-bad-faith bar is rarely met), so bulk-DMCA
+  weaponization is defended structurally (GitHub's process + index-as-data + per-directory takedown
+  granularity + a pre-written counter-notice template), not by deterrence.
+
+---
+
 ## Follow-up engineering actions (not yet done)
 
 1. **SKILL.md edits (D1.2 #1, #2):** delete/replace the three reproduction orders in
@@ -432,9 +618,30 @@ digest / comparison / tags                 # unchanged from D2.1
    share the distillate" to the citation-layer framing.
 6. Before any actual public registry launch: **a real legal opinion** on the guardrail set
    — this document de-risks the design, it does not clear it.
+7. **Registry repo scaffold (D3.1/D3.2, deferred):** one GitHub repo with
+   `.claude-plugin/marketplace.json` (strict:false + a `skills` array) + a regenerated topic
+   index + a stated takedown-contact / repeat-infringer policy. Day-0 may be a plain topic
+   table that upgrades into marketplace.json.
+8. **Submission-gate workflow (D3.3, deferred):** the D1.4 legal-gate wired as a **reusable**
+   GitHub workflow (submitter-uneditable → SLSA L3 attestation) + manifest/ISBN validation +
+   a SKILL.md prompt-injection lint; passing run attests the digest; merge = listing.
+9. **Manifest hardening (D3.3):** the gate must **recompute** `sources[].contribution_frac`
+   and the ≥3-source rule from measured artifact-vs-source overlap (never trust the manifest);
+   add a per-source minimum-absolute-contribution floor; make the quote budget
+   cumulative-per-source. Amends D1.7 / D2.8 (`contribution_frac` becomes gate-emitted, not
+   author-declared).
+10. **Semantic-coverage outlier flag (D3.3 → §8 #5):** reuse the shipped `multilingual-e5`
+    embedder to flag high-coverage / low-overlap artifacts (the paraphrase-substitution
+    signature) and route only the flagged subset to the frontier reviewer.
+11. **`calibre-distill install <topic>` wrapper (D3.4, DEFERRED):** build only when
+    consumer-side crypto verification or cross-host installs (Copilot / Amp roots) become hard
+    requirements; raw `/plugin install` + CI-gated publish suffice at cold-start.
 
 ## Cross-references
 
-- Open items: PRODUCT-VISION §8 items 3–5 (registry shape ← D2.7 constraint; topic
-  resolution; quality-gate economics ← D1.4 is its deterministic half).
-- Generation engine: `skills/calibre-distill/SKILL.md` · Roadmap: `docs/DISTILL-ROADMAP.md`
+- Open items: PRODUCT-VISION §8 items 4–5 (topic resolution ← rides the D3.2 index;
+  quality-gate economics ← D1.4 + D3.3 supply its deterministic + rail-side halves). §8 item 3
+  RESOLVED here (D3).
+- Generation engine: `skills/calibre-distill/SKILL.md` · Topic engine: `skills/calibre-distill-topic/SKILL.md`
+  (branch `feat/distill-topic`) · Legal gate: `src/domain/distill/legal-gate.ts` (branch
+  `feat/legal-gate`) · Roadmap: `docs/DISTILL-ROADMAP.md`

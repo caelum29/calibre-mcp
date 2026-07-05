@@ -135,7 +135,16 @@ semver. Two "v2" skills of the same book can be incomparable if they differ on a
 - A **quality gate** — community skills vary; the E3.1 verifier (local/cheap grounding checker
   → frontier confirm) becomes the marketplace's admission test, not just an internal check.
 
-> **🔬 FABLE-5 DEEP-DIVE — distribution format & registry shape.** Is the registry a new service,
+> **🔬 FABLE-5 DEEP-DIVE — distribution format & registry shape.** ✅ **RESOLVED 2026-07-05 →
+> [`PRODUCT-DECISIONS.md`](./PRODUCT-DECISIONS.md) D3** — one GitHub repo carrying a
+> `.claude-plugin/marketplace.json` (git-convention, surfaced as a Claude Code plugin marketplace);
+> §512 safe harbor is free (GitHub is the service provider, submitter is the "user"); the curated
+> index file is both the namespace and the gate chokepoint; submissions gate via the D1.4
+> legal-gate in a **reusable** workflow (SLSA-L3 attestation over the digest); the manifest
+> tuple+digest stays the sole comparison authority (npm/git-tag versions display-only); the same
+> self-contained skill directory is a zero-overhead "registry of one" for the D1.6 private phase.
+> npm-as-identity and a hosted service both rejected. Original question kept for the record:
+> Is the registry a new service,
 > a git-based convention (skills as repos/tags, like claude-mode modes), or does it ride an
 > existing rail (npm packages? the MCP Registry? a `gh`-based skill index)? The format must
 > carry: distillate files, version key (§5), attribution/licence, optional L4 binding metadata
@@ -170,8 +179,14 @@ Run these as an adversarial reasoning pass; each is a make-or-break decision lef
    sidecar; auto-upgrade only within one `identity × schema × model-family` lineage; L4 binding =
    ISBN + chapter headings (raw cursors provably non-portable AND a legal-optics liability — never
    shared); artifact-of-record; GitHub attestations on the existing OIDC rails.
-3. **Distribution format & registry shape (§6)** — new service vs git-convention vs existing
-   rail; what the package carries; decentralized vs centralized.
+3. ~~**Distribution format & registry shape (§6)**~~ ✅ **RESOLVED** →
+   [`PRODUCT-DECISIONS.md`](./PRODUCT-DECISIONS.md) **D3** — git-convention on GitHub, surfaced as
+   a `.claude-plugin/marketplace.json` plugin marketplace; §512 safe harbor free (GitHub hosts,
+   submitter is the "user"); single curated index file = namespace + gate chokepoint; PR →
+   reusable-workflow legal-gate (SLSA-L3 attestation over the digest) → merge = listing; manifest
+   tuple+digest stays comparison authority (rail versions display-only); the topic skill IS the
+   bundle (claude-mode symlink-set only for multi-topic shelves); zero-overhead "registry of one"
+   for the private phase. npm-as-identity + hosted service rejected.
 4. **Topic resolution & bundle model (§4)** — task-phrase → bundle mechanism; taxonomy vs
    embeddings vs tags; cold-start vs scale; bundle granularity/composability.
 5. **Quality gate economics (§6)** — the E3.1 cascade (local grounding checker → frontier
@@ -180,9 +195,11 @@ Run these as an adversarial reasoning pass; each is a make-or-break decision lef
 
 **Recommendation (from this session):** nail #1 and #2 before any engineering — they either
 make the product or kill it. #3–#5 are engineering Artem already knows how to do.
-**Update 2026-07-05:** #1 and #2 are decided (`PRODUCT-DECISIONS.md`); #3 inherits the D2.7
-constraint (manifest = comparison authority, rail version display-only) and #5 inherits D1.4
-(the mechanical checks are the admission test's deterministic half).
+**Update 2026-07-05:** #1, #2, and #3 are decided (`PRODUCT-DECISIONS.md` D1/D2/D3); #3 honored
+the D2.7 constraint (manifest = comparison authority, rail version display-only) and #5 inherits
+D1.4 + D3.3 (the mechanical checks are the admission test's deterministic half; the reusable-workflow
+gate + recompute-don't-trust + semantic-coverage flag are its rail-side half). #4 (topic resolution)
+now rides on top of the D3.2 index.
 **Distribution thesis pivot (same day, D1.6+D1.7):** per-book skills stay private
 (own-library-only, raw material); **what distributes to the community is the topic-aggregate
 synthesis** (≥3 sources, per-source cap, bibliography-as-L4). The topic skill IS the §4 bundle,
