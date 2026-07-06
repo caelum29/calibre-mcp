@@ -40,4 +40,27 @@ describe("extractIsbns", () => {
     // 1234567890128 has a valid EAN-13 check digit but is not an ISBN (prefix 123).
     expect(extractIsbns("barcode 1234567890128 here")).toEqual([]);
   });
+
+  it("honors a restricted prefix set (excludes an otherwise-valid 978 ISBN)", () => {
+    // 9780306406157 is a valid ISBN-13, but 978 is not in the allowed set here.
+    expect(extractIsbns("ISBN 978-0-306-40615-7", 5, { prefixes: ["979"] })).toEqual([]);
+    expect(extractIsbns("ISBN 978-0-306-40615-7", 5, { prefixes: ["978", "979"] })).toEqual([
+      "9780306406157",
+    ]);
+  });
+
+  it("admits a configured non-default prefix (e.g. a future GS1 980 block)", () => {
+    // 9800000000007 has a valid EAN-13 check digit; prefix 980 is not Bookland-default.
+    expect(extractIsbns("ISBN 980-0-000-00000-7")).toEqual([]);
+    expect(extractIsbns("ISBN 980-0-000-00000-7", 5, { prefixes: ["980"] })).toEqual([
+      "9800000000007",
+    ]);
+  });
+
+  it("labeledOnly keeps tagged ISBNs and skips bare digit runs", () => {
+    expect(extractIsbns("published 9780306406157 by someone", 5, { labeledOnly: true })).toEqual([]);
+    expect(extractIsbns("ISBN: 978-0-306-40615-7", 5, { labeledOnly: true })).toEqual([
+      "9780306406157",
+    ]);
+  });
 });

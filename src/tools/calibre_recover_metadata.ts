@@ -38,7 +38,7 @@ export const recoverMetadataTool = defineTool({
   name: "calibre_recover_metadata",
   title: "Recover book metadata",
   description:
-    "Propose real metadata for a book with a missing/raw-filename title by looking it up (ISBN from its identifiers or text, else title/author) on Open Library and Google Books. Preview only — returns a changes object to apply via calibre_update_book; never writes.",
+    "Propose real metadata for a book with a missing/raw-filename title via online provider lookup (ISBN from its identifiers or text, else title/author) on Open Library and Google Books. Preview only — returns a changes object for calibre_update_book; never writes.",
   inputSchema: {
     id: BookId(),
     sources: jsonArray(SOURCE).optional(),

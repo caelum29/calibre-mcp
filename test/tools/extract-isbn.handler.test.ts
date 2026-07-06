@@ -87,6 +87,16 @@ describe("calibre_extract_isbn handler", () => {
     expect(r.structuredContent).toMatchObject({ isbn: "9780306406157" });
   });
 
+  it("finds a labeled ISBN buried in the middle (front + tail slices both miss)", async () => {
+    // The ISBN sits past the front 20k window and before the tail 20k window — only the
+    // labeled-only middle sweep reaches it.
+    const text = "a".repeat(21_000) + "\nISBN 978-0-306-40615-7\n" + "b".repeat(21_000);
+    const { deps: d } = deps({ book: book({ title: "x", formats: ["pdf"] }), text });
+    const r = await extractIsbnTool.handler(args(), d);
+    expect(r.isError).toBeFalsy();
+    expect(r.structuredContent).toMatchObject({ isbn: "9780306406157" });
+  });
+
   it("errors when no ISBN is found in the text", async () => {
     const { deps: d } = deps({ book: book({ title: "x", formats: ["pdf"] }), text: "no isbn here" });
     const r = await extractIsbnTool.handler(args(), d);

@@ -131,6 +131,12 @@ Record `BOOK_ID`, title, authors, and available formats. Prefer EPUB, else PDF (
 PDFs yield no text — Calibre has no OCR; if `calibre_get_content` reports an image PDF,
 tell the user this book can't be distilled).
 
+Also record the **ISBN-13** — the stable, cross-machine key the artifact binds to (the L4
+back-link / bibliography). If library metadata has none and **writes are enabled**, backfill it
+once with `calibre_extract_isbn(id=BOOK_ID, apply=true)` — an offline scan of the book's own
+front matter / back cover for a checksum-valid ISBN. If it finds nothing, or writes are off,
+leave ISBN as "—" and rely on the `title:"…" AND authors:"…"` fallback key. (E2)
+
 ---
 
 ## Step 1.5 — Identify content type
@@ -422,7 +428,7 @@ description: "Knowledge base from \"<Full Title>\" by <Author(s)>. Use when appl
 **Author**: <Author(s)> | **Chapters**: <N> | **Calibre id**: <BOOK_ID> | **Generated**: <YYYY-MM-DD>
 
 ## Attribution
-<!-- Mandatory. Fill every field from library metadata (Step 1); leave "—" only if truly absent. -->
+<!-- Mandatory. Fill from library metadata (Step 1); ISBN may be backfilled via calibre_extract_isbn (Step 1). Leave "—" only if truly absent. -->
 - **Title**: <Full Title>
 - **Author(s)**: <Author(s)>
 - **Publisher**: <Publisher>

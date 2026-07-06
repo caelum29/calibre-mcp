@@ -227,8 +227,9 @@ The bibliography is mandatory (attribution is an EU/UA precondition, not a court
 **doubles as the live-source binding**: a recipient who owns a source gets depth on demand.
 
 For **each source**, list:
-- **Title**, **authors**, **ISBN-13** (from library metadata; run `calibre_extract_isbn`
-  first if missing — E2).
+- **Title**, **authors**, **ISBN-13** (from library metadata; if missing and **writes are
+  enabled**, backfill once with `calibre_extract_isbn(id, apply=true)` — an offline front-matter
+  scan — else fall back to the `fallback_key` below — E2).
 - **Topic chapters** as `{ n, heading }` pairs (n + heading TOGETHER — bare "ГЛАВА N"
   doesn't discriminate across chapters).
 - **The resolve recipe** so the reader can open the exact slice in THEIR copy:

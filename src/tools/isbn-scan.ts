@@ -9,8 +9,9 @@ import { extractIsbns } from "../domain/enrich/extract-isbn.js";
 import type { Book } from "../domain/book.js";
 import type { ToolDeps } from "./types.js";
 
-// Only the copyright/front matter tends to carry an ISBN — scanning the whole book invites
-// false positives and needless conversion cost.
+// Bare digit runs are capped to the front/tail slices (ISBN_SCAN_CHARS each) — sweeping the whole
+// book for BARE runs invites false positives. Labeled "ISBN …" tokens carry no such risk, so the
+// middle sweep scans the whole text for labeled matches only.
 export const ISBN_SCAN_CHARS = 20_000;
 // The scan is a best-effort optimization, never worth minutes. Each extraction layer (download,
 // convert) is individually bounded but their sum is not — a big/slow PDF once hung the stdio
@@ -64,11 +65,18 @@ export async function scanForIsbn(
         cacheKey,
         timeoutMs: ISBN_SCAN_TIMEOUT_MS,
       });
-      // Front matter (copyright page) first, then fall back to the tail — an ISBN often prints
-      // on the back cover / last page (the kiwidude plugin scans front pages then last pages).
+      // Front matter (copyright page) first, then the tail — an ISBN often prints on the back
+      // cover / last page (the kiwidude plugin scans front pages then last pages).
       const front = extractIsbns(text.slice(0, ISBN_SCAN_CHARS))[0];
       if (front) return front;
-      return text.length > ISBN_SCAN_CHARS ? extractIsbns(text.slice(-ISBN_SCAN_CHARS))[0] : undefined;
+      if (text.length <= ISBN_SCAN_CHARS) return undefined;
+      const tail = extractIsbns(text.slice(-ISBN_SCAN_CHARS))[0];
+      if (tail) return tail;
+      // Middle sweep: front + tail missed on a long book. A labeled "ISBN …" token is safe to
+      // trust anywhere (near-zero false positives), so sweep the whole text for LABELED matches
+      // only. A page/spine-LOCATED walk (per EPUB spine item / PDF page) awaits epub-spine.ts
+      // (idea 02); this is the location-free recall improvement.
+      return extractIsbns(text, 1, { labeledOnly: true })[0];
     })();
     const isbn = await Promise.race([work, race]);
     return isbn ? { isbn, outcome: "found" } : { outcome: "no-isbn" };

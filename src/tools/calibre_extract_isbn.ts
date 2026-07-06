@@ -18,9 +18,9 @@ export const extractIsbnTool = defineTool({
   name: "calibre_extract_isbn",
   title: "Extract ISBN from book text",
   description:
-    "Scan a book's own text (front matter) for a valid ISBN and set it as the book's isbn " +
-    "identifier. Preview-first: reports the ISBN found without writing unless apply is true. " +
-    "Merges into existing identifiers (never clobbers doi/asin). Requires writes to be enabled.",
+    "Offline scan of a book's own text for a checksum-valid ISBN → sets identifiers:isbn " +
+    "(no network; for online lookup use calibre_recover_metadata). Preview-first: apply=false " +
+    "reports only, merges into existing identifiers. Requires writes enabled.",
   inputSchema: {
     id: BookId(),
     apply: CoercedBool().default(false),
