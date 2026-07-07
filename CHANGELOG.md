@@ -6,8 +6,15 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.1.6] — 2026-07-07
+
 ### Added
 
+- **`calibre_get_content` `structure` param + `calibre-distill` skill** (idea 08) — the
+  extractor can now return a book's chapter structure (heading detection with Cyrillic
+  chapter-word support and ToC awareness), and a companion `calibre-distill` skill turns a
+  single book into a compressed, cursor-linked Agent Skill. No new tool (one param on an
+  existing tool); tool count stays at 15.
 - **`calibre-distill-topic` companion skill** — multi-book topic synthesis (the D1.7
   distributable artifact class): synthesizes one topic across ≥3 library books into a
   single concept-keyed Agent Skill with a mandatory "where the sources disagree or
