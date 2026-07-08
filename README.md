@@ -127,10 +127,19 @@ Meaning-based search is **opt-in** and needs two things:
    (`multilingual-e5-small`, ~118 MB, one-time) into the index directory; after that
    everything runs offline. Indexing runs at roughly 100 chunks/sec on Apple Silicon.
 
+> [!IMPORTANT]
+> **Search results are sharpened by a cross-encoder reranker whose model is a separate
+> ~576 MB one-time download.** `calibre_build_index` pre-downloads it during the build —
+> the step you already expect to be slow. If you skip straight to searching on a machine
+> without the cached model, your **first** hybrid/vector search triggers that download
+> instead. Reranking also adds seconds of CPU per semantic search; set
+> `CALIBRE_MCP_RERANK=off` to disable it (faster, noticeably less precise ranking).
+
 Then `calibre_semantic_search` answers queries like *“which of my books explain consumer
 group rebalancing?”* — across the library (`scope: library`, ranks books) or within one
 book (`scope: book`, returns located passages). Retrieval is **hybrid** by default:
-vector cosine + stemmed keyword FTS, fused with reciprocal rank fusion. Queries in one
+vector cosine + stemmed keyword FTS, fused with reciprocal rank fusion, then reranked by
+the cross-encoder (top 30 candidates) when its model is available. Queries in one
 language find passages in another (EN⇄RU verified).
 
 **No embeddings? Keyword search still works.** `mode: keyword` uses no model *at query
@@ -217,6 +226,7 @@ works. Environment variables (the Desktop bundle exposes the same settings as UI
 | `CALIBRE_MCP_CALIBREDB_PATH` | *auto-discover* | `calibredb` binary; found via standard install paths, then `PATH` |
 | `CALIBRE_MCP_INDEX_DIR` | platform data dir¹ | Semantic index + embedding-model cache |
 | `CALIBRE_MCP_SEMANTIC_FLOOR` | `0.78` | Cosine score below which semantic results are flagged low-confidence |
+| `CALIBRE_MCP_RERANK` | on | Cross-encoder rerank stage on semantic search (~576 MB model, seconds of CPU per query); set `off`/`false`/`0` to disable |
 | `CALIBRE_MCP_ADD_ROOTS` | `~/Documents`, `~/Downloads` | Folders `calibre_add_book` may import from (path-delimiter separated) |
 
 ¹ macOS `~/Library/Application Support/calibre-mcp/index`, Windows

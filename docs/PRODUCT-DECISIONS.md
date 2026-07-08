@@ -639,6 +639,10 @@ folder; "registry of many" = the same directory, PR'd through the D3.3 gate.
 
 ## Cross-references
 
+- **Model licensing posture (2026-07-09):** use-restricted, user-downloaded OPTIONAL models
+  (Gemma-class) are acceptable; npm dependencies stay MIT/permissive — recorded as
+  `docs/DECISIONS.md` **D-013** (engineering/licensing calls live there, D-004/D-013;
+  product/legal deep-dives live here).
 - Open items: PRODUCT-VISION §8 items 4–5 (topic resolution ← rides the D3.2 index;
   quality-gate economics ← D1.4 + D3.3 supply its deterministic + rail-side halves). §8 item 3
   RESOLVED here (D3).
