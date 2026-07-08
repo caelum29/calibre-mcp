@@ -1,0 +1,48 @@
+## Ownership: the core idea
+
+Every value in Rust has exactly one owner at any moment. The owner is the variable that
+is responsible for the value; when the owner goes out of scope, the value is dropped and
+its memory is released. There is no garbage collector scanning the heap and no manual
+call to free — deallocation is decided at compile time from the shape of the program.
+
+Assignment of a non-Copy value is a move. After `let b = a;` the original binding `a` is
+dead: the compiler refuses any later use of it, because the value has been moved into
+`b`. This use-after-move error is caught entirely at compile time, which is precisely
+what makes double frees and dangling pointers impossible in safe Rust. If you actually
+need two independent values, call `clone()` and pay the copy explicitly.
+
+## Borrowing and references
+
+Instead of transferring ownership you can lend access with a reference. A shared
+reference `&T` grants read-only access, and you may hand out as many of those as you
+like. A mutable reference `&mut T` grants read-write access, and it is exclusive: while
+it lives, no other reference to the same value may exist, shared or mutable.
+
+The borrow checker enforces these aliasing rules by tracking the region of code where
+each reference is alive. The moment a program tries to hold a shared borrow and a
+mutable borrow of the same value at once, compilation fails with a borrow error. This
+one rule — aliasing XOR mutability — eliminates whole classes of data races before the
+program ever runs.
+
+## Lifetimes
+
+A lifetime names the stretch of code for which a reference is valid. Most lifetimes are
+inferred, but function signatures sometimes need explicit annotations like `fn longest<'a>
+(x: &'a str, y: &'a str) -> &'a str` so the compiler can relate the lifetime of the
+output to the lifetimes of the inputs. A reference may never outlive the value it points
+to; returning a reference to a local variable is rejected, because the local dies when
+the function returns.
+
+## Smart pointers and interior mutability
+
+When single ownership is too restrictive, the standard library offers escape hatches
+that preserve safety. `Box<T>` owns a value on the heap. `Rc<T>` adds reference counting
+so several owners can share one value within a thread; `Arc<T>` is its atomically
+counted sibling for crossing thread boundaries. `RefCell<T>` moves the aliasing check
+from compile time to run time — it panics if two mutable borrows overlap — a pattern
+called interior mutability. Combining `Rc<RefCell<T>>` gives shared, mutable,
+single-threaded state with the checks still intact, just deferred.
+
+The payoff of the whole ownership system is memory safety without a runtime: no leaks
+from forgotten frees, no crashes from freeing twice, and thread safety that falls out of
+the same aliasing rules the borrow checker already enforces.

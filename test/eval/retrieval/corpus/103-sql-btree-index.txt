@@ -1,0 +1,45 @@
+## Why table scans get slow
+
+Without an index, the only way a database can answer `WHERE email = ?` is to read every
+row — a full table scan. Cost grows linearly with the table, and at millions of rows a
+point lookup that should take microseconds takes seconds of disk I/O. An index trades
+extra space and slower writes for dramatically faster reads.
+
+## The B-tree
+
+Nearly every relational index is a B-tree: a balanced, wide, shallow tree whose nodes
+are disk pages. Keys inside a node are sorted; each internal node fans out to hundreds
+of children, so a billion-row table is rarely more than four levels deep. A lookup walks
+root to leaf comparing keys — logarithmic, and in practice three or four page reads.
+Because leaves are chained left to right in key order, range predicates such as
+`BETWEEN`, `LIKE 'abc%'`, and `ORDER BY` on the indexed column become a single descent
+followed by a sequential scan along the leaf chain.
+
+Composite indexes sort by the first column, then the second within equal firsts, and so
+on — like a phone book sorted by surname, then given name. The leftmost-prefix rule
+follows: an index on (last_name, first_name) accelerates a search on last_name alone,
+but is useless for a search on first_name alone, exactly as a phone book is useless for
+finding everyone named "Anna".
+
+## The query planner
+
+The database does not blindly use an index. The planner estimates, from table
+statistics and selectivity, whether descending the tree and then fetching matching rows
+from the heap beats simply scanning. For a predicate matching half the table, random
+heap fetches would be slower than one sequential pass, so the planner rightly ignores
+the index. Reading a query's EXPLAIN plan tells you which choice was made and why:
+index scan, bitmap scan, or sequential scan, with estimated row counts alongside.
+
+A covering index takes the idea further: when every column the query needs lives inside
+the index itself, the engine answers from the index alone — an index-only scan — and
+never touches the table heap at all. Adding one or two frequently selected columns to an
+index (INCLUDE columns in Postgres and SQL Server) is a cheap way to convert hot queries
+into index-only scans.
+
+## The cost of writing
+
+Every INSERT, UPDATE, and DELETE must maintain each index on the table. Ten indexes mean
+ten extra B-tree modifications per inserted row, plus page splits when leaves fill up.
+Indexes also bloat: deleted keys leave dead space until vacuum or rebuild reclaims it.
+The practical discipline is to index the access paths your queries actually take —
+verified with EXPLAIN — and to drop the indexes nothing uses.

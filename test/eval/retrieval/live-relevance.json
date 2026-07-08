@@ -1,0 +1,10 @@
+{
+  "comment": "Live-mode relevance labels: queryId (from queries.json) → real bookIds in Artem's library. Status UNVERIFIED — self-labeled from index metadata on 2026-07-08, when only 3 books were indexed (2: Advanced JavaScript Unleashed, 187: Apache Kafka RU 2nd ed., 889: 50 Algorithms Every Programmer Should Know). Artem: confirm/extend these labels after indexing more of the library; the report marks every live run unverified until then. Negatives always run live (no labels needed).",
+  "libraryId": "Programming_Books",
+  "unverified": true,
+  "labels": {
+    "sp-02": [2],
+    "sp-09": [889],
+    "xl-04": [889]
+  }
+}

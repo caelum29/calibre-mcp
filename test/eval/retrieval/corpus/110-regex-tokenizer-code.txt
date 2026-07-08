@@ -1,0 +1,68 @@
+## A tiny expression parser: tokenizer plus recursive descent
+
+Every calculator, query language, and template engine starts the same way: split the
+input string into tokens, then parse the token stream by recursive descent. The whole
+machine fits in a page of TypeScript.
+
+The tokenizer is a single sticky regular expression with one alternative per token
+type. The sticky flag `y` makes `lastIndex` advance strictly, so an unmatchable
+character is a lexing error instead of a silent skip:
+
+    const TOKEN_RE = /\s*(?:(\d+(?:\.\d+)?)|([A-Za-z_][A-Za-z0-9_]*)|([+\-*\/()]))/y;
+
+    type Tok =
+      | { kind: "num"; value: number }
+      | { kind: "ident"; name: string }
+      | { kind: "op"; op: string };
+
+    function tokenizeExpr(src: string): Tok[] {
+      const out: Tok[] = [];
+      TOKEN_RE.lastIndex = 0;
+      while (TOKEN_RE.lastIndex < src.length) {
+        const m = TOKEN_RE.exec(src);
+        if (!m) throw new SyntaxError(`unexpected character at ${TOKEN_RE.lastIndex}`);
+        if (m[1] !== undefined) out.push({ kind: "num", value: Number(m[1]) });
+        else if (m[2] !== undefined) out.push({ kind: "ident", name: m[2] });
+        else out.push({ kind: "op", op: m[3] });
+      }
+      return out;
+    }
+
+## Precedence by grammar shape
+
+Recursive descent encodes operator precedence in the call graph: each precedence level
+is a function that calls the next-tighter level, so multiplication binds harder than
+addition simply because `parseTerm` sits below `parseSum`:
+
+    function parseSum(s: State): Node {
+      let left = parseTerm(s);
+      while (peekOp(s, "+") || peekOp(s, "-")) {
+        const op = next(s).op;
+        left = { kind: "binary", op, left, right: parseTerm(s) };
+      }
+      return left;
+    }
+
+    function parsePrimary(s: State): Node {
+      const t = next(s);
+      if (t.kind === "num") return { kind: "literal", value: t.value };
+      if (t.kind === "ident") return { kind: "variable", name: t.name };
+      if (t.kind === "op" && t.op === "(") {
+        const inner = parseSum(s);
+        expectOp(s, ")");
+        return inner;
+      }
+      throw new SyntaxError(`unexpected token ${JSON.stringify(t)}`);
+    }
+
+The while-loop in `parseSum` makes `+` left-associative: `1 - 2 - 3` groups as
+`(1 - 2) - 3`. Right-associative operators like exponentiation use recursion on the
+same level instead of a loop. Parenthesized groups need no precedence machinery at all
+— `parsePrimary` just restarts the grammar from the top inside the parens.
+
+Two habits keep such parsers robust. First, always carry the source offset in the state
+and report it in every SyntaxError — a parser that says only "unexpected token" is
+miserable to use. Second, fuzz the tokenizer with adversarial junk: catastrophic
+backtracking hides in innocent-looking regexes, and the fix is usually possessive
+repetition, atomic groups, or — as here — a sticky anchor and character classes that
+cannot overlap.

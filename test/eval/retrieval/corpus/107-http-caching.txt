@@ -1,0 +1,47 @@
+## Why repeat downloads are wasted work
+
+Most of what a browser fetches today it also fetched yesterday: the same logo, the same
+stylesheet, the same framework bundle. HTTP caching exists so a returning visitor pays
+for none of that again. Done well, a repeat page load makes almost no network requests
+at all; done badly, users re-download megabytes that have not changed, or — worse — keep
+seeing stale pages after a deploy.
+
+## Cache-Control directives
+
+The `Cache-Control` response header is the contract between server and caches.
+`max-age=3600` declares the response fresh for an hour; within that window a cache may
+answer without contacting the origin at all. `public` permits shared caches (CDNs,
+proxies) to store the response; `private` restricts storage to the user's own browser —
+essential for personalized pages. `no-cache` is famously misnamed: the response may be
+stored, but must be revalidated with the origin before each reuse. `no-store` is the
+real opt-out: nothing may be written to disk. `immutable` promises the bytes will never
+change for the lifetime of the URL, sparing even the revalidation request on reload.
+
+The modern pattern that squares freshness with speed is
+`stale-while-revalidate=60`: a cache may serve the expired copy instantly while it
+refetches a fresh one in the background, so users get cached latency and near-fresh
+content at once.
+
+## Validators: ETag and Last-Modified
+
+When freshness expires, the cache revalidates instead of re-downloading. The server
+attaches a validator to every response: an `ETag` (an opaque fingerprint of the bytes,
+e.g. `ETag: "5d8c72a5edda8"`) or a `Last-Modified` date. The cache then asks a
+conditional question — `If-None-Match: "5d8c72a5edda8"` — and if the resource is
+unchanged the origin answers `304 Not Modified` with an empty body. One cheap round
+trip replaces the full transfer.
+
+## Cache busting and the CDN
+
+The strategy that ties it together is content-hashed filenames. The HTML document
+itself is served with `no-cache` so every visit revalidates it, but it references
+assets as `app.3f9c1b.js` — the hash of their contents baked into the URL — served with
+`max-age=31536000, immutable`. A deploy changes the HTML to point at new hashed names;
+old assets simply stop being referenced. Nothing ever needs purging, and nothing stale
+can ever be served.
+
+A CDN layers a shared cache in front of the origin at the network edge. `s-maxage`
+tunes the shared copy's lifetime separately from the browser's, `Vary` tells the edge
+which request headers (like `Accept-Encoding`) define distinct variants, and a
+`surrogate key` purge invalidates a whole group of pages the moment the data behind
+them changes.

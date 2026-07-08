@@ -1,0 +1,43 @@
+## A content-addressed database
+
+Strip away the porcelain and Git is a key-value store in `.git/objects` where the key is
+the SHA-1 hash of the value. There are four object types. A blob is file content — no
+name, no mode, just bytes. A tree is a directory listing: names, modes, and the hashes
+of the blobs and subtrees inside. A commit points at one tree (the complete snapshot of
+the project at that moment) plus its parent commits, an author, and a message. An
+annotated tag wraps another object with a name and signature.
+
+Because every object is addressed by the hash of its content, identical files are
+stored once no matter how many commits contain them, and history is tamper-evident:
+change one byte in an old blob and every hash above it — tree, commit, and all
+descendants — would have to change too.
+
+Git stores snapshots, not diffs. Each commit's tree describes the entire working
+directory as it stood. The diffs you see in `git log -p` are computed on demand by
+comparing two trees. Loose objects are later packed: a packfile delta-compresses
+similar objects against each other, recovering the space that snapshot storage seems to
+waste.
+
+## Refs are just pointers
+
+A branch is a 41-byte file in `.git/refs/heads/` containing a commit hash — nothing
+more. Creating a branch is writing that file; deleting it deletes the file, and the
+commits it pointed to remain in the object database until garbage collection. HEAD is a
+symbolic ref naming the branch you are on; a detached HEAD points at a commit directly.
+Every time a ref moves — commit, merge, rebase, reset — Git appends the old and new
+positions to the reflog. This is the safety net: `git reflog` lists where your HEAD has
+been for the last ninety days, so a branch clobbered by a bad `reset --hard` can be
+recovered by resetting back to the hash the reflog still remembers.
+
+## Merging and rebasing
+
+A merge finds the common ancestor of two branches (the merge base) and performs a
+three-way merge of ancestor, ours, and theirs. Changes to different regions combine
+cleanly; overlapping edits to the same lines produce conflict markers for a human to
+resolve, and the result is recorded as a commit with two parents. A rebase makes the
+opposite trade: it replays your commits one by one onto the new base, rewriting them
+into new commits with new hashes. History ends up linear and easy to read, at the cost
+of having been rewritten — which is why the golden rule is to never rebase commits that
+others have already pulled. Cherry-pick is the single-commit version of the same
+replay, and `git bisect` exploits the commit graph to binary-search thousands of
+commits for the one that introduced a bug.

@@ -1,0 +1,21 @@
+{
+  "comment": "Fixture corpus manifest for the retrieval eval. bookId is the fake Calibre id; file lives in corpus/. Titles/authors feed the real '[title › authors]' embedding context prefix, so keep them descriptive of the topic. All texts are self-authored for this repo (MIT, deterministic — never regenerate casually: queries.json labels char spans into them).",
+  "libraryId": "eval_fixture",
+  "books": [
+    { "bookId": 101, "file": "101-rust-ownership.txt", "title": "Ownership and Borrowing in Rust", "authors": ["Eval Fixture"], "language": "en" },
+    { "bookId": 102, "file": "102-js-event-loop.txt", "title": "The JavaScript Event Loop and async/await", "authors": ["Eval Fixture"], "language": "en" },
+    { "bookId": 103, "file": "103-sql-btree-index.txt", "title": "SQL Performance: B-tree Indexes and the Query Planner", "authors": ["Eval Fixture"], "language": "en" },
+    { "bookId": 104, "file": "104-neural-backprop.txt", "title": "How Neural Networks Learn: Gradient Descent and Backpropagation", "authors": ["Eval Fixture"], "language": "en" },
+    { "bookId": 105, "file": "105-docker-containers.txt", "title": "Containers from First Principles: Namespaces, cgroups, Images", "authors": ["Eval Fixture"], "language": "en" },
+    { "bookId": 106, "file": "106-git-internals.txt", "title": "Git Internals: Objects, Refs, Merges", "authors": ["Eval Fixture"], "language": "en" },
+    { "bookId": 107, "file": "107-http-caching.txt", "title": "HTTP Caching: Cache-Control, ETag, CDNs", "authors": ["Eval Fixture"], "language": "en" },
+    { "bookId": 108, "file": "108-beekeeping.txt", "title": "A Beekeeper's Year: Hive Management from Spring to Winter", "authors": ["Eval Fixture"], "language": "en" },
+    { "bookId": 109, "file": "109-quicksort-code.txt", "title": "Quicksort in Practice (annotated TypeScript)", "authors": ["Eval Fixture"], "language": "en", "codeHeavy": true },
+    { "bookId": 110, "file": "110-regex-tokenizer-code.txt", "title": "Build a Tokenizer and Recursive-Descent Parser (annotated TypeScript)", "authors": ["Eval Fixture"], "language": "en", "codeHeavy": true },
+    { "bookId": 111, "file": "111-ru-cosmonautics.txt", "title": "История ранней космонавтики", "authors": ["Eval Fixture"], "language": "ru" },
+    { "bookId": 112, "file": "112-ru-borscht.txt", "title": "Настоящий борщ: пошаговый рецепт", "authors": ["Eval Fixture"], "language": "ru" },
+    { "bookId": 113, "file": "113-ru-chess.txt", "title": "Шахматные дебюты: открытые начала и гамбиты", "authors": ["Eval Fixture"], "language": "ru" },
+    { "bookId": 114, "file": "114-ru-morphology.txt", "title": "Морфология русского языка: падежи, склонение, вид глагола", "authors": ["Eval Fixture"], "language": "ru" },
+    { "bookId": 115, "file": "115-ru-cryptography.txt", "title": "Криптография: симметричные шифры, открытый ключ, подпись", "authors": ["Eval Fixture"], "language": "ru" }
+  ]
+}
