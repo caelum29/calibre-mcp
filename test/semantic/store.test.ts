@@ -260,4 +260,33 @@ describe("SqliteIndexStore", () => {
       s.close();
     });
   });
+
+  describe("meta guard (INDEX_INCOMPATIBLE)", () => {
+    // The bake-off (D-012) leans on this: an index built by a DIFFERENT embedding model
+    // must be refused with the actionable rebuild message, never silently mixed.
+    it("refuses an on-disk index whose meta model_id differs from the active model", async () => {
+      const { mkdtempSync, rmSync } = await import("node:fs");
+      const { tmpdir } = await import("node:os");
+      const path = await import("node:path");
+      const { DatabaseSync } = await import("node:sqlite");
+      const dir = mkdtempSync(path.join(tmpdir(), "calibre-mcp-store-"));
+      try {
+        const cfg = loadConfig({ CALIBRE_MCP_INDEX_DIR: dir });
+        const a = new SqliteIndexStore(cfg);
+        a.replaceBook(LIB, { bookId: 1, title: "A", authors: [] }, [chunk("alpha", 0)]);
+        a.close();
+
+        // Simulate "built by another model": tamper the persisted meta directly.
+        const db = new DatabaseSync(path.join(dir, `${LIB}.sqlite`));
+        db.prepare("UPDATE meta SET value = 'some/other-model' WHERE key = 'model_id'").run();
+        db.close();
+
+        const b = new SqliteIndexStore(cfg);
+        expect(() => b.stats(LIB)).toThrow(/INDEX_INCOMPATIBLE.*model_id.*rebuild/s);
+        b.close();
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+  });
 });

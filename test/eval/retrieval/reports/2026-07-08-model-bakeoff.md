@@ -153,7 +153,10 @@ What the bake-off actually bought:
    Candidates that are *perfect* on the vector half leave hybrid RU at exactly 0.6302.
    Next lever: tune the weighted-RRF knob (landed with prompt 06) toward the vector half
    for high-vector-confidence queries, and re-measure with the reranker ON (D-011 exists
-   precisely to recover fused-order precision).
+   precisely to recover fused-order precision). **Corroborated post-hoc:** the final-state
+   validation run with the SHIPPED default (reranker ON, e5-small, same fixture) scores
+   hybrid overall 0.992 / RU-involved **1.000** — the production pipeline already recovers
+   the entire hybrid RU gap that a model swap could not touch.
 2. **If a swap is ever revisited** (e.g. after fusion tuning moves the hybrid ceiling and
    the embedder becomes the binding constraint): `bge-m3` is the only license-eligible
    candidate (MIT) — costs ~3× embed time, 2.7× vector bytes, a 570 MB download, and a
