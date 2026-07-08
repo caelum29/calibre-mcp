@@ -425,6 +425,27 @@ export function renderMarkdown(report: EvalReport, title: string): string {
     lines.push("> **LIVE MODE — labels are UNVERIFIED** until Artem confirms them. Not a CI artifact.");
   }
   lines.push("");
+  lines.push("## Headline");
+  lines.push("");
+  for (const mode of meta.modes) {
+    const o = report.overall[mode];
+    const r = report.ruInvolved[mode];
+    const n = report.negatives[mode];
+    if (!o || !r || !n) continue;
+    lines.push(
+      `- **${mode}**: overall nDCG@10 **${o.ndcg10}** / Hit@1 ${o.hit1} — RU-involved nDCG@10 **${r.ndcg10}** / ` +
+        `Hit@1 ${r.hit1} (RU gap ${round4(o.ndcg10 - r.ndcg10)}) — negatives flagged ${n.flaggedRate}`,
+    );
+  }
+  const kinds = Object.entries(report.byKind);
+  for (const mode of meta.modes) {
+    const worst = kinds
+      .map(([kind, perMode]) => ({ kind, a: perMode[mode] }))
+      .filter((x): x is { kind: string; a: AggregateMetrics } => x.a !== undefined)
+      .sort((x, y) => x.a.ndcg10 - y.a.ndcg10)[0];
+    if (worst) lines.push(`- weakest kind in ${mode}: **${worst.kind}** (nDCG@10 ${worst.a.ndcg10})`);
+  }
+  lines.push("");
   lines.push("## Overall (negatives excluded)");
   lines.push("");
   lines.push(aggTable(report.overall, meta.modes));
