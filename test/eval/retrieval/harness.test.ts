@@ -3,6 +3,7 @@
 // The REAL measurement runs via `pnpm eval` (run.ts) with the actual e5 model — not here.
 
 import { describe, expect, it } from "vitest";
+import type { Reranker } from "../../../src/semantic/reranker.js";
 import type { IndexStore } from "../../../src/semantic/store.js";
 import { hashEmbedder } from "./hash-embedder.js";
 import { loadCorpus, loadQueries, runRetrievalEval } from "./harness.js";
@@ -69,5 +70,20 @@ describe("retrieval eval harness (model-free smoke)", () => {
     const a = await runRetrievalEval({ ...base, modes: ["hybrid"], gitSha: "test" });
     const b = await runRetrievalEval({ ...base, modes: ["hybrid"], gitSha: "test" });
     expect(JSON.stringify(a)).toBe(JSON.stringify(b));
+  }, 30_000);
+
+  it("measures the rerank stage: a hostile reranker marks rows and drags metrics down", async () => {
+    // Scores rise with fused position → reverses every candidate pool (worst case rerank).
+    const hostile: Reranker = {
+      async rerank(_q, passages) {
+        return passages.map((_, i) => i / Math.max(1, passages.length));
+      },
+    };
+    const off = await runRetrievalEval({ ...base, modes: ["hybrid"] });
+    const on = await runRetrievalEval({ ...base, modes: ["hybrid"], reranker: hostile, rerank: "hostile-fake" });
+    expect(off.meta.rerankedRows).toBe(0); // no reranker wired → nothing claimed
+    expect(on.meta.rerankedRows).toBeGreaterThan(0);
+    expect(on.perQuery.some((r) => r.reranked === true)).toBe(true);
+    expect(on.overall.hybrid!.ndcg10).toBeLessThan(off.overall.hybrid!.ndcg10);
   }, 30_000);
 });

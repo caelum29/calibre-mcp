@@ -4,20 +4,22 @@
 //
 // Usage:
 //   pnpm eval [--modes hybrid,vector,keyword] [--topk 10] [--tag baseline]
-//             [--rerank <label>] [--work-dir <dir>] [--out-dir <dir>] [--live]
+//             [--rerank off] [--work-dir <dir>] [--out-dir <dir>] [--live]
 //
 // Offline path: deterministic — two runs at the same commit produce identical JSON.
 // --live: runs library-scope queries against a COPY of the real library index using
 //   live-relevance.json labels (UNVERIFIED until Artem confirms). Never touches the
 //   production index dir beyond reading; skip in CI.
-// --rerank: recorded in report meta + exported as CALIBRE_MCP_RERANK — the seam for the
-//   future cross-encoder reranker (prompt 03) to run the eval with reranking on/off.
+// --rerank off: disables the cross-encoder rerank stage (D-011; on by default, mirroring
+//   the shipped always-on behavior). First reranked run downloads the ~300 MB model into
+//   <work-dir>/models; a degraded run (model unreachable) reports 0 reranked rows.
 
 import { execSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadConfig } from "../../../src/config.js";
+import { RERANKER_MODEL_ID, TransformersReranker } from "../../../src/semantic/reranker.js";
 import { ALL_MODES, renderMarkdown, runRetrievalEval, type EvalReport, type Mode } from "./harness.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -28,6 +30,7 @@ interface CliArgs {
   modes: Mode[];
   topK: number;
   tag?: string;
+  /** "off" disables the rerank stage; anything else is kept as the report label. */
   rerank?: string;
   workDir: string;
   outDir: string;
@@ -155,18 +158,26 @@ async function main(): Promise<void> {
   }
 
   const sha = gitSha();
-  const rerank = args.rerank;
-  if (rerank !== undefined) process.env.CALIBRE_MCP_RERANK = rerank; // prompt-03 seam
+  // Rerank stage mirrors the shipped default: ON for hybrid/vector unless --rerank off.
+  const rerankOff = args.rerank === "off";
+  const reranker = rerankOff
+    ? undefined
+    : new TransformersReranker(loadConfig({ CALIBRE_MCP_INDEX_DIR: args.workDir } as NodeJS.ProcessEnv));
+  const rerankLabel = args.rerank ?? `${RERANKER_MODEL_ID} q8`;
 
   const report = await runRetrievalEval({
     indexDir: args.workDir,
     modes: args.modes,
     topK: args.topK,
-    ...(rerank !== undefined ? { rerank } : {}),
+    ...(reranker ? { reranker } : {}),
+    rerank: rerankLabel,
     gitSha: sha,
     ...(live ? { live } : {}),
     onProgress: progress,
   });
+  if (reranker && report.meta.rerankedRows === 0) {
+    progress("WARNING: rerank was ON but 0 rows reranked — model unavailable, run is reranker-degraded");
+  }
 
   mkdirSync(args.outDir, { recursive: true });
   const date = new Date().toISOString().slice(0, 10);

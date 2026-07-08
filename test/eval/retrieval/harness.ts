@@ -10,6 +10,7 @@ import { loadConfig, type Config } from "../../../src/config.js";
 import { log } from "../../../src/logging.js";
 import type { Book } from "../../../src/domain/book.js";
 import { TransformersEmbedder, type Embedder } from "../../../src/semantic/embedder.js";
+import type { Reranker } from "../../../src/semantic/reranker.js";
 import { INDEX_VERSION, MODEL_ID } from "../../../src/semantic/model.js";
 import { SqliteIndexStore } from "../../../src/semantic/store.js";
 import { buildIndexTool } from "../../../src/tools/calibre_build_index.js";
@@ -112,6 +113,8 @@ export interface HarnessOptions {
   indexDir: string;
   /** Defaults to the real TransformersEmbedder (uses the model cached under indexDir/models). */
   embedder?: Embedder;
+  /** Cross-encoder for the rerank stage; absent = search keeps the fused order (rerank off). */
+  reranker?: Reranker;
   modes?: Mode[];
   /** Results retrieved per query (metrics go up to @10). */
   topK?: number;
@@ -144,6 +147,8 @@ export interface PerQueryRow {
   /** Negatives: whether the tool signalled "nothing here" (zero results or low confidence). */
   flagged?: boolean;
   maxScore?: number;
+  /** Whether the cross-encoder rerank stage actually ran for this query (hybrid/vector only). */
+  reranked?: boolean;
   retrieved: string[];
 }
 
@@ -160,6 +165,8 @@ export interface EvalReport {
     /** Labels in live mode are unverified until Artem confirms them. */
     unverifiedLabels?: boolean;
     rerank: string;
+    /** How many per-query runs the rerank stage actually reordered — 0 on a degraded run. */
+    rerankedRows: number;
     gitSha: string;
   };
   /** Negatives excluded — they have no rank metrics. */
@@ -178,6 +185,7 @@ function fixtureDeps(
   embedder: Embedder,
   corpus: Corpus,
   texts: Map<number, string>,
+  reranker?: Reranker,
 ): ToolDeps {
   const byId = new Map(corpus.books.map((b) => [b.bookId, b]));
   const content = {
@@ -214,6 +222,7 @@ function fixtureDeps(
     calibre: {} as unknown as ToolDeps["calibre"],
     extractor: extractor as unknown as ToolDeps["extractor"],
     embedder,
+    ...(reranker ? { reranker } : {}),
     index: store,
     log,
   };
@@ -252,7 +261,14 @@ async function runQuery(
   mode: Mode,
   deps: ToolDeps,
   topK: number,
-): Promise<{ rel: RankedRelevance; retrieved: string[]; count: number; lowConfidence?: boolean; maxScore?: number }> {
+): Promise<{
+  rel: RankedRelevance;
+  retrieved: string[];
+  count: number;
+  lowConfidence?: boolean;
+  maxScore?: number;
+  reranked?: boolean;
+}> {
   const r = await semanticSearchTool.handler(
     { query: q.query, scope: q.scope, mode, bookId: q.bookId, topK },
     deps,
@@ -262,6 +278,7 @@ async function runQuery(
   const count = Number(sc.count ?? 0);
   const lowConfidence = sc.lowConfidence as boolean | undefined;
   const maxScore = sc.maxScore as number | undefined;
+  const reranked = sc.reranked as boolean | undefined;
 
   if (q.scope === "library") {
     const bookIds = (sc.bookIds as number[] | undefined) ?? [];
@@ -275,6 +292,7 @@ async function runQuery(
       count,
       lowConfidence,
       maxScore,
+      reranked,
     };
   }
 
@@ -299,6 +317,7 @@ async function runQuery(
     count,
     lowConfidence,
     maxScore,
+    reranked,
   };
 }
 
@@ -320,7 +339,7 @@ export async function runRetrievalEval(opts: HarnessOptions): Promise<EvalReport
   const embedder = opts.embedder ?? new TransformersEmbedder(cfg);
 
   let libraryId = corpus.libraryId;
-  let deps = fixtureDeps(cfg, store, embedder, corpus, texts);
+  let deps = fixtureDeps(cfg, store, embedder, corpus, texts, opts.reranker);
 
   if (opts.live) {
     // Live mode: an existing index under indexDir, real-library labels, no build.
@@ -360,6 +379,7 @@ export async function runRetrievalEval(opts: HarnessOptions): Promise<EvalReport
         retrieved: out.retrieved,
       };
       if (out.maxScore !== undefined) row.maxScore = round4(out.maxScore);
+      if (out.reranked !== undefined) row.reranked = out.reranked;
       if (q.kind === "negative") {
         row.flagged = out.count === 0 || out.lowConfidence === true;
       } else {
@@ -380,7 +400,8 @@ export async function runRetrievalEval(opts: HarnessOptions): Promise<EvalReport
     topK,
     live: opts.live !== undefined,
     ...(opts.live ? { unverifiedLabels: true } : {}),
-    rerank: opts.rerank ?? "n/a (no reranker in this build)",
+    rerank: opts.rerank ?? (opts.reranker ? "on (unlabeled)" : "off (no reranker wired)"),
+    rerankedRows: perQuery.filter((r) => r.reranked === true).length,
     gitSha: opts.gitSha ?? "unknown",
   });
 }
@@ -418,7 +439,8 @@ export function renderMarkdown(report: EvalReport, title: string): string {
   lines.push("");
   lines.push(
     `Model \`${meta.model}\` · index v${meta.indexVersion} · corpus ${meta.corpus.books} books / ${meta.corpus.chunks} chunks · ` +
-      `${meta.queryCount} queries (${meta.ruInvolved} RU-involved) · topK=${meta.topK} · rerank: ${meta.rerank} · git ${meta.gitSha}`,
+      `${meta.queryCount} queries (${meta.ruInvolved} RU-involved) · topK=${meta.topK} · ` +
+      `rerank: ${meta.rerank} (${meta.rerankedRows} reranked rows) · git ${meta.gitSha}`,
   );
   if (meta.live) {
     lines.push("");
