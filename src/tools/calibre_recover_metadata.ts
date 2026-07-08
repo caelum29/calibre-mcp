@@ -19,7 +19,7 @@ import { BookId, jsonArray } from "./coerce.js";
 import { defineTool } from "./define.js";
 import { scanForIsbn } from "./isbn-scan.js";
 import type { IsbnScanResult } from "./isbn-scan.js";
-import { resolveNumericId } from "./resolve-id.js";
+import { bookIdArg, resolveNumericId } from "./resolve-id.js";
 import { bookResourceLink } from "./resource-link.js";
 import { fence, toolError, toolOk } from "./result.js";
 import type { ToolDeps } from "./types.js";
@@ -40,7 +40,8 @@ export const recoverMetadataTool = defineTool({
   description:
     "Propose real metadata for a book with a missing/raw-filename title via online provider lookup (ISBN from its identifiers or text, else title/author) on Open Library and Google Books. Preview only — returns a changes object for calibre_update_book; never writes.",
   inputSchema: {
-    id: BookId(),
+    id: BookId().optional(),
+    bookId: BookId().optional(),
     sources: jsonArray(SOURCE).optional(),
     library: z.string().optional(),
   },
@@ -54,9 +55,11 @@ export const recoverMetadataTool = defineTool({
   },
   annotations: { readOnlyHint: true, openWorldHint: true },
   handler: async (args, deps) => {
+    const idArg = bookIdArg(args);
+    if (idArg === undefined) return toolError("Provide id (the book's db id or uuid).");
     try {
-      const numericId = await resolveNumericId(deps, args.id, args.library);
-      if (numericId === undefined) return toolError(`No book with id/uuid ${args.id}`);
+      const numericId = await resolveNumericId(deps, idArg, args.library);
+      if (numericId === undefined) return toolError(`No book with id/uuid ${idArg}`);
       const book = await deps.content.getBook(numericId, args.library);
 
       // Pick the lookup key: existing valid ISBN → text-scraped ISBN → usable title.

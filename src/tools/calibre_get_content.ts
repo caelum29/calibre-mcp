@@ -11,7 +11,7 @@ import { BookId, CoercedBool, CursorParam, limitParam } from "./coerce.js";
 import { chunkText } from "./content-chunk.js";
 import { decodeContentCursor, encodeContentCursor } from "./content-cursor.js";
 import { defineTool } from "./define.js";
-import { resolveNumericId } from "./resolve-id.js";
+import { bookIdArg, resolveNumericId } from "./resolve-id.js";
 import { fence, toolError, toolOk } from "./result.js";
 
 export const getContentTool = defineTool({
@@ -20,7 +20,8 @@ export const getContentTool = defineTool({
   description:
     "Extract a book's text as a capped, fenced excerpt; pass the returned cursor to walk the whole book. Set structure=true for a chapter map with per-chapter cursors. To find text inside a book, use calibre_search scope=book.",
   inputSchema: {
-    id: BookId(),
+    id: BookId().optional(),
+    bookId: BookId().optional(),
     format: z.string().optional(),
     maxChars: limitParam(40_000, 8_000),
     sentenceAware: CoercedBool().default(true),
@@ -53,9 +54,11 @@ export const getContentTool = defineTool({
   },
   annotations: { readOnlyHint: true, openWorldHint: true },
   handler: async (args, deps) => {
+    const idArg = bookIdArg(args);
+    if (idArg === undefined) return toolError("Provide id (the book's db id or uuid).");
     try {
-      const numericId = await resolveNumericId(deps, args.id, args.library);
-      if (numericId === undefined) return toolError(`No book with id/uuid ${args.id}`);
+      const numericId = await resolveNumericId(deps, idArg, args.library);
+      if (numericId === undefined) return toolError(`No book with id/uuid ${idArg}`);
 
       const book = await deps.content.getBook(numericId, args.library);
       const fmt = chooseExtractFormat(book.formats, args.format);

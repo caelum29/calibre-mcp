@@ -10,7 +10,7 @@ import { isValidIsbn } from "../domain/curation/isbn.js";
 import { BookId, CoercedBool } from "./coerce.js";
 import { defineTool } from "./define.js";
 import { scanForIsbn, scanOutcomeHint } from "./isbn-scan.js";
-import { resolveNumericId } from "./resolve-id.js";
+import { bookIdArg, resolveNumericId } from "./resolve-id.js";
 import { toolError, toolOk } from "./result.js";
 import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "./write-refusal.js";
 
@@ -22,7 +22,8 @@ export const extractIsbnTool = defineTool({
     "(no network; for online lookup use calibre_recover_metadata). Preview-first: apply=false " +
     "reports only, merges into existing identifiers. Requires writes enabled.",
   inputSchema: {
-    id: BookId(),
+    id: BookId().optional(),
+    bookId: BookId().optional(),
     apply: CoercedBool().default(false),
     library: z.string().optional(),
   },
@@ -36,9 +37,11 @@ export const extractIsbnTool = defineTool({
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
   write: true,
   handler: async (args, deps) => {
+    const idArg = bookIdArg(args);
+    if (idArg === undefined) return toolError("Provide id (the book's db id or uuid).");
     try {
-      const numericId = await resolveNumericId(deps, args.id, args.library);
-      if (numericId === undefined) return toolError(`No book with id/uuid ${args.id}`);
+      const numericId = await resolveNumericId(deps, idArg, args.library);
+      if (numericId === undefined) return toolError(`No book with id/uuid ${idArg}`);
       const book = await deps.content.getBook(numericId, args.library);
 
       const currentIsbn =

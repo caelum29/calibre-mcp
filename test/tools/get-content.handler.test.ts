@@ -92,6 +92,20 @@ describe("calibre_get_content handler", () => {
     expect((r.content[0] as { text: string }).text).toContain("poppler");
   });
 
+  describe("id / bookId alias", () => {
+    it("accepts the bookId alias (search results expose bookIds) in place of id", async () => {
+      const r = await getContentTool.handler(args({ id: undefined, bookId: 1 }), deps());
+      expect(r.isError).toBeFalsy();
+      expect(r.structuredContent).toMatchObject({ format: "pdf" });
+    });
+
+    it("errors when neither id nor bookId is given", async () => {
+      const r = await getContentTool.handler(args({ id: undefined }), deps());
+      expect(r.isError).toBe(true);
+      expect((r.content[0] as { text: string }).text).toContain("Provide id");
+    });
+  });
+
   describe("structure=true", () => {
     const chapterText = ["Chapter 1", "aaa aaa aaa", "Chapter 2", "bbb bbb bbb", "Chapter 3", "ccc ccc ccc"].join("\n");
     const withChapters = () =>

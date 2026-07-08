@@ -8,7 +8,7 @@ import { bookFieldValue, buildSetMetadataArgs, isAllowedField } from "../calibre
 import type { ChangeValue } from "../calibre/metadata-fields.js";
 import { BookId, jsonRecord } from "./coerce.js";
 import { defineTool } from "./define.js";
-import { resolveNumericId } from "./resolve-id.js";
+import { bookIdArg, resolveNumericId } from "./resolve-id.js";
 import { toolError, toolOk } from "./result.js";
 import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "./write-refusal.js";
 
@@ -27,7 +27,8 @@ export const updateBookTool = defineTool({
   description:
     "Replace metadata fields on one book (title, authors, tags, series, rating, identifiers, comments, or any #custom column). Omitted fields are untouched. Requires writes to be enabled.",
   inputSchema: {
-    id: BookId(),
+    id: BookId().optional(),
+    bookId: BookId().optional(),
     changes: jsonRecord(ChangeValueSchema),
     library: z.string().optional(),
   },
@@ -54,8 +55,10 @@ export const updateBookTool = defineTool({
         );
       }
 
-      const numericId = await resolveNumericId(deps, args.id, args.library);
-      if (numericId === undefined) return toolError(`No book with id/uuid ${args.id}`);
+      const idArg = bookIdArg(args);
+      if (idArg === undefined) return toolError("Provide id (the book's db id or uuid).");
+      const numericId = await resolveNumericId(deps, idArg, args.library);
+      if (numericId === undefined) return toolError(`No book with id/uuid ${idArg}`);
 
       const before = await deps.content.getBook(numericId, args.library);
 
