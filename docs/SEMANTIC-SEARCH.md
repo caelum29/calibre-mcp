@@ -125,7 +125,14 @@ INGEST(file)
   normalize ё→е; apply identical transform to queries. Keep a 2nd raw
   `unicode61` column for exact/identifier/ISBN queries.
 - **Fusion: RRF, k=60, on RANKS ONLY** (no score normalization — sidesteps the
-  cosine-[0,1] vs BM25-negative mismatch by construction).
+  cosine-[0,1] vs BM25-negative mismatch by construction). Weighted-RRF seam
+  (`wᵢ/(k+rank)`, per-source weights) shipped with both weights at 1.0 —
+  named constants, tuned only through `test/eval/retrieval`.
+- **FTS sees book identity via `book_meta`** — stemmed title+authors indexed as
+  a third `chunk_fts` column (per-book-constant repeated per chunk, accepted
+  bloat), bm25-weighted `1.0, 1.0, 0.5` so meta helps but never outranks prose.
+  The vector half already gets identity from the embedded `[title › authors]`
+  context prefix; this closes the same gap on the keyword half.
 - **Reranking: defer.** Only free+multilingual+ONNX option (bge-reranker-v2-m3,
   568M) ≈ 15-40s/top-100 on CPU; light option needs self-conversion;
   jina-reranker is CC-BY-NC (blocks commercial). Bi-encoder + RRF suffices v1.
@@ -139,14 +146,16 @@ CREATE TABLE chunks (
   id INTEGER PRIMARY KEY, book_id INTEGER NOT NULL,
   location TEXT NOT NULL,        -- PDF page / EPUB spine pointer
   body TEXT NOT NULL,            -- raw chunk (snippets, exact match)
-  body_stem TEXT NOT NULL        -- pre-stemmed EN+RU, for recall
-);
+  body_stem TEXT NOT NULL,       -- pre-stemmed EN+RU, for recall
+  book_meta TEXT NOT NULL        -- stemmed title+authors (same name in FTS: external
+);                               -- content resolves columns BY NAME)
 CREATE INDEX idx_chunks_book ON chunks(book_id);
 
 CREATE VIRTUAL TABLE chunk_fts USING fts5(
-  body_stem, body, content='chunks', content_rowid='id',
+  body_stem, body, book_meta, content='chunks', content_rowid='id',
   tokenize = 'unicode61 remove_diacritics 2 tokenchars ''-_+#.'''
 );  -- + AFTER INSERT/DELETE/UPDATE sync triggers (delete via 'delete' cmd)
+    -- queries rank by bm25(chunk_fts, 1.0, 1.0, 0.5) — meta helps, never dominates
 
 CREATE TABLE embeddings (
   chunk_id INTEGER PRIMARY KEY REFERENCES chunks(id),
@@ -164,8 +173,8 @@ query
  ├─ embed ("query: " prefix; e5 requires it)
  ├─ stem query (same EN+RU transform as ingest)
  ├─ VECTOR: JS dot scan (or sqlite-vec) → top-50   [scope=book → subarray slice]
- ├─ FTS:    MATCH stemmed_query (body_stem) → top-50 [scope=book → AND book_id=?]
- ├─ RRF fuse (k=60, 1-based ranks, no normalization) → top-N
+ ├─ FTS:    MATCH stemmed_query (body_stem|body|book_meta, bm25 1/1/.5) → top-50 [scope=book → AND book_id=?]
+ ├─ RRF fuse (k=60, 1-based ranks, no normalization; weighted seam, both 1.0) → top-N
  └─ [LATER, opt-in] cross-encoder rerank top-20 → top-10
  → {chunk_id, book_id, location, snippet}
 ```

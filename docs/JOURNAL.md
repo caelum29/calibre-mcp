@@ -439,3 +439,33 @@
   query (0.755). Degrade path live-verified too: reranker wired against an empty model cache with
   network blocked → advisory note + fused order + `reranked:false`, no error. Warm latency measured
   live: ~1 s per 3-pair pool, ~10.6 s per 30-pair book-scope pool.
+
+## FTS book_meta column + weighted-RRF seam (semantic suite / prompt 06)
+
+- ✅ **Keyword half now sees book identity** (2026-07-08, branch `feat/semantic-suite`) — chunks gained
+  a `book_meta` column (title+authors through the same `stemText` transform as `body_stem`/queries),
+  indexed as a third `chunk_fts` column and ranked with `bm25(chunk_fts, 1.0, 1.0, 0.5)` (named
+  constants; meta helps a title/author query, never dominates prose). Per-book-constant repeated per
+  chunk — accepted FTS bloat; external-content tables can't join at trigger time, so `replaceBook`
+  threads the stemmed meta into every chunk insert and the existing trigger pattern stays intact.
+  Folded into the still-unshipped INDEX_VERSION 3 bump (Artem rebuilds once, with prompt 01).
+- **Name-contract gotcha (verified on node:sqlite):** FTS5 external-content value lookups resolve
+  content-table columns BY NAME — a `chunk_fts` column named differently from its `chunks` column
+  fails with `no such column` on any value read. So the column is `book_meta` on BOTH tables (the
+  prompt's suggested `meta_stem` name on `chunks` would have booby-trapped future `snippet()` use).
+- **Weighted-RRF seam:** `rrfFuse` takes optional per-list weights (`wᵢ/(k+rank)`, Bruch et al. TOIS
+  2023 — per-source weight is the impactful knob, more than k); weight 0 ≡ list absent, missing
+  weights default to 1 so existing callers are untouched. `calibre_semantic_search` passes named
+  `VECTOR_RRF_WEIGHT`/`KEYWORD_RRF_WEIGHT` constants, both 1.0 — no config/env surface, tuning is
+  eval-gated. The seam sits BEFORE the task-03 reranker (fuse → rerank), which is unchanged.
+- **Measured (reports `2026-07-08-0ae4e41-pre-06` → `2026-07-08-0372c88-post-06`):** every aggregate
+  (overall / RU / by-kind / negatives, all modes) is byte-identical — **exact-identifier holds**
+  (keyword 1.0, hybrid/vector 0.9692 nDCG@10). Only 5/150 per-query rows moved, all keyword-mode
+  `retrieved` tails below the metric window; `idb-01` (exact-identifier, book scope) now recalls a
+  SECOND relevant passage via the meta match. The fixture queries never name a title absent from
+  prose, so the meta win shows up live rather than in the offline aggregates.
+- **Live-verified (Content Server up, 3 real EPUBs keyword-only → 2568 chunks in a temp index):**
+  each book's exact title as a `mode:"keyword"` query returns that book top-ranked (3/3); identifier
+  queries (`std::vector`, `useEffect`, `self.assertEqual`, `const`) rank IDENTICALLY with the meta
+  weight at 0.5 vs 0 (= the old two-column bm25) — identifier exactness untouched, analytically and
+  empirically: a query with zero meta matches gets zero contribution from the weighted column.
