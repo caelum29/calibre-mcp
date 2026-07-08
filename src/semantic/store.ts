@@ -13,7 +13,7 @@ import { DatabaseSync } from "node:sqlite";
 import { existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import type { Config } from "../config.js";
-import { log } from "../logging.js";
+import { log as defaultLog } from "../logging.js";
 import { EMBED_DIM, INDEX_VERSION, MODEL_ID } from "./model.js";
 import { stemText } from "./stem.js";
 import { type Candidate, decodeVector, encodeVector, topK } from "./vector.js";
@@ -160,7 +160,11 @@ export class SqliteIndexStore implements IndexStore {
   // DEFERRED: int8-quantize this in-memory copy (~99.8% recall at 4x smaller) once full-library indexing lands.
   #candidateCaches = new Map<string, CandidateCache>();
 
-  constructor(private readonly cfg: Config) {}
+  constructor(
+    private readonly cfg: Config,
+    /** Injected stderr logger seam (tests/callers may substitute); defaults to the module logger. */
+    private readonly log: typeof defaultLog = defaultLog,
+  ) {}
 
   hasIndex(libraryId: string): boolean {
     if (this.#dbs.has(libraryId)) return true;
@@ -387,7 +391,7 @@ export class SqliteIndexStore implements IndexStore {
       this.#candidateCaches.set(libraryId, cache);
       // Memory honesty: vectors dominate (EMBED_DIM float32 each); ids/objects are noise.
       const mib = (all.length * EMBED_DIM * 4) / (1024 * 1024);
-      log.info("semantic candidate cache built", {
+      this.log.info("semantic candidate cache built", {
         library: libraryId,
         chunks: all.length,
         approxMiB: Number(mib.toFixed(1)),

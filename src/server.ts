@@ -27,7 +27,7 @@ export function buildServer(): McpServer {
     extractor: new Extractor(config),
     embedder: new TransformersEmbedder(config), // lazy: no model load until first embed
     reranker: new TransformersReranker(config), // lazy: no model load until first rerank
-    index: new SqliteIndexStore(config), // lazy: no db file until first index op
+    index: new SqliteIndexStore(config, log), // lazy: no db file until first index op
     log,
   };
 

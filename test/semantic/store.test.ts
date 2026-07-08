@@ -202,6 +202,18 @@ describe("SqliteIndexStore", () => {
   });
 
   describe("candidate cache", () => {
+    it("reports the cache build through the injected logger (stderr seam, no hidden global)", () => {
+      const logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+      const s = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }), logger);
+      s.replaceBook(LIB, { bookId: 1, title: "A", authors: [] }, [chunk("alpha", 0)]);
+      s.searchLibrary(LIB, axis(0), 5);
+      expect(logger.info).toHaveBeenCalledWith(
+        "semantic candidate cache built",
+        expect.objectContaining({ library: LIB, chunks: 1 }),
+      );
+      s.close();
+    });
+
     it("repeated searches load the embedding BLOBs from SQLite only once", () => {
       const s = store();
       s.replaceBook(LIB, { bookId: 1, title: "A", authors: [] }, [chunk("alpha", 0)]);
