@@ -1,7 +1,9 @@
 // SQLite-backed vector index for semantic search. Uses node:sqlite (built into Node 22.5+),
 // so the npx/MCPB bundle ships with ZERO native addons — no node-gyp, no ABI lock, no macOS
 // quarantine on a prebuilt .node (the exact install failure the project avoids). Vectors are
-// L2-normalized Float32 BLOBs; retrieval is in-memory brute-force cosine (== dot product).
+// L2-normalized Float32 BLOBs; retrieval is in-memory brute-force cosine (== dot product) over
+// a per-library candidate cache (decoded once, invalidated on write) — flat scan beats ANN at
+// this scale; the cost worth killing was the per-query BLOB reload, not the scan.
 //
 // The store is keyed per Calibre library: each library gets its own <indexDir>/<lib>.sqlite,
 // opened lazily so read-only sessions that never build an index create no files. The index db
@@ -11,6 +13,7 @@ import { DatabaseSync } from "node:sqlite";
 import { existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import type { Config } from "../config.js";
+import { log } from "../logging.js";
 import { EMBED_DIM, INDEX_VERSION, MODEL_ID } from "./model.js";
 import { stemText } from "./stem.js";
 import { type Candidate, decodeVector, encodeVector, topK } from "./vector.js";
@@ -124,8 +127,21 @@ END;
 
 type Row = Record<string, unknown>;
 
+/**
+ * Decoded candidate vectors for one library, held in memory so vector queries don't
+ * re-read/decode every embeddings BLOB from SQLite (seconds of I/O at full-library scale).
+ * `byBook` holds references into the same Candidate objects as `all` — an index, not a copy.
+ */
+interface CandidateCache {
+  all: Candidate[];
+  byBook: Map<number, Candidate[]>;
+}
+
 export class SqliteIndexStore implements IndexStore {
   #dbs = new Map<string, DatabaseSync>();
+  // Per-library candidate cache; invalidated wholesale on any write (correctness > cleverness).
+  // DEFERRED: int8-quantize this in-memory copy (~99.8% recall at 4x smaller) once full-library indexing lands.
+  #candidateCaches = new Map<string, CandidateCache>();
 
   constructor(private readonly cfg: Config) {}
 
@@ -191,12 +207,16 @@ export class SqliteIndexStore implements IndexStore {
     } catch (err) {
       db.exec("ROLLBACK");
       throw err;
+    } finally {
+      // Any write (even a rolled-back one — a needless rebuild is harmless) drops the
+      // library's candidate cache; the next vector query rebuilds it from SQLite.
+      this.#candidateCaches.delete(libraryId);
     }
   }
 
   searchLibrary(libraryId: string, query: Float32Array, k: number): LibraryHit[] {
     const db = this.#db(libraryId);
-    const hits = topK(query, this.#candidates(db), Number.MAX_SAFE_INTEGER);
+    const hits = topK(query, this.#candidates(libraryId), Number.MAX_SAFE_INTEGER);
 
     // Keep the best chunk per book (hits are already sorted desc), up to k books.
     const bestPerBook = new Map<number, { chunkId: number; score: number }>();
@@ -226,7 +246,7 @@ export class SqliteIndexStore implements IndexStore {
 
   searchBook(libraryId: string, bookId: number, query: Float32Array, k: number): BookHit[] {
     const db = this.#db(libraryId);
-    const hits = topK(query, this.#candidates(db, bookId), k);
+    const hits = topK(query, this.#candidates(libraryId, bookId), k);
     return hits.map((h) => {
       const chunk = db
         .prepare("SELECT char_start, char_end, body FROM chunks WHERE id = ?")
@@ -306,21 +326,48 @@ export class SqliteIndexStore implements IndexStore {
   close(): void {
     for (const db of this.#dbs.values()) db.close();
     this.#dbs.clear();
+    this.#candidateCaches.clear();
   }
 
-  /** Load candidate vectors — all of a library, or one book (the doc's book-scope subarray). */
-  #candidates(db: DatabaseSync, bookId?: number): Candidate[] {
-    const rows =
-      bookId === undefined
-        ? (db.prepare("SELECT chunk_id, book_id, vector FROM embeddings").all() as Row[])
-        : (db.prepare("SELECT chunk_id, book_id, vector FROM embeddings WHERE book_id = ?").all(
-            bookId,
-          ) as Row[]);
+  /**
+   * Read + decode ALL embedding BLOBs of a library from SQLite — the expensive path the
+   * candidate cache exists to avoid. `decodeVector` copies each BLOB into a fresh
+   * Float32Array, so cached vectors never alias sqlite's pooled buffers.
+   * @internal public only as a spy seam for the cache tests; not part of `IndexStore`.
+   */
+  loadCandidates(libraryId: string): Candidate[] {
+    const rows = this.#db(libraryId)
+      .prepare("SELECT chunk_id, book_id, vector FROM embeddings")
+      .all() as Row[];
     return rows.map((r) => ({
       chunkId: Number(r.chunk_id),
       bookId: Number(r.book_id),
       vector: decodeVector(r.vector as Uint8Array),
     }));
+  }
+
+  /** Candidate vectors — all of a library, or one book (the doc's book-scope subarray). */
+  #candidates(libraryId: string, bookId?: number): Candidate[] {
+    let cache = this.#candidateCaches.get(libraryId);
+    if (!cache) {
+      const all = this.loadCandidates(libraryId);
+      const byBook = new Map<number, Candidate[]>();
+      for (const c of all) {
+        const list = byBook.get(c.bookId);
+        if (list) list.push(c);
+        else byBook.set(c.bookId, [c]);
+      }
+      cache = { all, byBook };
+      this.#candidateCaches.set(libraryId, cache);
+      // Memory honesty: vectors dominate (EMBED_DIM float32 each); ids/objects are noise.
+      const mib = (all.length * EMBED_DIM * 4) / (1024 * 1024);
+      log.info("semantic candidate cache built", {
+        library: libraryId,
+        chunks: all.length,
+        approxMiB: Number(mib.toFixed(1)),
+      });
+    }
+    return bookId === undefined ? cache.all : (cache.byBook.get(bookId) ?? []);
   }
 
   /** Lazily open (and validate) the per-library db. */
