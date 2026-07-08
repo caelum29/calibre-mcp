@@ -34,4 +34,12 @@ export const hashEmbedder: Embedder = {
     return texts.map(embed);
   },
   async warmup() {},
+  // Deterministic model-free "tokenizer": same word split as embed(), +2 for the special
+  // tokens a real tokenizer adds. Monotone non-decreasing in slice length, as the
+  // chunker's budget probe requires. No pre-warmup throw — this fake is always "loaded".
+  countTokens(text) {
+    let n = 0;
+    for (const _ of text.matchAll(/[\p{L}\p{N}_]+/gu)) n++;
+    return n + 2;
+  },
 };
