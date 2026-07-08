@@ -13,10 +13,15 @@ import { resolveNumericId } from "./resolve-id.js";
 import { toolError, toolOk } from "./result.js";
 import type { IndexedChunk } from "../semantic/store.js";
 import type { ToolDeps } from "./types.js";
+import type { EmbedChunk } from "../semantic/chunk.js";
 import { chunkForEmbedding } from "../semantic/chunk.js";
+import { MAX_TOKENS, PASSAGE_PREFIX } from "../semantic/model.js";
 
 /** Cap on books selected by a query, so a broad query can't kick off a huge build. */
 const MAX_QUERY_BOOKS = 100;
+
+/** Floor on the token budget — a pathologically long title/authors prefix can't starve chunks. */
+const MIN_TOKEN_BUDGET = 64;
 
 export const buildIndexTool = defineTool({
   name: "calibre_build_index",
@@ -86,6 +91,8 @@ export const buildIndexTool = defineTool({
     // the embedder once (warmup does the lazy dynamic-import) so a no-embeddings install
     // degrades to a keyword-only index instead of failing every book (the model-free default).
     let keywordOnly = args.keywordOnly;
+    // Token budgeting needs a LOADED tokenizer — only true after a successful warmup.
+    let tokenBudgeted = false;
     if (keywordOnly) {
       notes.push(
         'Keyword-only index (no embeddings): mode:"keyword" search will work; vector & hybrid semantic search need @huggingface/transformers — install it, then rebuild with force=true.',
@@ -93,6 +100,7 @@ export const buildIndexTool = defineTool({
     } else {
       try {
         await deps.embedder.warmup();
+        tokenBudgeted = true;
       } catch (err) {
         if (isEmbedderUnavailable(err)) {
           keywordOnly = true;
@@ -101,7 +109,7 @@ export const buildIndexTool = defineTool({
           );
         }
         // Other warmup errors (e.g. a download hiccup) fall through — the per-book embed
-        // attempt below surfaces them as collected failures.
+        // attempt below surfaces them as collected failures (char-budget chunking applies).
       }
     }
 
@@ -110,7 +118,7 @@ export const buildIndexTool = defineTool({
     let totalChunks = 0;
     for (const bookId of targets) {
       try {
-        const n = await indexBook(deps, libraryId, bookId, args.force, args.library, keywordOnly);
+        const n = await indexBook(deps, libraryId, bookId, args.force, args.library, keywordOnly, tokenBudgeted);
         if (n === "skipped") booksSkipped++;
         else {
           booksIndexed++;
@@ -155,6 +163,7 @@ async function indexBook(
   force: boolean,
   library: string | undefined,
   keywordOnly: boolean,
+  tokenBudgeted: boolean,
 ): Promise<number | "skipped"> {
   const book = await deps.content.getBook(bookId, library);
 
@@ -177,7 +186,23 @@ async function indexBook(
     throw new Error(`no extractable text (${fmt}) — likely a scanned/image PDF (no OCR)`);
   }
 
-  const chunks = chunkForEmbedding(extracted.text);
+  // Deterministic context prefix — captures most of contextual-retrieval's benefit at zero
+  // LLM cost. It goes into the EMBEDDED text only; the stored body stays the raw chunk so
+  // char offsets still line up with calibre_get_content.
+  const ctx = `[${book.title} › ${book.authors.join(", ")}]\n`;
+
+  let chunks: EmbedChunk[];
+  if (!keywordOnly && tokenBudgeted) {
+    // Budget in REAL model tokens: the e5 window minus what the "passage: " + context
+    // prefixes consume, so RU chunks stop being over-conservative and EN chunks stop
+    // silently wasting window. countTokens is safe here — warmup succeeded (tokenBudgeted).
+    const budget = Math.max(MIN_TOKEN_BUDGET, MAX_TOKENS - deps.embedder.countTokens(PASSAGE_PREFIX + ctx));
+    chunks = chunkForEmbedding(extracted.text, { budget, lengthFn: (s) => deps.embedder.countTokens(s) });
+  } else {
+    // No loaded model (keyword-only or a failed warmup) — no token window to respect;
+    // the conservative char-based default applies.
+    chunks = chunkForEmbedding(extracted.text);
+  }
   if (chunks.length === 0) throw new Error("produced no chunks");
 
   let indexed: IndexedChunk[];
@@ -185,10 +210,6 @@ async function indexBook(
     // No embeddings — chunks are stored raw + pre-stemmed (in the store) for FTS keyword search.
     indexed = chunks.map((c) => ({ charStart: c.charStart, charEnd: c.charEnd, body: c.body }));
   } else {
-    // Deterministic context prefix — captures most of contextual-retrieval's benefit at zero
-    // LLM cost. It goes into the EMBEDDED text only; the stored body stays the raw chunk so
-    // char offsets still line up with calibre_get_content.
-    const ctx = `[${book.title} › ${book.authors.join(", ")}]\n`;
     const vectors = await deps.embedder.embedPassages(chunks.map((c) => ctx + c.body));
     indexed = chunks.map((c, i) => ({
       charStart: c.charStart,

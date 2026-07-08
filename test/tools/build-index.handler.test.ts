@@ -6,7 +6,7 @@ import type { Book } from "../../src/domain/book.js";
 import type { ExtractedText } from "../../src/calibre/extract.js";
 import type { Embedder } from "../../src/semantic/embedder.js";
 import { SqliteIndexStore } from "../../src/semantic/store.js";
-import { EMBED_DIM } from "../../src/semantic/model.js";
+import { EMBED_DIM, MAX_TOKENS, PASSAGE_PREFIX } from "../../src/semantic/model.js";
 import { l2normalize } from "../../src/semantic/vector.js";
 import type { ToolDeps } from "../../src/tools/types.js";
 
@@ -22,24 +22,33 @@ const baseBook: Book = {
   lastModified: "2026-01-01",
 };
 
+/** Fake ~4-chars-per-token count (+2 "special tokens") — non-linear in char length. */
+const fakeCountTokens = (s: string) => Math.ceil(s.length / 4) + 2;
+
 /** Deterministic fake embedder — every passage → a fixed unit vector (axis 0). */
-const fakeEmbedder: Embedder = {
-  async embedQuery() {
-    const v = new Float32Array(EMBED_DIM);
-    v[0] = 1;
-    return l2normalize(v);
-  },
-  async embedPassages(texts) {
-    return texts.map(() => {
+function makeFakeEmbedder(): Embedder & { embedded: string[] } {
+  const embedded: string[] = [];
+  return {
+    embedded, // captured embedPassages inputs, for budget assertions
+    async embedQuery() {
       const v = new Float32Array(EMBED_DIM);
       v[0] = 1;
       return l2normalize(v);
-    });
-  },
-  async warmup() {},
-};
+    },
+    async embedPassages(texts) {
+      embedded.push(...texts);
+      return texts.map(() => {
+        const v = new Float32Array(EMBED_DIM);
+        v[0] = 1;
+        return l2normalize(v);
+      });
+    },
+    async warmup() {},
+    countTokens: fakeCountTokens,
+  };
+}
 
-/** Embedder that has no model — warmup and embed both throw the coded signal. */
+/** Embedder that has no model — every member throws the coded signal. */
 const unavailableEmbedder: Embedder = {
   async embedQuery() {
     throw new Error("EMBEDDER_UNAVAILABLE");
@@ -49,6 +58,9 @@ const unavailableEmbedder: Embedder = {
   },
   async warmup() {
     throw new Error("EMBEDDER_UNAVAILABLE");
+  },
+  countTokens() {
+    throw new Error("EMBEDDER_NOT_LOADED");
   },
 };
 
@@ -80,7 +92,7 @@ function deps(opts: FakeOpts = {}): ToolDeps {
     content: content as unknown as ToolDeps["content"],
     calibre: {} as unknown as ToolDeps["calibre"],
     extractor: extractor as unknown as ToolDeps["extractor"],
-    embedder: opts.embedder ?? fakeEmbedder,
+    embedder: opts.embedder ?? makeFakeEmbedder(),
     index: opts.store ?? new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" })),
     log,
   };
@@ -150,6 +162,20 @@ describe("calibre_build_index handler", () => {
     expect(store.hasVectors("Programming_Books")).toBe(false);
     // FTS keyword search still finds the indexed text.
     expect(store.searchLibraryFts("Programming_Books", "ownership", 5).length).toBeGreaterThan(0);
+  });
+
+  it("budgets chunks in embedder tokens: every embedded passage fits the model window", async () => {
+    const embedder = makeFakeEmbedder();
+    const r = await buildIndexTool.handler(args({ bookId: 1 }), deps({ embedder }));
+    expect(r.isError).toBeFalsy();
+    expect(embedder.embedded.length).toBeGreaterThan(0);
+    for (const passage of embedder.embedded) {
+      // The full text the model sees ("passage: " + "[title › authors]\n" + body) fits MAX_TOKENS.
+      expect(fakeCountTokens(PASSAGE_PREFIX + passage)).toBeLessThanOrEqual(MAX_TOKENS);
+    }
+    // Token budgeting was actually in effect: at ~4 chars/token the budget edge sits far
+    // past the 900-CHAR default, which would have capped every body at 900 chars.
+    expect(embedder.embedded.some((p) => p.length > 900)).toBe(true);
   });
 
   it("auto-degrades to a keyword-only index when the embedding model is unavailable", async () => {
