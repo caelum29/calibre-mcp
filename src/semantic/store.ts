@@ -70,9 +70,9 @@ export interface IndexStore {
   searchLibrary(libraryId: string, query: Float32Array, k: number): LibraryHit[];
   /** Rank passages within one book, vector cosine. */
   searchBook(libraryId: string, bookId: number, query: Float32Array, k: number): BookHit[];
-  /** Keyword half: rank books by best FTS5 bm25 match (score is negative, lower is better). */
+  /** Keyword half: rank books by best weighted-bm25 FTS5 match (score is negative, lower is better). */
   searchLibraryFts(libraryId: string, stemmedQuery: string, k: number): LibraryHit[];
-  /** Keyword half: rank passages within one book by FTS5 bm25. */
+  /** Keyword half: rank passages within one book by weighted-bm25 FTS5 match. */
   searchBookFts(libraryId: string, bookId: number, stemmedQuery: string, k: number): BookHit[];
   stats(libraryId: string): { books: number; chunks: number };
   close(): void;
@@ -80,6 +80,15 @@ export interface IndexStore {
 
 /** Length of a result snippet (chars) taken from the best chunk. */
 const SNIPPET_CHARS = 320;
+
+// bm25() per-column weights, in chunk_fts column order (body_stem, body, book_meta).
+// book_meta (the stemmed title+authors) lets a query naming a book surface it even when the
+// title never recurs in prose, but it must never dominate body matches — hence 0.5. Tune these
+// ONLY through the retrieval eval (test/eval/retrieval), never by feel.
+const BM25_WEIGHT_BODY_STEM = 1.0;
+const BM25_WEIGHT_BODY = 1.0;
+const BM25_WEIGHT_BOOK_META = 0.5;
+const WEIGHTED_BM25 = `bm25(chunk_fts, ${BM25_WEIGHT_BODY_STEM}, ${BM25_WEIGHT_BODY}, ${BM25_WEIGHT_BOOK_META})`;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -97,7 +106,8 @@ CREATE TABLE IF NOT EXISTS chunks (
   char_start INTEGER NOT NULL,
   char_end INTEGER NOT NULL,
   body TEXT NOT NULL,
-  body_stem TEXT NOT NULL DEFAULT ''
+  body_stem TEXT NOT NULL DEFAULT '',
+  book_meta TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_chunks_book ON chunks(book_id);
 CREATE TABLE IF NOT EXISTS embeddings (
@@ -108,22 +118,27 @@ CREATE TABLE IF NOT EXISTS embeddings (
 CREATE INDEX IF NOT EXISTS idx_emb_book ON embeddings(book_id);
 
 -- Keyword half: FTS5 external-content index over chunks. body_stem holds EN+RU pre-stemmed
--- text (recall); body holds raw text (exact/identifier matches). tokenchars keep code tokens
--- (e.g. c++, __init__, api.v2) intact. Kept in sync with chunks via the triggers below.
+-- text (recall); body holds raw text (exact/identifier matches); book_meta holds the stemmed
+-- title+authors of the chunk's book so a query naming a book matches its chunks (weighted low
+-- via ${WEIGHTED_BM25} — it helps, never dominates prose). book_meta is per-book-constant
+-- repeated per chunk — accepted FTS bloat; external-content tables can't join at trigger time,
+-- and the column name must match chunks' (FTS5 resolves content-table columns BY NAME).
+-- tokenchars keep code tokens (e.g. c++, __init__, api.v2) intact. Kept in sync with chunks
+-- via the triggers below.
 CREATE VIRTUAL TABLE IF NOT EXISTS chunk_fts USING fts5(
-  body_stem, body,
+  body_stem, body, book_meta,
   content='chunks', content_rowid='id',
   tokenize='unicode61 remove_diacritics 2 tokenchars ''-_+#.'''
 );
 CREATE TRIGGER IF NOT EXISTS chunks_ai AFTER INSERT ON chunks BEGIN
-  INSERT INTO chunk_fts(rowid, body_stem, body) VALUES (new.id, new.body_stem, new.body);
+  INSERT INTO chunk_fts(rowid, body_stem, body, book_meta) VALUES (new.id, new.body_stem, new.body, new.book_meta);
 END;
 CREATE TRIGGER IF NOT EXISTS chunks_ad AFTER DELETE ON chunks BEGIN
-  INSERT INTO chunk_fts(chunk_fts, rowid, body_stem, body) VALUES('delete', old.id, old.body_stem, old.body);
+  INSERT INTO chunk_fts(chunk_fts, rowid, body_stem, body, book_meta) VALUES('delete', old.id, old.body_stem, old.body, old.book_meta);
 END;
 CREATE TRIGGER IF NOT EXISTS chunks_au AFTER UPDATE ON chunks BEGIN
-  INSERT INTO chunk_fts(chunk_fts, rowid, body_stem, body) VALUES('delete', old.id, old.body_stem, old.body);
-  INSERT INTO chunk_fts(rowid, body_stem, body) VALUES (new.id, new.body_stem, new.body);
+  INSERT INTO chunk_fts(chunk_fts, rowid, body_stem, body, book_meta) VALUES('delete', old.id, old.body_stem, old.body, old.book_meta);
+  INSERT INTO chunk_fts(rowid, body_stem, body, book_meta) VALUES (new.id, new.body_stem, new.body, new.book_meta);
 END;
 `;
 
@@ -189,9 +204,13 @@ export class SqliteIndexStore implements IndexStore {
       );
 
       const insChunk = db.prepare(
-        "INSERT INTO chunks(book_id, char_start, char_end, body, body_stem) VALUES(?,?,?,?,?)",
+        "INSERT INTO chunks(book_id, char_start, char_end, body, body_stem, book_meta) VALUES(?,?,?,?,?,?)",
       );
       const insEmb = db.prepare("INSERT INTO embeddings(chunk_id, book_id, vector) VALUES(?,?,?)");
+      // Stemmed once per book (same transform as body_stem/queries) and repeated on every
+      // chunk row, so the FTS half sees book identity — the vector half already gets it via
+      // the embedded "[title › authors]" context prefix.
+      const bookMeta = stemText(`${meta.title} ${meta.authors.join(" ")}`);
       for (const c of chunks) {
         // Pre-stem here so the FTS keyword half is populated by the insert trigger.
         const { lastInsertRowid } = insChunk.run(
@@ -200,6 +219,7 @@ export class SqliteIndexStore implements IndexStore {
           c.charEnd,
           c.body,
           stemText(c.body),
+          bookMeta,
         );
         // A keyword-only build has no vector — the chunk is still FTS-searchable via the
         // trigger above; we just skip the embeddings row (vector search naturally excludes it).
@@ -273,9 +293,9 @@ export class SqliteIndexStore implements IndexStore {
     const pool = Math.max(k * 20, 200);
     const rows = db
       .prepare(
-        `SELECT c.id AS chunk_id, c.book_id, c.char_start, c.char_end, c.body, bm25(chunk_fts) AS score
+        `SELECT c.id AS chunk_id, c.book_id, c.char_start, c.char_end, c.body, ${WEIGHTED_BM25} AS score
          FROM chunk_fts JOIN chunks c ON c.id = chunk_fts.rowid
-         WHERE chunk_fts MATCH ? ORDER BY rank LIMIT ?`,
+         WHERE chunk_fts MATCH ? ORDER BY score LIMIT ?`,
       )
       .all(match, pool) as Row[];
 
@@ -308,9 +328,9 @@ export class SqliteIndexStore implements IndexStore {
     if (!match) return [];
     const rows = db
       .prepare(
-        `SELECT c.id AS chunk_id, c.char_start, c.char_end, c.body, bm25(chunk_fts) AS score
+        `SELECT c.id AS chunk_id, c.char_start, c.char_end, c.body, ${WEIGHTED_BM25} AS score
          FROM chunk_fts JOIN chunks c ON c.id = chunk_fts.rowid
-         WHERE chunk_fts MATCH ? AND c.book_id = ? ORDER BY rank LIMIT ?`,
+         WHERE chunk_fts MATCH ? AND c.book_id = ? ORDER BY score LIMIT ?`,
       )
       .all(match, bookId, k) as Row[];
     return rows.map((r) => ({

@@ -27,6 +27,8 @@ export const PASSAGE_PREFIX = "passage: ";
  *
  * v3 (chunking v3): chunk overlap removed (measured: no retrieval benefit, ~13% chunk
  * inflation) and budgets counted in real model tokens via the embedder's tokenizer —
- * every chunk boundary moves, so v2 vectors/offsets must be rebuilt.
+ * every chunk boundary moves, so v2 vectors/offsets must be rebuilt. Folded into the same
+ * (unshipped) bump: a `book_meta` FTS column (stemmed title+authors on chunks/chunk_fts,
+ * bm25-weighted 0.5) so the keyword half sees book identity, not just prose.
  */
 export const INDEX_VERSION = 3;

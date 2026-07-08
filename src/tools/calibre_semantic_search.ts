@@ -12,7 +12,7 @@
 // reranker model is available; keyword mode has no semantic claim to sharpen and skips it.
 
 import { z } from "zod";
-import { rrfFuse } from "../semantic/fusion.js";
+import { RRF_K, rrfFuse } from "../semantic/fusion.js";
 import { RERANK_FLOOR, RERANK_POOL } from "../semantic/reranker.js";
 import { stemText } from "../semantic/stem.js";
 import type { BookHit, LibraryHit } from "../semantic/store.js";
@@ -25,6 +25,13 @@ import type { ContentBlock, ToolDeps } from "./types.js";
 
 /** Per-half candidate pool the fuser draws from (design: vector top-50 + keyword top-50). */
 const POOL = 50;
+
+// Weighted-RRF per-source weights for hybrid fusion (fusion literature: per-source weight is
+// the impactful knob, more than k). Both 1.0 = plain RRF; no config/env surface — change them
+// ONLY on retrieval-eval evidence (test/eval/retrieval), never by feel.
+const VECTOR_RRF_WEIGHT = 1.0;
+const KEYWORD_RRF_WEIGHT = 1.0;
+const RRF_WEIGHTS = [VECTOR_RRF_WEIGHT, KEYWORD_RRF_WEIGHT];
 
 type Mode = "hybrid" | "vector" | "keyword";
 
@@ -294,12 +301,12 @@ async function rankBooks(args: Args, deps: ToolDeps, libraryId: string): Promise
   if (args.mode === "vector") {
     return deps.index.searchLibrary(libraryId, q, k).map((hit) => ({ hit, cosine: hit.score }));
   }
-  // hybrid: fuse book rankings from both halves by bookId.
+  // hybrid: fuse book rankings from both halves by bookId (vector first — RRF_WEIGHTS order).
   const vec = deps.index.searchLibrary(libraryId, q, POOL);
   const kw = deps.index.searchLibraryFts(libraryId, stemText(args.query), POOL);
   const vById = new Map(vec.map((h) => [h.bookId, h]));
   const kById = new Map(kw.map((h) => [h.bookId, h]));
-  return rrfFuse([vec.map((h) => h.bookId), kw.map((h) => h.bookId)])
+  return rrfFuse([vec.map((h) => h.bookId), kw.map((h) => h.bookId)], RRF_K, RRF_WEIGHTS)
     .slice(0, k)
     .map((f) => {
       const v = vById.get(f.id);
@@ -328,7 +335,7 @@ async function rankPassages(
   const kw = deps.index.searchBookFts(libraryId, bookId, stemText(args.query), POOL);
   const vById = new Map(vec.map((h) => [h.chunkId, h]));
   const kById = new Map(kw.map((h) => [h.chunkId, h]));
-  return rrfFuse([vec.map((h) => h.chunkId), kw.map((h) => h.chunkId)])
+  return rrfFuse([vec.map((h) => h.chunkId), kw.map((h) => h.chunkId)], RRF_K, RRF_WEIGHTS)
     .slice(0, k)
     .map((f) => {
       const v = vById.get(f.id);

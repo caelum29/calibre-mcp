@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { loadConfig } from "../../src/config.js";
 import { EMBED_DIM } from "../../src/semantic/model.js";
+import { stemText } from "../../src/semantic/stem.js";
 import { type IndexedChunk, SqliteIndexStore } from "../../src/semantic/store.js";
 import { l2normalize } from "../../src/semantic/vector.js";
 
@@ -125,6 +126,71 @@ describe("SqliteIndexStore", () => {
     expect(s.searchBookFts(LIB, 1, "dijkstra", 5)).toHaveLength(0);
     expect(s.searchBookFts(LIB, 1, "gradient", 5)).toHaveLength(1);
     s.close();
+  });
+
+  describe("book_meta FTS column (title/authors visible to the keyword half)", () => {
+    it("library scope: a query matching only the TITLE surfaces the book's chunks", () => {
+      const s = store();
+      s.replaceBook(LIB, { bookId: 1, title: "Distributed Consensus", authors: ["Leslie"] }, [
+        chunk("nodes exchange votes until a quorum agrees", 0),
+      ]);
+      // "consensus" never occurs in the body — only the title carries it.
+      const hits = s.searchLibraryFts(LIB, stemText("consensus"), 5);
+      expect(hits.map((h) => h.bookId)).toEqual([1]);
+      s.close();
+    });
+
+    it("book scope: a title-only query returns the book's passages", () => {
+      const s = store();
+      s.replaceBook(LIB, { bookId: 1, title: "Distributed Consensus", authors: [] }, [
+        chunk("nodes exchange votes until a quorum agrees", 0),
+      ]);
+      const hits = s.searchBookFts(LIB, 1, stemText("consensus"), 5);
+      expect(hits[0]!.body).toContain("quorum");
+      s.close();
+    });
+
+    it("matches by AUTHOR name too", () => {
+      const s = store();
+      s.replaceBook(LIB, { bookId: 1, title: "Refactoring", authors: ["Martin Fowler"] }, [
+        chunk("extract method and rename variable", 0),
+      ]);
+      expect(s.searchLibraryFts(LIB, stemText("fowler"), 5).map((h) => h.bookId)).toEqual([1]);
+      s.close();
+    });
+
+    it("title matching stems like the body (RU inflection reaches the title)", () => {
+      const s = store();
+      s.replaceBook(LIB, { bookId: 1, title: "Книги о программировании", authors: [] }, [
+        chunk("вводная глава без повторения заголовка", 0),
+      ]);
+      // Query "книга" and title "Книги" both stem to "книг".
+      expect(s.searchLibraryFts(LIB, stemText("книга"), 5).map((h) => h.bookId)).toEqual([1]);
+      s.close();
+    });
+
+    it("a prose (body) match outranks a title-only match — meta helps, never dominates", () => {
+      const s = store();
+      s.replaceBook(LIB, { bookId: 1, title: "Rust Book", authors: [] }, [
+        chunk("ownership and borrowing rules", 0),
+      ]);
+      s.replaceBook(LIB, { bookId: 2, title: "Ownership Guide", authors: [] }, [
+        chunk("unrelated cooking recipes", 1),
+      ]);
+      const hits = s.searchLibraryFts(LIB, stemText("ownership"), 5);
+      expect(hits.map((h) => h.bookId)).toEqual([1, 2]); // body match first, meta-only second
+      s.close();
+    });
+
+    it("re-indexing under a new title drops the old title from the FTS index", () => {
+      const s = store();
+      s.replaceBook(LIB, { bookId: 1, title: "Old Title Alpha", authors: [] }, [chunk("some text", 0)]);
+      expect(s.searchLibraryFts(LIB, stemText("alpha"), 5)).toHaveLength(1);
+      s.replaceBook(LIB, { bookId: 1, title: "New Title Beta", authors: [] }, [chunk("some text", 0)]);
+      expect(s.searchLibraryFts(LIB, stemText("alpha"), 5)).toHaveLength(0);
+      expect(s.searchLibraryFts(LIB, stemText("beta"), 5)).toHaveLength(1);
+      s.close();
+    });
   });
 
   it("returns [] for a query with no searchable tokens", () => {
