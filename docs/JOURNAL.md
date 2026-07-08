@@ -501,3 +501,40 @@
   downloads 326/560 MB vs 129 MB; MRL-256 is metrics-free and 3× smaller vectors.
 - Model downloads were sandbox-blocked in-session (HF CDN redirect hosts); fetched via a one-off
   unsandboxed warmup script into the eval work dir — production index/models untouched.
+
+## Decisions digest — reranker hardening, license posture, rebuild plan (2026-07-09)
+
+- ✅ **D-011 ASK-ARTEM resolved: always-on rerank CONFIRMED + hardened** (2026-07-09, branch
+  `feat/semantic-suite`). Three hardenings shipped: (1) **pool cap** — exactly the top-RERANK_POOL(30)
+  fused candidates are cross-encoded even at topK=50 (was `max(topK, 30)` → 50 pairs ≈ 17–25 s warm);
+  candidates past the cap are appended after the reranked head in fused order, labeled honestly
+  (cosine/keyword scores, no rerank score). (2) **Build-time pre-download** — `calibre_build_index`
+  best-effort `reranker.warmup()` on embedding builds, so the one-time ~576 MB download lands inside
+  the build users already expect to be slow, not on the first search; failures degrade to a stderr
+  log + a build note, never fail the build; keyword-only builds skip it. (3) **`CALIBRE_MCP_RERANK`
+  env escape hatch** (default ON; off/false/0 disables; env, NOT a tool param) — disabled searches
+  keep the fused order with a one-line note naming the var. Resolves the audit's two latency-posture
+  findings. Pool-16 / 256-token pair truncation stays LATER pending a bigger eval corpus.
+- ✅ **License posture RESOLVED (D-013, Artem overriding the permissive-only default):**
+  use-restricted *user-downloaded optional* models (Gemma-class) are ACCEPTABLE; core npm deps stay
+  MIT/permissive. e5-small still ships (D-012 stands — no quality win to claim); gemma-256 MRL
+  (1 KB/vector, 326 MB) is a legitimate future option if index size matters.
+- **Rebuild plan: overnight, as-is.** 512-token budget kept; ~17 h for ~801 books; batched v3
+  rebuild (query-selector batches, ≤100 books per call) covers prompts 01+06 in one pass; the
+  reranker adds no index cost (query-time only). **Crash-resume runbook:** delete the old
+  `<indexDir>/<lib>.sqlite` once (the v3 store refuses a v2 file with INDEX_INCOMPATIBLE anyway),
+  then run the batched `calibre_build_index` calls with `force:false`; after a crash, re-run the
+  same calls — books already indexed at the same `lastModified` skip cheaply (one /ajax metadata
+  fetch + one SQLite lookup each, no extract/embed; verified in `indexBook`'s skip-before-work
+  ordering and covered by the "skips an up-to-date book unless force is set" handler test).
+- **Live eval labels:** `live-relevance.json` stays UNVERIFIED; verify after the rebuild.
+- **Eval metric fix + re-run:** binary nDCG@10 could exceed 1.0 when several positions matched the
+  same label (recall deduped, nDCG didn't); `ndcgAtK` now credits a label only at its first matching
+  rank. Corrected current-state report `2026-07-08-ceca19a-post-metricfix` (UTC-dated) — every
+  aggregate and per-query metric identical to the 099d858 reranker report (nothing committed was
+  actually inflated; the fix guards future book-scope tuning). Earlier reports keep the quirk —
+  history not rewritten (see `reports/README.md`).
+- **Audit record-correction (spec 01):** the live `calibre_get_content` re-slice verification WAS
+  performed during task 01 and is recorded now: byte-identical re-slice at offset 596271, book 679
+  (a v3 book-scope hit's `charStart` re-sliced through `calibre_get_content` returned the exact
+  passage bytes). The chunk-offset invariant is also unit-tested.
