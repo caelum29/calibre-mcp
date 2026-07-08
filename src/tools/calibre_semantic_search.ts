@@ -8,9 +8,12 @@
 // Requires an index built by calibre_build_index; returns an actionable error otherwise.
 // A keyword-only index has no vectors: mode=vector errors, mode=hybrid degrades to keyword.
 // Snippets are untrusted book text → fenced. Cosine below config.semanticFloor → low-confidence.
+// hybrid/vector results pass through a cross-encoder rerank stage (D-011) when the optional
+// reranker model is available; keyword mode has no semantic claim to sharpen and skips it.
 
 import { z } from "zod";
 import { rrfFuse } from "../semantic/fusion.js";
+import { RERANK_FLOOR, RERANK_POOL } from "../semantic/reranker.js";
 import { stemText } from "../semantic/stem.js";
 import type { BookHit, LibraryHit } from "../semantic/store.js";
 import { BookId, limitParam } from "./coerce.js";
@@ -45,6 +48,8 @@ export const semanticSearchTool = defineTool({
     count: z.number().optional(),
     maxScore: z.number().optional(),
     lowConfidence: z.boolean().optional(),
+    reranked: z.boolean().optional(),
+    maxRerank: z.number().optional(),
     note: z.string().optional(),
     bookIds: z.array(z.number()).optional(),
   },
@@ -109,29 +114,37 @@ type Args = {
 interface RankedBook {
   hit: LibraryHit;
   cosine?: number;
+  /** Cross-encoder sigmoid score, set when the rerank stage reordered this result. */
+  rerankScore?: number;
 }
 /** A passage result plus its cosine, when the vector half contributed it. */
 interface RankedPassage {
   hit: BookHit;
   cosine?: number;
+  /** Cross-encoder sigmoid score, set when the rerank stage reordered this result. */
+  rerankScore?: number;
 }
 
 /** scope=library — rank books; emit resource_links + fenced snippets. */
-async function libraryScope(args: Args, deps: ToolDeps, libraryId: string, note?: string) {
-  const ranked = await rankBooks(args, deps, libraryId);
+async function libraryScope(args: Args, deps: ToolDeps, libraryId: string, degradeNote?: string) {
+  const pool = await rankBooks(args, deps, libraryId);
+  const rr = await applyRerank(pool, (r) => r.hit.body, args, deps);
+  const ranked = rr.hits;
+  const note = joinNotes(degradeNote, rr.note);
   if (ranked.length === 0) {
     return toolOk([{ type: "text", text: withNote(`No matches for "${args.query}".`, note) }], {
       scope: "library",
       mode: args.mode,
       count: 0,
+      ...rerankFields(args, rr),
       note,
       bookIds: [],
     });
   }
 
-  const { maxScore, lowConfidence } = confidence(ranked, deps);
+  const { maxScore, lowConfidence } = confidence(ranked, deps, rr);
   const blocks: ContentBlock[] = [
-    { type: "text", text: withNote(header("book", ranked.length, args, maxScore, lowConfidence), note) },
+    { type: "text", text: withNote(header("book", ranked.length, args, maxScore, lowConfidence, rr), note) },
   ];
   for (const r of ranked) {
     const link = bookResourceLink({ id: r.hit.bookId, title: r.hit.title, authors: r.hit.authors });
@@ -149,14 +162,18 @@ async function libraryScope(args: Args, deps: ToolDeps, libraryId: string, note?
     count: ranked.length,
     maxScore,
     lowConfidence,
+    ...rerankFields(args, rr),
     note,
     bookIds: ranked.map((r) => r.hit.bookId),
   });
 }
 
 /** scope=book — rank passages within one book; emit fenced excerpts with char spans. */
-async function bookScope(args: Args, deps: ToolDeps, libraryId: string, bookId: number, note?: string) {
-  const ranked = await rankPassages(args, deps, libraryId, bookId);
+async function bookScope(args: Args, deps: ToolDeps, libraryId: string, bookId: number, degradeNote?: string) {
+  const pool = await rankPassages(args, deps, libraryId, bookId);
+  const rr = await applyRerank(pool, (r) => r.hit.body, args, deps);
+  const ranked = rr.hits;
+  const note = joinNotes(degradeNote, rr.note);
   if (ranked.length === 0) {
     return toolOk(
       [{ type: "text", text: withNote(`No passages in book ${bookId} matched "${args.query}".`, note) }],
@@ -165,14 +182,15 @@ async function bookScope(args: Args, deps: ToolDeps, libraryId: string, bookId: 
         mode: args.mode,
         bookId,
         count: 0,
+        ...rerankFields(args, rr),
         note,
       },
     );
   }
 
-  const { maxScore, lowConfidence } = confidence(ranked, deps);
+  const { maxScore, lowConfidence } = confidence(ranked, deps, rr);
   const head = withNote(
-    header("passage", ranked.length, args, maxScore, lowConfidence) +
+    header("passage", ranked.length, args, maxScore, lowConfidence, rr) +
       ` Re-read any passage via calibre_get_content (cursor at its char offset).`,
     note,
   );
@@ -192,6 +210,7 @@ async function bookScope(args: Args, deps: ToolDeps, libraryId: string, bookId: 
     count: ranked.length,
     maxScore,
     lowConfidence,
+    ...rerankFields(args, rr),
     note,
   });
 }
@@ -201,6 +220,68 @@ function withNote(text: string, note?: string): string {
   return note ? `${note}\n${text}` : text;
 }
 
+/** Fold the mode-degrade and rerank-degrade notes into one advisory string. */
+function joinNotes(...notes: Array<string | undefined>): string | undefined {
+  const kept = notes.filter((n): n is string => Boolean(n));
+  return kept.length ? kept.join("\n") : undefined;
+}
+
+/** Candidates to materialize: a rerank-sized pool when the reranker can reorder, else topK. */
+function poolK(args: Args, deps: ToolDeps): number {
+  return deps.reranker && args.mode !== "keyword" ? Math.max(args.topK, RERANK_POOL) : args.topK;
+}
+
+/** The rerank stage's outcome: topK results (reordered when it ran) + honesty fields. */
+interface RerankOutcome<T> {
+  hits: T[];
+  reranked: boolean;
+  maxRerank?: number;
+  note?: string;
+}
+
+const RERANK_NOTE =
+  "Reranker unavailable — results keep the fused (pre-rerank) order. The cross-encoder model " +
+  "downloads on first use; ensure @huggingface/transformers is installed and the machine is online.";
+
+/**
+ * Cross-encoder rerank (D-011): score (query, chunk body) pairs over the candidate pool and
+ * emit topK by reranker score. Always-on for hybrid/vector when a reranker is wired; keyword
+ * mode skips it. Degrades (never fails): errors fall back to the fused order + an advisory note.
+ */
+async function applyRerank<T extends { rerankScore?: number }>(
+  pool: T[],
+  bodyOf: (r: T) => string,
+  args: Args,
+  deps: ToolDeps,
+): Promise<RerankOutcome<T>> {
+  const fused = () => pool.slice(0, args.topK);
+  // Absent reranker = not wired in this deployment/test — silently keep the fused order.
+  if (args.mode === "keyword" || pool.length === 0 || !deps.reranker) {
+    return { hits: fused(), reranked: false };
+  }
+  try {
+    const t0 = performance.now();
+    const scores = await deps.reranker.rerank(
+      args.query,
+      pool.map((r) => bodyOf(r)),
+    );
+    deps.log.debug("rerank stage", { pairs: pool.length, ms: Math.round(performance.now() - t0) });
+    const scored = pool.map((r, i) => ({ ...r, rerankScore: scores[i] ?? 0 }));
+    scored.sort((a, b) => b.rerankScore - a.rerankScore); // stable: ties keep fused order
+    const hits = scored.slice(0, args.topK);
+    return { hits, reranked: true, maxRerank: hits[0]?.rerankScore };
+  } catch (err) {
+    deps.log.warn("rerank skipped", { reason: err instanceof Error ? err.message : String(err) });
+    return { hits: fused(), reranked: false, note: RERANK_NOTE };
+  }
+}
+
+/** `reranked`/`maxRerank` are only claims for modes where reranking applies (hybrid/vector). */
+function rerankFields(args: Args, rr: RerankOutcome<unknown>): Record<string, unknown> {
+  if (args.mode === "keyword") return {};
+  return { reranked: rr.reranked, ...(rr.maxRerank !== undefined ? { maxRerank: rr.maxRerank } : {}) };
+}
+
 /** Rank books per mode. hybrid RRF-fuses the two halves; vector/keyword use one half each. */
 async function rankBooks(args: Args, deps: ToolDeps, libraryId: string): Promise<RankedBook[]> {
   if (args.mode === "keyword") {
@@ -208,9 +289,10 @@ async function rankBooks(args: Args, deps: ToolDeps, libraryId: string): Promise
       .searchLibraryFts(libraryId, stemText(args.query), args.topK)
       .map((hit) => ({ hit }));
   }
+  const k = poolK(args, deps);
   const q = await deps.embedder.embedQuery(args.query);
   if (args.mode === "vector") {
-    return deps.index.searchLibrary(libraryId, q, args.topK).map((hit) => ({ hit, cosine: hit.score }));
+    return deps.index.searchLibrary(libraryId, q, k).map((hit) => ({ hit, cosine: hit.score }));
   }
   // hybrid: fuse book rankings from both halves by bookId.
   const vec = deps.index.searchLibrary(libraryId, q, POOL);
@@ -218,7 +300,7 @@ async function rankBooks(args: Args, deps: ToolDeps, libraryId: string): Promise
   const vById = new Map(vec.map((h) => [h.bookId, h]));
   const kById = new Map(kw.map((h) => [h.bookId, h]));
   return rrfFuse([vec.map((h) => h.bookId), kw.map((h) => h.bookId)])
-    .slice(0, args.topK)
+    .slice(0, k)
     .map((f) => {
       const v = vById.get(f.id);
       return { hit: (v ?? kById.get(f.id))!, cosine: v?.score };
@@ -237,33 +319,40 @@ async function rankPassages(
       .searchBookFts(libraryId, bookId, stemText(args.query), args.topK)
       .map((hit) => ({ hit }));
   }
+  const k = poolK(args, deps);
   const q = await deps.embedder.embedQuery(args.query);
   if (args.mode === "vector") {
-    return deps.index.searchBook(libraryId, bookId, q, args.topK).map((hit) => ({ hit, cosine: hit.score }));
+    return deps.index.searchBook(libraryId, bookId, q, k).map((hit) => ({ hit, cosine: hit.score }));
   }
   const vec = deps.index.searchBook(libraryId, bookId, q, POOL);
   const kw = deps.index.searchBookFts(libraryId, bookId, stemText(args.query), POOL);
   const vById = new Map(vec.map((h) => [h.chunkId, h]));
   const kById = new Map(kw.map((h) => [h.chunkId, h]));
   return rrfFuse([vec.map((h) => h.chunkId), kw.map((h) => h.chunkId)])
-    .slice(0, args.topK)
+    .slice(0, k)
     .map((f) => {
       const v = vById.get(f.id);
       return { hit: (v ?? kById.get(f.id))!, cosine: v?.score };
     });
 }
 
-/** Confidence signal comes from the cosine half; keyword-only results carry none. */
-function confidence(ranked: Array<{ cosine?: number }>, deps: ToolDeps) {
+/**
+ * Two confidence signals, kept separate (not conflated): the cosine floor judges the COSINE
+ * half only; the reranker's sigmoid score is its own calibrated confidence (< RERANK_FLOOR ≈
+ * weak). Either signal alone marks the result set low-confidence; both raw maxima are surfaced.
+ */
+function confidence(ranked: Array<{ cosine?: number }>, deps: ToolDeps, rr?: RerankOutcome<unknown>) {
   const cosines = ranked.map((r) => r.cosine).filter((c): c is number => c !== undefined);
   const maxScore = cosines.length ? Math.max(...cosines) : undefined;
-  const lowConfidence = maxScore !== undefined && maxScore < deps.config.semanticFloor;
-  return { maxScore, lowConfidence };
+  const cosineLow = maxScore !== undefined && maxScore < deps.config.semanticFloor;
+  const rerankLow = rr?.reranked === true && rr.maxRerank !== undefined && rr.maxRerank < RERANK_FLOOR;
+  return { maxScore, lowConfidence: cosineLow || rerankLow };
 }
 
-/** Per-result score label: cosine when vector-backed, else "keyword match". */
-function scoreLabel(r: { cosine?: number }): string {
-  return r.cosine !== undefined ? `cosine ${r.cosine.toFixed(3)}` : "keyword match";
+/** Per-result score label: reranker score first (the emitted order), raw cosine kept alongside. */
+function scoreLabel(r: { cosine?: number; rerankScore?: number }): string {
+  const base = r.cosine !== undefined ? `cosine ${r.cosine.toFixed(3)}` : "keyword match";
+  return r.rerankScore !== undefined ? `rerank ${r.rerankScore.toFixed(3)} (${base})` : base;
 }
 
 function header(
@@ -272,10 +361,15 @@ function header(
   args: Args,
   maxScore: number | undefined,
   lowConfidence: boolean,
+  rr?: RerankOutcome<unknown>,
 ): string {
+  const mode = rr?.reranked ? `${args.mode}+rerank` : args.mode;
+  const scores: string[] = [];
+  if (maxScore !== undefined) scores.push(`max cosine ${maxScore.toFixed(3)}`);
+  if (rr?.reranked && rr.maxRerank !== undefined) scores.push(`max rerank ${rr.maxRerank.toFixed(3)}`);
   return (
-    `Top ${n} ${unit}(s) for "${args.query}" [${args.mode}]` +
-    (maxScore !== undefined ? ` (max cosine ${maxScore.toFixed(3)})` : "") +
+    `Top ${n} ${unit}(s) for "${args.query}" [${mode}]` +
+    (scores.length ? ` (${scores.join(", ")})` : "") +
     (lowConfidence ? " — low confidence, treat as weak matches." : "")
   );
 }

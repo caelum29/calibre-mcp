@@ -47,6 +47,19 @@ describe("SqliteIndexStore", () => {
     s.close();
   });
 
+  it("library hits carry the FULL chunk body while the snippet stays display-truncated", () => {
+    const s = store();
+    const long = "x".repeat(400); // longer than SNIPPET_CHARS (320)
+    s.replaceBook(LIB, { bookId: 1, title: "Long", authors: [] }, [chunk(long, 0)]);
+    const [vec] = s.searchLibrary(LIB, axis(0), 5);
+    expect(vec!.body).toHaveLength(400); // rerankers need the whole passage
+    expect(vec!.snippet).toHaveLength(320);
+    const [kw] = s.searchLibraryFts(LIB, "x".repeat(400), 5);
+    expect(kw!.body).toHaveLength(400);
+    expect(kw!.snippet).toHaveLength(320);
+    s.close();
+  });
+
   it("replaceBook is idempotent (re-index replaces, not appends)", () => {
     const s = store();
     s.replaceBook(LIB, { bookId: 1, title: "V1", authors: [] }, [chunk("a", 0), chunk("b", 1)]);

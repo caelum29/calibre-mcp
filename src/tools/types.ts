@@ -8,6 +8,7 @@ import type { CalibreClient } from "../calibre/client.js";
 import type { ContentServerClient } from "../calibre/content-server.js";
 import type { Extractor } from "../calibre/extract.js";
 import type { Embedder } from "../semantic/embedder.js";
+import type { Reranker } from "../semantic/reranker.js";
 import type { IndexStore } from "../semantic/store.js";
 import type { Provider } from "../enrich/provider.js";
 import type { log } from "../logging.js";
@@ -51,6 +52,12 @@ export interface ToolDeps {
   calibre: CalibreClient; // subprocess: writes + fts
   extractor: Extractor; // book-text extraction (download + convert + cache)
   embedder: Embedder; // semantic query/passage embedding (transformers.js, lazy)
+  /**
+   * Cross-encoder rerank stage (lazy, optional model). Absent = reranking not wired
+   * (tests/eval "off" runs) → search silently keeps the fused order; present but failing
+   * (model missing/unreachable) → search degrades with an advisory note (D-011).
+   */
+  reranker?: Reranker;
   index: IndexStore; // SQLite BLOB vector index (node:sqlite, lazy)
   /** External metadata providers for recovery. Defaulted in-handler; injectable for tests. */
   providers?: Record<Provider["name"], Provider>;

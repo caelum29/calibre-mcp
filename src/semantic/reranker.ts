@@ -1,0 +1,98 @@
+// Cross-encoder rerank stage over (query, passage) pairs — the precision lever on top of
+// RRF fusion (D-011). Mirrors the embedder's optional-model pattern: @huggingface/transformers
+// is dynamically imported and lazily loaded on first use, so installs without it stay clean
+// and callers degrade on the coded RERANKER_UNAVAILABLE instead of failing the search.
+
+import path from "node:path";
+import type { Config } from "../config.js";
+
+// Single source of truth for the reranker model (same D-001 principle as model.ts, kept
+// local because model.ts documents the EMBEDDING model contract). bge-reranker-v2-m3:
+// 278M params, multilingual (EN+RU), ~52 BEIR nDCG@10; q8 ONNX runs on CPU via transformers.js.
+export const RERANKER_MODEL_ID = "onnx-community/bge-reranker-v2-m3-ONNX";
+/** Pinned repo revision (2025-09-01) so a silent upstream update can't change scores. */
+export const RERANKER_REVISION = "6f5ff65298512715a1e669753bc754d2bc8f367b";
+
+/** Candidate pool handed to the reranker — the latency guard (~2 batches, sub-second warm). */
+export const RERANK_POOL = 30;
+/** Sigmoid scores below this are weak matches — the reranker's own confidence signal. */
+export const RERANK_FLOOR = 0.3;
+/** Pairs per model forward — bounds peak memory; ~130ms per batch on CPU. */
+const BATCH = 16;
+/** Pair truncation length. Chunks are budgeted to the e5 window, so nothing real is lost. */
+const MAX_TOKENS = 512;
+
+export interface Reranker {
+  /**
+   * Score each (query, passage) pair with the cross-encoder; returns one sigmoid-normalized
+   * relevance score in [0,1] per passage, in input order. Throws RERANKER_UNAVAILABLE when
+   * the optional model dependency is missing.
+   */
+  rerank(query: string, passages: string[]): Promise<number[]>;
+}
+
+// Minimal structural view of the transformers.js pieces we touch — keeps the heavy optional
+// dep's types out of the rest of the codebase (same trick as the embedder's FeaturePipeline).
+type PairTokenizer = (
+  texts: string[],
+  opts: { text_pair: string[]; padding: boolean; truncation: boolean; max_length: number },
+) => Record<string, unknown>;
+type SeqClassifier = (inputs: Record<string, unknown>) => Promise<{
+  logits: { sigmoid(): { tolist(): number[][] } };
+}>;
+
+export class TransformersReranker implements Reranker {
+  // Memoized load (including a memoized rejection — one failed download attempt per process,
+  // then fast-fail; same lifecycle as the embedder's #pipe).
+  #loaded?: Promise<{ tokenizer: PairTokenizer; model: SeqClassifier }>;
+
+  constructor(private readonly cfg: Config) {}
+
+  async rerank(query: string, passages: string[]): Promise<number[]> {
+    if (passages.length === 0) return [];
+    const { tokenizer, model } = await this.#components();
+    const scores: number[] = [];
+    for (let i = 0; i < passages.length; i += BATCH) {
+      const batch = passages.slice(i, i + BATCH);
+      const inputs = tokenizer(
+        batch.map(() => query),
+        { text_pair: batch, padding: true, truncation: true, max_length: MAX_TOKENS },
+      );
+      const { logits } = await model(inputs);
+      // [batch, 1] logits → sigmoid → one score per pair.
+      for (const row of logits.sigmoid().tolist()) scores.push(row[0] ?? 0);
+    }
+    return scores;
+  }
+
+  #components(): Promise<{ tokenizer: PairTokenizer; model: SeqClassifier }> {
+    if (!this.#loaded) this.#loaded = this.#load();
+    return this.#loaded;
+  }
+
+  async #load(): Promise<{ tokenizer: PairTokenizer; model: SeqClassifier }> {
+    let mod: typeof import("@huggingface/transformers");
+    try {
+      mod = await import("@huggingface/transformers");
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code;
+      if (code === "ERR_MODULE_NOT_FOUND" || code === "MODULE_NOT_FOUND") {
+        throw new Error("RERANKER_UNAVAILABLE");
+      }
+      throw err;
+    }
+    // Same cache dir as the embedder → both models live under <indexDir>/models.
+    mod.env.cacheDir = path.join(this.cfg.indexDir, "models");
+    mod.env.allowRemoteModels = true;
+    const opts = { revision: RERANKER_REVISION };
+    const tokenizer = (await mod.AutoTokenizer.from_pretrained(
+      RERANKER_MODEL_ID,
+      opts,
+    )) as unknown as PairTokenizer;
+    const model = (await mod.AutoModelForSequenceClassification.from_pretrained(RERANKER_MODEL_ID, {
+      ...opts,
+      dtype: "q8",
+    })) as unknown as SeqClassifier;
+    return { tokenizer, model };
+  }
+}

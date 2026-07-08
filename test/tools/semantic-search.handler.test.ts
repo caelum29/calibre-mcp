@@ -3,6 +3,7 @@ import { semanticSearchTool } from "../../src/tools/calibre_semantic_search.js";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Embedder } from "../../src/semantic/embedder.js";
+import type { Reranker } from "../../src/semantic/reranker.js";
 import { SqliteIndexStore } from "../../src/semantic/store.js";
 import { EMBED_DIM } from "../../src/semantic/model.js";
 import { l2normalize } from "../../src/semantic/vector.js";
@@ -43,7 +44,7 @@ const throwingEmbedder: Embedder = {
   },
 };
 
-function deps(store: SqliteIndexStore, embedder: Embedder = queryEmbedder): ToolDeps {
+function deps(store: SqliteIndexStore, embedder: Embedder = queryEmbedder, reranker?: Reranker): ToolDeps {
   const content = {
     resolveLibraryId: async () => LIB,
     search: async () => ({ bookIds: [], total: 0, num: 0, offset: 0, sort: "", libraryId: LIB }),
@@ -54,10 +55,32 @@ function deps(store: SqliteIndexStore, embedder: Embedder = queryEmbedder): Tool
     calibre: {} as unknown as ToolDeps["calibre"],
     extractor: {} as unknown as ToolDeps["extractor"],
     embedder,
+    ...(reranker ? { reranker } : {}),
     index: store,
     log,
   };
 }
+
+/** Fake reranker: scores each passage by the first matching substring key (0 otherwise). */
+function scoreByBody(scores: Record<string, number>): Reranker & { calls: number } {
+  return {
+    calls: 0,
+    async rerank(_query, passages) {
+      this.calls += 1;
+      return passages.map((p) => {
+        for (const [needle, s] of Object.entries(scores)) if (p.includes(needle)) return s;
+        return 0;
+      });
+    },
+  };
+}
+
+/** Reranker whose model is missing/broken — exercises the degrade path. */
+const brokenReranker: Reranker = {
+  async rerank() {
+    throw new Error("RERANKER_UNAVAILABLE");
+  },
+};
 
 /** Store preloaded with two indexed books (both best-matched by an axis-0 query). */
 function preloaded(): SqliteIndexStore {
@@ -199,5 +222,98 @@ describe("calibre_semantic_search handler", () => {
     ]);
     const r = await semanticSearchTool.handler(args(), deps(s));
     expect(r.structuredContent).toMatchObject({ lowConfidence: true });
+  });
+});
+
+describe("calibre_semantic_search rerank stage", () => {
+  it("reorders hybrid results by reranker score (cosine top-1 demoted)", async () => {
+    // Cosine puts book 1 first (axis-0 match); the reranker judges book 2's passage stronger.
+    const reranker = scoreByBody({ "async passage": 0.9, ownership: 0.2 });
+    const r = await semanticSearchTool.handler(args(), deps(preloaded(), queryEmbedder, reranker));
+    expect(r.isError).toBeFalsy();
+    expect(r.structuredContent?.bookIds as number[]).toEqual([2, 1]);
+    expect(r.structuredContent).toMatchObject({ reranked: true, maxRerank: 0.9 });
+  });
+
+  it("reorders vector-mode results too", async () => {
+    const reranker = scoreByBody({ "async passage": 0.9, ownership: 0.2 });
+    const r = await semanticSearchTool.handler(
+      args({ mode: "vector" }),
+      deps(preloaded(), queryEmbedder, reranker),
+    );
+    expect((r.structuredContent?.bookIds as number[])[0]).toBe(2);
+    expect(r.structuredContent).toMatchObject({ reranked: true });
+  });
+
+  it("labels results with the reranker score, keeping the raw cosine alongside", async () => {
+    const reranker = scoreByBody({ ownership: 0.9, "async passage": 0.1 });
+    const r = await semanticSearchTool.handler(args(), deps(preloaded(), queryEmbedder, reranker));
+    const link = r.content.find((b) => b.type === "resource_link") as { description?: string };
+    expect(link.description).toContain("rerank 0.900");
+    expect(link.description).toContain("cosine");
+    expect((r.content[0] as { text: string }).text).toContain("[hybrid+rerank]");
+  });
+
+  it("reorders book-scope passages by reranker score", async () => {
+    const s = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
+    s.replaceBook(LIB, { bookId: 1, title: "Book One", authors: ["A"] }, [
+      { charStart: 0, charEnd: 10, body: "ownership rules", vector: axis(0) },
+      { charStart: 10, charEnd: 30, body: "borrow checker details", vector: axis(1) },
+    ]);
+    const reranker = scoreByBody({ "borrow checker": 0.95, ownership: 0.3 });
+    const r = await semanticSearchTool.handler(
+      args({ scope: "book", bookId: 1 }),
+      deps(s, queryEmbedder, reranker),
+    );
+    expect(r.isError).toBeFalsy();
+    expect(r.structuredContent).toMatchObject({ reranked: true, maxRerank: 0.95 });
+    // The reranker's pick comes first despite its near-zero cosine.
+    expect((r.content[1] as { text: string }).text).toContain("borrow checker");
+  });
+
+  it("degrades to the fused order with an advisory note when the reranker fails", async () => {
+    const r = await semanticSearchTool.handler(args(), deps(preloaded(), queryEmbedder, brokenReranker));
+    expect(r.isError).toBeFalsy();
+    expect((r.structuredContent?.bookIds as number[])[0]).toBe(1); // fused order intact
+    expect(r.structuredContent).toMatchObject({ reranked: false });
+    expect(r.structuredContent?.note as string).toContain("Reranker unavailable");
+    expect((r.content[0] as { text: string }).text).toContain("Reranker unavailable");
+  });
+
+  it("keyword mode never calls the reranker and stays untouched", async () => {
+    const reranker = scoreByBody({ ownership: 0.9 });
+    const r = await semanticSearchTool.handler(
+      args({ query: "async", mode: "keyword" }),
+      deps(preloaded(), throwingEmbedder, reranker),
+    );
+    expect(r.isError).toBeFalsy();
+    expect(reranker.calls).toBe(0);
+    expect(r.structuredContent?.bookIds as number[]).toEqual([2]);
+    expect(r.structuredContent?.reranked).toBeUndefined(); // no semantic claim → no rerank claim
+  });
+
+  it("keyword-only index (hybrid degraded to keyword) skips the reranker", async () => {
+    const reranker = scoreByBody({ ownership: 0.9 });
+    const r = await semanticSearchTool.handler(
+      args({ query: "async", mode: "hybrid" }),
+      deps(keywordOnly(), throwingEmbedder, reranker),
+    );
+    expect(r.isError).toBeFalsy();
+    expect(reranker.calls).toBe(0);
+    expect(r.structuredContent?.note as string).toContain("keyword-only");
+  });
+
+  it("flags low confidence when every reranker score is weak, even with a high cosine", async () => {
+    // Cosine 1.0 (above the floor) but the cross-encoder scores everything < RERANK_FLOOR.
+    const reranker = scoreByBody({ ownership: 0.05, "async passage": 0.02 });
+    const r = await semanticSearchTool.handler(args(), deps(preloaded(), queryEmbedder, reranker));
+    expect(r.structuredContent).toMatchObject({ reranked: true, lowConfidence: true });
+    expect(r.structuredContent?.maxScore as number).toBeGreaterThan(0.9); // cosine signal kept
+  });
+
+  it("silently keeps the fused order when no reranker is wired (no note, no claim)", async () => {
+    const r = await semanticSearchTool.handler(args(), deps(preloaded()));
+    expect(r.structuredContent).toMatchObject({ reranked: false });
+    expect(r.structuredContent?.note).toBeUndefined();
   });
 });

@@ -42,6 +42,8 @@ export interface LibraryHit {
   authors: string[];
   score: number;
   snippet: string;
+  /** Full text of the best-matching chunk (snippet is display-truncated; rerankers need it all). */
+  body: string;
   charStart: number;
   charEnd: number;
 }
@@ -231,12 +233,14 @@ export class SqliteIndexStore implements IndexStore {
       const chunk = db
         .prepare("SELECT char_start, char_end, body FROM chunks WHERE id = ?")
         .get(best.chunkId) as Row;
+      const body = String(chunk?.body ?? "");
       out.push({
         bookId,
         title: String(book?.title ?? `book ${bookId}`),
         authors: parseAuthors(book?.authors),
         score: best.score,
-        snippet: String(chunk?.body ?? "").slice(0, SNIPPET_CHARS),
+        snippet: body.slice(0, SNIPPET_CHARS),
+        body,
         charStart: Number(chunk?.char_start ?? 0),
         charEnd: Number(chunk?.char_end ?? 0),
       });
@@ -282,12 +286,14 @@ export class SqliteIndexStore implements IndexStore {
       if (seen.has(bookId)) continue;
       seen.add(bookId);
       const book = db.prepare("SELECT title, authors FROM books WHERE book_id = ?").get(bookId) as Row;
+      const body = String(r.body ?? "");
       out.push({
         bookId,
         title: String(book?.title ?? `book ${bookId}`),
         authors: parseAuthors(book?.authors),
         score: Number(r.score), // bm25: negative, lower (more negative) is a better match
-        snippet: String(r.body ?? "").slice(0, SNIPPET_CHARS),
+        snippet: body.slice(0, SNIPPET_CHARS),
+        body,
         charStart: Number(r.char_start),
         charEnd: Number(r.char_end),
       });
