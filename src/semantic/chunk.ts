@@ -1,13 +1,14 @@
-// Splits a book's extracted text into overlapping windows for embedding. Distinct from
+// Splits a book's extracted text into consecutive windows for embedding. Distinct from
 // content-chunk.ts (single cursor-walked page) — this yields the FULL array of chunks with
-// recovered char offsets and overlap, which become each vector's {char_start, char_end}
-// location (pairs with calibre_get_content offsets).
+// recovered char offsets, which become each vector's {char_start, char_end} location
+// (pairs with calibre_get_content offsets).
 //
-// v1 is CHAR-based. e5's tokenizer truncates silently at 512 tokens, so the only cost is
-// tail loss on the densest Cyrillic chunks (RU tokenizes ~2× denser than Latin) — a bounded
-// recall dent, acceptable for a first slice. The conservative ~900-char budget leaves headroom
-// under the ~1024-char/512-tok RU worst case plus the "[title › authors]" context prefix.
-// The `lengthFn` seam lets the next increment swap in the model tokenizer for token budgeting.
+// v3: overlap defaults to 0 — two independent 2025-26 ablations (arXiv 2601.14123; the
+// late-chunking paper) found overlap gives no retrieval benefit while inflating chunk count
+// by 1/(1−o) (~13% at our old 120/900). The mechanism stays for callers that opt in.
+// Budgets are measured through the `lengthFn` seam: callers with a loaded model pass the
+// real tokenizer (see calibre_build_index) so the budget is model tokens, not the v1
+// conservative ~900-char guess; keyword-only builds keep the char default (no token window).
 
 /** One chunk with its character span in the original text. */
 export interface EmbedChunk {
@@ -19,14 +20,19 @@ export interface EmbedChunk {
 export interface ChunkForEmbeddingOptions {
   /** Target chunk size (in `lengthFn` units, default characters). */
   budget?: number;
-  /** Overlap carried between consecutive chunks (same units). */
+  /** Overlap carried between consecutive chunks, in CHARACTERS (the recede is positional). */
   overlap?: number;
-  /** Length function — defaults to character count; the token-based seam. */
+  /**
+   * Length function — defaults to character count; the token-budgeting seam. Must be
+   * monotone non-decreasing in slice length (true for chars and real tokenizers): the
+   * budget probe binary-searches on that assumption.
+   */
   lengthFn?: (s: string) => number;
 }
 
 const DEFAULT_BUDGET = 900;
-const DEFAULT_OVERLAP = 120;
+// 0 since v3 — overlap measured as pure cost (no retrieval gain, +13% chunks at 120/900).
+const DEFAULT_OVERLAP = 0;
 
 // Preferred break points, strongest first: markdown headings, blank lines, newlines,
 // sentence ends, then whitespace. Splitting on these keeps chunks semantically coherent.
@@ -56,8 +62,32 @@ function findBreak(text: string, floor: number, hardEnd: number): number {
 }
 
 /**
- * Chunk `text` into overlapping windows. Offsets are exact positions in the ORIGINAL text
- * (so callers can re-slice via calibre_get_content). Whitespace-only tail chunks are dropped.
+ * Largest end offset in `(start, ceil]` whose slice from `start` stays within `budget`
+ * `len` units. Binary search on the monotone-length assumption — a real tokenizer as
+ * `len` pays O(log n) tokenizer calls per chunk instead of the O(n) a linear probe costs.
+ * Returns `start + 1` even when a single char busts the budget (forward progress).
+ */
+function budgetEnd(
+  text: string,
+  start: number,
+  ceil: number,
+  budget: number,
+  len: (s: string) => number,
+): number {
+  let lo = start + 1;
+  let hi = ceil;
+  while (lo < hi) {
+    const mid = lo + Math.ceil((hi - lo) / 2);
+    if (len(text.slice(start, mid)) <= budget) lo = mid;
+    else hi = mid - 1;
+  }
+  return lo;
+}
+
+/**
+ * Chunk `text` into consecutive (optionally overlapping) windows. Offsets are exact
+ * positions in the ORIGINAL text regardless of what `lengthFn` counts (so callers can
+ * re-slice via calibre_get_content). Whitespace-only tail chunks are dropped.
  */
 export function chunkForEmbedding(text: string, opts: ChunkForEmbeddingOptions = {}): EmbedChunk[] {
   const budget = Math.max(1, Math.trunc(opts.budget ?? DEFAULT_BUDGET));
@@ -70,16 +100,10 @@ export function chunkForEmbedding(text: string, opts: ChunkForEmbeddingOptions =
   let start = 0;
 
   while (start < total) {
-    // Grow the window char-by-char until it hits the length budget (lengthFn may be non-linear
-    // for token counting), capping the scan at a generous char ceiling for that budget.
-    let hardEnd = Math.min(total, start + budget * 4);
-    // Binary-free linear probe: shrink hardEnd down to the largest slice within budget.
-    while (hardEnd > start + 1 && len(text.slice(start, hardEnd)) > budget) {
-      hardEnd -= Math.max(1, Math.ceil((hardEnd - start) / 8));
-    }
-    // Fine step back to the exact budget edge.
-    while (hardEnd < total && len(text.slice(start, hardEnd + 1)) <= budget) hardEnd++;
-    hardEnd = Math.max(start + 1, Math.min(total, hardEnd));
+    // Char ceiling for the probe — generous for token lengthFns (clean EN prose runs
+    // ~4-6 chars/token, so budget*8 chars comfortably brackets the budget edge).
+    const ceil = Math.min(total, start + budget * 8);
+    const hardEnd = budgetEnd(text, start, ceil, budget, len);
 
     const reachesEnd = hardEnd >= total;
     // Floor keeps a chunk from collapsing to almost nothing when a separator sits early.

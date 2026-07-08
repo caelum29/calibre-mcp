@@ -17,25 +17,43 @@ export interface Embedder {
   embedPassages(texts: string[]): Promise<Float32Array[]>;
   /** Force the model to load (first-run download) — used to de-risk cold start. */
   warmup(): Promise<void>;
+  /**
+   * Token count of `text` under the MODEL's tokenizer (special tokens included, so it's
+   * a slightly conservative window measure). Sync — requires the model to already be
+   * loaded (`await warmup()` first); throws EMBEDDER_NOT_LOADED otherwise.
+   */
+  countTokens(text: string): number;
 }
 
 // Minimal structural view of the transformers.js feature-extraction pipeline — keeps the
 // heavy optional dep's types out of the rest of the codebase (it's imported dynamically).
-type FeaturePipeline = (
+// The pipeline object carries its tokenizer; encode() → token ids incl. special tokens.
+type FeaturePipeline = ((
   texts: string | string[],
   opts: { pooling: "mean"; normalize: boolean },
-) => Promise<{ tolist(): number[][] }>;
+) => Promise<{ tolist(): number[][] }>) & {
+  tokenizer: { encode(text: string): number[] };
+};
 
 /** Passages per model call — bounded so a large book doesn't build one giant batch. */
 const BATCH = 10;
 
 export class TransformersEmbedder implements Embedder {
   #pipe?: Promise<FeaturePipeline>;
+  // Captured on load so countTokens can stay sync (chunking calls it in a tight loop).
+  #tokenizer?: FeaturePipeline["tokenizer"];
 
   constructor(private readonly cfg: Config) {}
 
   async warmup(): Promise<void> {
     await this.#pipeline();
+  }
+
+  countTokens(text: string): number {
+    if (!this.#tokenizer) {
+      throw new Error("EMBEDDER_NOT_LOADED"); // await warmup() before counting tokens
+    }
+    return this.#tokenizer.encode(text).length;
   }
 
   async embedQuery(text: string): Promise<Float32Array> {
@@ -82,7 +100,10 @@ export class TransformersEmbedder implements Embedder {
     // Cache the model under the index dir → downloads once, then runs offline.
     mod.env.cacheDir = path.join(this.cfg.indexDir, "models");
     mod.env.allowRemoteModels = true;
-    const pipe = await mod.pipeline("feature-extraction", MODEL_ID, { dtype: "q8" });
-    return pipe as unknown as FeaturePipeline;
+    const pipe = (await mod.pipeline("feature-extraction", MODEL_ID, {
+      dtype: "q8",
+    })) as unknown as FeaturePipeline;
+    this.#tokenizer = pipe.tokenizer;
+    return pipe;
   }
 }

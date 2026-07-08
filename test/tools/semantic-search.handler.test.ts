@@ -26,6 +26,7 @@ const queryEmbedder: Embedder = {
     return texts.map(() => axis(0));
   },
   async warmup() {},
+  countTokens: (s) => s.length,
 };
 
 /** Embedder that throws — proves keyword mode never touches the model. */
@@ -37,6 +38,9 @@ const throwingEmbedder: Embedder = {
     throw new Error("EMBEDDER_UNAVAILABLE");
   },
   async warmup() {},
+  countTokens() {
+    throw new Error("EMBEDDER_UNAVAILABLE");
+  },
 };
 
 function deps(store: SqliteIndexStore, embedder: Embedder = queryEmbedder): ToolDeps {
