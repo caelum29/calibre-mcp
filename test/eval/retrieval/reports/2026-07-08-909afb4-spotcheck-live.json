@@ -1,0 +1,524 @@
+{
+  "meta": {
+    "model": "Xenova/multilingual-e5-small",
+    "indexVersion": 2,
+    "corpus": {
+      "books": 3,
+      "chunks": 3641
+    },
+    "queryCount": 9,
+    "ruInvolved": 3,
+    "modes": [
+      "hybrid",
+      "vector",
+      "keyword"
+    ],
+    "topK": 10,
+    "live": true,
+    "unverifiedLabels": true,
+    "rerank": "n/a (no reranker in this build)",
+    "gitSha": "909afb4"
+  },
+  "overall": {
+    "hybrid": {
+      "n": 3,
+      "hit1": 0.3333,
+      "recall5": 1,
+      "mrr": 0.6111,
+      "ndcg10": 0.7103
+    },
+    "vector": {
+      "n": 3,
+      "hit1": 0.3333,
+      "recall5": 0.6667,
+      "mrr": 0.5,
+      "ndcg10": 0.5436
+    },
+    "keyword": {
+      "n": 3,
+      "hit1": 0.6667,
+      "recall5": 0.6667,
+      "mrr": 0.6667,
+      "ndcg10": 0.6667
+    }
+  },
+  "ruInvolved": {
+    "hybrid": {
+      "n": 1,
+      "hit1": 0,
+      "recall5": 1,
+      "mrr": 0.5,
+      "ndcg10": 0.6309
+    },
+    "vector": {
+      "n": 1,
+      "hit1": 0,
+      "recall5": 1,
+      "mrr": 0.5,
+      "ndcg10": 0.6309
+    },
+    "keyword": {
+      "n": 1,
+      "hit1": 0,
+      "recall5": 0,
+      "mrr": 0,
+      "ndcg10": 0
+    }
+  },
+  "byKind": {
+    "semantic-paraphrase": {
+      "hybrid": {
+        "n": 2,
+        "hit1": 0.5,
+        "recall5": 1,
+        "mrr": 0.6667,
+        "ndcg10": 0.75
+      },
+      "vector": {
+        "n": 2,
+        "hit1": 0.5,
+        "recall5": 0.5,
+        "mrr": 0.5,
+        "ndcg10": 0.5
+      },
+      "keyword": {
+        "n": 2,
+        "hit1": 1,
+        "recall5": 1,
+        "mrr": 1,
+        "ndcg10": 1
+      }
+    },
+    "cross-lingual": {
+      "hybrid": {
+        "n": 1,
+        "hit1": 0,
+        "recall5": 1,
+        "mrr": 0.5,
+        "ndcg10": 0.6309
+      },
+      "vector": {
+        "n": 1,
+        "hit1": 0,
+        "recall5": 1,
+        "mrr": 0.5,
+        "ndcg10": 0.6309
+      },
+      "keyword": {
+        "n": 1,
+        "hit1": 0,
+        "recall5": 0,
+        "mrr": 0,
+        "ndcg10": 0
+      }
+    }
+  },
+  "negatives": {
+    "hybrid": {
+      "n": 6,
+      "flaggedRate": 0
+    },
+    "vector": {
+      "n": 6,
+      "flaggedRate": 0
+    },
+    "keyword": {
+      "n": 6,
+      "flaggedRate": 0
+    }
+  },
+  "perQuery": [
+    {
+      "id": "sp-02",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "hybrid",
+      "ru": false,
+      "retrieved": [
+        "889",
+        "187",
+        "2"
+      ],
+      "maxScore": 0.8307,
+      "metrics": {
+        "hit1": 0,
+        "recall5": 1,
+        "rr": 0.3333,
+        "ndcg10": 0.5
+      }
+    },
+    {
+      "id": "sp-09",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "hybrid",
+      "ru": false,
+      "retrieved": [
+        "889",
+        "187",
+        "2"
+      ],
+      "maxScore": 0.8815,
+      "metrics": {
+        "hit1": 1,
+        "recall5": 1,
+        "rr": 1,
+        "ndcg10": 1
+      }
+    },
+    {
+      "id": "xl-04",
+      "kind": "cross-lingual",
+      "scope": "library",
+      "mode": "hybrid",
+      "ru": true,
+      "retrieved": [
+        "187",
+        "889"
+      ],
+      "maxScore": 0.8559,
+      "metrics": {
+        "hit1": 0,
+        "recall5": 1,
+        "rr": 0.5,
+        "ndcg10": 0.6309
+      }
+    },
+    {
+      "id": "neg-01",
+      "kind": "negative",
+      "scope": "library",
+      "mode": "hybrid",
+      "ru": false,
+      "retrieved": [
+        "889",
+        "187",
+        "2"
+      ],
+      "maxScore": 0.8001,
+      "flagged": false
+    },
+    {
+      "id": "neg-02",
+      "kind": "negative",
+      "scope": "library",
+      "mode": "hybrid",
+      "ru": false,
+      "retrieved": [
+        "889",
+        "187",
+        "2"
+      ],
+      "maxScore": 0.8165,
+      "flagged": false
+    },
+    {
+      "id": "neg-03",
+      "kind": "negative",
+      "scope": "library",
+      "mode": "hybrid",
+      "ru": false,
+      "retrieved": [
+        "889",
+        "2",
+        "187"
+      ],
+      "maxScore": 0.8288,
+      "flagged": false
+    },
+    {
+      "id": "neg-04",
+      "kind": "negative",
+      "scope": "library",
+      "mode": "hybrid",
+      "ru": true,
+      "retrieved": [
+        "187",
+        "889"
+      ],
+      "maxScore": 0.8114,
+      "flagged": false
+    },
+    {
+      "id": "neg-05",
+      "kind": "negative",
+      "scope": "library",
+      "mode": "hybrid",
+      "ru": true,
+      "retrieved": [
+        "187",
+        "889"
+      ],
+      "maxScore": 0.8099,
+      "flagged": false
+    },
+    {
+      "id": "neg-06",
+      "kind": "negative",
+      "scope": "library",
+      "mode": "hybrid",
+      "ru": false,
+      "retrieved": [
+        "889",
+        "187",
+        "2"
+      ],
+      "maxScore": 0.8226,
+      "flagged": false
+    },
+    {
+      "id": "sp-02",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "vector",
+      "ru": false,
+      "retrieved": [
+        "889",
+        "187"
+      ],
+      "maxScore": 0.8307,
+      "metrics": {
+        "hit1": 0,
+        "recall5": 0,
+        "rr": 0,
+        "ndcg10": 0
+      }
+    },
+    {
+      "id": "sp-09",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "vector",
+      "ru": false,
+      "retrieved": [
+        "889",
+        "187"
+      ],
+      "maxScore": 0.8815,
+      "metrics": {
+        "hit1": 1,
+        "recall5": 1,
+        "rr": 1,
+        "ndcg10": 1
+      }
+    },
+    {
+      "id": "xl-04",
+      "kind": "cross-lingual",
+      "scope": "library",
+      "mode": "vector",
+      "ru": true,
+      "retrieved": [
+        "187",
+        "889"
+      ],
+      "maxScore": 0.8559,
+      "metrics": {
+        "hit1": 0,
+        "recall5": 1,
+        "rr": 0.5,
+        "ndcg10": 0.6309
+      }
+    },
+    {
+      "id": "neg-01",
+      "kind": "negative",
+      "scope": "library",
+      "mode": "vector",
+      "ru": false,
+      "retrieved": [
+        "889",
+        "187"
+      ],
+      "maxScore": 0.8001,
+      "flagged": false
+    },
+    {
+      "id": "neg-02",
+      "kind": "negative",
+      "scope": "library",
+      "mode": "vector",
+      "ru": false,
+      "retrieved": [
+        "889",
+        "187"
+      ],
+      "maxScore": 0.8165,
+      "flagged": false
+    },
+    {
+      "id": "neg-03",
+      "kind": "negative",
+      "scope": "library",
+      "mode": "vector",
+      "ru": false,
+      "retrieved": [
+        "889",
+        "187"
+      ],
+      "maxScore": 0.8288,
+      "flagged": false
+    },
+    {
+      "id": "neg-04",
+      "kind": "negative",
+      "scope": "library",
+      "mode": "vector",
+      "ru": true,
+      "retrieved": [
+        "187",
+        "889"
+      ],
+      "maxScore": 0.8114,
+      "flagged": false
+    },
+    {
+      "id": "neg-05",
+      "kind": "negative",
+      "scope": "library",
+      "mode": "vector",
+      "ru": true,
+      "retrieved": [
+        "187",
+        "889"
+      ],
+      "maxScore": 0.8099,
+      "flagged": false
+    },
+    {
+      "id": "neg-06",
+      "kind": "negative",
+      "scope": "library",
+      "mode": "vector",
+      "ru": false,
+      "retrieved": [
+        "889",
+        "187"
+      ],
+      "maxScore": 0.8226,
+      "flagged": false
+    },
+    {
+      "id": "sp-02",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "keyword",
+      "ru": false,
+      "retrieved": [
+        "2",
+        "187",
+        "889"
+      ],
+      "metrics": {
+        "hit1": 1,
+        "recall5": 1,
+        "rr": 1,
+        "ndcg10": 1
+      }
+    },
+    {
+      "id": "sp-09",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "keyword",
+      "ru": false,
+      "retrieved": [
+        "889",
+        "2"
+      ],
+      "metrics": {
+        "hit1": 1,
+        "recall5": 1,
+        "rr": 1,
+        "ndcg10": 1
+      }
+    },
+    {
+      "id": "xl-04",
+      "kind": "cross-lingual",
+      "scope": "library",
+      "mode": "keyword",
+      "ru": true,
+      "retrieved": [
+        "187"
+      ],
+      "metrics": {
+        "hit1": 0,
+        "recall5": 0,
+        "rr": 0,
+        "ndcg10": 0
+      }
+    },
+    {
+      "id": "neg-01",
+      "kind": "negative",
+      "scope": "library",
+      "mode": "keyword",
+      "ru": false,
+      "retrieved": [
+        "889",
+        "2"
+      ],
+      "flagged": false
+    },
+    {
+      "id": "neg-02",
+      "kind": "negative",
+      "scope": "library",
+      "mode": "keyword",
+      "ru": false,
+      "retrieved": [
+        "889",
+        "2"
+      ],
+      "flagged": false
+    },
+    {
+      "id": "neg-03",
+      "kind": "negative",
+      "scope": "library",
+      "mode": "keyword",
+      "ru": false,
+      "retrieved": [
+        "2",
+        "889"
+      ],
+      "flagged": false
+    },
+    {
+      "id": "neg-04",
+      "kind": "negative",
+      "scope": "library",
+      "mode": "keyword",
+      "ru": true,
+      "retrieved": [
+        "187"
+      ],
+      "flagged": false
+    },
+    {
+      "id": "neg-05",
+      "kind": "negative",
+      "scope": "library",
+      "mode": "keyword",
+      "ru": true,
+      "retrieved": [
+        "187"
+      ],
+      "flagged": false
+    },
+    {
+      "id": "neg-06",
+      "kind": "negative",
+      "scope": "library",
+      "mode": "keyword",
+      "ru": false,
+      "retrieved": [
+        "889",
+        "187",
+        "2"
+      ],
+      "flagged": false
+    }
+  ]
+}
