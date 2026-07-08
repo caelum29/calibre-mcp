@@ -78,6 +78,7 @@ describe("retrieval eval harness (model-free smoke)", () => {
       async rerank(_q, passages) {
         return passages.map((_, i) => i / Math.max(1, passages.length));
       },
+      async warmup() {},
     };
     const off = await runRetrievalEval({ ...base, modes: ["hybrid"] });
     const on = await runRetrievalEval({ ...base, modes: ["hybrid"], reranker: hostile, rerank: "hostile-fake" });

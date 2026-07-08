@@ -235,7 +235,12 @@ function joinNotes(...notes: Array<string | undefined>): string | undefined {
 
 /** Candidates to materialize: a rerank-sized pool when the reranker can reorder, else topK. */
 function poolK(args: Args, deps: ToolDeps): number {
-  return deps.reranker && args.mode !== "keyword" ? Math.max(args.topK, RERANK_POOL) : args.topK;
+  return rerankActive(args, deps) ? Math.max(args.topK, RERANK_POOL) : args.topK;
+}
+
+/** True when the rerank stage will run: a reranker is wired, not env-disabled, mode has a semantic claim. */
+function rerankActive(args: Args, deps: ToolDeps): boolean {
+  return Boolean(deps.reranker) && deps.config.rerankEnabled && args.mode !== "keyword";
 }
 
 /** The rerank stage's outcome: topK results (reordered when it ran) + honesty fields. */
@@ -250,10 +255,15 @@ const RERANK_NOTE =
   "Reranker unavailable — results keep the fused (pre-rerank) order. The cross-encoder model " +
   "downloads on first use; ensure @huggingface/transformers is installed and the machine is online.";
 
+const RERANK_DISABLED_NOTE =
+  "Reranking disabled via CALIBRE_MCP_RERANK — results keep the fused (pre-rerank) order.";
+
 /**
- * Cross-encoder rerank (D-011): score (query, chunk body) pairs over the candidate pool and
- * emit topK by reranker score. Always-on for hybrid/vector when a reranker is wired; keyword
- * mode skips it. Degrades (never fails): errors fall back to the fused order + an advisory note.
+ * Cross-encoder rerank (D-011): score (query, chunk body) pairs over the top-RERANK_POOL fused
+ * candidates and emit them by reranker score; fused candidates past the cap keep their fused
+ * order after the reranked head (no rerank score claimed — the latency guard at high topK).
+ * Always-on for hybrid/vector when a reranker is wired (CALIBRE_MCP_RERANK=off opts out);
+ * keyword mode skips it. Degrades (never fails): errors fall back to the fused order + a note.
  */
 async function applyRerank<T extends { rerankScore?: number }>(
   pool: T[],
@@ -266,17 +276,22 @@ async function applyRerank<T extends { rerankScore?: number }>(
   if (args.mode === "keyword" || pool.length === 0 || !deps.reranker) {
     return { hits: fused(), reranked: false };
   }
+  // Env-disabled = a deliberate user choice — same degrade shape, but say why (D-011).
+  if (!deps.config.rerankEnabled) {
+    return { hits: fused(), reranked: false, note: RERANK_DISABLED_NOTE };
+  }
   try {
+    const head = pool.slice(0, RERANK_POOL);
     const t0 = performance.now();
     const scores = await deps.reranker.rerank(
       args.query,
-      pool.map((r) => bodyOf(r)),
+      head.map((r) => bodyOf(r)),
     );
-    deps.log.debug("rerank stage", { pairs: pool.length, ms: Math.round(performance.now() - t0) });
-    const scored = pool.map((r, i) => ({ ...r, rerankScore: scores[i] ?? 0 }));
+    deps.log.debug("rerank stage", { pairs: head.length, ms: Math.round(performance.now() - t0) });
+    const scored = head.map((r, i) => ({ ...r, rerankScore: scores[i] ?? 0 }));
     scored.sort((a, b) => b.rerankScore - a.rerankScore); // stable: ties keep fused order
-    const hits = scored.slice(0, args.topK);
-    return { hits, reranked: true, maxRerank: hits[0]?.rerankScore };
+    const hits = [...scored, ...pool.slice(RERANK_POOL)].slice(0, args.topK);
+    return { hits, reranked: true, maxRerank: scored[0]?.rerankScore };
   } catch (err) {
     deps.log.warn("rerank skipped", { reason: err instanceof Error ? err.message : String(err) });
     return { hits: fused(), reranked: false, note: RERANK_NOTE };

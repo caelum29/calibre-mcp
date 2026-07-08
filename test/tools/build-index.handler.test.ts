@@ -5,6 +5,7 @@ import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
 import type { ExtractedText } from "../../src/calibre/extract.js";
 import type { Embedder } from "../../src/semantic/embedder.js";
+import type { Reranker } from "../../src/semantic/reranker.js";
 import { SqliteIndexStore } from "../../src/semantic/store.js";
 import { EMBED_DIM, MAX_TOKENS, PASSAGE_PREFIX } from "../../src/semantic/model.js";
 import { l2normalize } from "../../src/semantic/vector.js";
@@ -64,11 +65,27 @@ const unavailableEmbedder: Embedder = {
   },
 };
 
+/** Fake reranker that only counts warmups — the build tool never calls rerank(). */
+function fakeReranker(failWarmup = false): Reranker & { warmups: number } {
+  return {
+    warmups: 0,
+    async warmup() {
+      this.warmups += 1;
+      if (failWarmup) throw new Error("download blocked");
+    },
+    async rerank() {
+      throw new Error("rerank must not run during a build");
+    },
+  };
+}
+
 interface FakeOpts {
   book?: Partial<Book>;
   getText?: () => Promise<ExtractedText>;
   store?: SqliteIndexStore;
   embedder?: Embedder;
+  reranker?: Reranker;
+  env?: NodeJS.ProcessEnv;
 }
 
 function deps(opts: FakeOpts = {}): ToolDeps {
@@ -88,11 +105,12 @@ function deps(opts: FakeOpts = {}): ToolDeps {
       })),
   };
   return {
-    config: loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }),
+    config: loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:", ...opts.env }),
     content: content as unknown as ToolDeps["content"],
     calibre: {} as unknown as ToolDeps["calibre"],
     extractor: extractor as unknown as ToolDeps["extractor"],
     embedder: opts.embedder ?? makeFakeEmbedder(),
+    ...(opts.reranker ? { reranker: opts.reranker } : {}),
     index: opts.store ?? new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" })),
     log,
   };
@@ -176,6 +194,42 @@ describe("calibre_build_index handler", () => {
     // Token budgeting was actually in effect: at ~4 chars/token the budget edge sits far
     // past the 900-CHAR default, which would have capped every body at 900 chars.
     expect(embedder.embedded.some((p) => p.length > 900)).toBe(true);
+  });
+
+  it("pre-warms the reranker on an embedding build (download lands at build time)", async () => {
+    const reranker = fakeReranker();
+    const r = await buildIndexTool.handler(args({ bookId: 1 }), deps({ reranker }));
+    expect(r.isError).toBeFalsy();
+    expect(reranker.warmups).toBe(1);
+  });
+
+  it("keyword-only builds skip the reranker pre-warm (nothing would use the model)", async () => {
+    const reranker = fakeReranker();
+    const r = await buildIndexTool.handler(args({ bookId: 1, keywordOnly: true }), deps({ reranker }));
+    expect(r.isError).toBeFalsy();
+    expect(reranker.warmups).toBe(0);
+  });
+
+  it("CALIBRE_MCP_RERANK=off skips the reranker pre-warm", async () => {
+    const reranker = fakeReranker();
+    const r = await buildIndexTool.handler(
+      args({ bookId: 1 }),
+      deps({ reranker, env: { CALIBRE_MCP_RERANK: "off" } }),
+    );
+    expect(r.isError).toBeFalsy();
+    expect(reranker.warmups).toBe(0);
+  });
+
+  it("a failed reranker pre-download never fails the build — it degrades to a note", async () => {
+    const store = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
+    const r = await buildIndexTool.handler(
+      args({ bookId: 1 }),
+      deps({ store, reranker: fakeReranker(true) }),
+    );
+    expect(r.isError).toBeFalsy();
+    expect(r.structuredContent).toMatchObject({ booksIndexed: 1 });
+    expect((r.content[0] as { text: string }).text).toContain("Reranker model could not be pre-downloaded");
+    expect(store.isBookIndexed("Programming_Books", 1)).toBe(true); // the book still indexed
   });
 
   it("auto-degrades to a keyword-only index when the embedding model is unavailable", async () => {

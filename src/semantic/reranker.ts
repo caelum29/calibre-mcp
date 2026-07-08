@@ -8,7 +8,8 @@ import type { Config } from "../config.js";
 
 // Single source of truth for the reranker model (same D-001 principle as model.ts, kept
 // local because model.ts documents the EMBEDDING model contract). bge-reranker-v2-m3:
-// 278M params, multilingual (EN+RU), ~52 BEIR nDCG@10; q8 ONNX runs on CPU via transformers.js.
+// 568M params (q8 ONNX ≈ 576 MB one-time download — pre-warmed by calibre_build_index),
+// multilingual (EN+RU), ~52 BEIR nDCG@10; runs on CPU via transformers.js.
 export const RERANKER_MODEL_ID = "onnx-community/bge-reranker-v2-m3-ONNX";
 /**
  * Repo revision this build was verified against (2025-09-01) — documentation, NOT passed to
@@ -17,11 +18,15 @@ export const RERANKER_MODEL_ID = "onnx-community/bge-reranker-v2-m3-ONNX";
  */
 export const RERANKER_REVISION = "6f5ff65298512715a1e669753bc754d2bc8f367b";
 
-/** Candidate pool handed to the reranker — the latency guard (~2 batches, sub-second warm). */
+/**
+ * Hard cap on cross-encoded pairs — the latency guard. Measured on Apple Silicon CPU (q8,
+ * 512-token pairs): ~0.35–0.5 s/pair warm ⇒ ~10–15 s per full 30-pool. Fused candidates past
+ * the cap are appended after the reranked head in fused order (they carry no rerank score).
+ */
 export const RERANK_POOL = 30;
 /** Sigmoid scores below this are weak matches — the reranker's own confidence signal. */
 export const RERANK_FLOOR = 0.3;
-/** Pairs per model forward — bounds peak memory; ~130ms per batch on CPU. */
+/** Pairs per model forward — bounds peak memory. */
 const BATCH = 16;
 /** Pair truncation length. Chunks are budgeted to the e5 window, so nothing real is lost. */
 const MAX_TOKENS = 512;
@@ -33,6 +38,11 @@ export interface Reranker {
    * the optional model dependency is missing.
    */
   rerank(query: string, passages: string[]): Promise<number[]>;
+  /**
+   * Force the model to load — calibre_build_index pre-warms best-effort so the one-time
+   * ~576 MB download lands inside the build (already slow), not on the first search.
+   */
+  warmup(): Promise<void>;
 }
 
 // Minimal structural view of the transformers.js pieces we touch — keeps the heavy optional
@@ -51,6 +61,10 @@ export class TransformersReranker implements Reranker {
   #loaded?: Promise<{ tokenizer: PairTokenizer; model: SeqClassifier }>;
 
   constructor(private readonly cfg: Config) {}
+
+  async warmup(): Promise<void> {
+    await this.#components();
+  }
 
   async rerank(query: string, passages: string[]): Promise<number[]> {
     if (passages.length === 0) return [];

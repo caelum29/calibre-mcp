@@ -3,7 +3,7 @@ import { semanticSearchTool } from "../../src/tools/calibre_semantic_search.js";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Embedder } from "../../src/semantic/embedder.js";
-import type { Reranker } from "../../src/semantic/reranker.js";
+import { RERANK_POOL, type Reranker } from "../../src/semantic/reranker.js";
 import { SqliteIndexStore } from "../../src/semantic/store.js";
 import { EMBED_DIM } from "../../src/semantic/model.js";
 import { l2normalize } from "../../src/semantic/vector.js";
@@ -15,6 +15,14 @@ const LIB = "Programming_Books";
 function axis(i: number): Float32Array {
   const v = new Float32Array(EMBED_DIM);
   v[i] = 1;
+  return l2normalize(v);
+}
+
+/** Unit vector between axes 0 and 1 whose cosine vs the axis-0 query falls as `i` grows. */
+function fading(i: number, n: number): Float32Array {
+  const v = new Float32Array(EMBED_DIM);
+  v[0] = n - i;
+  v[1] = i + 1;
   return l2normalize(v);
 }
 
@@ -44,13 +52,18 @@ const throwingEmbedder: Embedder = {
   },
 };
 
-function deps(store: SqliteIndexStore, embedder: Embedder = queryEmbedder, reranker?: Reranker): ToolDeps {
+function deps(
+  store: SqliteIndexStore,
+  embedder: Embedder = queryEmbedder,
+  reranker?: Reranker,
+  env: NodeJS.ProcessEnv = {},
+): ToolDeps {
   const content = {
     resolveLibraryId: async () => LIB,
     search: async () => ({ bookIds: [], total: 0, num: 0, offset: 0, sort: "", libraryId: LIB }),
   };
   return {
-    config: loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }),
+    config: loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:", ...env }),
     content: content as unknown as ToolDeps["content"],
     calibre: {} as unknown as ToolDeps["calibre"],
     extractor: {} as unknown as ToolDeps["extractor"],
@@ -62,22 +75,28 @@ function deps(store: SqliteIndexStore, embedder: Embedder = queryEmbedder, reran
 }
 
 /** Fake reranker: scores each passage by the first matching substring key (0 otherwise). */
-function scoreByBody(scores: Record<string, number>): Reranker & { calls: number } {
+function scoreByBody(scores: Record<string, number>): Reranker & { calls: number; pools: number[] } {
   return {
     calls: 0,
+    pools: [], // pair-count per rerank call, for the pool-cap assertions
     async rerank(_query, passages) {
       this.calls += 1;
+      this.pools.push(passages.length);
       return passages.map((p) => {
         for (const [needle, s] of Object.entries(scores)) if (p.includes(needle)) return s;
         return 0;
       });
     },
+    async warmup() {},
   };
 }
 
 /** Reranker whose model is missing/broken — exercises the degrade path. */
 const brokenReranker: Reranker = {
   async rerank() {
+    throw new Error("RERANKER_UNAVAILABLE");
+  },
+  async warmup() {
     throw new Error("RERANKER_UNAVAILABLE");
   },
 };
@@ -315,5 +334,55 @@ describe("calibre_semantic_search rerank stage", () => {
     const r = await semanticSearchTool.handler(args(), deps(preloaded()));
     expect(r.structuredContent).toMatchObject({ reranked: false });
     expect(r.structuredContent?.note).toBeUndefined();
+  });
+
+  it("caps cross-encoded pairs at RERANK_POOL; the fused tail past it keeps honest cosine labels", async () => {
+    const s = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
+    const n = RERANK_POOL + 5;
+    s.replaceBook(
+      LIB,
+      { bookId: 1, title: "Big", authors: ["A"] },
+      Array.from({ length: n }, (_, i) => ({
+        charStart: i * 100,
+        charEnd: i * 100 + 50,
+        body: `passage number ${i} text`,
+        vector: fading(i, n), // cosine vs the axis-0 query falls with i → fused order = 0..n-1
+      })),
+    );
+    // The LAST in-pool candidate (fused rank 30) wins the rerank; everything else ties at 0.
+    const reranker = scoreByBody({ [`passage number ${RERANK_POOL - 1} `]: 0.9 });
+    const r = await semanticSearchTool.handler(
+      args({ scope: "book", bookId: 1, mode: "vector", topK: 50 }),
+      deps(s, queryEmbedder, reranker),
+    );
+    expect(r.isError).toBeFalsy();
+    expect(reranker.pools).toEqual([RERANK_POOL]); // exactly 30 pairs cross-encoded, not 35
+    expect(r.structuredContent).toMatchObject({ count: n, reranked: true, maxRerank: 0.9 });
+    const texts = r.content.slice(1).map((b) => (b as { text: string }).text);
+    // Reranked head first: the rank-30 fused candidate is promoted to the top with its score…
+    expect(texts[0]).toContain(`passage number ${RERANK_POOL - 1} `);
+    expect(texts[0]).toContain("rerank 0.900");
+    // …then the 5 past-the-cap candidates follow in fused order, carrying NO rerank score.
+    const tail = texts.slice(RERANK_POOL);
+    expect(tail).toHaveLength(5);
+    tail.forEach((t, i) => {
+      expect(t).toContain(`passage number ${RERANK_POOL + i} `);
+      expect(t).not.toContain("rerank");
+    });
+  });
+
+  it("CALIBRE_MCP_RERANK=off skips a wired reranker, keeping the fused order with a note", async () => {
+    const reranker = scoreByBody({ "async passage": 0.9, ownership: 0.2 });
+    const r = await semanticSearchTool.handler(
+      args(),
+      deps(preloaded(), queryEmbedder, reranker, { CALIBRE_MCP_RERANK: "off" }),
+    );
+    expect(r.isError).toBeFalsy();
+    expect(reranker.calls).toBe(0);
+    expect(r.structuredContent?.bookIds as number[]).toEqual([1, 2]); // fused order intact
+    expect(r.structuredContent).toMatchObject({ reranked: false });
+    // The note names the env var so a user can find + flip the switch.
+    expect(r.structuredContent?.note as string).toContain("CALIBRE_MCP_RERANK");
+    expect((r.content[0] as { text: string }).text).toContain("CALIBRE_MCP_RERANK");
   });
 });

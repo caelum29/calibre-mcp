@@ -32,6 +32,18 @@ describe("loadConfig", () => {
     expect(cfg.indexDir).toContain("calibre-mcp");
   });
 
+  it("reranking defaults ON; only an explicit off/false/0 opt-out disables it", () => {
+    expect(loadConfig({}).rerankEnabled).toBe(true);
+    for (const v of ["off", "false", "0", "OFF", "False"]) {
+      expect(loadConfig({ CALIBRE_MCP_RERANK: v }).rerankEnabled).toBe(false);
+    }
+    // Blank and unrecognized values all mean ON — an escape hatch, not a gate (and never
+    // z.coerce.boolean(): the parse is a falsy-check because unset must stay enabled).
+    for (const v of ["", "   ", "on", "1", "yes", "banana"]) {
+      expect(loadConfig({ CALIBRE_MCP_RERANK: v }).rerankEnabled).toBe(true);
+    }
+  });
+
   it("lets an explicit calibredb path win even if the file does not exist", () => {
     const cfg = loadConfig({ CALIBRE_MCP_CALIBREDB_PATH: "/nonexistent/calibredb" });
     expect(cfg.calibredbPath).toBe("/nonexistent/calibredb");

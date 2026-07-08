@@ -113,6 +113,22 @@ export const buildIndexTool = defineTool({
       }
     }
 
+    // Pre-warm the reranker on embedding builds (D-011): its one-time ~576 MB download lands
+    // inside the build users already expect to be slow, not on the first search. Best-effort —
+    // a failure logs to stderr + a note and NEVER fails the build. Keyword-only builds and
+    // CALIBRE_MCP_RERANK=off installs skip it (nothing would use the model).
+    if (!keywordOnly && tokenBudgeted && deps.reranker && deps.config.rerankEnabled) {
+      try {
+        await deps.reranker.warmup();
+      } catch (err) {
+        const reason = err instanceof Error ? err.message : String(err);
+        deps.log.warn("reranker pre-download failed", { reason });
+        notes.push(
+          "Reranker model could not be pre-downloaded — the first hybrid/vector search will retry (until then results keep the fused order).",
+        );
+      }
+    }
+
     let booksIndexed = 0;
     let booksSkipped = 0;
     let totalChunks = 0;

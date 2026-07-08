@@ -21,12 +21,26 @@ export interface Config {
   indexDir: string;
   /** Min cosine score below which semantic results are flagged low-confidence. */
   semanticFloor: number;
+  /**
+   * Cross-encoder rerank stage on semantic search (D-011). ON by default; the escape hatch
+   * CALIBRE_MCP_RERANK=off/false/0 disables it (env-only — deliberately not a tool param).
+   */
+  rerankEnabled: boolean;
   /** Filesystem roots calibre_add_book may import from (path-whitelist, DESIGN §5). */
   addRoots: string[];
 }
 
 function truthy(v: string | undefined): boolean {
   return v === "1" || v === "true" || v === "yes";
+}
+
+/**
+ * Default-ON flag: only an explicit opt-out disables it (the inverse of `truthy` — this
+ * one must be a falsy-check because unset means enabled). Never z.coerce.boolean().
+ */
+function notOptedOut(v: string | undefined): boolean {
+  const t = envStr(v)?.toLowerCase();
+  return !(t === "off" || t === "false" || t === "0");
 }
 
 /**
@@ -67,6 +81,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     calibredbPath: envStr(env.CALIBRE_MCP_CALIBREDB_PATH) ?? discoverCalibredb(env),
     indexDir: dataDir(env),
     semanticFloor: Number.isFinite(floor) ? floor : 0.78,
+    rerankEnabled: notOptedOut(env.CALIBRE_MCP_RERANK),
     addRoots: addRoots(env),
   };
 }
