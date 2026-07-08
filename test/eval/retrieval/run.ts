@@ -11,7 +11,7 @@
 //   live-relevance.json labels (UNVERIFIED until Artem confirms). Never touches the
 //   production index dir beyond reading; skip in CI.
 // --rerank off: disables the cross-encoder rerank stage (D-011; on by default, mirroring
-//   the shipped always-on behavior). First reranked run downloads the ~300 MB model into
+//   the shipped always-on behavior). First reranked run downloads the ~576 MB q8 model into
 //   <work-dir>/models; a degraded run (model unreachable) reports 0 reranked rows.
 
 import { execSync } from "node:child_process";

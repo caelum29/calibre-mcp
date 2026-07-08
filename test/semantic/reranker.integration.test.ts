@@ -1,7 +1,7 @@
 // Live transformers.js de-risk for the cross-encoder — GATED behind RUN_MODEL_TESTS so CI
 // stays offline/fast. Run on the real machine with:
 //   RUN_MODEL_TESTS=1 pnpm vitest run test/semantic/reranker.integration.test.ts
-// First run downloads the ~300 MB q8 bge-reranker-v2-m3 model; later runs are offline.
+// First run downloads the ~576 MB q8 bge-reranker-v2-m3 model; later runs are offline.
 
 import { describe, expect, it } from "vitest";
 import { loadConfig } from "../../src/config.js";

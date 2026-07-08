@@ -22,7 +22,7 @@ pnpm eval                      # offline, deterministic; writes reports/<date>-<
 pnpm eval --tag baseline       # label the report filename
 pnpm eval --modes hybrid       # subset of modes
 pnpm eval --live               # UNVERIFIED spot check against the real library index (skip in CI)
-pnpm eval --rerank off         # reserved seam for the future cross-encoder reranker (prompt 03)
+pnpm eval --rerank off         # disable the shipped D-011 rerank stage (on by default)
 ```
 
 ### Layout
@@ -42,7 +42,7 @@ pnpm eval --rerank off         # reserved seam for the future cross-encoder rera
 - `metrics.ts` — self-written Hit@1 / Recall@k / MRR / binary nDCG@k (no framework dep).
 - `harness.ts` — builds the fixture index through the real tools with fake
   content/extractor deps, runs every query per mode, aggregates. `patchDeps` is the
-  injection seam for tuning tasks (swap embedder, disable a future reranker, corrupt the
+  injection seam for tuning tasks (swap embedder, disable the reranker, corrupt the
   store in tests).
 - `run.ts` — the `pnpm eval` CLI. Work dir defaults to `retrieval/.work/` (gitignored);
   it copies the already-downloaded e5 model from the platform index dir

@@ -461,8 +461,10 @@
 - **Measured (reports `2026-07-08-0ae4e41-pre-06` → `2026-07-08-0372c88-post-06`):** every aggregate
   (overall / RU / by-kind / negatives, all modes) is byte-identical — **exact-identifier holds**
   (keyword 1.0, hybrid/vector 0.9692 nDCG@10). Only 5/150 per-query rows moved, all keyword-mode
-  `retrieved` tails below the metric window; `idb-01` (exact-identifier, book scope) now recalls a
-  SECOND relevant passage via the meta match. The fixture queries never name a title absent from
+  `retrieved` tails below the metric window; `idb-01` (exact-identifier, book scope) now retrieves
+  a second passage from the right book via the meta match — per the harness's own labels it does
+  NOT overlap the labeled span, so labels/metrics are unchanged (idb-01 was already 1.0; wording
+  corrected 2026-07-09). The fixture queries never name a title absent from
   prose, so the meta win shows up live rather than in the offline aggregates.
 - **Live-verified (Content Server up, 3 real EPUBs keyword-only → 2568 chunks in a temp index):**
   each book's exact title as a `mode:"keyword"` query returns that book top-ranked (3/3); identifier

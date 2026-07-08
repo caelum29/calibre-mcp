@@ -133,9 +133,13 @@ INGEST(file)
   bloat), bm25-weighted `1.0, 1.0, 0.5` so meta helps but never outranks prose.
   The vector half already gets identity from the embedded `[title › authors]`
   context prefix; this closes the same gap on the keyword half.
-- **Reranking: defer.** Only free+multilingual+ONNX option (bge-reranker-v2-m3,
-  568M) ≈ 15-40s/top-100 on CPU; light option needs self-conversion;
-  jina-reranker is CC-BY-NC (blocks commercial). Bi-encoder + RRF suffices v1.
+- **Reranking: SHIPPED always-on (D-011, 2026-07-08; hardened 2026-07-09).**
+  Cross-encoder `bge-reranker-v2-m3` (568M, q8 ONNX ≈ 576 MB one-time download,
+  pre-warmed by `calibre_build_index`) reranks the top-30 fused candidates for
+  hybrid/vector when the optional model is present; candidates past the 30-cap
+  keep their fused order (no rerank score claimed). Unavailable/failing model
+  degrades to the fused order with a note; `CALIBRE_MCP_RERANK=off` disables.
+  Keyword mode skips it. jina-reranker was rejected (CC-BY-NC).
 - **Per-book scope:** store vectors grouped by `book_id` (contiguous → subarray
   slice); FTS via indexed `book_id` column on external content.
 
@@ -175,7 +179,9 @@ query
  ├─ VECTOR: JS dot scan (or sqlite-vec) → top-50   [scope=book → subarray slice]
  ├─ FTS:    MATCH stemmed_query (body_stem|body|book_meta, bm25 1/1/.5) → top-50 [scope=book → AND book_id=?]
  ├─ RRF fuse (k=60, 1-based ranks, no normalization; weighted seam, both 1.0) → top-N
- └─ [LATER, opt-in] cross-encoder rerank top-20 → top-10
+ └─ cross-encoder rerank of the fused top-30 → emit topK (always-on when the optional
+    model is present, D-011; fused-order tail past the cap; degrades to fused order
+    when the model is absent/failing or CALIBRE_MCP_RERANK=off)
  → {chunk_id, book_id, location, snippet}
 ```
 
