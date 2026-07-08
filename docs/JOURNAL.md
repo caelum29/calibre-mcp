@@ -431,3 +431,11 @@
   256-token truncation would roughly halve it at unmeasured quality cost). The prompt's "sub-second
   warm" guess does not hold; pool stays 30 (quality-first — the eval win is large). LATER: pool-size /
   truncation latency tuning once the eval corpus can measure the quality cost of shrinking either.
+- **Live-verified (Content Server up, fresh v3 index of books 2/187/889 = 1425 chunks in a temp dir):**
+  the spec's correction case reproduced — EN query "how to guarantee message delivery exactly once":
+  fused hybrid order **[889, 2, 187]** (Algorithms book tops on a 0.845 cosine artifact) → reranked
+  **[187, 889, 2]** (the RU Kafka book, the right answer, promoted from last to first, rerank 0.231
+  vs 0.001). RU query reranks at 0.817 (confident); vector+rerank puts the JS book first for a JS
+  query (0.755). Degrade path live-verified too: reranker wired against an empty model cache with
+  network blocked → advisory note + fused order + `reranked:false`, no error. Warm latency measured
+  live: ~1 s per 3-pair pool, ~10.6 s per 30-pair book-scope pool.
