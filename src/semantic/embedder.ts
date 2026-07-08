@@ -1,19 +1,21 @@
-// Query/passage embedding over multilingual-e5-small via transformers.js (CPU, ONNX).
+// Query/passage embedding over the ACTIVE_MODEL spec via transformers.js (CPU, ONNX).
 // The model is an OPTIONAL dependency: it's dynamically imported and lazily loaded on
 // first use, so a read-only deployment that never embeds pays nothing and installs cleanly
 // even when @huggingface/transformers is absent (→ coded EMBEDDER_UNAVAILABLE).
 //
-// e5's mandatory query:/passage: prefixes are prepended HERE so callers can't skip them;
-// pooling=mean + normalize=true produce the L2-normalized vectors the index expects.
+// The model card's mandatory prefixes are prepended HERE so callers can't skip them; the
+// per-model output scheme (pipeline pooling vs a baked-in `sentence_embedding` graph, MRL
+// truncation) lives in ACTIVE_MODEL — see model.ts for the cited candidate table.
 
 import path from "node:path";
 import type { Config } from "../config.js";
-import { EMBED_DIM, MODEL_ID, PASSAGE_PREFIX, QUERY_PREFIX } from "./model.js";
+import { ACTIVE_MODEL, type EmbeddingModelSpec } from "./model.js";
+import { l2normalize } from "./vector.js";
 
 export interface Embedder {
-  /** Embed a search string (prepends "query: "). */
+  /** Embed a search string (prepends the model's query prefix). */
   embedQuery(text: string): Promise<Float32Array>;
-  /** Embed indexed passages (prepends "passage: "), batched. */
+  /** Embed indexed passages (prepends the model's passage prefix), batched. */
   embedPassages(texts: string[]): Promise<Float32Array[]>;
   /** Force the model to load (first-run download) — used to de-risk cold start. */
   warmup(): Promise<void>;
@@ -25,28 +27,59 @@ export interface Embedder {
   countTokens(text: string): number;
 }
 
-// Minimal structural view of the transformers.js feature-extraction pipeline — keeps the
-// heavy optional dep's types out of the rest of the codebase (it's imported dynamically).
-// The pipeline object carries its tokenizer; encode() → token ids incl. special tokens.
+/**
+ * Shape one raw model row into the stored vector: dim-check, MRL-truncate when the spec
+ * says so (slice to `dim`, then re-normalize — the model card's recipe), L2-normalize
+ * always (idempotent for already-normalized output; the index requires unit vectors).
+ */
+export function toStoredVector(
+  row: number[],
+  spec: Pick<EmbeddingModelSpec, "dim" | "rawDim"> = ACTIVE_MODEL,
+): Float32Array {
+  const expected = spec.rawDim ?? spec.dim;
+  if (row.length !== expected) {
+    throw new Error(`embedding dim ${row.length} != expected ${expected}`);
+  }
+  const v = Float32Array.from(spec.rawDim ? row.slice(0, spec.dim) : row);
+  return l2normalize(v);
+}
+
+// Minimal structural views of the transformers.js pieces we touch — keeps the heavy
+// optional dep's types out of the rest of the codebase (it's imported dynamically).
+type Tokenizer = { encode(text: string): number[] };
+// feature-extraction pipeline: model emits token states, pooling/normalize happen JS-side.
 type FeaturePipeline = ((
-  texts: string | string[],
-  opts: { pooling: "mean"; normalize: boolean },
-) => Promise<{ tolist(): number[][] }>) & {
-  tokenizer: { encode(text: string): number[] };
-};
+  texts: string[],
+  opts: { pooling: "mean" | "cls"; normalize: boolean },
+) => Promise<{ tolist(): number[][] }>) & { tokenizer: Tokenizer };
+// baked-in path (EmbeddingGemma): callable tokenizer → model → `sentence_embedding`.
+type BatchTokenizer = ((
+  texts: string[],
+  opts: { padding: boolean; truncation: boolean },
+) => Record<string, unknown>) &
+  Tokenizer;
+type SentenceEmbeddingModel = (inputs: Record<string, unknown>) => Promise<{
+  sentence_embedding: { tolist(): number[][] };
+}>;
+
+/** One loaded model, normalized to "texts in → raw rows out" whatever the output scheme. */
+interface Loaded {
+  embed(texts: string[]): Promise<number[][]>;
+  tokenizer: Tokenizer;
+}
 
 /** Passages per model call — bounded so a large book doesn't build one giant batch. */
 const BATCH = 10;
 
 export class TransformersEmbedder implements Embedder {
-  #pipe?: Promise<FeaturePipeline>;
+  #loaded?: Promise<Loaded>;
   // Captured on load so countTokens can stay sync (chunking calls it in a tight loop).
-  #tokenizer?: FeaturePipeline["tokenizer"];
+  #tokenizer?: Tokenizer;
 
   constructor(private readonly cfg: Config) {}
 
   async warmup(): Promise<void> {
-    await this.#pipeline();
+    await this.#model();
   }
 
   countTokens(text: string): number {
@@ -57,36 +90,31 @@ export class TransformersEmbedder implements Embedder {
   }
 
   async embedQuery(text: string): Promise<Float32Array> {
-    const [v] = await this.#embed([QUERY_PREFIX + text]);
+    const [v] = await this.#embed([ACTIVE_MODEL.queryPrefix + text]);
     return v!;
   }
 
   async embedPassages(texts: string[]): Promise<Float32Array[]> {
     const out: Float32Array[] = [];
     for (let i = 0; i < texts.length; i += BATCH) {
-      const batch = texts.slice(i, i + BATCH).map((t) => PASSAGE_PREFIX + t);
+      const batch = texts.slice(i, i + BATCH).map((t) => ACTIVE_MODEL.passagePrefix + t);
       out.push(...(await this.#embed(batch)));
     }
     return out;
   }
 
   async #embed(prefixed: string[]): Promise<Float32Array[]> {
-    const pipe = await this.#pipeline();
-    const tensor = await pipe(prefixed, { pooling: "mean", normalize: true });
-    return tensor.tolist().map((row) => {
-      if (row.length !== EMBED_DIM) {
-        throw new Error(`embedding dim ${row.length} != expected ${EMBED_DIM}`);
-      }
-      return Float32Array.from(row);
-    });
+    const { embed } = await this.#model();
+    const rows = await embed(prefixed);
+    return rows.map((row) => toStoredVector(row));
   }
 
-  #pipeline(): Promise<FeaturePipeline> {
-    if (!this.#pipe) this.#pipe = this.#load();
-    return this.#pipe;
+  #model(): Promise<Loaded> {
+    if (!this.#loaded) this.#loaded = this.#load();
+    return this.#loaded;
   }
 
-  async #load(): Promise<FeaturePipeline> {
+  async #load(): Promise<Loaded> {
     let mod: typeof import("@huggingface/transformers");
     try {
       mod = await import("@huggingface/transformers");
@@ -100,10 +128,34 @@ export class TransformersEmbedder implements Embedder {
     // Cache the model under the index dir → downloads once, then runs offline.
     mod.env.cacheDir = path.join(this.cfg.indexDir, "models");
     mod.env.allowRemoteModels = true;
-    const pipe = (await mod.pipeline("feature-extraction", MODEL_ID, {
-      dtype: "q8",
-    })) as unknown as FeaturePipeline;
-    this.#tokenizer = pipe.tokenizer;
-    return pipe;
+
+    const { id, dtype, pooling } = ACTIVE_MODEL;
+    let loaded: Loaded;
+    if (pooling === "baked-in") {
+      // Graph emits `sentence_embedding` (card usage: AutoTokenizer + AutoModel) —
+      // running this through the feature-extraction pipeline would re-pool token states
+      // and silently skip the model's own projection layers.
+      const tokenizer = (await mod.AutoTokenizer.from_pretrained(id)) as unknown as BatchTokenizer;
+      const model = (await mod.AutoModel.from_pretrained(id, {
+        dtype,
+      })) as unknown as SentenceEmbeddingModel;
+      loaded = {
+        embed: async (texts) => {
+          const inputs = tokenizer(texts, { padding: true, truncation: true });
+          return (await model(inputs)).sentence_embedding.tolist();
+        },
+        tokenizer,
+      };
+    } else {
+      const pipe = (await mod.pipeline("feature-extraction", id, {
+        dtype,
+      })) as unknown as FeaturePipeline;
+      loaded = {
+        embed: async (texts) => (await pipe(texts, { pooling, normalize: true })).tolist(),
+        tokenizer: pipe.tokenizer,
+      };
+    }
+    this.#tokenizer = loaded.tokenizer;
+    return loaded;
   }
 }

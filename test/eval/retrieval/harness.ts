@@ -359,7 +359,19 @@ export async function runRetrievalEval(opts: HarnessOptions): Promise<EvalReport
     progress(`live mode: ${queries.length} labeled queries against library ${libraryId}`);
   } else {
     progress(`indexing ${corpus.books.length} fixture books (real chunk→embed→store path)…`);
+    // Embed throughput for model bake-offs (prompt 05): warm up first so chunks/s times the
+    // chunk→embed→store pipeline, not the one-off model load. Reported via progress (stderr)
+    // ONLY — the committed report JSON stays deterministic across runs at the same commit.
+    const warmStart = performance.now();
+    await embedder.warmup().catch(() => {}); // a failed warmup surfaces via the build below
+    const buildStart = performance.now();
     await buildFixtureIndex(deps, corpus);
+    const buildS = (performance.now() - buildStart) / 1000;
+    const built = deps.index.stats(libraryId);
+    progress(
+      `model warm in ${((buildStart - warmStart) / 1000).toFixed(1)}s; ` +
+        `indexed ${built.chunks} chunks in ${buildS.toFixed(1)}s (${(built.chunks / buildS).toFixed(2)} chunks/s)`,
+    );
   }
 
   if (opts.patchDeps) deps = opts.patchDeps(deps);
