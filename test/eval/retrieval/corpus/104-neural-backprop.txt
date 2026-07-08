@@ -1,0 +1,43 @@
+## Learning as optimization
+
+A neural network is a function with millions of adjustable knobs — weights and biases.
+Training means choosing knob settings that make the function's outputs match labeled
+examples. The mismatch is measured by a loss function: cross-entropy for
+classification, mean squared error for regression. Learning is nothing more than
+minimizing this loss over the training set, and the workhorse minimizer is gradient
+descent: compute the slope of the loss with respect to every weight, then nudge each
+weight a small step downhill.
+
+The step size is the learning rate. Too large and training diverges, the loss
+oscillating or exploding; too small and training crawls. In practice nobody computes
+the gradient over the full dataset at once — stochastic gradient descent estimates it
+from a small random mini-batch, which is both cheaper and, thanks to its noise, better
+at escaping shallow local minima. Optimizers like Adam keep running averages of past
+gradients to adapt each weight's effective step size automatically.
+
+## Backpropagation
+
+The gradient of the loss with respect to a weight buried ten layers deep is computed by
+backpropagation, which is the chain rule of calculus organized efficiently. A forward
+pass runs the input through the network, caching each layer's activations. Then the
+error signal travels backward: starting from the derivative of the loss at the output,
+each layer multiplies the incoming gradient by its own local derivative and passes the
+result to the layer below. One forward pass plus one backward pass yields the exact
+gradient for every weight simultaneously — the weight update is then just
+`w = w - lr * dL/dw` applied everywhere at once.
+
+Deep stacks of multiplications make gradients unstable. If layer derivatives are mostly
+smaller than one, the product shrinks exponentially on the way down — the vanishing
+gradient problem, which froze early deep networks. ReLU activations, careful weight
+initialization, residual (skip) connections, and batch normalization are all, at heart,
+tricks to keep the backward signal alive through many layers.
+
+## Generalization
+
+A network big enough to memorize its training data will happily do so. The symptom of
+overfitting is a training loss that keeps falling while validation loss turns and
+rises. Regularization pushes back: dropout randomly silences units during training so
+no single pathway becomes indispensable; weight decay penalizes large weights; data
+augmentation manufactures new training views; and early stopping simply halts at the
+validation minimum. The quantity that matters in the end is never training accuracy but
+performance on data the model has not seen.

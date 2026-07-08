@@ -1,0 +1,47 @@
+## One thread, many callbacks
+
+JavaScript executes on a single thread, yet a page keeps responding while a network
+request is in flight. The trick is the event loop: instead of blocking, the runtime
+hands slow work (timers, network, disk) to the host environment and continues running
+your code. When the work completes, a callback is placed on a queue, and the loop feeds
+queued callbacks back onto the empty call stack, one at a time.
+
+Because the stack must be empty first, a callback never interrupts running code. This is
+why `setTimeout(fn, 0)` does not run `fn` immediately: the function is queued, and the
+loop only picks it up after the current synchronous script has finished to completion.
+
+## Tasks and microtasks
+
+There are two queues with different priorities. Macrotasks — timer callbacks, I/O
+events, message events — are taken one per loop turn. Microtasks — promise reactions
+and `queueMicrotask` callbacks — form a separate queue that is drained completely after
+every task, before the browser may render. A resolved promise's `.then` handler
+therefore always runs before any pending `setTimeout`, even a zero-delay one.
+
+The classic interview snippet follows directly from these rules: synchronous `console.log`
+lines print first, then every promise `.then` in queue order, and only then the timer
+callback. No amount of `Promise.resolve()` chaining lets a timer jump the microtask
+queue; conversely, an infinite microtask chain starves rendering entirely.
+
+## async/await is promise sugar
+
+An `async` function always returns a promise. The `await` keyword unwraps a promise by
+suspending the function — not the thread — until the value settles. Everything after the
+`await` is, mechanically, a `.then` continuation scheduled on the microtask queue. That
+means the code before the first `await` runs synchronously with the caller, and the code
+after it runs later, which surprises people who expect an `async` function to be
+asynchronous from its first line.
+
+Error handling folds into the same model: a `throw` inside an async function rejects the
+returned promise, and `try/catch` around an `await` catches that rejection. Forgetting
+the `await` in `try { fetchData() }` is a classic bug — the rejection escapes the try
+block because nothing in it ever suspended.
+
+## Starvation and fairness
+
+The loop is cooperative. A synchronous while-loop that spins for two seconds freezes
+clicks, timers, and rendering alike, because nothing else can run until the stack
+clears. Long computations belong in a Web Worker, which gets its own thread and its own
+event loop, communicating with the page through message events. Inside Node.js the same
+architecture appears with different plumbing — libuv supplies the queues, and
+`process.nextTick` slots in even ahead of promise microtasks.

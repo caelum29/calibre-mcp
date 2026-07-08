@@ -1,0 +1,44 @@
+## Not a lightweight VM
+
+A container is not a small virtual machine. A VM boots its own kernel on virtual
+hardware; a container is just an ordinary Linux process — or a tree of processes — that
+the kernel has been told to isolate and restrict. All containers on a host share the
+host's kernel, which is why they start in milliseconds and cost megabytes instead of
+gigabytes. The isolation is assembled from two kernel primitives: namespaces decide
+what a process can see, and cgroups decide how much it can consume.
+
+Namespaces give each container its own private view of the system: a PID namespace so
+its process tree starts at PID 1, a network namespace with its own interfaces and
+routing table, a mount namespace with its own filesystem root, plus UTS, IPC, and user
+namespaces. Control groups (cgroups) then cap resources — this container may use at
+most two CPUs and 512 MB of memory — and the kernel enforces the quota, OOM-killing the
+process that exceeds it. Add seccomp filters and capability dropping, and an escaped
+process still finds very little it is allowed to do.
+
+## Images and layers
+
+An image is a stack of read-only layers, each one a filesystem diff. Every instruction
+in a Dockerfile — each RUN, COPY, ADD — produces a new layer containing only what
+changed. At container start, a union filesystem (overlayfs) stacks the layers and adds
+a thin writable layer on top; copy-on-write means a hundred containers from one image
+share the same read-only bytes on disk.
+
+Layers are the caching unit for builds and the transfer unit for registries. Order your
+Dockerfile so the things that rarely change (base image, dependency installation) come
+before the things that change constantly (your source code), and rebuilds reuse every
+cached layer above the first change. Pushing an image uploads only layers the registry
+does not already have; a tag like `myapp:1.4.2` is merely a movable pointer to an image
+digest.
+
+## The container lifecycle
+
+`docker run` creates a container from an image and starts its entrypoint process. When
+that PID 1 exits, the container stops — which is why a service container must run its
+process in the foreground, not daemonize. The writable layer survives a stop and is
+destroyed with `docker rm`; anything worth keeping belongs in a volume, which lives
+outside the union filesystem and outlasts the container.
+
+The discipline that makes containers pleasant in production is treating them as
+immutable and disposable: configuration arrives through environment variables, state
+lives in volumes or external stores, logs go to stdout, and an upgrade is never an edit
+inside a running container but a new image rolled out to replace the old ones.

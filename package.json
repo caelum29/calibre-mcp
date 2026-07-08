@@ -41,6 +41,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:model": "RUN_MODEL_TESTS=1 vitest run test/semantic/embedder.integration.test.ts",
+    "eval": "node --import tsx test/eval/retrieval/run.ts",
     "prepublishOnly": "pnpm run build && pnpm run test",
     "pack:mcpb": "node scripts/pack-mcpb.mjs"
   },

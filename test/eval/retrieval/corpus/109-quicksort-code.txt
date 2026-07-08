@@ -1,0 +1,56 @@
+## In-place quicksort, explained through code
+
+Quicksort sorts by partitioning: pick a pivot element, sweep the array so that
+everything smaller than the pivot lands to its left and everything larger to its
+right, then recurse into the two halves. The partition step is where all the subtlety
+lives; the recursion is trivial.
+
+The Hoare partition scheme walks two cursors toward each other and swaps out-of-place
+pairs. It performs fewer swaps on average than the textbook Lomuto scheme:
+
+    function partitionHoare(a: number[], lo: number, hi: number): number {
+      const pivot = a[Math.floor((lo + hi) / 2)];
+      let i = lo - 1;
+      let j = hi + 1;
+      while (true) {
+        do { i++; } while (a[i] < pivot);
+        do { j--; } while (a[j] > pivot);
+        if (i >= j) return j;
+        [a[i], a[j]] = [a[j], a[i]]; // swap the out-of-place pair
+      }
+    }
+
+    function quicksortInPlace(a: number[], lo = 0, hi = a.length - 1): void {
+      if (lo >= hi) return;
+      const p = partitionHoare(a, lo, hi);
+      quicksortInPlace(a, lo, p);      // note: p, not p - 1, with Hoare
+      quicksortInPlace(a, p + 1, hi);
+    }
+
+Note the two Hoare-specific traps: the returned index `j` is a split point, not the
+pivot's final resting place, so the left recursion must include it; and the pivot must
+not be taken from `a[lo]` with this exact cursor arrangement or the loop can spin
+forever on two equal elements.
+
+## Choosing the pivot
+
+On random data any pivot gives the expected O(n log n). The danger is adversarial or
+already-sorted input: always choosing the first element degrades quicksort to O(n^2)
+with O(n) recursion depth. Median-of-three — take the median of the first, middle, and
+last elements — repairs the sorted-input case almost for free:
+
+    function medianOfThree(a: number[], lo: number, hi: number): number {
+      const mid = lo + ((hi - lo) >> 1);
+      if (a[mid] < a[lo]) swap(a, lo, mid);
+      if (a[hi]  < a[lo]) swap(a, lo, hi);
+      if (a[hi]  < a[mid]) swap(a, mid, hi);
+      return a[mid];
+    }
+
+Production sorts go further. Introsort tracks recursion depth and bails out to heapsort
+past 2·log2(n) levels, guaranteeing O(n log n) worst case; small partitions of a dozen
+elements or so are finished with insertion sort, which beats the recursion overhead;
+and three-way ("Dutch national flag") partitioning groups keys equal to the pivot into
+a middle band so arrays full of duplicates cost only O(n). The standard sorts in most
+languages — pdqsort in Rust, introsort in C++ — are exactly this stack of pragmatic
+patches over the thirty-line core above.
