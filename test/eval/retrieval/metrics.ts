@@ -55,12 +55,19 @@ export function reciprocalRank(r: RankedRelevance): number {
 /**
  * Binary-gain nDCG@k: DCG sums 1/log2(pos+1) over relevant positions in the top k; the
  * ideal DCG assumes all min(relevantCount, k) labels ranked first. 0 when nothing labeled.
+ * A label earns gain only at its FIRST matching rank (same dedupe rule as recallAtK) — at
+ * most relevantCount positions can score, which keeps nDCG in [0, 1]. (Fixed 2026-07-09:
+ * duplicate-label positions used to add gain, letting nDCG exceed 1; reports before the fix
+ * carry the old quirk — see reports/README.md.)
  */
 export function ndcgAtK(r: RankedRelevance, k: number): number {
   if (r.relevantCount <= 0) return 0;
+  const credited = new Set<string>();
   let dcg = 0;
   for (let i = 0; i < Math.min(k, r.matches.length); i++) {
-    if (r.matches[i]!.length > 0) dcg += 1 / Math.log2(i + 2);
+    const fresh = r.matches[i]!.filter((key) => !credited.has(key));
+    if (fresh.length > 0) dcg += 1 / Math.log2(i + 2);
+    for (const key of fresh) credited.add(key);
   }
   let idcg = 0;
   for (let i = 0; i < Math.min(r.relevantCount, k); i++) idcg += 1 / Math.log2(i + 2);

@@ -50,6 +50,20 @@ describe("retrieval metrics", () => {
     expect(demoted).toBeLessThan(1);
   });
 
+  it("ndcgAtK never exceeds 1 when several positions match the same label", () => {
+    // Two book-scope chunks each covering the same labeled span (relevantCount=1):
+    // the second position adds no gain — pre-fix this scored ~1.63.
+    const twoChunksOneSpan: RankedRelevance = { matches: [["a"], ["a"]], relevantCount: 1 };
+    expect(ndcgAtK(twoChunksOneSpan, 10)).toBe(1);
+  });
+
+  it("ndcgAtK credits a label at its first matching rank only (later dup ranks add nothing)", () => {
+    // Label "a" at ranks 1+2, label "b" never retrieved: DCG = 1 (rank-1 credit only),
+    // IDCG(2 labels) = 1 + 1/log2(3).
+    const r: RankedRelevance = { matches: [["a"], ["a"], []], relevantCount: 2 };
+    expect(ndcgAtK(r, 10)).toBeCloseTo(1 / (1 + 1 / Math.log2(3)));
+  });
+
   it("shuffling a good ranking to the bottom moves every metric down (harness measures)", () => {
     const good = queryMetrics(rel([1, 0, 0, 0, 0, 0, 0, 0, 0, 0]));
     const broken = queryMetrics(rel([0, 0, 0, 0, 0, 0, 0, 0, 0, 1]));
