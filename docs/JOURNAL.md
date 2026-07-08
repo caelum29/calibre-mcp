@@ -469,3 +469,33 @@
   queries (`std::vector`, `useEffect`, `self.assertEqual`, `const`) rank IDENTICALLY with the meta
   weight at 0.5 vs 0 (= the old two-column bm25) — identifier exactness untouched, analytically and
   empirically: a query with zero meta matches gets zero contribution from the weighted column.
+
+## Embedding-model bake-off — keep e5-small (semantic suite / prompt 05, D-012)
+
+- ✅ **Bake-off run, no swap** (2026-07-08, branch `feat/semantic-suite`) — e5-small vs
+  EmbeddingGemma-300M (768 and 256-MRL) vs bge-m3, on the prompt-04 harness with the task-03
+  reranker OFF (`--rerank off`, one variable at a time). Thresholds committed BEFORE any run
+  (T1 RU ≥ +0.05 hybrid AND vector; T2 cross-lingual vector ≥ +0.05; T3 EN non-regression;
+  T4 ops gates; license gate: MIT/Apache only). Full comparison:
+  `test/eval/retrieval/reports/2026-07-08-model-bakeoff.md` (+ 4 raw `…-eb21ff9-bakeoff-*` runs).
+- **The finding that matters:** candidates are near-perfect on the vector half (overall nDCG@10
+  0.89→0.98, RU-involved 0.84→1.00, Hit@1 0.75→0.95) yet **hybrid RU-involved is byte-identical
+  (0.6302) across all four models** and cross-lingual hybrid is 0.2142 everywhere — unweighted RRF
+  lets the keyword half (structurally 0 on cross-lingual) pin the fused order. The default-mode RU
+  gap is a fusion problem, not an embedder problem → next lever is the weighted-RRF knob (06 seam)
+  measured with the reranker ON, not a model swap.
+- **Embedder is now candidate-parameterized** (`model.ts` `CANDIDATES` + `ACTIVE_MODEL` code
+  switch; no config surface): per-model prefixes, pooling (`mean`/`cls`) vs Gemma's baked-in
+  `sentence_embedding` graph (AutoModel path — the ONNX bakes ST pooling+Dense+Normalize in;
+  pipeline mean-pooling would silently produce wrong vectors), dtype, and MRL truncate+renormalize
+  (`toStoredVector`, unit-tested). Store meta (`model_id`/`dim`) refuses cross-model indexes even
+  at the same INDEX_VERSION — verified live during the runs (fixture rebuilt per candidate).
+- **Gotchas recorded:** `nomic-embed-text-v2-moe` (Apache-2.0, the prompt's RU favorite) is
+  UNRUNNABLE — no ONNX export on the Hub (official repo is ST custom code; the only "onnx" port is
+  an empty README) and transformers.js 4.2.0 registers `nomic_bert` but not the MoE variant.
+  Candidate cosine scales sit entirely below the e5-calibrated `semanticFloor` 0.78 (gemma
+  positives 0.31–0.61, negatives 0.09–0.18 — better separation, wrong scale): a swap would force
+  per-model floor recalibration. Ops: gemma/bge ≈ 3 chunks/s vs e5 9.7 (Apple Silicon CPU, q8);
+  downloads 326/560 MB vs 129 MB; MRL-256 is metrics-free and 3× smaller vectors.
+- Model downloads were sandbox-blocked in-session (HF CDN redirect hosts); fetched via a one-off
+  unsandboxed warmup script into the eval work dir — production index/models untouched.
