@@ -10,7 +10,11 @@ import type { Config } from "../config.js";
 // local because model.ts documents the EMBEDDING model contract). bge-reranker-v2-m3:
 // 278M params, multilingual (EN+RU), ~52 BEIR nDCG@10; q8 ONNX runs on CPU via transformers.js.
 export const RERANKER_MODEL_ID = "onnx-community/bge-reranker-v2-m3-ONNX";
-/** Pinned repo revision (2025-09-01) so a silent upstream update can't change scores. */
+/**
+ * Repo revision this build was verified against (2025-09-01) — documentation, NOT passed to
+ * from_pretrained: transformers.js 4.2.0's tokenizer-file existence probe drops the revision
+ * (and cache_dir) options, so a revision-pinned cache misses and every offline load fails.
+ */
 export const RERANKER_REVISION = "6f5ff65298512715a1e669753bc754d2bc8f367b";
 
 /** Candidate pool handed to the reranker — the latency guard (~2 batches, sub-second warm). */
@@ -84,13 +88,11 @@ export class TransformersReranker implements Reranker {
     // Same cache dir as the embedder → both models live under <indexDir>/models.
     mod.env.cacheDir = path.join(this.cfg.indexDir, "models");
     mod.env.allowRemoteModels = true;
-    const opts = { revision: RERANKER_REVISION };
+    // No revision option (see RERANKER_REVISION docs) — default "main", like the embedder.
     const tokenizer = (await mod.AutoTokenizer.from_pretrained(
       RERANKER_MODEL_ID,
-      opts,
     )) as unknown as PairTokenizer;
     const model = (await mod.AutoModelForSequenceClassification.from_pretrained(RERANKER_MODEL_ID, {
-      ...opts,
       dtype: "q8",
     })) as unknown as SeqClassifier;
     return { tokenizer, model };

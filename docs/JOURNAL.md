@@ -398,3 +398,36 @@
   `contribution_frac` must be **gate-recomputed from measured overlap, never trusted from the manifest**
   (anti-laundering), and paraphrase-substitution needs a semantic-coverage outlier flag (e5 embedder)
   the shingle check can't see. Open: §8 #4 topic-resolution, §8 #5 gate economics, §512(f) residual.
+
+## Cross-encoder rerank stage shipped (semantic suite / prompt 03, D-011)
+
+- ✅ **Cross-encoder rerank stage shipped** (2026-07-08, branch `feat/semantic-suite`) — the biggest
+  precision lever on the hybrid pipeline. `src/semantic/reranker.ts` mirrors the embedder's
+  optional-model seam (lazy dynamic import, `RERANKER_UNAVAILABLE`, cache under `<indexDir>/models`):
+  `bge-reranker-v2-m3` q8 ONNX via the already-optional `@huggingface/transformers`
+  (`AutoModelForSequenceClassification` + `text_pair` tokenization, sigmoid scores, 16-pair batches).
+  `calibre_semantic_search` hybrid/vector (both scopes) now fuse as before, then rerank a ~30-candidate
+  pool of (query, chunk body) pairs and emit topK by reranker score — **always-on when the model is
+  available, no new tool param** (ASK-ARTEM 03 default). Keyword mode/keyword-only indexes skip it;
+  failures degrade to the fused order with a one-line advisory note. Surface honesty:
+  `structuredContent.reranked`/`maxRerank`, labels `rerank X (cosine Y)`, low-confidence keeps the
+  cosine floor and the sigmoid floor (0.3) as separate signals. `LibraryHit` gained the full chunk
+  `body` (320-char `snippet` starves a cross-encoder). Eval harness reranker seam + `rerankedRows`
+  honesty counter; `pnpm eval` reranks by default (`--rerank off` to disable).
+- **Upstream gotcha (recorded in D-011):** transformers.js 4.2.0's tokenizer-file existence probe
+  (`get_tokenizer_files` → `get_file_metadata(modelId, …, {})`) drops `revision`/`cache_dir`, so a
+  revision-pinned download caches under `<model>/<sha>/…` but is looked up at `<model>/…` → every
+  offline (cached) load fails. Fix: don't pass `revision` (default `main`, like the embedder); the
+  verified revision is recorded as the `RERANKER_REVISION` constant for documentation only.
+- **Node-fetch vs sandbox:** the model download needed the sandbox off once (Node's `fetch` ignores
+  the proxy env the sandbox provides); after caching, everything runs offline.
+- **Measured (golden-query eval, reports `2026-07-08-e73381d-pre-reranker` → `2026-07-08-099d858-reranker`):**
+  hybrid nDCG@10 **0.840 → 0.992**, Hit@1 **0.773 → 0.977**; RU-involved hybrid nDCG@10 **0.630 → 1.000**,
+  Hit@1 **0.529 → 1.000** (the RU gap closes on the fixture set); vector similar; negatives flagged
+  **0.50 → 1.00** (the sigmoid floor catches no-answer queries the cosine floor missed); keyword
+  untouched (0.818, by design). rerankedRows 100/100 hybrid+vector.
+- **Latency honesty:** the model is 568M params (q8 ≈ 576 MB), not the prompt's 278M — measured on the
+  M-series CPU: **~0.4–0.5 s/pair** at 512 tokens (~6 s per 15-pair pool; ~14 s worst-case 30-pair;
+  256-token truncation would roughly halve it at unmeasured quality cost). The prompt's "sub-second
+  warm" guess does not hold; pool stays 30 (quality-first — the eval win is large). LATER: pool-size /
+  truncation latency tuning once the eval corpus can measure the quality cost of shrinking either.

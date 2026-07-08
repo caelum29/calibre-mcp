@@ -27,6 +27,8 @@ D-009 | 2026-07-05 | **Book→Agent-Skill "distill" is skill-only (0 new MCP too
 
 D-010 | 2026-06-27 | **Semantic search stack:** `@huggingface/transformers` 4.2.0, in-memory brute-force cosine persisted as SQLite BLOBs (`node:sqlite`, zero native deps), mean-pool+normalize; hybrid = vector-top-50 + FTS5-top-50 fused by RRF (k=60, no score normalization); Node-side Snowball pre-stemming (`snowball-stemmers`). | Full pipeline in `docs/SEMANTIC-SEARCH.md`. | Tech stack; JOURNAL § Increments 3–4.
 
+D-011 | 2026-07-08 | **Cross-encoder reranker LOCKED to `onnx-community/bge-reranker-v2-m3-ONNX` (q8; verified revision recorded as a constant but NOT pinned at load — transformers.js 4.2.0's tokenizer existence probe drops the revision option, so a pinned cache misses and offline loads fail), always-ON for hybrid/vector — no new npm dependency, no new tool param.** Runs through the already-optional `@huggingface/transformers` (`AutoModelForSequenceClassification`, same lazy-load/`RERANKER_UNAVAILABLE` seam as the embedder, cached under `<indexDir>/models`); search fuses/ranks as before, reranks a ~30-candidate pool of (query, chunk body) pairs, emits topK by sigmoid score. Keyword mode / keyword-only indexes skip it; unavailable/erroring reranker degrades to the fused order with an advisory note. `structuredContent` gains `reranked`/`maxRerank`; low-confidence keeps two separate signals (cosine floor on the cosine half, sigmoid < 0.3 ≈ weak on the reranker). | Field consensus: the rerank stage is the single largest precision lever in a hybrid pipeline (+15–40% Hit@1); bge-reranker-v2-m3 is multilingual (EN+RU) and ~Cohere-API quality on BEIR, ONNX int8 on CPU (~130ms/16-pair batch). Optional-model stance keeps read-only installs clean and the tool surface at 15. | `docs/prompts/semantic/03-cross-encoder-reranker.md` (local); JOURNAL § reranker; eval reports `test/eval/retrieval/reports/2026-07-08-*-pre-reranker*` vs `*-reranker*`.
+
 ## Verbatim source blocks (lifted out of CLAUDE.md, kept here losslessly)
 
 ### Tech stack — semantic model paragraph (was CLAUDE.md "Tech stack")
@@ -72,7 +74,7 @@ Consolidated from the scattered "Deferred (additive)" notes across the build. On
 - PDF page / EPUB spine **locations** on chunks (idea 02 `epub-spine.ts`, behind the detector seam) — Increments 3–4, distill §4.5.
 - Worker-thread parallelism for embedding — Increments 3–4.
 - Full-library build (`calibre_build_index` selector currently required) — Increments 3–4.
-- Reranking — Increments 3–4.
+- ~~Reranking~~ — SHIPPED 2026-07-08 (D-011, cross-encoder rerank stage).
 - `sqlite-vec` fast path — Increments 3–4.
 - `enableFts` param on `calibre_build_index` (accepted but **no-op + note**) — Increments 3–4.
 
