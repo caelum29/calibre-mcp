@@ -134,6 +134,11 @@ Decisions:
   > leak an SDK concept into `ToolDeps`. So v1 backs preview-first with plain params instead:
   > `calibre_bulk_update` defaults `preview=true` (computes the per-book diff, writes nothing);
   > `calibre_remove_book` requires `confirm=true` else returns a dry-run of what would be deleted.
+  > **Deliberate variance — `bulk_update` preview returns `toolOk`, `remove_book` dry-run returns
+  > `toolError`.** A preview is *requested information* (the model asked "what would change?"), so
+  > it's a success. A dry-run without `confirm` is a *refused action* (the model asked to delete;
+  > we declined), so it's an error — consistent with the empty-verdict=FAIL doctrine (§2), and it
+  > stops the model from scoring a dry-run as a completed deletion.
   > Real `elicitation/create` is deferred to LATER (a `deps.elicit?` callback passed from server.ts)
   > if/when host support + a UX win justify crossing the seam.
 - **Never race the GUI on writes** (CLAUDE.md ground truth). Open access per-call, release in
