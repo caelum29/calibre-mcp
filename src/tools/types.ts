@@ -78,6 +78,13 @@ export interface ToolDescriptor<Shape extends z.ZodRawShape = z.ZodRawShape> {
   annotations: ToolAnnotations;
   /** When true, the server disables the tool unless writes are enabled. */
   write?: boolean;
+  /**
+   * Writes only to the server's own semantic-index dir, NOT the user's library — so it is
+   * intentionally NOT gated by the library write flag despite `readOnlyHint: false`. This
+   * marker makes that "index-write ≠ library-write" carve-out explicit for anyone auditing
+   * "every readOnlyHint:false tool must be write-gated" (currently just calibre_build_index).
+   */
+  localWrite?: boolean;
   handler: (args: z.infer<z.ZodObject<Shape>>, deps: ToolDeps) => Promise<ToolResult>;
 }
 
@@ -94,5 +101,7 @@ export interface AnyToolDescriptor {
   outputSchema?: z.ZodRawShape;
   annotations: ToolAnnotations;
   write?: boolean;
+  /** See ToolDescriptor.localWrite — index-dir write, not library write; not gate-controlled. */
+  localWrite?: boolean;
   handler: (args: unknown, deps: ToolDeps) => Promise<ToolResult>;
 }
