@@ -70,7 +70,10 @@ Decisions:
   `nextCursor` inside `structuredContent` and accept it back via the `cursor` input param
   (see `src/tools/cursor.ts`, an opaque base64url cursor bound to `{query, sort}`).
 - **Tools = operations, Resources = data.** Expose book metadata/cover/extracted-text via
-  `ResourceTemplate("calibre://book/{id}")`; keep search/update/build as tools.
+  `ResourceTemplate("calibre://book/{id}")`; keep search/update/build as tools. **Scope (D-014):**
+  this is the *only* resource — reads stay tools; `calibre://book/{id}` exists purely as the
+  `resource_link[]` target, we do NOT convert `get_content`/`get_book`/`search` into resources
+  (host resource support is weaker than tool support; we'd lose `structuredContent` + `isError`).
 - **`complete` callbacks** on resource/prompt template params for host autocomplete (book ids,
   titles, library names).
 - **Always return non-empty `content`**, even on no-op ("0 books matched") — some clients break
