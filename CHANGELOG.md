@@ -6,6 +6,39 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-07-09
+
+The semantic-search suite. **Breaking for existing indexes**: `INDEX_VERSION` bumped
+2 → 3 (chunking v3 changes chunk boundaries) — run `calibre_build_index` again to
+rebuild before using semantic/hybrid search.
+
+### Added
+
+- **Cross-encoder rerank stage** (`bge-reranker-v2-m3`, q8) — always-on second pass for
+  hybrid and vector search results, pool cap 30 candidates, model pre-downloaded at
+  build time, `CALIBRE_MCP_RERANK` env var as an escape hatch to disable it (D-011).
+- **Chunking v3** — drops the old fixed-overlap window and budgets chunks in real
+  model tokens instead of characters, for tighter and more consistent chunk sizes.
+  `INDEX_VERSION` is now `3`; existing indexes must be rebuilt.
+- **Weighted FTS + hybrid fusion** — a new `book_meta` FTS column (weighted bm25) feeds
+  a weighted-RRF fusion seam alongside vector search, improving keyword/metadata recall
+  in hybrid mode.
+- **Golden-query retrieval eval harness** — 50 labeled EN+RU queries over a fixture
+  corpus (`pnpm eval`), with committed baseline, reranker, and model-bake-off reports
+  for regression tracking.
+- Per-library candidate-vector cache for faster repeat semantic queries.
+
+### Changed
+
+- Semantic embedding model reaffirmed as `multilingual-e5-small` after a model
+  bake-off against alternatives (D-012/D-013).
+
+### Fixed
+
+- `bookId` is now accepted as an alias for `id` on single-book tools.
+- nDCG@k no longer double-counts label credit on duplicate-label positions (could
+  previously exceed 1.0).
+
 ## [0.1.6] — 2026-07-07
 
 ### Added
