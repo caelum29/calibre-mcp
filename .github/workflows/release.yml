@@ -35,9 +35,11 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
 
-      # Trusted-publishing OIDC auto-detection needs npm >= 11.5.1; runners can lag
+      # Trusted-publishing OIDC auto-detection needs npm >= 11.5.1; runners can lag.
+      # Pin to 11.18.0 — npm@latest (12.0.0) ships a libnpmpublish whose provenance
+      # code can't resolve its `sigstore` dep, breaking `npm publish --provenance`.
       - name: Upgrade npm for OIDC support
-        run: npm install -g npm@latest && npm --version
+        run: npm install -g npm@11.18.0 && npm --version
 
       # prepublishOnly runs build + tests; auth is OIDC (trusted publisher), no token
       - name: Publish to npm
