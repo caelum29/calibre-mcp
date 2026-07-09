@@ -18,6 +18,7 @@ export function defineTool<Shape extends z.ZodRawShape>(
     outputSchema: d.outputSchema,
     annotations: d.annotations,
     write: d.write,
+    localWrite: d.localWrite,
     handler: (args, deps) => d.handler(args as z.infer<z.ZodObject<Shape>>, deps),
   };
 }

@@ -12,7 +12,7 @@ import { TransformersEmbedder } from "./semantic/embedder.js";
 import { TransformersReranker } from "./semantic/reranker.js";
 import { SqliteIndexStore } from "./semantic/store.js";
 import { readBookResource } from "./resources/book.js";
-import { allTools } from "./tools/registry.js";
+import { allTools, assertWriteClassification } from "./tools/registry.js";
 import { toolError } from "./tools/result.js";
 import type { ToolDeps } from "./tools/types.js";
 import { log } from "./logging.js";
@@ -60,6 +60,9 @@ export function buildServer(): McpServer {
     { name: "calibre-mcp", version: VERSION },
     { capabilities: { tools: {}, resources: {} } },
   );
+
+  // Fail loud at boot if any non-read-only tool is unclassified (no write / localWrite).
+  assertWriteClassification();
 
   // Register every descriptor; bridge the SDK-free ToolResult ⇄ CallToolResult. Handlers
   // already return-not-throw; the try/catch here is a defense-in-depth safety net (DESIGN §3).

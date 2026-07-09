@@ -47,6 +47,9 @@ export const buildIndexTool = defineTool({
     failures: z.array(z.string()).optional(),
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+  // readOnlyHint:false but NOT write-gated: this writes to the server's own index dir, not the
+  // user's library, so the library write gate doesn't apply. localWrite marks that carve-out.
+  localWrite: true,
   handler: async (args, deps) => {
     if (args.bookId === undefined && !args.ids?.length && !args.query) {
       return toolError("Specify bookId, ids, or query — full-library indexing is deferred.");

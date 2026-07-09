@@ -37,3 +37,22 @@ export const allTools: AnyToolDescriptor[] = [
   addBookTool,
   removeBookTool,
 ];
+
+/**
+ * Startup invariant: any tool that isn't read-only MUST declare how it writes — either
+ * `write` (library write → gated by CALIBRE_MCP_ENABLE_WRITE) or `localWrite` (server
+ * index-dir only → intentionally ungated). A `readOnlyHint:false` tool with neither is a
+ * silent, unclassified mutation and a gate-audit hole; fail loud at boot rather than ship it.
+ */
+export function assertWriteClassification(tools: AnyToolDescriptor[] = allTools): void {
+  const unclassified = tools.filter(
+    (t) => t.annotations.readOnlyHint === false && !t.write && !t.localWrite,
+  );
+  if (unclassified.length > 0) {
+    const names = unclassified.map((t) => t.name).join(", ");
+    throw new Error(
+      `Tool(s) [${names}] have readOnlyHint:false but neither write nor localWrite — ` +
+        `classify each as a library write (write:true) or an index-dir write (localWrite:true).`,
+    );
+  }
+}
