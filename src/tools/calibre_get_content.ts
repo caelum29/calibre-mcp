@@ -37,6 +37,9 @@ export const getContentTool = defineTool({
     backend: z.string().optional(),
     hasMore: z.boolean().optional(),
     nextCursor: z.string().optional(),
+    // The fenced excerpt, mirrored here so structured-only clients (that render
+    // structuredContent but drop text content blocks) still surface the book text.
+    text: z.string().optional(),
     chapters: z
       .array(
         z.object({
@@ -123,13 +126,15 @@ export const getContentTool = defineTool({
           chapters.length === 0
             ? "No chapters detected — walk the book with the plain cursor (omit structure=true)."
             : `n | heading | ~tokens\n${chapters.map((c) => `${c.n} | ${c.heading} | ~${c.approxTokens}`).join("\n")}`;
-        return toolOk([{ type: "text", text: `${head}\n${fence("CHAPTERS", body)}` }], {
+        const fencedChapters = fence("CHAPTERS", body);
+        return toolOk([{ type: "text", text: `${head}\n${fencedChapters}` }], {
           chapters,
           hasToc: struct.hasToc,
           detector: struct.detector,
           totalChars,
           format: fmt,
           backend: extracted.backend,
+          text: fencedChapters,
         });
       }
 
@@ -146,7 +151,8 @@ export const getContentTool = defineTool({
         : undefined;
 
       const header = `Book ${numericId} — ${fmt} via ${extracted.backend}, chars ${chunk.start}–${chunk.end} of ${chunk.totalChars}`;
-      return toolOk([{ type: "text", text: `${header}\n${fence("BOOK CONTENT", chunk.slice)}` }], {
+      const fenced = fence("BOOK CONTENT", chunk.slice);
+      return toolOk([{ type: "text", text: `${header}\n${fenced}` }], {
         offset: chunk.start,
         count: chunk.slice.length,
         totalChars: chunk.totalChars,
@@ -154,6 +160,7 @@ export const getContentTool = defineTool({
         backend: extracted.backend,
         hasMore: chunk.hasMore,
         nextCursor,
+        text: fenced,
       });
     } catch (err) {
       if (err instanceof CalibreHttpError && err.status === 404) {

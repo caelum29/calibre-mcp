@@ -62,6 +62,10 @@ describe("calibre_get_content handler", () => {
     expect((r.content[0] as { text: string }).text).toContain("BOOK CONTENT");
     expect(r.structuredContent).toMatchObject({ format: "pdf", backend: "pdftotext", hasMore: true });
     expect(r.structuredContent?.nextCursor).toBeTypeOf("string");
+    // The fenced excerpt is mirrored into structuredContent so structured-only clients
+    // (that drop text content blocks) still surface the book text.
+    expect(r.structuredContent?.text as string).toContain("BOOK CONTENT");
+    expect(r.structuredContent?.text).toBe((r.content[0] as { text: string }).text.split("\n").slice(1).join("\n"));
   });
 
   it("errors when the book has no extractable format", async () => {

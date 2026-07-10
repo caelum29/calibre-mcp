@@ -150,6 +150,17 @@ describe("calibre_semantic_search handler", () => {
     expect(r.content.some((b) => b.type === "resource_link")).toBe(true);
   });
 
+  it("mirrors library hits into structuredContent.results for structured-only clients", async () => {
+    const r = await semanticSearchTool.handler(args(), deps(preloaded()));
+    const results = r.structuredContent?.results as Array<Record<string, unknown>>;
+    expect(results).toBeInstanceOf(Array);
+    expect(results.length).toBe((r.structuredContent?.bookIds as number[]).length);
+    const top = results[0];
+    expect(top).toMatchObject({ bookId: expect.any(Number), title: expect.any(String) });
+    // The fenced snippet is carried so it survives clients that drop text content blocks.
+    expect(top.snippet as string).toContain("UNTRUSTED");
+  });
+
   it("book scope requires bookId", async () => {
     const r = await semanticSearchTool.handler(args({ scope: "book" }), deps(preloaded()));
     expect(r.isError).toBe(true);
@@ -163,6 +174,17 @@ describe("calibre_semantic_search handler", () => {
     const text = (r.content[1] as { text: string }).text;
     expect(text).toContain("PASSAGE");
     expect(text).toContain("ownership rules");
+  });
+
+  it("mirrors book passages into structuredContent.passages for structured-only clients", async () => {
+    const r = await semanticSearchTool.handler(args({ scope: "book", bookId: 1 }), deps(preloaded()));
+    const passages = r.structuredContent?.passages as Array<Record<string, unknown>>;
+    expect(passages).toBeInstanceOf(Array);
+    expect(passages.length).toBe(r.structuredContent?.count as number);
+    const top = passages[0];
+    expect(top).toMatchObject({ charStart: expect.any(Number), charEnd: expect.any(Number) });
+    // The fenced passage body is carried verbatim from the text block.
+    expect(top.body as string).toContain("ownership rules");
   });
 
   it("errors when the requested book is not indexed", async () => {

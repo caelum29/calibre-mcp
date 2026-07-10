@@ -8,6 +8,8 @@
 // Requires an index built by calibre_build_index; returns an actionable error otherwise.
 // A keyword-only index has no vectors: mode=vector errors, mode=hybrid degrades to keyword.
 // Snippets are untrusted book text → fenced. Cosine below config.semanticFloor → low-confidence.
+// Ranked hits are ALSO mirrored into structuredContent (results/passages) so structured-only
+// clients that drop text content blocks still surface them; the mirrored text keeps the fence.
 // hybrid/vector results pass through a cross-encoder rerank stage (D-011) when the optional
 // reranker model is available; keyword mode has no semantic claim to sharpen and skips it.
 
@@ -59,6 +61,35 @@ export const semanticSearchTool = defineTool({
     maxRerank: z.number().optional(),
     note: z.string().optional(),
     bookIds: z.array(z.number()).optional(),
+    // Ranked hits mirrored into structuredContent so structured-only clients (that render
+    // structuredContent but drop text content blocks) still surface the snippets/passages.
+    // scope=library → results (one per book); scope=book → passages (one per chunk). Free
+    // text is fenced (untrusted-book-text invariant) and kept identical to the text blocks.
+    results: z
+      .array(
+        z.object({
+          bookId: z.number(),
+          title: z.string(),
+          authors: z.array(z.string()),
+          cosine: z.number().optional(),
+          rerankScore: z.number().optional(),
+          charStart: z.number(),
+          charEnd: z.number(),
+          snippet: z.string(),
+        }),
+      )
+      .optional(),
+    passages: z
+      .array(
+        z.object({
+          charStart: z.number(),
+          charEnd: z.number(),
+          cosine: z.number().optional(),
+          rerankScore: z.number().optional(),
+          body: z.string(),
+        }),
+      )
+      .optional(),
   },
   annotations: { readOnlyHint: true, openWorldHint: false },
   handler: async (args, deps) => {
@@ -153,13 +184,22 @@ async function libraryScope(args: Args, deps: ToolDeps, libraryId: string, degra
   const blocks: ContentBlock[] = [
     { type: "text", text: withNote(header("book", ranked.length, args, maxScore, lowConfidence, rr), note) },
   ];
+  const results: Record<string, unknown>[] = [];
   for (const r of ranked) {
     const link = bookResourceLink({ id: r.hit.bookId, title: r.hit.title, authors: r.hit.authors });
     link.description = [scoreLabel(r), r.hit.authors.join(", ")].filter(Boolean).join(" — ");
     blocks.push(link);
-    blocks.push({
-      type: "text",
-      text: fence(`MATCH book ${r.hit.bookId} @${r.hit.charStart}-${r.hit.charEnd}`, r.hit.snippet),
+    const fenced = fence(`MATCH book ${r.hit.bookId} @${r.hit.charStart}-${r.hit.charEnd}`, r.hit.snippet);
+    blocks.push({ type: "text", text: fenced });
+    results.push({
+      bookId: r.hit.bookId,
+      title: r.hit.title,
+      authors: r.hit.authors,
+      ...(r.cosine !== undefined ? { cosine: r.cosine } : {}),
+      ...(r.rerankScore !== undefined ? { rerankScore: r.rerankScore } : {}),
+      charStart: r.hit.charStart,
+      charEnd: r.hit.charEnd,
+      snippet: fenced,
     });
   }
 
@@ -172,6 +212,7 @@ async function libraryScope(args: Args, deps: ToolDeps, libraryId: string, degra
     ...rerankFields(args, rr),
     note,
     bookIds: ranked.map((r) => r.hit.bookId),
+    results,
   });
 }
 
@@ -203,10 +244,16 @@ async function bookScope(args: Args, deps: ToolDeps, libraryId: string, bookId: 
   );
 
   const blocks: ContentBlock[] = [{ type: "text", text: head }];
+  const passages: Record<string, unknown>[] = [];
   for (const r of ranked) {
-    blocks.push({
-      type: "text",
-      text: fence(`PASSAGE @${r.hit.charStart}-${r.hit.charEnd} ${scoreLabel(r)}`, r.hit.body),
+    const fenced = fence(`PASSAGE @${r.hit.charStart}-${r.hit.charEnd} ${scoreLabel(r)}`, r.hit.body);
+    blocks.push({ type: "text", text: fenced });
+    passages.push({
+      charStart: r.hit.charStart,
+      charEnd: r.hit.charEnd,
+      ...(r.cosine !== undefined ? { cosine: r.cosine } : {}),
+      ...(r.rerankScore !== undefined ? { rerankScore: r.rerankScore } : {}),
+      body: fenced,
     });
   }
 
@@ -219,6 +266,7 @@ async function bookScope(args: Args, deps: ToolDeps, libraryId: string, bookId: 
     lowConfidence,
     ...rerankFields(args, rr),
     note,
+    passages,
   });
 }
 
