@@ -6,6 +6,26 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.2.1] — 2026-07-11
+
+### Added
+
+- **structuredContent mirroring for semantic search and content extraction** —
+  `calibre_semantic_search` now mirrors ranked hits into `structuredContent`
+  (`results[]` for library scope, `passages[]` for book scope), and
+  `calibre_get_content` mirrors its excerpt into `structuredContent.text`.
+  Structured-only MCP clients that drop text content blocks no longer lose the
+  actual search/read payload.
+
+### Changed
+
+- **`localWrite` classification for index-directory writes** — `calibre_build_index`
+  writes the server's own semantic-index directory, not the user's library, so it's
+  intentionally left ungated. That carve-out is now explicit via a new
+  `ToolDescriptor.localWrite` marker plus a boot-time invariant
+  (`assertWriteClassification()`) that fails loud if any non-read-only tool declares
+  neither `write` nor `localWrite` — no more silently unclassified mutators.
+
 ## [0.2.0] — 2026-07-09
 
 The semantic-search suite. **Breaking for existing indexes**: `INDEX_VERSION` bumped
