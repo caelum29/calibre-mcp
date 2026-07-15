@@ -227,10 +227,14 @@ works. Environment variables (the Desktop bundle exposes the same settings as UI
 | `CALIBRE_MCP_INDEX_DIR` | platform data dir¹ | Semantic index + embedding-model cache |
 | `CALIBRE_MCP_SEMANTIC_FLOOR` | `0.78` | Cosine score below which semantic results are flagged low-confidence |
 | `CALIBRE_MCP_RERANK` | on | Cross-encoder rerank stage on semantic search (~576 MB model, seconds of CPU per query); set `off`/`false`/`0` to disable |
+| `CALIBRE_MCP_MAX_BOOK_BYTES` | `268435456` (256 MB) | Largest book download `calibre_build_index` / `calibre_get_content` will extract; bigger books are skipped² |
 | `CALIBRE_MCP_ADD_ROOTS` | `~/Documents`, `~/Downloads` | Folders `calibre_add_book` may import from (path-delimiter separated) |
 
 ¹ macOS `~/Library/Application Support/calibre-mcp/index`, Windows
 `%APPDATA%\calibre-mcp\index`, Linux `$XDG_DATA_HOME/calibre-mcp/index`.
+
+² Size the cap against what the **Content Server serves**, not the file on disk — it can hand
+back a much heavier copy (an 8 MB PDF served as 70 MB), so a disk-sized cap silently skips books.
 
 ## 🩺 Troubleshooting
 

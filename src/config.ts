@@ -26,6 +26,13 @@ export interface Config {
    * CALIBRE_MCP_RERANK=off/false/0 disables it (env-only — deliberately not a tool param).
    */
   rerankEnabled: boolean;
+  /**
+   * Max bytes to download for one book's format before refusing to extract it. Sized for the
+   * SERVED payload, not the library file — the Content Server can hand back a far heavier copy
+   * than what sits on disk (a 8 MB PDF served as 70 MB), so a disk-sized cap silently skips
+   * large books. Override via CALIBRE_MCP_MAX_BOOK_BYTES.
+   */
+  maxBookBytes: number;
   /** Filesystem roots calibre_add_book may import from (path-whitelist, DESIGN §5). */
   addRoots: string[];
 }
@@ -73,6 +80,7 @@ function dataDir(env: NodeJS.ProcessEnv): string {
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const floor = Number(envStr(env.CALIBRE_MCP_SEMANTIC_FLOOR));
+  const maxBytes = Number(envStr(env.CALIBRE_MCP_MAX_BOOK_BYTES));
   return {
     serverUrl: envStr(env.CALIBRE_MCP_SERVER_URL) ?? "http://localhost:8080",
     defaultLibrary: envStr(env.CALIBRE_MCP_LIBRARY) ?? "",
@@ -82,6 +90,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     indexDir: dataDir(env),
     semanticFloor: Number.isFinite(floor) ? floor : 0.78,
     rerankEnabled: notOptedOut(env.CALIBRE_MCP_RERANK),
+    maxBookBytes: Number.isFinite(maxBytes) && maxBytes > 0 ? maxBytes : 256 * 1024 * 1024,
     addRoots: addRoots(env),
   };
 }

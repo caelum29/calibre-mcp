@@ -78,9 +78,12 @@ export function pdftotextArgs(src: string, dest: string): string[] {
   return ["-q", "-enc", "UTF-8", src, dest];
 }
 
-/** ebook-convert argv: markdown-formatted text. NEVER --asciiize (it transliterates Cyrillic). */
-export function ebookConvertArgs(src: string, dest: string): string[] {
-  return [src, dest, "--txt-output-formatting=markdown"];
+/** Text flavors ebook-convert can emit, best structure first. */
+export type TxtFormatting = "markdown" | "plain";
+
+/** ebook-convert argv: text output. NEVER --asciiize (it transliterates Cyrillic). */
+export function ebookConvertArgs(src: string, dest: string, formatting: TxtFormatting = "markdown"): string[] {
+  return [src, dest, `--txt-output-formatting=${formatting}`];
 }
 
 /** Resolve a binary from candidate absolute paths, else fall back to the bare name (PATH). */
@@ -167,7 +170,8 @@ export class Extractor {
     const tmpOut = path.join(CACHE_DIR, `tx-${randomUUID()}.txt`);
     try {
       await downloadToFile(args.downloadUrl, tmpSrc, {
-        maxBytes: args.maxBytes,
+        // Per-call override wins; otherwise the configured cap (callers like indexBook pass none).
+        maxBytes: args.maxBytes ?? this.cfg.maxBookBytes,
         timeoutMs: args.timeoutMs,
       });
       const { text, backend } = await this.#convert(fmt, tmpSrc, tmpOut, report, args.timeoutMs);
@@ -204,18 +208,34 @@ export class Extractor {
         return { text: await readFile(out, "utf8"), backend: "pymupdf" };
       }
       if (report.pdf === "ebook-convert" && report.ebookConvertPath) {
-        await this.#run(report.ebookConvertPath, ebookConvertArgs(src, out), timeout);
-        return { text: await readFile(out, "utf8"), backend: "ebook-convert" };
+        return await this.#ebookConvert(report.ebookConvertPath, src, out, timeout);
       }
       throw new Error("NO_PDF_BACKEND");
     }
 
     // EPUB and other ebook formats → Calibre.
     if (report.epub === "ebook-convert" && report.ebookConvertPath) {
-      await this.#run(report.ebookConvertPath, ebookConvertArgs(src, out), timeout);
-      return { text: await readFile(out, "utf8"), backend: "ebook-convert" };
+      return await this.#ebookConvert(report.ebookConvertPath, src, out, timeout);
     }
     throw new Error("NO_EPUB_BACKEND");
+  }
+
+  /**
+   * ebook-convert → text, preferring markdown (headings survive, which chunking leans on) and
+   * retrying once as plain. Calibre's own markdown writer throws on CSS values it can't parse to
+   * a float (e.g. `calc(1em / 2)`), which would otherwise drop the whole book from the index for
+   * a purely cosmetic reason. A timeout is NOT retried — that would double the time budget.
+   */
+  async #ebookConvert(bin: string, src: string, out: string, timeout: number): Promise<{ text: string; backend: string }> {
+    try {
+      await this.#run(bin, ebookConvertArgs(src, out, "markdown"), timeout);
+      return { text: await readFile(out, "utf8"), backend: "ebook-convert" };
+    } catch (err) {
+      if ((err as Error).message !== "EXTRACT_FAILED") throw err;
+      log.warn("markdown conversion failed, retrying as plain text", { src: path.basename(src) });
+      await this.#run(bin, ebookConvertArgs(src, out, "plain"), timeout);
+      return { text: await readFile(out, "utf8"), backend: "ebook-convert:plain" };
+    }
   }
 
   /**

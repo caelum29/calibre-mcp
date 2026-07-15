@@ -6,6 +6,21 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Fixed
+
+- **Large books are no longer silently skipped by the indexer.** The book-download cap was a
+  hardcoded 64 MB in the HTTP layer that `calibre_build_index` never overrode, so any book whose
+  *served* payload exceeded it failed with "Book file exceeds the size limit" — 28 of 795 books
+  (3.5%) in a real library. The cap is now configurable via `CALIBRE_MCP_MAX_BOOK_BYTES` and
+  defaults to 256 MB. Note the cap must be sized against what the **Content Server serves**, not
+  the file on disk: the server can return a far heavier copy (an 8 MB PDF served as 70 MB), which
+  is why a seemingly generous disk-sized limit still dropped books.
+- **EPUB extraction no longer dies on modern CSS.** Calibre's own markdown text writer raises
+  `ValueError: could not convert string to float: 'calc(1em / 2)'` on ebooks using `calc()`, which
+  failed extraction outright and dropped the book from the index. `ebook-convert` now retries once
+  with `--txt-output-formatting=plain` when markdown conversion fails, keeping markdown (whose
+  headings chunking relies on) as the preferred path. Timeouts are not retried.
+
 ## [0.2.1] — 2026-07-11
 
 ### Added

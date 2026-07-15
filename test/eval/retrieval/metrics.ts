@@ -38,12 +38,21 @@ export function hitAt1(r: RankedRelevance): number {
   return (r.matches[0]?.length ?? 0) > 0 ? 1 : 0;
 }
 
-/** Fraction of labeled items found anywhere in the top k (distinct labels, no double count). */
+/**
+ * Fraction of labeled items found anywhere in the top k (distinct labels, no double count),
+ * against the most that k slots COULD hold: the denominator is `min(relevantCount, k)`.
+ *
+ * The cap is what makes this metric survive a real library. The fixture corpus has ~1 relevant
+ * book per query, so capped and uncapped recall agree there. The live library has 64 Rust books
+ * that all genuinely answer "two references that must never alias" — uncapped, a perfect top-5
+ * (five Rust books) would score 5/64 = 0.08 and read as a failure. Capped, it scores 5/5 = 1.0,
+ * which is what "we filled every slot with a relevant book" should mean.
+ */
 export function recallAtK(r: RankedRelevance, k: number): number {
   if (r.relevantCount <= 0) return 0;
   const found = new Set<string>();
   for (const keys of r.matches.slice(0, k)) for (const key of keys) found.add(key);
-  return Math.min(1, found.size / r.relevantCount);
+  return Math.min(1, found.size / Math.min(r.relevantCount, k));
 }
 
 /** 1/rank of the first relevant result; 0 when nothing relevant was retrieved. */
