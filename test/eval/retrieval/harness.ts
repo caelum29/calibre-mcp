@@ -33,6 +33,9 @@ export type QueryKind =
   | "exact-identifier"
   | "cross-lingual"
   | "ru-monolingual"
+  // Definitional query whose terms are keyword-dense in the fixture's TOC/praise/foreword —
+  // relevant spans are body definitions only, so front-matter hits sink the rank metrics.
+  | "front-matter-trap"
   | "negative";
 
 /** A labeled relevant passage for a scope=book query (char offsets into the fixture text). */

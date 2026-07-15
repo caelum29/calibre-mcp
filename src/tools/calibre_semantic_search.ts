@@ -86,6 +86,7 @@ export const semanticSearchTool = defineTool({
           charEnd: z.number(),
           cosine: z.number().optional(),
           rerankScore: z.number().optional(),
+          frontMatter: z.boolean().optional(),
           body: z.string(),
         }),
       )
@@ -220,8 +221,19 @@ async function libraryScope(args: Args, deps: ToolDeps, libraryId: string, degra
 async function bookScope(args: Args, deps: ToolDeps, libraryId: string, bookId: number, degradeNote?: string) {
   const pool = await rankPassages(args, deps, libraryId, bookId);
   const rr = await applyRerank(pool, (r) => r.hit.body, args, deps);
-  const ranked = rr.hits;
-  const note = joinNotes(degradeNote, rr.note);
+  // Front-matter demotion (issue #18): TOC/praise/foreword chunks are keyword-dense but
+  // semantically empty, so they win exactly the definitional queries where body content is
+  // wanted. Stable-partition AFTER the rerank — body passages first, front matter after,
+  // internal order preserved; nothing is dropped ("what does the foreword say" still works).
+  const demoted = rr.hits.filter((r) => r.hit.frontMatter).length;
+  const ranked = demoted > 0 ? [...rr.hits.filter((r) => !r.hit.frontMatter), ...rr.hits.filter((r) => r.hit.frontMatter)] : rr.hits;
+  const note = joinNotes(
+    degradeNote,
+    rr.note,
+    demoted > 0
+      ? `${demoted} front-matter passage(s) (TOC/praise/foreword) demoted below body matches.`
+      : undefined,
+  );
   if (ranked.length === 0) {
     return toolOk(
       [{ type: "text", text: withNote(`No passages in book ${bookId} matched "${args.query}".`, note) }],
@@ -246,13 +258,15 @@ async function bookScope(args: Args, deps: ToolDeps, libraryId: string, bookId: 
   const blocks: ContentBlock[] = [{ type: "text", text: head }];
   const passages: Record<string, unknown>[] = [];
   for (const r of ranked) {
-    const fenced = fence(`PASSAGE @${r.hit.charStart}-${r.hit.charEnd} ${scoreLabel(r)}`, r.hit.body);
+    const fm = r.hit.frontMatter ? " [front matter]" : "";
+    const fenced = fence(`PASSAGE @${r.hit.charStart}-${r.hit.charEnd}${fm} ${scoreLabel(r)}`, r.hit.body);
     blocks.push({ type: "text", text: fenced });
     passages.push({
       charStart: r.hit.charStart,
       charEnd: r.hit.charEnd,
       ...(r.cosine !== undefined ? { cosine: r.cosine } : {}),
       ...(r.rerankScore !== undefined ? { rerankScore: r.rerankScore } : {}),
+      ...(r.hit.frontMatter ? { frontMatter: true } : {}),
       body: fenced,
     });
   }

@@ -408,3 +408,57 @@ describe("calibre_semantic_search rerank stage", () => {
     expect((r.content[0] as { text: string }).text).toContain("CALIBRE_MCP_RERANK");
   });
 });
+
+describe("calibre_semantic_search front-matter demotion (issue #18)", () => {
+  /** Book 1: a front-matter chunk that WINS the cosine race + a body chunk that trails. */
+  function frontMatterStore(): SqliteIndexStore {
+    const s = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
+    s.replaceBook(LIB, { bookId: 1, title: "Book One", authors: ["A"] }, [
+      { charStart: 0, charEnd: 40, body: "praise page mentioning ownership", frontMatter: true, vector: axis(0) },
+      { charStart: 100, charEnd: 160, body: "the real body definition of ownership", vector: fading(1, 4) },
+    ]);
+    return s;
+  }
+
+  it("demotes front-matter passages below body matches (stable partition)", async () => {
+    const r = await semanticSearchTool.handler(
+      args({ scope: "book", bookId: 1, mode: "vector" }),
+      deps(frontMatterStore()),
+    );
+    expect(r.isError).toBeUndefined();
+    const passages = (r.structuredContent as { passages: Array<{ body: string; frontMatter?: boolean }> }).passages;
+    expect(passages[0]!.body).toContain("real body definition"); // body first despite lower cosine
+    expect(passages[1]!.frontMatter).toBe(true);
+  });
+
+  it("labels demoted passages and notes the demotion in the header", async () => {
+    const r = await semanticSearchTool.handler(
+      args({ scope: "book", bookId: 1, mode: "vector" }),
+      deps(frontMatterStore()),
+    );
+    const texts = r.content.filter((b): b is { type: "text"; text: string } => b.type === "text").map((b) => b.text);
+    expect(texts[0]).toContain("front-matter passage(s) (TOC/praise/foreword) demoted");
+    expect(texts.find((t) => t.includes("praise page"))).toContain("[front matter]");
+    expect(texts.find((t) => t.includes("real body"))).not.toContain("[front matter]");
+  });
+
+  it("applies the demotion in keyword mode too", async () => {
+    const r = await semanticSearchTool.handler(
+      args({ query: "ownership", scope: "book", bookId: 1, mode: "keyword" }),
+      deps(frontMatterStore(), throwingEmbedder),
+    );
+    expect(r.isError).toBeUndefined();
+    const passages = (r.structuredContent as { passages: Array<{ frontMatter?: boolean }> }).passages;
+    expect(passages[passages.length - 1]!.frontMatter).toBe(true);
+  });
+
+  it("claims no demotion when nothing is front matter", async () => {
+    const r = await semanticSearchTool.handler(
+      args({ scope: "book", bookId: 1, mode: "vector" }),
+      deps(preloaded()),
+    );
+    const texts = r.content.filter((b): b is { type: "text"; text: string } => b.type === "text").map((b) => b.text);
+    expect(texts[0]).not.toContain("demoted");
+    expect(texts.join("\n")).not.toContain("[front matter]");
+  });
+});

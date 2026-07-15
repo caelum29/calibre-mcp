@@ -1,0 +1,148 @@
+Praise for Strategic Software Design
+
+"A superb tour of strategic design. The chapters on the bounded context and the
+ubiquitous language finally make these ideas practical for working teams. Every
+architect who has struggled to keep a large model coherent should read this."
+— A Distinguished Reviewer
+
+"I have recommended dozens of books on domain modeling, and none explains the
+bounded context, the context map, or the aggregate with such clarity. The
+ubiquitous language chapter alone is worth the price of the whole volume."
+— Another Enthusiastic Endorser
+
+"Strategic design, tactical design, bounded contexts, aggregates, ubiquitous
+language — all the pillars are here, explained with patience and real examples.
+The rare book that makes strategic design feel obvious in hindsight."
+— A Third Admirer
+
+Contents
+
+Chapter 1: The Ubiquitous Language ........................ 11
+Chapter 2: Bounded Contexts ............................... 37
+Chapter 3: Context Maps and Team Relationships ............ 63
+Chapter 4: Aggregates and Consistency Boundaries .......... 89
+
+Foreword
+
+When the author first told me about a book devoted to strategic design, I
+wondered whether the world needed another treatment of the bounded context and
+the ubiquitous language. Having read the manuscript, I no longer wonder. The
+pages that follow turn abstract vocabulary — bounded contexts, context maps,
+aggregates — into decisions a team can actually make on a Tuesday morning.
+Enjoy the journey.
+
+Chapter 1: The Ubiquitous Language
+
+Software projects fail at the seams of communication long before they fail in
+code. Domain experts speak in the vocabulary of their business; developers
+answer in the vocabulary of classes, tables, and endpoints. Every translation
+between the two dialects loses information, and the losses compound silently
+until the model in the software no longer resembles the business it serves.
+
+The ubiquitous language is the discipline that closes this gap. It is a shared,
+rigorous language built up between domain experts and developers, spoken in
+conversation, written in documents, and — crucially — embedded in the code
+itself. Class names, method names, and module boundaries all use the same terms
+the experts use at the whiteboard. When the team says "policy lapses after the
+grace period," there is a Policy type with a lapse transition and a GracePeriod
+value, not a StatusManager with a flag. The language is called ubiquitous
+because it is used everywhere and by everyone: one term per concept, one
+concept per term, with no private translation layer maintained in anyone's
+head.
+
+A living language must be cultivated. When a conversation exposes an awkward
+phrase, the team changes the phrase — and then changes the code to match,
+because the code is the language's most rigorous document. Glossaries help, but
+the real test is speech: if a sentence sounds wrong to the domain expert, the
+model behind it is wrong, however elegant the implementation. Refactoring
+toward deeper insight usually begins as an argument about a word.
+
+The language also sets the boundary of its own usefulness. Terms mean what they
+mean within one model; stretch them across the whole enterprise and they
+dissolve into ambiguity again. That observation leads directly to the next
+chapter.
+
+Chapter 2: Bounded Contexts
+
+Large systems never have one model, whatever the architecture diagrams claim.
+"Customer" means a credit risk to the billing team, a shipping address to the
+fulfilment team, and a lead to the sales team. Pretending these are one concept
+produces the classic enterprise blob: a Customer class with ninety fields,
+touched by everyone and trusted by no one.
+
+A bounded context is the explicit boundary within which a particular domain
+model applies. Inside the boundary, every term of the ubiquitous language has
+exactly one meaning, the model stays consistent, and the team can reason about
+changes locally. Outside it, other contexts are free to model the same business
+concepts differently for their own purposes. The boundary is defined by team
+organization, by usage within specific parts of the application, and by
+physical manifestations such as code bases, schemas, and deployment units.
+Sales and Billing may both have a Customer, but they are different classes in
+different modules with different invariants, and no one pretends otherwise.
+
+Keeping a model unified inside its boundary takes active work: continuous
+integration of code and of language, tests that pin down the meanings of terms,
+and the discipline not to import a neighbouring context's classes just because
+they look similar. The most common failure is silent: a concept from one
+context leaks into another, carrying subtly different rules, and the two models
+corrupt each other until neither is trustworthy.
+
+The payoff of the boundary is autonomy. Within a bounded context a team owns
+its language, its model, and its release cadence. What happens between
+contexts is a different problem — a problem of maps rather than models.
+
+Chapter 3: Context Maps and Team Relationships
+
+Once a system is honestly divided into bounded contexts, the relationships
+between them become first-class design material. A context map is the document
+— often literally a drawing — that names each bounded context in play and
+records how they relate: which context translates for which, which team is
+upstream of which, and where the seams actually run in code and in
+organization.
+
+The catalogue of relationship patterns is small and blunt. In a partnership,
+two teams succeed or fail together and coordinate their releases. In a
+customer–supplier relationship, the upstream team plans with the downstream
+team's needs on its backlog. When the downstream team simply takes what it
+gets, it is a conformist, adopting the upstream model wholesale. An
+anticorruption layer is the defensive translation the downstream team builds
+when the upstream model would otherwise pollute its own: an isolating facade
+that converts foreign concepts into native ones at the boundary. Contexts with
+no need to integrate are formally noted as separate ways — the cheapest
+relationship of all.
+
+The map's honesty matters more than its beauty. It records the relationships
+that exist, not the ones the org chart promises. A context map drawn truthfully
+is often the first document that explains why a "simple" integration has taken
+three quarters: the arrow everyone assumed was a partnership turns out to be a
+conformist relationship with an unstaffed anticorruption layer.
+
+Chapter 4: Aggregates and Consistency Boundaries
+
+Inside a bounded context, the model still needs internal boundaries. Objects
+reference objects; without discipline, every entity is reachable from every
+other, and a change anywhere can ripple everywhere. Transactions balloon,
+invariants scatter, and concurrency turns into lock soup.
+
+An aggregate is a cluster of associated objects that is treated as a single
+unit for the purpose of data changes. One entity is designated the aggregate
+root: it is the only member outsiders may hold a reference to, and every
+modification of the cluster goes through it. The root enforces the aggregate's
+invariants — the business rules that must hold true at the end of every
+transaction — so consistency has an owner and a boundary rather than being
+everyone's vague responsibility. An Order root, for example, guards the rule
+that the sum of its line items equals its total; nothing outside the aggregate
+can edit a line item behind the root's back.
+
+Two rules of thumb keep aggregates useful. Keep them small: a big aggregate
+serializes every writer who touches any part of it, and most "invariants" that
+seem to span a whole subsystem are really eventual-consistency requirements in
+disguise. Reference other aggregates by identity, not by object pointer: an
+Order holds a CustomerId, not a Customer, so loading one aggregate never drags
+half the object graph with it. Cross-aggregate rules are then enforced
+asynchronously — by domain events and follow-up transactions — which is
+usually what the business already does on paper anyway.
+
+Design the boundaries first and the classes second. A model whose aggregates
+match the business's real units of change survives load, concurrency, and
+reorganization; a model that ignores them fights all three forever.

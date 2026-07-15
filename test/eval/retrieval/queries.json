@@ -47,6 +47,10 @@
   { "id": "rub-01", "kind": "ru-monolingual", "scope": "book", "bookId": 111, "query": "запуск корабля с Гагариным и его приземление", "ru": true, "relevant": [{ "bookId": 111, "charStart": 554, "charEnd": 1248, "marker": "Восток-1" }] },
   { "id": "rub-02", "kind": "ru-monolingual", "scope": "book", "bookId": 115, "query": "на какой математической задаче основана стойкость RSA", "ru": true, "relevant": [{ "bookId": 115, "charStart": 1117, "charEnd": 1811, "marker": "факторизации" }] },
 
+  { "id": "fmt-01", "kind": "front-matter-trap", "scope": "book", "bookId": 116, "query": "what is a bounded context", "relevant": [{ "bookId": 116, "charStart": 3677, "charEnd": 4367, "marker": "explicit boundary within which a particular domain" }] },
+  { "id": "fmt-02", "kind": "front-matter-trap", "scope": "book", "bookId": 116, "query": "define the ubiquitous language of a project", "relevant": [{ "bookId": 116, "charStart": 1906, "charEnd": 2603, "marker": "used everywhere and by everyone" }] },
+  { "id": "fmt-03", "kind": "front-matter-trap", "scope": "book", "bookId": 116, "query": "what is an aggregate and what invariants does it protect", "relevant": [{ "bookId": 116, "charStart": 6869, "charEnd": 7521, "marker": "cluster of associated objects" }] },
+
   { "id": "neg-01", "kind": "negative", "scope": "library", "query": "medieval castle siege engines and trebuchet design", "relevant": [] },
   { "id": "neg-02", "kind": "negative", "scope": "library", "query": "training a golden retriever puppy not to bite", "relevant": [] },
   { "id": "neg-03", "kind": "negative", "scope": "library", "query": "how tectonic plates cause earthquakes", "relevant": [] },

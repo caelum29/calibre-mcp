@@ -23,6 +23,8 @@ export interface IndexedChunk {
   charStart: number;
   charEnd: number;
   body: string;
+  /** True when the chunk lies before the first detected chapter (TOC/praise/foreword). */
+  frontMatter?: boolean;
   /** The chunk's embedding, or undefined for a keyword-only build (FTS-searchable, no vector). */
   vector?: Float32Array;
 }
@@ -55,6 +57,8 @@ export interface BookHit {
   charEnd: number;
   body: string;
   score: number;
+  /** True for front-matter chunks (TOC/praise/foreword) — demoted below body in search. */
+  frontMatter: boolean;
 }
 
 export interface IndexStore {
@@ -107,7 +111,8 @@ CREATE TABLE IF NOT EXISTS chunks (
   char_end INTEGER NOT NULL,
   body TEXT NOT NULL,
   body_stem TEXT NOT NULL DEFAULT '',
-  book_meta TEXT NOT NULL DEFAULT ''
+  book_meta TEXT NOT NULL DEFAULT '',
+  front_matter INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_chunks_book ON chunks(book_id);
 CREATE TABLE IF NOT EXISTS embeddings (
@@ -208,7 +213,7 @@ export class SqliteIndexStore implements IndexStore {
       );
 
       const insChunk = db.prepare(
-        "INSERT INTO chunks(book_id, char_start, char_end, body, body_stem, book_meta) VALUES(?,?,?,?,?,?)",
+        "INSERT INTO chunks(book_id, char_start, char_end, body, body_stem, book_meta, front_matter) VALUES(?,?,?,?,?,?,?)",
       );
       const insEmb = db.prepare("INSERT INTO embeddings(chunk_id, book_id, vector) VALUES(?,?,?)");
       // Stemmed once per book (same transform as body_stem/queries) and repeated on every
@@ -224,6 +229,7 @@ export class SqliteIndexStore implements IndexStore {
           c.body,
           stemText(c.body),
           bookMeta,
+          c.frontMatter ? 1 : 0,
         );
         // A keyword-only build has no vector — the chunk is still FTS-searchable via the
         // trigger above; we just skip the embeddings row (vector search naturally excludes it).
@@ -277,7 +283,7 @@ export class SqliteIndexStore implements IndexStore {
     const hits = topK(query, this.#candidates(libraryId, bookId), k);
     return hits.map((h) => {
       const chunk = db
-        .prepare("SELECT char_start, char_end, body FROM chunks WHERE id = ?")
+        .prepare("SELECT char_start, char_end, body, front_matter FROM chunks WHERE id = ?")
         .get(h.chunkId) as Row;
       return {
         chunkId: h.chunkId,
@@ -285,6 +291,7 @@ export class SqliteIndexStore implements IndexStore {
         charEnd: Number(chunk?.char_end ?? 0),
         body: String(chunk?.body ?? ""),
         score: h.score,
+        frontMatter: Number(chunk?.front_matter ?? 0) === 1,
       };
     });
   }
@@ -332,7 +339,7 @@ export class SqliteIndexStore implements IndexStore {
     if (!match) return [];
     const rows = db
       .prepare(
-        `SELECT c.id AS chunk_id, c.char_start, c.char_end, c.body, ${WEIGHTED_BM25} AS score
+        `SELECT c.id AS chunk_id, c.char_start, c.char_end, c.body, c.front_matter, ${WEIGHTED_BM25} AS score
          FROM chunk_fts JOIN chunks c ON c.id = chunk_fts.rowid
          WHERE chunk_fts MATCH ? AND c.book_id = ? ORDER BY score LIMIT ?`,
       )
@@ -343,6 +350,7 @@ export class SqliteIndexStore implements IndexStore {
       charEnd: Number(r.char_end),
       body: String(r.body ?? ""),
       score: Number(r.score),
+      frontMatter: Number(r.front_matter ?? 0) === 1,
     }));
   }
 
@@ -408,9 +416,23 @@ export class SqliteIndexStore implements IndexStore {
     if (file !== ":memory:") mkdirSync(this.cfg.indexDir, { recursive: true });
     db = new DatabaseSync(file);
     db.exec(SCHEMA);
+    this.#migrate(db);
     this.#ensureMeta(db);
     this.#dbs.set(libraryId, db);
     return db;
+  }
+
+  /**
+   * Additive, idempotent migrations for dbs created before a column existed. Deliberately NOT
+   * an INDEX_VERSION bump: DEFAULT 0 = pre-flag behavior, so a full-library rebuild isn't
+   * forced — books pick the flag up when re-indexed.
+   */
+  #migrate(db: DatabaseSync): void {
+    const cols = db.prepare("PRAGMA table_info(chunks)").all() as Row[];
+    if (!cols.some((c) => c.name === "front_matter")) {
+      db.exec("ALTER TABLE chunks ADD COLUMN front_matter INTEGER NOT NULL DEFAULT 0");
+      this.log.info("index migrated: chunks.front_matter added");
+    }
   }
 
   /** Write index metadata on a fresh db; refuse to use one built by a different model/version. */

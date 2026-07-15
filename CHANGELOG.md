@@ -6,6 +6,23 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- **Front-matter demotion in `calibre_semantic_search scope=book`** ([#18]). TOC, praise-page,
+  and foreword text is keyword-dense but semantically empty, so it used to win exactly the
+  definitional queries ("what is a bounded context") where body content is wanted. Chunks that
+  lie mostly before the first detected chapter are now flagged `front_matter` at index time
+  (additive schema migration — existing indexes keep working, books pick the flag up on
+  re-index) and are stable-partitioned below body matches after the rerank stage, labeled
+  `[front matter]`, with a note in the header. Nothing is filtered out — foreword/TOC queries
+  still work. Validated by the new `front-matter-trap` retrieval-eval kind (D-016).
+- **`calibre_search scope=book` now steers definitional queries to the semantic path**: the
+  tool description warns that calibredb FTS snippets often land in front matter, and when the
+  target book has a semantic index the result includes an in-band tip pointing at
+  `calibre_semantic_search scope=book`.
+
+[#18]: https://github.com/caelum29/calibre-mcp/issues/18
+
 ### Fixed
 
 - **Large books are no longer silently skipped by the indexer.** The book-download cap was a

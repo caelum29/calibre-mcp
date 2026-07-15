@@ -135,3 +135,23 @@ describe("calibre_search handler — scope=book", () => {
     expect(r.structuredContent).toMatchObject({ scope: "book", bookId: 1, total: 1 });
   });
 });
+
+describe("calibre_search scope=book — semantic-search tip (issue #18)", () => {
+  const hit = [{ bookId: 1, snippet: "…ownership…" }];
+  const fakeIndex = (indexed: boolean) =>
+    ({ hasIndex: () => true, isBookIndexed: () => indexed }) as unknown as ToolDeps["index"];
+
+  it("appends the calibre_semantic_search tip when the book is indexed", async () => {
+    const d = { ...deps({ ftsHits: hit }), index: fakeIndex(true) };
+    const r = await searchTool.handler({ query: "x", mode: "fts", scope: "book", bookId: 1, limit: 20 }, d);
+    const head = r.content[0] as { type: "text"; text: string };
+    expect(head.text).toContain("calibre_semantic_search");
+  });
+
+  it("omits the tip when the book is not indexed", async () => {
+    const d = { ...deps({ ftsHits: hit }), index: fakeIndex(false) };
+    const r = await searchTool.handler({ query: "x", mode: "fts", scope: "book", bookId: 1, limit: 20 }, d);
+    const head = r.content[0] as { type: "text"; text: string };
+    expect(head.text).not.toContain("calibre_semantic_search");
+  });
+});

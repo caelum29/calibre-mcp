@@ -168,10 +168,17 @@ async function ftsBookScope(args: SearchArgs, deps: ToolDeps, bookId: number): P
   const offset = cur && cur.query === cursorKey ? cur.offset : 0;
   const pageSnips = snippets.slice(offset, offset + args.limit);
 
+  // calibredb FTS has no offsets or ranking control, so front-matter hits (TOC/praise) can
+  // top the list. When a better path exists for this book, say so (issue #18).
+  const tip =
+    deps.index?.hasIndex(libId) && deps.index.isBookIndexed(libId, bookId)
+      ? ` Tip: for definitional/topic queries, calibre_semantic_search { scope: "book", bookId: ${bookId} } returns ranked passages with char offsets and demotes front matter.`
+      : "";
+
   const blocks: ContentBlock[] = [
     {
       type: "text",
-      text: `${snippets.length} in-book matches for "${args.query}" in book ${bookId}, showing ${offset + 1}–${offset + pageSnips.length}.`,
+      text: `${snippets.length} in-book matches for "${args.query}" in book ${bookId}, showing ${offset + 1}–${offset + pageSnips.length}.${tip}`,
     },
     ...pageSnips.map((s): ContentBlock => ({ type: "text", text: fence("FTS SNIPPET", s) })),
   ];
@@ -193,7 +200,7 @@ export const searchTool = defineTool({
   name: "calibre_search",
   title: "Search books",
   description:
-    "Find books by exact title, author, ISBN, tag, or Calibre query syntax (mode=meta), or by full text (mode=fts). scope=book searches inside one book. Use calibre_semantic_search for meaning/topic queries.",
+    "Find books by exact title, author, ISBN, tag, or Calibre query syntax (mode=meta), or by full text (mode=fts). scope=book returns short keyword snippets from inside one book; first hits often land in TOC/front matter — for definitional or topic questions within a book prefer calibre_semantic_search scope=book (ranked passages with char offsets). Use calibre_semantic_search for meaning/topic queries.",
   inputSchema: {
     query: z.string().min(1).max(512),
     mode: z.enum(["meta", "fts"]).optional().default("meta"),

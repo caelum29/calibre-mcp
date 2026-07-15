@@ -55,7 +55,7 @@ Conventions: all namespaced `calibre_*`. Inputs Zod-coerced (`z.coerce.number`,
 
 | # | Tool | R/W | Access path | Input (sketch) | Output |
 |---|---|---|---|---|---|
-| 1 | `calibre_search` | R | `/ajax/search` → `/cdb list\|search\|fts_search` (book scope → `fts_search --restrict-to ids:{bookId}`) | `query`, `mode?: enum(meta\|fts)`, `scope?: enum(library\|book)=library`, `bookId?` (req. when `scope=book`), `library?`, `sort?`, `cursor?`, `limit?` | library: `resource_link[]` + `nextCursor`; book: in-book snippet hits |
+| 1 | `calibre_search` | R | `/ajax/search` → `/cdb list\|search\|fts_search` (book scope → `fts_search --restrict-to ids:{bookId}`) | `query`, `mode?: enum(meta\|fts)`, `scope?: enum(library\|book)=library`, `bookId?` (req. when `scope=book`), `library?`, `sort?`, `cursor?`, `limit?` | library: `resource_link[]` + `nextCursor`; book: in-book snippet hits (short, unranked — for definitional/topic queries the description + an in-band tip steer to `calibre_semantic_search scope=book`) |
 | 2 | `calibre_get_book` | R | `/ajax/book/{id}` | `id` (union num\|uuid), `library?` | full metadata + formats + cover link |
 | 3 | `calibre_get_content` | R | EPUB `--explode-book`/`ebook-convert`; PDF PyMuPDF→Calibre fallback | `id`, `range?`/`chapter?`, `maxChars?`, `sentenceAware?`, `cursor?` | capped text excerpt (instructional-fenced) + `nextCursor` to walk the **whole book** chunk-by-chunk (full text also available as a `calibre://book/{id}` resource) |
 | 4 | `calibre_list_categories` | R | `/ajax/categories` + `/cdb custom_columns` | `field?`, `valueFilter?` (regex), `library?` | values+counts / schema / stats |
@@ -65,7 +65,7 @@ Conventions: all namespaced `calibre_*`. Inputs Zod-coerced (`z.coerce.number`,
 
 | # | Tool | R/W | Access path | Input | Output |
 |---|---|---|---|---|---|
-| 6 | `calibre_semantic_search` | R | local SQLite BLOB index + cosine (book scope → filter chunks by `book_id`) | `query`, `scope?: enum(library\|book)=library`, `bookId?` (req. when `scope=book`), `topK?`, `library?` | library: ranked book `resource_link[]` (+ score); book: ranked in-book passage hits (+ score + location) |
+| 6 | `calibre_semantic_search` | R | local SQLite BLOB index + cosine (book scope → filter chunks by `book_id`) | `query`, `scope?: enum(library\|book)=library`, `bookId?` (req. when `scope=book`), `topK?`, `library?` | library: ranked book `resource_link[]` (+ score); book: ranked in-book passage hits (+ score + location); front-matter chunks (TOC/praise/foreword, flagged at index time) are stable-partitioned below body matches (D-016) |
 | 7 | `calibre_build_index` | W (index file) | transformers.js → SQLite; `/cdb fts_index` | `library?`, `force?`, `enableFts?` | progress + counts |
 
 ### Curation / quality — ported algorithms, clean-room (2)

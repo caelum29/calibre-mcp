@@ -246,3 +246,45 @@ describe("calibre_build_index handler", () => {
     expect(store.hasVectors("Programming_Books")).toBe(false);
   });
 });
+
+describe("front-matter flagging at build time (issue #18)", () => {
+  it("flags majority-front-matter chunks, including one straddling the chapter boundary", async () => {
+    // ~1.4k chars of praise/TOC, then two real chapters — boundary sits mid-first-chunk.
+    const front =
+      "Praise for This Book\n\n" +
+      "A wonderful volume about widgets. ".repeat(30) +
+      "\nContents\n\nChapter 1: Widgets ..... 9\nChapter 2: Gadgets ..... 40\n\n";
+    const body =
+      "Chapter 1: Widgets\n\n" +
+      "The widget is the unit of composition. ".repeat(60) +
+      "\nChapter 2: Gadgets\n\n" +
+      "A gadget wraps a widget with behavior. ".repeat(60);
+    const store = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
+    const d = deps({
+      store,
+      getText: async () => ({ text: front + body, backend: "pdftotext", chars: front.length + body.length, cached: false }),
+    });
+    const r = await buildIndexTool.handler(args({ bookId: 1 }), d);
+    expect(r.isError).toBeUndefined();
+
+    const hits = store.searchBookFts("Programming_Books", 1, "praise widget gadget", 20);
+    const flagged = hits.filter((h) => h.frontMatter);
+    const bodyHits = hits.filter((h) => !h.frontMatter);
+    // The praise/TOC region is flagged even though its chunk crosses into chapter 1…
+    expect(flagged.length).toBeGreaterThanOrEqual(1);
+    expect(Math.min(...flagged.map((h) => h.charStart))).toBe(0);
+    // …and the real chapters are not.
+    expect(bodyHits.length).toBeGreaterThanOrEqual(1);
+    expect(Math.max(...bodyHits.map((h) => h.charEnd))).toBeGreaterThan(front.length);
+  });
+
+  it("flags nothing when the text has no detectable front matter", async () => {
+    const store = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
+    const d = deps({ store });
+    const r = await buildIndexTool.handler(args({ bookId: 1 }), d);
+    expect(r.isError).toBeUndefined();
+    const hits = store.searchBookFts("Programming_Books", 1, "ownership", 20);
+    expect(hits.length).toBeGreaterThan(0);
+    expect(hits.every((h) => !h.frontMatter)).toBe(true);
+  });
+});

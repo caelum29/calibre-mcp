@@ -151,8 +151,10 @@ CREATE TABLE chunks (
   location TEXT NOT NULL,        -- PDF page / EPUB spine pointer
   body TEXT NOT NULL,            -- raw chunk (snippets, exact match)
   body_stem TEXT NOT NULL,       -- pre-stemmed EN+RU, for recall
-  book_meta TEXT NOT NULL        -- stemmed title+authors (same name in FTS: external
-);                               -- content resolves columns BY NAME)
+  book_meta TEXT NOT NULL,       -- stemmed title+authors (same name in FTS: external
+                                 -- content resolves columns BY NAME)
+  front_matter INTEGER NOT NULL DEFAULT 0  -- majority of chunk before the first chapter
+);                               -- (frontMatterEnd at index time, D-016; additive migration)
 CREATE INDEX idx_chunks_book ON chunks(book_id);
 
 CREATE VIRTUAL TABLE chunk_fts USING fts5(
@@ -179,9 +181,12 @@ query
  ├─ VECTOR: JS dot scan (or sqlite-vec) → top-50   [scope=book → subarray slice]
  ├─ FTS:    MATCH stemmed_query (body_stem|body|book_meta, bm25 1/1/.5) → top-50 [scope=book → AND book_id=?]
  ├─ RRF fuse (k=60, 1-based ranks, no normalization; weighted seam, both 1.0) → top-N
- └─ cross-encoder rerank of the fused top-30 → emit topK (always-on when the optional
-    model is present, D-011; fused-order tail past the cap; degrades to fused order
-    when the model is absent/failing or CALIBRE_MCP_RERANK=off)
+ ├─ cross-encoder rerank of the fused top-30 → emit topK (always-on when the optional
+ │  model is present, D-011; fused-order tail past the cap; degrades to fused order
+ │  when the model is absent/failing or CALIBRE_MCP_RERANK=off)
+ └─ scope=book only: stable-partition front-matter chunks below body matches (D-016,
+    issue #18 — TOC/praise/foreword are keyword-dense but semantically empty; nothing
+    is dropped, demoted hits carry a "[front matter]" label + a note)
  → {chunk_id, book_id, location, snippet}
 ```
 

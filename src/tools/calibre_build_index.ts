@@ -7,6 +7,7 @@
 
 import { z } from "zod";
 import { chooseExtractFormat } from "../calibre/extract.js";
+import { frontMatterEnd } from "../domain/structure/chapters.js";
 import { BookId, CoercedBool, jsonArray } from "./coerce.js";
 import { defineTool } from "./define.js";
 import { resolveNumericId } from "./resolve-id.js";
@@ -224,16 +225,30 @@ async function indexBook(
   }
   if (chunks.length === 0) throw new Error("produced no chunks");
 
+  // Chunks that are MOSTLY before the first detected chapter are front matter (TOC/praise/
+  // foreword) — search demotes them below body matches (issue #18). Majority overlap, not
+  // full containment: chunks run ~2k chars, so the whole front matter usually lands inside
+  // one boundary-straddling chunk that a containment rule would never flag.
+  const fmEnd = frontMatterEnd(extracted.text);
+  const isFrontMatter = (c: EmbedChunk): boolean =>
+    fmEnd > 0 && Math.min(c.charEnd, fmEnd) - c.charStart >= 0.5 * (c.charEnd - c.charStart);
+
   let indexed: IndexedChunk[];
   if (keywordOnly) {
     // No embeddings — chunks are stored raw + pre-stemmed (in the store) for FTS keyword search.
-    indexed = chunks.map((c) => ({ charStart: c.charStart, charEnd: c.charEnd, body: c.body }));
+    indexed = chunks.map((c) => ({
+      charStart: c.charStart,
+      charEnd: c.charEnd,
+      body: c.body,
+      frontMatter: isFrontMatter(c),
+    }));
   } else {
     const vectors = await deps.embedder.embedPassages(chunks.map((c) => ctx + c.body));
     indexed = chunks.map((c, i) => ({
       charStart: c.charStart,
       charEnd: c.charEnd,
       body: c.body,
+      frontMatter: isFrontMatter(c),
       vector: vectors[i]!,
     }));
   }

@@ -16,6 +16,7 @@
     { "bookId": 112, "file": "112-ru-borscht.txt", "title": "Настоящий борщ: пошаговый рецепт", "authors": ["Eval Fixture"], "language": "ru" },
     { "bookId": 113, "file": "113-ru-chess.txt", "title": "Шахматные дебюты: открытые начала и гамбиты", "authors": ["Eval Fixture"], "language": "ru" },
     { "bookId": 114, "file": "114-ru-morphology.txt", "title": "Морфология русского языка: падежи, склонение, вид глагола", "authors": ["Eval Fixture"], "language": "ru" },
-    { "bookId": 115, "file": "115-ru-cryptography.txt", "title": "Криптография: симметричные шифры, открытый ключ, подпись", "authors": ["Eval Fixture"], "language": "ru" }
+    { "bookId": 115, "file": "115-ru-cryptography.txt", "title": "Криптография: симметричные шифры, открытый ключ, подпись", "authors": ["Eval Fixture"], "language": "ru" },
+    { "bookId": 116, "file": "116-ddd-front-matter.txt", "title": "Strategic Software Design: Bounded Contexts and the Ubiquitous Language", "authors": ["Eval Fixture"], "language": "en" }
   ]
 }

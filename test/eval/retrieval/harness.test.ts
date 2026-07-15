@@ -43,11 +43,11 @@ describe("retrieval eval harness (model-free smoke)", () => {
 
   it("runs the full golden set end-to-end and produces a complete report", async () => {
     const report = await runRetrievalEval({ ...base, modes: ["keyword"] });
-    expect(report.meta.queryCount).toBe(50);
-    expect(report.meta.corpus.books).toBe(15);
-    expect(report.overall.keyword?.n).toBe(44); // 50 minus 6 negatives
+    expect(report.meta.queryCount).toBe(53);
+    expect(report.meta.corpus.books).toBe(16);
+    expect(report.overall.keyword?.n).toBe(47); // 53 minus 6 negatives
     expect(report.negatives.keyword?.n).toBe(6);
-    expect(report.perQuery).toHaveLength(50);
+    expect(report.perQuery).toHaveLength(53);
   }, 30_000);
 
   it("keyword mode nails exact-identifier queries on the fixture index", async () => {

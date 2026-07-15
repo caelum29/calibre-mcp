@@ -303,3 +303,22 @@ export function detectChapters(text: string): StructureResult {
 
   return { chapters: [], hasToc, detector: "none" };
 }
+
+// A "first chapter" deeper than this is more likely a detector miss than real front matter;
+// claiming 20%+ of a book as front matter would demote genuine body content in search.
+const FRONT_MATTER_MAX_FRACTION = 0.2;
+const FRONT_MATTER_MAX_CHARS = 60_000;
+
+/**
+ * Char offset where the book's body starts: everything before the first detected chapter
+ * (TOC, praise pages, foreword) is front matter. Returns 0 — "no front matter claimed" —
+ * when no chapters are detected or the boundary is implausibly deep (see the guard above).
+ * Powers the front-matter demotion in semantic search (issue #18).
+ */
+export function frontMatterEnd(text: string): number {
+  const { chapters } = detectChapters(text);
+  if (chapters.length === 0) return 0;
+  const boundary = chapters[0]!.startChar;
+  const cap = Math.min(FRONT_MATTER_MAX_FRACTION * text.length, FRONT_MATTER_MAX_CHARS);
+  return boundary > cap ? 0 : boundary;
+}

@@ -538,3 +538,29 @@
   performed during task 01 and is recorded now: byte-identical re-slice at offset 596271, book 679
   (a v3 book-scope hit's `charStart` re-sliced through `calibre_get_content` returned the exact
   passage bytes). The chunk-offset invariant is also unit-tested.
+
+## Front-matter demotion — issue #18 (2026-07-15, D-016)
+
+Issue #18 (filed from a real agent session): definitional queries against DDD books returned
+only TOC/praise/foreword snippets — 0 body passages across 3 canonical books. (The trace used
+the old FaceDeer server's `search_book_content`, but the same failure modes exist here:
+`calibre_search scope=book` is raw calibredb FTS with no offsets/ranking, and the semantic
+pipeline had no front-matter awareness.)
+
+- **Eval first (D-012):** new fixture `116-ddd-front-matter.txt` (praise page + dot-leader TOC
+  + foreword, all keyword-dense on the target terms, then real chapter bodies) + 3
+  `front-matter-trap` golden queries. Baseline (`2026-07-15-9725d1e-issue18-baseline`):
+  hybrid/vector already ace the traps (the cross-encoder rescues rank 1; front matter sits at
+  rank 2), but **keyword mode reproduces the issue** — fmt-02 Hit@1=0, trap nDCG@10 0.71.
+- **Fix:** `frontMatterEnd()` (chapters.ts) = first detected chapter's startChar, guarded at
+  min(20%, 60k chars); `calibre_build_index` flags chunks whose MAJORITY lies before the
+  boundary (containment would never fire: chunks run ~2k chars, the whole front matter lands in
+  one boundary-straddling chunk — observed @0-1906 vs boundary 1485); `chunks.front_matter`
+  column added by guarded ALTER TABLE (INDEX_VERSION stays 3 — no forced rebuild of the
+  795-book index); `calibre_semantic_search scope=book` stable-partitions front matter below
+  body after the rerank, labels `[front matter]`, notes the demotion. Demote-don't-filter:
+  "what does the foreword say" still works.
+- **calibre_search scope=book:** no auto-routing (output-shape contract); description guidance
+  + an in-band tip to `calibre_semantic_search scope=book` when the book is indexed.
+- 12 new unit tests (boundary helper, store roundtrip + additive-migration, demotion partition
+  /label/note incl. keyword mode, build-time flagging incl. the straddling chunk, tip-iff-indexed).

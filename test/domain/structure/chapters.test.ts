@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { chapterNumber, detectChapters } from "../../../src/domain/structure/chapters.js";
+import { chapterNumber, detectChapters, frontMatterEnd } from "../../../src/domain/structure/chapters.js";
 
 describe("chapterNumber", () => {
   it("accepts explicit Latin chapter headings", () => {
@@ -131,5 +131,29 @@ describe("detectChapters — ToC + none", () => {
     const r = detectChapters("Just some prose with no headings at all. Nothing to see.");
     expect(r.detector).toBe("none");
     expect(r.chapters).toEqual([]);
+  });
+});
+
+describe("frontMatterEnd", () => {
+  it("returns the first chapter's start when front matter precedes it", () => {
+    const front = "Praise for This Book\n\nGreat stuff.\n\nContents\n\nChapter 1: Alpha ..... 9\n";
+    const body = "Chapter 1: Alpha\n\n" + "Real body prose about alpha. ".repeat(20) + "\nChapter 2: Beta\n\n" + "More body prose about beta. ".repeat(20);
+    const text = front + body;
+    expect(frontMatterEnd(text)).toBe(text.indexOf("Chapter 1: Alpha\n\nReal body"));
+  });
+
+  it("returns 0 when no chapters are detected", () => {
+    expect(frontMatterEnd("Just prose with no headings at all. Nothing to see here.")).toBe(0);
+  });
+
+  it("returns 0 for a body that starts at the first chapter (no front matter)", () => {
+    const text = "Chapter 1: Alpha\n\n" + "body ".repeat(50) + "\nChapter 2: Beta\n\n" + "body ".repeat(50);
+    expect(frontMatterEnd(text)).toBe(0);
+  });
+
+  it("returns 0 when the boundary is implausibly deep (>20% of the text)", () => {
+    // "Front matter" is 70% of the text — a detector miss, not a real boundary.
+    const text = "prose ".repeat(500) + "\nChapter 1: Alpha\n\n" + "body ".repeat(200);
+    expect(frontMatterEnd(text)).toBe(0);
   });
 });
