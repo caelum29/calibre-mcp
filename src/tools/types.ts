@@ -11,6 +11,7 @@ import type { Embedder } from "../semantic/embedder.js";
 import type { Reranker } from "../semantic/reranker.js";
 import type { IndexStore } from "../semantic/store.js";
 import type { Provider } from "../enrich/provider.js";
+import type { BoardCache } from "../ui/board-cache.js";
 import type { log } from "../logging.js";
 
 export interface TextBlock {
@@ -27,12 +28,24 @@ export interface ResourceLinkBlock {
   mimeType?: string;
 }
 
-export type ContentBlock = TextBlock | ResourceLinkBlock;
+/** Structural match of the SDK ImageContent (base64 payload, no data: prefix). */
+export interface ImageBlock {
+  type: "image";
+  data: string;
+  mimeType: string;
+}
+
+export type ContentBlock = TextBlock | ResourceLinkBlock | ImageBlock;
 
 /** Structural match of the SDK CallToolResult — handlers return this, server.ts forwards it. */
 export interface ToolResult {
   content: ContentBlock[]; // always non-empty (DESIGN §2)
   structuredContent?: Record<string, unknown>; // carries app-level nextCursor
+  /**
+   * Result-level metadata. Spec-compliant MCP Apps hosts forward it to the widget in the
+   * tool-result notification (`calibreBoard` payload, issue #22); every other client ignores it.
+   */
+  _meta?: Record<string, unknown>;
   isError?: boolean;
 }
 
@@ -59,6 +72,11 @@ export interface ToolDeps {
    */
   reranker?: Reranker;
   index: IndexStore; // SQLite BLOB vector index (node:sqlite, lazy)
+  /**
+   * Cover-board payload cache behind the MCP Apps widgets (issue #22). Absent in tests
+   * that don't exercise the UI path — search handlers and calibre_board_data must guard.
+   */
+  boardCache?: BoardCache;
   /** External metadata providers for recovery. Defaulted in-handler; injectable for tests. */
   providers?: Record<Provider["name"], Provider>;
   log: typeof log;

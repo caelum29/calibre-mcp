@@ -67,9 +67,13 @@ Non-UI hosts ignore `_meta.ui` and use the structured text + `resource_link[]`.
 
 ## 5. Decisions
 
-- **OPEN — cover board: v1 scope or LATER upgrade?** Recommendation: it's a **v1.x upgrade poured on
-  top of finished tools** (doesn't block scaffolding), but given the now-confirmed Claude support it's
-  the **strongest early-arrival candidate** (low risk, high wow). Awaiting Artem's call.
+- **RESOLVED (2026-07-18, D-017) — cover board SHIPPED in v0.4.0.** Cover board on
+  `calibre_search` + `calibre_semantic_search` (always-attach per issue #24) and a book card on
+  `calibre_get_book`, built on `@modelcontextprotocol/ext-apps` with hand-written vanilla widgets
+  from the approved mockup (`assets/cover-carousel.html`). Data path, CSP, handshake facts, and
+  degradation contract are all locked in `docs/DECISIONS.md` D-017; the §4 spikes below resolved
+  via issues #20 (research) and #21 (live probe). Remaining widget ideas stay in the Deferred
+  registry (`DECISIONS.md` § Interactivity).
 - **Locked direction:** tools return structured data so any of §3 can be bolted on without rework
   (this is already DESIGN §9.3 policy — restated here so the build honors it from day 1).
 - **Cowork:** UI leg is **text-only** (bridge doesn't proxy the iframe) — design for degradation.

@@ -65,7 +65,8 @@ In one line: every useful tool the field has *plus* meaning-based search (librar
 - **Return-not-throw `isError` contract.** Handlers return a result with `isError` + an actionable
   message steering the model's next step; they don't throw across the SDK boundary.
 - **Tool-count ≤ ~20.** Fold related calibredb subcommands into task/intent tools; don't 1:1-mirror
-  the CLI (see the policy below + `docs/DECISIONS.md` D-005). Currently **15 tools** (`docs/TOOLS.md`).
+  the CLI (see the policy below + `docs/DECISIONS.md` D-005). Currently **15 model-facing tools**
+  (`docs/TOOLS.md`) + 1 widget-internal (`calibre_board_data`, `_meta.ui.visibility ["app"]`, D-017).
 
 ## Tool surface to build
 

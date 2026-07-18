@@ -111,10 +111,14 @@ is **host-internal — we never implement it**.
 Lifecycle (View perspective):
 
 1. → request `ui/initialize` `{protocolVersion: "2026-01-26", appCapabilities:
-   {availableDisplayModes: ["inline"]}, clientInfo}` — response carries
+   {availableDisplayModes: ["inline"]}, appInfo: {name, version}}` — response carries
    `hostCapabilities` (**check `openLinks` before showing the Read button**,
    `serverTools` before enabling click→tool-call) and `hostContext` (`theme`,
    `styles.variables` CSS vars, `containerDimensions`, `locale`).
+   **Correction (spike #21, landed with #22):** the params field is `appInfo`, NOT
+   `clientInfo` as this doc originally said — Claude Desktop zod-validates
+   `params.appInfo {name, version}` and an invisible widget (#671 symptom) is the
+   failure mode when it's wrong.
 2. → notification `ui/notifications/initialized`.
 3. ← `ui/notifications/tool-input` (complete args, exactly once; optional
    `tool-input-partial` 0..n before it — ignorable).

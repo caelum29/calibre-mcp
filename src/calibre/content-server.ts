@@ -182,6 +182,32 @@ export class ContentServerClient {
     return out;
   }
 
+  /**
+   * GET /get/thumb/{id}/{libId}?sz=WxH → base64 thumbnail for calibre_get_book's
+   * include_cover opt-in (issue #22). The cover is a nicety: any failure (no cover,
+   * server down, timeout) returns null and the caller degrades with a note.
+   */
+  async coverThumb(
+    id: number,
+    library?: string,
+    sz = "300x400",
+  ): Promise<{ data: string; mimeType: string } | null> {
+    const libId = await this.resolveLibraryId(library);
+    const url = `${this.base}/get/thumb/${id}/${encodeURIComponent(libId)}?sz=${sz}`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10_000);
+    try {
+      const res = await fetch(url, { signal: controller.signal });
+      if (!res.ok) return null;
+      const buf = Buffer.from(await res.arrayBuffer());
+      return { data: buf.toString("base64"), mimeType: res.headers.get("content-type") ?? "image/jpeg" };
+    } catch {
+      return null;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
   /** GET /ajax/categories/{libId} → Category[]. */
   async categories(library?: string): Promise<Category[]> {
     const libId = await this.resolveLibraryId(library);
