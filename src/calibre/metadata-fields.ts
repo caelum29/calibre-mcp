@@ -92,6 +92,25 @@ export function bookFieldValue(book: Book, field: string): unknown {
   }
 }
 
+/**
+ * After an AMBIGUOUS write (calibredb timed out — the routed server may have committed),
+ * decide from a re-read whether every requested change landed. A field counts as applied
+ * when the re-read equals the intended value OR moved away from the before-snapshot (covers
+ * fields Calibre normalizes on write, e.g. pubdate). Custom #columns aren't carried on Book
+ * → unverifiable → false, so callers stay cautious rather than claim success (issue #33).
+ */
+export function changesSatisfied(
+  before: Book,
+  after: Book,
+  changes: Record<string, ChangeValue>,
+): boolean {
+  return Object.entries(changes).every(([field, intended]) => {
+    const b = JSON.stringify(bookFieldValue(before, field));
+    const a = JSON.stringify(bookFieldValue(after, field));
+    return a !== undefined && (a === JSON.stringify(intended) || a !== b);
+  });
+}
+
 /** One field's before/after for a proposed change, with a computed `changed` flag. */
 export interface FieldDiff {
   field: string;

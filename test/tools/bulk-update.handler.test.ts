@@ -3,6 +3,7 @@ import { bulkUpdateTool } from "../../src/tools/calibre_bulk_update.js";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
+import { CalibreCliTimeoutError } from "../../src/domain/errors.js";
 import type { ToolDeps } from "../../src/tools/types.js";
 
 const book = (over: Partial<Book> = {}): Book => ({
@@ -13,6 +14,8 @@ const book = (over: Partial<Book> = {}): Book => ({
 interface FakeOpts {
   fixture?: Book[];
   calibredb?: (args: readonly string[]) => Promise<{ stdout: string; stderr: string }>;
+  /** Re-read used to verify a timed-out write; defaults to the unchanged fixture book. */
+  getBook?: (id: number) => Promise<Book>;
 }
 
 function deps(opts: FakeOpts = {}): ToolDeps {
@@ -20,6 +23,7 @@ function deps(opts: FakeOpts = {}): ToolDeps {
   const byId = new Map(fixture.map((b) => [b.id, b] as const));
   const content = {
     resolveLibraryId: async (name?: string): Promise<string> => name ?? "Programming_Books",
+    getBook: opts.getBook ?? (async (id: number): Promise<Book> => byId.get(id) ?? book({ id })),
     search: async () => ({
       bookIds: fixture.map((b) => b.id), total: fixture.length,
       num: fixture.length, offset: 0, sort: "title", libraryId: "Lib",
@@ -88,5 +92,39 @@ describe("calibre_bulk_update handler", () => {
       deps({ fixture: [] }),
     );
     expect(r.isError).toBe(true);
+  });
+
+  // issue #33 — a timed-out routed write may have committed server-side
+
+  it("counts a timed-out write as applied when a re-read confirms it landed", async () => {
+    const r = await bulkUpdateTool.handler(
+      { changes: { tags: ["new"] }, ids: [1], preview: false },
+      deps({
+        fixture: [book({ id: 1 })],
+        calibredb: async () => {
+          throw new CalibreCliTimeoutError("calibredb command timed out");
+        },
+        getBook: async () => book({ id: 1, tags: ["new"] }),
+      }),
+    );
+    expect(r.isError).toBeFalsy();
+    expect(r.structuredContent?.applied).toEqual([1]);
+    expect(r.structuredContent?.failed).toEqual([]);
+  });
+
+  it("reports a timed-out write as failed with a verify hint when the re-read does not confirm", async () => {
+    const r = await bulkUpdateTool.handler(
+      { changes: { tags: ["new"] }, ids: [1], preview: false },
+      deps({
+        fixture: [book({ id: 1 })],
+        calibredb: async () => {
+          throw new CalibreCliTimeoutError("calibredb command timed out");
+        },
+      }),
+    );
+    expect(r.structuredContent?.applied).toEqual([]);
+    const failed = r.structuredContent?.failed as { id: number; error: string }[];
+    expect(failed[0].id).toBe(1);
+    expect(failed[0].error).toContain("calibre_get_book id=1");
   });
 });

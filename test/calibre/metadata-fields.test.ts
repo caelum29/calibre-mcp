@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   buildSetMetadataArgs,
+  changesSatisfied,
   formatFieldValue,
   isAllowedField,
   previewBookChanges,
@@ -71,5 +72,40 @@ describe("previewBookChanges", () => {
   it("treats a custom #column (absent on Book) as a change", () => {
     const diff = previewBookChanges(book(), { "#shelf": "to-read" });
     expect(diff[0]).toMatchObject({ field: "#shelf", before: undefined, changed: true });
+  });
+});
+
+describe("changesSatisfied", () => {
+  it("is satisfied when the re-read equals the intended values", () => {
+    const before = book({ publisher: "Old" });
+    const after = book({ publisher: "New" });
+    expect(changesSatisfied(before, after, { publisher: "New" })).toBe(true);
+  });
+
+  it("is satisfied when a normalized-on-write field moved away from the before value", () => {
+    // Calibre normalizes pubdate on write, so re-read ≠ intended but ≠ before → applied.
+    const before = book({ pubdate: "2001-01-01T00:00:00+00:00" });
+    const after = book({ pubdate: "2002-01-15T00:00:00+00:00" });
+    expect(changesSatisfied(before, after, { pubdate: "2002-01-15" })).toBe(true);
+  });
+
+  it("is satisfied when the intended value was already current (no-op write)", () => {
+    const same = book({ publisher: "P" });
+    expect(changesSatisfied(same, same, { publisher: "P" })).toBe(true);
+  });
+
+  it("is not satisfied when the re-read still shows the old value", () => {
+    const same = book({ publisher: "Old" });
+    expect(changesSatisfied(same, same, { publisher: "New" })).toBe(false);
+  });
+
+  it("is not satisfied for unverifiable custom #columns", () => {
+    expect(changesSatisfied(book(), book(), { "#shelf": "to-read" })).toBe(false);
+  });
+
+  it("requires EVERY requested field to have landed", () => {
+    const before = book({ publisher: "Old", tags: ["old"] });
+    const after = book({ publisher: "New", tags: ["old"] });
+    expect(changesSatisfied(before, after, { publisher: "New", tags: ["new"] })).toBe(false);
   });
 });

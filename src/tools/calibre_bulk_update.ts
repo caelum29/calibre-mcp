@@ -6,10 +6,12 @@
 import { z } from "zod";
 import {
   buildSetMetadataArgs,
+  changesSatisfied,
   isAllowedField,
   previewBookChanges,
 } from "../calibre/metadata-fields.js";
 import type { ChangeValue } from "../calibre/metadata-fields.js";
+import { CalibreCliTimeoutError } from "../domain/errors.js";
 import { BookId, CoercedBool, jsonArray, jsonRecord } from "./coerce.js";
 import { defineTool } from "./define.js";
 import { fence, toolError, toolOk } from "./result.js";
@@ -89,6 +91,7 @@ export const bulkUpdateTool = defineTool({
         id: b.id,
         title: b.title,
         diff: previewBookChanges(b, changes),
+        book: b, // before-snapshot, needed to verify an ambiguous (timed-out) write
       }));
 
       // Preview (default): show the diff, write nothing.
@@ -128,6 +131,25 @@ export const bulkUpdateTool = defineTool({
           applied.push(b.id);
         } catch (err) {
           if (isWriteRefused(err)) return toolError(WRITE_REFUSED_MESSAGE);
+          // Timed-out routed writes may have committed server-side — re-read and count
+          // the book as applied when every requested field landed (issue #33).
+          if (err instanceof CalibreCliTimeoutError) {
+            const landed = await deps.content
+              .getBook(b.id, args.library)
+              .then((after) => changesSatisfied(b.book, after, changes))
+              .catch(() => false);
+            if (landed) {
+              applied.push(b.id);
+              continue;
+            }
+            failed.push({
+              id: b.id,
+              error:
+                "calibredb timed out and a re-read does not confirm the change — " +
+                `verify with calibre_get_book id=${b.id} before retrying`,
+            });
+            continue;
+          }
           failed.push({ id: b.id, error: err instanceof Error ? err.message : String(err) });
         }
       }
