@@ -14,6 +14,16 @@
 > merges into existing identifiers). Reuses the `scanForIsbn` text-scan shared with `recover_metadata`.
 > **Now 15 tools** (still cliff-safe under ~20).
 >
+> **➕ v0.4.0 (2026-07-18): MCP Apps UI layer (D-017).** `calibre_search`/`calibre_semantic_search`
+> results render as an in-chat **cover board** and `calibre_get_book` as a **book card** on MCP Apps
+> hosts (always-attach `_meta.ui`, issue #24); non-Apps hosts see the exact same text +
+> `resource_link[]` output. `calibre_get_book` gains `include_cover?` (default false — opt-in
+> `ImageContent` when the model must see the cover) and its `structuredContent` gains
+> `serverUrl`/`libraryId` (widget URL plumbing). One widget-internal tool, **`calibre_board_data`
+> (#16)**, carries `_meta.ui.visibility ["app"]` — hosts that honor MCP Apps hide it from the model,
+> so the **model-facing surface stays 15 tools** (+ `calibre_ping`); it only serves the board's
+> data re-pull (Claude Desktop strips `structuredContent` from the tool-result notification).
+>
 > **Two surfaces (the macro goal).** Every tool targets either the **catalog** (whole-library:
 > search, list, update, bulk, add/remove, dedupe, quality, enrich) or a **single book** (get,
 > content extraction, in-book keyword + semantic search). The search tools span both via a `scope`
@@ -56,7 +66,7 @@ Conventions: all namespaced `calibre_*`. Inputs Zod-coerced (`z.coerce.number`,
 | # | Tool | R/W | Access path | Input (sketch) | Output |
 |---|---|---|---|---|---|
 | 1 | `calibre_search` | R | `/ajax/search` → `/cdb list\|search\|fts_search` (book scope → `fts_search --restrict-to ids:{bookId}`) | `query`, `mode?: enum(meta\|fts)`, `scope?: enum(library\|book)=library`, `bookId?` (req. when `scope=book`), `library?`, `sort?`, `cursor?`, `limit?` | library: `resource_link[]` + `nextCursor`; book: in-book snippet hits (short, unranked — for definitional/topic queries the description + an in-band tip steer to `calibre_semantic_search scope=book`) |
-| 2 | `calibre_get_book` | R | `/ajax/book/{id}` | `id` (union num\|uuid), `library?` | full metadata + formats + cover link |
+| 2 | `calibre_get_book` | R | `/ajax/book/{id}` (+ `/get/thumb` when `include_cover`) | `id` (union num\|uuid), `library?`, `include_cover?=false` | full metadata + formats + cover link (+ `ImageContent` cover opt-in); renders as a book card on Apps hosts (D-017) |
 | 3 | `calibre_get_content` | R | EPUB `--explode-book`/`ebook-convert`; PDF PyMuPDF→Calibre fallback | `id`, `range?`/`chapter?`, `maxChars?`, `sentenceAware?`, `cursor?` | capped text excerpt (instructional-fenced) + `nextCursor` to walk the **whole book** chunk-by-chunk (full text also available as a `calibre://book/{id}` resource) |
 | 4 | `calibre_list_categories` | R | `/ajax/categories` + `/cdb custom_columns` | `field?`, `valueFilter?` (regex), `library?` | values+counts / schema / stats |
 | 5 | `calibre_list_libraries` | R | `/ajax/library-info` | — | `{library_map, default}` |

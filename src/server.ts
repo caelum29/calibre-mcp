@@ -4,6 +4,11 @@
 
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import {
+  registerAppTool,
+  registerAppResource,
+  RESOURCE_MIME_TYPE,
+} from "@modelcontextprotocol/ext-apps/server";
 import { loadConfig } from "./config.js";
 import { CalibreClient } from "./calibre/client.js";
 import { ContentServerClient } from "./calibre/content-server.js";
@@ -15,8 +20,28 @@ import { readBookResource } from "./resources/book.js";
 import { allTools, assertWriteClassification } from "./tools/registry.js";
 import { toolError } from "./tools/result.js";
 import type { ToolDeps } from "./tools/types.js";
+import { BoardCache } from "./ui/board-cache.js";
+import { boardHtml, BOARD_KEYWORD_URI, BOARD_SEMANTIC_URI } from "./ui/board-html.js";
+import { cardHtml, CARD_URI } from "./ui/card-html.js";
 import { log } from "./logging.js";
 import { VERSION } from "./version.js";
+
+// Structural stand-in for ext-apps' McpUiToolMeta — the root package entry's types break
+// under NodeNext (ext-apps#704); only the /server entry resolves, and it doesn't re-export this.
+interface UiToolMeta {
+  resourceUri?: string;
+  visibility?: Array<"model" | "app">;
+}
+
+// MCP Apps wiring (issues #19/#22) — always-attach per issue #24 (per-call suppression is
+// not spec-legal): non-Apps hosts ignore _meta.ui entirely, so degradation stays text-only.
+// calibre_board_data is the widget's data endpoint, hidden from the model where honored.
+const UI_TOOL_META: Record<string, UiToolMeta> = {
+  calibre_search: { resourceUri: BOARD_KEYWORD_URI },
+  calibre_semantic_search: { resourceUri: BOARD_SEMANTIC_URI },
+  calibre_get_book: { resourceUri: CARD_URI },
+  calibre_board_data: { visibility: ["app"] },
+};
 
 export function buildServer(): McpServer {
   const config = loadConfig();
@@ -28,6 +53,7 @@ export function buildServer(): McpServer {
     embedder: new TransformersEmbedder(config), // lazy: no model load until first embed
     reranker: new TransformersReranker(config), // lazy: no model load until first rerank
     index: new SqliteIndexStore(config, log), // lazy: no db file until first index op
+    boardCache: new BoardCache(), // cover-board widget re-pull cache (issue #22)
     log,
   };
 
@@ -67,33 +93,38 @@ export function buildServer(): McpServer {
   // Register every descriptor; bridge the SDK-free ToolResult ⇄ CallToolResult. Handlers
   // already return-not-throw; the try/catch here is a defense-in-depth safety net (DESIGN §3).
   for (const t of allTools) {
-    const reg = server.registerTool(
-      t.name,
-      {
-        title: t.title,
-        description: t.description,
-        inputSchema: t.inputSchema,
-        outputSchema: t.outputSchema,
-        annotations: t.annotations,
-      },
-      // ToolResult is structurally a CallToolResult minus the SDK's loose index signature;
-      // cast once here (the seam) rather than weaken the shared ToolResult type.
-      async (args: unknown): Promise<CallToolResult> => {
-        try {
-          return (await t.handler(args, deps)) as CallToolResult;
-        } catch (err) {
-          log.error("tool threw", {
-            tool: t.name,
-            msg: err instanceof Error ? err.message : String(err),
-          });
-          return toolError(`internal error in ${t.name}`) as CallToolResult;
-        }
-      },
-    );
+    const toolConfig = {
+      title: t.title,
+      description: t.description,
+      inputSchema: t.inputSchema,
+      outputSchema: t.outputSchema,
+      annotations: t.annotations,
+    };
+    // ToolResult is structurally a CallToolResult minus the SDK's loose index signature;
+    // cast once here (the seam) rather than weaken the shared ToolResult type.
+    const handler = async (args: unknown): Promise<CallToolResult> => {
+      try {
+        return (await t.handler(args, deps)) as CallToolResult;
+      } catch (err) {
+        log.error("tool threw", {
+          tool: t.name,
+          msg: err instanceof Error ? err.message : String(err),
+        });
+        return toolError(`internal error in ${t.name}`) as CallToolResult;
+      }
+    };
+    // UI-bearing tools go through registerAppTool (normalizes _meta.ui for older hosts);
+    // everything else registers exactly as before.
+    const ui = UI_TOOL_META[t.name];
+    const reg = ui
+      ? registerAppTool(server, t.name, { ...toolConfig, _meta: { ui } }, handler)
+      : server.registerTool(t.name, toolConfig, handler);
     // Disable (not reject) write tools when the gate is off (DESIGN §4) — wired now so
     // tool #11 drops in later with no change to this seam.
     if (t.write && !config.writeEnabled) reg.disable();
   }
+
+  registerUiResources(server, config.serverUrl);
 
   // calibre://book/{id} — the target of search/get_book resource_links. RESOURCE CONTRACT:
   // the read handler THROWS on failure (the SDK turns it into a protocol error), unlike tools.
@@ -148,4 +179,53 @@ export function buildServer(): McpServer {
     serverUrl: config.serverUrl,
   });
   return server;
+}
+
+/**
+ * Register the three ui:// widget resources (issue #22). Covers load straight from the
+ * Content Server, so the CSP must whitelist its origin (hosts default img-src to
+ * 'self' data: otherwise); the widget's onerror → generated-placeholder path absorbs a
+ * blocked or unreachable origin.
+ */
+function registerUiResources(server: McpServer, serverUrl: string): void {
+  let origin: string;
+  try {
+    origin = new URL(serverUrl).origin;
+  } catch {
+    origin = serverUrl;
+  }
+  const cspMeta = { ui: { csp: { resourceDomains: [origin] } } };
+
+  const widgets: Array<{ name: string; uri: string; description: string; html: string }> = [
+    {
+      name: "Cover board (search)",
+      uri: BOARD_KEYWORD_URI,
+      description: "In-chat cover board for calibre_search results.",
+      html: boardHtml("calibre_search", VERSION),
+    },
+    {
+      name: "Cover board (semantic search)",
+      uri: BOARD_SEMANTIC_URI,
+      description: "In-chat cover board for calibre_semantic_search results.",
+      html: boardHtml("calibre_semantic_search", VERSION),
+    },
+    {
+      name: "Book card",
+      uri: CARD_URI,
+      description: "In-chat book details card for calibre_get_book.",
+      html: cardHtml(VERSION),
+    },
+  ];
+  for (const wdg of widgets) {
+    registerAppResource(
+      server,
+      wdg.name,
+      wdg.uri,
+      { description: wdg.description, _meta: cspMeta },
+      async () => ({
+        contents: [{ uri: wdg.uri, mimeType: RESOURCE_MIME_TYPE, text: wdg.html, _meta: cspMeta }],
+        _meta: cspMeta,
+      }),
+    );
+  }
 }

@@ -7,6 +7,7 @@
 
 import { z } from "zod";
 import { CalibreCliError, CalibreNotFoundError } from "../domain/errors.js";
+import type { BoardPayload } from "../ui/board-cache.js";
 import { BookId, CursorParam, limitParam } from "./coerce.js";
 import { decodeCursor, encodeCursor } from "./cursor.js";
 import { defineTool } from "./define.js";
@@ -30,6 +31,21 @@ type SearchArgs = {
 const FTS_START = ">>";
 const FTS_END = "<<";
 
+/**
+ * Feed the cover-board widget (issue #22): cache the page for the widget's re-pull
+ * (Desktop strips the tool-result notification) and return the `_meta` to attach for
+ * spec hosts that forward it. Library-scope results only — scope=book renders passages
+ * in chat and the widget collapses itself.
+ */
+function boardMeta(
+  deps: ToolDeps,
+  payload: Omit<BoardPayload, "tool" | "serverUrl">,
+): Record<string, unknown> {
+  const full: BoardPayload = { tool: "calibre_search", serverUrl: deps.config.serverUrl, ...payload };
+  deps.boardCache?.set(full);
+  return { calibreBoard: full };
+}
+
 /** scope=library, mode=meta — Content Server /ajax/search (the original v1 path). */
 async function metaLibraryScope(args: SearchArgs, deps: ToolDeps): Promise<ToolResult> {
   const cur = decodeCursor(args.cursor);
@@ -45,12 +61,22 @@ async function metaLibraryScope(args: SearchArgs, deps: ToolDeps): Promise<ToolR
   });
 
   if (page.total === 0) {
-    return toolOk([{ type: "text", text: `0 books matched "${args.query}".` }], {
+    const _meta = boardMeta(deps, {
+      query: args.query,
+      kind: "keyword",
+      libraryId: page.libraryId,
       total: 0,
-      offset: 0,
-      count: 0,
-      bookIds: [],
+      books: [],
     });
+    return {
+      ...toolOk([{ type: "text", text: `0 books matched "${args.query}".` }], {
+        total: 0,
+        offset: 0,
+        count: 0,
+        bookIds: [],
+      }),
+      _meta,
+    };
   }
 
   const books = await deps.content.booksByIds(page.bookIds, args.library);
@@ -66,14 +92,28 @@ async function metaLibraryScope(args: SearchArgs, deps: ToolDeps): Promise<ToolR
     : undefined;
   const text = `Found ${page.total} books, showing ${offset + 1}–${offset + fetched}.`;
 
-  return toolOk([{ type: "text", text }, ...links], {
+  const _meta = boardMeta(deps, {
+    query: args.query,
+    kind: "keyword",
+    libraryId: page.libraryId,
     total: page.total,
-    offset,
-    count: fetched,
-    nextCursor,
-    bookIds: page.bookIds,
-    mode: "meta",
+    books: page.bookIds.map((id) => {
+      const b = books.get(id);
+      return { bookId: id, title: b?.title ?? `book ${id}`, authors: b?.authors ?? [] };
+    }),
   });
+
+  return {
+    ...toolOk([{ type: "text", text }, ...links], {
+      total: page.total,
+      offset,
+      count: fetched,
+      nextCursor,
+      bookIds: page.bookIds,
+      mode: "meta",
+    }),
+    _meta,
+  };
 }
 
 /** scope=library, mode=fts — group FTS hits by book → resource_links + fenced snippets. */
@@ -89,15 +129,25 @@ async function ftsLibraryScope(args: SearchArgs, deps: ToolDeps): Promise<ToolRe
   });
 
   if (hits.length === 0) {
-    return toolOk(
-      [
-        {
-          type: "text",
-          text: `0 full-text matches for "${args.query}". If you expected matches, the FTS index may not be built (calibredb fts_index --enable).`,
-        },
-      ],
-      { total: 0, offset: 0, count: 0, mode: "fts" },
-    );
+    const _meta = boardMeta(deps, {
+      query: args.query,
+      kind: "keyword",
+      libraryId: libId,
+      total: 0,
+      books: [],
+    });
+    return {
+      ...toolOk(
+        [
+          {
+            type: "text",
+            text: `0 full-text matches for "${args.query}". If you expected matches, the FTS index may not be built (calibredb fts_index --enable).`,
+          },
+        ],
+        { total: 0, offset: 0, count: 0, mode: "fts" },
+      ),
+      _meta,
+    };
   }
 
   const byBook = new Map<number, string[]>();
@@ -130,14 +180,27 @@ async function ftsLibraryScope(args: SearchArgs, deps: ToolDeps): Promise<ToolRe
   const nextCursor = more
     ? encodeCursor({ offset: offset + pageIds.length, query: args.query })
     : undefined;
-  return toolOk(blocks, {
+  const _meta = boardMeta(deps, {
+    query: args.query,
+    kind: "keyword",
+    libraryId: libId,
     total: bookIds.length,
-    offset,
-    count: pageIds.length,
-    nextCursor,
-    bookIds: pageIds,
-    mode: "fts",
+    books: pageIds.map((id) => {
+      const b = books.get(id);
+      return { bookId: id, title: b?.title ?? `book ${id}`, authors: b?.authors ?? [] };
+    }),
   });
+  return {
+    ...toolOk(blocks, {
+      total: bookIds.length,
+      offset,
+      count: pageIds.length,
+      nextCursor,
+      bookIds: pageIds,
+      mode: "fts",
+    }),
+    _meta,
+  };
 }
 
 /** scope=book — full-text search within one book; returns fenced in-book snippets. */

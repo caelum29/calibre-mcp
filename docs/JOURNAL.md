@@ -564,3 +564,45 @@ pipeline had no front-matter awareness.)
   + an in-band tip to `calibre_semantic_search scope=book` when the book is indexed.
 - 12 new unit tests (boundary helper, store roundtrip + additive-migration, demotion partition
   /label/note incl. keyword mode, build-time flagging incl. the straddling chunk, tip-iff-indexed).
+
+## MCP Apps UI layer — cover board + book card (2026-07-18, D-017, issues #19/#22)
+
+v0.4.0 execution ticket #22, implementing map #19's charted decisions after research #20 and
+spike #21. Search results now render as a clickable cover board and `calibre_get_book` as a
+book card on MCP Apps hosts; everything else sees byte-identical output.
+
+- **Widgets:** `src/ui/board-html.ts` + `src/ui/card-html.ts` — the approved mockups
+  (`assets/cover-carousel.html` board; `assets/Book Detail (standalone).html` card, CSS
+  frozen) with the fake layer replaced by MCP plumbing. Card seams beyond the map: Read is
+  per-format (`mode=read_book` viewer URL), Similar goes through `ui/message` (host inserts
+  a user message → model runs a fresh search → new board) with a silent `tools/call`
+  semantic-search fallback, not-found is its own state.
+  Rendering was rewritten `createElement`/`textContent`-only (the mockup used string
+  interpolation + esc()); no template literals inside the widget JS so the TS wrapper needs no
+  escaping. Board ships as TWO `ui://` resources (board-keyword/board-semantic) so each widget
+  knows its owning tool without guessing. scope=book calls collapse the board to height 0
+  (per-call suppression isn't spec-legal, #24).
+- **Data path (the spike's big finding, wired):** tool-result notification = render trigger
+  only; the widget pulls via `tools/call calibre_board_data` (tool #16, `visibility ["app"]`)
+  backed by a process-lifetime `BoardCache` (LRU 16, exact tool+query match; miss → re-run the
+  search once → re-pull; grace-period path polls WITHOUT the re-run fallback so an in-flight
+  semantic search is never doubled). Spec hosts skip the round-trip via result
+  `_meta.calibreBoard`, attached by both search handlers (library scope only).
+- **Covers:** localhost `/get/thumb/{id}/{libId}?sz=268x356` under
+  `csp.resourceDomains: [origin]`; `onerror` → deterministic generated-placeholder (hash-hued,
+  raw-filename mono treatment). Live probe: this library has 0 coverless books (`cover:false`
+  → 0), so the URL path is the common case. `include_cover` (CoercedBool, default false) on
+  `calibre_get_book` returns a real ImageContent (verified 19 KB JPEG live);
+  `structuredContent` gains `serverUrl`/`libraryId` for the card's token-free URLs.
+- **Seam integrity:** ext-apps imported only in `server.ts` (`registerAppTool`/
+  `registerAppResource`; root-entry types break under NodeNext — ext-apps#704 — so the 2-field
+  `UiToolMeta` is declared structurally). Handlers stay SDK-free: `ToolResult` gained an
+  optional `_meta`, `ToolDeps` an optional `boardCache`; `ContentBlock` gained the `ImageBlock`
+  mirror.
+- **Verified:** 431 unit tests green (28 new: cache LRU/exact-match, board_data hit/miss,
+  handler wiring incl. book-scope abstention, include_cover coercion/degrade, widget-template
+  hygiene — no raw-HTML injection, no console, tokens substituted, handshake shape); emitted
+  widget scripts parse (`new Function`); live stdio e2e: `tools/list` shows normalized
+  `_meta.ui` + legacy key, search → `_meta.calibreBoard` (5 real books) → `board_data` re-pull
+  hit → `get_book include_cover:"true"` image block. Manual Claude Desktop check pending
+  (dev-loop per #22 comment).

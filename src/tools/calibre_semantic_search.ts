@@ -18,6 +18,7 @@ import { RRF_K, rrfFuse } from "../semantic/fusion.js";
 import { RERANK_FLOOR, RERANK_POOL } from "../semantic/reranker.js";
 import { stemText } from "../semantic/stem.js";
 import type { BookHit, LibraryHit } from "../semantic/store.js";
+import type { BoardPayload } from "../ui/board-cache.js";
 import { BookId, limitParam } from "./coerce.js";
 import { defineTool } from "./define.js";
 import { bookResourceLink } from "./resource-link.js";
@@ -164,6 +165,40 @@ interface RankedPassage {
   rerankScore?: number;
 }
 
+/**
+ * Feed the cover-board widget (issue #22): cache the ranked page for the widget's
+ * re-pull (Desktop strips the tool-result notification) and return the `_meta` to
+ * attach for spec hosts that forward it. Library scope only.
+ */
+function boardMeta(
+  deps: ToolDeps,
+  args: Args,
+  libraryId: string,
+  ranked: RankedBook[],
+  lowConfidence: boolean,
+): Record<string, unknown> {
+  const payload: BoardPayload = {
+    tool: "calibre_semantic_search",
+    query: args.query,
+    // keyword-degraded runs carry no scores — the widget hides the badge column then
+    kind: args.mode === "keyword" ? "keyword" : "semantic",
+    libraryId,
+    serverUrl: deps.config.serverUrl,
+    lowConfidence,
+    total: ranked.length,
+    books: ranked.map((r) => ({
+      bookId: r.hit.bookId,
+      title: r.hit.title,
+      authors: r.hit.authors,
+      ...(r.cosine !== undefined || r.rerankScore !== undefined
+        ? { score: r.cosine ?? r.rerankScore }
+        : {}),
+    })),
+  };
+  deps.boardCache?.set(payload);
+  return { calibreBoard: payload };
+}
+
 /** scope=library — rank books; emit resource_links + fenced snippets. */
 async function libraryScope(args: Args, deps: ToolDeps, libraryId: string, degradeNote?: string) {
   const pool = await rankBooks(args, deps, libraryId);
@@ -171,14 +206,17 @@ async function libraryScope(args: Args, deps: ToolDeps, libraryId: string, degra
   const ranked = rr.hits;
   const note = joinNotes(degradeNote, rr.note);
   if (ranked.length === 0) {
-    return toolOk([{ type: "text", text: withNote(`No matches for "${args.query}".`, note) }], {
-      scope: "library",
-      mode: args.mode,
-      count: 0,
-      ...rerankFields(args, rr),
-      note,
-      bookIds: [],
-    });
+    return {
+      ...toolOk([{ type: "text", text: withNote(`No matches for "${args.query}".`, note) }], {
+        scope: "library",
+        mode: args.mode,
+        count: 0,
+        ...rerankFields(args, rr),
+        note,
+        bookIds: [],
+      }),
+      _meta: boardMeta(deps, args, libraryId, [], false),
+    };
   }
 
   const { maxScore, lowConfidence } = confidence(ranked, deps, rr);
@@ -204,17 +242,20 @@ async function libraryScope(args: Args, deps: ToolDeps, libraryId: string, degra
     });
   }
 
-  return toolOk(blocks, {
-    scope: "library",
-    mode: args.mode,
-    count: ranked.length,
-    maxScore,
-    lowConfidence,
-    ...rerankFields(args, rr),
-    note,
-    bookIds: ranked.map((r) => r.hit.bookId),
-    results,
-  });
+  return {
+    ...toolOk(blocks, {
+      scope: "library",
+      mode: args.mode,
+      count: ranked.length,
+      maxScore,
+      lowConfidence,
+      ...rerankFields(args, rr),
+      note,
+      bookIds: ranked.map((r) => r.hit.bookId),
+      results,
+    }),
+    _meta: boardMeta(deps, args, libraryId, ranked, lowConfidence),
+  };
 }
 
 /** scope=book — rank passages within one book; emit fenced excerpts with char spans. */

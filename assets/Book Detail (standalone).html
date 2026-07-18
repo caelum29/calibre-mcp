@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>calibre-mcp · book detail (calibre_get_book)</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #faf7f2; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+    #__bundler_loading { position: fixed; bottom: 20px; right: 20px; font: 13px/1.4 -apple-system, BlinkMacSystemFont, sans-serif; color: #666; background: #fff; padding: 8px 14px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.12); z-index: 10000; }
+    #__bundler_thumbnail { position: fixed; inset: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #faf7f2; z-index: 9999; }
+    #__bundler_thumbnail svg { width: 100%; height: 100%; object-fit: contain; }
+    #__bundler_placeholder { color: #999; font-size: 14px; }
+  </style>
+  <noscript>
+    <style>#__bundler_loading { display: none; }</style>
+    <div style="position:fixed;bottom:12px;left:12px;font:13px/1.4 -apple-system,BlinkMacSystemFont,sans-serif;color:#999;background:rgba(255,255,255,0.9);padding:6px 12px;border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,0.08);z-index:10000;">
+      This page requires JavaScript to display.
+    </div>
+  </noscript>
+</head>
+<body>
+  <div id="__bundler_thumbnail">
+  <svg viewBox="0 0 120 80" xmlns="http://www.w3.org/2000/svg">
+    <rect x="38" y="16" width="34" height="48" rx="5" fill="#c67139"></rect>
+    <rect x="38" y="16" width="4" height="48" fill="#8f4c20"></rect>
+    <rect x="72" y="20" width="3" height="42" fill="#f1ebe0"></rect>
+    <rect x="46" y="26" width="20" height="4" rx="2" fill="#fff" opacity=".85"></rect>
+    <rect x="46" y="34" width="14" height="4" rx="2" fill="#fff" opacity=".55"></rect>
+  </svg>
+</div>
+  <div id="__bundler_loading">Unpacking...</div>
+
+  <script>
+    
+document.addEventListener('DOMContentLoaded', async function() {
+  const loading = document.getElementById('__bundler_loading');
+  function setStatus(msg) { if (loading) loading.textContent = msg; }
+
+  const FONT_MIME = /^(font[/]|application[/](x-)?font-|application[/]vnd\.ms-fontobject)/i;
+  const MIME_TOKEN = /^[\w.+-]+[/][\w.+-]+$/;
+  function toBase64(bytes) {
+    let bin = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) {
+      bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    }
+    return btoa(bin);
+  }
+
+  // Error sink persists across replaceWith since it's on window, not the DOM.
+  window.addEventListener('error', function(e) {
+    // Failed resource loads (CSP-blocked links, scripts, images) fire plain
+    // events at the element — warn only; real JS errors carry message/error.
+    if (!e.message && !e.error && e.target && e.target !== window) {
+      console.warn('[bundle] resource failed to load:',
+        e.target.tagName, String(e.target.src || e.target.href || ''));
+      return;
+    }
+    var p = document.body || document.documentElement;
+    var d = document.getElementById('__bundler_err') || p.appendChild(document.createElement('div'));
+    d.id = '__bundler_err';
+    d.style.cssText = 'position:fixed;bottom:12px;left:12px;right:12px;font:12px/1.4 ui-monospace,monospace;background:#2a1215;color:#ff8a80;padding:10px 14px;border-radius:8px;border:1px solid #5c2b2e;z-index:99999;white-space:pre-wrap;max-height:40vh;overflow:auto';
+    d.textContent = (d.textContent ? d.textContent + String.fromCharCode(10) : '') +
+      '[bundle] ' + (e.message || e.type) +
+      (e.filename ? ' (' + e.filename.slice(0, 60) + ':' + e.lineno + ')' : '');
+  }, true);
+
+  try {
+    const manifestEl = document.querySelector('script[type="__bundler/manifest"]');
+    const templateEl = document.querySelector('script[type="__bundler/template"]');
+    if (!manifestEl || !templateEl) {
+      setStatus('Error: missing bundle data');
+      console.error('[bundler] Missing script tags — manifestEl:', !!manifestEl, 'templateEl:', !!templateEl);
+      return;
+    }
+
+    const manifest = JSON.parse(manifestEl.textContent);
+    let template = JSON.parse(templateEl.textContent);
+
+    // Nested page bundles (iframe targets). Each ships ONCE, in the ROOT
+    // document's manifest; frame srcs carry an about:blank#<uuid> marker
+    // instead of a substitutable uuid. Every document mints the blobs for
+    // its OWN frames — from local text at the root, or text obtained from
+    // its DIRECT parent over the relay protocol below — so each frame
+    // navigation stays same-origin with its initiator and a deduped page
+    // loads at any depth on any host, including a file:// download's
+    // opaque origins (where a blob minted by one document cannot be
+    // navigated to by another).
+    const pageOrderEl = document.querySelector('script[type="__bundler/page_order"]');
+    const pageOrder = pageOrderEl ? JSON.parse(pageOrderEl.textContent) : [];
+    const pageSet = new Set(pageOrder);
+    const pageTexts = {};
+
+    // ── Nested-page text protocol (parent-chain relay) ──
+    // Page bundles ship once, in the ROOT document's manifest. Every
+    // document mints the blobs for its OWN frames, obtaining page text
+    // through a strict parent-chain relay: a document only ever SENDS to
+    // its direct parent (which, for every document the publisher's own
+    // runtime minted, is another publisher document) and only ACCEPTS
+    // text from that direct parent; requests from below are honored only
+    // for the document's own child frames, and the ROOT never sends
+    // upward at all. That last rule is load-bearing: the artifact host's
+    // frame-ancestors allows claude.ai (and friends) to frame an
+    // artifact, so window.top can be a FOREIGN document — a top-addressed
+    // protocol would hand page uuids to that ancestor and accept forged
+    // "page text" from it, minting attacker HTML as an artifact-origin
+    // blob document. The chain never touches the ancestor: requests stop
+    // at the root, replies are origin-addressed per hop (never '*' when
+    // an origin exists), and both directions are origin-gated (on https
+    // a foreign sender's origin can never equal this document's; in
+    // opaque contexts — file:// — everything serializes as 'null', where
+    // an embedded EXTERNAL frame still fails the gate by carrying its
+    // own real origin, and a sandboxed child of such a frame is excluded
+    // by the own-child-frames check plus uuid unguessability). Shape is
+    // deny-by-default: one request form, one reply form, no error
+    // replies.
+    // window.origin is the SERIALIZED SECURITY origin ('null' in opaque
+    // contexts such as a sandboxed preview iframe) — location.origin is
+    // computed from the URL and stays 'https://…' even when the document
+    // is sandboxed, which would misgate every opaque chain.
+    const OWN_TARGET = /^https?:[/][/]/.test(window.origin || '')
+      ? window.origin
+      : '*';
+    function trustedOrigin(e) {
+      if (e.origin === window.origin) return true; // https chains; opaque==opaque
+      // file:// trees: Chrome serializes the file document's origin as
+      // 'file://' while the blob: documents it mints serialize as 'null',
+      // so the two legitimate shapes can never string-match — accept the
+      // pair in both directions. https origins never serialize as either,
+      // and sender identity (own child frame / direct parent) is checked
+      // separately.
+      return (
+        (e.origin === 'null' &&
+          (window.origin === 'file://' ||
+            window.location.protocol === 'file:')) ||
+        (/^file:/.test(e.origin) && window.origin === 'null')
+      );
+    }
+    // Non-empty only in the root document (nested bundles ship an empty
+    // island), so it doubles as the root marker: the root answers from
+    // local text and treats a miss as authoritative — never relaying to
+    // its (possibly foreign) parent.
+    const isPageRoot = pageOrder.length > 0;
+    const blobUrls = {};
+    const resourceBlobs = {};
+    const UUID_SHAPE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+    const pendingFrames = {}; // uuid -> [{el, frag}] awaiting text for own frames
+    const pendingRelays = {}; // uuid -> [childWindow] awaiting text to pass down
+    function mountPage(el, frag, text) {
+      const pageBlob = new Blob([text], { type: 'text/html' });
+      const u = URL.createObjectURL(pageBlob);
+      resourceBlobs[u] = pageBlob;
+      el.src = u + frag;
+    }
+    function deliverPage(uuid, text) {
+      const frames = pendingFrames[uuid];
+      delete pendingFrames[uuid];
+      if (frames) for (const f of frames) mountPage(f.el, f.frag, text);
+      const relays = pendingRelays[uuid];
+      delete pendingRelays[uuid];
+      if (relays) {
+        for (const cw of relays) {
+          try { cw.postMessage({ __bundler_page: uuid, __bundler_text: text }, OWN_TARGET); } catch (err) { /* gone */ }
+        }
+      }
+    }
+    function ownFrameWindows() {
+      const out = [];
+      for (const f of Array.from(document.querySelectorAll('iframe'))) {
+        try { if (f.contentWindow) out.push(f.contentWindow); } catch (err) { /* detached */ }
+      }
+      return out;
+    }
+    window.addEventListener('message', function (e) {
+      const d = e.data;
+      if (!d || typeof d !== 'object' || !e.source) return;
+      // Origin gate first; the structural checks below (own-child-frames
+      // for requests, direct-parent + solicited-uuid for replies, the
+      // root's never-relay rule) are what hold in fully opaque chains
+      // where origin strings can't discriminate — a sandboxed root's
+      // FOREIGN wrapper still fails all three even though both serialize
+      // as real-vs-'null' rather than matching.
+      if (!trustedOrigin(e)) return;
+      if (typeof d.__bundler_need === 'string' && UUID_SHAPE.test(d.__bundler_need)) {
+        // Requests are honored only for this document's own child frames.
+        if (ownFrameWindows().indexOf(e.source) < 0) return;
+        const uuid = d.__bundler_need;
+        const text = pageTexts[uuid];
+        if (typeof text === 'string') {
+          try { e.source.postMessage({ __bundler_page: uuid, __bundler_text: text }, OWN_TARGET); } catch (err) { /* gone */ }
+          return;
+        }
+        if (isPageRoot || window.parent === window) return; // authoritative miss
+        const waiting = pendingRelays[uuid];
+        if (waiting) {
+          if (waiting.indexOf(e.source) < 0) waiting.push(e.source);
+          return;
+        }
+        // Never-answered uuids would otherwise accumulate forever under a
+        // request spray; past the cap (far above any real page count) new
+        // relays are dropped rather than remembered.
+        if (Object.keys(pendingRelays).length >= 128) return;
+        pendingRelays[uuid] = [e.source];
+        window.parent.postMessage({ __bundler_need: uuid }, OWN_TARGET);
+      } else if (
+        typeof d.__bundler_page === 'string' &&
+        UUID_SHAPE.test(d.__bundler_page) &&
+        typeof d.__bundler_text === 'string'
+      ) {
+        // The shape test is load-bearing beyond tidiness: the solicited
+        // check below uses the in operator, which matches prototype keys
+        // ('__proto__', 'constructor') — an unshaped key would reach
+        // deliverPage and throw, painting the error banner.
+        // Text is accepted only from the direct parent — the document
+        // that minted this one.
+        if (e.source !== window.parent || window.parent === window) return;
+        if (!(d.__bundler_page in pendingFrames) && !(d.__bundler_page in pendingRelays)) return;
+        deliverPage(d.__bundler_page, d.__bundler_text);
+      }
+    });
+
+    const uuids = Object.keys(manifest);
+    setStatus('Unpacking ' + uuids.length + ' assets...');
+
+    await Promise.all(uuids.map(async (uuid) => {
+      const entry = manifest[uuid];
+      try {
+        const binaryStr = atob(entry.data);
+        const bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+
+        let finalBytes = bytes;
+        if (entry.compressed) {
+          if (typeof DecompressionStream !== 'undefined') {
+            const ds = new DecompressionStream('gzip');
+            const writer = ds.writable.getWriter();
+            const reader = ds.readable.getReader();
+            writer.write(bytes);
+            writer.close();
+            const chunks = [];
+            let totalLen = 0;
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              chunks.push(value);
+              totalLen += value.length;
+            }
+            finalBytes = new Uint8Array(totalLen);
+            let offset = 0;
+            for (const chunk of chunks) { finalBytes.set(chunk, offset); offset += chunk.length; }
+          } else {
+            console.warn('DecompressionStream not available, asset ' + uuid + ' may not render');
+          }
+        }
+
+        if (pageSet.has(uuid)) {
+          pageTexts[uuid] = new TextDecoder().decode(finalBytes);
+          return;
+        }
+        if (FONT_MIME.test(entry.mime) && MIME_TOKEN.test(entry.mime)) {
+          // Strict artifact hosts allow font-src data: but not blob:.
+          blobUrls[uuid] = 'data:' + entry.mime + ';base64,' +
+            (entry.compressed ? toBase64(finalBytes) : entry.data);
+        } else {
+          const blob = new Blob([finalBytes], { type: entry.mime });
+          blobUrls[uuid] = URL.createObjectURL(blob);
+          resourceBlobs[blobUrls[uuid]] = blob;
+        }
+      } catch (err) {
+        console.error('Failed to decode asset ' + uuid + ':', err);
+        const blob = new Blob([], { type: entry.mime });
+        blobUrls[uuid] = URL.createObjectURL(blob);
+        resourceBlobs[blobUrls[uuid]] = blob;
+      }
+    }));
+
+    const extResEl = document.querySelector('script[type="__bundler/ext_resources"]');
+    const extResources = extResEl ? JSON.parse(extResEl.textContent) : [];
+    const resourceMap = {};
+    for (const entry of extResources) {
+      if (blobUrls[entry.uuid]) resourceMap[entry.id] = blobUrls[entry.uuid];
+    }
+
+    // Artifact-host CSP (connect-src 'self') refuses fetch() of blob: URLs —
+    // consumers read these Blobs directly. Survives the swap like the error sink.
+    window.__resourceBlobs = resourceBlobs;
+
+    setStatus('Rendering...');
+    // Page uuids have no blob here — they ride inside about:blank#<uuid>
+    // frame markers the pass below resolves after the swap.
+    for (const uuid of uuids) {
+      if (pageSet.has(uuid)) continue;
+      template = template.split(uuid).join(blobUrls[uuid]);
+    }
+
+    // Strip integrity + crossorigin — blob URLs from a file:// document inherit
+    // a null origin, so crossorigin forces a CORS fetch that SRI then rejects.
+    // The manifest bytes are ours; SRI protects against CDN compromise, not this.
+    template = template.replace(/\s+integrity="[^"]*"/gi, '').replace(/\s+crossorigin="[^"]*"/gi, '');
+
+    const resourceScript = '<script>window.__resources = ' +
+      JSON.stringify(resourceMap).replace(/<\//g, '<\\/') +
+      ';</' + 'script>';
+    // Inject after <head> so the DOCTYPE stays first; prepending the script
+    // would push the parser into quirks mode. DOMParser always emits a <head>
+    // (synthesizing one if the source HTML omitted it) but may carry
+    // attributes through, so match the full opening tag. slice() rather than
+    // replace() keeps us clear of $-pattern substitution in resourceScript.
+    const headOpen = template.match(/<head[^>]*>/i);
+    if (headOpen) {
+      const i = headOpen.index + headOpen[0].length;
+      template = template.slice(0, i) + resourceScript + template.slice(i);
+    }
+
+    // Parse the template and swap the root element. Scripts inserted via
+    // DOMParser/replaceWith are inert per spec — re-create each with
+    // createElement so they execute, awaiting onload for src scripts to
+    // preserve ordering (React before ReactDOM before Babel before text/babel).
+    const doc = new DOMParser().parseFromString(template, 'text/html');
+    document.documentElement.replaceWith(doc.documentElement);
+
+    // Resolve page-frame markers: mint this document's own blob for each
+    // framed page — from local text when this is the root, otherwise by
+    // asking the direct parent over the relay protocol above. An
+    // unanswered request leaves the frame on about:blank, the same
+    // degraded state as a refused embed.
+    {
+      const MARKER = /^about:blank#([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(#.*)?$/;
+      const needed = [];
+      for (const el of Array.from(document.querySelectorAll('iframe'))) {
+        const m = MARKER.exec(el.getAttribute('src') || '');
+        if (!m) continue;
+        const text = pageTexts[m[1]];
+        if (typeof text === 'string') {
+          mountPage(el, m[2] || '', text);
+        } else if (window.parent !== window && !isPageRoot) {
+          const had = pendingFrames[m[1]];
+          (pendingFrames[m[1]] = had || []).push({ el: el, frag: m[2] || '' });
+          if (!had) needed.push(m[1]);
+        }
+      }
+      for (const uuid of needed) {
+        window.parent.postMessage({ __bundler_need: uuid }, OWN_TARGET);
+      }
+    }
+
+    const dead = Array.from(document.scripts);
+    for (const old of dead) {
+      const s = document.createElement('script');
+      for (const a of old.attributes) s.setAttribute(a.name, a.value);
+      s.textContent = old.textContent;
+      // text/babel scripts with a src: read and inline. transformScriptTags
+      // does XHR against the src, but blob:null/ from a file:// origin is
+      // silently dropped. Inlining makes it a plain inline babel script,
+      // which transformScriptTags handles unconditionally.
+      if ((s.type === 'text/babel' || s.type === 'text/jsx') && s.src) {
+        const pre = resourceBlobs[s.src.split('#')[0]];
+        s.textContent = pre ? await pre.text() : await (await fetch(s.src)).text();
+        s.removeAttribute('src');
+      }
+      const p = s.src ? new Promise(function(r) { s.onload = s.onerror = r; }) : null;
+      old.replaceWith(s);
+      if (p) await p;
+    }
+    // Babel standalone auto-transforms type=text/babel on DOMContentLoaded,
+    // which fired before we swapped the document. Trigger manually if present.
+    if (window.Babel && typeof window.Babel.transformScriptTags === 'function') {
+      window.Babel.transformScriptTags();
+    }
+  } catch (err) {
+    setStatus('Error unpacking: ' + err.message);
+    console.error('Bundle unpack error:', err);
+  }
+});
+
+  </script>
+
+  <script type="__bundler/manifest">
+{}
+  </script>
+
+  <script type="__bundler/ext_resources">
+[]
+  </script>
+
+  <script type="__bundler/page_order">
+[]
+  </script>
+
+  <script type="__bundler/template">
+"<!DOCTYPE html>\n<html lang=\"en\"><head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>calibre-mcp · book detail (calibre_get_book)<\u002Ftitle>\n\n<style>\n/* ============ tokens — shared with cover-carousel.html ============ */\n:root{\n  color-scheme: light dark;\n  --bg:#faf7f2; --tx:#33302b; --tx-muted:#8a8378; --card:#ffffff;\n  --line:rgba(60,50,40,.14); --accent:#c67139; --btn:#ffffff;\n  --bg: light-dark(#faf7f2, #262624);\n  --tx: light-dark(#33302b, #ece9e3);\n  --tx-muted: light-dark(#8a8378, #9c958a);\n  --card: light-dark(#ffffff, #31302e);\n  --line: light-dark(rgba(60,50,40,.14), rgba(255,255,255,.13));\n  --accent: light-dark(#c67139, #d98d55);\n  --accent-deep: light-dark(#8f4c20, #e8ab7d);\n  --accent-tint: light-dark(rgba(198,113,57,.12), rgba(217,141,85,.16));\n  --sage: light-dark(#7a8a5e, #95a67a);\n  --sage-tint: light-dark(rgba(122,138,94,.14), rgba(149,166,122,.16));\n  --btn: light-dark(rgba(255,255,255,.94), rgba(49,48,46,.94));\n  --skel: light-dark(rgba(60,50,40,.08), rgba(255,255,255,.07));\n  --skel-hi: light-dark(rgba(255,255,255,.65), rgba(255,255,255,.09));\n  --shadow: 0 1px 2px rgba(0,0,0,.07), 0 5px 16px rgba(0,0,0,.09);\n  --shadow-lg: 0 2px 4px rgba(0,0,0,.09), 0 10px 26px rgba(0,0,0,.14);\n  /* book volume */\n  --spine: light-dark(rgba(0,0,0,.16), rgba(0,0,0,.42));\n  --crease: light-dark(rgba(255,255,255,.55), rgba(255,255,255,.14));\n  --sheen: light-dark(rgba(255,255,255,.26), rgba(255,255,255,.05));\n  --pages: light-dark(#f1ebe0, #46453f);\n  --pages-line: light-dark(#d8d0c2, #2c2b28);\n  --pagestack: 2px 0 0 var(--pages), 3.5px 0 0 var(--pages-line), 5.5px 0 0 var(--pages), 7px 0 0 var(--pages-line);\n  /* generated cover */\n  --cov-l:84%; --cov-l2:73%; --cov-c:.05; --cov-c2:.075;\n  --cov-tx-l:29%; --cov-tx-c:.055;\n  --cov-line:rgba(0,0,0,.10); --cov-shine:rgba(255,255,255,.35);\n}\n:root[data-theme=\"light\"]{ color-scheme:light; }\n:root[data-theme=\"dark\"]{ color-scheme:dark; }\n:root[data-theme=\"dark\"]{\n  --cov-l:39%; --cov-l2:30%; --cov-c:.045; --cov-c2:.06;\n  --cov-tx-l:91%; --cov-tx-c:.03;\n  --cov-line:rgba(255,255,255,.12); --cov-shine:rgba(255,255,255,.08);\n}\n@media (prefers-color-scheme: dark){\n  :root:not([data-theme=\"light\"]){\n    --cov-l:39%; --cov-l2:30%; --cov-c:.045; --cov-c2:.06;\n    --cov-tx-l:91%; --cov-tx-c:.03;\n    --cov-line:rgba(255,255,255,.12); --cov-shine:rgba(255,255,255,.08);\n  }\n}\n*{box-sizing:border-box}\nhtml,body{margin:0}\nbody{\n  background:var(--bg); color:var(--tx);\n  font:14px/1.5 -apple-system, BlinkMacSystemFont, \"Segoe UI\", system-ui, sans-serif;\n  padding:14px 0 0;\n}\na{color:var(--accent)} a:hover{color:var(--tx)}\nbutton{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}\n:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:8px}\n\n/* ============ widget ============ */\n.widget{max-width:640px; margin:0 auto; padding:0 18px}\n.view{display:none}\n.widget[data-state=\"loading\"] .view-loading{display:block}\n.widget[data-state=\"loaded\"] .view-loaded{display:block}\n.widget[data-state=\"notfound\"] .view-notfound{display:flex}\n.widget[data-state=\"error\"] .view-error{display:flex}\n\n/* layout: cover | meta */\n.hero{display:flex; gap:22px; align-items:flex-start}\n.coverwrap{flex:none; width:168px}\n.cover{\n  position:relative; display:block; width:168px; height:224px;\n  border-radius:4px 12px 12px 4px; overflow:hidden;\n  box-shadow:var(--pagestack), var(--shadow-lg);\n}\n.cover::before{\n  content:\"\"; position:absolute; inset:0; z-index:1; pointer-events:none; border-radius:inherit;\n  background:\n    linear-gradient(90deg, var(--spine) 0%, transparent 9%),\n    linear-gradient(90deg, transparent 4.5%, var(--crease) 7%, transparent 11%),\n    linear-gradient(168deg, var(--sheen) 0%, transparent 24%);\n}\n.ph{\n  position:absolute; inset:0; display:flex; flex-direction:column;\n  padding:16px 14px 12px;\n  background:linear-gradient(160deg,\n    oklch(var(--cov-l) var(--cov-c) var(--h)) 0%,\n    oklch(var(--cov-l2) var(--cov-c2) var(--h2)) 100%);\n  color:oklch(var(--cov-tx-l) var(--cov-tx-c) var(--h));\n}\n.ph::after{content:\"\"; position:absolute; inset:8px; border-radius:8px;\n  border:1px solid var(--cov-line); pointer-events:none}\n.ph .mark{width:26px; height:26px; border-radius:50%; background:var(--cov-shine); margin-bottom:12px; flex:none}\n.ph .pt{font-size:15px; line-height:1.28; font-weight:650; letter-spacing:.01em;\n  display:-webkit-box; -webkit-line-clamp:6; -webkit-box-orient:vertical; overflow:hidden;\n  overflow-wrap:anywhere; text-wrap:pretty}\n.ph .pa{margin-top:auto; font-size:11px; opacity:.75; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}\n.cover img{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; background:var(--card)}\n.cover img[data-broken]{display:none}\n\n/* meta column */\n.meta{flex:1; min-width:0; padding-top:2px}\n.title{font-size:19px; line-height:1.28; font-weight:700; letter-spacing:-.01em;\n  margin:0 0 2px; text-wrap:pretty; overflow-wrap:anywhere}\n.authors{font-size:13.5px; color:var(--tx-muted); margin:0 0 8px}\n.authors b{color:var(--tx); font-weight:550}\n.series{display:inline-flex; align-items:center; gap:6px; font-size:12px;\n  color:var(--accent-deep); background:var(--accent-tint);\n  padding:3px 10px; border-radius:999px; margin:0 0 10px}\n.stars{display:inline-flex; gap:1.5px; vertical-align:-2px; margin-right:6px}\n.stars svg{width:13px; height:13px; fill:var(--accent); stroke:none}\n.stars svg.off{fill:var(--skel)}\n/* fact rows */\n.facts{display:grid; grid-template-columns:auto 1fr; gap:3px 14px;\n  font-size:12.5px; margin:10px 0 0}\n.facts dt{color:var(--tx-muted); white-space:nowrap}\n.facts dd{margin:0; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;\n  font-variant-numeric:tabular-nums}\n/* tags */\n.tags{display:flex; flex-wrap:wrap; gap:6px; margin:12px 0 0}\n.tag{font-size:11.5px; padding:3px 10px; border-radius:999px;\n  background:var(--sage-tint); color:var(--sage); font-weight:550}\n/* actions */\n.actions{display:flex; flex-wrap:wrap; gap:8px; margin:16px 0 0}\n.act{display:inline-flex; align-items:center; gap:7px;\n  font-size:12.5px; font-weight:600; padding:7px 16px; border-radius:999px}\n.act svg{width:13px; height:13px; stroke:currentColor; stroke-width:2.75; fill:none;\n  stroke-linecap:round; stroke-linejoin:round}\n.act.primary{background:var(--accent); color:#fff}\n.act.primary:hover{background:var(--accent-deep)}\n.act.ghost{background:var(--btn); box-shadow:var(--shadow)}\n.act.ghost:hover{background:var(--accent-tint); color:var(--accent)}\n.fmt{font-size:10px; opacity:.8; font-weight:500; letter-spacing:.05em}\n/* description */\n.desc{margin:18px 0 0; border-top:1px solid var(--line); padding-top:14px}\n.desc p{margin:0 0 8px; font-size:13.5px; line-height:1.6; color:var(--tx);\n  text-wrap:pretty}\n.desc.clamped .body{display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden}\n.more{font-size:12.5px; color:var(--accent); font-weight:550; margin-top:4px}\n.more:hover{color:var(--accent-deep)}\n.desc[data-empty=\"1\"]{display:none}\n/* identifiers footer */\n.ids{display:flex; flex-wrap:wrap; gap:5px 14px; margin:14px 0 0;\n  font-size:11px; color:var(--tx-muted); font-variant-numeric:tabular-nums}\n.ids span b{font-weight:550; color:var(--tx-muted); text-transform:uppercase; letter-spacing:.05em; font-size:9.5px; margin-right:4px}\n\n/* ============ skeleton ============ */\n.view-loading .hero .cover-s{width:168px; height:224px; border-radius:4px 12px 12px 4px;\n  background:var(--skel); position:relative; overflow:hidden; flex:none}\n.sl{height:11px; border-radius:6px; background:var(--skel)}\n.cover-s::after,.sl::after{content:\"\"; position:absolute; inset:0;\n  background:linear-gradient(100deg, transparent 30%, var(--skel-hi) 50%, transparent 70%);\n  transform:translateX(-100%); animation:shimmer 1.4s infinite}\n.sl{position:relative; overflow:hidden}\n@keyframes shimmer{to{transform:translateX(100%)}}\n\n/* ============ flat states ============ */\n.flat{align-items:center; gap:10px; padding:26px 0; font-size:13px; color:var(--tx-muted)}\n.flat b{color:var(--tx); font-weight:550}\n.flat .q{font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px;\n  background:var(--skel); padding:2px 7px; border-radius:6px}\n.retry{padding:4px 13px; border-radius:999px; font-size:12.5px;\n  background:var(--accent-tint); color:var(--accent); font-weight:550}\n.retry:hover{background:var(--accent); color:#fff}\n\n/* ============ dev toolbar (mockup only) ============ */\n.devbar{max-width:640px; margin:20px auto 12px; padding:8px 14px;\n  border:1.5px dashed var(--line); border-radius:14px;\n  display:flex; flex-wrap:wrap; gap:6px 18px; align-items:center;\n  font-size:11.5px; color:var(--tx-muted)}\n.devbar .grp{display:flex; align-items:center; gap:5px}\n.devbar .lbl{margin-right:2px; text-transform:uppercase; letter-spacing:.06em; font-size:9.5px}\n.devbar button{padding:2.5px 9px; border-radius:999px; font-size:11.5px; color:var(--tx-muted)}\n.devbar button:hover{background:var(--skel)}\n.devbar button[aria-pressed=\"true\"]{background:var(--accent-tint); color:var(--accent); font-weight:600}\n\n@media (max-width:520px){\n  .hero{gap:16px}\n  .coverwrap{width:118px}\n  .cover{width:118px; height:157px}\n  .facts dd{white-space:normal}\n}\n@media (prefers-reduced-motion: reduce){\n  *,*::before,*::after{animation:none!important; transition:none!important}\n}\n<\u002Fstyle>\n<\u002Fhead>\n<body>\n\n<div class=\"widget\" id=\"w\" data-state=\"loading\">\n  <div class=\"view view-loading\" aria-hidden=\"true\">\n    <div class=\"hero\">\n      <div class=\"cover-s\"><\u002Fdiv>\n      <div style=\"flex:1;padding-top:4px\">\n        <div class=\"sl\" style=\"width:75%;height:15px\"><\u002Fdiv>\n        <div class=\"sl\" style=\"width:45%;margin-top:9px\"><\u002Fdiv>\n        <div class=\"sl\" style=\"width:60%;margin-top:22px\"><\u002Fdiv>\n        <div class=\"sl\" style=\"width:52%;margin-top:7px\"><\u002Fdiv>\n        <div class=\"sl\" style=\"width:57%;margin-top:7px\"><\u002Fdiv>\n        <div class=\"sl\" style=\"width:35%;margin-top:24px;height:26px;border-radius:999px\"><\u002Fdiv>\n      <\u002Fdiv>\n    <\u002Fdiv>\n  <\u002Fdiv>\n\n  <div class=\"view view-loaded\">\n    <div class=\"hero\">\n      <div class=\"coverwrap\"><span class=\"cover\" id=\"cover\"><\u002Fspan><\u002Fdiv>\n      <div class=\"meta\">\n        <h1 class=\"title\" id=\"title\"><\u002Fh1>\n        <p class=\"authors\" id=\"authors\"><\u002Fp>\n        <span class=\"series\" id=\"series\" hidden=\"\"><\u002Fspan>\n        <dl class=\"facts\" id=\"facts\"><\u002Fdl>\n        <div class=\"tags\" id=\"tags\"><\u002Fdiv>\n        <div class=\"actions\" id=\"actions\"><\u002Fdiv>\n      <\u002Fdiv>\n    <\u002Fdiv>\n    <div class=\"desc clamped\" id=\"desc\">\n      <div class=\"body\" id=\"descBody\"><\u002Fdiv>\n      <button class=\"more\" id=\"more\">Show more<\u002Fbutton>\n    <\u002Fdiv>\n    <div class=\"ids\" id=\"ids\"><\u002Fdiv>\n  <\u002Fdiv>\n\n  <div class=\"view view-notfound flat\">\n    <span><b>Book not found<\u002Fb>&nbsp; <span class=\"q\">id: 412<\u002Fspan><\u002Fspan>\n  <\u002Fdiv>\n\n  <div class=\"view view-error flat\">\n    <span>Couldn’t load book<\u002Fspan>\n    <button class=\"retry\" id=\"retry\">Retry<\u002Fbutton>\n  <\u002Fdiv>\n<\u002Fdiv>\n\n<div class=\"devbar\" aria-label=\"Mockup dev toolbar\">\n  <div class=\"grp\" data-set=\"theme\"><span class=\"lbl\">theme<\u002Fspan>\n    <button data-v=\"auto\" aria-pressed=\"true\">auto<\u002Fbutton><button data-v=\"light\">light<\u002Fbutton><button data-v=\"dark\">dark<\u002Fbutton>\n  <\u002Fdiv>\n  <div class=\"grp\" data-set=\"state\"><span class=\"lbl\">state<\u002Fspan>\n    <button data-v=\"loading\">loading<\u002Fbutton><button data-v=\"loaded\" aria-pressed=\"true\">loaded<\u002Fbutton><button data-v=\"notfound\">not found<\u002Fbutton><button data-v=\"error\">error<\u002Fbutton>\n  <\u002Fdiv>\n  <div class=\"grp\" data-set=\"book\"><span class=\"lbl\">book<\u002Fspan>\n    <button data-v=\"full\" aria-pressed=\"true\">full<\u002Fbutton><button data-v=\"sparse\">sparse<\u002Fbutton><button data-v=\"raw\">raw file<\u002Fbutton>\n  <\u002Fdiv>\n<\u002Fdiv>\n\n<script>\n\"use strict\";\n/* ============ MCP seams ============\n   onRead(bookId, fmt) → ui/open-link (host may block)\n   onShowSimilar(id)   → tools/call semantic search\n   reportSize()        → ui/size-changed                */\nfunction onRead(bookId,fmt){ console.log(\"[stub] ui/open-link read\", bookId, fmt); }\nfunction onShowSimilar(bookId){ console.log(\"[stub] tools/call similar\", bookId); }\nfunction reportSize(){}\n\n/* ============ fixtures ============ */\nconst FIXTURES={\n full:{bookId:412,title:\"Designing Data-Intensive Applications\",\n  authors:[\"Martin Kleppmann\"],series:{name:\"O’Reilly Animal Guide\",index:1},\n  rating:4.5,pubdate:\"2017-03-16\",publisher:\"O’Reilly Media\",languages:[\"eng\"],\n  formats:[\"EPUB\",\"PDF\"],pages:616,hasCover:true,\n  tags:[\"distributed-systems\",\"databases\",\"architecture\",\"reliability\"],\n  identifiers:{isbn:\"9781449373320\",goodreads:\"23463279\"},\n  comments:[\"Data is at the center of many challenges in system design today. Difficult issues need to be figured out, such as scalability, consistency, reliability, efficiency, and maintainability. In addition, we have an overwhelming variety of tools, including relational databases, NoSQL datastores, stream or batch processors, and message brokers.\",\"In this practical and comprehensive guide, author Martin Kleppmann helps you navigate this diverse landscape by examining the pros and cons of various technologies for processing and storing data. Software keeps changing, but the fundamental principles remain the same.\"]},\n sparse:{bookId:731,title:\"Чистая архитектура. Искусство разработки программного обеспечения\",\n  authors:[\"Роберт Мартин\"],rating:0,pubdate:\"2018-06-01\",publisher:null,languages:[\"rus\"],\n  formats:[\"FB2\"],pages:null,hasCover:false,tags:[\"архитектура\"],identifiers:{},comments:[]},\n raw:{bookId:93,title:\"programirovanie_na_C_final_v2.pdf\",\n  authors:[],rating:0,pubdate:null,publisher:null,languages:[],\n  formats:[\"PDF\"],pages:null,hasCover:false,tags:[],identifiers:{},comments:[]}\n};\nfunction isRaw(t){return /[\\/_]|\\.(pdf|dvi|djvu|epub|fb2)$/i.test(t)||/^scan|^\\d{6,}/i.test(t);}\nfunction hash(s){let h=5381;for(let i=0;i<s.length;i++)h=((h*33)^s.charCodeAt(i))>>>0;return h;}\nfunction esc(s){return String(s).replace(/[&<>\"]/g,c=>({\"&\":\"&amp;\",\"<\":\"&lt;\",\">\":\"&gt;\",'\"':\"&quot;\"}[c]));}\nconst LANG={eng:\"English\",rus:\"Russian\",ukr:\"Ukrainian\"};\n\n/* ============ render ============ */\nconst w=document.getElementById(\"w\");\nconst S={state:\"loaded\",book:\"full\"};\n\nfunction render(b){\n  const h=hash(b.title)%360, h2=(h+38)%360, raw=isRaw(b.title);\n  document.getElementById(\"cover\").innerHTML=`\n    <span class=\"ph\"><span class=\"mark\"><\u002Fspan>\n      <span class=\"pt${raw?'\" style=\"font-family:ui-monospace,Menlo,monospace;font-weight:500;font-size:12.5px':\"\"}\">${esc(b.title)}<\u002Fspan>\n      <span class=\"pa\">${esc(b.authors.join(\", \"))}<\u002Fspan><\u002Fspan>\n    ${b.hasCover?`<img alt=\"\" src=\"http://localhost:8080/get/cover/${b.bookId}/lib\" onerror=\"this.setAttribute('data-broken','')\">`:\"\"}`;\n  document.getElementById(\"cover\").style.cssText=`--h:${h};--h2:${h2}`;\n  document.getElementById(\"title\").textContent=b.title;\n  const au=document.getElementById(\"authors\");\n  au.innerHTML=b.authors.length?`by <b>${esc(b.authors.join(\", \"))}<\u002Fb>`:`<i>Unknown author<\u002Fi>`;\n  const se=document.getElementById(\"series\");\n  se.hidden=!b.series;\n  if(b.series)se.textContent=`${b.series.name} · #${b.series.index}`;\n  /* facts — only rows that exist */\n  const f=[];\n  if(b.rating)f.push([\"Rating\",stars(b.rating)]);\n  if(b.pubdate)f.push([\"Published\",`${new Date(b.pubdate).getFullYear()}${b.publisher?\" · \"+esc(b.publisher):\"\"}`]);\n  else if(b.publisher)f.push([\"Publisher\",esc(b.publisher)]);\n  if(b.languages.length)f.push([\"Language\",b.languages.map(l=>LANG[l]||l).join(\", \")]);\n  if(b.pages)f.push([\"Pages\",String(b.pages)]);\n  f.push([\"Formats\",b.formats.join(\" · \")||\"—\"]);\n  document.getElementById(\"facts\").innerHTML=f.map(([k,v])=>`<dt>${k}<\u002Fdt><dd>${v}<\u002Fdd>`).join(\"\");\n  document.getElementById(\"tags\").innerHTML=b.tags.map(t=>`<span class=\"tag\">${esc(t)}<\u002Fspan>`).join(\"\");\n  /* actions: Read per format + similar */\n  const acts=b.formats.map((fmt,i)=>`<button class=\"act ${i===0?\"primary\":\"ghost\"}\" data-read=\"${fmt}\">\n    <svg viewBox=\"0 0 24 24\"><path d=\"M2 4h7a3 3 0 013 3v13a3 3 0 00-3-3H2zM22 4h-7a3 3 0 00-3 3v13a3 3 0 013-3h7z\"/><\u002Fsvg>\n    Read <span class=\"fmt\">${fmt}<\u002Fspan><\u002Fbutton>`);\n  acts.push(`<button class=\"act ghost\" data-similar=\"1\">\n    <svg viewBox=\"0 0 24 24\"><circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"M21 21l-4.35-4.35\"/><\u002Fsvg>\n    Similar<\u002Fbutton>`);\n  document.getElementById(\"actions\").innerHTML=acts.join(\"\");\n  /* description */\n  const d=document.getElementById(\"desc\");\n  d.dataset.empty=b.comments.length?\"0\":\"1\";\n  document.getElementById(\"descBody\").innerHTML=b.comments.map(p=>`<p>${esc(p)}<\u002Fp>`).join(\"\");\n  d.classList.add(\"clamped\");\n  requestAnimationFrame(()=>{\n    const body=document.getElementById(\"descBody\");\n    document.getElementById(\"more\").style.display=body.scrollHeight>body.clientHeight+4?\"\":\"none\";\n  });\n  /* identifiers */\n  document.getElementById(\"ids\").innerHTML=[\n    `<span><b>id<\u002Fb>${b.bookId}<\u002Fspan>`,\n    ...Object.entries(b.identifiers).map(([k,v])=>`<span><b>${esc(k)}<\u002Fb>${esc(v)}<\u002Fspan>`)\n  ].join(\"\");\n  reportSize();\n}\nfunction stars(r){\n  let s='<span class=\"stars\">';\n  for(let i=1;i<=5;i++)s+=`<svg class=\"${i<=Math.round(r)?\"\":\"off\"}\" viewBox=\"0 0 24 24\"><path d=\"M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z\"/><\u002Fsvg>`;\n  return s+`<\u002Fspan>${r.toFixed(1)}`;\n}\n\n/* interactions */\ndocument.getElementById(\"actions\").addEventListener(\"click\",e=>{\n  const r=e.target.closest(\"[data-read]\"); if(r){onRead(FIXTURES[S.book].bookId,r.dataset.read);return;}\n  if(e.target.closest(\"[data-similar]\"))onShowSimilar(FIXTURES[S.book].bookId);\n});\ndocument.getElementById(\"more\").addEventListener(\"click\",()=>{\n  const d=document.getElementById(\"desc\"), open=!d.classList.contains(\"clamped\");\n  d.classList.toggle(\"clamped\");\n  document.getElementById(\"more\").textContent=open?\"Show more\":\"Show less\";\n  reportSize();\n});\ndocument.getElementById(\"retry\").addEventListener(\"click\",()=>{\n  setState(\"loading\"); setTimeout(()=>setState(\"loaded\"),900);\n});\n\n/* dev toolbar */\nfunction setState(st){S.state=st; w.dataset.state=st;\n  if(st===\"loaded\")render(FIXTURES[S.book]); reportSize();\n  syncBar(\"state\",st);}\nfunction syncBar(g,v){document.querySelectorAll(`.devbar [data-set=\"${g}\"] button`).forEach(b=>b.setAttribute(\"aria-pressed\",String(b.dataset.v===v)));}\ndocument.querySelector(\".devbar\").addEventListener(\"click\",e=>{\n  const b=e.target.closest(\"button\"); if(!b)return;\n  const g=b.closest(\".grp\").dataset.set, v=b.dataset.v;\n  syncBar(g,v);\n  if(g===\"theme\")v===\"auto\"?document.documentElement.removeAttribute(\"data-theme\"):document.documentElement.setAttribute(\"data-theme\",v);\n  if(g===\"state\")setState(v);\n  if(g===\"book\"){S.book=v; if(S.state===\"loaded\")render(FIXTURES[v]);}\n});\n\n/* boot: loading → loaded */\nsetState(\"loading\");\nsetTimeout(()=>setState(\"loaded\"),1000);\n<\u002Fscript>\n\n\n<\u002Fbody><\u002Fhtml>"
+  </script>
+</body>
+</html>
