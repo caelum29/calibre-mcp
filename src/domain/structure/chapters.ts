@@ -226,6 +226,39 @@ interface LineInfo {
   start: number;
 }
 
+// How far below a bare "Chapter N" line we look for its title (blank lines between
+// the number and the title are normal in pdftotext output of LaTeX/DocBook books).
+const TITLE_LOOKAHEAD_LINES = 4;
+
+/** True when a heading line is just the chapter word + number, with no title text. */
+function isBareHeading(heading: string): boolean {
+  const m = EXPLICIT_CHAPTER.exec(heading);
+  return m !== null && !/\p{L}/u.test(m[2]!);
+}
+
+/** ToC-entry shape: a dot leader or a trailing standalone page number. */
+function isTocLike(heading: string): boolean {
+  return /\.{3,}/.test(heading) || /\s\d{1,4}$/.test(heading.trim());
+}
+
+/**
+ * Enrich a bare "Chapter N" heading with the title printed on a following line (#29):
+ * PDFs typeset the number and the title as separate lines, so the matched line alone
+ * is a placeholder. Keeps the heading as-is when no title-like line is found nearby.
+ */
+function enrichHeading(heading: string, lines: LineInfo[], lineIdx: number): string {
+  if (!isBareHeading(heading)) return heading;
+  for (let i = lineIdx + 1; i <= lineIdx + TITLE_LOOKAHEAD_LINES && i < lines.length; i++) {
+    const t = lines[i]!.text.trim();
+    if (!t) continue; // skip blanks between number and title
+    // Title-like: short, has letters, not itself a heading, not a ToC dot-leader/page number.
+    const titleLike =
+      t.length <= 80 && /\p{L}/u.test(t) && chapterNumber(t) === null && !/^[\d.\s·…]+$/.test(t);
+    return titleLike ? `${heading.replace(/[.:\-—–\s]+$/, "")} — ${t}` : heading;
+  }
+  return heading;
+}
+
 /** Split `text` into lines carrying each line's char offset (handles \n and \r\n). */
 function lineOffsets(text: string): LineInfo[] {
   const lines: LineInfo[] = [];
@@ -254,9 +287,10 @@ export function detectChapters(text: string): StructureResult {
 
   // 1. Every numeric heading occurrence, in text order.
   const occ: { n: number; heading: string; startChar: number }[] = [];
-  for (const { text: raw, start } of lines) {
+  for (let li = 0; li < lines.length; li++) {
+    const { text: raw, start } = lines[li]!;
     const n = chapterNumber(raw);
-    if (n !== null) occ.push({ n, heading: raw.trim(), startChar: start });
+    if (n !== null) occ.push({ n, heading: enrichHeading(raw.trim(), lines, li), startChar: start });
   }
 
   if (occ.length > 0) {
@@ -273,6 +307,21 @@ export function detectChapters(text: string): StructureResult {
       if (!bestBody.has(o.n) || len > bestBody.get(o.n)!) {
         bestBody.set(o.n, len);
         best.set(o.n, { heading: o.heading, startChar: o.startChar });
+      }
+    }
+
+    // A bare "Chapter N" winner may be a per-page running header repeated mid-chapter,
+    // out-bodying the real titled heading just above it (#29, book 911 ch.11). Walk left
+    // through the same-number run for the nearest titled occurrence — that line is the
+    // chapter's true start. ToC-style lines (dot leaders / trailing page number) and
+    // near-adjacent lines (< 500 chars — a ToC entry right above a body heading) don't count.
+    for (const [n, chosen] of best) {
+      if (!isBareHeading(chosen.heading)) continue;
+      let k = occ.findIndex((o) => o.n === n && o.startChar === chosen.startChar) - 1;
+      while (k >= 0 && occ[k]!.n === n && isBareHeading(occ[k]!.heading)) k--;
+      const t = k >= 0 && occ[k]!.n === n ? occ[k]! : undefined;
+      if (t && !isTocLike(t.heading) && chosen.startChar - t.startChar >= 500) {
+        best.set(n, { heading: t.heading, startChar: t.startChar });
       }
     }
 

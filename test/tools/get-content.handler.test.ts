@@ -99,6 +99,31 @@ describe("calibre_get_content handler", () => {
       expect((mismatched.content[0] as { text: string }).text).toContain("minted for book 1");
     });
 
+    it("jumps to a raw char position via the offset param (#28)", async () => {
+      const r = await getContentTool.handler(args({ offset: 12_000 }), deps());
+      expect(r.isError).toBeFalsy();
+      expect((r.structuredContent as { offset: number }).offset).toBe(12_000);
+    });
+
+    it("coerces a stringified offset (buggy-client hardening)", async () => {
+      const r = await getContentTool.handler(args({ offset: "12000" }), deps());
+      expect((r.structuredContent as { offset: number }).offset).toBe(12_000);
+    });
+
+    it("errors when both cursor and offset are given", async () => {
+      const first = await getContentTool.handler(args(), deps());
+      const cursor = first.structuredContent?.nextCursor as string;
+      const r = await getContentTool.handler(args({ cursor, offset: 100 }), deps());
+      expect(r.isError).toBe(true);
+      expect((r.content[0] as { text: string }).text).toContain("not both");
+    });
+
+    it("errors when offset is past the end of the book", async () => {
+      const r = await getContentTool.handler(args({ offset: 999_999 }), deps());
+      expect(r.isError).toBe(true);
+      expect((r.content[0] as { text: string }).text).toContain("past the end");
+    });
+
     it("omits the cursor footer on the final page", async () => {
       const short = "tiny book text.";
       const r = await getContentTool.handler(
@@ -153,7 +178,13 @@ describe("calibre_get_content handler", () => {
   });
 
   describe("structure=true", () => {
-    const chapterText = ["Chapter 1", "aaa aaa aaa", "Chapter 2", "bbb bbb bbb", "Chapter 3", "ccc ccc ccc"].join("\n");
+    // Realistic pdftotext layout: bare "Chapter N", blank, title line, wide prose lines.
+    const prose = (s: string) => `${s} `.repeat(20).trim();
+    const chapterText = [
+      "Chapter 1", "", "Intro", prose("aaa"),
+      "Chapter 2", "", "Setup", prose("bbb"),
+      "Chapter 3", "", "Usage", prose("ccc"),
+    ].join("\n");
     const withChapters = () =>
       deps({ getText: async () => ({ text: chapterText, backend: "pdftotext", chars: chapterText.length, cached: false }) });
 
@@ -162,7 +193,8 @@ describe("calibre_get_content handler", () => {
       expect(r.isError).toBeFalsy();
       const text = (r.content[0] as { text: string }).text;
       expect(text).toContain("CHAPTERS");
-      expect(text).not.toContain("aaa aaa aaa"); // book body is NOT dumped
+      expect(text).not.toContain("aaa aaa"); // book body is NOT dumped
+      expect(text).toContain("Chapter 2 — Setup"); // bare headings enriched with the title line (#29)
       const sc = r.structuredContent as { chapters?: { n: number; cursor: string }[]; detector?: string };
       expect(sc.detector).toBe("numeric");
       expect(sc.chapters?.map((c) => c.n)).toEqual([1, 2, 3]);

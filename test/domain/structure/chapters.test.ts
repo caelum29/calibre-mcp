@@ -47,6 +47,64 @@ describe("chapterNumber", () => {
   });
 });
 
+describe("detectChapters — bare-heading title enrichment (#29)", () => {
+  const prose = "This is a long wrapped prose line that keeps going well past the eighty character title cap limit.";
+
+  it("pulls the title from the line after a bare heading (blank line between)", () => {
+    const text = ["Chapter 1", "", "Introduction", prose, "Chapter 2", "", "PostGIS Installation", prose].join("\n");
+    const r = detectChapters(text);
+    expect(r.chapters.map((c) => c.heading)).toEqual(["Chapter 1 — Introduction", "Chapter 2 — PostGIS Installation"]);
+  });
+
+  it("keeps a same-line title untouched", () => {
+    const text = ["Chapter 1. Getting Started", prose, "Chapter 2: Advanced", prose].join("\n");
+    const r = detectChapters(text);
+    expect(r.chapters.map((c) => c.heading)).toEqual(["Chapter 1. Getting Started", "Chapter 2: Advanced"]);
+  });
+
+  it("keeps the bare heading when the next line is not title-like", () => {
+    // section number (digits/dots) and an overlong prose line are both rejected as titles
+    const text = ["Chapter 1", "", "11.1.5", prose, "Chapter 2", "", prose].join("\n");
+    const r = detectChapters(text);
+    expect(r.chapters.map((c) => c.heading)).toEqual(["Chapter 1", "Chapter 2"]);
+  });
+
+  it("does not treat another chapter heading as the title", () => {
+    const text = ["Chapter 1", "Chapter 2", "", "Real Title", prose].join("\n");
+    const r = detectChapters(text);
+    expect(r.chapters[0]!.heading).toBe("Chapter 1");
+  });
+
+  it("strips trailing punctuation from the bare heading before joining (Cyrillic)", () => {
+    const text = ["Глава 1.", "", "Введение", prose, "Глава 2.", "", "Установка", prose].join("\n");
+    const r = detectChapters(text);
+    expect(r.chapters.map((c) => c.heading)).toEqual(["Глава 1 — Введение", "Глава 2 — Установка"]);
+  });
+
+  it("prefers a titled occurrence over a larger-bodied bare page-header", () => {
+    // Running headers repeat "Chapter 1" mid-chapter with a bigger body than the real
+    // titled heading; the titled occurrence must still win (book 911's Chapter 11).
+    const page = `${prose}\n`;
+    const text = ["Chapter 1", "", "Real Title", page.repeat(20), "Chapter 1", "", "11.1.5", page.repeat(100)].join("\n");
+    const r = detectChapters(text);
+    expect(r.chapters[0]!.heading).toBe("Chapter 1 — Real Title");
+    expect(r.chapters[0]!.startChar).toBe(0);
+  });
+
+  it("does not promote a tiny ToC line over the bare body heading", () => {
+    const body = `${prose}\n`.repeat(10);
+    const text = ["Contents", "Chapter 1 Introduction 5", "", "Chapter 1", "", prose, body].join("\n");
+    const r = detectChapters(text);
+    expect(r.chapters[0]!.heading).toBe("Chapter 1");
+  });
+
+  it("startChar stays at the heading line, not the title line", () => {
+    const text = ["Chapter 1", "", "Introduction", prose].join("\n");
+    const r = detectChapters(text);
+    expect(r.chapters[0]!.startChar).toBe(0);
+  });
+});
+
 describe("detectChapters — numeric", () => {
   it("returns chapters with correct offsets and endChar chaining", () => {
     const text = ["Chapter 1", "aaa", "Chapter 2", "bbb", "Chapter 3", "ccc"].join("\n");
