@@ -15,6 +15,12 @@ Ask your AI assistant *“which of my books explain consumer-group rebalancing?�
 exact chapter — across 800+ books or inside one. Curate metadata, dedupe, and safely edit
 your library, all through natural language.
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/caelum29/calibre-mcp/main/assets/demo.gif" width="720" alt="Claude Desktop searching a Calibre library and rendering the results as an interactive cover carousel" />
+  <br/>
+  <em>Claude Desktop rendering a library search as an interactive cover board (MCP&nbsp;Apps)</em>
+</p>
+
 ## ✨ Highlights
 
 - **16 tools** covering the full surface: search, read content, browse categories, curate,
@@ -81,11 +87,23 @@ Add to `claude_desktop_config.json`:
 Configure the server in Claude Desktop (either method above) — Desktop bridges local MCP
 servers into Cowork automatically. No extra setup.
 
-### First contact
+### First contact — a five-prompt tour
 
-Ask Claude something like *“list my calibre libraries”* or *“find books about Rust”*.
 The server auto-detects your default library; if the Content Server isn’t reachable it
-logs an actionable hint to stderr.
+logs an actionable hint to stderr. Then try, in order:
+
+1. *“list my calibre libraries”* — connectivity sanity check.
+2. *“find books about Rust”* — metadata search; in Claude Desktop the results render as
+   the cover carousel above.
+3. *“show me The Rust Programming Language”* — full metadata; renders as a book card with
+   cover, rating, and per-format read buttons.
+4. *“build the semantic index for my Kafka books”* — one-time prep for meaning-based search
+   (see below).
+5. *“which of my books explain consumer-group rebalancing?”* — semantic search; answers
+   with ranked books, or exact passages when scoped to one book.
+
+Bonus: *“what’s wrong with my library?”* runs the quality audit (missing metadata,
+raw-filename titles, invalid ISBNs).
 
 ## ✍️ Enabling writes
 

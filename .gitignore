@@ -37,3 +37,4 @@ docs/prompts/
 
 # retrieval-eval work dir (model cache copy + throwaway fixture index)
 test/eval/retrieval/.work/
+assets/*.mov
