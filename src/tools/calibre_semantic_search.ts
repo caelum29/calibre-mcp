@@ -292,7 +292,7 @@ async function bookScope(args: Args, deps: ToolDeps, libraryId: string, bookId: 
   const { maxScore, lowConfidence } = confidence(ranked, deps, rr);
   const head = withNote(
     header("passage", ranked.length, args, maxScore, lowConfidence, rr) +
-      ` Re-read any passage via calibre_get_content (cursor at its char offset).`,
+      ` Re-read any passage via calibre_get_content (pass its start char as offset).`,
     note,
   );
 
