@@ -22,6 +22,9 @@ your library, all through natural language.
 - **Semantic search** — meaning-based, hybrid vector + keyword retrieval over your whole
   library *or inside a single book*. Multilingual (English + Russian verified,
   cross-lingual queries work). No other Calibre MCP server has this.
+- **In-chat UI (MCP Apps)** — in hosts that support MCP Apps (Claude Desktop), library
+  searches render an interactive cover carousel and `calibre_get_book` a book detail card
+  with cover, rating, and read/similar actions. Text-only hosts are unaffected.
 - **Curation tools** — find duplicates with merge-safety scoring, audit metadata quality,
   and recover real metadata for books with raw filenames (`795731065.pdf` →
   *Fundamentals of Software Engineering*) via Open Library / Google Books.
@@ -155,7 +158,7 @@ and `mode: hybrid` degrades to keyword (with a note); rebuild with the model ins
 | Tool | Access | What it does |
 |---|---|---|
 | `calibre_search` | read | Find books by title/author/ISBN/tag or Calibre query syntax (`mode: meta`), or full text (`mode: fts`); `scope: book` searches inside one book |
-| `calibre_get_book` | read | Full metadata, formats, and cover link for one book (id or uuid) |
+| `calibre_get_book` | read | Full metadata, formats, and cover link for one book (id or uuid); `include_cover: true` embeds the cover image in the result |
 | `calibre_get_content` | read | Read a book’s text as capped excerpts; walk the whole book via cursor. `structure: true` returns a chapter map (headings, offsets, per-chapter cursors) — EN + RU/UK |
 | `calibre_list_categories` | read | Browse tags, authors, series, publishers, custom columns with counts |
 | `calibre_list_libraries` | read | List the libraries the Content Server exposes (+ which is default) |
@@ -170,6 +173,11 @@ and `mode: hybrid` degrades to keyword (with a note); rebuild with the model ins
 | `calibre_add_book` | **write** | Import a local ebook file (path-whitelisted) |
 | `calibre_remove_book` | **write, destructive** | Permanently delete books (records + files); dry-run unless confirmed |
 | `calibre_ping` | read | Health check: is Calibre reachable end-to-end? |
+
+In MCP Apps hosts, `calibre_search` and `calibre_semantic_search` (library scope) render
+their results as a cover-board carousel and `calibre_get_book` as a book card — covers load
+from your local Content Server. Everywhere else the same tools return their usual text
+results; no configuration needed either way.
 
 ## 📚 Companion skill: calibre-distill
 
