@@ -4,6 +4,31 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] — 2026-07-18
+
+### Added
+
+- **In-chat cover board widget** on `calibre_search` and `calibre_semantic_search` (library
+  scope only) ([#19], [#22], D-017). A vanilla-JS carousel rendered via MCP Apps (`io.mcp/ui`
+  extension, SEP-1865), with covers loaded from the Content Server thumbnail endpoint and a
+  generated placeholder fallback for books without one. Supports keyboard navigation; a Read
+  button opens the book directly in Calibre's server UI via `ui/open-link`. Only renders on
+  hosts that support MCP Apps — other clients get the plain text/resource_link result unchanged.
+- **Book detail card widget** on `calibre_get_book`: cover, rating, series, a facts grid, tags,
+  per-format Read buttons, and a "Similar" action that kicks off a semantic-search follow-up.
+- **`include_cover` param on `calibre_get_book`** (default `false`) — opt in to a base64 cover
+  image block in the tool result for clients that want it inline without the widget.
+
+[#19]: https://github.com/caelum29/calibre-mcp/issues/19
+[#22]: https://github.com/caelum29/calibre-mcp/issues/22
+
+### Changed
+
+- Added a widget-internal `calibre_board_data` tool (hidden from the model via
+  `_meta.ui.visibility: ["app"]`), backed by a server-side board cache, so the cover-board widget
+  can still fetch its data on hosts (e.g. Claude Desktop) that strip `structuredContent` from the
+  tool-result notification. The model-facing tool surface stays at 15 tools + ping.
+
 ## [0.3.0] — 2026-07-18
 
 ### Added
