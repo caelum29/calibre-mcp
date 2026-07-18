@@ -6,7 +6,7 @@
 // GUI-concurrency lock — never race the GUI on the on-disk DB (CLAUDE.md gotchas).
 
 import type { Config } from "../config.js";
-import { CalibreCliError, CalibreNotFoundError } from "../domain/errors.js";
+import { CalibreCliError, CalibreCliTimeoutError, CalibreNotFoundError } from "../domain/errors.js";
 import type { FtsHit } from "../domain/search.js";
 import { log } from "../logging.js";
 import { spawnCollect, SpawnTimeoutError } from "./spawn.js";
@@ -111,7 +111,9 @@ export class CalibreClient {
       // as a settled error instead of an infinite hang (spawn.ts).
       if (err instanceof SpawnTimeoutError) {
         log.error("calibredb timed out", { args, timeoutMs: opts.timeoutMs ?? 30_000 });
-        throw new CalibreCliError(null, "calibredb command timed out");
+        // Timeout subclass: for routed writes the server may have committed already,
+        // so write tools must verify rather than assume failure (issue #33).
+        throw new CalibreCliTimeoutError("calibredb command timed out");
       }
       log.error("calibredb spawn failed", { args, msg: (err as Error).message });
       throw new CalibreCliError(null, "calibredb command failed");
