@@ -18,7 +18,7 @@ export const getContentTool = defineTool({
   name: "calibre_get_content",
   title: "Read book text",
   description:
-    "Extract a book's text as a capped, fenced excerpt; pass the returned nextCursor token verbatim to walk the whole book. Set structure=true for a chapter map with per-chapter cursors. To find text inside a book, use calibre_search scope=book.",
+    "Extract a book's text as a capped, fenced excerpt; pass the returned nextCursor token verbatim to walk the whole book, or jump to a char position with offset (e.g. a search passage's charStart). Set structure=true for a chapter map with per-chapter cursors. To find text inside a book, use calibre_search scope=book.",
   inputSchema: {
     id: BookId().optional(),
     bookId: BookId().optional(),
@@ -29,6 +29,16 @@ export const getContentTool = defineTool({
     cursor: CursorParam.describe(
       "Opaque continuation token from a previous response (nextCursor or a chapter cursor). Pass it verbatim — do not construct one.",
     ),
+    // Raw char position for search→content jumps (#28): semantic/FTS passages expose
+    // charStart, which has no cursor token to pass back. Tolerant coercion, garbage → schema error.
+    offset: z
+      .preprocess((v) => {
+        if (v === undefined || v === null) return undefined;
+        const n = Number(v);
+        return Number.isFinite(n) ? Math.max(0, Math.trunc(n)) : v;
+      }, z.number().int().min(0))
+      .optional()
+      .describe("Char position to start reading from — e.g. a search passage's charStart. Mutually exclusive with cursor."),
     library: z.string().optional(),
   },
   outputSchema: {
@@ -143,10 +153,13 @@ export const getContentTool = defineTool({
 
       // A cursor must decode AND match this book+format — anything else errors loudly.
       // Silent restart-at-0 shipped first and produced invisible pagination loops (#26).
+      if (args.cursor !== undefined && args.offset !== undefined) {
+        return toolError("Pass either cursor (continuation token) or offset (char position), not both.");
+      }
       const cur = decodeContentCursor(args.cursor);
       if (args.cursor !== undefined && !cur) {
         return toolError(
-          "Invalid cursor — pass the exact nextCursor token from the previous calibre_get_content response (it is opaque; formats like \"char:N\" are not valid), or omit cursor to start from the beginning.",
+          "Invalid cursor — pass the exact nextCursor token from the previous calibre_get_content response (it is opaque), or use the numeric offset param to jump to a char position.",
         );
       }
       if (cur && (cur.id !== numericId || cur.format !== fmt)) {
@@ -154,7 +167,12 @@ export const getContentTool = defineTool({
           `Cursor was minted for book ${cur.id} (${cur.format}), not book ${numericId} (${fmt}) — omit cursor to start this book from the beginning.`,
         );
       }
-      const offset = cur ? cur.offset : 0;
+      if (args.offset !== undefined && args.offset >= extracted.text.length) {
+        return toolError(
+          `offset ${args.offset} is past the end of book ${numericId} (${extracted.text.length} chars total).`,
+        );
+      }
+      const offset = cur ? cur.offset : (args.offset ?? 0);
       const chunk = chunkText(extracted.text, {
         offset,
         maxChars: args.maxChars,
