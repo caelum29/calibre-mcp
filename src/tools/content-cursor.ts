@@ -1,6 +1,6 @@
 // Opaque cursor for walking one book's extracted text (calibre_get_content). Mirrors the
 // search cursor (cursor.ts) but binds {offset, id, format} so a cursor minted for one
-// book/format can't be replayed against another — a mismatch silently restarts at offset 0.
+// book/format can't be replayed against another — the handler rejects mismatches (#26).
 
 export interface ContentCursor {
   offset: number;

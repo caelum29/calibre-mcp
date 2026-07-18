@@ -18,7 +18,7 @@ export const getContentTool = defineTool({
   name: "calibre_get_content",
   title: "Read book text",
   description:
-    "Extract a book's text as a capped, fenced excerpt; pass the returned cursor to walk the whole book. Set structure=true for a chapter map with per-chapter cursors. To find text inside a book, use calibre_search scope=book.",
+    "Extract a book's text as a capped, fenced excerpt; pass the returned nextCursor token verbatim to walk the whole book. Set structure=true for a chapter map with per-chapter cursors. To find text inside a book, use calibre_search scope=book.",
   inputSchema: {
     id: BookId().optional(),
     bookId: BookId().optional(),
@@ -26,7 +26,9 @@ export const getContentTool = defineTool({
     maxChars: limitParam(40_000, 8_000),
     sentenceAware: CoercedBool().default(true),
     structure: CoercedBool().default(false),
-    cursor: CursorParam,
+    cursor: CursorParam.describe(
+      "Opaque continuation token from a previous response (nextCursor or a chapter cursor). Pass it verbatim — do not construct one.",
+    ),
     library: z.string().optional(),
   },
   outputSchema: {
@@ -122,10 +124,11 @@ export const getContentTool = defineTool({
           cursor: encodeContentCursor({ offset: c.startChar, id: numericId, format: fmt }),
         }));
         const head = `Book ${numericId} — ${fmt} via ${extracted.backend}, ${chapters.length} chapters (${struct.detector}), ToC ${struct.hasToc ? "yes" : "no"}`;
+        // Cursors go in the text table too — some clients drop structuredContent entirely (#26).
         const body =
           chapters.length === 0
             ? "No chapters detected — walk the book with the plain cursor (omit structure=true)."
-            : `n | heading | ~tokens\n${chapters.map((c) => `${c.n} | ${c.heading} | ~${c.approxTokens}`).join("\n")}`;
+            : `n | heading | ~tokens | cursor\n${chapters.map((c) => `${c.n} | ${c.heading} | ~${c.approxTokens} | ${c.cursor}`).join("\n")}`;
         const fencedChapters = fence("CHAPTERS", body);
         return toolOk([{ type: "text", text: `${head}\n${fencedChapters}` }], {
           chapters,
@@ -138,9 +141,20 @@ export const getContentTool = defineTool({
         });
       }
 
-      // Resume only if the cursor was minted for THIS book + format (else restart at 0).
+      // A cursor must decode AND match this book+format — anything else errors loudly.
+      // Silent restart-at-0 shipped first and produced invisible pagination loops (#26).
       const cur = decodeContentCursor(args.cursor);
-      const offset = cur && cur.id === numericId && cur.format === fmt ? cur.offset : 0;
+      if (args.cursor !== undefined && !cur) {
+        return toolError(
+          "Invalid cursor — pass the exact nextCursor token from the previous calibre_get_content response (it is opaque; formats like \"char:N\" are not valid), or omit cursor to start from the beginning.",
+        );
+      }
+      if (cur && (cur.id !== numericId || cur.format !== fmt)) {
+        return toolError(
+          `Cursor was minted for book ${cur.id} (${cur.format}), not book ${numericId} (${fmt}) — omit cursor to start this book from the beginning.`,
+        );
+      }
+      const offset = cur ? cur.offset : 0;
       const chunk = chunkText(extracted.text, {
         offset,
         maxChars: args.maxChars,
@@ -151,7 +165,9 @@ export const getContentTool = defineTool({
         : undefined;
 
       const header = `Book ${numericId} — ${fmt} via ${extracted.backend}, chars ${chunk.start}–${chunk.end} of ${chunk.totalChars}`;
-      const fenced = fence("BOOK CONTENT", chunk.slice);
+      // The cursor rides in the text block too — some clients drop structuredContent (#26).
+      const footer = nextCursor ? `\nMore remains — continue with cursor: ${nextCursor}` : "";
+      const fenced = `${fence("BOOK CONTENT", chunk.slice)}${footer}`;
       return toolOk([{ type: "text", text: `${header}\n${fenced}` }], {
         offset: chunk.start,
         count: chunk.slice.length,

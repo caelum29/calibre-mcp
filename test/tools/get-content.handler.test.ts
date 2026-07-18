@@ -68,6 +68,48 @@ describe("calibre_get_content handler", () => {
     expect(r.structuredContent?.text).toBe((r.content[0] as { text: string }).text.split("\n").slice(1).join("\n"));
   });
 
+  describe("cursor validation (#26)", () => {
+    it("surfaces the nextCursor token in the text block, not just structuredContent", async () => {
+      const r = await getContentTool.handler(args(), deps());
+      const nextCursor = r.structuredContent?.nextCursor as string;
+      expect((r.content[0] as { text: string }).text).toContain(`cursor: ${nextCursor}`);
+    });
+
+    it("resumes at the cursor's offset when a valid nextCursor is passed back", async () => {
+      const first = await getContentTool.handler(args(), deps());
+      const cursor = first.structuredContent?.nextCursor as string;
+      const second = await getContentTool.handler(args({ cursor }), deps());
+      expect(second.isError).toBeFalsy();
+      expect((second.structuredContent as { offset: number }).offset).toBe(8_000);
+    });
+
+    it("errors on a hand-constructed cursor instead of silently restarting at 0", async () => {
+      const r = await getContentTool.handler(args({ cursor: "char:40000" }), deps());
+      expect(r.isError).toBe(true);
+      expect((r.content[0] as { text: string }).text).toContain("Invalid cursor");
+    });
+
+    it("errors when the cursor was minted for a different book", async () => {
+      const first = await getContentTool.handler(args(), deps());
+      const cursor = first.structuredContent?.nextCursor as string;
+      const r = await getContentTool.handler(args({ id: undefined, bookId: 2 }), deps({ book: { id: 2 } }));
+      expect(r.isError).toBeFalsy(); // sanity: book 2 itself works
+      const mismatched = await getContentTool.handler(args({ id: 2, cursor }), deps({ book: { id: 2 } }));
+      expect(mismatched.isError).toBe(true);
+      expect((mismatched.content[0] as { text: string }).text).toContain("minted for book 1");
+    });
+
+    it("omits the cursor footer on the final page", async () => {
+      const short = "tiny book text.";
+      const r = await getContentTool.handler(
+        args(),
+        deps({ getText: async () => ({ text: short, backend: "pdftotext", chars: short.length, cached: false }) }),
+      );
+      expect(r.isError).toBeFalsy();
+      expect((r.content[0] as { text: string }).text).not.toContain("More remains");
+    });
+  });
+
   it("errors when the book has no extractable format", async () => {
     const r = await getContentTool.handler(args(), deps({ book: { formats: [] } }));
     expect(r.isError).toBe(true);
@@ -125,6 +167,8 @@ describe("calibre_get_content handler", () => {
       expect(sc.detector).toBe("numeric");
       expect(sc.chapters?.map((c) => c.n)).toEqual([1, 2, 3]);
       expect(sc.chapters?.[0]?.cursor).toBeTypeOf("string");
+      // per-chapter cursors must be visible in the text table too (#26)
+      expect(text).toContain(sc.chapters![0]!.cursor);
     });
 
     it("coerces string 'true'/'1' for the structure flag", async () => {
