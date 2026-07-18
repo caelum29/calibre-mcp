@@ -4,6 +4,21 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] — 2026-07-18
+
+### Fixed
+
+- **`calibre_get_content` forward pagination was unusable in clients that drop
+  `structuredContent`** ([#26]). The `nextCursor` token now also appears in the text block
+  ("More remains — continue with cursor: `<token>`"), so pagination works even when a client
+  only surfaces the text content. Invalid or hand-constructed cursors (e.g. `char:N`) now return
+  an actionable error instead of silently restarting at offset 0, and a cursor minted for a
+  different book/format errors explicitly rather than returning wrong content. The `structure=true`
+  chapter table now includes a cursor column, and the `cursor` param is documented as an opaque
+  token to be passed back verbatim.
+
+[#26]: https://github.com/caelum29/calibre-mcp/issues/26
+
 ## [0.4.0] — 2026-07-18
 
 ### Added

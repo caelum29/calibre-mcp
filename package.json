@@ -1,6 +1,6 @@
 {
   "name": "calibre-mcp",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "The most capable Calibre MCP server — full read/write tool surface plus library- and book-scoped semantic search.",
   "type": "module",
   "license": "MIT",
