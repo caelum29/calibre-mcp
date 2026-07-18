@@ -17,6 +17,7 @@ import { toolError } from "./tools/result.js";
 import type { ToolDeps } from "./tools/types.js";
 import { log } from "./logging.js";
 import { VERSION } from "./version.js";
+import { registerUiProbe } from "./spike/ui-probe.js"; // THROWAWAY SPIKE #21
 
 export function buildServer(): McpServer {
   const config = loadConfig();
@@ -141,6 +142,9 @@ export function buildServer(): McpServer {
       }
     },
   );
+
+  // THROWAWAY SPIKE #21 — capability logging + probe board tool/resource.
+  registerUiProbe(server, deps);
 
   log.info("server built", {
     tools: [...allTools.map((t) => t.name), "calibre_ping"],
