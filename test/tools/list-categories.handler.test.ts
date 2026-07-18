@@ -65,6 +65,12 @@ describe("calibre_list_categories handler", () => {
     expect(r.structuredContent?.values).toEqual([{ name: "Alice", count: 3 }]);
   });
 
+  it("accepts a valueFilter with a leading (?i) inline flag", async () => {
+    const r = await listCategoriesTool.handler(args({ field: "authors", valueFilter: "(?i)ALI" }), deps());
+    expect(r.isError).toBeFalsy();
+    expect(r.structuredContent?.values).toEqual([{ name: "Alice", count: 3 }]);
+  });
+
   it("rejects an invalid valueFilter regex", async () => {
     const r = await listCategoriesTool.handler(args({ field: "authors", valueFilter: "(" }), deps());
     expect(r.isError).toBe(true);
