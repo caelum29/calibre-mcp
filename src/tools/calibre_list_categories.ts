@@ -8,6 +8,7 @@ import { CursorParam, limitParam } from "./coerce.js";
 import { decodeCursor, encodeCursor } from "./cursor.js";
 import { defineTool } from "./define.js";
 import { fence, toolError, toolOk } from "./result.js";
+import { compileUserRegex } from "./user-regex.js";
 
 // Pull a generous page when filtering client-side; categories above this are truncated.
 const FILTER_FETCH_NUM = 10_000;
@@ -16,7 +17,7 @@ export const listCategoriesTool = defineTool({
   name: "calibre_list_categories",
   title: "List categories",
   description:
-    "Browse library categories (Authors, Tags, Series, Languages, Publisher). No field → list the categories; with a field → its values + counts, filterable via a valueFilter regex.",
+    "Browse library categories (Authors, Tags, Series, Languages, Publisher). No field → list the categories; with a field → its values + counts, filterable via a valueFilter regex (case-insensitive by default; a leading inline flag like `(?i)` is accepted).",
   inputSchema: {
     field: z.string().optional(),
     valueFilter: z.string().max(200).optional(),
@@ -62,12 +63,11 @@ export const listCategoriesTool = defineTool({
       let cursorKey: string;
 
       if (args.valueFilter) {
-        let re: RegExp;
-        try {
-          re = new RegExp(args.valueFilter, "i");
-        } catch (e) {
-          return toolError(`Invalid valueFilter regex: ${e instanceof Error ? e.message : String(e)}`);
+        const compiled = compileUserRegex(args.valueFilter);
+        if (!compiled.regex) {
+          return toolError(`Invalid valueFilter regex: ${compiled.error}`);
         }
+        const re = compiled.regex;
         // Filter client-side over a large page, then paginate the matches.
         const page = await deps.content.categoryItemsByUrl(node.url, { num: FILTER_FETCH_NUM, offset: 0 });
         const filtered = page.items.filter((it) => re.test(it.name));
