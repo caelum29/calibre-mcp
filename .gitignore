@@ -37,4 +37,9 @@ docs/prompts/
 
 # retrieval-eval work dir (model cache copy + throwaway fixture index)
 test/eval/retrieval/.work/
-assets/*.mov
+
+# local mockups, recordings, handoff zips — demo.gif lives at repo root
+assets/
+
+# stray dir from a mis-expanded "~/Library/Application Support/Claude" path
+Support/

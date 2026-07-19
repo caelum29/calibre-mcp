@@ -16,7 +16,7 @@ exact chapter — across 800+ books or inside one. Curate metadata, dedupe, and 
 your library, all through natural language.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/caelum29/calibre-mcp/main/assets/demo.gif" width="720" alt="Claude Desktop searching a Calibre library and rendering the results as an interactive cover carousel" />
+  <img src="https://raw.githubusercontent.com/caelum29/calibre-mcp/main/demo.gif" width="720" alt="Claude Desktop searching a Calibre library and rendering the results as an interactive cover carousel" />
   <br/>
   <em>Claude Desktop rendering a library search as an interactive cover board (MCP&nbsp;Apps)</em>
 </p>
