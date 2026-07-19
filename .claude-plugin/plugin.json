@@ -1,0 +1,49 @@
+{
+  "name": "calibre-mcp",
+  "version": "0.5.1",
+  "description": "Calibre ebook library for Claude: the calibre-mcp server (search, semantic search, content extraction, metadata curation — 17 tools) plus companion skills (usage guide, calibre-distill, calibre-distill-topic).",
+  "author": {
+    "name": "Artem Sorochynskyi",
+    "url": "https://github.com/caelum29"
+  },
+  "homepage": "https://github.com/caelum29/calibre-mcp",
+  "repository": "https://github.com/caelum29/calibre-mcp",
+  "license": "MIT",
+  "keywords": ["calibre", "ebooks", "mcp", "semantic-search", "library"],
+  "mcpServers": {
+    "calibre": {
+      "command": "npx",
+      "args": ["-y", "calibre-mcp"],
+      "env": {
+        "CALIBRE_MCP_SERVER_URL": "${user_config.server_url}",
+        "CALIBRE_MCP_LIBRARY": "${user_config.library}",
+        "CALIBRE_MCP_ENABLE_WRITE": "${user_config.enable_write}",
+        "CALIBRE_MCP_ADD_ROOTS": "${user_config.add_roots}"
+      }
+    }
+  },
+  "userConfig": {
+    "server_url": {
+      "type": "string",
+      "title": "Calibre Content Server URL",
+      "description": "Where the Calibre Content Server listens (Calibre → Connect/share → Start Content server).",
+      "default": "http://localhost:8080"
+    },
+    "library": {
+      "type": "string",
+      "title": "Library",
+      "description": "Library display name or ID. Leave empty to auto-detect the server's default library."
+    },
+    "enable_write": {
+      "type": "boolean",
+      "title": "Enable write tools",
+      "description": "Master write gate. Off = read-only (search/read still work). On = metadata updates, add/remove/merge books; every write is still preview-first.",
+      "default": false
+    },
+    "add_roots": {
+      "type": "directory",
+      "title": "Add-book root folder",
+      "description": "Folder calibre_add_book may import files from. Leave empty for the default (~/Documents and ~/Downloads)."
+    }
+  }
+}

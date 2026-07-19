@@ -1,6 +1,6 @@
 ---
 name: calibre-distill-topic
-description: "Synthesize ONE topic across MULTIPLE Calibre books into a single, concept-keyed agent skill — original multi-source authorship (decision frameworks, cross-source config tables, where authors agree/disagree), with a full ISBN bibliography that doubles as a live-source binding. Use when the user wants a topic study aid built from several books (\"kafka reliability from my Kafka shelf\", \"database indexing across these 3 books\"), not a single-book distill. Requires ≥3 sources. Works on EN + RU/UK books; no temp files."
+description: "Synthesize ONE topic across MULTIPLE Calibre books into a single, concept-keyed agent skill — original multi-source authorship (decision frameworks, cross-source config tables, an explicit where-authors-agree/disagree section), with a full ISBN bibliography that doubles as a live-source binding for later deep dives. Drives the calibre-mcp server (chapter maps, in-book keyword + semantic search) to pull a thin topic slice from each source; no temp files, no Python. Use when the user wants a topic study aid built from several books (\"kafka reliability from my Kafka shelf\", \"database indexing across these 3 books\"). Requires ≥3 sources; works on EN + RU/UK books. Sibling of calibre-distill — single-book requests belong there."
 ---
 
 <!--
