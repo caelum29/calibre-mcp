@@ -247,6 +247,42 @@ describe("calibre_build_index handler", () => {
   });
 });
 
+describe("semantic degradation surfacing (issue #41 / #46)", () => {
+  it("auto-degrade carries semanticAvailable:false + a reason in structuredContent", async () => {
+    const r = await buildIndexTool.handler(
+      args({ bookId: 1 }),
+      deps({ embedder: unavailableEmbedder }),
+    );
+    expect(r.isError).toBeFalsy();
+    expect(r.structuredContent?.semanticAvailable).toBe(false);
+    expect(r.structuredContent?.semanticReason as string).toContain("unavailable");
+  });
+
+  it("auto-degrade leads the text block with the degrade warning, before the count summary", async () => {
+    const r = await buildIndexTool.handler(
+      args({ bookId: 1 }),
+      deps({ embedder: unavailableEmbedder }),
+    );
+    const text = (r.content[0] as { text: string }).text;
+    // The warning must come first — a client skimming line 1 must not read unqualified success.
+    expect(text.indexOf("Embedding model unavailable")).toBe(0);
+  });
+
+  it("requested keywordOnly carries semanticAvailable:false + a keywordOnly reason", async () => {
+    const r = await buildIndexTool.handler(args({ bookId: 1, keywordOnly: true }), deps());
+    expect(r.isError).toBeFalsy();
+    expect(r.structuredContent?.semanticAvailable).toBe(false);
+    expect(r.structuredContent?.semanticReason as string).toContain("keywordOnly");
+  });
+
+  it("an embedding build carries semanticAvailable:true and no reason", async () => {
+    const r = await buildIndexTool.handler(args({ bookId: 1 }), deps());
+    expect(r.isError).toBeFalsy();
+    expect(r.structuredContent?.semanticAvailable).toBe(true);
+    expect(r.structuredContent?.semanticReason).toBeUndefined();
+  });
+});
+
 describe("front-matter flagging at build time (issue #18)", () => {
   it("flags majority-front-matter chunks, including one straddling the chapter boundary", async () => {
     // ~1.4k chars of praise/TOC, then two real chapters — boundary sits mid-first-chunk.

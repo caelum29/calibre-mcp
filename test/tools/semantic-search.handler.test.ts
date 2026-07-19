@@ -462,3 +462,50 @@ describe("calibre_semantic_search front-matter demotion (issue #18)", () => {
     expect(texts.join("\n")).not.toContain("[front matter]");
   });
 });
+
+describe("semantic degradation surfacing (issue #41 / #46)", () => {
+  it("hybrid degrade on a keyword-only index carries semanticAvailable:false + a reason", async () => {
+    const r = await semanticSearchTool.handler(args(), deps(keywordOnly(), throwingEmbedder));
+    expect(r.isError).toBeUndefined();
+    expect(r.structuredContent?.semanticAvailable).toBe(false);
+    expect(r.structuredContent?.semanticReason as string).toContain("keyword-only");
+  });
+
+  it("explicit keyword mode on a keyword-only index still reports semanticAvailable:false", async () => {
+    const r = await semanticSearchTool.handler(
+      args({ mode: "keyword" }),
+      deps(keywordOnly(), throwingEmbedder),
+    );
+    expect(r.isError).toBeUndefined();
+    expect(r.structuredContent?.semanticAvailable).toBe(false);
+    expect(r.structuredContent?.semanticReason as string).toContain("keyword-only");
+  });
+
+  it("a vector-capable index reports semanticAvailable:true with no reason", async () => {
+    const r = await semanticSearchTool.handler(args(), deps(preloaded()));
+    expect(r.isError).toBeUndefined();
+    expect(r.structuredContent?.semanticAvailable).toBe(true);
+    expect(r.structuredContent?.semanticReason).toBeUndefined();
+  });
+
+  it("the zero-hit path keeps the degradation fields", async () => {
+    const r = await semanticSearchTool.handler(
+      args({ query: "zzz-no-such-term" }),
+      deps(keywordOnly(), throwingEmbedder),
+    );
+    expect(r.isError).toBeUndefined();
+    expect(r.structuredContent?.count).toBe(0);
+    expect(r.structuredContent?.semanticAvailable).toBe(false);
+    expect(r.structuredContent?.semanticReason as string).toContain("keyword-only");
+  });
+
+  it("scope=book carries the degradation fields too", async () => {
+    const r = await semanticSearchTool.handler(
+      args({ scope: "book", bookId: 1 }),
+      deps(keywordOnly(), throwingEmbedder),
+    );
+    expect(r.isError).toBeUndefined();
+    expect(r.structuredContent?.semanticAvailable).toBe(false);
+    expect(r.structuredContent?.semanticReason as string).toContain("keyword-only");
+  });
+});
