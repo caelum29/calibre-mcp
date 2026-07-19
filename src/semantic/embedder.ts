@@ -71,12 +71,19 @@ interface Loaded {
 /** Passages per model call — bounded so a large book doesn't build one giant batch. */
 const BATCH = 10;
 
+/** The optional-dep boundary, injectable so tests can simulate load failures. */
+export type TransformersLoader = () => Promise<typeof import("@huggingface/transformers")>;
+
 export class TransformersEmbedder implements Embedder {
   #loaded?: Promise<Loaded>;
   // Captured on load so countTokens can stay sync (chunking calls it in a tight loop).
   #tokenizer?: Tokenizer;
 
-  constructor(private readonly cfg: Config) {}
+  constructor(
+    private readonly cfg: Config,
+    private readonly loadTransformers: TransformersLoader = () =>
+      import("@huggingface/transformers"),
+  ) {}
 
   async warmup(): Promise<void> {
     await this.#model();
@@ -110,14 +117,26 @@ export class TransformersEmbedder implements Embedder {
   }
 
   #model(): Promise<Loaded> {
-    if (!this.#loaded) this.#loaded = this.#load();
+    if (!this.#loaded) {
+      // A missing dep stays memoized: Node 24 negatively caches the failed resolution for
+      // the process lifetime (docs/node24-import-retry-probe.md), so a re-probe can never
+      // recover and only surfaces a mutated, misleading error — installing the package
+      // requires a server restart. Any other failure (e.g. a flaky model download) may be
+      // transient, so forget it and let the next call retry.
+      this.#loaded = this.#load().catch((err: unknown) => {
+        if (!(err instanceof Error && err.message === "EMBEDDER_UNAVAILABLE")) {
+          this.#loaded = undefined;
+        }
+        throw err;
+      });
+    }
     return this.#loaded;
   }
 
   async #load(): Promise<Loaded> {
     let mod: typeof import("@huggingface/transformers");
     try {
-      mod = await import("@huggingface/transformers");
+      mod = await this.loadTransformers();
     } catch (err) {
       const code = (err as NodeJS.ErrnoException).code;
       if (code === "ERR_MODULE_NOT_FOUND" || code === "MODULE_NOT_FOUND") {
