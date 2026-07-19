@@ -16,6 +16,7 @@ import { Extractor } from "./calibre/extract.js";
 import { TransformersEmbedder } from "./semantic/embedder.js";
 import { TransformersReranker } from "./semantic/reranker.js";
 import { SqliteIndexStore } from "./semantic/store.js";
+import { computeSemanticStatus, formatSemanticStatusLine } from "./semantic/status.js";
 import { readBookResource } from "./resources/book.js";
 import { allTools, assertWriteClassification } from "./tools/registry.js";
 import { toolError } from "./tools/result.js";
@@ -141,35 +142,48 @@ export function buildServer(): McpServer {
   );
 
   // Connectivity probe — proves the SUBPROCESS path (calibredb --with-library URL) works,
-  // complementary to calibre_list_libraries which proves the HTTP /ajax path.
+  // complementary to calibre_list_libraries which proves the HTTP /ajax path. Also carries a
+  // semantic-search self-diagnosis block (#48) so "why is semantic search off" is one call.
   server.registerTool(
     "calibre_ping",
     {
       title: "Calibre ping",
       description:
         "Health check: confirms the MCP server can reach the running Calibre " +
-        "Content Server via calibredb. Returns library categories on success.",
+        "Content Server via calibredb, and reports semantic-search status " +
+        "(embedding model, dependency, index vector count). Returns library categories on success.",
       inputSchema: {},
       annotations: { readOnlyHint: true, openWorldHint: true },
     },
     async () => {
+      // Resolve the libId (needed for both calibredb and the index vector count) first —
+      // --with-library needs the ID, not the display name. A failure here is non-fatal to the
+      // semantic diagnosis (it reads local disk/state), so keep it and still report semantics.
+      let libId: string | undefined;
+      let listOut: string | undefined;
+      let pingError: string | undefined;
       try {
-        // Resolve the libId first — --with-library needs the ID, not the display name.
-        const libId = await deps.content.resolveLibraryId();
-        const out = await deps.calibre.listLibraries(libId);
-        return {
-          content: [{ type: "text", text: `ok\n${out.slice(0, 500)}` }],
-          structuredContent: { ok: true, serverUrl: config.serverUrl },
-        };
+        libId = await deps.content.resolveLibraryId();
+        listOut = await deps.calibre.listLibraries(libId);
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        log.error("ping failed", message);
+        pingError = err instanceof Error ? err.message : String(err);
+        log.error("ping failed", pingError);
+      }
+
+      const semantic = computeSemanticStatus(deps, libId);
+      const semLine = formatSemanticStatusLine(semantic);
+
+      if (pingError !== undefined) {
         return {
           isError: true,
-          content: [{ type: "text", text: `Calibre unreachable: ${message}` }],
-          structuredContent: { ok: false, error: message },
+          content: [{ type: "text", text: `Calibre unreachable: ${pingError}\n${semLine}` }],
+          structuredContent: { ok: false, error: pingError, serverUrl: config.serverUrl, semantic },
         };
       }
+      return {
+        content: [{ type: "text", text: `ok\n${(listOut ?? "").slice(0, 500)}\n${semLine}` }],
+        structuredContent: { ok: true, serverUrl: config.serverUrl, semantic },
+      };
     },
   );
 

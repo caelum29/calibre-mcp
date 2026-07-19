@@ -12,6 +12,13 @@ import type { Config } from "../config.js";
 import { ACTIVE_MODEL, type EmbeddingModelSpec } from "./model.js";
 import { l2normalize } from "./vector.js";
 
+/**
+ * In-process model load outcome, for cheap read-only diagnostics (calibre_ping's semantic
+ * block, #48). "failed" = a dep-missing load that Node 24 negatively caches for the process
+ * lifetime (docs/node24-import-retry-probe.md) — recoverable only by a server restart.
+ */
+export type EmbedderLoadState = "not-attempted" | "loaded" | "failed";
+
 export interface Embedder {
   /** Embed a search string (prepends the model's query prefix). */
   embedQuery(text: string): Promise<Float32Array>;
@@ -25,6 +32,12 @@ export interface Embedder {
    * loaded (`await warmup()` first); throws EMBEDDER_NOT_LOADED otherwise.
    */
   countTokens(text: string): number;
+  /**
+   * Side-effect-free snapshot of the in-process load state — NEVER triggers a load
+   * (a live import() probe would lie under Node 24's negative cache). Optional so test
+   * fakes need not implement it; absent is read as "not-attempted".
+   */
+  loadState?(): EmbedderLoadState;
 }
 
 /**
@@ -78,6 +91,8 @@ export class TransformersEmbedder implements Embedder {
   #loaded?: Promise<Loaded>;
   // Captured on load so countTokens can stay sync (chunking calls it in a tight loop).
   #tokenizer?: Tokenizer;
+  // Sync snapshot of the load outcome for loadState() — updated as #loaded settles.
+  #loadState: EmbedderLoadState = "not-attempted";
 
   constructor(
     private readonly cfg: Config,
@@ -94,6 +109,10 @@ export class TransformersEmbedder implements Embedder {
       throw new Error("EMBEDDER_NOT_LOADED"); // await warmup() before counting tokens
     }
     return this.#tokenizer.encode(text).length;
+  }
+
+  loadState(): EmbedderLoadState {
+    return this.#loadState;
   }
 
   async embedQuery(text: string): Promise<Float32Array> {
@@ -123,12 +142,21 @@ export class TransformersEmbedder implements Embedder {
       // recover and only surfaces a mutated, misleading error — installing the package
       // requires a server restart. Any other failure (e.g. a flaky model download) may be
       // transient, so forget it and let the next call retry.
-      this.#loaded = this.#load().catch((err: unknown) => {
-        if (!(err instanceof Error && err.message === "EMBEDDER_UNAVAILABLE")) {
-          this.#loaded = undefined;
-        }
-        throw err;
-      });
+      this.#loaded = this.#load()
+        .then((loaded) => {
+          this.#loadState = "loaded";
+          return loaded;
+        })
+        .catch((err: unknown) => {
+          if (err instanceof Error && err.message === "EMBEDDER_UNAVAILABLE") {
+            // Dep missing → process-permanent (negative cache); a restart is the only fix.
+            this.#loadState = "failed";
+          } else {
+            // Transient (e.g. flaky download) — forget so the next call can retry.
+            this.#loaded = undefined;
+          }
+          throw err;
+        });
     }
     return this.#loaded;
   }
