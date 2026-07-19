@@ -22,6 +22,7 @@ function reversed(inner: IndexStore): IndexStore {
     searchLibraryFts: (l, q, k) => inner.searchLibraryFts(l, q, k).reverse(),
     searchBookFts: (l, b, q, k) => inner.searchBookFts(l, b, q, k).reverse(),
     stats: (l) => inner.stats(l),
+    vectorCount: (l) => inner.vectorCount(l),
     close: () => inner.close(),
   };
 }

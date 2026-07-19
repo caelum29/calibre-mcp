@@ -79,6 +79,8 @@ export interface IndexStore {
   /** Keyword half: rank passages within one book by weighted-bm25 FTS5 match. */
   searchBookFts(libraryId: string, bookId: number, stemmedQuery: string, k: number): BookHit[];
   stats(libraryId: string): { books: number; chunks: number };
+  /** Number of stored embedding vectors (0 for a keyword-only or absent index). Cheap COUNT. */
+  vectorCount(libraryId: string): number;
   close(): void;
 }
 
@@ -359,6 +361,14 @@ export class SqliteIndexStore implements IndexStore {
     const books = db.prepare("SELECT COUNT(*) AS n FROM books").get() as Row;
     const chunks = db.prepare("SELECT COUNT(*) AS n FROM chunks").get() as Row;
     return { books: Number(books?.n ?? 0), chunks: Number(chunks?.n ?? 0) };
+  }
+
+  vectorCount(libraryId: string): number {
+    // Guard so a diagnostic read (calibre_ping) never creates a db file for a library
+    // that was never indexed.
+    if (!this.hasIndex(libraryId)) return 0;
+    const row = this.#db(libraryId).prepare("SELECT COUNT(*) AS n FROM embeddings").get() as Row;
+    return Number(row?.n ?? 0);
   }
 
   close(): void {

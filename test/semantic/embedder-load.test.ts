@@ -41,6 +41,8 @@ describe("TransformersEmbedder load failures", () => {
     await expect(embedder.warmup()).rejects.toThrow("EMBEDDER_UNAVAILABLE");
     await expect(embedder.warmup()).rejects.toThrow("EMBEDDER_UNAVAILABLE");
     expect(loader).toHaveBeenCalledTimes(1);
+    // loadState() surfaces the memoized-failed state for calibre_ping's diagnosis (#48).
+    expect(embedder.loadState()).toBe("failed");
   });
 
   it("does not memoize a transient failure: a later call retries and succeeds", async () => {
@@ -52,7 +54,10 @@ describe("TransformersEmbedder load failures", () => {
     const embedder = new TransformersEmbedder(cfg, loader);
 
     await expect(embedder.warmup()).rejects.toThrow("fetch failed");
+    // A transient failure isn't a hard "failed" — it resets to not-attempted so a retry runs.
+    expect(embedder.loadState()).toBe("not-attempted");
     await expect(embedder.warmup()).resolves.toBeUndefined();
     expect(loader).toHaveBeenCalledTimes(2);
+    expect(embedder.loadState()).toBe("loaded");
   });
 });
