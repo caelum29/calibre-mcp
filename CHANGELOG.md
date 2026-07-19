@@ -4,6 +4,41 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **`calibre_merge_books`** ([#50]) — merge duplicate book records, mirroring Calibre's GUI
+  merge (M / Alt+M / Shift+M): moves formats from source books into an explicit target
+  (target's copy wins conflicts), merges metadata per Calibre's per-field rules (fill-if-empty,
+  tag/identifier unions computed client-side, `\n\n`-concat comments, full custom-column
+  support by datatype), then trashes the sources — always recoverable, never `--permanent`.
+  `mode=safe` keeps sources, `mode=formatsOnly` moves formats only. Dry-run plan (survivor,
+  per-format disposition, metadata diff, advisory dissimilarity warning) unless `confirm=true`;
+  execution is a step ledger with delete always last, so a partial failure never loses data
+  and re-running safely completes the merge ([#33] semantics). 17th model-facing tool, gated
+  behind `CALIBRE_MCP_ENABLE_WRITE`.
+
+### Fixed
+
+- **`calibre_update_book` could report a committed write as failed** ([#33]). Routed writes
+  commit server-side before `calibredb` replies, so a failing post-write re-read or a CLI
+  timeout could turn a successful write into a tool error. The diff re-read now degrades to a
+  success result with the intended-value diff, and CLI timeouts are verified against a re-read:
+  confirmed writes report success, unconfirmed ones steer the model to check with
+  `calibre_get_book` before retrying. The same verify-on-timeout treatment applies to the
+  `calibre_bulk_update` apply loop.
+- **`calibre_list_categories` rejected `(?i)`-style inline flags in `valueFilter`** ([#30]).
+  JS `RegExp` doesn't accept PCRE/Python inline flags, so patterns like `(?i)o.?reilly|packt`
+  failed with "Invalid group" — despite matching already being case-insensitive. Leading
+  `(?flags)` groups are now stripped and folded into the RegExp flags; flags JS can't express
+  (e.g. `x`) get an explicit message instead of a parser error. Mid-pattern (scoped) inline
+  flags are still rejected, since JS has no equivalent.
+
+[#30]: https://github.com/caelum29/calibre-mcp/issues/30
+[#33]: https://github.com/caelum29/calibre-mcp/issues/33
+[#50]: https://github.com/caelum29/calibre-mcp/issues/50
+
 ## [0.4.2] — 2026-07-19
 
 ### Added

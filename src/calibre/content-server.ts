@@ -5,6 +5,7 @@
 
 import type { Config } from "../config.js";
 import type { Book, Identifiers } from "../domain/book.js";
+import type { CustomFieldValue } from "../domain/merge.js";
 import type { LibraryInfo, Category, CategoryItem, CategoryItemsPage } from "../domain/library.js";
 import type { SearchParams, SearchPage } from "../domain/search.js";
 import { getJson } from "./http.js";
@@ -45,6 +46,17 @@ interface RawBook {
   pages?: number | null;
   rating?: number | null;
   last_modified?: string | null;
+  cover?: string | null;
+  user_metadata?: Record<string, RawUserMetadata>;
+}
+
+/** One custom column's entry in /ajax/book `user_metadata` (loose; only what merge reads). */
+interface RawUserMetadata {
+  datatype?: string;
+  /** A non-empty object for multi-value columns; null/empty otherwise. */
+  is_multiple?: unknown;
+  "#value#"?: unknown;
+  "#extra#"?: number | null;
 }
 
 interface RawCategory {
@@ -180,6 +192,38 @@ export class ContentServerClient {
       out.set(id, entry ? this.mapBook(entry, id, libId) : null);
     }
     return out;
+  }
+
+  /**
+   * Raw facts calibre_merge_books needs beyond the domain Book: custom-column values
+   * (from `/ajax/book` user_metadata — the Book mapping drops them) and whether the
+   * book actually has a cover (for the fill-if-empty cover rule).
+   */
+  async bookMergeFacts(
+    id: number,
+    library?: string,
+  ): Promise<{ customFields: CustomFieldValue[]; hasCover: boolean }> {
+    const libId = await this.resolveLibraryId(library);
+    const url = `${this.base}/ajax/book/${id}/${encodeURIComponent(libId)}`;
+    const raw = await getJson<RawBook>(url);
+    const customFields = Object.entries(raw.user_metadata ?? {})
+      .filter(([label]) => label.startsWith("#"))
+      .map(([label, m]) => ({
+        label,
+        datatype: m.datatype ?? "text",
+        // Trust the value shape over the is_multiple flag (empty multis arrive as null).
+        isMultiple:
+          Array.isArray(m["#value#"]) ||
+          (typeof m.is_multiple === "object" &&
+            m.is_multiple !== null &&
+            Object.keys(m.is_multiple).length > 0),
+        value: m["#value#"],
+        extra: typeof m["#extra#"] === "number" ? m["#extra#"] : undefined,
+      }));
+    return {
+      customFields,
+      hasCover: typeof raw.cover === "string" && raw.cover.length > 0,
+    };
   }
 
   /**

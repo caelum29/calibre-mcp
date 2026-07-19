@@ -23,8 +23,8 @@ your library, all through natural language.
 
 ## ✨ Highlights
 
-- **16 tools** covering the full surface: search, read content, browse categories, curate,
-  and (opt-in) write — update metadata, bulk-edit, import, delete.
+- **17 tools** covering the full surface: search, read content, browse categories, curate,
+  and (opt-in) write — update metadata, bulk-edit, merge duplicates, import, delete.
 - **Semantic search** — meaning-based, hybrid vector + keyword retrieval over your whole
   library *or inside a single book*. Multilingual (English + Russian verified,
   cross-lingual queries work). No other Calibre MCP server has this.
@@ -108,7 +108,7 @@ raw-filename titles, invalid ISBNs).
 ## ✍️ Enabling writes
 
 Write tools (`calibre_update_book`, `calibre_bulk_update`, `calibre_add_book`,
-`calibre_remove_book`) are **hidden by default**. Two independent switches must be on:
+`calibre_remove_book`, `calibre_merge_books`) are **hidden by default**. Two independent switches must be on:
 
 1. **The MCP-side gate** — set `CALIBRE_MCP_ENABLE_WRITE=1` (or tick *Enable writes* in
    the Desktop bundle settings). Without it the write tools aren’t even registered.
@@ -133,7 +133,9 @@ error message tells you exactly that. Reads work fine against the GUI-embedded s
 Safety behavior: `calibre_bulk_update` requires an explicit book selection (`ids` or
 `query` — there is no “all books” default) and previews changes until you pass
 `preview: false`. `calibre_remove_book` is a dry-run until you pass `confirm: true`;
-deletion removes records *and* files, permanently. `calibre_add_book` only imports files
+deletion removes records *and* files, permanently. `calibre_merge_books` shows its full
+merge plan until you pass `confirm: true`, and trashed sources stay recoverable from
+Calibre's trash (mode `safe` keeps them entirely). `calibre_add_book` only imports files
 from whitelisted folders (`CALIBRE_MCP_ADD_ROOTS`).
 
 ## 🔎 Semantic search
@@ -190,6 +192,7 @@ and `mode: hybrid` degrades to keyword (with a note); rebuild with the model ins
 | `calibre_bulk_update` | **write** | Same change across a set of books; selection required, preview-first |
 | `calibre_add_book` | **write** | Import a local ebook file (path-whitelisted) |
 | `calibre_remove_book` | **write, destructive** | Permanently delete books (records + files); dry-run unless confirmed |
+| `calibre_merge_books` | **write, destructive** | Merge duplicate records: move formats into a target, merge metadata per Calibre's rules, trash sources; dry-run plan unless confirmed |
 | `calibre_ping` | read | Health check: is Calibre reachable end-to-end? |
 
 In MCP Apps hosts, `calibre_search` and `calibre_semantic_search` (library scope) render

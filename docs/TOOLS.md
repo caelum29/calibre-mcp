@@ -91,7 +91,7 @@ Conventions: all namespaced `calibre_*`. Inputs Zod-coerced (`z.coerce.number`,
 |---|---|---|---|---|---|
 | 10 | `calibre_recover_metadata` | R (preview) | `ebook-meta` read · OpenLibrary→GoogleBooks→`fetch-ebook-metadata` | `id`/`path`, `sources?` | **proposed** fields + confidence (apply via #11) |
 
-### Write — hardened + gated (5)
+### Write — hardened + gated (6)
 
 All route through `calibredb --with-library <serverUrl>/#<libId>` and **must resolve the library
 **ID** (not the display name) first — the display form 404s (locked pattern, CLAUDE.md §Status). Gated
@@ -106,6 +106,7 @@ true MCP `elicitation/create` is deferred to LATER (DESIGN §4).
 | 13 | `calibre_add_book` | W | `calibredb add <path>` via server URL | `path` (whitelisted to `config.addRoots`), `library?` | new id(s) |
 | 14 | `calibre_remove_book` | W | `calibredb remove <ids>` via server URL | `ids` (required), `confirm?=false` (dry-run unless true), `library?` | dry-run list or removed ids |
 | 15 | `calibre_extract_isbn` | W | scan book text (reuses `scanForIsbn`) → `set_metadata identifiers:isbn` via server URL | `id`, `apply?=false` (preview unless true), `library?` | found ISBN + current + `changed`; merges into existing identifiers |
+| 16 | `calibre_merge_books` | W | `/get` download → `add_format --dont-replace` → one `set_metadata` → `remove` (delete ALWAYS last), all via server URL (spec #50) | `targetId`, `sourceIds` (must exclude target), `mode?=merge` (`merge\|safe\|formatsOnly`), `confirm?=false` (dry-run plan unless true), `library?` | dry-run plan (survivor, format dispositions, metadata diff, trash list) or step ledger; `incomplete` + re-run steer when partially committed (#33) |
 
 > **Deferred write sub-features (LATER, additive):** `add_book` `metadata?`/`autoMerge?`/cover +
 > `add --duplicates`; `remove_book` `formatsOnly?` (remove a format, keep the record) + trash-vs-permanent
