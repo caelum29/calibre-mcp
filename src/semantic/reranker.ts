@@ -5,6 +5,7 @@
 
 import path from "node:path";
 import type { Config } from "../config.js";
+import type { TransformersLoader } from "./embedder.js";
 
 // Single source of truth for the reranker model (same D-001 principle as model.ts, kept
 // local because model.ts documents the EMBEDDING model contract). bge-reranker-v2-m3:
@@ -56,11 +57,13 @@ type SeqClassifier = (inputs: Record<string, unknown>) => Promise<{
 }>;
 
 export class TransformersReranker implements Reranker {
-  // Memoized load (including a memoized rejection — one failed download attempt per process,
-  // then fast-fail; same lifecycle as the embedder's #pipe).
   #loaded?: Promise<{ tokenizer: PairTokenizer; model: SeqClassifier }>;
 
-  constructor(private readonly cfg: Config) {}
+  constructor(
+    private readonly cfg: Config,
+    private readonly loadTransformers: TransformersLoader = () =>
+      import("@huggingface/transformers"),
+  ) {}
 
   async warmup(): Promise<void> {
     await this.#components();
@@ -84,14 +87,24 @@ export class TransformersReranker implements Reranker {
   }
 
   #components(): Promise<{ tokenizer: PairTokenizer; model: SeqClassifier }> {
-    if (!this.#loaded) this.#loaded = this.#load();
+    if (!this.#loaded) {
+      // Same failure contract as the embedder's #model(): a missing dep stays memoized
+      // (Node 24 negatively caches the failed resolution — restart is the only remedy;
+      // docs/node24-import-retry-probe.md), anything else may be transient → retry.
+      this.#loaded = this.#load().catch((err: unknown) => {
+        if (!(err instanceof Error && err.message === "RERANKER_UNAVAILABLE")) {
+          this.#loaded = undefined;
+        }
+        throw err;
+      });
+    }
     return this.#loaded;
   }
 
   async #load(): Promise<{ tokenizer: PairTokenizer; model: SeqClassifier }> {
     let mod: typeof import("@huggingface/transformers");
     try {
-      mod = await import("@huggingface/transformers");
+      mod = await this.loadTransformers();
     } catch (err) {
       const code = (err as NodeJS.ErrnoException).code;
       if (code === "ERR_MODULE_NOT_FOUND" || code === "MODULE_NOT_FOUND") {
