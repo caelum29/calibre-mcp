@@ -57,6 +57,14 @@ describe("mergeSafety", () => {
     expect(mergeSafety(books)).toBeCloseTo(0.8);
   });
 
+  it("caps a differing-language pair below the safe-merge range", () => {
+    const books = [
+      book({ languages: ["eng"], formats: ["pdf"] }),
+      book({ languages: ["rus"], formats: ["epub"] }),
+    ];
+    expect(mergeSafety(books)).toBeLessThanOrEqual(0.3);
+  });
+
   it("clamps to 0 when many signals conflict", () => {
     const books = [
       book({ identifiers: { isbn: "111" }, languages: ["en"], formats: ["pdf"] }),
@@ -78,5 +86,15 @@ describe("compareBooks", () => {
     expect(title.agree).toBe(true);
     const formats = r.diffs.find((d) => d.field === "formats")!;
     expect(formats.agree).toBe(false);
+  });
+
+  it("diffs languages so a translation is not mistaken for a duplicate", () => {
+    const books = [
+      book({ id: 1, title: "T", authors: ["A"], languages: ["eng"], formats: ["pdf"] }),
+      book({ id: 2, title: "T", authors: ["A"], languages: ["rus"], formats: ["pdf"] }),
+    ];
+    const languages = compareBooks(books).diffs.find((d) => d.field === "languages")!;
+    expect(languages.agree).toBe(false);
+    expect(languages.values).toEqual(["eng", "rus"]);
   });
 });

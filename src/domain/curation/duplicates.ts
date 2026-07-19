@@ -46,17 +46,25 @@ function hasSharedFormat(books: Book[]): boolean {
   return false;
 }
 
+/** Ceiling applied when a group spans multiple languages — never reads as a safe merge. */
+const TRANSLATION_CEILING = 0.3;
+
 /**
  * Merge-safety score for a candidate duplicate set. Starts at 1.0 and deducts for signals
- * that two records might NOT be the same edition (distinct ISBNs), can't be losslessly
- * merged (multiple languages), or hide a real content difference we can't inspect
- * (the same format in >1 book). Clamped to [0,1]. Higher = safer.
+ * that two records might NOT be the same edition (distinct ISBNs) or hide a real content
+ * difference we can't inspect (the same format in >1 book). Clamped to [0,1]. Higher = safer.
+ *
+ * Differing languages are a *ceiling*, not a deduction: a translation is a distinct work, so
+ * an otherwise-identical eng/rus pair must land in REVIEW territory rather than scoring 0.7
+ * and reading as a clean duplicate (#51).
  */
 export function mergeSafety(books: Book[]): number {
   let score = 1;
   if (distinctIsbns(books).size > 1) score -= 0.5;
-  if (distinctLanguages(books).size > 1) score -= 0.3;
   if (hasSharedFormat(books)) score -= 0.2;
+  if (distinctLanguages(books).size > 1) {
+    score = Math.min(score - 0.3, TRANSLATION_CEILING);
+  }
   return Math.max(0, Math.min(1, score));
 }
 
@@ -125,6 +133,9 @@ export function compareBooks(books: Book[]): ComparisonReport {
     { field: "title", pick: (b) => b.title },
     { field: "authors", pick: (b) => b.authors },
     { field: "isbn", pick: (b) => b.identifiers.isbn },
+    // languages is often the ONLY field separating a translation from a true duplicate —
+    // merging a differing-language pair silently destroys the translation (#51).
+    { field: "languages", pick: (b) => b.languages },
     { field: "formats", pick: (b) => b.formats },
     { field: "publisher", pick: (b) => b.publisher },
     { field: "pubdate", pick: (b) => b.pubdate },

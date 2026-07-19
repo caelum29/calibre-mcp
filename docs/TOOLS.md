@@ -140,6 +140,8 @@ true MCP `elicitation/create` is deferred to LATER (DESIGN §4).
 - **PDF extractor presence** — ✅ startup backend detection (pdftotext > PyMuPDF bridge > ebook-convert),
   logged to stderr. `poppler`'s `pdftotext` installed → preferred, verified live.
 - **`compare` mode shape** — ✅ shipped as `find_duplicates(mode:compare, ids:[…≥2])` → field-by-field
-  diff + `keep` recommendation. Fine in practice; no dedicated verb needed.
+  diff + `keep` recommendation. Fine in practice; no dedicated verb needed. Diffed fields include
+  `languages` (#51) — a differing language means a *translation*, so it caps `mergeSafety` at 0.3
+  and emits a REVIEW warning instead of reading as a clean duplicate.
 - **Book-scoped result shape** — ✅ in-book hits return char-located passages (`{book_id, location}`).
   PDF page / EPUB spine locations remain LATER (Calibre can't supply them; we'd compute).

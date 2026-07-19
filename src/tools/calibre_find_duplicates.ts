@@ -37,6 +37,7 @@ export const findDuplicatesTool = defineTool({
     // compare mode:
     keep: z.number().optional(),
     mergeSafety: z.number().optional(),
+    languagesDiffer: z.boolean().optional(),
   },
   annotations: { readOnlyHint: true, openWorldHint: true },
   handler: async (args, deps) => {
@@ -53,15 +54,25 @@ export const findDuplicatesTool = defineTool({
         const lines = report.diffs.map(
           (d) => `${d.agree ? "=" : "≠"} ${d.field}: ${d.values.join(" | ")}`,
         );
+        // A differing-language pair is a translation, not a duplicate — say so loudly, since
+        // the rest of the diff can look identical and read as a safe delete (#51).
+        const langDiff = report.diffs.find((d) => d.field === "languages" && !d.agree);
+        const warning = langDiff
+          ? `\n⚠ REVIEW — languages differ (${langDiff.values.join(" | ")}): these look like ` +
+            `different-language editions/translations, not duplicates. Do NOT merge or delete ` +
+            `without confirming with the user.`
+          : "";
         const text =
           `Comparing books ${report.bookIds.join(", ")} — ` +
           `mergeSafety ${report.mergeSafety.toFixed(2)}, recommend keeping book ${report.keep}\n` +
-          lines.join("\n");
+          lines.join("\n") +
+          warning;
         return toolOk([{ type: "text", text: fence("COMPARISON", text) }], {
           mode: "compare",
           keep: report.keep,
           mergeSafety: report.mergeSafety,
           count: report.bookIds.length,
+          languagesDiffer: langDiff !== undefined,
         });
       }
 
@@ -91,12 +102,21 @@ export const findDuplicatesTool = defineTool({
       content.push({ type: "text", text: header });
 
       for (const g of pageGroups) {
+        // Show each book's language: a mixed-language group is a translation pair, not a
+        // duplicate, and that must be visible before anyone merges (#51).
         const summary = g.books
-          .map((b) => `#${b.id} "${b.title}" — ${b.authors.join(", ") || "?"}`)
+          .map(
+            (b) =>
+              `#${b.id} "${b.title}" — ${b.authors.join(", ") || "?"}` +
+              ` [${b.languages.join(", ") || "lang ?"}]`,
+          )
           .join("\n");
+        const mixedLangs = new Set(g.books.flatMap((b) => b.languages.map((l) => l.toLowerCase())));
+        const note =
+          mixedLangs.size > 1 ? "\n⚠ REVIEW — mixed languages: likely translations, not duplicates." : "";
         content.push({
           type: "text",
-          text: fence("DUP GROUP", `mergeSafety ${g.mergeSafety.toFixed(2)}\n${summary}`),
+          text: fence("DUP GROUP", `mergeSafety ${g.mergeSafety.toFixed(2)}\n${summary}${note}`),
         });
         for (const b of g.books) {
           content.push(bookResourceLink({ id: b.id, title: b.title, authors: b.authors }));
