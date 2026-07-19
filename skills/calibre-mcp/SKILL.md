@@ -1,6 +1,6 @@
 ---
 name: calibre-mcp
-description: "Searches, reads, and manages a Calibre ebook library via the calibre-mcp server tools and the calibre CLI. Use for any ebook task: finding books, full-text or semantic search, reading content, updating metadata/tags, deduplication, quality audits, adding/removing books, converting or exporting. Triggers on 'book', 'ebook', 'calibre', 'library', 'книга', 'бібліотека', 'знайди в книзі'."
+description: "Search, read, and curate your Calibre ebook library. The operating manual for the calibre-mcp server (17 tools) with the calibre CLI as escape hatch. Covers picking the right search (metadata query vs full-text vs semantic), reading book content and chapter maps, gated preview-first writes (metadata, tags, bulk edits), deduplication, quality audits, ISBN extraction + metadata recovery, add/remove/merge books, semantic-index builds, and safe CLI routing through the Content Server while the Calibre GUI is running (convert, export, catalog). Use for any ebook/library task: finding books, searching inside them, curating metadata, or maintenance. Triggers on 'book', 'ebook', 'calibre', 'library', 'книга', 'бібліотека', 'знайди в книзі'."
 ---
 
 # Calibre MCP Skill

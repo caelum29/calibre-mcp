@@ -1,0 +1,19 @@
+{
+  "name": "caelum29",
+  "owner": {
+    "name": "Artem Sorochynskyi",
+    "url": "https://github.com/caelum29"
+  },
+  "metadata": {
+    "description": "Calibre ebook tooling for Claude — the calibre-mcp server and its companion skills."
+  },
+  "plugins": [
+    {
+      "name": "calibre-mcp",
+      "source": "./",
+      "description": "Calibre ebook library for Claude: the calibre-mcp server (search, semantic search, content extraction, metadata curation — 17 tools) plus companion skills (usage guide, calibre-distill, calibre-distill-topic).",
+      "category": "productivity",
+      "keywords": ["calibre", "ebooks", "mcp", "semantic-search", "library"]
+    }
+  ]
+}

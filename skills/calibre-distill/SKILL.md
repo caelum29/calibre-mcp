@@ -1,6 +1,6 @@
 ---
 name: calibre-distill
-description: "Distill a book from your Calibre library into a structured agent skill — frameworks, mental models, principles, techniques, anti-patterns — by driving the calibre-mcp server (chapter map, keyword + semantic in-book search). Use when the user wants to study a Calibre book through Claude Code / Copilot / Amp, apply an author's frameworks while working, fold a new source into an existing skill, or stamp what they learned back into the library. Works on EN + RU/UK books; no temp files."
+description: "Turn ONE Calibre book into a reusable agent skill — frameworks, mental models, principles, techniques, anti-patterns, glossary, cheatsheet — by driving the calibre-mcp server (chapter map, keyword + semantic in-book search; no temp files, no Python). Use when the user wants to study a Calibre book through Claude Code / Copilot / Amp, apply an author's frameworks while working, fold a new source or a targeted topic slice into an existing skill, or stamp what they learned back into the library (tags + distill note via the gated write tools). Works on EN + RU/UK books. Single-book distiller — for one topic synthesized across several books, use the sibling calibre-distill-topic."
 ---
 
 <!--

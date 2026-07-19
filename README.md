@@ -6,6 +6,7 @@
 [![CI](https://github.com/caelum29/calibre-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/caelum29/calibre-mcp/actions/workflows/ci.yml)
 [![Node](https://img.shields.io/node/v/calibre-mcp?logo=node.js&color=339933)](https://nodejs.org)
 [![license](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
+[![skills.sh](https://skills.sh/b/caelum29/calibre-mcp)](https://skills.sh/caelum29/calibre-mcp)
 
 > **The most capable Calibre MCP server in existence** — connect Claude (or any MCP client)
 > to your [Calibre](https://calibre-ebook.com) ebook library and search it by *meaning*, not
@@ -52,8 +53,18 @@ your library, all through natural language.
 
 ### Claude Code
 
+MCP server only:
+
 ```sh
 claude mcp add calibre -- npx -y calibre-mcp
+```
+
+Or install the plugin — server **and** the companion skills in one step, with a settings
+dialog (server URL, library, write gate) at install time:
+
+```
+/plugin marketplace add caelum29/calibre-mcp
+/plugin install calibre-mcp@caelum29
 ```
 
 ### Claude Desktop (one-click)
@@ -86,6 +97,21 @@ Add to `claude_desktop_config.json`:
 
 Configure the server in Claude Desktop (either method above) — Desktop bridges local MCP
 servers into Cowork automatically. No extra setup.
+
+### Skills only — any agent (Claude Code, Codex, Cursor, …)
+
+The repo's Agent Skills — the calibre-mcp usage guide plus the two distill skills — install
+into any Agent-Skills-compatible harness with the [skills.sh](https://skills.sh) installer:
+
+```sh
+npx skills@latest add caelum29/calibre-mcp
+```
+
+Pick the skills and target agents interactively. Two philosophies, same as
+[mattpocock/skills](https://github.com/mattpocock/skills): **skills.sh copies** the files
+into your setup so you can hack on them; the **Claude Code plugin** (above) keeps them as a
+managed, auto-updating bundle. Either way the skills drive this MCP server's tools, so
+install the server too.
 
 ### First contact — a five-prompt tour
 
@@ -209,14 +235,15 @@ EN and RU/UK books, no temp files, and can optionally stamp what you learned bac
 catalog (tags + a distill note) through the gated write tools.
 
 It ships in this repo at [`skills/calibre-distill/`](./skills/calibre-distill). Install it
-into Claude Code by copying or symlinking:
+via `npx skills@latest add caelum29/calibre-mcp` or the Claude Code plugin (see
+[Quick start](#-quick-start)), or manually by symlinking:
 
 ```sh
 ln -s "$PWD/skills/calibre-distill" ~/.claude/skills/calibre-distill
 ```
 
 Then ask, e.g., *“distill book 187 into a skill called kafka-ops”*. Note: the MCPB bundle
-can’t ship skills — install the skill separately from the MCP server.
+can’t ship skills — install the skills separately from the MCP server on Claude Desktop.
 
 ### Companion skill: calibre-distill-topic
 
@@ -226,11 +253,7 @@ table, an explicit *“where the sources disagree or complement”* section, and
 bibliography that doubles as a live-source binding. Use it when you want a topic study aid
 built from a shelf of books rather than a single-book distill (single-book requests belong
 to `calibre-distill`). Ships at [`skills/calibre-distill-topic/`](./skills/calibre-distill-topic);
-install the same way:
-
-```sh
-ln -s "$PWD/skills/calibre-distill-topic" ~/.claude/skills/calibre-distill-topic
-```
+installed by the same skills.sh / plugin / symlink paths as above.
 
 Then ask, e.g., *“synthesize kafka reliability from books 187 182 571 186 into a skill.”*
 
