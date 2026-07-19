@@ -51,6 +51,21 @@ your library, all through natural language.
 
 ## 🚀 Quick start
 
+### Easiest — let your agent install it for you
+
+Grab the guided-installer skill and hand the whole job to your agent:
+
+```sh
+npx skills@latest add caelum29/calibre-mcp   # pick calibre-mcp-setup
+```
+
+Then tell your agent: **"set up calibre-mcp"**. The `calibre-mcp-setup` skill drives
+everything below — preflight (Node, calibredb, Content Server), the Calibre-side
+config, the right install for your client (macOS/Windows/Linux), and a `calibre_ping`
+verification — asking you only the questions that are yours to answer (which client,
+writes on/off). Works in any Agent-Skills-compatible harness (Claude Code, Copilot,
+Amp, …). Prefer doing it by hand? Pick your client below.
+
 ### Claude Code
 
 MCP server only:
