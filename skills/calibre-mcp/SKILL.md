@@ -29,11 +29,12 @@ Mostly PDF/EPUB, technical, EN + RU. Calibre GUI + Content Server on `:8080` are
 - Write tools are gated: they exist only when the server runs with `CALIBRE_MCP_ENABLE_WRITE`
   set. If they're missing, that's why.
 - Destructive/bulk ops are preview-first: `calibre_bulk_update` defaults `preview:true`,
-  `calibre_remove_book` defaults `confirm:false` (dry-run), `calibre_extract_isbn` defaults
-  `apply:false`. Show the preview, get user confirmation, then re-call with the apply flag.
+  `calibre_remove_book` and `calibre_merge_books` default `confirm:false` (dry-run),
+  `calibre_extract_isbn` defaults `apply:false`. Show the preview, get user confirmation,
+  then re-call with the apply flag.
 - All tools take an optional `library` param (display name is fine); omitted = default library.
 
-## Tool map (15)
+## Tool map (16)
 
 | Tool | Purpose | Key params |
 |---|---|---|
@@ -51,6 +52,7 @@ Mostly PDF/EPUB, technical, EN + RU. Calibre GUI + Content Server on `:8080` are
 | `calibre_bulk_update` | Same change across many books | `changes`, `ids` OR `query` (one required), `preview` |
 | `calibre_add_book` | Import a file (path must be under the whitelisted roots) | `path` |
 | `calibre_remove_book` | Delete books | `ids`, `confirm` |
+| `calibre_merge_books` | Merge duplicate records: formats + metadata into a target, sources → trash | `targetId`, `sourceIds`, `mode: merge\|safe\|formatsOnly`, `confirm` |
 | `calibre_extract_isbn` | Scan book text for ISBN, optionally write it | `id`, `apply` |
 
 ## Tag Convention
@@ -130,7 +132,11 @@ preview, then re-call with `preview:false`.
 
 **Dedupe:**
 `calibre_find_duplicates mode:similar` → inspect groups with `mode:compare ids:[...]` →
-`calibre_remove_book` (dry-run → confirm).
+`calibre_merge_books` with `targetId` = the compare report's "recommend keeping book N" and
+the rest as `sourceIds` (dry-run plan → confirm with user → `confirm:true`). Formats move to
+the target (its copy wins), metadata merges per Calibre's rules, sources land in Calibre's
+trash (recoverable ~14 days). `mode:safe` keeps sources; plain `calibre_remove_book` is for
+discarding a record without keeping anything from it.
 
 **Library cleanup sweep:**
 `calibre_quality_report` → fix per issue class (tags via bulk_update, ISBNs via extract_isbn,
@@ -180,6 +186,7 @@ GUI preference); if a write is refused, that's the first thing to check.
 | "Tag all SQL books" | `calibre_bulk_update` query:"title:SQL" → preview → apply |
 | "Books without tags?" | `calibre_search` query: `"tags:false"` |
 | "Знайди дублікати" | `calibre_find_duplicates` |
+| "Об'єднай ці дублікати" / "Merge these two records" | `calibre_merge_books` (dry-run plan → confirm with user → `confirm:true`) |
 | "Що не так з бібліотекою?" | `calibre_quality_report` |
 | "What's this 795731065.pdf book?" | `calibre_extract_isbn` → `calibre_recover_metadata` |
 | "Add book from Downloads" | `calibre_add_book` |
