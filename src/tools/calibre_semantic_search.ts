@@ -23,6 +23,7 @@ import { BookId, limitParam } from "./coerce.js";
 import { defineTool } from "./define.js";
 import { bookResourceLink } from "./resource-link.js";
 import { resolveNumericId } from "./resolve-id.js";
+import { INSTALL_TRANSFORMERS } from "./remediation.js";
 import { fence, toolError, toolOk } from "./result.js";
 import type { ContentBlock, ToolDeps } from "./types.js";
 
@@ -124,12 +125,11 @@ export const semanticSearchTool = defineTool({
       if ((mode === "vector" || mode === "hybrid") && !sem.semanticAvailable) {
         if (mode === "vector") {
           return toolError(
-            'This index was built keyword-only (no embeddings), so vector search is unavailable. Rebuild with the model — install @huggingface/transformers, then calibre_build_index { force: true } — or use mode:"keyword".',
+            `This index was built keyword-only (no embeddings), so vector search is unavailable. ${INSTALL_TRANSFORMERS} Then rebuild with calibre_build_index { force: true }, or use mode:"keyword" now (no model needed).`,
           );
         }
         mode = "keyword";
-        note =
-          "Index built keyword-only (no embeddings) — showing keyword (FTS) matches. Rebuild with the model (calibre_build_index force=true) for semantic ranking.";
+        note = `Index is keyword-only (no embeddings) — showing keyword (FTS) matches. For semantic ranking: ${INSTALL_TRANSFORMERS} Then rebuild with calibre_build_index force=true.`;
       }
       const effArgs: Args = { ...args, mode };
 
@@ -377,9 +377,12 @@ interface RerankOutcome<T> {
   note?: string;
 }
 
+// Kept brief on purpose (#47): the reranker degrade is advisory, not a hard stop — point at the
+// same @huggingface/transformers dependency + restart rule without inlining the full 3-branch text.
 const RERANK_NOTE =
-  "Reranker unavailable — results keep the fused (pre-rerank) order. The cross-encoder model " +
-  "downloads on first use; ensure @huggingface/transformers is installed and the machine is online.";
+  "Reranker unavailable — results keep the fused (pre-rerank) order. The cross-encoder model needs " +
+  "@huggingface/transformers (see calibre_build_index for install steps) and downloads on first use; " +
+  "if you just installed it, restart the MCP server, and ensure the machine is online.";
 
 const RERANK_DISABLED_NOTE =
   "Reranking disabled via CALIBRE_MCP_RERANK — results keep the fused (pre-rerank) order.";
@@ -527,7 +530,7 @@ function mapError(err: unknown) {
   const m = err instanceof Error ? err.message : String(err);
   if (m === "EMBEDDER_UNAVAILABLE") {
     return toolError(
-      'Semantic (vector/hybrid) search needs the embedding model. Install it (pnpm add @huggingface/transformers), or build a keyword-only index (calibre_build_index keywordOnly=true) and search with mode:"keyword" — which needs no model.',
+      `Semantic (vector/hybrid) search needs the embedding model. ${INSTALL_TRANSFORMERS} Or search now without it: build a keyword-only index (calibre_build_index keywordOnly=true) and use mode:"keyword".`,
     );
   }
   if (m.startsWith("INDEX_INCOMPATIBLE")) {
