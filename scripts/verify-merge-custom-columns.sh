@@ -49,7 +49,13 @@ echo "== scratch library: $LIB"
 BOOK_TXT="$SCRATCH/scrap.txt"
 echo "merge verify scrap" > "$BOOK_TXT"
 "$CALIBREDB" --with-library "$LIB" add "$BOOK_TXT" --title "ZZZ Merge Verify" >/dev/null
-BOOK_ID="$("$CALIBREDB" --with-library "$LIB" list --for-machine | python3 -c 'import json,sys; print(json.load(sys.stdin)[0]["id"])')"
+# calibredb can prepend/append noise lines (e.g. "Using proxies: …", probe §6) —
+# parse the JSON array from the first "[" with raw_decode, ignoring trailing junk.
+BOOK_ID="$("$CALIBREDB" --with-library "$LIB" list --for-machine | python3 -c '
+import json, sys
+s = sys.stdin.read()
+data, _ = json.JSONDecoder().raw_decode(s[s.index("["):])
+print(data[0]["id"])')"
 echo "== scrap book id: $BOOK_ID"
 
 echo "== starting calibre-server on :$PORT (local writes enabled)"
@@ -79,10 +85,13 @@ echo "== routed library URL: $ROUTED"
 "$CALIBREDB" --with-library "$ROUTED" set_metadata "$BOOK_ID" --field '#pm:tagA,tagB,tagC' >/dev/null
 
 echo "== routed read-back:"
-"$CALIBREDB" --with-library "$ROUTED" list --for-machine \
-  --fields '*pt,*pm,*pi,*pf,*pb,*pd,*ps,*pe,*pc' | python3 - "$BOOK_ID" <<'EOF'
+# The checker must be a FILE: piping into `python3 - <<EOF` would let the heredoc
+# clobber the piped list output on stdin.
+cat > "$SCRATCH/check.py" <<'EOF'
 import json, sys
-book = next(b for b in json.load(sys.stdin) if b["id"] == int(sys.argv[1]))
+s = sys.stdin.read()
+books, _ = json.JSONDecoder().raw_decode(s[s.index("["):])
+book = next(b for b in books if b["id"] == int(sys.argv[1]))
 expected = {
     "*pt": "plain text value",
     "*pm": ["tagA", "tagB", "tagC"],
@@ -107,5 +116,7 @@ if not ok:
     failures.append("*pd")
 sys.exit(1 if failures else 0)
 EOF
+"$CALIBREDB" --with-library "$ROUTED" list --for-machine \
+  --fields '*pt,*pm,*pi,*pf,*pb,*pd,*ps,*pe,*pc' | python3 "$SCRATCH/check.py" "$BOOK_ID"
 
 echo "== ALL ROUTED CUSTOM-COLUMN ENCODINGS VERIFIED"
