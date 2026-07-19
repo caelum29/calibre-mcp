@@ -4,6 +4,33 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] — 2026-07-19
+
+### Fixed
+
+- **Semantic-search degradation is now loud** ([#41], [#46]). `calibre_build_index` and
+  `calibre_semantic_search` report `semanticAvailable` and `semanticReason` in structured
+  output, and an automatic keyword-only downgrade now leads the text response with a warning
+  instead of reading as unqualified success.
+- **"Embedding model missing" guidance now covers every install type** ([#47]). One universal
+  message with steps for the Claude Desktop `.mcpb` extension, npx/global npm, and dev
+  checkouts — each ending with the required server restart (installing the model while the
+  server is running never takes effect on Node 24).
+- **Embedder/reranker load failures have stable semantics** ([#45]). A missing
+  `@huggingface/transformers` stays a stable coded error (restart after install), while
+  transient load failures (e.g. a flaky model download) are no longer cached and can succeed
+  on retry.
+
+### Added
+
+- **`calibre_ping` semantic status block** ([#48]) for one-call diagnosis: model id and
+  dimension, dependency installed (disk-level check), in-process load state, model cache
+  presence, indexed book/vector counts, and a restart-required flag — mirrored into the text
+  response.
+- Docs: firsthand probe of Node 24's failed-import negative caching
+  (`docs/node24-import-retry-probe.md`, [#44]).
+- The calibre-mcp skill now documents `calibre_merge_books` (tool map: 16).
+
 ## [0.5.0] — 2026-07-19
 
 ### Added
@@ -37,6 +64,12 @@ All notable changes to this project are documented here. The format is based on
 
 [#30]: https://github.com/caelum29/calibre-mcp/issues/30
 [#33]: https://github.com/caelum29/calibre-mcp/issues/33
+[#41]: https://github.com/caelum29/calibre-mcp/issues/41
+[#44]: https://github.com/caelum29/calibre-mcp/issues/44
+[#45]: https://github.com/caelum29/calibre-mcp/issues/45
+[#46]: https://github.com/caelum29/calibre-mcp/issues/46
+[#47]: https://github.com/caelum29/calibre-mcp/issues/47
+[#48]: https://github.com/caelum29/calibre-mcp/issues/48
 [#50]: https://github.com/caelum29/calibre-mcp/issues/50
 
 ## [0.4.2] — 2026-07-19
