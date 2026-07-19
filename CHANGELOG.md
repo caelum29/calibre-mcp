@@ -4,6 +4,23 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.2] — 2026-07-19
+
+### Added
+
+- Coverflow search-results widget: a second visual style for the in-chat cover board (3D
+  cover flow with reflections), selectable via `CALIBRE_MCP_BOARD_STYLE=shelf|coverflow`
+  (default `shelf`). The Claude Desktop bundle exposes it as a "Coverflow search results"
+  toggle in extension settings.
+
+### Changed
+
+- The cover-board widget template is now composed from one shared MCP-plumbing core plus
+  per-variant visuals, so both styles share the same data flow, handshake, and degradation
+  paths.
+- `CALIBRE_MCP_BOARD_STYLE` parsing is tolerant: strips pasted quotes, accepts
+  boolean-toggle values (`true`/`1`/`yes`) as coverflow.
+
 ## [0.5.1] — 2026-07-19
 
 ### Fixed

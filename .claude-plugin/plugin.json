@@ -1,6 +1,6 @@
 {
   "name": "calibre-mcp",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Calibre ebook library for Claude: the calibre-mcp server (search, semantic search, content extraction, metadata curation — 17 tools) plus companion skills (guided setup, usage guide, calibre-distill, calibre-distill-topic).",
   "author": {
     "name": "Artem Sorochynskyi",
