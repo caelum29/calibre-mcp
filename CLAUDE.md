@@ -2,7 +2,8 @@
 
 <!-- Project memory for the calibre-mcp build: the invariants a fresh session needs BEFORE touching
      code today. Chronological build history → docs/JOURNAL.md. Locked decisions + deferred registry
-     → docs/DECISIONS.md. Keep this file lean; status narrative does NOT belong here. -->
+     → docs/DECISIONS.md. Longer policy/context sections are @imported from docs/claude/.
+     Keep this file lean; status narrative does NOT belong here. -->
 
 ## Macro goal
 
@@ -14,15 +15,6 @@ It must:
 1. **Match the full tool surface of every known Calibre MCP server** (feature parity baseline).
 2. **Add semantic search** — the headline differentiator no existing TS server has.
 3. **Fix the write path** that breaks in Cowork (`MCP error -32602`, args-as-strings).
-
-**Two surfaces (Artem's framing).** The server works at two scopes: the **catalog/library**
-(update the library, book metadata, tags, bulk ops, dedupe, enrich) and a **single book** (extract
-content — whole book or a chunk — and keyword/semantic search *within* one book). Semantic search
-spans both: **across the whole library OR one book separately** — a `scope: library|book` param, not
-extra tools (see `docs/TOOLS.md`).
-
-In one line: every useful tool the field has *plus* meaning-based search (library- *and* book-scoped)
-*plus* safe, hardened writes.
 
 ## Target environment (ground-truth, do not re-derive)
 
@@ -47,6 +39,10 @@ In one line: every useful tool the field has *plus* meaning-based search (librar
 - **FTS is book-level only** (no PDF page / EPUB spine location) and **not enabled** on this library yet.
   Calibre has **no OCR**; PDF is the worst conversion/extraction input.
 - **Writes gated by default** — read-only unless an explicit env flag + per-tool `annotations` allow it.
+- **Clients strip `structuredContent`** (Claude Desktop drops it from the tool-result notification;
+  some clients surface only text blocks). Anything the model must act on — ranked hits, excerpts,
+  `nextCursor` tokens — must ALSO appear in the text content; the cover-board widget refetches its
+  data via the widget-internal `calibre_board_data` tool for the same reason (#26, D-017).
 
 ## Engineering invariants (constrain every edit)
 
@@ -65,77 +61,30 @@ In one line: every useful tool the field has *plus* meaning-based search (librar
 - **Return-not-throw `isError` contract.** Handlers return a result with `isError` + an actionable
   message steering the model's next step; they don't throw across the SDK boundary.
 - **Tool-count ≤ ~20.** Fold related calibredb subcommands into task/intent tools; don't 1:1-mirror
-  the CLI (see the policy below + `docs/DECISIONS.md` D-005). Currently **15 model-facing tools**
-  (`docs/TOOLS.md`) + 1 widget-internal (`calibre_board_data`, `_meta.ui.visibility ["app"]`, D-017).
-
-## Tool surface to build
-
-Baseline = the **capability surface** of FaceDeer (full read/write/convert/import/export +
-per-library permission model) — **18 = a capability target, not a tool-count target**. See
-`docs/RESEARCH.md` §5.0 for the verified inventory and the coverage table.
-
-**Tool-count target: keep the model-facing surface ≤ ~20 task/intent tools.** Field + research
-evidence (`docs/DESIGN.md` §9.1): selection accuracy degrades as the number of *confusable* tools per
-query grows (OpenAI's "<20" is a soft heuristic; the measured degradation zone is ~30–50 similar
-tools — we must stay under it). So **don't 1:1-mirror calibredb subcommands as tools**; fold related
-operations into fewer **task/intent** tools (e.g. one `calibre_recover_metadata` doing
-ISBN→OpenLibrary→GoogleBooks internally, not three chainable tools). Cheap evidence-backed wins:
-**namespacing**, **tool consolidation**, lean tool-def token budgets, sharp **descriptions** (the
-10x selection lever). At ≤20 we do **not** need RAG-over-tools / MCP-Zero machinery internally.
-
-> The differentiator list, the consolidated **14→15 LOCKED tool list**, and its name-mapping live in
-> `docs/DECISIONS.md` D-005 (rationale) and `docs/TOOLS.md` (build list of record).
-
-## Tech stack (decided in research, confirm in design)
-
-- **`@modelcontextprotocol/sdk` 1.29.0** (protocol `2025-11-25`), `registerTool` + `outputSchema`/`structuredContent`.
-  Do **not** wait for SDK v2 (alpha); isolate the SDK behind a thin layer to de-risk migration.
-- **Zod** for input schemas (with the coercion layer above).
-- **Semantic search:** `multilingual-e5-small` (LOCKED — `docs/DECISIONS.md` D-001/D-010), in-memory
-  brute-force cosine on `node:sqlite` BLOBs + hybrid FTS5/RRF; full pipeline in `docs/SEMANTIC-SEARCH.md`.
-- **Clean Architecture:** keep tool logic (schemas, handlers, embedding/DB code) free of SDK types.
-- Package via **npx** + **MCPB** bundle for Claude Desktop (release recipe → `docs/DECISIONS.md` D-006).
-
-## Reusable code (licensing)
-
-**Decision (2026-06-27): our server is MIT/Apache (permissive), clean-room** (`docs/DECISIONS.md` D-004).
-Operating rules:
-- ✅ Call Calibre as a *program* (shell `calibredb`, Content Server HTTP, `ebook-convert`,
-  `fetch-ebook-metadata`) — mere use, GPL does not propagate. This is our primary interface.
-- ✅ Read Calibre/plugin GPL source to *understand the contract* (`/cdb/cmd` arg shapes in
-  `src/calibre/db/cli/cmd_*.py`, encoding in `utils/serialize.py`, query grammar in `db/search.py`,
-  `check_isbn`/`author_to_author_sort` in `ebooks/metadata/`).
-- ✅ Reimplement algorithms *independently* from the manual / observed behavior / well-known formulas
-  (ISBN checksum, Flesch/Fog, SHA dedupe). **Do NOT line-by-line translate GPL code** (Calibre or
-  kiwidude/JimmXinu plugins — all GPL-3.0) into TS; that would force our server to be GPL.
-- ✅ Copy freely from permissive sources only (the attribution list is in `docs/DECISIONS.md`).
+  the CLI (`docs/claude/tool-surface.md` + `docs/DECISIONS.md` D-005). Currently **17 model-facing
+  tools** — 16 task tools (`docs/TOOLS.md`) + `calibre_ping` — plus 1 widget-internal
+  (`calibre_board_data`, `_meta.ui.visibility ["app"]`, D-017).
+- **Never report a committed write as failed.** Routed writes commit server-side *before* `calibredb`
+  replies (#33): a failing post-write diff re-read degrades to a success result with the intended-value
+  diff, and a CLI timeout is verified against a re-read — confirmed → success, unconfirmed → steer the
+  model to `calibre_get_book` before retrying. Applies to `calibre_update_book` and the
+  `calibre_bulk_update` apply loop.
+- **User/model-supplied regex compiles via `src/tools/user-regex.ts`**, never bare `new RegExp()`.
+  It accepts leading PCRE-style inline flags (`(?i)…`) by folding them into JS RegExp flags and gives
+  an explicit error for inexpressible ones like `x` (#30).
+- **Content cursors are opaque and bound.** `calibre_get_content` cursors encode
+  `{offset, id, format}` and reject cross-book/format replay; decode is tolerant (never throws) but
+  invalid/hand-built cursors get an actionable error, not a silent restart at 0 (#26). The numeric
+  `offset` param is the cursor-free jump path (e.g. a search hit's `charStart`) — mutually exclusive
+  with `cursor` (#28).
 
 ## Working rules
 
 - English for all code, comments, docs (per global policy). Respond to Artem casually, concise, in markdown.
 - **Cite first-party sources; flag anything unconfirmed** — don't trust memory for versions/APIs/tool lists.
 
-## Project artifacts
+## Imported context
 
-- `docs/JOURNAL.md` — chronological build history + status archive (the session archaeology; append-only).
-- `docs/DECISIONS.md` — registry of LOCKED decisions (`D-NNN`) + the consolidated Deferred/LATER registry.
-- `docs/RESEARCH.md` — the foundation report (6 sections: capability inventory, MCP best practices, server comparison, §5 tool catalog + §5.0 FaceDeer coverage, open questions). §5/§6 superseded downstream.
-- `docs/CAPABILITIES.md` — deep capability + Content-Server-API analysis; **resolves the write path/auth, PDF-extraction, and `/ajax` stability questions** and maps GPL plugins → port-the-algorithm differentiators.
-- `docs/local-groundtruth.md` — firsthand probes of this machine's Calibre (CLI subcommands, GUI lock, Content Server `/ajax/` shapes).
-- `docs/calibredb_help.txt` — full `calibredb` v9.10 CLI dump.
-- Decision docs: `docs/DESIGN.md`, `docs/TOOLS.md` (build list of record), `docs/DISTRIBUTION.md`, `docs/INTERACTIVITY.md`, `docs/PRODUCT-DECISIONS.md`.
-
-## Searching the docs corpus (qmd)
-
-`docs/` is indexed for semantic + keyword search under the **`calibre-docs`** qmd
-collection. Prefer it over blind `grep`/`Read` when hunting a decision, rationale,
-or design detail across the corpus. The `qmd` skill (`.claude/skills/qmd/`) has the
-full workflow; the short version:
-
-```bash
-qmd query "why route writes through the Content Server" -c calibre-docs   # hybrid + rerank
-qmd search "libId resolve" -c calibre-docs                                # fast BM25
-```
-
-Always scope with `-c calibre-docs` — the qmd index is global and shared with
-unrelated projects. After editing `docs/`, run `qmd update && qmd embed` to refresh.
+- @docs/claude/tool-surface.md — two-surfaces framing, FaceDeer capability baseline, ≤20 tool-count policy
+- @docs/claude/stack-and-licensing.md — locked tech stack + GPL clean-room operating rules
+- @docs/claude/artifacts-and-qmd.md — docs corpus map + qmd search workflow
