@@ -60,6 +60,10 @@ export const semanticSearchTool = defineTool({
     lowConfidence: z.boolean().optional(),
     reranked: z.boolean().optional(),
     maxRerank: z.number().optional(),
+    // Degradation surfacing (issue #41): false when the index has no vectors, so semantic
+    // (vector/hybrid) ranking can't run for this library — with the reason spelled out.
+    semanticAvailable: z.boolean().optional(),
+    semanticReason: z.string().optional(),
     note: z.string().optional(),
     bookIds: z.array(z.number()).optional(),
     // Ranked hits mirrored into structuredContent so structured-only clients (that render
@@ -106,9 +110,18 @@ export const semanticSearchTool = defineTool({
 
       // A keyword-only index (built without the embedding model) has no vectors: vector mode
       // can't run, and hybrid degrades to keyword (degrading beats erroring for the default).
+      // Every success carries semanticAvailable (+ reason when false) so an automatic
+      // downgrade never reads as an unqualified success (issue #41).
+      const sem: SemStatus = deps.index.hasVectors(libraryId)
+        ? { semanticAvailable: true }
+        : {
+            semanticAvailable: false,
+            semanticReason:
+              "Index is keyword-only (no embeddings) — vector & hybrid semantic ranking unavailable until an embedding rebuild.",
+          };
       let mode = args.mode;
       let note: string | undefined;
-      if ((mode === "vector" || mode === "hybrid") && !deps.index.hasVectors(libraryId)) {
+      if ((mode === "vector" || mode === "hybrid") && !sem.semanticAvailable) {
         if (mode === "vector") {
           return toolError(
             'This index was built keyword-only (no embeddings), so vector search is unavailable. Rebuild with the model — install @huggingface/transformers, then calibre_build_index { force: true } — or use mode:"keyword".',
@@ -131,10 +144,10 @@ export const semanticSearchTool = defineTool({
             `Book ${numericId} is not indexed. Run calibre_build_index { bookId: ${numericId} } first.`,
           );
         }
-        return await bookScope(effArgs, deps, libraryId, numericId, note);
+        return await bookScope(effArgs, deps, libraryId, numericId, sem, note);
       }
 
-      return await libraryScope(effArgs, deps, libraryId, note);
+      return await libraryScope(effArgs, deps, libraryId, sem, note);
     } catch (err) {
       return mapError(err);
     }
@@ -149,6 +162,12 @@ type Args = {
   topK: number;
   library?: string;
 };
+
+/** Semantic-capability verdict for the resolved library's index, spread into every success. */
+interface SemStatus {
+  semanticAvailable: boolean;
+  semanticReason?: string;
+}
 
 /** A book result plus its cosine, when the vector half contributed it (absent for keyword-only). */
 interface RankedBook {
@@ -200,7 +219,7 @@ function boardMeta(
 }
 
 /** scope=library — rank books; emit resource_links + fenced snippets. */
-async function libraryScope(args: Args, deps: ToolDeps, libraryId: string, degradeNote?: string) {
+async function libraryScope(args: Args, deps: ToolDeps, libraryId: string, sem: SemStatus, degradeNote?: string) {
   const pool = await rankBooks(args, deps, libraryId);
   const rr = await applyRerank(pool, (r) => r.hit.body, args, deps);
   const ranked = rr.hits;
@@ -212,6 +231,7 @@ async function libraryScope(args: Args, deps: ToolDeps, libraryId: string, degra
         mode: args.mode,
         count: 0,
         ...rerankFields(args, rr),
+        ...sem,
         note,
         bookIds: [],
       }),
@@ -250,6 +270,7 @@ async function libraryScope(args: Args, deps: ToolDeps, libraryId: string, degra
       maxScore,
       lowConfidence,
       ...rerankFields(args, rr),
+      ...sem,
       note,
       bookIds: ranked.map((r) => r.hit.bookId),
       results,
@@ -259,7 +280,7 @@ async function libraryScope(args: Args, deps: ToolDeps, libraryId: string, degra
 }
 
 /** scope=book — rank passages within one book; emit fenced excerpts with char spans. */
-async function bookScope(args: Args, deps: ToolDeps, libraryId: string, bookId: number, degradeNote?: string) {
+async function bookScope(args: Args, deps: ToolDeps, libraryId: string, bookId: number, sem: SemStatus, degradeNote?: string) {
   const pool = await rankPassages(args, deps, libraryId, bookId);
   const rr = await applyRerank(pool, (r) => r.hit.body, args, deps);
   // Front-matter demotion (issue #18): TOC/praise/foreword chunks are keyword-dense but
@@ -284,6 +305,7 @@ async function bookScope(args: Args, deps: ToolDeps, libraryId: string, bookId: 
         bookId,
         count: 0,
         ...rerankFields(args, rr),
+        ...sem,
         note,
       },
     );
@@ -320,6 +342,7 @@ async function bookScope(args: Args, deps: ToolDeps, libraryId: string, bookId: 
     maxScore,
     lowConfidence,
     ...rerankFields(args, rr),
+    ...sem,
     note,
     passages,
   });
