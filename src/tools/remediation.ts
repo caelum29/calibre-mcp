@@ -4,7 +4,7 @@
 // environment detection (locked #47): the reading LLM picks the branch that fits the user.
 //
 // Every branch MUST end at the restart step: Node 24 negatively caches a failed package lookup
-// for the whole process life (docs/node24-import-retry-probe.md), so installing while the
+// for the whole process life (docs/dev/node24-import-retry-probe.md), so installing while the
 // server runs can never take effect in-process — a restart is mandatory, not optional.
 
 /** Universal 3-branch install + restart guidance for the optional embedding model. */

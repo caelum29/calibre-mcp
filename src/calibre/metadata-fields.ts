@@ -1,6 +1,6 @@
 // Maps a domain `changes` record onto `calibredb set_metadata --field name:value` argv
 // tokens (calibre_update_book). Pure + SDK-free. The value-formatting rules are an
-// INDEPENDENT reimplementation derived from `docs/calibredb_help.txt` (the documented
+// INDEPENDENT reimplementation derived from `docs/dev/calibredb_help.txt` (the documented
 // --field grammar), NOT a line-by-line port of Calibre's GPL source.
 
 import type { Book } from "../domain/book.js";

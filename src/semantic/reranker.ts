@@ -90,7 +90,7 @@ export class TransformersReranker implements Reranker {
     if (!this.#loaded) {
       // Same failure contract as the embedder's #model(): a missing dep stays memoized
       // (Node 24 negatively caches the failed resolution — restart is the only remedy;
-      // docs/node24-import-retry-probe.md), anything else may be transient → retry.
+      // docs/dev/node24-import-retry-probe.md), anything else may be transient → retry.
       this.#loaded = this.#load().catch((err: unknown) => {
         if (!(err instanceof Error && err.message === "RERANKER_UNAVAILABLE")) {
           this.#loaded = undefined;

@@ -198,5 +198,7 @@ GUI preference); if a write is refused, that's the first thing to check.
 
 ## Reference Documentation
 
-- **`docs/calibredb_help.txt`** (repo root) — full `calibredb` v9.10 CLI dump, all subcommands
-- **`docs/TOOLS.md`** — the authoritative tool list with schemas and access paths
+- `calibredb --help` / `calibredb <subcommand> --help` — the authoritative CLI reference for the installed version
+- **`docs/TOOLS.md`** (repo) — full tool reference: parameters, defaults, preview/confirm flows
+- **`docs/SEMANTIC-SEARCH.md`** (repo) — how the semantic index and hybrid retrieval work
+- **`docs/TROUBLESHOOTING.md`** (repo) — symptom-first fixes: connection, model install, write gates, cursors

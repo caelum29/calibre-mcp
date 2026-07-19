@@ -4,7 +4,7 @@
 // state + a COUNT on the local index).
 //
 // Dependency-installed is a DISK-LEVEL check on purpose: a live import() probe would LIE under
-// Node 24's process-lifetime negative cache (docs/node24-import-retry-probe.md), so we walk
+// Node 24's process-lifetime negative cache (docs/dev/node24-import-retry-probe.md), so we walk
 // node_modules like Node's resolver instead of importing.
 
 import { existsSync } from "node:fs";

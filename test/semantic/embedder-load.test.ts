@@ -1,6 +1,6 @@
 // Load-failure semantics at the optional-dep boundary (#45): a missing
 // @huggingface/transformers is process-permanent on Node 24 (failed resolution is
-// negatively cached — docs/node24-import-retry-probe.md), so the embedder must keep that
+// negatively cached — docs/dev/node24-import-retry-probe.md), so the embedder must keep that
 // failure memoized and stable; transient load failures must NOT be memoized so a retry
 // can succeed. The module loader is injected — the one seam tests control.
 

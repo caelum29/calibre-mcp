@@ -35,6 +35,9 @@ extra/*
 # local research/idea prompts — reference gitignored extra/ zips, kept local
 docs/prompts/
 
+# internal design/research/decision docs — kept local, not part of the public repo
+docs/dev/
+
 # retrieval-eval work dir (model cache copy + throwaway fixture index)
 test/eval/retrieval/.work/
 

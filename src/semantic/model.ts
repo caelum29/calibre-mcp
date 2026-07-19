@@ -36,7 +36,7 @@ export interface EmbeddingModelSpec {
   pooling: PoolingMode;
   /** ONNX weight variant to load. */
   dtype: "q8" | "fp32" | "q4";
-  /** Weights license — the optional-download posture cares (docs/PRODUCT-DECISIONS.md). */
+  /** Weights license — the optional-download posture cares (docs/dev/PRODUCT-DECISIONS.md). */
   license: string;
 }
 

@@ -1,8 +1,8 @@
 # CLAUDE.md — Calibre MCP Server
 
 <!-- Project memory for the calibre-mcp build: the invariants a fresh session needs BEFORE touching
-     code today. Chronological build history → docs/JOURNAL.md. Locked decisions + deferred registry
-     → docs/DECISIONS.md. Longer policy/context sections are @imported from docs/claude/.
+     code today. Chronological build history → docs/dev/JOURNAL.md. Locked decisions + deferred registry
+     → docs/dev/DECISIONS.md. Longer policy/context sections are @imported from docs/claude/.
      Keep this file lean; status narrative does NOT belong here. -->
 
 ## Macro goal
@@ -29,7 +29,7 @@ It must:
 - **GUI-concurrency lock is real (reproduced).** With the app open, direct `calibredb`/SQLite/DB-API
   access is refused or dangerous. Safe live paths: Content Server HTTP (reads) or `calibredb`
   routed *through* the server URL. Treat the DB as **read-mostly**; never race the GUI on writes.
-  **Write path RESOLVED** (`docs/CAPABILITIES.md` §2): route writes through the running server — shell
+  **Write path RESOLVED** (`docs/dev/CAPABILITIES.md` §2): route writes through the running server — shell
   `calibredb --with-library http://localhost:8080/#Lib` (it speaks `/cdb/cmd` for us), the server
   permitting writes via `--enable-local-write`; a direct `/cdb/set-fields` HTTP client is a LATER opt.
 - **`-32602` serialization bug** (our Cowork failure) is client-side, confirmed, unfixed. Defense =
@@ -49,20 +49,20 @@ It must:
 - **Write gate is two-key.** The master gate is `CALIBRE_MCP_ENABLE_WRITE` (truthy) in `config.ts`;
   `server.ts` `.disable()`s every `write:true` tool when it's off. On top, each write tool carries
   per-tool `annotations` and is **preview-first** (`preview`/`confirm`/`apply` in-band params, not MCP
-  elicitation — see `docs/DECISIONS.md` D-003). Path-taking writes (`calibre_add_book`) enforce a
+  elicitation — see `docs/dev/DECISIONS.md` D-003). Path-taking writes (`calibre_add_book`) enforce a
   **path whitelist** (`CALIBRE_MCP_ADD_ROOTS`, `realpathSync` boundary check).
 - **libId-resolve pattern for ALL `calibredb` calls.** `calibredb --with-library` needs the library
   **ID** (`Programming_Books`), **not** the display name (`Programming Books`, which 404s). Resolve
   display→libId via `content.resolveLibraryId` first, then pass it as `calibredb` `opts.library`.
-  Read paths (FTS, `calibre_ping`) resolve the libId too. (see `docs/DECISIONS.md` D-008.)
+  Read paths (FTS, `calibre_ping`) resolve the libId too. (see `docs/dev/DECISIONS.md` D-008.)
 - **SDK-free seam.** Tool handlers/schemas/domain code never import `@modelcontextprotocol/sdk`; only
   the transport/registration layer (`server.ts` + `run-stdio.ts`) does. `tools/types.ts` structurally
   mirrors `CallToolResult`/`ToolAnnotations` so handlers stay SDK-free. Isolates the SDK-v2 migration.
 - **Return-not-throw `isError` contract.** Handlers return a result with `isError` + an actionable
   message steering the model's next step; they don't throw across the SDK boundary.
 - **Tool-count ≤ ~20.** Fold related calibredb subcommands into task/intent tools; don't 1:1-mirror
-  the CLI (`docs/claude/tool-surface.md` + `docs/DECISIONS.md` D-005). Currently **17 model-facing
-  tools** — 16 task tools (`docs/TOOLS.md`) + `calibre_ping` — plus 1 widget-internal
+  the CLI (`docs/claude/tool-surface.md` + `docs/dev/DECISIONS.md` D-005). Currently **17 model-facing
+  tools** — 16 task tools (`docs/dev/TOOLS-spec.md`) + `calibre_ping` — plus 1 widget-internal
   (`calibre_board_data`, `_meta.ui.visibility ["app"]`, D-017).
 - **Never report a committed write as failed.** Routed writes commit server-side *before* `calibredb`
   replies (#33): a failing post-write diff re-read degrades to a success result with the intended-value

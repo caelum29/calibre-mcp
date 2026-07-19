@@ -15,7 +15,7 @@ import { l2normalize } from "./vector.js";
 /**
  * In-process model load outcome, for cheap read-only diagnostics (calibre_ping's semantic
  * block, #48). "failed" = a dep-missing load that Node 24 negatively caches for the process
- * lifetime (docs/node24-import-retry-probe.md) — recoverable only by a server restart.
+ * lifetime (docs/dev/node24-import-retry-probe.md) — recoverable only by a server restart.
  */
 export type EmbedderLoadState = "not-attempted" | "loaded" | "failed";
 
@@ -138,7 +138,7 @@ export class TransformersEmbedder implements Embedder {
   #model(): Promise<Loaded> {
     if (!this.#loaded) {
       // A missing dep stays memoized: Node 24 negatively caches the failed resolution for
-      // the process lifetime (docs/node24-import-retry-probe.md), so a re-probe can never
+      // the process lifetime (docs/dev/node24-import-retry-probe.md), so a re-probe can never
       // recover and only surfaces a mutated, misleading error — installing the package
       // requires a server restart. Any other failure (e.g. a flaky model download) may be
       // transient, so forget it and let the next call retry.

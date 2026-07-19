@@ -183,6 +183,8 @@ from whitelisted folders (`CALIBRE_MCP_ADD_ROOTS`).
 
 ## 🔎 Semantic search
 
+> Deep dive: [`docs/SEMANTIC-SEARCH.md`](./docs/SEMANTIC-SEARCH.md) — how indexing, hybrid retrieval, and reranking work.
+
 Meaning-based search is **opt-in** and needs two things:
 
 1. **The embeddings dependency** — `@huggingface/transformers` is an
@@ -217,6 +219,8 @@ and `mode: hybrid` degrades to keyword (with a note); rebuild with the model ins
 (`force: true`) to add semantic ranking.
 
 ## 🧰 Tools
+
+> Full reference with parameters and examples: [`docs/TOOLS.md`](./docs/TOOLS.md).
 
 | Tool | Access | What it does |
 |---|---|---|
@@ -307,6 +311,8 @@ back a much heavier copy (an 8 MB PDF served as 70 MB), so a disk-sized cap sile
 
 ## 🩺 Troubleshooting
 
+> More symptoms and fixes: [`docs/TROUBLESHOOTING.md`](./docs/TROUBLESHOOTING.md).
+
 - **“Calibre unreachable” / connection refused** — the Content Server isn’t running.
   In Calibre: *Connect/share → Start Content server*, or point
   `CALIBRE_MCP_SERVER_URL` at the right host/port.
@@ -341,8 +347,8 @@ pnpm pack:mcpb    # build the Claude Desktop .mcpb bundle
 ```
 
 The codebase is Clean Architecture: tool handlers, Calibre clients, and the semantic
-core are SDK-free; only `src/server.ts` touches the MCP SDK. Design and research notes
-live in [`docs/`](./docs).
+core are SDK-free; only `src/server.ts` touches the MCP SDK. User docs — the tool
+reference and the semantic-search guide — live in [`docs/`](./docs).
 
 Questions, ideas, and setups welcome in
 [**Discussions**](https://github.com/caelum29/calibre-mcp/discussions); bug reports and PRs
@@ -351,3 +357,8 @@ in [Issues](https://github.com/caelum29/calibre-mcp/issues).
 ## 📄 License
 
 [MIT](./LICENSE) © 2026 Artem Sorochynskyi
+
+An independent project, not affiliated with Calibre.
+[Calibre](https://calibre-ebook.com) itself is
+[Kovid Goyal's open-source project](https://github.com/kovidgoyal/calibre) (GPLv3) —
+this server drives it as a separate program via `calibredb` and the Content Server.

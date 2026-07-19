@@ -4,13 +4,20 @@
 
 ## Project artifacts
 
-- `docs/JOURNAL.md` — chronological build history + status archive (the session archaeology; append-only).
-- `docs/DECISIONS.md` — registry of LOCKED decisions (`D-NNN`) + the consolidated Deferred/LATER registry.
-- `docs/RESEARCH.md` — the foundation report (6 sections: capability inventory, MCP best practices, server comparison, §5 tool catalog + §5.0 FaceDeer coverage, open questions). §5/§6 superseded downstream.
-- `docs/CAPABILITIES.md` — deep capability + Content-Server-API analysis; **resolves the write path/auth, PDF-extraction, and `/ajax` stability questions** and maps GPL plugins → port-the-algorithm differentiators.
-- `docs/local-groundtruth.md` — firsthand probes of this machine's Calibre (CLI subcommands, GUI lock, Content Server `/ajax/` shapes).
-- `docs/calibredb_help.txt` — full `calibredb` v9.10 CLI dump.
-- Decision docs: `docs/DESIGN.md`, `docs/TOOLS.md` (build list of record), `docs/DISTRIBUTION.md`, `docs/INTERACTIVITY.md`, `docs/PRODUCT-DECISIONS.md`.
+**Layout (since 2026-07-19):** `docs/` holds only the public user docs — `docs/TOOLS.md`
+(tool reference), `docs/SEMANTIC-SEARCH.md` (how semantic search works), and
+`docs/TROUBLESHOOTING.md` (symptom-first fixes) — plus this
+`docs/claude/` set. Everything internal (design, research, decisions, journal, probes)
+lives in **`docs/dev/`, which is gitignored** — local-only, never in the public repo.
+The dev docs are still the source of record for decisions; user docs must not contradict them.
+
+- `docs/dev/JOURNAL.md` — chronological build history + status archive (the session archaeology; append-only).
+- `docs/dev/DECISIONS.md` — registry of LOCKED decisions (`D-NNN`) + the consolidated Deferred/LATER registry.
+- `docs/dev/RESEARCH.md` — the foundation report (6 sections: capability inventory, MCP best practices, server comparison, §5 tool catalog + §5.0 FaceDeer coverage, open questions). §5/§6 superseded downstream.
+- `docs/dev/CAPABILITIES.md` — deep capability + Content-Server-API analysis; **resolves the write path/auth, PDF-extraction, and `/ajax` stability questions** and maps GPL plugins → port-the-algorithm differentiators.
+- `docs/dev/local-groundtruth.md` — firsthand probes of this machine's Calibre (CLI subcommands, GUI lock, Content Server `/ajax/` shapes).
+- `docs/dev/calibredb_help.txt` — full `calibredb` v9.10 CLI dump.
+- Decision docs: `docs/dev/DESIGN.md`, `docs/dev/TOOLS-spec.md` (build list of record), `docs/dev/DISTRIBUTION.md`, `docs/dev/INTERACTIVITY.md`, `docs/dev/PRODUCT-DECISIONS.md`.
 
 ## Searching the docs corpus (qmd)
 

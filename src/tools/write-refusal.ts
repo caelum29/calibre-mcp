@@ -15,4 +15,4 @@ export function isWriteRefused(err: unknown): boolean {
 export const WRITE_REFUSED_MESSAGE =
   "Calibre refused the write. Anonymous writes are blocked — restart the Content Server " +
   "with --enable-local-write (localhost), or configure an authenticated non-restricted user. " +
-  "See docs/CAPABILITIES.md §2.";
+  "See the README's \"Enabling writes\" section.";

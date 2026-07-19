@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # One-time ROUTED custom-column verification for calibre_merge_books (spec #50 §8 layer 3).
 #
-# The live probe (docs/merge-primitives-probe.md §2) could only verify #col encodings on a
+# The live probe (docs/dev/merge-primitives-probe.md §2) could only verify #col encodings on a
 # LOCAL scratch library: no served library has custom columns, and a second calibre-server
 # can't start while the GUI runs (global server-process lock, probe §6). This script closes
 # that gap: with the GUI CLOSED, it serves a generated scratch library that has one custom
