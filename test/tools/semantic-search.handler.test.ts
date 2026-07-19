@@ -11,6 +11,14 @@ import type { ToolDeps } from "../../src/tools/types.js";
 
 const LIB = "Programming_Books";
 
+/** Asserts a remediation text names all three install layouts and the mandatory restart step (#47). */
+function expectUniversalRemediation(text: string): void {
+  expect(text).toContain(".mcpb extension"); // Claude Desktop bundle branch
+  expect(text).toContain("--omit=optional"); // npx / global npm branch
+  expect(text).toContain("pnpm add @huggingface/transformers"); // dev-checkout branch
+  expect(text).toContain("RESTART the MCP server"); // install alone never takes effect in-process
+}
+
 /** Unit vector on a chosen axis (for controlling similarity in tests). */
 function axis(i: number): Float32Array {
   const v = new Float32Array(EMBED_DIM);
@@ -221,7 +229,10 @@ describe("calibre_semantic_search handler", () => {
   it("guides toward keyword mode when the model is unavailable in hybrid", async () => {
     const r = await semanticSearchTool.handler(args(), deps(preloaded(), throwingEmbedder));
     expect(r.isError).toBe(true);
-    expect((r.content[0] as { text: string }).text).toContain('mode:"keyword"');
+    const text = (r.content[0] as { text: string }).text;
+    expect(text).toContain('mode:"keyword"');
+    // mapError's EMBEDDER_UNAVAILABLE branch carries the universal remediation (#47).
+    expectUniversalRemediation(text);
   });
 
   it("keyword mode works on a keyword-only (model-free) index", async () => {
@@ -242,6 +253,8 @@ describe("calibre_semantic_search handler", () => {
     const text = (r.content[0] as { text: string }).text;
     expect(text).toContain("keyword-only");
     expect(text).toContain("force");
+    // Vector-mode-on-keyword-index error carries the universal remediation (#47).
+    expectUniversalRemediation(text);
   });
 
   it("hybrid degrades to keyword (with a note) on a keyword-only index — no model touched", async () => {
@@ -252,7 +265,10 @@ describe("calibre_semantic_search handler", () => {
     expect(r.isError).toBeFalsy();
     expect(r.structuredContent?.bookIds as number[]).toEqual([2]);
     expect(r.structuredContent?.note as string).toContain("keyword-only");
-    expect((r.content[0] as { text: string }).text).toContain("keyword-only");
+    const text = (r.content[0] as { text: string }).text;
+    expect(text).toContain("keyword-only");
+    // The hybrid→keyword degrade note carries the universal remediation (#47).
+    expectUniversalRemediation(text);
   });
 
   it("flags low confidence when the top score is below the floor", async () => {

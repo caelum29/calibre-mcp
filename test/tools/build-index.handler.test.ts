@@ -11,6 +11,14 @@ import { EMBED_DIM, MAX_TOKENS, PASSAGE_PREFIX } from "../../src/semantic/model.
 import { l2normalize } from "../../src/semantic/vector.js";
 import type { ToolDeps } from "../../src/tools/types.js";
 
+/** Asserts a remediation text names all three install layouts and the mandatory restart step (#47). */
+function expectUniversalRemediation(text: string): void {
+  expect(text).toContain(".mcpb extension"); // Claude Desktop bundle branch
+  expect(text).toContain("--omit=optional"); // npx / global npm branch
+  expect(text).toContain("pnpm add @huggingface/transformers"); // dev-checkout branch
+  expect(text).toContain("RESTART the MCP server"); // install alone never takes effect in-process
+}
+
 const baseBook: Book = {
   id: 1,
   uuid: "u-1",
@@ -243,7 +251,15 @@ describe("calibre_build_index handler", () => {
     const text = (r.content[0] as { text: string }).text;
     expect(text).toContain("KEYWORD-ONLY");
     expect(text).toContain("@huggingface/transformers");
+    // The auto-degrade warning carries the universal 3-branch install + restart remediation (#47).
+    expectUniversalRemediation(text);
     expect(store.hasVectors("Programming_Books")).toBe(false);
+  });
+
+  it("requested keywordOnly's note carries the universal install + restart remediation (#47)", async () => {
+    const r = await buildIndexTool.handler(args({ bookId: 1, keywordOnly: true }), deps());
+    expect(r.isError).toBeFalsy();
+    expectUniversalRemediation((r.content[0] as { text: string }).text);
   });
 });
 

@@ -11,6 +11,7 @@ import { frontMatterEnd } from "../domain/structure/chapters.js";
 import { BookId, CoercedBool, jsonArray } from "./coerce.js";
 import { defineTool } from "./define.js";
 import { resolveNumericId } from "./resolve-id.js";
+import { INSTALL_TRANSFORMERS } from "./remediation.js";
 import { toolError, toolOk } from "./result.js";
 import type { IndexedChunk } from "../semantic/store.js";
 import type { ToolDeps } from "./types.js";
@@ -109,8 +110,9 @@ export const buildIndexTool = defineTool({
     if (keywordOnly) {
       semanticReason =
         "keywordOnly=true requested — no embeddings built; vector & hybrid semantic search need an embedding rebuild.";
+      // semanticReason stays short (machine-scannable); the full 3-branch fix goes in the note text.
       notes.push(
-        'Keyword-only index (no embeddings): mode:"keyword" search will work; vector & hybrid semantic search need @huggingface/transformers — install it, then rebuild with force=true.',
+        `Keyword-only index (no embeddings): mode:"keyword" search works now. For vector & hybrid semantic search: ${INSTALL_TRANSFORMERS} Then rebuild with force=true.`,
       );
     } else {
       try {
@@ -121,8 +123,9 @@ export const buildIndexTool = defineTool({
           keywordOnly = true;
           semanticReason =
             "embedding model (@huggingface/transformers) unavailable — automatically degraded to a keyword-only index (no vectors).";
+          // Must LEAD the text block (test-asserted at index 0) and carry the universal fix (#47).
           degradeWarning =
-            'Embedding model unavailable — built a KEYWORD-ONLY index instead (mode:"keyword" works now). Install @huggingface/transformers and rebuild with force=true for vector & hybrid semantic search.';
+            `Embedding model unavailable — built a KEYWORD-ONLY index instead (mode:"keyword" search works now). ${INSTALL_TRANSFORMERS} After restarting, rebuild with force=true for vector & hybrid semantic search.`;
         }
         // Other warmup errors (e.g. a download hiccup) fall through — the per-book embed
         // attempt below surfaces them as collected failures (char-budget chunking applies).
