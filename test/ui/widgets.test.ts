@@ -7,8 +7,11 @@ import { cardHtml, CARD_URI } from "../../src/ui/card-html.js";
 
 const board = boardHtml("calibre_search", "9.9.9");
 const semanticBoard = boardHtml("calibre_semantic_search", "9.9.9");
+const coverflow = boardHtml("calibre_search", "9.9.9", "coverflow");
+const semanticCoverflow = boardHtml("calibre_semantic_search", "9.9.9", "coverflow");
 const card = cardHtml("9.9.9");
-const all = [board, semanticBoard, card];
+const boards = [board, semanticBoard, coverflow, semanticCoverflow];
+const all = [...boards, card];
 
 describe("widget templates", () => {
   it("should_substitute_all_placeholder_tokens", () => {
@@ -21,6 +24,15 @@ describe("widget templates", () => {
   it("should_bind_each_board_to_its_owning_tool", () => {
     expect(board).toContain('var TOOL = "calibre_search"');
     expect(semanticBoard).toContain('var TOOL = "calibre_semantic_search"');
+    expect(coverflow).toContain('var TOOL = "calibre_search"');
+    expect(semanticCoverflow).toContain('var TOOL = "calibre_semantic_search"');
+  });
+
+  it("should_render_distinct_visuals_per_board_style", () => {
+    expect(board).toContain('id="strip"');
+    expect(board).not.toContain('id="fstage"');
+    expect(coverflow).toContain('id="fstage"');
+    expect(coverflow).not.toContain('id="strip"');
   });
 
   it("should_never_use_innerHTML_or_eval", () => {
@@ -51,8 +63,7 @@ describe("widget templates", () => {
   });
 
   it("should_pull_data_via_the_hidden_board_data_tool", () => {
-    expect(board).toContain("calibre_board_data");
-    expect(semanticBoard).toContain("calibre_board_data");
+    for (const html of boards) expect(html).toContain("calibre_board_data");
   });
 
   it("should_emit_valid_regex_escapes_not_double_backslashes", () => {

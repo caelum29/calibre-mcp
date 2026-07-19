@@ -35,6 +35,11 @@ export interface Config {
   maxBookBytes: number;
   /** Filesystem roots calibre_add_book may import from (path-whitelist, DESIGN §5). */
   addRoots: string[];
+  /**
+   * Cover-board widget style for search results (CALIBRE_MCP_BOARD_STYLE). Boot-time
+   * config, not a tool param — per-call resource switching is not spec-legal (issue #24).
+   */
+  boardStyle: "shelf" | "coverflow";
 }
 
 function truthy(v: string | undefined): boolean {
@@ -92,7 +97,23 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     rerankEnabled: notOptedOut(env.CALIBRE_MCP_RERANK),
     maxBookBytes: Number.isFinite(maxBytes) && maxBytes > 0 ? maxBytes : 256 * 1024 * 1024,
     addRoots: addRoots(env),
+    boardStyle: parseBoardStyle(env.CALIBRE_MCP_BOARD_STYLE),
   };
+}
+
+/**
+ * Tolerant style parse. Accepts the documented `coverflow` (env/CLI users) AND plain
+ * truthy strings — the Desktop bundle exposes this as a boolean "Coverflow search
+ * results" toggle (MCPB has no enum/dropdown field type), which substitutes
+ * "true"/"false". Values pasted with quotes arrive as literal quote chars; strip them.
+ * Anything else (incl. typos and "false") falls back to the default shelf.
+ */
+function parseBoardStyle(v: string | undefined): Config["boardStyle"] {
+  const t = envStr(v)
+    ?.replace(/^["']+|["']+$/g, "")
+    .trim()
+    .toLowerCase();
+  return t === "coverflow" || t === "true" || t === "1" || t === "yes" ? "coverflow" : "shelf";
 }
 
 /**

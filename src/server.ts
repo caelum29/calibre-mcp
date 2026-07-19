@@ -9,7 +9,7 @@ import {
   registerAppResource,
   RESOURCE_MIME_TYPE,
 } from "@modelcontextprotocol/ext-apps/server";
-import { loadConfig } from "./config.js";
+import { loadConfig, type Config } from "./config.js";
 import { CalibreClient } from "./calibre/client.js";
 import { ContentServerClient } from "./calibre/content-server.js";
 import { Extractor } from "./calibre/extract.js";
@@ -125,7 +125,7 @@ export function buildServer(): McpServer {
     if (t.write && !config.writeEnabled) reg.disable();
   }
 
-  registerUiResources(server, config.serverUrl);
+  registerUiResources(server, config.serverUrl, config.boardStyle);
 
   // calibre://book/{id} — the target of search/get_book resource_links. RESOURCE CONTRACT:
   // the read handler THROWS on failure (the SDK turns it into a protocol error), unlike tools.
@@ -201,7 +201,11 @@ export function buildServer(): McpServer {
  * 'self' data: otherwise); the widget's onerror → generated-placeholder path absorbs a
  * blocked or unreachable origin.
  */
-function registerUiResources(server: McpServer, serverUrl: string): void {
+function registerUiResources(
+  server: McpServer,
+  serverUrl: string,
+  boardStyle: Config["boardStyle"],
+): void {
   let origin: string;
   try {
     origin = new URL(serverUrl).origin;
@@ -215,13 +219,13 @@ function registerUiResources(server: McpServer, serverUrl: string): void {
       name: "Cover board (search)",
       uri: BOARD_KEYWORD_URI,
       description: "In-chat cover board for calibre_search results.",
-      html: boardHtml("calibre_search", VERSION),
+      html: boardHtml("calibre_search", VERSION, boardStyle),
     },
     {
       name: "Cover board (semantic search)",
       uri: BOARD_SEMANTIC_URI,
       description: "In-chat cover board for calibre_semantic_search results.",
-      html: boardHtml("calibre_semantic_search", VERSION),
+      html: boardHtml("calibre_semantic_search", VERSION, boardStyle),
     },
     {
       name: "Book card",

@@ -44,6 +44,22 @@ describe("loadConfig", () => {
     }
   });
 
+  it("board style defaults to shelf; only an explicit coverflow switches (case-insensitive)", () => {
+    expect(loadConfig({}).boardStyle).toBe("shelf");
+    expect(loadConfig({ CALIBRE_MCP_BOARD_STYLE: "coverflow" }).boardStyle).toBe("coverflow");
+    expect(loadConfig({ CALIBRE_MCP_BOARD_STYLE: " Coverflow " }).boardStyle).toBe("coverflow");
+    // Desktop settings fields are user-typed — a value pasted with quotes must still work.
+    expect(loadConfig({ CALIBRE_MCP_BOARD_STYLE: '"coverflow"' }).boardStyle).toBe("coverflow");
+    expect(loadConfig({ CALIBRE_MCP_BOARD_STYLE: "'coverflow'" }).boardStyle).toBe("coverflow");
+    // The Desktop bundle maps a boolean toggle onto this env var → "true"/"false".
+    expect(loadConfig({ CALIBRE_MCP_BOARD_STYLE: "true" }).boardStyle).toBe("coverflow");
+    expect(loadConfig({ CALIBRE_MCP_BOARD_STYLE: "false" }).boardStyle).toBe("shelf");
+    // Blank, the plain default, and typos all mean shelf — a style pick, not a gate.
+    for (const v of ["", "shelf", "covrflow", "banana"]) {
+      expect(loadConfig({ CALIBRE_MCP_BOARD_STYLE: v }).boardStyle).toBe("shelf");
+    }
+  });
+
   it("lets an explicit calibredb path win even if the file does not exist", () => {
     const cfg = loadConfig({ CALIBRE_MCP_CALIBREDB_PATH: "/nonexistent/calibredb" });
     expect(cfg.calibredbPath).toBe("/nonexistent/calibredb");

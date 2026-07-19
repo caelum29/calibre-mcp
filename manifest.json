@@ -35,7 +35,8 @@
         "CALIBRE_MCP_ENABLE_WRITE": "${user_config.enable_write}",
         "CALIBRE_MCP_INDEX_DIR": "${user_config.index_dir}",
         "CALIBRE_MCP_CALIBREDB_PATH": "${user_config.calibredb_path}",
-        "CALIBRE_MCP_ADD_ROOTS": "${user_config.add_roots}"
+        "CALIBRE_MCP_ADD_ROOTS": "${user_config.add_roots}",
+        "CALIBRE_MCP_BOARD_STYLE": "${user_config.use_coverflow}"
       }
     }
   },
@@ -77,6 +78,13 @@
       "type": "directory",
       "title": "Folder books may be imported from",
       "description": "calibre_add_book only imports files under this folder. Leave empty for the default (Documents + Downloads).",
+      "required": false
+    },
+    "use_coverflow": {
+      "type": "boolean",
+      "title": "Coverflow search results",
+      "description": "Show search results as a 3D cover flow instead of the default scrolling cover shelf.",
+      "default": false,
       "required": false
     }
   },
