@@ -11,7 +11,7 @@
     {
       "name": "calibre-mcp",
       "source": "./",
-      "description": "Calibre ebook library for Claude: the calibre-mcp server (search, semantic search, content extraction, metadata curation — 17 tools) plus companion skills (usage guide, calibre-distill, calibre-distill-topic).",
+      "description": "Calibre ebook library for Claude: the calibre-mcp server (search, semantic search, content extraction, metadata curation — 17 tools) plus companion skills (guided setup, usage guide, calibre-distill, calibre-distill-topic).",
       "category": "productivity",
       "keywords": ["calibre", "ebooks", "mcp", "semantic-search", "library"]
     }

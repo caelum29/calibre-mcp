@@ -100,8 +100,9 @@ servers into Cowork automatically. No extra setup.
 
 ### Skills only — any agent (Claude Code, Codex, Cursor, …)
 
-The repo's Agent Skills — the calibre-mcp usage guide plus the two distill skills — install
-into any Agent-Skills-compatible harness with the [skills.sh](https://skills.sh) installer:
+The repo's Agent Skills — a guided installer (`calibre-mcp-setup`), the calibre-mcp usage
+guide, and the two distill skills — install into any Agent-Skills-compatible harness with
+the [skills.sh](https://skills.sh) installer:
 
 ```sh
 npx skills@latest add caelum29/calibre-mcp
@@ -111,7 +112,8 @@ Pick the skills and target agents interactively. Two philosophies, same as
 [mattpocock/skills](https://github.com/mattpocock/skills): **skills.sh copies** the files
 into your setup so you can hack on them; the **Claude Code plugin** (above) keeps them as a
 managed, auto-updating bundle. Either way the skills drive this MCP server's tools, so
-install the server too.
+install the server too — or let the `calibre-mcp-setup` skill do it: it walks any agent
+through preflight, per-client install (macOS/Windows/Linux), and verification.
 
 ### First contact — a five-prompt tour
 
