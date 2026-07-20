@@ -1,11 +1,13 @@
 // Book-card widget for calibre_get_book (issues #19/#22). Visuals are the approved
-// mockup (assets/"Book Detail (standalone).html", bundler template — CSS/markup frozen,
-// devbar + fixtures removed) with the fake layer replaced by MCP plumbing: appInfo
+// mockup (docs/dev/design/card-buttons.html — CSS/markup frozen, devbar + fixtures +
+// wave/rail variants removed) with the fake layer replaced by MCP plumbing: appInfo
 // handshake, data via structuredContent or a silent widget-initiated re-call (Desktop
-// strips the tool-result notification), per-format Read → ui/open-link (viewer), Similar
-// → ui/message with a silent tools/call fallback. Injection hygiene: every book field
-// lands via textContent/createElement; comments are tag-stripped to plain paragraphs.
-// The widget JS avoids template literals so this file's outer literal needs no escaping.
+// strips the tool-result notification). Action-button layer (issue #53): Open in the
+// local viewer is the primary that NEVER hides (tools/call calibre_open_book); per-format
+// Read/⬇ pairs + cover zoom degrade under data-noread; Similar + Search-inside + the
+// curation row route through ui/message and degrade under data-nomsg. Injection hygiene:
+// every book field lands via textContent/createElement; the widget JS avoids template
+// literals so this file's outer literal needs no escaping.
 
 export const CARD_URI = "ui://calibre/book-card.html";
 
@@ -21,7 +23,7 @@ const TEMPLATE = `<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>calibre-mcp book detail</title>
 <style>
-/* ============ tokens — shared with cover-carousel.html (frozen mockup) ============ */
+/* ============ tokens — shared with the cover-board widget (frozen mockup) ============ */
 :root{
   color-scheme: light dark;
   --bg:#faf7f2; --tx:#33302b; --tx-muted:#8a8378; --card:#ffffff;
@@ -41,6 +43,7 @@ const TEMPLATE = `<!doctype html>
   --skel-hi: light-dark(rgba(255,255,255,.65), rgba(255,255,255,.09));
   --shadow: 0 1px 2px rgba(0,0,0,.07), 0 5px 16px rgba(0,0,0,.09);
   --shadow-lg: 0 2px 4px rgba(0,0,0,.09), 0 10px 26px rgba(0,0,0,.14);
+  --scrim: light-dark(rgba(255,253,250,.92), rgba(38,38,36,.92));
   /* book volume */
   --spine: light-dark(rgba(0,0,0,.16), rgba(0,0,0,.42));
   --crease: light-dark(rgba(255,255,255,.55), rgba(255,255,255,.14));
@@ -77,8 +80,15 @@ body{
 a{color:var(--accent)} a:hover{color:var(--tx)}
 button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:8px}
+svg.i{width:13px;height:13px;stroke:currentColor;stroke-width:2.75;fill:none;stroke-linecap:round;stroke-linejoin:round;flex:none}
 
-/* ============ widget ============ */
+/* ============ degrade gating (body flags, set by the failing channel) ============ */
+body[data-noread="1"] [data-need="read"]{display:none}
+body[data-nomsg="1"] [data-need="msg"]{display:none}
+body[data-nosimilar="1"] [data-similar]{display:none}
+body[data-noread="1"] .coverbtn{cursor:default; pointer-events:none}
+
+/* ============ widget + view state ============ */
 .widget{max-width:640px; margin:0 auto; padding:0 18px}
 .view{display:none}
 .widget[data-state="loading"] .view-loading{display:block}
@@ -86,29 +96,28 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 .widget[data-state="notfound"] .view-notfound{display:flex}
 .widget[data-state="error"] .view-error{display:flex}
 
-/* layout: cover | meta */
-.hero{display:flex; gap:22px; align-items:flex-start}
-.coverwrap{flex:none; width:168px}
-.cover{
-  position:relative; display:block; width:168px; height:224px;
+/* layout: cover spans two rows; meta then acts stack in the right column */
+.hero{display:grid; grid-template-columns:168px minmax(0,1fr); gap:0 22px;
+  grid-template-areas:"cover meta" "cover acts"; align-items:start}
+.coverwrap{grid-area:cover; position:relative}
+.meta{grid-area:meta; min-width:0; padding-top:2px}
+.acts{grid-area:acts; display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:14px}
+
+/* ============ cover (zoom target) ============ */
+.coverbtn{display:block; border-radius:4px 12px 12px 4px; cursor:zoom-in}
+.coverbtn:disabled{cursor:default}
+.cover{position:relative; display:block; width:168px; height:224px;
   border-radius:4px 12px 12px 4px; overflow:hidden;
-  box-shadow:var(--pagestack), var(--shadow-lg);
-}
-.cover::before{
-  content:""; position:absolute; inset:0; z-index:1; pointer-events:none; border-radius:inherit;
-  background:
-    linear-gradient(90deg, var(--spine) 0%, transparent 9%),
+  box-shadow:var(--pagestack), var(--shadow-lg)}
+.cover::before{content:""; position:absolute; inset:0; z-index:1; pointer-events:none; border-radius:inherit;
+  background:linear-gradient(90deg, var(--spine) 0%, transparent 9%),
     linear-gradient(90deg, transparent 4.5%, var(--crease) 7%, transparent 11%),
-    linear-gradient(168deg, var(--sheen) 0%, transparent 24%);
-}
-.ph{
-  position:absolute; inset:0; display:flex; flex-direction:column;
-  padding:16px 14px 12px;
+    linear-gradient(168deg, var(--sheen) 0%, transparent 24%)}
+.ph{position:absolute; inset:0; display:flex; flex-direction:column; padding:16px 14px 12px;
   background:linear-gradient(160deg,
     oklch(var(--cov-l) var(--cov-c) var(--h)) 0%,
     oklch(var(--cov-l2) var(--cov-c2) var(--h2)) 100%);
-  color:oklch(var(--cov-tx-l) var(--cov-tx-c) var(--h));
-}
+  color:oklch(var(--cov-tx-l) var(--cov-tx-c) var(--h))}
 .ph::after{content:""; position:absolute; inset:8px; border-radius:8px;
   border:1px solid var(--cov-line); pointer-events:none}
 .ph .mark{width:26px; height:26px; border-radius:50%; background:var(--cov-shine); margin-bottom:12px; flex:none}
@@ -118,9 +127,16 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 .ph .pt.raw{font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-weight:500; font-size:12.5px}
 .ph .pa{margin-top:auto; font-size:11px; opacity:.75; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .cover img{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; background:var(--card)}
+.zoomhint{position:absolute; right:8px; bottom:8px; z-index:2;
+  display:inline-flex; align-items:center; gap:5px;
+  font-size:10.5px; font-weight:600; padding:3px 9px; border-radius:999px;
+  background:var(--scrim); color:var(--tx); box-shadow:var(--shadow);
+  opacity:0; transform:translateY(3px);
+  transition:opacity .15s ease, transform .15s ease; pointer-events:none}
+.coverbtn:hover .zoomhint, .coverbtn:focus-visible .zoomhint{opacity:1; transform:none}
+.coverbtn:disabled .zoomhint{display:none}
 
-/* meta column */
-.meta{flex:1; min-width:0; padding-top:2px}
+/* ============ meta ============ */
 .title{font-size:19px; line-height:1.28; font-weight:700; letter-spacing:-.01em;
   margin:0 0 2px; text-wrap:pretty; overflow-wrap:anywhere}
 .authors{font-size:13.5px; color:var(--tx-muted); margin:0 0 8px}
@@ -131,39 +147,64 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 .stars{display:inline-flex; gap:1.5px; vertical-align:-2px; margin-right:6px}
 .stars svg{width:13px; height:13px; fill:var(--accent); stroke:none}
 .stars svg.off{fill:var(--skel)}
-/* fact rows */
-.facts{display:grid; grid-template-columns:auto 1fr; gap:3px 14px;
-  font-size:12.5px; margin:10px 0 0}
+.facts{display:grid; grid-template-columns:auto 1fr; gap:3px 14px; font-size:12.5px; margin:10px 0 0}
 .facts dt{color:var(--tx-muted); white-space:nowrap}
-.facts dd{margin:0; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-  font-variant-numeric:tabular-nums}
-/* tags */
+.facts dd{margin:0; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-variant-numeric:tabular-nums}
 .tags{display:flex; flex-wrap:wrap; gap:6px; margin:12px 0 0}
+.tags:empty{display:none}
 .tag{font-size:11.5px; padding:3px 10px; border-radius:999px;
   background:var(--sage-tint); color:var(--sage); font-weight:550}
-/* actions */
-.actions{display:flex; flex-wrap:wrap; gap:8px; margin:16px 0 0}
+/* search inside (the only form element) */
+.searchrow{display:flex; gap:7px; margin:12px 0 0}
+.searchrow input{flex:1; min-width:0; font:inherit; font-size:12.5px; color:var(--tx);
+  background:var(--btn); border:1px solid var(--line); border-radius:999px;
+  padding:6px 14px; box-shadow:none}
+.searchrow input::placeholder{color:var(--tx-muted)}
+.searchrow input:focus{outline:2px solid var(--accent); outline-offset:1px; border-color:transparent}
+.searchrow button{display:inline-flex; align-items:center; gap:6px; flex:none;
+  font-size:12px; font-weight:600; padding:6px 14px; border-radius:999px;
+  background:var(--accent-tint); color:var(--accent)}
+.searchrow button:hover{background:var(--accent); color:#fff}
+
+/* ============ actions ============ */
 .act{display:inline-flex; align-items:center; gap:7px;
   font-size:12.5px; font-weight:600; padding:7px 16px; border-radius:999px}
-.act svg{width:13px; height:13px; stroke:currentColor; stroke-width:2.75; fill:none;
-  stroke-linecap:round; stroke-linejoin:round}
 .act.primary{background:var(--accent); color:#fff}
 .act.primary:hover{background:var(--accent-deep)}
+.act.primary:disabled{opacity:.7; cursor:default}
 .act.ghost{background:var(--btn); box-shadow:var(--shadow)}
 .act.ghost:hover{background:var(--accent-tint); color:var(--accent)}
 .fmt{font-size:10px; opacity:.8; font-weight:500; letter-spacing:.05em}
-body[data-noread="1"] .act[data-read]{display:none}
-body[data-nosimilar="1"] .act[data-similar]{display:none}
-/* description */
+.actnote{flex-basis:100%; font-size:11.5px; color:var(--accent-deep); margin-top:2px}
+.actnote:empty{display:none}
+/* per-format Read + ⬇ pair */
+.pairs{display:flex; flex-wrap:wrap; gap:8px}
+.pair{display:inline-flex; align-items:stretch; background:var(--btn);
+  border-radius:999px; box-shadow:var(--shadow); overflow:hidden}
+.pair .pread{display:inline-flex; align-items:center; gap:6px;
+  font-size:12px; font-weight:600; padding:6px 10px 6px 14px}
+.pair .pread:hover{background:var(--accent-tint); color:var(--accent)}
+.pair .pdl{display:grid; place-items:center; width:30px;
+  border-left:1px solid var(--line)}
+.pair .pdl:hover{background:var(--accent-tint); color:var(--accent)}
+
+/* ============ description ============ */
 .desc{margin:18px 0 0; border-top:1px solid var(--line); padding-top:14px}
-.desc p{margin:0 0 8px; font-size:13.5px; line-height:1.6; color:var(--tx);
-  text-wrap:pretty}
+.desc p{margin:0 0 8px; font-size:13.5px; line-height:1.6; color:var(--tx); text-wrap:pretty}
 .desc.clamped .body{display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden}
 .more{font-size:12.5px; color:var(--accent); font-weight:550; margin-top:4px}
 .more:hover{color:var(--accent-deep)}
 .desc[data-empty="1"]{display:none}
-/* identifiers footer */
-.ids{display:flex; flex-wrap:wrap; gap:5px 14px; margin:14px 0 0;
+
+/* ============ curation row ============ */
+.curation{display:flex; flex-wrap:wrap; align-items:center; gap:4px 14px;
+  margin:14px 0 0; padding-top:10px; border-top:1px solid var(--line)}
+.cur{display:inline-flex; align-items:center; gap:6px;
+  font-size:11.5px; font-weight:550; color:var(--tx-muted); padding:3px 6px; border-radius:8px}
+.cur:hover{color:var(--accent); background:var(--accent-tint)}
+
+/* ============ identifiers footer ============ */
+.ids{display:flex; flex-wrap:wrap; gap:5px 14px; margin:12px 0 0;
   font-size:11px; color:var(--tx-muted); font-variant-numeric:tabular-nums}
 .ids span b{font-weight:550; color:var(--tx-muted); text-transform:uppercase; letter-spacing:.05em; font-size:9.5px; margin-right:4px}
 
@@ -187,9 +228,9 @@ body[data-nosimilar="1"] .act[data-similar]{display:none}
 .retry:hover{background:var(--accent); color:#fff}
 
 @media (max-width:520px){
-  .hero{gap:16px}
-  .coverwrap{width:118px}
+  .hero{grid-template-columns:118px minmax(0,1fr); gap:0 16px}
   .cover{width:118px; height:157px}
+  .view-loading .hero .cover-s{width:118px; height:157px}
   .facts dd{white-space:normal}
 }
 @media (prefers-reduced-motion: reduce){
@@ -216,19 +257,32 @@ body[data-nosimilar="1"] .act[data-similar]{display:none}
 
   <div class="view view-loaded">
     <div class="hero">
-      <div class="coverwrap"><span class="cover" id="cover"></span></div>
+      <div class="coverwrap">
+        <button class="coverbtn" id="coverBtn" type="button" data-zoom aria-label="View cover at full size">
+          <span class="cover" id="cover"></span>
+        </button>
+      </div>
       <div class="meta">
         <h1 class="title" id="title"></h1>
         <p class="authors" id="authors"></p>
         <span class="series" id="series" hidden></span>
         <dl class="facts" id="facts"></dl>
         <div class="tags" id="tags"></div>
-        <div class="actions" id="actions"></div>
+        <form class="searchrow" id="searchForm" data-need="msg">
+          <input type="text" id="searchInput" placeholder="Search inside this book…" aria-label="Search inside this book">
+          <button type="submit"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg> Search</button>
+        </form>
       </div>
+      <div class="acts" id="actions"></div>
     </div>
     <div class="desc clamped" id="desc">
       <div class="body" id="descBody"></div>
       <button class="more" id="more" type="button">Show more</button>
+    </div>
+    <div class="curation" id="curation" data-need="msg">
+      <button class="cur" type="button" data-fix><svg class="i" viewBox="0 0 24 24"><path d="M14.7 6.3a4.5 4.5 0 00-6 6L3 18l3 3 5.7-5.7a4.5 4.5 0 006-6L14 13l-3-3z"/></svg> Fix metadata</button>
+      <button class="cur" type="button" data-dupes><svg class="i" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg> Find duplicates</button>
+      <button class="cur" type="button" data-sum><svg class="i" viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9zM19 17l.8 2.2L22 20l-2.2.8L19 23l-.8-2.2L16 20l2.2-.8z"/></svg> Summarize</button>
     </div>
     <div class="ids" id="ids"></div>
   </div>
@@ -374,6 +428,9 @@ body[data-nosimilar="1"] .act[data-similar]{display:none}
   }
   var ICON_BOOK = [["path", { d: "M2 4h7a3 3 0 013 3v13a3 3 0 00-3-3H2zM22 4h-7a3 3 0 00-3 3v13a3 3 0 013-3h7z" }]];
   var ICON_SEARCH = [["circle", { cx: "11", cy: "11", r: "7" }], ["path", { d: "M21 21l-4.35-4.35" }]];
+  var ICON_GLOBE = [["circle", { cx: "12", cy: "12", r: "9" }], ["path", { d: "M3 12h18M12 3a14 14 0 010 18M12 3a14 14 0 000 18" }]];
+  var ICON_DL = [["path", { d: "M12 3v12m0 0l-5-5m5 5l5-5M4 21h16" }]];
+  var ICON_ZOOM = [["path", { d: "M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" }]];
   var STAR = "M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z";
   var LANG = { eng: "English", rus: "Russian", ukr: "Ukrainian" };
 
@@ -389,23 +446,64 @@ body[data-nosimilar="1"] .act[data-similar]{display:none}
       .filter(function (p) { return p.length > 0; });
   }
   function base() { return String(data.serverUrl || "").replace(/\\/+$/, ""); }
+  function libId() { return encodeURIComponent(data.libraryId || ""); }
+  function bookTitle() { var b = data.book; return String(b.title || "book " + b.id); }
   function thumbUrl(id) {
     if (!data.serverUrl || !data.libraryId) return data.book.coverUrl || "";
-    return base() + "/get/thumb/" + id + "/" + encodeURIComponent(data.libraryId) + "?sz=336x448";
+    return base() + "/get/thumb/" + id + "/" + libId() + "?sz=336x448";
   }
   function readUrl(id, fmt) {
     return base() + "/#book_id=" + id + "&fmt=" + encodeURIComponent(fmt) +
-      "&library_id=" + encodeURIComponent(data.libraryId || "") + "&mode=read_book";
+      "&library_id=" + libId() + "&mode=read_book";
   }
 
   /* ================= MCP actions ================= */
+  // Open in the local viewer — the never-degrading primary. It launches a native app via
+  // a sanctioned tools/call, so it stays visible even when link/message channels fail.
+  function onOpen(btn) {
+    var lbl = btn.querySelector(".lbl");
+    var note = document.getElementById("actNote");
+    if (note) note.textContent = "";
+    btn.disabled = true;
+    if (lbl) lbl.textContent = "Opening\\u2026";
+    rpcRequest("tools/call", { name: "calibre_open_book", arguments: { id: data.book.id, library: data.libraryId } })
+      .then(function (r) { if (r && r.isError) showActError(r); })
+      .catch(function () { if (note) note.textContent = "Couldn\\u2019t reach the server to open the book."; })
+      .then(function () { btn.disabled = false; if (lbl) lbl.textContent = "Open"; });
+  }
+  function showActError(r) {
+    var note = document.getElementById("actNote");
+    if (!note) return;
+    var txt = "";
+    try { txt = (r.content || []).map(function (c) { return c.text || ""; }).join(" ").trim(); } catch (e) { /* shape */ }
+    note.textContent = txt || "Couldn\\u2019t open the book.";
+  }
   function onRead(fmt) {
     rpcRequest("ui/open-link", { url: readUrl(data.book.id, fmt) })
       .then(function (r) { if (r && r.isError) document.body.dataset.noread = "1"; })
       .catch(function () { document.body.dataset.noread = "1"; });
   }
+  function onDownload(fmt) {
+    var url = base() + "/get/" + encodeURIComponent(fmt) + "/" + data.book.id + "/" + libId();
+    rpcRequest("ui/open-link", { url: url })
+      .then(function (r) { if (r && r.isError) document.body.dataset.noread = "1"; })
+      .catch(function () { document.body.dataset.noread = "1"; });
+  }
+  function onCoverZoom() {
+    var url = base() + "/get/cover/" + data.book.id + "/" + libId();
+    rpcRequest("ui/open-link", { url: url })
+      .then(function (r) { if (r && r.isError) document.body.dataset.noread = "1"; })
+      .catch(function () { document.body.dataset.noread = "1"; });
+  }
+  // ui/message helper: on any failure hide every message-dependent affordance at once.
+  function sendMessage(text) {
+    return rpcRequest("ui/message", { role: "user", content: [{ type: "text", text: text }] })
+      .then(function (r) { if (r && r.isError) document.body.dataset.nomsg = "1"; })
+      .catch(function () { document.body.dataset.nomsg = "1"; });
+  }
   // Similar: ask the host to send a user message (keeps the model in the loop → a fresh
-  // board renders); hosts without ui/message get a silent semantic tools/call fallback.
+  // board renders); hosts without ui/message get a silent semantic tools/call fallback
+  // BEFORE nomsg is ever set (its own data-nosimilar path handles a total failure).
   function onSimilar() {
     var b = data.book;
     var q = "Find books similar to \\"" + (b.title || "book " + b.id) + "\\"" +
@@ -419,6 +517,23 @@ body[data-nosimilar="1"] .act[data-similar]{display:none}
       name: "calibre_semantic_search",
       arguments: { query: (b.title || "") + " " + (b.authors || []).join(" "), scope: "library" },
     }).catch(function () { document.body.dataset.nosimilar = "1"; });
+  }
+  function onSearchInside() {
+    var inp = document.getElementById("searchInput");
+    var q = inp.value.trim();
+    if (!q) { inp.focus(); return; }
+    sendMessage("Search inside \\"" + bookTitle() + "\\" (book id " + data.book.id + ") for: " + q);
+  }
+  function onFix() {
+    sendMessage("Recover metadata for book " + data.book.id + " (\\"" + bookTitle() +
+      "\\") \\u2014 preview first and wait for my confirmation before applying.");
+  }
+  function onDupes() {
+    sendMessage("Find duplicates of book " + data.book.id + " (\\"" + bookTitle() + "\\")");
+  }
+  function onSummarize() {
+    sendMessage("Summarize book " + data.book.id + " (\\"" + bookTitle() +
+      "\\") from its table of contents and opening chapter.");
   }
 
   var lastH = 0;
@@ -451,10 +566,11 @@ body[data-nosimilar="1"] .act[data-similar]{display:none}
 
   function render() {
     var b = data.book;
-    var title = String(b.title || "book " + b.id);
+    var title = bookTitle();
     var authors = (b.authors || []).join(", ");
     var h = hash(title) % 360, h2 = (h + 38) % 360, raw = isRaw(title);
 
+    /* cover — generated placeholder + real thumb + zoom hint chip */
     var cover = document.getElementById("cover");
     cover.style.setProperty("--h", String(h));
     cover.style.setProperty("--h2", String(h2));
@@ -471,6 +587,10 @@ body[data-nosimilar="1"] .act[data-similar]{display:none}
       img.src = src;
       cover.appendChild(img);
     }
+    var zh = el("span", "zoomhint");
+    zh.appendChild(svgIcon(ICON_ZOOM, "i"));
+    zh.appendChild(document.createTextNode(" Full size"));
+    cover.appendChild(zh);
 
     document.getElementById("title").textContent = title;
     var au = document.getElementById("authors");
@@ -506,25 +626,45 @@ body[data-nosimilar="1"] .act[data-similar]{display:none}
     tags.replaceChildren();
     (b.tags || []).forEach(function (t) { tags.appendChild(el("span", "tag", t)); });
 
-    /* actions: Read per format + Similar */
+    /* actions: Open primary (never hides), Similar ghost, then per-format Read/⬇ pairs */
     var actions = document.getElementById("actions");
     actions.replaceChildren();
-    formats.forEach(function (fmt, i) {
-      var btn = el("button", "act " + (i === 0 ? "primary" : "ghost"));
-      btn.type = "button";
-      btn.dataset.read = fmt;
-      btn.appendChild(svgIcon(ICON_BOOK));
-      btn.appendChild(document.createTextNode("Read "));
-      btn.appendChild(el("span", "fmt", fmt));
-      actions.appendChild(btn);
-    });
+    var open = el("button", "act primary");
+    open.type = "button";
+    open.dataset.open = "1";
+    open.appendChild(svgIcon(ICON_BOOK, "i"));
+    open.appendChild(el("span", "lbl", "Open"));
+    actions.appendChild(open);
     var sim = el("button", "act ghost");
     sim.type = "button";
     sim.dataset.similar = "1";
-    sim.appendChild(svgIcon(ICON_SEARCH));
+    sim.dataset.need = "msg";
+    sim.appendChild(svgIcon(ICON_SEARCH, "i"));
     sim.appendChild(document.createTextNode("Similar"));
     actions.appendChild(sim);
+    var pairs = el("span", "pairs");
+    pairs.dataset.need = "read";
+    formats.forEach(function (fmt) {
+      var pair = el("span", "pair");
+      var pread = el("button", "pread");
+      pread.type = "button";
+      pread.dataset.read = fmt;
+      pread.appendChild(svgIcon(ICON_GLOBE, "i"));
+      pread.appendChild(document.createTextNode("Read "));
+      pread.appendChild(el("span", "fmt", fmt));
+      var pdl = el("button", "pdl");
+      pdl.type = "button";
+      pdl.dataset.dl = fmt;
+      pdl.setAttribute("aria-label", "Download " + fmt);
+      pdl.appendChild(svgIcon(ICON_DL, "i"));
+      pair.appendChild(pread);
+      pair.appendChild(pdl);
+      pairs.appendChild(pair);
+    });
+    actions.appendChild(pairs);
+    actions.appendChild(el("span", "actnote")).id = "actNote";
     if (!openLinksOk) document.body.dataset.noread = "1";
+    document.getElementById("coverBtn").disabled = document.body.dataset.noread === "1";
 
     /* description */
     var d = document.getElementById("desc");
@@ -563,11 +703,23 @@ body[data-nosimilar="1"] .act[data-similar]{display:none}
     reportSize();
   }
 
-  /* interactions */
-  document.getElementById("actions").addEventListener("click", function (e) {
+  /* interactions — one delegated listener over the widget (data-* + closest) */
+  w.addEventListener("click", function (e) {
+    var openBtn = e.target.closest("[data-open]");
+    if (openBtn) { onOpen(openBtn); return; }
+    if (e.target.closest("[data-zoom]")) { onCoverZoom(); return; }
     var r = e.target.closest("[data-read]");
     if (r) { onRead(r.dataset.read); return; }
-    if (e.target.closest("[data-similar]")) onSimilar();
+    var dl = e.target.closest("[data-dl]");
+    if (dl) { onDownload(dl.dataset.dl); return; }
+    if (e.target.closest("[data-similar]")) { onSimilar(); return; }
+    if (e.target.closest("[data-fix]")) { onFix(); return; }
+    if (e.target.closest("[data-dupes]")) { onDupes(); return; }
+    if (e.target.closest("[data-sum]")) { onSummarize(); return; }
+  });
+  document.getElementById("searchForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    onSearchInside();
   });
   document.getElementById("more").addEventListener("click", function () {
     var d = document.getElementById("desc"), open = !d.classList.contains("clamped");

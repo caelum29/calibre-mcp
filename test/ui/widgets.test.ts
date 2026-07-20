@@ -18,6 +18,7 @@ describe("widget templates", () => {
     for (const html of all) {
       expect(html).not.toContain("__TOOL__");
       expect(html).not.toContain("__VERSION__");
+      expect(html).not.toContain("__VARIANT__");
     }
   });
 
@@ -28,11 +29,22 @@ describe("widget templates", () => {
     expect(semanticCoverflow).toContain('var TOOL = "calibre_semantic_search"');
   });
 
-  it("should_render_distinct_visuals_per_board_style", () => {
-    expect(board).toContain('id="strip"');
-    expect(board).not.toContain('id="fstage"');
-    expect(coverflow).toContain('id="fstage"');
-    expect(coverflow).not.toContain('id="strip"');
+  it("should_set_initial_variant_from_style", () => {
+    // Both variants ship in every board doc (issue #53); style only picks the boot variant.
+    expect(board).toContain('data-variant="shelf"');
+    expect(coverflow).toContain('data-variant="coverflow"');
+  });
+
+  it("should_contain_both_variant_views_in_one_doc", () => {
+    for (const html of boards) {
+      expect(html).toContain('id="strip"');
+      expect(html).toContain('id="fstage"');
+      expect(html).toContain('class="vswitch"');
+    }
+  });
+
+  it("should_wire_open_button_to_the_hidden_open_book_tool", () => {
+    for (const html of all) expect(html).toContain("calibre_open_book");
   });
 
   it("should_never_use_innerHTML_or_eval", () => {

@@ -4,6 +4,28 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Action buttons across both in-chat widgets (issue #53): **Open** launches a book in the
+  local Calibre viewer via a new widget-internal `calibre_open_book` tool and the
+  `calibre://view-book` scheme — it works even on hosts that block link-opening. The book
+  card gains per-format **Download** buttons, a click-to-zoom cover, a **Search inside this
+  book** input, and a curation row (**Fix metadata**, **Find duplicates**, **Summarize**)
+  that hands the request to the assistant in chat. The cover board gains per-card **Open**
+  and **Search inside** (re-runs the board's own query inside that book).
+- Runtime shelf⇄coverflow toggle on the cover board. `CALIBRE_MCP_BOARD_STYLE` now sets the
+  *initial* style; both variants ship in one widget.
+
+### Changed
+
+- The board no longer opens the browser viewer ("Read") — **Open** (local viewer) replaces
+  it; the book card keeps per-format browser Read alongside Download.
+- Widgets degrade per capability: hosts that refuse chat messages hide the message-backed
+  buttons (`data-nomsg`), hosts that refuse links hide Read/Download/zoom (`data-noread`);
+  Open is never hidden.
+
 ## [0.5.2] — 2026-07-19
 
 ### Added

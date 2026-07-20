@@ -36,8 +36,10 @@ export interface Config {
   /** Filesystem roots calibre_add_book may import from (path-whitelist, DESIGN §5). */
   addRoots: string[];
   /**
-   * Cover-board widget style for search results (CALIBRE_MCP_BOARD_STYLE). Boot-time
-   * config, not a tool param — per-call resource switching is not spec-legal (issue #24).
+   * INITIAL cover-board widget variant for search results (CALIBRE_MCP_BOARD_STYLE):
+   * "shelf" or "coverflow". Both variants ship in the one resource; this only picks which
+   * shows first — the widget toggles at runtime via the .vswitch pill. A client-side toggle
+   * keeps the served resource static, so it stays spec-legal (issues #24/#53).
    */
   boardStyle: "shelf" | "coverflow";
 }

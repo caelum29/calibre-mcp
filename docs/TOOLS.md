@@ -384,10 +384,13 @@ Content Server, so they never race an open Calibre GUI.
 
 ---
 
-## A note on the cover-board widget
+## A note on the widget-internal tools
 
-There's an 18th tool, `calibre_board_data`, that isn't meant for the assistant to call. On
-hosts that support MCP Apps (like Claude Desktop), library searches render as an in-chat cover
-board; that widget uses `calibre_board_data` internally to re-fetch its own data. Those hosts
-hide it from the model, and it returns nothing your search results don't already contain — so
-you can ignore it.
+Two extra tools exist that aren't meant for the assistant to call; MCP-Apps hosts (like
+Claude Desktop) hide them from the model:
+
+- `calibre_board_data` — the in-chat cover board re-fetches its own search data through it.
+  It returns nothing your search results don't already contain, so you can ignore it.
+- `calibre_open_book` — the widgets' **Open** button. It launches a book in your local
+  Calibre viewer via the `calibre://` URL scheme (registered by the Calibre installer).
+  It never modifies the library, so it isn't behind the write gate.

@@ -42,6 +42,7 @@ const UI_TOOL_META: Record<string, UiToolMeta> = {
   calibre_semantic_search: { resourceUri: BOARD_SEMANTIC_URI },
   calibre_get_book: { resourceUri: CARD_URI },
   calibre_board_data: { visibility: ["app"] },
+  calibre_open_book: { visibility: ["app"] },
 };
 
 export function buildServer(): McpServer {
