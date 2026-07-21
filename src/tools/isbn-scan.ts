@@ -5,6 +5,7 @@
 // aborts the fetch) AND caps the summed per-layer timeouts via a wall-clock race. Never throws.
 
 import { chooseExtractFormat } from "../calibre/extract.js";
+import { log } from "../logging.js";
 import { extractIsbns } from "../domain/enrich/extract-isbn.js";
 import type { Book } from "../domain/book.js";
 import type { ToolDeps } from "./types.js";
@@ -78,6 +79,15 @@ export async function scanForIsbn(
       // (idea 02); this is the location-free recall improvement.
       return extractIsbns(text, 1, { labeledOnly: true })[0];
     })();
+    // If the deadline wins the race, `work` keeps running detached — a later rejection
+    // would be an unhandled rejection (process-fatal on Node >=15, issue #73). Park a
+    // handler on it up front so a post-timeout failure is logged, never fatal.
+    work.catch((err: unknown) => {
+      log.warn("isbn scan failed after race settled", {
+        id,
+        msg: err instanceof Error ? err.message : String(err),
+      });
+    });
     const isbn = await Promise.race([work, race]);
     return isbn ? { isbn, outcome: "found" } : { outcome: "no-isbn" };
   } catch (err) {
