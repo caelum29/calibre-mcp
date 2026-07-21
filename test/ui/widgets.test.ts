@@ -99,6 +99,13 @@ describe("widget templates", () => {
     for (const html of boards) expect(html).toContain("countOnly");
   });
 
+  it("should_offer_one_open_button_per_format_on_multi_format_books", () => {
+    // A multi-format book must let the user pick which format opens — a bare Open
+    // silently launches formats[0] and hides the rest.
+    expect(card).toContain("formats.length > 1 ? formats");
+    expect(card).toContain("args.format = btn.dataset.fmt");
+  });
+
   it("should_defer_open_pending_state_past_a_threshold", () => {
     // Issue #70: the near-instant local open must not flash "Opening…" — the pending
     // state appears only when the call outlives the timeout, and never via :disabled.

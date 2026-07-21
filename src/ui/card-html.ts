@@ -3,7 +3,8 @@
 // wave/rail variants removed) with the fake layer replaced by MCP plumbing: appInfo
 // handshake, data via structuredContent or a silent widget-initiated re-call (Desktop
 // strips the tool-result notification). Action-button layer (issue #53): Open in the
-// local viewer is the primary that NEVER hides (tools/call calibre_open_book); per-format
+// local viewer is the primary that NEVER hides (tools/call calibre_open_book; one Open
+// per format when the book has several, so the user picks what opens); per-format
 // Read/⬇ pairs + cover zoom degrade under data-noread; Similar + Search-inside + the
 // curation row route through ui/message and degrade under data-nomsg. Injection hygiene:
 // every book field lands via textContent/createElement; the widget JS avoids template
@@ -474,7 +475,10 @@ __DEBUG__
       btn.classList.add("is-busy");
       if (lbl) lbl.textContent = "Opening\\u2026";
     }, 200);
-    rpcRequest("tools/call", { name: "calibre_open_book", arguments: { id: data.book.id, library: data.libraryId } })
+    // multi-format books carry the chosen format on the button; the tool defaults otherwise
+    var args = { id: data.book.id, library: data.libraryId };
+    if (btn.dataset.fmt) args.format = btn.dataset.fmt;
+    rpcRequest("tools/call", { name: "calibre_open_book", arguments: args })
       .then(function (r) { if (r && r.isError) showActError(r); })
       .catch(function () { if (note) note.textContent = "Couldn\\u2019t reach the server to open the book."; })
       .then(function () {
@@ -639,15 +643,20 @@ __DEBUG__
     tags.replaceChildren();
     (b.tags || []).forEach(function (t) { tags.appendChild(el("span", "tag", t)); });
 
-    /* actions: Open primary (never hides), Similar ghost, then per-format Read/⬇ pairs */
+    /* actions: Open primary (never hides), Similar ghost, then per-format Read/⬇ pairs.
+       Multi-format books get one Open per format — otherwise only formats[0] ever opens. */
     var actions = document.getElementById("actions");
     actions.replaceChildren();
-    var open = el("button", "act primary");
-    open.type = "button";
-    open.dataset.open = "1";
-    open.appendChild(svgIcon(ICON_BOOK, "i"));
-    open.appendChild(el("span", "lbl", "Open"));
-    actions.appendChild(open);
+    (formats.length > 1 ? formats : [""]).forEach(function (fmt, i) {
+      var open = el("button", i === 0 ? "act primary" : "act ghost");
+      open.type = "button";
+      open.dataset.open = "1";
+      if (fmt) open.dataset.fmt = fmt;
+      open.appendChild(svgIcon(ICON_BOOK, "i"));
+      open.appendChild(el("span", "lbl", "Open"));
+      if (fmt) open.appendChild(el("span", "fmt", fmt));
+      actions.appendChild(open);
+    });
     var sim = el("button", "act ghost");
     sim.type = "button";
     sim.dataset.similar = "1";
