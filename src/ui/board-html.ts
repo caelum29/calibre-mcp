@@ -220,12 +220,25 @@ const SHARED_CSS_BOTTOM = `/* ============ empty / error ============ */
 /* degrade: first failed ui/message hides every message-dependent affordance at once */
 body[data-nomsg="1"] [data-need="msg"]{display:none}
 
+/* ============ hero — single identified book renders card-like, not a lone shelf (issue #71) ============ */
+.view-hero{padding:6px 18px 14px}
+.view-hero .hero{display:flex; gap:22px; align-items:flex-start}
+.view-hero .cover{width:168px; height:224px}
+.hero-cover{display:block; flex:none; border-radius:14px; text-align:left}
+.hero-cover:hover .cover{transform:translateY(-3px); box-shadow:var(--pagestack), var(--shadow-lg)}
+.hero-info{min-width:0; display:flex; flex-direction:column; gap:4px; padding-top:8px}
+.hero-info .ht{font-size:17px; font-weight:650; line-height:1.3; overflow-wrap:anywhere; text-wrap:pretty}
+.hero-info .ha{font-size:13px; color:var(--tx-muted)}
+.hero-actions{display:flex; flex-wrap:wrap; gap:8px; margin-top:14px}
+
 /* ============ state × variant switching ============ */
 .view{display:none}
 .widget[data-state="loading"][data-variant="shelf"] .view-shelf-loading{display:block}
 .widget[data-state="loading"][data-variant="coverflow"] .view-coverflow-loading{display:block}
 .widget[data-state="results"][data-variant="shelf"] .view-shelf{display:block}
 .widget[data-state="results"][data-variant="coverflow"] .view-coverflow{display:block}
+.widget[data-state="hero"] .view-hero{display:block}
+.widget[data-state="hero"] .vswitch{display:none} /* one book — nothing to lay out */
 .widget[data-state="empty"] .view-empty{display:flex}
 .widget[data-state="error"] .view-error{display:flex}
 
@@ -347,6 +360,24 @@ const BOARD_VIEWS = `
       <ul class="strip" id="strip" role="listbox" aria-label="Search results"></ul>
       <button class="arrow prev" id="prev" aria-label="Previous results"><svg width="14" height="14" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
       <button class="arrow next" id="next" aria-label="Next results"><svg width="14" height="14" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></button>
+    </div>
+  </div>
+
+  <div class="view view-hero">
+    <div class="hero">
+      <button class="hero-cover" id="hCover" type="button" aria-label="Show full book details"></button>
+      <div class="hero-info">
+        <div class="ht" id="hTitle"></div>
+        <div class="ha" id="hAuthors"></div>
+        <div class="hero-actions">
+          <button class="fbtn primary" id="hOpen" type="button">
+            <svg class="i" viewBox="0 0 24 24"><path d="M2 4h7a3 3 0 013 3v13a3 3 0 00-3-3H2zM22 4h-7a3 3 0 00-3 3v13a3 3 0 013-3h7z"/></svg>
+            Open</button>
+          <button class="fbtn ghost" id="hSearch" type="button" data-need="msg">
+            <svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+            Search inside</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -543,11 +574,37 @@ const CORE_JS = `  var TOOL = "__TOOL__";
     }
     w.dataset.mode = p.books.some(function (b) { return typeof b.score === "number"; }) ? "semantic" : "keyword";
     w.dataset.lowconf = p.lowConfidence ? "1" : "0";
+    // A single identified book gets the card-like hero, not a one-book shelf (issue #71).
+    // Gate on total too — a limit:1 page of many results must still render the strip.
+    if (p.books.length === 1 && (p.total === undefined || p.total === 1)) {
+      renderHero();
+      setState("hero");
+      return;
+    }
     // New payload — force a fresh render of whichever variant is active (and re-render the
     // other lazily the first time it becomes active).
     S.rendered = { shelf: false, coverflow: false };
     setState("results");
   }
+
+  /* ================= hero (single result, issue #71) ================= */
+  function heroBook() { return payload && payload.books && payload.books[0]; }
+  function renderHero() {
+    var b = heroBook();
+    document.getElementById("hCover").replaceChildren(buildCover(b));
+    document.getElementById("hTitle").textContent = String(b.title || "book " + b.bookId);
+    document.getElementById("hAuthors").textContent = (b.authors || []).join(", ");
+    reportSize();
+  }
+  document.getElementById("hCover").addEventListener("click", function () {
+    var b = heroBook(); if (b) onCardClick(b.bookId);
+  });
+  document.getElementById("hOpen").addEventListener("click", function () {
+    var b = heroBook(); if (b) openBook(b.bookId);
+  });
+  document.getElementById("hSearch").addEventListener("click", function () {
+    var b = heroBook(); if (b) onSearchInside(b.bookId);
+  });
 
   /* ================= MCP actions ================= */
   function thumbUrl(bookId) {

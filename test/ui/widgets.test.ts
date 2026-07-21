@@ -84,6 +84,15 @@ describe("widget templates", () => {
     for (const html of boards) expect(html).toContain("isZeroResult");
   });
 
+  it("should_contain_the_single_result_hero_view", () => {
+    // Issue #71: one identified book renders a card-like hero, not a one-book shelf.
+    for (const html of boards) {
+      expect(html).toContain('class="view view-hero"');
+      expect(html).toContain('id="hOpen"');
+      expect(html).toContain('data-state="hero"');
+    }
+  });
+
   it("should_collapse_on_count_only_searches", () => {
     // Issue #67: count answers are aggregates — the board collapses on countOnly input.
     for (const html of boards) expect(html).toContain("countOnly");
