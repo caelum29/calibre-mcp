@@ -4,6 +4,29 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1] — 2026-07-21
+
+### Added
+
+- `countOnly` parameter on `calibre_search` — answer "how many books match?" with just the
+  count: no cover board, no row fetch (#67).
+- Cover board hero state: a search that identifies exactly one book renders a card-like
+  hero (large cover opens the full book card, title/authors, Open + Search-inside) instead
+  of a one-book shelf; the shelf⇄coverflow toggle hides (#71).
+
+### Fixed
+
+- Zero-result searches no longer attach an empty cover board — plain text only, and the
+  board widget collapses instead of showing an error (#68).
+- Book card: clicked Read/Download buttons no longer disappear after Claude Desktop's
+  open-link dialog (approve or decline) — Desktop resolves a successful ui/open-link with
+  an error-shaped body, which the widget misread as "host can't open links" (#69).
+- Cover board & card: Search-inside (and other message-backed buttons) no longer vanish
+  after a successful send; buttons now hide only when the host genuinely lacks the
+  ui/message method (-32601) or omits it from its declared capabilities (#72).
+- Book card: the Open button no longer flashes/jitters on click — the pending "Opening…"
+  state appears only when the call takes longer than 200 ms (#70).
+
 ## [0.6.0] — 2026-07-20
 
 ### Added
