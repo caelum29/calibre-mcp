@@ -98,6 +98,14 @@ describe("widget templates", () => {
     for (const html of boards) expect(html).toContain("countOnly");
   });
 
+  it("should_defer_open_pending_state_past_a_threshold", () => {
+    // Issue #70: the near-instant local open must not flash "Opening…" — the pending
+    // state appears only when the call outlives the timeout, and never via :disabled.
+    expect(card).toContain("dataset.busy");
+    expect(card).toContain("is-busy");
+    expect(card).not.toContain("btn.disabled = true");
+  });
+
   it("should_emit_valid_regex_escapes_not_double_backslashes", () => {
     // The TS template literal must collapse \\ to \ in the emitted JS (a stray double
     // backslash means the widget regex/string literals are broken).

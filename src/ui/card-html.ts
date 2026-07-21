@@ -171,7 +171,7 @@ body[data-noread="1"] .coverbtn{cursor:default; pointer-events:none}
   font-size:12.5px; font-weight:600; padding:7px 16px; border-radius:999px}
 .act.primary{background:var(--accent); color:#fff}
 .act.primary:hover{background:var(--accent-deep)}
-.act.primary:disabled{opacity:.7; cursor:default}
+.act.primary.is-busy{opacity:.7; cursor:default; pointer-events:none}
 .act.ghost{background:var(--btn); box-shadow:var(--shadow)}
 .act.ghost:hover{background:var(--accent-tint); color:var(--accent)}
 .fmt{font-size:10px; opacity:.8; font-weight:500; letter-spacing:.05em}
@@ -461,15 +461,26 @@ body[data-noread="1"] .coverbtn{cursor:default; pointer-events:none}
   // Open in the local viewer — the never-degrading primary. It launches a native app via
   // a sanctioned tools/call, so it stays visible even when link/message channels fail.
   function onOpen(btn) {
+    if (btn.dataset.busy === "1") return; // re-entry guard, no visual change
+    btn.dataset.busy = "1";
     var lbl = btn.querySelector(".lbl");
     var note = document.getElementById("actNote");
     if (note) note.textContent = "";
-    btn.disabled = true;
-    if (lbl) lbl.textContent = "Opening\\u2026";
+    // The local open resolves in milliseconds; an instant label swap + disable reads as a
+    // jitter (issue #70) — show the pending state only when the call outlives ~200ms.
+    var t = setTimeout(function () {
+      btn.classList.add("is-busy");
+      if (lbl) lbl.textContent = "Opening\\u2026";
+    }, 200);
     rpcRequest("tools/call", { name: "calibre_open_book", arguments: { id: data.book.id, library: data.libraryId } })
       .then(function (r) { if (r && r.isError) showActError(r); })
       .catch(function () { if (note) note.textContent = "Couldn\\u2019t reach the server to open the book."; })
-      .then(function () { btn.disabled = false; if (lbl) lbl.textContent = "Open"; });
+      .then(function () {
+        clearTimeout(t);
+        btn.classList.remove("is-busy");
+        btn.dataset.busy = "";
+        if (lbl) lbl.textContent = "Open";
+      });
   }
   function showActError(r) {
     var note = document.getElementById("actNote");
