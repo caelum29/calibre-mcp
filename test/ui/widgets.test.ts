@@ -84,6 +84,11 @@ describe("widget templates", () => {
     for (const html of boards) expect(html).toContain("isZeroResult");
   });
 
+  it("should_collapse_on_count_only_searches", () => {
+    // Issue #67: count answers are aggregates — the board collapses on countOnly input.
+    for (const html of boards) expect(html).toContain("countOnly");
+  });
+
   it("should_emit_valid_regex_escapes_not_double_backslashes", () => {
     // The TS template literal must collapse \\ to \ in the emitted JS (a stray double
     // backslash means the widget regex/string literals are broken).

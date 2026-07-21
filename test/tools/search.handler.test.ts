@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { z } from "zod";
 import { searchTool } from "../../src/tools/calibre_search.js";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
@@ -88,6 +89,52 @@ describe("calibre_search handler — meta/library", () => {
     );
     expect(r.isError).toBeFalsy();
     expect(r.structuredContent).toMatchObject({ total: 0, count: 0 });
+  });
+});
+
+describe("calibre_search handler — countOnly (issue #67)", () => {
+  it("returns_only_total_and_query_for_meta_count", async () => {
+    const r = await searchTool.handler(
+      { query: "rust", mode: "meta", scope: "library", limit: 20, countOnly: true },
+      deps({ page: page({ total: 626 }) }),
+    );
+    expect(r.structuredContent).toEqual({ total: 626, query: "rust" });
+  });
+
+  it("answers_meta_count_in_text_without_resource_links", async () => {
+    const r = await searchTool.handler(
+      { query: "rust", mode: "meta", scope: "library", limit: 20, countOnly: true },
+      deps({ page: page({ total: 626 }) }),
+    );
+    expect(r.content).toEqual([{ type: "text", text: '626 books match "rust".' }]);
+  });
+
+  it("counts_matched_books_for_fts_count", async () => {
+    const hits: FtsHit[] = [
+      { bookId: 1, snippet: "a" },
+      { bookId: 1, snippet: "b" },
+      { bookId: 2, snippet: "c" },
+    ];
+    const r = await searchTool.handler(
+      { query: "rust", mode: "fts", scope: "library", limit: 20, countOnly: true },
+      deps({ ftsHits: hits }),
+    );
+    expect(r.structuredContent).toMatchObject({ total: 2, query: "rust", mode: "fts" });
+  });
+
+  it("counts_in_book_matches_for_book_scope", async () => {
+    const r = await searchTool.handler(
+      { query: "x", mode: "fts", scope: "book", bookId: 1, limit: 20, countOnly: true },
+      deps({ ftsHits: [{ bookId: 1, snippet: "a" }, { bookId: 1, snippet: "b" }] }),
+    );
+    expect(r.structuredContent).toMatchObject({ total: 2, scope: "book", bookId: 1 });
+  });
+
+  it("coerces_string_booleans_defensively", () => {
+    // -32602 defense: hosts serialize args as strings; "false" must not read as true.
+    const schema = z.object(searchTool.inputSchema);
+    expect(schema.parse({ query: "q", countOnly: "true" }).countOnly).toBe(true);
+    expect(schema.parse({ query: "q", countOnly: "false" }).countOnly).toBe(false);
   });
 });
 

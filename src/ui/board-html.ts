@@ -428,9 +428,10 @@ const CORE_JS = `  var TOOL = "__TOOL__";
     if (m.method === "ui/notifications/tool-input-partial") return; // ~80 empties precede tool-input
     if (m.method === "ui/notifications/tool-input") {
       toolArgs = (m.params && m.params.arguments) || m.params || null;
-      // Board is bound at the tool level, so scope=book calls render it too (per-call
-      // suppression is not spec-legal, issue #24) — collapse to zero height instead.
-      if (toolArgs && toolArgs.scope === "book") collapse();
+      // Board is bound at the tool level, so scope=book and countOnly calls render it too
+      // (per-call suppression is not spec-legal, issue #24) — collapse to zero height
+      // instead. countOnly checked as string too: hosts forward raw args uncoerced (#67).
+      if (toolArgs && (toolArgs.scope === "book" || toolArgs.countOnly === true || toolArgs.countOnly === "true")) collapse();
       return;
     }
     if (m.method === "ui/notifications/tool-result") {

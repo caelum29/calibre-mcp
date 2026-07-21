@@ -114,6 +114,17 @@ describe("calibre_search board wiring", () => {
     expect(cache.get("calibre_search", "zzz")).toBeUndefined();
   });
 
+  // Issue #67 ratchet: count answers are aggregates — never entity-level UI.
+  it("should_not_cache_or_attach_board_payload_on_count_only", async () => {
+    const cache = new BoardCache();
+    const r = await searchTool.handler(
+      { query: "rust", mode: "meta", scope: "library", limit: 20, countOnly: true },
+      metaSearchDeps(cache),
+    );
+    expect(r._meta).toBeUndefined();
+    expect(cache.get("calibre_search", "rust")).toBeUndefined();
+  });
+
   it("should_not_cache_or_attach_board_payload_on_zero_fts_results", async () => {
     const cache = new BoardCache();
     const deps = metaSearchDeps(cache);

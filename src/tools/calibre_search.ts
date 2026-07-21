@@ -8,7 +8,7 @@
 import { z } from "zod";
 import { CalibreCliError, CalibreNotFoundError } from "../domain/errors.js";
 import type { BoardPayload } from "../ui/board-cache.js";
-import { BookId, CursorParam, limitParam } from "./coerce.js";
+import { BookId, CoercedBool, CursorParam, limitParam } from "./coerce.js";
 import { decodeCursor, encodeCursor } from "./cursor.js";
 import { defineTool } from "./define.js";
 import { bookResourceLink } from "./resource-link.js";
@@ -26,6 +26,7 @@ type SearchArgs = {
   sortOrder?: "asc" | "desc";
   limit: number;
   cursor?: string;
+  countOnly?: boolean;
 };
 
 const FTS_START = ">>";
@@ -54,11 +55,21 @@ async function metaLibraryScope(args: SearchArgs, deps: ToolDeps): Promise<ToolR
   const page = await deps.content.search({
     query: args.query,
     library: args.library,
-    num: args.limit,
+    // countOnly needs only the total — don't ask the server for a full page of ids
+    num: args.countOnly ? 1 : args.limit,
     offset,
     sort: args.sort,
     sortOrder: args.sortOrder,
   });
+
+  // Count intent (issue #67): answer the aggregate question with COUNT(*) semantics —
+  // no row fetch, no board, no cache write.
+  if (args.countOnly) {
+    return toolOk([{ type: "text", text: `${page.total} books match "${args.query}".` }], {
+      total: page.total,
+      query: args.query,
+    });
+  }
 
   if (page.total === 0) {
     // Zero results attach no board (issue #68) — an empty shelf adds nothing over the text.
@@ -140,6 +151,15 @@ async function ftsLibraryScope(args: SearchArgs, deps: ToolDeps): Promise<ToolRe
   }
 
   const bookIds = [...byBook.keys()];
+
+  // Count intent (issue #67): total is known after grouping — skip the row fetch and board.
+  if (args.countOnly) {
+    return toolOk(
+      [{ type: "text", text: `${bookIds.length} books have full-text matches for "${args.query}".` }],
+      { total: bookIds.length, query: args.query, mode: "fts" },
+    );
+  }
+
   const cur = decodeCursor(args.cursor);
   const offset = cur && cur.query === args.query ? cur.offset : 0;
   const pageIds = bookIds.slice(offset, offset + args.limit);
@@ -197,6 +217,14 @@ async function ftsBookScope(args: SearchArgs, deps: ToolDeps, bookId: number): P
   });
   const snippets = hits.map((h) => h.snippet).filter((s): s is string => Boolean(s));
 
+  // Count intent (issue #67): report the match count without paging snippets.
+  if (args.countOnly) {
+    return toolOk(
+      [{ type: "text", text: `${snippets.length} in-book matches for "${args.query}" in book ${bookId}.` }],
+      { total: snippets.length, query: args.query, bookId, scope: "book", mode: "fts" },
+    );
+  }
+
   if (snippets.length === 0) {
     return toolOk([{ type: "text", text: `0 in-book matches for "${args.query}" in book ${bookId}.` }], {
       total: 0,
@@ -245,7 +273,7 @@ export const searchTool = defineTool({
   name: "calibre_search",
   title: "Search books",
   description:
-    "Find books by exact title, author, ISBN, tag, or Calibre query syntax (mode=meta), or by full text (mode=fts). scope=book returns short keyword snippets from inside one book; first hits often land in TOC/front matter — for definitional or topic questions within a book prefer calibre_semantic_search scope=book (ranked passages with char offsets). Use calibre_semantic_search for meaning/topic queries.",
+    "Find books by exact title, author, ISBN, tag, or Calibre query syntax (mode=meta), or by full text (mode=fts). scope=book returns short keyword snippets from inside one book; first hits often land in TOC/front matter — for definitional or topic questions within a book prefer calibre_semantic_search scope=book (ranked passages with char offsets). Use calibre_semantic_search for meaning/topic queries. For \"how many\" questions use countOnly=true (returns only the count).",
   inputSchema: {
     query: z.string().min(1).max(512),
     mode: z.enum(["meta", "fts"]).optional().default("meta"),
@@ -256,9 +284,11 @@ export const searchTool = defineTool({
     sortOrder: z.enum(["asc", "desc"]).optional(),
     limit: limitParam(50, 20),
     cursor: CursorParam,
+    countOnly: CoercedBool().optional(),
   },
   outputSchema: {
     total: z.number().optional(),
+    query: z.string().optional(),
     offset: z.number().optional(),
     count: z.number().optional(),
     nextCursor: z.string().optional(),
