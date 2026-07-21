@@ -465,9 +465,21 @@ const CORE_JS = `  var TOOL = "__TOOL__";
     sawResult = true;
     if (document.body.dataset.collapsed === "1") return;
     if (res && res.isError) { setState("error"); return; }
+    // Zero-result searches attach no board payload (issue #68) — when the notification
+    // carries the result text, recognize our own zero-result strings and collapse
+    // without pulling (the cache has nothing for this query).
+    if (isZeroResult(res)) { collapse(); return; }
     var meta = res && res._meta;
     if (meta && meta.calibreBoard && meta.calibreBoard.books) { gotPayload(meta.calibreBoard); return; }
     pullData(false);
+  }
+
+  function isZeroResult(res) {
+    var sc = res && res.structuredContent;
+    if (sc && (sc.total === 0 || sc.count === 0)) return true;
+    var c = res && res.content;
+    var t = c && c[0] && c[0].type === "text" ? String(c[0].text) : "";
+    return /^0 books matched|^0 full-text matches|^No matches for/.test(t);
   }
 
   function pullData(isRetryAfterRerun) {
@@ -489,7 +501,11 @@ const CORE_JS = `  var TOOL = "__TOOL__";
     // its handler repopulates the cache, then the exact-match pull succeeds.
     if (!isRetryAfterRerun && toolArgs && typeof toolArgs.query === "string") {
       rpcRequest("tools/call", { name: TOOL, arguments: toolArgs })
-        .then(function () { pullData(true); })
+        .then(function (r) {
+          // Zero results never populate the cache (issue #68) — collapse, don't error.
+          if (isZeroResult(r)) { collapse(); return; }
+          pullData(true);
+        })
         .catch(function () { setState("error"); });
       return;
     }

@@ -78,6 +78,12 @@ describe("widget templates", () => {
     for (const html of boards) expect(html).toContain("calibre_board_data");
   });
 
+  it("should_collapse_on_zero_result_searches", () => {
+    // Issue #68: zero results never populate the board cache — the widget must
+    // recognize them and collapse instead of erroring after a futile re-run.
+    for (const html of boards) expect(html).toContain("isZeroResult");
+  });
+
   it("should_emit_valid_regex_escapes_not_double_backslashes", () => {
     // The TS template literal must collapse \\ to \ in the emitted JS (a stray double
     // backslash means the widget regex/string literals are broken).

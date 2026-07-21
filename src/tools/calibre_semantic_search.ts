@@ -225,18 +225,16 @@ async function libraryScope(args: Args, deps: ToolDeps, libraryId: string, sem: 
   const ranked = rr.hits;
   const note = joinNotes(degradeNote, rr.note);
   if (ranked.length === 0) {
-    return {
-      ...toolOk([{ type: "text", text: withNote(`No matches for "${args.query}".`, note) }], {
-        scope: "library",
-        mode: args.mode,
-        count: 0,
-        ...rerankFields(args, rr),
-        ...sem,
-        note,
-        bookIds: [],
-      }),
-      _meta: boardMeta(deps, args, libraryId, [], false),
-    };
+    // Zero results attach no board (issue #68) — an empty shelf adds nothing over the text.
+    return toolOk([{ type: "text", text: withNote(`No matches for "${args.query}".`, note) }], {
+      scope: "library",
+      mode: args.mode,
+      count: 0,
+      ...rerankFields(args, rr),
+      ...sem,
+      note,
+      bookIds: [],
+    });
   }
 
   const { maxScore, lowConfidence } = confidence(ranked, deps, rr);

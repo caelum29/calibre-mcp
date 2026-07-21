@@ -61,22 +61,13 @@ async function metaLibraryScope(args: SearchArgs, deps: ToolDeps): Promise<ToolR
   });
 
   if (page.total === 0) {
-    const _meta = boardMeta(deps, {
-      query: args.query,
-      kind: "keyword",
-      libraryId: page.libraryId,
+    // Zero results attach no board (issue #68) — an empty shelf adds nothing over the text.
+    return toolOk([{ type: "text", text: `0 books matched "${args.query}".` }], {
       total: 0,
-      books: [],
+      offset: 0,
+      count: 0,
+      bookIds: [],
     });
-    return {
-      ...toolOk([{ type: "text", text: `0 books matched "${args.query}".` }], {
-        total: 0,
-        offset: 0,
-        count: 0,
-        bookIds: [],
-      }),
-      _meta,
-    };
   }
 
   const books = await deps.content.booksByIds(page.bookIds, args.library);
@@ -129,25 +120,16 @@ async function ftsLibraryScope(args: SearchArgs, deps: ToolDeps): Promise<ToolRe
   });
 
   if (hits.length === 0) {
-    const _meta = boardMeta(deps, {
-      query: args.query,
-      kind: "keyword",
-      libraryId: libId,
-      total: 0,
-      books: [],
-    });
-    return {
-      ...toolOk(
-        [
-          {
-            type: "text",
-            text: `0 full-text matches for "${args.query}". If you expected matches, the FTS index may not be built (calibredb fts_index --enable).`,
-          },
-        ],
-        { total: 0, offset: 0, count: 0, mode: "fts" },
-      ),
-      _meta,
-    };
+    // Zero results attach no board (issue #68).
+    return toolOk(
+      [
+        {
+          type: "text",
+          text: `0 full-text matches for "${args.query}". If you expected matches, the FTS index may not be built (calibredb fts_index --enable).`,
+        },
+      ],
+      { total: 0, offset: 0, count: 0, mode: "fts" },
+    );
   }
 
   const byBook = new Map<number, string[]>();
