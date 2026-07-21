@@ -21,6 +21,8 @@ function deps(calibredb: (args: readonly string[]) => Promise<{ stdout: string; 
     content: content as unknown as ToolDeps["content"],
     calibre: { calibredb } as unknown as ToolDeps["calibre"],
     extractor: {} as unknown as ToolDeps["extractor"],
+    embedder: {} as ToolDeps["embedder"],
+    index: {} as ToolDeps["index"],
     log,
   };
 }
@@ -29,7 +31,8 @@ describe("calibre_remove_book handler", () => {
   it("dry-runs without confirm and does not call calibredb", async () => {
     const spy = vi.fn(async () => ({ stdout: "", stderr: "" }));
     const r = await removeBookTool.handler({ ids: [1, 2] }, deps(spy));
-    expect(r.isError).toBe(true); // gate: nothing deleted
+    // The gate working is a success, not an error — isError here makes agents refuse confirm.
+    expect(r.isError).toBeFalsy();
     expect(spy).not.toHaveBeenCalled();
     expect(r.structuredContent?.deleted).toBe(false);
     expect((r.structuredContent?.wouldRemove as unknown[]).length).toBe(2);

@@ -320,9 +320,9 @@ Returns the new book id(s).
 
 ### `calibre_remove_book`
 
-**Destructive.** Permanently delete books from the library — both the metadata records and the
-format files on disk. Dry-run by default: without `confirm: true` it lists what *would* be
-deleted and writes nothing.
+**Destructive (recoverable).** Remove books from the library. Removed books go to Calibre's
+Trash and can be restored from the Calibre GUI. Dry-run by default: without `confirm: true` it
+lists what *would* be removed and writes nothing.
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|

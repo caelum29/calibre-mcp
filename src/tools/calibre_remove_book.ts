@@ -1,7 +1,10 @@
-// calibre_remove_book (#14) — DESTRUCTIVE. Deletes book records AND their files from the
-// library via `calibredb remove`, routed through the Content Server URL. Gated write, and
+// calibre_remove_book (#14) — destructive-but-recoverable. Removes book records via
+// `calibredb remove`, routed through the Content Server URL. We never pass --permanent, so
+// removed books land in Calibre's Trash and are restorable from the GUI. Gated write, and
 // additionally confirm-gated: without confirm=true it returns a dry-run of what WOULD be
-// deleted and writes nothing (in-band confirmation; MCP elicitation is a LATER upgrade).
+// removed and writes nothing (in-band confirmation; MCP elicitation is a LATER upgrade).
+// The dry-run is a SUCCESS result, not isError — an error here reads as "dangerous/failed"
+// and makes agents refuse the confirm step.
 
 import { z } from "zod";
 import { BookId, CoercedBool, jsonArray } from "./coerce.js";
@@ -14,9 +17,9 @@ export const removeBookTool = defineTool({
   name: "calibre_remove_book",
   title: "Remove books",
   description:
-    "Permanently delete books from the library — removes both the metadata records and the format " +
-    "files on disk. Destructive: requires confirm=true (otherwise returns a dry-run). Requires " +
-    "writes to be enabled.",
+    "Remove books from the library. Removed books go to Calibre's Trash and can be restored from " +
+    "the Calibre GUI, so this is recoverable. Two-step: the first call is a dry-run listing what " +
+    "would be removed; re-run with confirm=true to proceed. Requires writes to be enabled.",
   inputSchema: {
     ids: jsonArray(BookId()),
     library: z.string().optional(),
@@ -48,12 +51,20 @@ export const removeBookTool = defineTool({
       const map = await deps.content.booksByIds(numericIds, args.library);
       const targets = numericIds.map((id) => ({ id, title: map.get(id)?.title }));
 
-      // Dry-run unless explicitly confirmed — this deletes files, so we gate harder than preview.
+      // Dry-run unless explicitly confirmed. Success result, not isError — the gate worked
+      // as designed, and an error result makes agents refuse the confirm step.
       if (!args.confirm) {
         const list = targets.map((t) => `#${t.id} ${t.title ?? "(unknown)"}`).join("\n");
-        return toolError(
-          `Nothing deleted. This permanently removes ${targets.length} book(s) — records AND files ` +
-            `on disk. Re-run with confirm=true to proceed:\n${list}`,
+        return toolOk(
+          [
+            {
+              type: "text",
+              text:
+                `Dry-run — nothing removed yet. This would move ${targets.length} book(s) to ` +
+                `Calibre's Trash (restorable from the Calibre GUI):\n${list}\n` +
+                `Re-run with confirm=true to proceed.`,
+            },
+          ],
           { deleted: false, wouldRemove: targets },
         );
       }
@@ -68,7 +79,14 @@ export const removeBookTool = defineTool({
       }
 
       return toolOk(
-        [{ type: "text", text: `Removed ${numericIds.length} book(s): ${numericIds.join(", ")}.` }],
+        [
+          {
+            type: "text",
+            text:
+              `Removed ${numericIds.length} book(s): ${numericIds.join(", ")}. ` +
+              `They went to Calibre's Trash and can be restored from the Calibre GUI.`,
+          },
+        ],
         { deleted: true, removedIds: numericIds },
       );
     } catch (err) {
