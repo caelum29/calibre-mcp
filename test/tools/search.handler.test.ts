@@ -92,32 +92,6 @@ describe("calibre_search handler — meta/library", () => {
   });
 });
 
-describe("calibre_search handler — single-hit steer (issue #71)", () => {
-  it("steers_to_the_book_card_on_a_lone_meta_hit", async () => {
-    const r = await searchTool.handler(
-      { query: "unique title", mode: "meta", scope: "library", limit: 20 },
-      deps({ page: page({ bookIds: [7], total: 1 }) }),
-    );
-    expect((r.content[0] as { text: string }).text).toContain("calibre_get_book id=7");
-  });
-
-  it("steers_to_the_book_card_on_a_lone_fts_hit", async () => {
-    const r = await searchTool.handler(
-      { query: "needle", mode: "fts", scope: "library", limit: 20 },
-      deps({ ftsHits: [{ bookId: 3, snippet: "…needle…" }] }),
-    );
-    expect((r.content[0] as { text: string }).text).toContain("calibre_get_book id=3");
-  });
-
-  it("does_not_steer_when_multiple_books_match", async () => {
-    const r = await searchTool.handler(
-      { query: "rust", mode: "meta", scope: "library", limit: 20 },
-      deps({ page: page({ bookIds: [1, 2], total: 2 }) }),
-    );
-    expect((r.content[0] as { text: string }).text).not.toContain("calibre_get_book");
-  });
-});
-
 describe("calibre_search handler — countOnly (issue #67)", () => {
   it("returns_only_total_and_query_for_meta_count", async () => {
     const r = await searchTool.handler(

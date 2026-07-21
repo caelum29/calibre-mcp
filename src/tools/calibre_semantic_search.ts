@@ -238,13 +238,8 @@ async function libraryScope(args: Args, deps: ToolDeps, libraryId: string, sem: 
   }
 
   const { maxScore, lowConfidence } = confidence(ranked, deps, rr);
-  // A lone hit is effectively an identified book — steer the model to the card (issue #71).
-  const only = ranked.length === 1 ? ranked[0] : undefined;
-  const single = only
-    ? ` Single match — call calibre_get_book id=${only.hit.bookId} to show the full book card.`
-    : "";
   const blocks: ContentBlock[] = [
-    { type: "text", text: withNote(header("book", ranked.length, args, maxScore, lowConfidence, rr) + single, note) },
+    { type: "text", text: withNote(header("book", ranked.length, args, maxScore, lowConfidence, rr), note) },
   ];
   const results: Record<string, unknown>[] = [];
   for (const r of ranked) {

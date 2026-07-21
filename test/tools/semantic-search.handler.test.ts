@@ -158,11 +158,6 @@ describe("calibre_semantic_search handler", () => {
     expect(r.content.some((b) => b.type === "resource_link")).toBe(true);
   });
 
-  it("steers to the book card on a lone library hit (issue #71)", async () => {
-    const r = await semanticSearchTool.handler(args({ topK: 1 }), deps(preloaded()));
-    expect((r.content[0] as { text: string }).text).toContain("calibre_get_book id=1");
-  });
-
   it("mirrors library hits into structuredContent.results for structured-only clients", async () => {
     const r = await semanticSearchTool.handler(args(), deps(preloaded()));
     const results = r.structuredContent?.results as Array<Record<string, unknown>>;

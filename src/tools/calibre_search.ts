@@ -92,12 +92,7 @@ async function metaLibraryScope(args: SearchArgs, deps: ToolDeps): Promise<ToolR
   const nextCursor = more
     ? encodeCursor({ offset: offset + fetched, query: args.query, sort: args.sort })
     : undefined;
-  // A lone hit is effectively an identified book — steer the model to the card (issue #71).
-  const single =
-    page.total === 1
-      ? ` Single match — call calibre_get_book id=${page.bookIds[0]} to show the full book card.`
-      : "";
-  const text = `Found ${page.total} books, showing ${offset + 1}–${offset + fetched}.${single}`;
+  const text = `Found ${page.total} books, showing ${offset + 1}–${offset + fetched}.`;
 
   const _meta = boardMeta(deps, {
     query: args.query,
@@ -170,15 +165,10 @@ async function ftsLibraryScope(args: SearchArgs, deps: ToolDeps): Promise<ToolRe
   const pageIds = bookIds.slice(offset, offset + args.limit);
   const books = await deps.content.booksByIds(pageIds, args.library);
 
-  // A lone hit is effectively an identified book — steer the model to the card (issue #71).
-  const single =
-    bookIds.length === 1
-      ? ` Single match — call calibre_get_book id=${bookIds[0]} to show the full book card.`
-      : "";
   const blocks: ContentBlock[] = [
     {
       type: "text",
-      text: `Found ${bookIds.length} books with full-text matches for "${args.query}", showing ${offset + 1}–${offset + pageIds.length}.${single}`,
+      text: `Found ${bookIds.length} books with full-text matches for "${args.query}", showing ${offset + 1}–${offset + pageIds.length}.`,
     },
   ];
   for (const id of pageIds) {
