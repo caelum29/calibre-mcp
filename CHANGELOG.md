@@ -4,6 +4,26 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.3] — 2026-07-22
+
+### Fixed
+
+- Tool failures no longer die silently: an unhandled promise rejection in the process
+  used to kill the whole server on Node ≥15, surfacing to the client as a detail-free
+  "Tool execution failed" with no way to diagnose it. Such rejections are now logged with
+  a full stack to stderr and the process survives; uncaught exceptions still log their
+  stack before exit. The catch-all error handler around every tool call now also returns
+  the actual error name and message (plus a machine-readable `errorCode`) instead of a
+  bare "internal error in `<tool>`", so agents get something actionable to act on. Also
+  fixed a related crash vector in the ISBN-scan timeout path that could kill the process
+  on a later extraction failure.
+
+### Added
+
+- `pnpm pack:mcpb:dev` builds a Claude Desktop test bundle stamped with a
+  `X.Y.Z-dev.<sha>[.dirty]` version (staged only — repo files are untouched), so a local
+  test install can never be mistaken for a released bundle.
+
 ## [0.6.2] — 2026-07-21
 
 ### Fixed

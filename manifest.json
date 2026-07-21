@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "calibre-mcp",
   "display_name": "Calibre",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "description": "The most capable Calibre MCP server — full read/write tool surface plus library- and book-scoped semantic search.",
   "long_description": "Connect Claude to your local Calibre library through the Calibre Content Server. Search by metadata or full text, read book content in chunks, find duplicates, audit metadata quality, and recover real metadata for raw-filename books via Open Library / Google Books. Writes (update, bulk update, add, remove) are disabled by default and require both the Enable writes toggle and a Calibre server started with --enable-local-write. Semantic (meaning-based) search requires the optional embeddings dependency and is available via the npm install (npx calibre-mcp); this bundle ships without it to stay small — keyword and full-text search work out of the box.",
   "author": {
