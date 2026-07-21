@@ -89,6 +89,14 @@ Download the `.mcpb` bundle from the
 Claude Desktop installs it and prompts for settings (server URL, library, writes on/off).
 No terminal needed.
 
+> **About the install warning.** Claude Desktop shows *“Installing will grant this
+> extension access to everything on your computer… developer information has not been
+> verified by Anthropic”* for **every** extension installed from a file rather than the
+> built-in directory — it’s not specific to this one. The server runs as a local Node
+> process under your user account, exactly like the `npx` install below; the bundle is
+> built and published by CI from this repository, so you can audit what you’re running.
+> Click **Install** to proceed.
+
 > The bundle ships without the optional embeddings dependency to stay small, so the two
 > semantic-search tools report themselves unavailable. Metadata and full-text search work
 > fully. For semantic search, use the npx install below instead.
