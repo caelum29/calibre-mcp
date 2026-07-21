@@ -491,28 +491,29 @@ __DEBUG__
     try { txt = (r.content || []).map(function (c) { return c.text || ""; }).join(" ").trim(); } catch (e) { /* shape */ }
     note.textContent = txt || "Couldn\\u2019t open the book.";
   }
+  // A RESOLVED ui/open-link never degrades: Desktop replies {isError:true} even when the
+  // link opened / the user merely declined the dialog (probe 2026-07-21, issue #69), so the
+  // reply body is meaningless as a capability signal. Only a method-not-found rejection
+  // proves the host can't open links; the initialize openLinks capability stays primary.
+  function linkFail(e) {
+    if (e && e.code === -32601) document.body.dataset.noread = "1";
+  }
   function onRead(fmt) {
-    rpcRequest("ui/open-link", { url: readUrl(data.book.id, fmt) })
-      .then(function (r) { if (r && r.isError) document.body.dataset.noread = "1"; })
-      .catch(function () { document.body.dataset.noread = "1"; });
+    rpcRequest("ui/open-link", { url: readUrl(data.book.id, fmt) }).catch(linkFail);
   }
   function onDownload(fmt) {
     var url = base() + "/get/" + encodeURIComponent(fmt) + "/" + data.book.id + "/" + libId();
-    rpcRequest("ui/open-link", { url: url })
-      .then(function (r) { if (r && r.isError) document.body.dataset.noread = "1"; })
-      .catch(function () { document.body.dataset.noread = "1"; });
+    rpcRequest("ui/open-link", { url: url }).catch(linkFail);
   }
   function onCoverZoom() {
     var url = base() + "/get/cover/" + data.book.id + "/" + libId();
-    rpcRequest("ui/open-link", { url: url })
-      .then(function (r) { if (r && r.isError) document.body.dataset.noread = "1"; })
-      .catch(function () { document.body.dataset.noread = "1"; });
+    rpcRequest("ui/open-link", { url: url }).catch(linkFail);
   }
-  // ui/message helper: on any failure hide every message-dependent affordance at once.
+  // ui/message: a successful send resolves {} (probe, issue #72) — a resolve is delivery,
+  // never a reason to hide the message affordances. Degrade only on method-not-found.
   function sendMessage(text) {
     return rpcRequest("ui/message", { role: "user", content: [{ type: "text", text: text }] })
-      .then(function (r) { if (r && r.isError) document.body.dataset.nomsg = "1"; })
-      .catch(function () { document.body.dataset.nomsg = "1"; });
+      .catch(function (e) { if (e && e.code === -32601) document.body.dataset.nomsg = "1"; });
   }
   // Similar: ask the host to send a user message (keeps the model in the loop → a fresh
   // board renders); hosts without ui/message get a silent semantic tools/call fallback
@@ -522,7 +523,6 @@ __DEBUG__
     var q = "Find books similar to \\"" + (b.title || "book " + b.id) + "\\"" +
       ((b.authors || []).length ? " by " + b.authors.join(", ") : "");
     rpcRequest("ui/message", { role: "user", content: [{ type: "text", text: q }] })
-      .then(function (r) { if (r && r.isError) similarFallback(b); })
       .catch(function () { similarFallback(b); });
   }
   function similarFallback(b) {
@@ -752,7 +752,11 @@ __DEBUG__
     // appInfo (not the client-info field name) — the host zod-validates this shape (spike #21)
     appInfo: { name: "calibre-book-card", version: "__VERSION__" }
   }).then(function (r) {
-    openLinksOk = !(r && r.hostCapabilities && r.hostCapabilities.openLinks === false);
+    var caps = r && r.hostCapabilities;
+    openLinksOk = !(caps && caps.openLinks === false);
+    // Capability-declared hosts that omit ui/message get the msg affordances hidden up
+    // front — the reliable signal (Desktop advertises message:{text:{}}, probe #72).
+    if (caps && !caps.message) document.body.dataset.nomsg = "1";
     applyHostContext(r && r.hostContext);
     rpcNotify("ui/notifications/initialized", {});
     ready = true;

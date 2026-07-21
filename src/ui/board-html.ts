@@ -640,7 +640,8 @@ __DEBUG__
       .catch(function () {});
   }
 
-  // Search-inside → ui/message; the first refusal hides every message affordance at once.
+  // Search-inside → ui/message. A successful send resolves {} (probe 2026-07-21, #72) —
+  // a resolve is delivery, never a degrade signal; only method-not-found hides the layer.
   function onSearchInside(bookId) {
     var b = bookById(bookId);
     if (!b) return;
@@ -649,8 +650,7 @@ __DEBUG__
   }
   function sendMessage(text) {
     rpcRequest("ui/message", { role: "user", content: [{ type: "text", text: text }] })
-      .then(function (r) { if (r && r.isError) noMsg(); })
-      .catch(noMsg);
+      .catch(function (e) { if (e && e.code === -32601) noMsg(); });
   }
   function noMsg() { document.body.dataset.nomsg = "1"; }
 
@@ -793,6 +793,9 @@ const BOOT_JS = `  /* ================= boot: both skeletons first, then handsha
     // appInfo (not the client-info field name) — the host zod-validates this shape (spike #21)
     appInfo: { name: "calibre-cover-board", version: "__VERSION__" }
   }).then(function (r) {
+    // Hosts that declare capabilities but omit ui/message → hide the msg layer up front.
+    var caps = r && r.hostCapabilities;
+    if (caps && !caps.message) noMsg();
     applyHostContext(r && r.hostContext);
     rpcNotify("ui/notifications/initialized", {});
     ready = true;

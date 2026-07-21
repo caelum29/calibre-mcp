@@ -107,6 +107,22 @@ describe("widget templates", () => {
     expect(card).not.toContain("btn.disabled = true");
   });
 
+  it("should_degrade_link_and_message_buttons_only_on_method_not_found", () => {
+    // Issues #69/#72 (probe 2026-07-21): Desktop resolves a successful ui/open-link with
+    // {isError:true} and a successful ui/message with {} — a RESOLVED promise must never
+    // hide buttons; only a -32601 rejection (host lacks the method) may degrade.
+    for (const html of all) expect(html).toContain("-32601");
+    expect(card).not.toContain('isError) document.body.dataset.noread');
+    expect(card).not.toContain('isError) document.body.dataset.nomsg');
+    for (const html of boards) expect(html).not.toContain("isError) noMsg()");
+  });
+
+  it("should_gate_message_buttons_on_the_initialize_capability", () => {
+    // The reliable pre-emptive signal: hosts that declare capabilities but omit
+    // ui/message get the msg layer hidden at boot instead of after a failed click.
+    for (const html of all) expect(html).toContain("caps.message");
+  });
+
   it("should_emit_valid_regex_escapes_not_double_backslashes", () => {
     // The TS template literal must collapse \\ to \ in the emitted JS (a stray double
     // backslash means the widget regex/string literals are broken).
