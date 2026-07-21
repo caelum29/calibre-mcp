@@ -9,11 +9,13 @@
 // every book field lands via textContent/createElement; the widget JS avoids template
 // literals so this file's outer literal needs no escaping.
 
+import { DEBUG_JS } from "./debug-js.js";
+
 export const CARD_URI = "ui://calibre/book-card.html";
 
 /** Render the book-card template. */
-export function cardHtml(version: string): string {
-  return TEMPLATE.replaceAll("__VERSION__", version);
+export function cardHtml(version: string, debug = false): string {
+  return TEMPLATE.replaceAll("__VERSION__", version).replaceAll("__DEBUG__", debug ? DEBUG_JS : "");
 }
 
 const TEMPLATE = `<!doctype html>
@@ -316,7 +318,7 @@ body[data-noread="1"] .coverbtn{cursor:default; pointer-events:none}
   function rpcRespond(id, result) {
     window.parent.postMessage({ jsonrpc: "2.0", id: id, result: result }, "*");
   }
-
+__DEBUG__
   var w = document.getElementById("w");
   var ready = false, afterReady = [], toolArgs = null, sawResult = false;
   var openLinksOk = true, data = null; // {book, serverUrl, libraryId}

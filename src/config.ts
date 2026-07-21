@@ -42,6 +42,11 @@ export interface Config {
    * keeps the served resource static, so it stays spec-legal (issues #24/#53).
    */
   boardStyle: "shelf" | "coverflow";
+  /**
+   * Probe instrumentation for the widget iframes (issues #69/#72): injects an on-widget
+   * RPC log pane and registers the debug-only calibre_widget_log tool. Never on by default.
+   */
+  widgetDebug: boolean;
 }
 
 function truthy(v: string | undefined): boolean {
@@ -100,6 +105,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     maxBookBytes: Number.isFinite(maxBytes) && maxBytes > 0 ? maxBytes : 256 * 1024 * 1024,
     addRoots: addRoots(env),
     boardStyle: parseBoardStyle(env.CALIBRE_MCP_BOARD_STYLE),
+    widgetDebug: truthy(env.CALIBRE_MCP_WIDGET_DEBUG),
   };
 }
 

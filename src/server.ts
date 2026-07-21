@@ -2,6 +2,7 @@
 // imports the MCP SDK (DESIGN §7) — tool logic, the calibre clients, and domain code
 // stay SDK-free so the SDK can be swapped behind this seam. Transport lives in run-stdio.ts.
 
+import { z } from "zod";
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import {
@@ -126,7 +127,29 @@ export function buildServer(): McpServer {
     if (t.write && !config.writeEnabled) reg.disable();
   }
 
-  registerUiResources(server, config.serverUrl, config.boardStyle);
+  registerUiResources(server, config);
+
+  // Probe capture for the widget iframes (issues #69/#72) — registered ONLY under
+  // CALIBRE_MCP_WIDGET_DEBUG. The injected widget debug layer mirrors every RPC settle
+  // here; stderr is the durable record (stdout stays sacred on stdio).
+  if (config.widgetDebug) {
+    registerAppTool(
+      server,
+      "calibre_widget_log",
+      {
+        title: "Widget probe log",
+        description: "Debug-only sink for widget probe lines (CALIBRE_MCP_WIDGET_DEBUG).",
+        inputSchema: { line: z.string().max(4000) },
+        annotations: { readOnlyHint: true },
+        _meta: { ui: { visibility: ["app"] } },
+      },
+      async ({ line }) => {
+        log.info("widget-probe", line);
+        return { content: [{ type: "text", text: "ok" }] };
+      },
+    );
+    log.warn("widget debug ON — probe pane injected into widgets, calibre_widget_log registered");
+  }
 
   // calibre://book/{id} — the target of search/get_book resource_links. RESOURCE CONTRACT:
   // the read handler THROWS on failure (the SDK turns it into a protocol error), unlike tools.
@@ -202,11 +225,8 @@ export function buildServer(): McpServer {
  * 'self' data: otherwise); the widget's onerror → generated-placeholder path absorbs a
  * blocked or unreachable origin.
  */
-function registerUiResources(
-  server: McpServer,
-  serverUrl: string,
-  boardStyle: Config["boardStyle"],
-): void {
+function registerUiResources(server: McpServer, config: Config): void {
+  const { serverUrl, boardStyle, widgetDebug } = config;
   let origin: string;
   try {
     origin = new URL(serverUrl).origin;
@@ -220,19 +240,19 @@ function registerUiResources(
       name: "Cover board (search)",
       uri: BOARD_KEYWORD_URI,
       description: "In-chat cover board for calibre_search results.",
-      html: boardHtml("calibre_search", VERSION, boardStyle),
+      html: boardHtml("calibre_search", VERSION, boardStyle, widgetDebug),
     },
     {
       name: "Cover board (semantic search)",
       uri: BOARD_SEMANTIC_URI,
       description: "In-chat cover board for calibre_semantic_search results.",
-      html: boardHtml("calibre_semantic_search", VERSION, boardStyle),
+      html: boardHtml("calibre_semantic_search", VERSION, boardStyle, widgetDebug),
     },
     {
       name: "Book card",
       uri: CARD_URI,
       description: "In-chat book details card for calibre_get_book.",
-      html: cardHtml(VERSION),
+      html: cardHtml(VERSION, widgetDebug),
     },
   ];
   for (const wdg of widgets) {

@@ -19,6 +19,7 @@ describe("widget templates", () => {
       expect(html).not.toContain("__TOOL__");
       expect(html).not.toContain("__VERSION__");
       expect(html).not.toContain("__VARIANT__");
+      expect(html).not.toContain("__DEBUG__");
     }
   });
 
@@ -110,5 +111,32 @@ describe("widget templates", () => {
     // The TS template literal must collapse \\ to \ in the emitted JS (a stray double
     // backslash means the widget regex/string literals are broken).
     for (const html of all) expect(html).not.toContain("\\\\");
+  });
+});
+
+describe("widget debug probe (issues #69/#72)", () => {
+  const debugAll = [boardHtml("calibre_search", "9.9.9", "shelf", true), cardHtml("9.9.9", true)];
+
+  it("should_contain_no_probe_code_when_debug_is_off", () => {
+    for (const html of all) {
+      expect(html).not.toContain("dbgLog");
+      expect(html).not.toContain("calibre_widget_log");
+    }
+  });
+
+  it("should_inject_the_probe_layer_when_debug_is_on", () => {
+    for (const html of debugAll) {
+      expect(html).toContain('dbgPre.id = "dbgLog"');
+      expect(html).toContain("calibre_widget_log");
+    }
+  });
+
+  it("should_keep_hygiene_rules_in_the_probe_layer", () => {
+    for (const html of debugAll) {
+      expect(html).not.toContain("console.");
+      expect(html).not.toContain("innerHTML");
+      expect(html).not.toContain("eval(");
+      expect(html).not.toContain("\\\\");
+    }
   });
 });

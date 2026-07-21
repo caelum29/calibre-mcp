@@ -10,6 +10,8 @@
 // Injection hygiene: all book fields land via textContent/createElement — no innerHTML, no eval.
 // The widget JS avoids template literals so the outer literals need no escaping.
 
+import { DEBUG_JS } from "./debug-js.js";
+
 export const BOARD_KEYWORD_URI = "ui://calibre/board-keyword.html";
 export const BOARD_SEMANTIC_URI = "ui://calibre/board-semantic.html";
 
@@ -21,10 +23,12 @@ export function boardHtml(
   tool: "calibre_search" | "calibre_semantic_search",
   version: string,
   style: BoardStyle = "shelf",
+  debug = false,
 ): string {
   return BOARD_TEMPLATE.replaceAll("__TOOL__", tool)
     .replaceAll("__VERSION__", version)
-    .replaceAll("__VARIANT__", style);
+    .replaceAll("__VARIANT__", style)
+    .replaceAll("__DEBUG__", debug ? DEBUG_JS : "");
 }
 
 /* ============================================================================
@@ -429,7 +433,7 @@ const CORE_JS = `  var TOOL = "__TOOL__";
   function rpcRespond(id, result) {
     window.parent.postMessage({ jsonrpc: "2.0", id: id, result: result }, "*");
   }
-
+__DEBUG__
   /* ================= widget state ================= */
   var w = document.getElementById("w"), pos = document.getElementById("pos");
   var S = {
