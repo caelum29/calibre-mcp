@@ -5,7 +5,7 @@
 // (DISTRIBUTION: opt-in); npx users get them via optionalDependencies instead.
 
 import { execSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, statSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -24,6 +24,17 @@ if (pkg.version !== manifest.version) {
   process.exit(1);
 }
 
+// --dev: stamp a `X.Y.Z-dev.<short-sha>[.dirty]` version into the STAGED copies only
+// (repo files untouched), so a test bundle is never confused with the released one.
+const devMode = process.argv.includes("--dev");
+let version = pkg.version;
+if (devMode) {
+  const sha = execSync("git rev-parse --short HEAD", { cwd: root }).toString().trim();
+  const dirty = execSync("git status --porcelain", { cwd: root }).toString().trim() ? ".dirty" : "";
+  version = `${pkg.version}-dev.${sha}${dirty}`;
+  console.log(`dev bundle version: ${version}`);
+}
+
 run("pnpm build");
 
 rmSync(staging, { recursive: true, force: true });
@@ -40,11 +51,22 @@ for (const f of ["manifest.json", "package.json", "LICENSE", "README.md"]) {
   if (existsSync(path.join(root, f))) cpSync(path.join(root, f), path.join(staging, f));
 }
 
+// Dev mode: rewrite the staged manifest + package.json versions (Desktop shows the
+// manifest version in Extensions, so `-dev.<sha>` is visible at a glance).
+if (devMode) {
+  for (const f of ["package.json", "manifest.json"]) {
+    const p = path.join(staging, f);
+    const j = JSON.parse(readFileSync(p, "utf8"));
+    j.version = version;
+    writeFileSync(p, JSON.stringify(j, null, 2) + "\n");
+  }
+}
+
 // Real (non-symlinked) prod deps, minus the optional embeddings stack.
 run("npm install --omit=dev --omit=optional --no-audit --no-fund --no-package-lock", staging);
 
 mkdirSync(outDir, { recursive: true });
-const out = path.join(outDir, `calibre-mcp-${pkg.version}.mcpb`);
+const out = path.join(outDir, `calibre-mcp-${version}.mcpb`);
 rmSync(out, { force: true });
 run(`npx --yes @anthropic-ai/mcpb@2.1.2 pack "${staging}" "${out}"`);
 

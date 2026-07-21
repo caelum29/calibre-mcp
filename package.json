@@ -44,7 +44,8 @@
     "test:calibre": "RUN_CALIBRE_TESTS=1 vitest run test/integration/merge.live.test.ts",
     "eval": "node --import tsx test/eval/retrieval/run.ts",
     "prepublishOnly": "pnpm run build && pnpm run test",
-    "pack:mcpb": "node scripts/pack-mcpb.mjs"
+    "pack:mcpb": "node scripts/pack-mcpb.mjs",
+    "pack:mcpb:dev": "node scripts/pack-mcpb.mjs --dev"
   },
   "dependencies": {
     "@modelcontextprotocol/ext-apps": "1.7.4",
