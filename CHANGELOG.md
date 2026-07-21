@@ -4,6 +4,19 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.2] — 2026-07-21
+
+### Fixed
+
+- `calibre_remove_book` no longer scares agents into refusing removal on explicit user
+  request: the description overstated the danger ("permanently delete… files on disk") —
+  in reality `calibredb remove` without `--permanent` moves books to Calibre's Trash,
+  restorable from the GUI — and the dry-run returned `isError: true`, which read as
+  "dangerous/failed" and primed refusal of the confirm step. The tool now describes the
+  Trash-recoverable two-step flow accurately, the dry-run is a success result with steering
+  text (gate unchanged: zero writes without `confirm=true`), and the post-removal message
+  mentions Trash restorability. `docs/TOOLS.md` aligned.
+
 ## [0.6.1] — 2026-07-21
 
 ### Added
