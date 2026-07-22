@@ -6,6 +6,7 @@
 import { z } from "zod";
 import type { FigureInventory } from "../domain/figures/inventory.js";
 import { CalibreHttpError } from "../domain/errors.js";
+import { log } from "../logging.js";
 import { BookId, CoercedBool, CoercedInt, jsonArray } from "./coerce.js";
 import { defineTool } from "./define.js";
 import { bookIdArg, resolveNumericId } from "./resolve-id.js";
@@ -52,32 +53,9 @@ export const getFiguresTool = defineTool({
       .describe("Also list/fetch images with no caption (covers, decorations, equation images)."),
     library: z.string().optional(),
   },
-  outputSchema: {
-    format: z.string().optional(),
-    counts: z
-      .object({ figures: z.number(), uncaptioned: z.number(), pageRender: z.number() })
-      .optional(),
-    scanned: z.boolean().optional(),
-    entries: z
-      .array(
-        z.object({
-          index: z.number(),
-          page: z.number(),
-          label: z.string().optional(),
-          caption: z.string().optional(),
-          source: z.string(),
-          width: z.number().optional(),
-          height: z.number().optional(),
-        }),
-      )
-      .optional(),
-    returned: z
-      .array(z.object({ index: z.number(), mimeType: z.string(), bytes: z.number() }))
-      .optional(),
-    skipped: z.array(z.object({ index: z.number(), reason: z.string() })).optional(),
-    note: z.string().optional(),
-    text: z.string().optional(),
-  },
+  // No outputSchema: with one declared the SDK REQUIRES structuredContent on every
+  // result, and clients drop the content array (images!) when structuredContent is
+  // present (anthropics/claude-code#54737/#45575). Fetch results must be content-only.
   annotations: { readOnlyHint: true, openWorldHint: true },
   handler: async (args, deps) => {
     const idArg = bookIdArg(args);
@@ -225,27 +203,46 @@ async function fetchFigures(
   for (const f of outcome.images) {
     const entry = inventory.entries[f.index];
     const cap = entry?.caption ? ` — ${entry.label ? `Figure ${entry.label}: ` : ""}${entry.caption}` : "";
+    // mime + size go in the TEXT line too: Desktop strips structuredContent (#80).
+    const kb = (f.image.bytes / 1024).toFixed(1);
     blocks.push({
       type: "text",
-      text: `Figure index ${f.index} (p.${entry?.page}, ${entry?.source}${cap ? "" : ", uncaptioned"})${cap}`,
+      text: `Figure index ${f.index} (p.${entry?.page}, ${entry?.source}, ${f.image.mimeType} ${kb} KB${cap ? "" : ", uncaptioned"})${cap}`,
     });
     blocks.push({ type: "image", data: f.image.data, mimeType: f.image.mimeType });
     returned.push({ index: f.index, mimeType: f.image.mimeType, bytes: f.image.bytes });
+    log.info(
+      `calibre_get_figures fetch book=${numericId} fmt=${fmt} index=${f.index} detail=${args.detail} mime=${f.image.mimeType} bytes=${f.image.bytes}`,
+    );
   }
   for (const s of outcome.skipped) {
     blocks.push({ type: "text", text: `Figure index ${s.index} skipped: ${skipReason(s.reason)}` });
+  }
+  if (outcome.images.length > 0) {
+    // First-pass confabulation is the verified failure mode (#80): models answer
+    // figure questions from priors without reading the delivered pixels.
+    blocks.push({
+      type: "text",
+      text: "Describe only what is visible in the image(s) above — examine the pixels before answering; do not fill gaps from prior knowledge of similar diagrams.",
+    });
   }
   if (blocks.length === 0) blocks.push({ type: "text", text: "No figures could be fetched." });
 
   const anyFailed = outcome.images.length === 0 && outcome.skipped.length > 0;
   const summary = `Book ${numericId} (${fmt}): returned ${outcome.images.length}/${indexes.length} figures at detail=${args.detail}.`;
   blocks.unshift({ type: "text", text: summary });
-  const result = toolOk(blocks, {
-    format: fmt,
-    returned,
-    skipped: outcome.skipped.map((s) => ({ index: s.index, reason: skipReason(s.reason) })),
-    text: summary,
-  });
+  // No structuredContent when images are present: clients drop the whole content
+  // array (images included) if structuredContent coexists (anthropics/claude-code
+  // #54737/#45575; #80 probe). Everything is mirrored in the text blocks anyway.
+  const result =
+    outcome.images.length > 0
+      ? toolOk(blocks)
+      : toolOk(blocks, {
+          format: fmt,
+          returned,
+          skipped: outcome.skipped.map((s) => ({ index: s.index, reason: skipReason(s.reason) })),
+          text: summary,
+        });
   if (anyFailed) result.isError = true;
   return result;
 }

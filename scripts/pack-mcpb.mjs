@@ -24,14 +24,18 @@ if (pkg.version !== manifest.version) {
   process.exit(1);
 }
 
-// --dev: stamp a `X.Y.Z-dev.<short-sha>[.dirty]` version into the STAGED copies only
-// (repo files untouched), so a test bundle is never confused with the released one.
+// --dev: stamp a `X.Y.(Z+1)-dev<HHMM>` version into the STAGED copies only (repo
+// files untouched), so a test bundle is never confused with the released one.
+// Kept SHORT and single-identifier: long dotted prereleases crashed Desktop install.
+// The time suffix keeps every build unique — Desktop silently keeps old code on
+// same-version reinstall, so the version in Settings -> Extensions is the install check.
 const devMode = process.argv.includes("--dev");
 let version = pkg.version;
 if (devMode) {
-  const sha = execSync("git rev-parse --short HEAD", { cwd: root }).toString().trim();
-  const dirty = execSync("git status --porcelain", { cwd: root }).toString().trim() ? ".dirty" : "";
-  version = `${pkg.version}-dev.${sha}${dirty}`;
+  const [maj, min, pat] = pkg.version.split(".").map(Number);
+  const now = new Date();
+  const hhmm = String(now.getHours()).padStart(2, "0") + String(now.getMinutes()).padStart(2, "0");
+  version = `${maj}.${min}.${pat + 1}-dev${hhmm}`;
   console.log(`dev bundle version: ${version}`);
 }
 
@@ -58,6 +62,10 @@ if (devMode) {
     const p = path.join(staging, f);
     const j = JSON.parse(readFileSync(p, "utf8"));
     j.version = version;
+    // Dev bundles carry the widget probe layer (#69/#72/#82) armed by default.
+    if (f === "manifest.json" && j.server?.mcp_config?.env) {
+      j.server.mcp_config.env.CALIBRE_MCP_WIDGET_DEBUG = "1";
+    }
     writeFileSync(p, JSON.stringify(j, null, 2) + "\n");
   }
 }
