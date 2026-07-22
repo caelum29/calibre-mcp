@@ -14,6 +14,7 @@ import { loadConfig, type Config } from "./config.js";
 import { CalibreClient } from "./calibre/client.js";
 import { ContentServerClient } from "./calibre/content-server.js";
 import { Extractor } from "./calibre/extract.js";
+import { FigureInventoryService } from "./calibre/figure-inventory.js";
 import { TransformersEmbedder } from "./semantic/embedder.js";
 import { TransformersReranker } from "./semantic/reranker.js";
 import { SqliteIndexStore } from "./semantic/store.js";
@@ -53,6 +54,7 @@ export function buildServer(): McpServer {
     content: new ContentServerClient(config),
     calibre: new CalibreClient(config),
     extractor: new Extractor(config),
+    figures: new FigureInventoryService(config),
     embedder: new TransformersEmbedder(config), // lazy: no model load until first embed
     reranker: new TransformersReranker(config), // lazy: no model load until first rerank
     index: new SqliteIndexStore(config, log), // lazy: no db file until first index op

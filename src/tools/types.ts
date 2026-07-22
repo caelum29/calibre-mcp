@@ -7,6 +7,7 @@ import type { Config } from "../config.js";
 import type { CalibreClient } from "../calibre/client.js";
 import type { ContentServerClient } from "../calibre/content-server.js";
 import type { Extractor } from "../calibre/extract.js";
+import type { FigureInventoryService } from "../calibre/figure-inventory.js";
 import type { Embedder } from "../semantic/embedder.js";
 import type { Reranker } from "../semantic/reranker.js";
 import type { IndexStore } from "../semantic/store.js";
@@ -64,6 +65,7 @@ export interface ToolDeps {
   content: ContentServerClient; // HTTP /ajax reads (preferred)
   calibre: CalibreClient; // subprocess: writes + fts
   extractor: Extractor; // book-text extraction (download + convert + cache)
+  figures: FigureInventoryService; // figure inventory + pixel fetch (D-018)
   embedder: Embedder; // semantic query/passage embedding (transformers.js, lazy)
   /**
    * Cross-encoder rerank stage (lazy, optional model). Absent = reranking not wired

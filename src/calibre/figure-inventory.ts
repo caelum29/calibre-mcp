@@ -12,6 +12,19 @@ import type { Config } from "../config.js";
 import { buildEpubInventory, parseContainerRootfile, parseOpfSpine, type SpineDoc } from "../domain/figures/epub.js";
 import { buildInventory, type FigureInventory, parsePdfImagesList } from "../domain/figures/inventory.js";
 import { log } from "../logging.js";
+import {
+  DETAIL_MAX_SIDE,
+  type EncodedImage,
+  encodeSmallest,
+  extractPdfRaster,
+  inlineSvgToFile,
+  pdftoppmBinary,
+  qlmanageBinary,
+  rasterizeSvg,
+  renderPdfBand,
+  type Runner,
+} from "./figure-fetch.js";
+import type { FigureEntry } from "../domain/figures/inventory.js";
 import { downloadToFile } from "./http.js";
 import { spawnCollect, SpawnTimeoutError } from "./spawn.js";
 
@@ -29,6 +42,33 @@ export interface InventoryResult {
   inventory: FigureInventory;
   cached: boolean;
 }
+
+export interface FetchFiguresArgs {
+  format: string;
+  downloadUrl: string;
+  inventory: FigureInventory;
+  /** Inventory indexes to fetch — the tool validates them; ≤3 per call (D-018). */
+  indexes: number[];
+  detail: "standard" | "high";
+  /** Raw-byte response budget across all figures (base64 adds ~1/3 on top). */
+  maxTotalBytes?: number;
+  timeoutMs?: number;
+}
+
+export interface FetchedFigure {
+  index: number;
+  image: EncodedImage;
+}
+
+export interface FetchOutcome {
+  images: FetchedFigure[];
+  skipped: Array<{ index: number; reason: string }>;
+}
+
+/** Raw bytes; base64 inflates ×4/3, so this keeps the response near the ~2 MB cap. */
+const RESPONSE_BYTE_BUDGET = 1_500_000;
+/** Fallback sides when a figure alone would blow the budget at the asked detail. */
+const SHRINK_LADDER = [768, 512];
 
 const CACHE_DIR = path.join(tmpdir(), "calibre-mcp-cache");
 /** Bump when FigureEntry/matching semantics change — stale JSON must not survive. */
@@ -99,6 +139,127 @@ export class FigureInventoryService {
       await unlink(tmpSrc).catch(() => {});
       await unlink(tmpTxt).catch(() => {});
     }
+  }
+
+  /**
+   * Fetch selected figures as encoded images: download the source once, produce
+   * pixels per entry (pdfimages raster / band-crop page render / EPUB zip member /
+   * qlmanage SVG), encode smaller-of-PNG-and-JPEG, and enforce the response byte
+   * budget — over-budget figures shrink down the ladder, then skip with a reason
+   * (never a thrown error once the source is local; the model can re-call).
+   */
+  async fetchFigures(args: FetchFiguresArgs): Promise<FetchOutcome> {
+    const format = args.format.toLowerCase();
+    if (format !== "pdf" && format !== "epub") throw new Error("FIGURES_FORMAT_UNSUPPORTED");
+    const timeout = args.timeoutMs ?? RUN_TIMEOUT_MS;
+    const run: Runner = (bin, a, okCodes) => this.#run(bin, a, timeout, okCodes ?? [0]);
+
+    await mkdir(CACHE_DIR, { recursive: true });
+    const scratch = path.join(CACHE_DIR, `fx-${randomUUID()}`);
+    await mkdir(scratch, { recursive: true });
+    const src = path.join(scratch, `src.${format}`);
+    try {
+      await downloadToFile(args.downloadUrl, src, {
+        maxBytes: this.cfg.maxBookBytes,
+        timeoutMs: args.timeoutMs,
+      });
+      let epubDir: string | null = null;
+      if (format === "epub") {
+        const unzip = this.unzipBinary();
+        if (!unzip) throw new Error("FIGURES_NO_UNZIP");
+        epubDir = path.join(scratch, "ep");
+        await this.#run(unzip, ["-o", "-qq", src, "-d", epubDir], timeout, [0, 1]);
+      }
+
+      const images: FetchedFigure[] = [];
+      const skipped: FetchOutcome["skipped"] = [];
+      let remaining = args.maxTotalBytes ?? RESPONSE_BYTE_BUDGET;
+      for (const index of args.indexes) {
+        const entry = args.inventory.entries[index];
+        if (!entry) {
+          skipped.push({ index, reason: "no such figure index" });
+          continue;
+        }
+        try {
+          const file = await this.#produce(run, format, src, epubDir, scratch, entry, args.inventory);
+          let image = await encodeSmallest(run, file, DETAIL_MAX_SIDE[args.detail]);
+          for (const side of SHRINK_LADDER) {
+            if (image.bytes <= remaining) break;
+            image = await encodeSmallest(run, file, side);
+          }
+          if (image.bytes > remaining) {
+            skipped.push({
+              index,
+              reason:
+                images.length > 0
+                  ? "response byte cap reached — re-call with this index alone"
+                  : "figure exceeds the response byte cap even at reduced resolution",
+            });
+            continue;
+          }
+          remaining -= image.bytes;
+          images.push({ index, image });
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          log.error("figure fetch failed", { index, msg: msg.slice(0, 300) });
+          skipped.push({ index, reason: msg.startsWith("FIGURES_") ? msg : "FIGURES_FETCH_FAILED" });
+        }
+      }
+      return { images, skipped };
+    } finally {
+      await rm(scratch, { recursive: true, force: true }).catch(() => {});
+    }
+  }
+
+  /** Produce a raw image file for one entry (dispatch on format + source). */
+  async #produce(
+    run: Runner,
+    format: string,
+    src: string,
+    epubDir: string | null,
+    scratch: string,
+    entry: FigureEntry,
+    inventory: FigureInventory,
+  ): Promise<string> {
+    if (format === "pdf") {
+      const bins = this.binaries();
+      if (!bins) throw new Error("FIGURES_NO_POPPLER");
+      if (entry.source === "raster") {
+        return extractPdfRaster(run, bins.pdfimages, src, scratch, entry, inventory);
+      }
+      const pdftoppm = pdftoppmBinary();
+      if (!pdftoppm) throw new Error("FIGURES_NO_POPPLER");
+      return renderPdfBand(run, { pdftotext: bins.pdftotext, pdftoppm }, src, scratch, entry, inventory);
+    }
+    // EPUB: zip member (raster), .svg member, or inline <svg> in the spine doc
+    if (!epubDir) throw new Error("FIGURES_FETCH_FAILED");
+    const readInside = (href: string): string => {
+      const abs = path.resolve(epubDir, href);
+      if (!abs.startsWith(path.resolve(epubDir) + path.sep)) throw new Error("FIGURES_FETCH_FAILED");
+      return abs;
+    };
+    if (entry.source === "raster" && entry.imageHref) {
+      const abs = readInside(entry.imageHref);
+      if (!existsSync(abs)) throw new Error("FIGURES_FETCH_FAILED");
+      return abs;
+    }
+    const qlmanage = qlmanageBinary();
+    if (!qlmanage) throw new Error("FIGURES_NO_QLMANAGE");
+    if (entry.imageHref) {
+      const abs = readInside(entry.imageHref);
+      if (!existsSync(abs)) throw new Error("FIGURES_FETCH_FAILED");
+      return rasterizeSvg(run, qlmanage, abs, scratch, DETAIL_MAX_SIDE.high);
+    }
+    // inline SVG: ordinal among this spine doc's inline-svg entries, re-scan the doc
+    if (!entry.spineHref) throw new Error("FIGURES_FETCH_FAILED");
+    const siblings = inventory.entries.filter(
+      (e) => e.spineHref === entry.spineHref && e.source === "svg-render" && !e.imageHref,
+    );
+    const ordinal = siblings.findIndex((e) => e.index === entry.index);
+    if (ordinal < 0) throw new Error("FIGURES_FETCH_FAILED");
+    const html = await readFile(readInside(entry.spineHref), "utf8");
+    const svgFile = await inlineSvgToFile(html, ordinal, scratch);
+    return rasterizeSvg(run, qlmanage, svgFile, scratch, DETAIL_MAX_SIDE.high);
   }
 
   /**

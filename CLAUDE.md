@@ -61,8 +61,8 @@ It must:
 - **Return-not-throw `isError` contract.** Handlers return a result with `isError` + an actionable
   message steering the model's next step; they don't throw across the SDK boundary.
 - **Tool-count ≤ ~20.** Fold related calibredb subcommands into task/intent tools; don't 1:1-mirror
-  the CLI (`docs/claude/tool-surface.md` + `docs/dev/DECISIONS.md` D-005). Currently **17 model-facing
-  tools** — 16 task tools (`docs/dev/TOOLS-spec.md`) + `calibre_ping` — plus 1 widget-internal
+  the CLI (`docs/claude/tool-surface.md` + `docs/dev/DECISIONS.md` D-005). Currently **18 model-facing
+  tools** — 17 task tools (`docs/dev/TOOLS-spec.md`) + `calibre_ping` — plus 1 widget-internal
   (`calibre_board_data`, `_meta.ui.visibility ["app"]`, D-017).
 - **Never report a committed write as failed.** Routed writes commit server-side *before* `calibredb`
   replies (#33): a failing post-write diff re-read degrades to a success result with the intended-value

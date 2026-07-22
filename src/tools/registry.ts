@@ -6,6 +6,7 @@ import { listLibrariesTool } from "./calibre_list_libraries.js";
 import { searchTool } from "./calibre_search.js";
 import { getBookTool } from "./calibre_get_book.js";
 import { getContentTool } from "./calibre_get_content.js";
+import { getFiguresTool } from "./calibre_get_figures.js";
 import { listCategoriesTool } from "./calibre_list_categories.js";
 import { updateBookTool } from "./calibre_update_book.js";
 import { semanticSearchTool } from "./calibre_semantic_search.js";
@@ -28,6 +29,7 @@ export const allTools: AnyToolDescriptor[] = [
   searchTool,
   getBookTool,
   getContentTool,
+  getFiguresTool,
   listCategoriesTool,
   updateBookTool,
   semanticSearchTool,
@@ -41,7 +43,7 @@ export const allTools: AnyToolDescriptor[] = [
   removeBookTool,
   mergeBooksTool,
   // Widget-internal (_meta.ui.visibility ["app"], issues #22/#53) — hosts that honor MCP
-  // Apps hide these from the model, so the model-facing surface stays at 15 tools (+ ping).
+  // Apps hide these from the model, so the model-facing surface stays at 17 tools (+ ping).
   boardDataTool,
   openBookTool,
 ];

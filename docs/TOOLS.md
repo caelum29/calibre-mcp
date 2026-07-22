@@ -105,6 +105,33 @@ yield no text (Calibre has no OCR).
 
 > Ask: *"read the first chapter of book 187"* · *"show me the chapter list for book 187"* (`structure: true`) · *"keep reading"* (pass the returned cursor)
 
+### `calibre_get_figures`
+
+See a book's **figures** — the images its text refers to, identified by an adjacent caption
+(`Figure 1-2. …`, `Рис. 3.1. …`). Call it without `indexes` to **list** figures (page, caption,
+source) so you can judge relevance before spending image tokens; then pass `indexes` to fetch
+up to 3 of them as actual images in the chat. Raw uncaptioned images (covers, decorations,
+inline equation art) are hidden unless `include_uncaptioned: true`.
+
+Works on EPUB (preferred) and PDF sources. Diagrams drawn as vectors — invisible to image
+extraction — are rendered from the page as a cropped band above their caption. Scanned PDFs
+honestly report 0 figures (Calibre has no OCR); some print-style publishers use unnumbered
+captions, which only `include_uncaptioned` can surface.
+
+| Parameter | Type | Default | Meaning |
+|---|---|---|---|
+| `id` (or `bookId`) | number \| uuid | *(required)* | The book |
+| `indexes` | number[] | — | Figure indexes to fetch as images (≤3 per call); omit to list |
+| `detail` | `standard` \| `high` | `standard` | Image resolution: ≤1024px / ≤1568px longest side |
+| `include_uncaptioned` | boolean | `false` | Also list/fetch images without captions |
+| `format` | string | *(auto)* | `epub` or `pdf`; auto-picks EPUB first. Indexes are per-format |
+| `library` | string | *(default)* | Library name or id |
+
+Responses are capped at ~2 MB — oversized figures are downscaled, and anything still over the
+cap is skipped with a note telling you how to re-fetch it.
+
+> Ask: *"what figures does book 397 have?"* · *"show me figure 2.3 from the JWT Handbook"*
+
 ### `calibre_list_categories`
 
 Browse the library's Tag-Browser categories. With no `field`, it lists the categories

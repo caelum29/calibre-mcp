@@ -24,6 +24,11 @@ const CAPTION_PATTERNS: readonly RegExp[] = [
   // (?!\d) keeps a dotted label whole: "Figure 4.1 and…" must not backtrack into
   // label "4" + separator "." + text "1 and…" — an in-text reference, not a caption.
   /^[\f\s]*(?:Figure|FIGURE|Fig\.)\s?(\d+(?:[-–.]\d+)?[a-z]?)\s*(?:[.:](?!\d)|\s[–—-])\s*(.*)$/u,
+  // Manning: Figure 4.1␣␣Text — no `.`/`:` separator, a wide gap (2+ spaces / tab)
+  // instead (probe #77: the strict pattern misreads the label's own dot as the
+  // separator → label "4", text "1 Text"). Text must not start lowercase — that's
+  // the in-text-reference shape ("Figure 2.12  displays…" wrapped oddly).
+  /^[\f\s]*(?:Figure|FIGURE|Fig\.)\s?(\d+(?:[-–.]\d+)?[a-z]?)(?:[ \t]{2,})(?![a-zа-яё])(\S.*)$/u,
   // RU: Рис. 15.7. … | рис.15.7 … | Рисунок 3. …
   /^[\f\s]*(?:Рис(?:унок)?|рис(?:унок)?)\.?\s?(\d+(?:[.,–-]\d+)?)\.?\s*[–—-]?\s*(.*)$/u,
 ];

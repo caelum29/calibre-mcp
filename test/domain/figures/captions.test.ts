@@ -66,3 +66,20 @@ describe("scanCaptions", () => {
     expect(splitPages("a\f\fb")).toEqual(["a", "", "b"]);
   });
 });
+
+describe("Manning double-space captions (probe #77)", () => {
+  it("keeps the dotted label whole when a wide gap separates it from the text", () => {
+    expect(matchCaptionLine("Figure 4.1  The producer sends records to the broker")).toEqual({
+      label: "4.1",
+      text: "The producer sends records to the broker",
+    });
+  });
+
+  it("still rejects single-space in-text references (Manning mis-parse case)", () => {
+    expect(matchCaptionLine("Figure 2.12 displays the flow between components")).toBeNull();
+  });
+
+  it("rejects a wide gap followed by lowercase (reference shape, not a caption)", () => {
+    expect(matchCaptionLine("Figure 2.12  displays the flow between components")).toBeNull();
+  });
+});
