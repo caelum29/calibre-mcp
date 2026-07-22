@@ -4,7 +4,11 @@
 //
 // Usage:
 //   pnpm eval [--modes hybrid,vector,keyword] [--topk 10] [--tag baseline]
-//             [--rerank off] [--work-dir <dir>] [--out-dir <dir>] [--live]
+//             [--rerank off] [--work-dir <dir>] [--out-dir <dir>] [--live] [--gate]
+//
+// --gate: after the run, compare against thresholds.json + its frozen baseline report and
+//   print mechanical PASS/FAIL per declared gate (#85, D-012). Exit 1 on a failed gate.
+//   Fixture-only (the live diff is a triage artifact, not a gate — thresholds.liveEval).
 //
 // Offline path: deterministic — two runs at the same commit produce identical JSON.
 // --live: runs library-scope queries against a COPY of the real library index using
@@ -20,6 +24,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadConfig } from "../../../src/config.js";
 import { RERANKER_MODEL_ID, TransformersReranker } from "../../../src/semantic/reranker.js";
+import { evaluateGate, renderGate, type Thresholds } from "./gate.js";
 import { ALL_MODES, renderMarkdown, runRetrievalEval, type EvalReport, type Mode } from "./harness.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -27,6 +32,7 @@ const progress = (msg: string) => process.stderr.write(`[eval] ${msg}\n`);
 
 interface CliArgs {
   live: boolean;
+  gate: boolean;
   modes: Mode[];
   topK: number;
   tag?: string;
@@ -39,6 +45,7 @@ interface CliArgs {
 function parseArgs(argv: string[]): CliArgs {
   const args: CliArgs = {
     live: false,
+    gate: false,
     modes: ALL_MODES,
     topK: 10,
     workDir: process.env.CALIBRE_MCP_EVAL_WORK_DIR ?? path.join(HERE, ".work"),
@@ -52,6 +59,7 @@ function parseArgs(argv: string[]): CliArgs {
       return v;
     };
     if (a === "--live") args.live = true;
+    else if (a === "--gate") args.gate = true;
     else if (a === "--modes") args.modes = next().split(",") as Mode[];
     else if (a === "--topk") args.topK = Number(next());
     else if (a === "--tag") args.tag = next();
@@ -145,6 +153,9 @@ function headline(report: EvalReport): string {
 
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
+  if (args.gate && args.live) {
+    throw new Error("--gate is fixture-only: the live diff is a triage artifact, never a gate (#85).");
+  }
   const started = Date.now();
   mkdirSync(args.workDir, { recursive: true });
   ensureModelCache(args.workDir);
@@ -190,6 +201,16 @@ async function main(): Promise<void> {
   progress(`done in ${((Date.now() - started) / 1000).toFixed(1)}s`);
   // CLI summary on stdout (this is a script, not the stdio MCP server).
   process.stdout.write(`${headline(report)}\nreport: ${mdPath}\njson:   ${jsonPath}\n`);
+
+  if (args.gate) {
+    const thresholds = JSON.parse(readFileSync(path.join(HERE, "thresholds.json"), "utf8")) as Thresholds;
+    const baseline = JSON.parse(
+      readFileSync(path.join(HERE, thresholds.baselineReport), "utf8"),
+    ) as EvalReport;
+    const result = evaluateGate(report, baseline, thresholds);
+    process.stdout.write(`\n${renderGate(result)}\n`);
+    if (!result.pass) process.exit(1);
+  }
 }
 
 main().catch((err: unknown) => {

@@ -177,20 +177,27 @@ re-read it in context). `mode: hybrid` (the default) fuses semantic and keyword 
 best recall; `mode: vector` is semantic-only; `mode: keyword` is exact keyword matching that
 needs no model at query time.
 
+`target: figures` searches **figure captions** instead of body text — use it when you're after
+a diagram, chart, or schema. Hits return the caption, page, the surrounding passage, and a
+ready-made `calibre_get_figures` call to fetch the actual image (never the pixels directly).
+`target` is orthogonal to `scope`: figure search works library-wide or within one book.
+
 All modes need an index built by `calibre_build_index` first. If you only built a keyword-only
 (model-free) index, `keyword` mode works, `vector` errors with guidance, and `hybrid` degrades
-to keyword with a note.
+to keyword with a note. Figure captions enter the index at build time, so books indexed before
+figure support need a `force: true` rebuild before `target: figures` finds them.
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
 | `query` | string | *(required)* | What you're looking for, in natural language |
 | `scope` | `library` \| `book` | `library` | `library` ranks books; `book` ranks passages within one book |
+| `target` | `text` \| `figures` | `text` | `text` searches book text; `figures` searches figure captions |
 | `mode` | `hybrid` \| `vector` \| `keyword` | `hybrid` | Retrieval strategy |
 | `bookId` | number \| uuid | — | Required when `scope: book` |
 | `topK` | number | `10` | How many results to return (max 50) |
 | `library` | string | *(default)* | Library name or id |
 
-> Ask: *"which of my books explain consumer-group rebalancing?"* · *"find passages in book 187 about idempotent producers"* (`scope: book`)
+> Ask: *"which of my books explain consumer-group rebalancing?"* · *"find passages in book 187 about idempotent producers"* (`scope: book`) · *"find a diagram of the JWT signature flow"* (`target: figures`)
 
 ### `calibre_build_index`
 
@@ -199,7 +206,9 @@ Build (or refresh) the local semantic index for a chosen set of books. A selecto
 index-everything default). The first embedding build downloads the model (~118 MB, one-time),
 then runs offline. Set `keywordOnly: true` to build a model-free keyword index (zero ML
 dependencies); this also happens automatically if the embedding model isn't installed. Re-run
-after adding books; use `force: true` to re-index books that haven't changed.
+after adding books; use `force: true` to re-index books that haven't changed. Each book's
+figure captions (see `calibre_get_figures`) are indexed alongside its text, powering
+`calibre_semantic_search` with `target: figures`.
 
 This writes only to the server's own local index directory — not to your Calibre library — so
 it's safe to run without enabling library writes.

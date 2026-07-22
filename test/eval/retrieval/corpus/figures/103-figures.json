@@ -1,0 +1,23 @@
+{
+  "entries": [
+    {
+      "index": 0,
+      "page": 1,
+      "captioned": true,
+      "label": "2-1",
+      "caption": "A B-tree node: sorted keys with child pointers between them",
+      "source": "page-render"
+    },
+    {
+      "index": 1,
+      "page": 1,
+      "captioned": true,
+      "label": "3-2",
+      "caption": "The query plan the cost-based planner chooses for an indexed lookup",
+      "source": "page-render"
+    }
+  ],
+  "pageCount": 1,
+  "scanned": false,
+  "counts": { "figures": 2, "uncaptioned": 0, "pageRender": 2 }
+}

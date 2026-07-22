@@ -525,3 +525,151 @@ describe("semantic degradation surfacing (issue #41 / #46)", () => {
     expect(r.structuredContent?.semanticReason as string).toContain("keyword-only");
   });
 });
+
+describe("target=figures (D-018/#83/#86)", () => {
+  /** Two books with chunks AND figure captions; figure offsets fall inside the chunks. */
+  function withFigures(): SqliteIndexStore {
+    const s = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
+    s.replaceBook(
+      LIB,
+      { bookId: 1, title: "SQL Book", authors: ["A"] },
+      [{ charStart: 0, charEnd: 100, body: "the b-tree chapter body", vector: axis(2) }],
+      [
+        {
+          figIndex: 3,
+          page: 42,
+          caption: "Figure 2-1. A B-tree node layout",
+          charOffset: 10,
+          format: "pdf",
+          source: "page-render",
+          vector: axis(0),
+        },
+      ],
+    );
+    s.replaceBook(
+      LIB,
+      { bookId: 2, title: "Bee Book", authors: ["B"] },
+      [{ charStart: 0, charEnd: 80, body: "the hive chapter body", vector: axis(3) }],
+      [
+        {
+          figIndex: 0,
+          page: 7,
+          caption: "Figure 4-2. Frames inside a hive body",
+          charOffset: 5,
+          format: "epub",
+          source: "raster",
+          width: 100,
+          height: 60,
+          vector: axis(1),
+        },
+      ],
+    );
+    return s;
+  }
+
+  const figArgs = (over: Record<string, unknown> = {}) =>
+    args({ target: "figures" as const, query: "b-tree node diagram", ...over });
+
+  it("ranks figure captions and returns pointers + context + fetch steering, never pixels", async () => {
+    const r = await semanticSearchTool.handler(figArgs(), deps(withFigures()));
+    expect(r.isError).toBeUndefined();
+    expect(r.structuredContent?.target).toBe("figures");
+    const figs = r.structuredContent?.figures as Array<Record<string, unknown>>;
+    expect(figs.length).toBeGreaterThan(0);
+    expect(figs[0]).toMatchObject({
+      bookId: 1,
+      title: "SQL Book",
+      figIndex: 3,
+      page: 42,
+      format: "pdf",
+      source: "page-render",
+      charOffset: 10,
+      // figure→chunk linkage: the offset falls inside the indexed chunk
+      contextCharStart: 0,
+      contextCharEnd: 100,
+    });
+    expect(figs[0]!.contextSnippet).toContain("b-tree chapter body");
+    expect(figs[0]!.caption).toContain("B-tree node layout");
+    // no image blocks; the text carries the calibre_get_figures steering per hit
+    expect(r.content.every((b) => b.type !== "image")).toBe(true);
+    const text = r.content
+      .filter((b): b is { type: "text"; text: string } => b.type === "text")
+      .map((b) => b.text)
+      .join("\n");
+    expect(text).toContain("calibre_get_figures { bookId: 1, indexes: [3] }");
+    // figure results attach no cover-board _meta (the board renders books)
+    expect((r as { _meta?: unknown })._meta).toBeUndefined();
+  });
+
+  it("the chunk cosine floor does NOT transfer: low caption cosine is not low-confidence", async () => {
+    // Query axis 0 vs a caption vector at ~0.6 cosine — far below the 0.78 chunk floor.
+    const s = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
+    const v = new Float32Array(EMBED_DIM);
+    v[0] = 0.6;
+    v[1] = 0.8;
+    s.replaceBook(
+      LIB,
+      { bookId: 1, title: "T", authors: [] },
+      [{ charStart: 0, charEnd: 50, body: "body", vector: axis(2) }],
+      [{ figIndex: 0, page: 1, caption: "a diagram", charOffset: 3, format: "pdf", vector: l2normalize(v) }],
+    );
+    const r = await semanticSearchTool.handler(figArgs({ mode: "vector" }), deps(s));
+    expect(r.isError).toBeUndefined();
+    expect(r.structuredContent?.maxScore as number).toBeLessThan(0.78);
+    expect(r.structuredContent?.lowConfidence).toBe(false);
+    expect(r.structuredContent?.note as string).toContain("not yet calibrated");
+  });
+
+  it("scope=book restricts figure hits to that book", async () => {
+    const r = await semanticSearchTool.handler(
+      figArgs({ scope: "book", bookId: 2, query: "hive frames photo" }),
+      deps(withFigures()),
+    );
+    expect(r.isError).toBeUndefined();
+    const figs = r.structuredContent?.figures as Array<Record<string, unknown>>;
+    expect(figs).toHaveLength(1);
+    expect(figs[0]!.bookId).toBe(2);
+    expect(figs[0]!.source).toBe("raster");
+  });
+
+  it("mode=keyword searches captions with no model, on a keyword-only figure index", async () => {
+    const s = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
+    s.replaceBook(
+      LIB,
+      { bookId: 1, title: "T", authors: [] },
+      [{ charStart: 0, charEnd: 50, body: "body" }],
+      [{ figIndex: 0, page: 1, caption: "borrow checker flowchart", charOffset: 3, format: "pdf" }],
+    );
+    const r = await semanticSearchTool.handler(
+      figArgs({ mode: "keyword", query: "borrow flowchart" }),
+      deps(s, throwingEmbedder),
+    );
+    expect(r.isError).toBeUndefined();
+    expect((r.structuredContent?.figures as unknown[]).length).toBe(1);
+  });
+
+  it("an empty figure corpus reports honest-empty with the rebuild + get_figures steering", async () => {
+    const r = await semanticSearchTool.handler(figArgs(), deps(preloaded()));
+    expect(r.isError).toBeUndefined();
+    expect(r.structuredContent?.count).toBe(0);
+    const text = (r.content[0] as { text: string }).text;
+    expect(text).toContain("0 figure captions are indexed");
+    expect(text).toContain("force:true");
+    expect(text).toContain("calibre_get_figures");
+  });
+
+  it("reranks on the short (query, caption) pairs and surfaces rerankScore", async () => {
+    const rr = scoreByBody({ "hive body": 0.9, "B-tree": 0.2 });
+    const r = await semanticSearchTool.handler(
+      figArgs({ query: "frames in a hive" }),
+      deps(withFigures(), queryEmbedder, rr),
+    );
+    expect(r.isError).toBeUndefined();
+    expect(rr.calls).toBe(1);
+    const figs = r.structuredContent?.figures as Array<Record<string, unknown>>;
+    // the reranker (keyed on caption text) put the hive figure first despite the vector half
+    expect(figs[0]!.bookId).toBe(2);
+    expect(figs[0]!.rerankScore).toBe(0.9);
+    expect(r.structuredContent?.reranked).toBe(true);
+  });
+});

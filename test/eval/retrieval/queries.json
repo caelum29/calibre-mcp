@@ -56,5 +56,18 @@
   { "id": "neg-03", "kind": "negative", "scope": "library", "query": "how tectonic plates cause earthquakes", "relevant": [] },
   { "id": "neg-04", "kind": "negative", "scope": "library", "query": "выращивание орхидей на подоконнике", "ru": true, "relevant": [] },
   { "id": "neg-05", "kind": "negative", "scope": "library", "query": "ремонт карбюратора мотоцикла своими руками", "ru": true, "relevant": [] },
-  { "id": "neg-06", "kind": "negative", "scope": "library", "query": "the poetry of the French symbolists", "relevant": [] }
+  { "id": "neg-06", "kind": "negative", "scope": "library", "query": "the poetry of the French symbolists", "relevant": [] },
+
+  { "id": "fig-01", "kind": "figure-caption", "scope": "library", "target": "figures", "query": "diagram of a b-tree node with keys and child pointers", "relevant": [{ "bookId": 103, "figIndex": 0, "captionContains": "B-tree node" }] },
+  { "id": "fig-02", "kind": "figure-caption", "scope": "library", "target": "figures", "query": "chart of the query plan the optimizer chose for a lookup", "relevant": [{ "bookId": 103, "figIndex": 1, "captionContains": "cost-based planner" }] },
+  { "id": "fig-03", "kind": "figure-caption", "scope": "library", "target": "figures", "query": "illustration of container image layers and copy-on-write", "relevant": [{ "bookId": 105, "figIndex": 0, "captionContains": "copy-on-write" }] },
+  { "id": "fig-04", "kind": "figure-caption", "scope": "library", "target": "figures", "query": "commit graph diagram with arrows to parent commits", "relevant": [{ "bookId": 106, "figIndex": 0, "captionContains": "commit graph" }] },
+  { "id": "fig-05", "kind": "figure-caption", "scope": "library", "target": "figures", "query": "picture of frames inside a beehive box", "relevant": [{ "bookId": 108, "figIndex": 0, "captionContains": "Langstroth hive" }] },
+  { "id": "fig-ru-01", "kind": "figure-caption", "scope": "library", "target": "figures", "ru": true, "query": "схема нарезки свёклы для борща", "relevant": [{ "bookId": 112, "figIndex": 0, "captionContains": "соломкой" }] },
+  { "id": "fig-ru-02", "kind": "figure-caption", "scope": "library", "target": "figures", "ru": true, "query": "диаграмма позиции после королевского гамбита", "relevant": [{ "bookId": 113, "figIndex": 0, "captionContains": "королевского гамбита" }] },
+  { "id": "fig-xl-01", "kind": "figure-caption", "scope": "library", "target": "figures", "ru": true, "diagnostic": true, "query": "диаграмма слоёв контейнерного образа", "relevant": [{ "bookId": 105, "figIndex": 0, "captionContains": "copy-on-write" }] },
+  { "id": "fig-xl-02", "kind": "figure-caption", "scope": "library", "target": "figures", "ru": true, "diagnostic": true, "query": "diagram of the chess position after the king's gambit", "relevant": [{ "bookId": 113, "figIndex": 0, "captionContains": "королевского гамбита" }] },
+  { "id": "figneg-01", "kind": "figure-negative", "scope": "library", "target": "figures", "query": "wiring diagram of a car alternator", "relevant": [] },
+  { "id": "figneg-02", "kind": "figure-negative", "scope": "library", "target": "figures", "query": "blueprint of a medieval trebuchet catapult", "relevant": [] },
+  { "id": "figneg-03", "kind": "figure-negative", "scope": "library", "target": "figures", "ru": true, "query": "чертёж крыла самолёта", "relevant": [] }
 ]

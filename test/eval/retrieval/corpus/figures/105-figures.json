@@ -1,0 +1,26 @@
+{
+  "entries": [
+    {
+      "index": 0,
+      "page": 1,
+      "captioned": true,
+      "label": "1-1",
+      "caption": "Image layers stacked with copy-on-write: read-only layers shared under a writable top layer",
+      "source": "raster",
+      "width": 960,
+      "height": 540,
+      "pdfImageNum": 4
+    },
+    {
+      "index": 1,
+      "page": 1,
+      "captioned": true,
+      "label": "2-3",
+      "caption": "PID and network namespaces isolating two containers on one host",
+      "source": "page-render"
+    }
+  ],
+  "pageCount": 1,
+  "scanned": false,
+  "counts": { "figures": 2, "uncaptioned": 0, "pageRender": 1 }
+}

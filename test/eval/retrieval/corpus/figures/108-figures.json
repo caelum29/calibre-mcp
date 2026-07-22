@@ -1,0 +1,18 @@
+{
+  "entries": [
+    {
+      "index": 0,
+      "page": 1,
+      "captioned": true,
+      "label": "4-2",
+      "caption": "Wooden frames hanging inside a Langstroth hive body",
+      "source": "raster",
+      "width": 1200,
+      "height": 800,
+      "pdfImageNum": 7
+    }
+  ],
+  "pageCount": 1,
+  "scanned": false,
+  "counts": { "figures": 1, "uncaptioned": 0, "pageRender": 0 }
+}

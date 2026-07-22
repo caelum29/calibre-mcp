@@ -84,6 +84,17 @@ Two refinements worth knowing about:
   they are demoted below body-text matches and labeled `[front matter]` — never
   dropped.
 
+## Figure search
+
+`target: figures` runs the same pipeline over a separate corpus: **figure captions**.
+At index time every captioned figure (see `calibre_get_figures`) is stored with its
+caption embedding and its position in the book text, so "find a diagram of X" ranks
+captions directly instead of hoping a text chunk mentions the figure. Hits carry the
+caption, page, the surrounding passage (via the caption's position), and a ready-made
+`calibre_get_figures` call — the image itself is fetched only when you ask for it.
+The text-search confidence floor doesn't apply to captions (short strings score on a
+different scale); a caption-specific floor will be enabled once calibrated.
+
 ## Multilingual
 
 The model is multilingual by design: English and Russian retrieval are verified, and

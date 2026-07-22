@@ -15,7 +15,8 @@
     "measuredUngatedModes": ["vector", "keyword"]
   },
   "figureNegative": {
-    "$comment": "Active only once the figures cosine floor is calibrated (two-tier: fixture tier mandatory — 100% flagged, zero positives zeroed; live tier decides ENABLING only, never the release).",
+    "$comment": "Active only once the figures cosine floor is calibrated (two-tier: fixture tier mandatory — 100% flagged, zero positives zeroed; live tier decides ENABLING only, never the release). `active` is the machine flag for that condition — flip it together with FIGURES_SEMANTIC_FLOOR.",
+    "active": false,
     "queryCount": { "min": 3, "max": 4 },
     "flaggedRate": 1.0,
     "positivesZeroedByFloor": 0

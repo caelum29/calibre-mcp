@@ -341,3 +341,92 @@ describe("front-matter flagging at build time (issue #18)", () => {
     expect(hits.every((h) => !h.frontMatter)).toBe(true);
   });
 });
+
+describe("figure caption indexing (D-018 Phase B / #86)", () => {
+  const LIB = "Programming_Books";
+  /** Extraction whose markers say two figures sit in the (marker-injected) text. */
+  const markedGetText = async (): Promise<ExtractedText> => ({
+    text: `[image #0: page 3, "Figure 1-1. The ownership tree"]\n` + "Ownership and borrowing. ".repeat(200),
+    backend: "pdftotext",
+    chars: 5000,
+    cached: false,
+    markers: [
+      { index: 0, charOffset: 0, page: 3, caption: 'Figure 1-1. The ownership tree' },
+      { index: 1, charOffset: 120, page: 7, caption: "Figure 2-4. Borrow checker flow" },
+    ],
+  });
+  /** Inventory matching the markers by entry index — the source/dims join input. */
+  const inventory = {
+    entries: [
+      { index: 0, page: 3, captioned: true, source: "raster", width: 640, height: 480, pdfImageNum: 2 },
+      { index: 1, page: 7, captioned: true, source: "page-render" },
+    ],
+    pageCount: 10,
+    scanned: false,
+    counts: { figures: 2, uncaptioned: 0, pageRender: 1 },
+  };
+  const figuresService = (fail = false) => ({
+    getInventory: async () => {
+      if (fail) throw new Error("FIGURES_SCAN_FAILED");
+      return { inventory, cached: true };
+    },
+  });
+  const withFigures = (d: ToolDeps, fail = false): ToolDeps =>
+    ({ ...d, figures: figuresService(fail) as unknown as ToolDeps["figures"] });
+
+  it("indexes every placed marker as a figure row, joined with inventory source/dims", async () => {
+    const store = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
+    const embedder = makeFakeEmbedder();
+    const d = withFigures(deps({ store, embedder, getText: markedGetText }));
+    const r = await buildIndexTool.handler(args({ bookId: 1 }), d);
+    expect(r.isError).toBeUndefined();
+    expect(r.structuredContent?.figures).toBe(2);
+    expect(store.figureCount(LIB, 1)).toBe(2);
+
+    const hits = store.searchFiguresFts(LIB, "borrow", 5, 1);
+    expect(hits).toHaveLength(1);
+    expect(hits[0]!.figIndex).toBe(1);
+    expect(hits[0]!.page).toBe(7);
+    expect(hits[0]!.source).toBe("page-render");
+    expect(hits[0]!.charOffset).toBe(120);
+    expect(hits[0]!.format).toBe("pdf");
+    // captions were embedded with the same "[title › authors]" context prefix as chunks
+    expect(embedder.embedded.some((t) => t.includes("[Rust in Action › Tim]") && t.includes("ownership tree"))).toBe(true);
+    // caption vectors exist → vector figure search ranks them
+    const q = new Float32Array(EMBED_DIM);
+    q[0] = 1;
+    expect(store.searchFigures(LIB, l2normalize(q), 5, 1)).toHaveLength(2);
+  });
+
+  it("keywordOnly build stores captions FTS-searchable, without vectors", async () => {
+    const store = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
+    const d = withFigures(deps({ store, getText: markedGetText }));
+    const r = await buildIndexTool.handler(args({ bookId: 1, keywordOnly: true }), d);
+    expect(r.isError).toBeUndefined();
+    expect(store.figureCount(LIB, 1)).toBe(2);
+    expect(store.searchFiguresFts(LIB, "ownership tree", 5, 1).length).toBeGreaterThan(0);
+    const q = new Float32Array(EMBED_DIM);
+    q[0] = 1;
+    expect(store.searchFigures(LIB, l2normalize(q), 5, 1)).toHaveLength(0);
+  });
+
+  it("an unavailable inventory degrades to captions without source/dims — never fails the book", async () => {
+    const store = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
+    const d = withFigures(deps({ store, getText: markedGetText }), true);
+    const r = await buildIndexTool.handler(args({ bookId: 1 }), d);
+    expect(r.isError).toBeUndefined();
+    expect(r.structuredContent?.failures).toEqual([]);
+    const hits = store.searchFiguresFts(LIB, "borrow", 5, 1);
+    expect(hits).toHaveLength(1);
+    expect(hits[0]!.source).toBeUndefined();
+  });
+
+  it("a markerless book indexes zero figures and never calls the inventory service", async () => {
+    const store = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
+    // deps() has no figures service at all — a getInventory call would TypeError into a failure
+    const r = await buildIndexTool.handler(args({ bookId: 1 }), deps({ store }));
+    expect(r.isError).toBeUndefined();
+    expect(r.structuredContent?.failures).toEqual([]);
+    expect(store.figureCount(LIB, 1)).toBe(0);
+  });
+});

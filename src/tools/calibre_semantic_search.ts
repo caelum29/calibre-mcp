@@ -17,7 +17,7 @@ import { z } from "zod";
 import { RRF_K, rrfFuse } from "../semantic/fusion.js";
 import { RERANK_FLOOR, RERANK_POOL } from "../semantic/reranker.js";
 import { stemText } from "../semantic/stem.js";
-import type { BookHit, LibraryHit } from "../semantic/store.js";
+import type { BookHit, FigureHit, LibraryHit } from "../semantic/store.js";
 import type { BoardPayload } from "../ui/board-cache.js";
 import { BookId, limitParam } from "./coerce.js";
 import { defineTool } from "./define.js";
@@ -39,14 +39,29 @@ const RRF_WEIGHTS = [VECTOR_RRF_WEIGHT, KEYWORD_RRF_WEIGHT];
 
 type Mode = "hybrid" | "vector" | "keyword";
 
+// Figures cosine floor (D-018/#83): the chunk-calibrated config.semanticFloor (0.78) does NOT
+// transfer to short captions — cosine scales are corpus-dependent (D-012). Disabled (null)
+// until the #85 two-tier calibration (fixture tier: flags 100% of figure-negatives, zeroes no
+// positive; live tier decides enabling). Until then only the reranker floor signals confidence.
+const FIGURES_SEMANTIC_FLOOR: number | null = null;
+
+const FIGURES_FLOOR_NOTE =
+  "Figure-caption cosine floor not yet calibrated — lowConfidence reflects the reranker only.";
+
+/** Chars of the linked context chunk shown per figure hit (mirrors the store's snippet cap). */
+const CONTEXT_SNIPPET_CHARS = 320;
+
 export const semanticSearchTool = defineTool({
   name: "calibre_semantic_search",
   title: "Semantic search",
   description:
-    "Meaning-based search over the local index. scope=library ranks books; scope=book (needs bookId) ranks passages within one book. mode=hybrid (default) fuses semantic + keyword matches; mode=vector is semantic-only; mode=keyword is exact keyword/FTS over an already-built index (no model at query time). All modes need an index built by calibre_build_index (keyword mode works even with a keyword-only, model-free index).",
+    "Meaning-based search over the local index. scope=library ranks books; scope=book (needs bookId) ranks passages within one book. target=figures searches figure captions instead of text — use when the user asks for a diagram/chart/schema; hits point at calibre_get_figures for the pixels. mode=hybrid (default) fuses semantic + keyword matches; mode=vector is semantic-only; mode=keyword is exact keyword/FTS (no model at query time). All modes need an index built by calibre_build_index.",
   inputSchema: {
     query: z.string().min(1).max(512),
     scope: z.enum(["library", "book"]).default("library"),
+    // What corpus is searched (orthogonal to scope, which says WHERE). Open enum by design:
+    // a future "code" target over Listing captions is anticipated (D-018 amendment, #83).
+    target: z.enum(["text", "figures"]).default("text"),
     mode: z.enum(["hybrid", "vector", "keyword"]).default("hybrid"),
     bookId: BookId().optional(),
     topK: limitParam(50, 10),
@@ -54,6 +69,7 @@ export const semanticSearchTool = defineTool({
   },
   outputSchema: {
     scope: z.string().optional(),
+    target: z.string().optional(),
     mode: z.string().optional(),
     bookId: z.number().optional(),
     count: z.number().optional(),
@@ -94,6 +110,27 @@ export const semanticSearchTool = defineTool({
           rerankScore: z.number().optional(),
           frontMatter: z.boolean().optional(),
           body: z.string(),
+        }),
+      )
+      .optional(),
+    // target=figures hits: pointers + caption + linked context chunk, never pixels (#83).
+    figures: z
+      .array(
+        z.object({
+          bookId: z.number(),
+          title: z.string(),
+          authors: z.array(z.string()),
+          figIndex: z.number(),
+          page: z.number(),
+          caption: z.string(),
+          format: z.string(),
+          source: z.string().optional(),
+          cosine: z.number().optional(),
+          rerankScore: z.number().optional(),
+          charOffset: z.number(),
+          contextCharStart: z.number().optional(),
+          contextCharEnd: z.number().optional(),
+          contextSnippet: z.string().optional(),
         }),
       )
       .optional(),
@@ -144,9 +181,15 @@ export const semanticSearchTool = defineTool({
             `Book ${numericId} is not indexed. Run calibre_build_index { bookId: ${numericId} } first.`,
           );
         }
+        if (effArgs.target === "figures") {
+          return await figuresTarget(effArgs, deps, libraryId, numericId, sem, note);
+        }
         return await bookScope(effArgs, deps, libraryId, numericId, sem, note);
       }
 
+      if (effArgs.target === "figures") {
+        return await figuresTarget(effArgs, deps, libraryId, undefined, sem, note);
+      }
       return await libraryScope(effArgs, deps, libraryId, sem, note);
     } catch (err) {
       return mapError(err);
@@ -157,6 +200,7 @@ export const semanticSearchTool = defineTool({
 type Args = {
   query: string;
   scope: "library" | "book";
+  target: "text" | "figures";
   mode: Mode;
   bookId?: number | string;
   topK: number;
@@ -228,6 +272,7 @@ async function libraryScope(args: Args, deps: ToolDeps, libraryId: string, sem: 
     // Zero results attach no board (issue #68) — an empty shelf adds nothing over the text.
     return toolOk([{ type: "text", text: withNote(`No matches for "${args.query}".`, note) }], {
       scope: "library",
+      target: "text",
       mode: args.mode,
       count: 0,
       ...rerankFields(args, rr),
@@ -263,6 +308,7 @@ async function libraryScope(args: Args, deps: ToolDeps, libraryId: string, sem: 
   return {
     ...toolOk(blocks, {
       scope: "library",
+      target: "text",
       mode: args.mode,
       count: ranked.length,
       maxScore,
@@ -299,6 +345,7 @@ async function bookScope(args: Args, deps: ToolDeps, libraryId: string, bookId: 
       [{ type: "text", text: withNote(`No passages in book ${bookId} matched "${args.query}".`, note) }],
       {
         scope: "book",
+        target: "text",
         mode: args.mode,
         bookId,
         count: 0,
@@ -344,6 +391,166 @@ async function bookScope(args: Args, deps: ToolDeps, libraryId: string, bookId: 
     note,
     passages,
   });
+}
+
+/** A figure-caption result plus its cosine, when the vector half contributed it. */
+interface RankedFigure {
+  hit: FigureHit;
+  cosine?: number;
+  /** Cross-encoder sigmoid score, set when the rerank stage reordered this result. */
+  rerankScore?: number;
+}
+
+/**
+ * target=figures (#83/D-018): rank figure captions — library-wide or within one book —
+ * through the mirrored hybrid pipeline (caption FTS5 + vector + RRF + rerank on the short
+ * (query, caption) pairs). Hits are pointers + caption + the offset-linked context chunk +
+ * calibre_get_figures steering — never pixels (list-then-fetch).
+ */
+async function figuresTarget(
+  args: Args,
+  deps: ToolDeps,
+  libraryId: string,
+  bookId: number | undefined,
+  sem: SemStatus,
+  degradeNote?: string,
+) {
+  const scopeWord = bookId === undefined ? "library" : `book ${bookId}`;
+  const indexed = deps.index.figureCount(libraryId, bookId);
+  if (indexed === 0) {
+    // Honest-empty (D-018): could be a genuinely figure-less corpus (scanned PDFs, Packt
+    // unnumbered captions) OR an index built before figure support — say both, steer both.
+    return toolOk(
+      [
+        {
+          type: "text",
+          text: withNote(
+            `0 figure captions are indexed for this ${scopeWord}. Either the indexed books have no captioned figures, or they were indexed before figure support — re-run calibre_build_index with force:true to index captions. calibre_get_figures mode:"list" shows a book's live figure inventory without the index.`,
+            degradeNote,
+          ),
+        },
+      ],
+      { scope: args.scope, target: "figures", mode: args.mode, count: 0, ...sem, note: degradeNote },
+    );
+  }
+
+  const pool = await rankFigures(args, deps, libraryId, bookId);
+  const rr = await applyRerank(pool, (r) => r.hit.caption, args, deps);
+  const ranked = rr.hits;
+  const floorNote = args.mode !== "keyword" && ranked.length > 0 && FIGURES_SEMANTIC_FLOOR === null ? FIGURES_FLOOR_NOTE : undefined;
+  const note = joinNotes(degradeNote, rr.note, floorNote);
+  if (ranked.length === 0) {
+    return toolOk(
+      [{ type: "text", text: withNote(`No figure captions in this ${scopeWord} matched "${args.query}".`, note) }],
+      {
+        scope: args.scope,
+        target: "figures",
+        mode: args.mode,
+        ...(bookId !== undefined ? { bookId } : {}),
+        count: 0,
+        ...rerankFields(args, rr),
+        ...sem,
+        note,
+        figures: [],
+      },
+    );
+  }
+
+  const { maxScore, lowConfidence } = figuresConfidence(ranked, rr);
+  const head = withNote(
+    header("figure", ranked.length, args, maxScore, lowConfidence, rr) +
+      ` Fetch pixels via calibre_get_figures { bookId, indexes: [figIndex] }.`,
+    note,
+  );
+  const blocks: ContentBlock[] = [{ type: "text", text: head }];
+  const figures: Record<string, unknown>[] = [];
+  for (const r of ranked) {
+    const h = r.hit;
+    const ctx = deps.index.chunkAt(libraryId, h.bookId, h.charOffset);
+    const snippet = ctx ? ctx.body.slice(0, CONTEXT_SNIPPET_CHARS) : undefined;
+    const pagePart = h.format === "pdf" ? ` page ${h.page},` : "";
+    const srcPart = h.source ? ` ${h.source},` : "";
+    const fenced = fence(
+      `FIGURE book ${h.bookId} #${h.figIndex} (${pagePart}${srcPart} @${h.charOffset}) ${scoreLabel(r)}`,
+      h.caption + (snippet ? `\n--- context @${ctx!.charStart}-${ctx!.charEnd} ---\n${snippet}` : ""),
+    );
+    blocks.push({
+      type: "text",
+      text: `Figure #${h.figIndex} in "${h.title}" (book ${h.bookId}) — fetch: calibre_get_figures { bookId: ${h.bookId}, indexes: [${h.figIndex}] }\n${fenced}`,
+    });
+    figures.push({
+      bookId: h.bookId,
+      title: h.title,
+      authors: h.authors,
+      figIndex: h.figIndex,
+      page: h.page,
+      caption: h.caption,
+      format: h.format,
+      ...(h.source !== undefined ? { source: h.source } : {}),
+      ...(r.cosine !== undefined ? { cosine: r.cosine } : {}),
+      ...(r.rerankScore !== undefined ? { rerankScore: r.rerankScore } : {}),
+      charOffset: h.charOffset,
+      ...(ctx ? { contextCharStart: ctx.charStart, contextCharEnd: ctx.charEnd } : {}),
+      ...(snippet !== undefined ? { contextSnippet: snippet } : {}),
+    });
+  }
+
+  // No cover-board _meta here: the board renders BOOK results; figure hits have no board shape.
+  return toolOk(blocks, {
+    scope: args.scope,
+    target: "figures",
+    mode: args.mode,
+    ...(bookId !== undefined ? { bookId } : {}),
+    count: ranked.length,
+    maxScore,
+    lowConfidence,
+    ...rerankFields(args, rr),
+    ...sem,
+    note,
+    figures,
+  });
+}
+
+/** Rank figure captions per mode — the rankBooks/rankPassages mirror, fused on figureId. */
+async function rankFigures(
+  args: Args,
+  deps: ToolDeps,
+  libraryId: string,
+  bookId: number | undefined,
+): Promise<RankedFigure[]> {
+  if (args.mode === "keyword") {
+    return deps.index
+      .searchFiguresFts(libraryId, stemText(args.query), args.topK, bookId)
+      .map((hit) => ({ hit }));
+  }
+  const k = poolK(args, deps);
+  const q = await deps.embedder.embedQuery(args.query);
+  if (args.mode === "vector") {
+    return deps.index.searchFigures(libraryId, q, k, bookId).map((hit) => ({ hit, cosine: hit.score }));
+  }
+  const vec = deps.index.searchFigures(libraryId, q, POOL, bookId);
+  const kw = deps.index.searchFiguresFts(libraryId, stemText(args.query), POOL, bookId);
+  const vById = new Map(vec.map((h) => [h.figureId, h]));
+  const kById = new Map(kw.map((h) => [h.figureId, h]));
+  return rrfFuse([vec.map((h) => h.figureId), kw.map((h) => h.figureId)], RRF_K, RRF_WEIGHTS)
+    .slice(0, k)
+    .map((f) => {
+      const v = vById.get(f.id);
+      return { hit: (v ?? kById.get(f.id))!, cosine: v?.score };
+    });
+}
+
+/**
+ * Figures confidence: the chunk cosine floor does not apply (FIGURES_SEMANTIC_FLOOR is its
+ * own, currently-disabled constant), so until calibration only the reranker floor signals.
+ */
+function figuresConfidence(ranked: Array<{ cosine?: number }>, rr?: RerankOutcome<unknown>) {
+  const cosines = ranked.map((r) => r.cosine).filter((c): c is number => c !== undefined);
+  const maxScore = cosines.length ? Math.max(...cosines) : undefined;
+  const cosineLow =
+    FIGURES_SEMANTIC_FLOOR !== null && maxScore !== undefined && maxScore < FIGURES_SEMANTIC_FLOOR;
+  const rerankLow = rr?.reranked === true && rr.maxRerank !== undefined && rr.maxRerank < RERANK_FLOOR;
+  return { maxScore, lowConfidence: cosineLow || rerankLow };
 }
 
 /** Prepend a degrade/advisory note to a header block (kept in the text so all clients see it). */

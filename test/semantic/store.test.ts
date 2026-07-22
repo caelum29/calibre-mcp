@@ -65,7 +65,7 @@ describe("SqliteIndexStore", () => {
     const s = store();
     s.replaceBook(LIB, { bookId: 1, title: "V1", authors: [] }, [chunk("a", 0), chunk("b", 1)]);
     s.replaceBook(LIB, { bookId: 1, title: "V2", authors: [] }, [chunk("c", 2)]);
-    expect(s.stats(LIB)).toEqual({ books: 1, chunks: 1 });
+    expect(s.stats(LIB)).toEqual({ books: 1, chunks: 1, figures: 0 });
     const hits = s.searchLibrary(LIB, axis(2), 5);
     expect(hits[0]!.title).toBe("V2");
     s.close();
@@ -86,8 +86,8 @@ describe("SqliteIndexStore", () => {
   it("isolates libraries by id", () => {
     const s = store();
     s.replaceBook("LibA", { bookId: 1, title: "A", authors: [] }, [chunk("a", 0)]);
-    expect(s.stats("LibA")).toEqual({ books: 1, chunks: 1 });
-    expect(s.stats("LibB")).toEqual({ books: 0, chunks: 0 });
+    expect(s.stats("LibA")).toEqual({ books: 1, chunks: 1, figures: 0 });
+    expect(s.stats("LibB")).toEqual({ books: 0, chunks: 0, figures: 0 });
     s.close();
   });
 
@@ -345,5 +345,113 @@ describe("front_matter flag (issue #18)", () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe("figures (D-018 Phase B / #86)", () => {
+  const fig = (
+    figIndex: number,
+    caption: string,
+    axisIdx: number | undefined,
+    charOffset: number,
+    extra: Record<string, unknown> = {},
+  ) => ({
+    figIndex,
+    page: 1,
+    caption,
+    charOffset,
+    format: "pdf",
+    source: "page-render" as const,
+    ...(axisIdx !== undefined ? { vector: axis(axisIdx) } : {}),
+    ...extra,
+  });
+
+  it("round-trips figures and ranks captions by cosine, library-wide and per book", () => {
+    const s = store();
+    s.replaceBook(LIB, { bookId: 1, title: "SQL Book", authors: ["A"] }, [chunk("btree chapter", 2)], [
+      fig(0, "A B-tree node layout", 0, 5),
+      fig(1, "The query planner's chosen plan", 1, 40),
+    ]);
+    s.replaceBook(LIB, { bookId: 2, title: "Bee Book", authors: ["B"] }, [chunk("hive chapter", 3)], [
+      fig(0, "Frames inside a hive body", 1, 9, { source: "raster", width: 100, height: 50 }),
+    ]);
+
+    const lib = s.searchFigures(LIB, axis(0), 5);
+    expect(lib[0]!.caption).toBe("A B-tree node layout");
+    expect(lib[0]!.bookId).toBe(1);
+    expect(lib[0]!.title).toBe("SQL Book");
+    expect(lib[0]!.figIndex).toBe(0);
+    expect(lib[0]!.source).toBe("page-render");
+    expect(lib[0]!.score).toBeGreaterThan(lib[1]!.score);
+
+    // book filter: only book 2's figure comes back, dims/source survive the round-trip
+    const book2 = s.searchFigures(LIB, axis(1), 5, 2);
+    expect(book2).toHaveLength(1);
+    expect(book2[0]!.source).toBe("raster");
+    s.close();
+  });
+
+  it("keyword FTS over captions matches stemmed words and respects the book filter", () => {
+    const s = store();
+    s.replaceBook(LIB, { bookId: 1, title: "SQL", authors: [] }, [chunk("body", 0)], [
+      fig(0, "A B-tree node: sorted keys with child pointers", 0, 0),
+    ]);
+    s.replaceBook(LIB, { bookId: 2, title: "Bees", authors: [] }, [chunk("body", 1)], [
+      fig(0, "Frames hanging inside the hive", 1, 0),
+    ]);
+    const hits = s.searchFiguresFts(LIB, stemText("child pointers"), 5);
+    expect(hits).toHaveLength(1);
+    expect(hits[0]!.bookId).toBe(1);
+    expect(s.searchFiguresFts(LIB, stemText("child pointers"), 5, 2)).toHaveLength(0);
+    s.close();
+  });
+
+  it("links both directions: chunkAt finds the containing chunk, figuresInSpan the reverse", () => {
+    const s = store();
+    // Two adjacent chunks [0,100) and [100,200); figures at 50 (inside 1st) and 100 (boundary).
+    s.replaceBook(
+      LIB,
+      { bookId: 1, title: "T", authors: [] },
+      [
+        { charStart: 0, charEnd: 100, body: "first chunk", vector: axis(0) },
+        { charStart: 100, charEnd: 200, body: "second chunk", vector: axis(1) },
+      ],
+      [fig(0, "inside the first chunk", 0, 50), fig(1, "exactly on the boundary", 1, 100)],
+    );
+    expect(s.chunkAt(LIB, 1, 50)!.body).toBe("first chunk");
+    // Chunk-boundary edge case (#85 item 7): the marker's text BEGINS at the boundary, so it
+    // belongs to the later chunk — and to exactly one chunk, never both.
+    expect(s.chunkAt(LIB, 1, 100)!.body).toBe("second chunk");
+    expect(s.chunkAt(LIB, 1, 999)).toBeUndefined();
+
+    expect(s.figuresInSpan(LIB, 1, 0, 100).map((f) => f.figIndex)).toEqual([0]);
+    expect(s.figuresInSpan(LIB, 1, 100, 200).map((f) => f.figIndex)).toEqual([1]);
+    expect(s.figuresInSpan(LIB, 1, 0, 200).map((f) => f.figIndex)).toEqual([0, 1]);
+    s.close();
+  });
+
+  it("replaceBook clears a book's old figures (idempotent re-index) and drops the cache", () => {
+    const s = store();
+    const meta = { bookId: 1, title: "T", authors: [] };
+    s.replaceBook(LIB, meta, [chunk("body", 0)], [fig(0, "old caption", 0, 0)]);
+    s.replaceBook(LIB, meta, [chunk("body", 0)], [fig(0, "new caption", 0, 0)]);
+    const hits = s.searchFigures(LIB, axis(0), 5);
+    expect(hits).toHaveLength(1);
+    expect(hits[0]!.caption).toBe("new caption");
+    expect(s.figureCount(LIB)).toBe(1);
+    s.close();
+  });
+
+  it("figureCount counts per library and per book; vectorless figures stay FTS-searchable only", () => {
+    const s = store();
+    s.replaceBook(LIB, { bookId: 1, title: "T", authors: [] }, [chunk("body", 0)], [
+      fig(0, "keyword only caption", undefined, 0), // no vector — keyword-only build
+    ]);
+    expect(s.figureCount(LIB)).toBe(1);
+    expect(s.figureCount(LIB, 1)).toBe(1);
+    expect(s.figureCount(LIB, 2)).toBe(0);
+    expect(s.searchFigures(LIB, axis(0), 5)).toHaveLength(0); // no vectors to rank
+    expect(s.searchFiguresFts(LIB, stemText("keyword caption"), 5)).toHaveLength(1);
+    s.close();
   });
 });

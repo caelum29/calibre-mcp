@@ -13,7 +13,8 @@ import { defineTool } from "./define.js";
 import { resolveNumericId } from "./resolve-id.js";
 import { INSTALL_TRANSFORMERS } from "./remediation.js";
 import { toolError, toolOk } from "./result.js";
-import type { IndexedChunk } from "../semantic/store.js";
+import type { IndexedChunk, IndexedFigure } from "../semantic/store.js";
+import type { FigureMarker } from "../domain/figures/markers.js";
 import type { ToolDeps } from "./types.js";
 import type { EmbedChunk } from "../semantic/chunk.js";
 import { chunkForEmbedding } from "../semantic/chunk.js";
@@ -44,6 +45,7 @@ export const buildIndexTool = defineTool({
     booksIndexed: z.number().optional(),
     booksSkipped: z.number().optional(),
     chunks: z.number().optional(),
+    figures: z.number().optional(),
     elapsedMs: z.number().optional(),
     keywordOnly: z.boolean().optional(),
     // Degradation surfacing (issue #41): false whenever the built index has no embeddings —
@@ -151,13 +153,15 @@ export const buildIndexTool = defineTool({
     let booksIndexed = 0;
     let booksSkipped = 0;
     let totalChunks = 0;
+    let totalFigures = 0;
     for (const bookId of targets) {
       try {
         const n = await indexBook(deps, libraryId, bookId, args.force, args.library, keywordOnly, tokenBudgeted);
         if (n === "skipped") booksSkipped++;
         else {
           booksIndexed++;
-          totalChunks += n;
+          totalChunks += n.chunks;
+          totalFigures += n.figures;
         }
       } catch (err) {
         failures.push(`book ${bookId}: ${describeError(err)}`);
@@ -175,7 +179,7 @@ export const buildIndexTool = defineTool({
     if (failures.length > 3) failureLines.push(`\n- …and ${failures.length - 3} more`);
     const summary =
       (degradeWarning ? `${degradeWarning}\n` : "") +
-      `${keywordOnly ? "Keyword-only indexed" : "Indexed"} ${booksIndexed}/${booksRequested} book(s) (${booksSkipped} up-to-date, ${totalChunks} chunks) in ${elapsedMs} ms.` +
+      `${keywordOnly ? "Keyword-only indexed" : "Indexed"} ${booksIndexed}/${booksRequested} book(s) (${booksSkipped} up-to-date, ${totalChunks} chunks${totalFigures > 0 ? `, ${totalFigures} figure captions` : ""}) in ${elapsedMs} ms.` +
       (failures.length ? ` ${failures.length} failed:${failureLines.join("")}` : "") +
       notes.map((n) => `\n- ${n}`).join("");
 
@@ -184,6 +188,7 @@ export const buildIndexTool = defineTool({
       booksIndexed,
       booksSkipped,
       chunks: totalChunks,
+      figures: totalFigures,
       elapsedMs,
       keywordOnly,
       semanticAvailable: !keywordOnly,
@@ -193,7 +198,7 @@ export const buildIndexTool = defineTool({
   },
 });
 
-/** Index one book. Returns the chunk count, or "skipped" when already up to date. */
+/** Index one book. Returns chunk/figure counts, or "skipped" when already up to date. */
 async function indexBook(
   deps: ToolDeps,
   libraryId: string,
@@ -202,7 +207,7 @@ async function indexBook(
   library: string | undefined,
   keywordOnly: boolean,
   tokenBudgeted: boolean,
-): Promise<number | "skipped"> {
+): Promise<{ chunks: number; figures: number } | "skipped"> {
   const book = await deps.content.getBook(bookId, library);
 
   if (!force && deps.index.isBookIndexed(libraryId, bookId, book.lastModified ?? "")) {
@@ -270,13 +275,68 @@ async function indexBook(
       vector: vectors[i]!,
     }));
   }
+  // Figure captions (D-018 Phase B / #86): every placed marker becomes a figures row —
+  // caption + char_offset come from the marker (same text coordinates as the chunks above),
+  // source/dims from the figure inventory (already cached by marker injection). Captions get
+  // their own embeddings so target:"figures" search ranks them directly.
+  let figures: IndexedFigure[] = [];
+  if (extracted.markers.length > 0) {
+    figures = await figureRows(deps, { bookId, format: fmt, downloadUrl, cacheKey }, extracted.markers);
+    if (!keywordOnly && figures.length > 0) {
+      const vectors = await deps.embedder.embedPassages(figures.map((f) => ctx + f.caption));
+      figures = figures.map((f, i) => ({ ...f, vector: vectors[i]! }));
+    }
+  }
+
   deps.index.replaceBook(
     libraryId,
     { bookId, title: book.title, authors: book.authors, lastModified: book.lastModified },
     indexed,
+    figures,
   );
-  deps.log.info("indexed book", { bookId, chunks: indexed.length, format: fmt, keywordOnly });
-  return indexed.length;
+  deps.log.info("indexed book", {
+    bookId,
+    chunks: indexed.length,
+    figures: figures.length,
+    format: fmt,
+    keywordOnly,
+  });
+  return { chunks: indexed.length, figures: figures.length };
+}
+
+/**
+ * Marker → IndexedFigure rows. The inventory is best-effort: it should be a cache hit
+ * (marker injection just built it), but if it is unavailable the captions still index —
+ * only source/dims are omitted (never guessed) — and figure indexing never fails the book.
+ */
+async function figureRows(
+  deps: ToolDeps,
+  invArgs: { bookId: number; format: string; downloadUrl: string; cacheKey: string },
+  markers: FigureMarker[],
+): Promise<IndexedFigure[]> {
+  let entries: Array<{ source?: "raster" | "page-render" | "svg-render"; width?: number; height?: number }> = [];
+  try {
+    const { inventory } = await deps.figures.getInventory(invArgs);
+    entries = inventory.entries;
+  } catch (err) {
+    deps.log.warn("figure inventory unavailable at index time — captions indexed without source/dims", {
+      bookId: invArgs.bookId,
+      msg: err instanceof Error ? err.message.slice(0, 200) : String(err),
+    });
+  }
+  return markers.map((m) => {
+    const e = entries[m.index];
+    return {
+      figIndex: m.index,
+      page: m.page,
+      caption: m.caption,
+      charOffset: m.charOffset,
+      format: invArgs.format,
+      ...(e?.source !== undefined ? { source: e.source } : {}),
+      ...(e?.width !== undefined ? { width: e.width } : {}),
+      ...(e?.height !== undefined ? { height: e.height } : {}),
+    };
+  });
 }
 
 /** True when an error is the coded "embedding model not installed" signal. */

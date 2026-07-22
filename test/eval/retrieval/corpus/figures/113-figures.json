@@ -1,0 +1,23 @@
+{
+  "entries": [
+    {
+      "index": 0,
+      "page": 1,
+      "captioned": true,
+      "label": "2.1",
+      "caption": "Позиция после принятого королевского гамбита: белые пожертвовали пешку f4",
+      "source": "page-render"
+    },
+    {
+      "index": 1,
+      "page": 1,
+      "captioned": true,
+      "label": "1.3",
+      "caption": "Развитие лёгких фигур в итальянской партии",
+      "source": "page-render"
+    }
+  ],
+  "pageCount": 1,
+  "scanned": false,
+  "counts": { "figures": 2, "uncaptioned": 0, "pageRender": 2 }
+}

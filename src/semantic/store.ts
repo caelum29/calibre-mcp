@@ -29,6 +29,64 @@ export interface IndexedChunk {
   vector?: Float32Array;
 }
 
+/**
+ * A figure caption ready to index (D-018 Phase B / #86): the marker gives position
+ * (charOffset in the SAME marker-injected text the chunks were cut from), the figure
+ * inventory gives pixels metadata (source/dims). `vector` is the caption embedding;
+ * absent on keyword-only builds (caption stays FTS-searchable).
+ */
+export interface IndexedFigure {
+  /** FigureEntry.index — the handle calibre_get_figures fetches by. */
+  figIndex: number;
+  /** PDF: 1-based page. EPUB: spine-document ordinal. */
+  page: number;
+  caption: string;
+  /** Marker offset in the marker-injected text — the figure↔chunk join key. */
+  charOffset: number;
+  /** Format the offsets/indexes refer to (pdf|epub) — figure indexes are per-format. */
+  format: string;
+  /** Pixel provenance; undefined when the inventory was unavailable at index time. */
+  source?: "raster" | "page-render" | "svg-render";
+  width?: number;
+  height?: number;
+  vector?: Float32Array;
+}
+
+/** A figure-caption search hit (target=figures): pointers + caption, never pixels. */
+export interface FigureHit {
+  /** figures rowid — the fusion key between the vector and keyword halves. */
+  figureId: number;
+  bookId: number;
+  title: string;
+  authors: string[];
+  figIndex: number;
+  page: number;
+  caption: string;
+  charOffset: number;
+  format: string;
+  source?: string;
+  score: number;
+}
+
+/** The chunk a figure marker falls inside — the figure's surrounding context. */
+export interface ChunkRef {
+  chunkId: number;
+  charStart: number;
+  charEnd: number;
+  body: string;
+  frontMatter: boolean;
+}
+
+/** A figure linked from a text span (the text-hit → figures direction). */
+export interface FigureRef {
+  figIndex: number;
+  page: number;
+  caption: string;
+  charOffset: number;
+  format: string;
+  source?: string;
+}
+
 /** Book identity cached in the index so results/resource_links work without a live fetch. */
 export interface BookMeta {
   bookId: number;
@@ -68,8 +126,8 @@ export interface IndexStore {
   hasVectors(libraryId: string): boolean;
   /** True if the book is indexed; when `lastModified` is given, also that it's up to date. */
   isBookIndexed(libraryId: string, bookId: number, lastModified?: string): boolean;
-  /** Replace all of a book's chunks/embeddings atomically (idempotent re-index). */
-  replaceBook(libraryId: string, meta: BookMeta, chunks: IndexedChunk[]): void;
+  /** Replace all of a book's chunks/embeddings/figures atomically (idempotent re-index). */
+  replaceBook(libraryId: string, meta: BookMeta, chunks: IndexedChunk[], figures?: IndexedFigure[]): void;
   /** Rank books by their single best-matching chunk (best chunk per book), vector cosine. */
   searchLibrary(libraryId: string, query: Float32Array, k: number): LibraryHit[];
   /** Rank passages within one book, vector cosine. */
@@ -78,7 +136,17 @@ export interface IndexStore {
   searchLibraryFts(libraryId: string, stemmedQuery: string, k: number): LibraryHit[];
   /** Keyword half: rank passages within one book by weighted-bm25 FTS5 match. */
   searchBookFts(libraryId: string, bookId: number, stemmedQuery: string, k: number): BookHit[];
-  stats(libraryId: string): { books: number; chunks: number };
+  /** Rank figure captions by vector cosine — the whole library, or one book. */
+  searchFigures(libraryId: string, query: Float32Array, k: number, bookId?: number): FigureHit[];
+  /** Keyword half over figure captions (weighted-bm25 FTS5). */
+  searchFiguresFts(libraryId: string, stemmedQuery: string, k: number, bookId?: number): FigureHit[];
+  /** Indexed-figure count (library or one book); 0 for an absent index. Cheap COUNT. */
+  figureCount(libraryId: string, bookId?: number): number;
+  /** The chunk containing a figure marker offset (figure → context direction). */
+  chunkAt(libraryId: string, bookId: number, charOffset: number): ChunkRef | undefined;
+  /** Figures whose marker falls inside a chunk span (text hit → figures direction). */
+  figuresInSpan(libraryId: string, bookId: number, charStart: number, charEnd: number): FigureRef[];
+  stats(libraryId: string): { books: number; chunks: number; figures: number };
   /** Number of stored embedding vectors (0 for a keyword-only or absent index). Cheap COUNT. */
   vectorCount(libraryId: string): number;
   close(): void;
@@ -95,6 +163,8 @@ const BM25_WEIGHT_BODY_STEM = 1.0;
 const BM25_WEIGHT_BODY = 1.0;
 const BM25_WEIGHT_BOOK_META = 0.5;
 const WEIGHTED_BM25 = `bm25(chunk_fts, ${BM25_WEIGHT_BODY_STEM}, ${BM25_WEIGHT_BODY}, ${BM25_WEIGHT_BOOK_META})`;
+// figure_fts mirrors the chunk weights: stemmed caption + raw caption 1.0, book identity 0.5.
+const WEIGHTED_FIG_BM25 = `bm25(figure_fts, ${BM25_WEIGHT_BODY_STEM}, ${BM25_WEIGHT_BODY}, ${BM25_WEIGHT_BOOK_META})`;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -147,6 +217,45 @@ CREATE TRIGGER IF NOT EXISTS chunks_au AFTER UPDATE ON chunks BEGIN
   INSERT INTO chunk_fts(chunk_fts, rowid, body_stem, body, book_meta) VALUES('delete', old.id, old.body_stem, old.body, old.book_meta);
   INSERT INTO chunk_fts(rowid, body_stem, body, book_meta) VALUES (new.id, new.body_stem, new.body, new.book_meta);
 END;
+
+-- Figures (D-018 Phase B / #86): caption embeddings + the figure↔chunk join key.
+-- char_offset indexes into the SAME marker-injected text the chunks were cut from, so
+-- "the chunk containing this figure" is a pure range lookup — no extra bookkeeping.
+-- Additive: CREATE IF NOT EXISTS runs on every open, so pre-figures dbs gain the empty
+-- tables without an INDEX_VERSION bump (books fill them when re-indexed — the atomic
+-- re-index is a separate step). vector is inline (nullable), not a side table: figure
+-- counts are ~2 orders below chunk counts, the split isn't worth a join.
+CREATE TABLE IF NOT EXISTS figures (
+  id INTEGER PRIMARY KEY,
+  book_id INTEGER NOT NULL,
+  fig_index INTEGER NOT NULL,
+  page INTEGER NOT NULL,
+  caption TEXT NOT NULL,
+  caption_stem TEXT NOT NULL DEFAULT '',
+  book_meta TEXT NOT NULL DEFAULT '',
+  char_offset INTEGER NOT NULL,
+  format TEXT NOT NULL DEFAULT '',
+  source TEXT,
+  width INTEGER,
+  height INTEGER,
+  vector BLOB
+);
+CREATE INDEX IF NOT EXISTS idx_figures_book ON figures(book_id);
+CREATE VIRTUAL TABLE IF NOT EXISTS figure_fts USING fts5(
+  caption_stem, caption, book_meta,
+  content='figures', content_rowid='id',
+  tokenize='unicode61 remove_diacritics 2 tokenchars ''-_+#.'''
+);
+CREATE TRIGGER IF NOT EXISTS figures_ai AFTER INSERT ON figures BEGIN
+  INSERT INTO figure_fts(rowid, caption_stem, caption, book_meta) VALUES (new.id, new.caption_stem, new.caption, new.book_meta);
+END;
+CREATE TRIGGER IF NOT EXISTS figures_ad AFTER DELETE ON figures BEGIN
+  INSERT INTO figure_fts(figure_fts, rowid, caption_stem, caption, book_meta) VALUES('delete', old.id, old.caption_stem, old.caption, old.book_meta);
+END;
+CREATE TRIGGER IF NOT EXISTS figures_au AFTER UPDATE ON figures BEGIN
+  INSERT INTO figure_fts(figure_fts, rowid, caption_stem, caption, book_meta) VALUES('delete', old.id, old.caption_stem, old.caption, old.book_meta);
+  INSERT INTO figure_fts(rowid, caption_stem, caption, book_meta) VALUES (new.id, new.caption_stem, new.caption, new.book_meta);
+END;
 `;
 
 type Row = Record<string, unknown>;
@@ -166,6 +275,8 @@ export class SqliteIndexStore implements IndexStore {
   // Per-library candidate cache; invalidated wholesale on any write (correctness > cleverness).
   // DEFERRED: int8-quantize this in-memory copy (~99.8% recall at 4x smaller) once full-library indexing lands.
   #candidateCaches = new Map<string, CandidateCache>();
+  // Figure-caption vectors, cached separately (Candidate.chunkId holds the figures rowid here).
+  #figureCaches = new Map<string, CandidateCache>();
 
   constructor(
     private readonly cfg: Config,
@@ -195,12 +306,13 @@ export class SqliteIndexStore implements IndexStore {
     return String(row.last_modified ?? "") === lastModified;
   }
 
-  replaceBook(libraryId: string, meta: BookMeta, chunks: IndexedChunk[]): void {
+  replaceBook(libraryId: string, meta: BookMeta, chunks: IndexedChunk[], figures: IndexedFigure[] = []): void {
     const db = this.#db(libraryId);
     db.exec("BEGIN");
     try {
       db.prepare("DELETE FROM embeddings WHERE book_id = ?").run(meta.bookId);
       db.prepare("DELETE FROM chunks WHERE book_id = ?").run(meta.bookId);
+      db.prepare("DELETE FROM figures WHERE book_id = ?").run(meta.bookId);
       db.prepare("DELETE FROM books WHERE book_id = ?").run(meta.bookId);
 
       db.prepare(
@@ -237,14 +349,34 @@ export class SqliteIndexStore implements IndexStore {
         // trigger above; we just skip the embeddings row (vector search naturally excludes it).
         if (c.vector) insEmb.run(Number(lastInsertRowid), meta.bookId, encodeVector(c.vector));
       }
+      const insFig = db.prepare(
+        "INSERT INTO figures(book_id, fig_index, page, caption, caption_stem, book_meta, char_offset, format, source, width, height, vector) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+      );
+      for (const f of figures) {
+        insFig.run(
+          meta.bookId,
+          f.figIndex,
+          f.page,
+          f.caption,
+          stemText(f.caption),
+          bookMeta,
+          f.charOffset,
+          f.format,
+          f.source ?? null,
+          f.width ?? null,
+          f.height ?? null,
+          f.vector ? encodeVector(f.vector) : null,
+        );
+      }
       db.exec("COMMIT");
     } catch (err) {
       db.exec("ROLLBACK");
       throw err;
     } finally {
       // Any write (even a rolled-back one — a needless rebuild is harmless) drops the
-      // library's candidate cache; the next vector query rebuilds it from SQLite.
+      // library's candidate caches; the next vector query rebuilds them from SQLite.
       this.#candidateCaches.delete(libraryId);
+      this.#figureCaches.delete(libraryId);
     }
   }
 
@@ -356,11 +488,99 @@ export class SqliteIndexStore implements IndexStore {
     }));
   }
 
-  stats(libraryId: string): { books: number; chunks: number } {
+  searchFigures(libraryId: string, query: Float32Array, k: number, bookId?: number): FigureHit[] {
+    const db = this.#db(libraryId);
+    const hits = topK(query, this.#figureCandidates(libraryId, bookId), k);
+    return hits
+      .map((h) => this.#figureHit(db, h.chunkId, h.score))
+      .filter((h): h is FigureHit => h !== undefined);
+  }
+
+  searchFiguresFts(libraryId: string, stemmedQuery: string, k: number, bookId?: number): FigureHit[] {
+    const db = this.#db(libraryId);
+    const match = ftsMatch(stemmedQuery);
+    if (!match) return [];
+    const rows =
+      bookId === undefined
+        ? (db
+            .prepare(
+              `SELECT f.id AS fig_id, ${WEIGHTED_FIG_BM25} AS score
+               FROM figure_fts JOIN figures f ON f.id = figure_fts.rowid
+               WHERE figure_fts MATCH ? ORDER BY score LIMIT ?`,
+            )
+            .all(match, k) as Row[])
+        : (db
+            .prepare(
+              `SELECT f.id AS fig_id, ${WEIGHTED_FIG_BM25} AS score
+               FROM figure_fts JOIN figures f ON f.id = figure_fts.rowid
+               WHERE figure_fts MATCH ? AND f.book_id = ? ORDER BY score LIMIT ?`,
+            )
+            .all(match, bookId, k) as Row[]);
+    return rows
+      .map((r) => this.#figureHit(db, Number(r.fig_id), Number(r.score)))
+      .filter((h): h is FigureHit => h !== undefined);
+  }
+
+  figureCount(libraryId: string, bookId?: number): number {
+    // Same no-side-effect guard as vectorCount: a read must never create a db file.
+    if (!this.hasIndex(libraryId)) return 0;
+    const db = this.#db(libraryId);
+    const row =
+      bookId === undefined
+        ? (db.prepare("SELECT COUNT(*) AS n FROM figures").get() as Row)
+        : (db.prepare("SELECT COUNT(*) AS n FROM figures WHERE book_id = ?").get(bookId) as Row);
+    return Number(row?.n ?? 0);
+  }
+
+  chunkAt(libraryId: string, bookId: number, charOffset: number): ChunkRef | undefined {
+    const db = this.#db(libraryId);
+    // Half-open [start, end): D-018 says "BETWEEN charStart AND charEnd", but inclusive ends
+    // would match TWO chunks when a marker sits exactly on a boundary — the marker's text
+    // begins at the boundary, so the LATER chunk (start == offset) is the one containing it.
+    const row = db
+      .prepare(
+        `SELECT id, char_start, char_end, body, front_matter FROM chunks
+         WHERE book_id = ? AND char_start <= ? AND char_end > ? LIMIT 1`,
+      )
+      .get(bookId, charOffset, charOffset) as Row | undefined;
+    if (!row) return undefined;
+    return {
+      chunkId: Number(row.id),
+      charStart: Number(row.char_start),
+      charEnd: Number(row.char_end),
+      body: String(row.body ?? ""),
+      frontMatter: Number(row.front_matter ?? 0) === 1,
+    };
+  }
+
+  figuresInSpan(libraryId: string, bookId: number, charStart: number, charEnd: number): FigureRef[] {
+    const db = this.#db(libraryId);
+    const rows = db
+      .prepare(
+        `SELECT fig_index, page, caption, char_offset, format, source FROM figures
+         WHERE book_id = ? AND char_offset >= ? AND char_offset < ? ORDER BY char_offset`,
+      )
+      .all(bookId, charStart, charEnd) as Row[];
+    return rows.map((r) => ({
+      figIndex: Number(r.fig_index),
+      page: Number(r.page),
+      caption: String(r.caption ?? ""),
+      charOffset: Number(r.char_offset),
+      format: String(r.format ?? ""),
+      ...(r.source != null ? { source: String(r.source) } : {}),
+    }));
+  }
+
+  stats(libraryId: string): { books: number; chunks: number; figures: number } {
     const db = this.#db(libraryId);
     const books = db.prepare("SELECT COUNT(*) AS n FROM books").get() as Row;
     const chunks = db.prepare("SELECT COUNT(*) AS n FROM chunks").get() as Row;
-    return { books: Number(books?.n ?? 0), chunks: Number(chunks?.n ?? 0) };
+    const figures = db.prepare("SELECT COUNT(*) AS n FROM figures").get() as Row;
+    return {
+      books: Number(books?.n ?? 0),
+      chunks: Number(chunks?.n ?? 0),
+      figures: Number(figures?.n ?? 0),
+    };
   }
 
   vectorCount(libraryId: string): number {
@@ -375,6 +595,56 @@ export class SqliteIndexStore implements IndexStore {
     for (const db of this.#dbs.values()) db.close();
     this.#dbs.clear();
     this.#candidateCaches.clear();
+    this.#figureCaches.clear();
+  }
+
+  /** Materialize one figures row (+ its book identity) into a FigureHit. */
+  #figureHit(db: DatabaseSync, figRowId: number, score: number): FigureHit | undefined {
+    const r = db
+      .prepare(
+        "SELECT book_id, fig_index, page, caption, char_offset, format, source FROM figures WHERE id = ?",
+      )
+      .get(figRowId) as Row | undefined;
+    if (!r) return undefined;
+    const bookId = Number(r.book_id);
+    const book = db.prepare("SELECT title, authors FROM books WHERE book_id = ?").get(bookId) as Row;
+    return {
+      figureId: figRowId,
+      bookId,
+      title: String(book?.title ?? `book ${bookId}`),
+      authors: parseAuthors(book?.authors),
+      figIndex: Number(r.fig_index),
+      page: Number(r.page),
+      caption: String(r.caption ?? ""),
+      charOffset: Number(r.char_offset),
+      format: String(r.format ?? ""),
+      ...(r.source != null ? { source: String(r.source) } : {}),
+      score,
+    };
+  }
+
+  /** Figure-caption vectors — all of a library, or one book. Mirrors #candidates. */
+  #figureCandidates(libraryId: string, bookId?: number): Candidate[] {
+    let cache = this.#figureCaches.get(libraryId);
+    if (!cache) {
+      const rows = this.#db(libraryId)
+        .prepare("SELECT id, book_id, vector FROM figures WHERE vector IS NOT NULL")
+        .all() as Row[];
+      const all = rows.map((r) => ({
+        chunkId: Number(r.id), // Candidate.chunkId doubles as the figures rowid here
+        bookId: Number(r.book_id),
+        vector: decodeVector(r.vector as Uint8Array),
+      }));
+      const byBook = new Map<number, Candidate[]>();
+      for (const c of all) {
+        const list = byBook.get(c.bookId);
+        if (list) list.push(c);
+        else byBook.set(c.bookId, [c]);
+      }
+      cache = { all, byBook };
+      this.#figureCaches.set(libraryId, cache);
+    }
+    return bookId === undefined ? cache.all : (cache.byBook.get(bookId) ?? []);
   }
 
   /**
