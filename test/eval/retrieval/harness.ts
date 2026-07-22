@@ -216,7 +216,7 @@ function fixtureDeps(
     getText: async (a: { bookId: number }) => {
       const text = texts.get(a.bookId);
       if (text === undefined) throw new Error(`fixture text for book ${a.bookId} missing`);
-      return { text, backend: "fixture", chars: text.length, cached: true };
+      return { text, backend: "fixture", chars: text.length, cached: true, markers: [] };
     },
   };
   return {

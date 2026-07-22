@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   chooseExtractFormat,
   ebookConvertArgs,
+  parseTextCacheEnvelope,
   pdftotextArgs,
 } from "../../src/calibre/extract.js";
 
@@ -17,6 +18,22 @@ describe("chooseExtractFormat", () => {
   });
   it("returns undefined when nothing is extractable", () => {
     expect(chooseExtractFormat(["cbz", "djvu"])).toBeUndefined();
+  });
+});
+
+describe("text cache envelope (v2, #84)", () => {
+  it("round-trips a valid envelope", () => {
+    const env = { v: 2, backend: "pdftotext", text: "body [image #0]", markers: [{ index: 0, charOffset: 5, page: 1, caption: "c" }] };
+    expect(parseTextCacheEnvelope(JSON.stringify(env))).toEqual(env);
+  });
+  it("rejects a pre-marker cache payload (raw text, no envelope)", () => {
+    expect(parseTextCacheEnvelope("just extracted text")).toBeNull();
+  });
+  it("rejects a stale envelope version", () => {
+    expect(parseTextCacheEnvelope(JSON.stringify({ v: 1, backend: "x", text: "t", markers: [] }))).toBeNull();
+  });
+  it("rejects an envelope missing markers", () => {
+    expect(parseTextCacheEnvelope(JSON.stringify({ v: 2, backend: "x", text: "t" }))).toBeNull();
   });
 });
 

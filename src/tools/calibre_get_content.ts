@@ -159,7 +159,7 @@ export const getContentTool = defineTool({
       const cur = decodeContentCursor(args.cursor);
       if (args.cursor !== undefined && !cur) {
         return toolError(
-          "Invalid cursor — pass the exact nextCursor token from the previous calibre_get_content response (it is opaque), or use the numeric offset param to jump to a char position.",
+          "Invalid cursor — pass the exact nextCursor token from the previous calibre_get_content response (it is opaque), or use the numeric offset param to jump to a char position. Cursors minted before a server upgrade are also invalid: restart the book from the beginning.",
         );
       }
       if (cur && (cur.id !== numericId || cur.format !== fmt)) {

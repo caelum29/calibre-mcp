@@ -60,6 +60,15 @@ describe("buildEpubInventory", () => {
     });
   });
 
+  it("decodes named accent entities in captions (T&uuml;lu broke marker placement, #84)", () => {
+    const doc = {
+      href: "text/ch4.html",
+      html: `<figure><img src="../images/tulu.png" alt=""/><h6>Figure 4.5. A summary of the T&uuml;lu 3 recipe &ndash; multi-step</h6></figure>`,
+    };
+    const inv = buildEpubInventory([doc]);
+    expect(inv.entries[0]?.caption).toBe("A summary of the Tülu 3 recipe – multi-step");
+  });
+
   it("leaves pandoc equation images uncaptioned (prose after them is not a caption)", () => {
     const inv = buildEpubInventory([PANDOC_DOC]);
     expect(inv.counts.figures).toBe(0);

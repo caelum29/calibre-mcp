@@ -36,6 +36,7 @@ function deps(opts: FakeOpts = {}): ToolDeps {
         backend: "pdftotext",
         chars: 20_000,
         cached: false,
+        markers: [],
       })),
   };
   return {
@@ -128,7 +129,7 @@ describe("calibre_get_content handler", () => {
       const short = "tiny book text.";
       const r = await getContentTool.handler(
         args(),
-        deps({ getText: async () => ({ text: short, backend: "pdftotext", chars: short.length, cached: false }) }),
+        deps({ getText: async () => ({ text: short, backend: "pdftotext", chars: short.length, cached: false, markers: [] }) }),
       );
       expect(r.isError).toBeFalsy();
       expect((r.content[0] as { text: string }).text).not.toContain("More remains");
@@ -144,7 +145,7 @@ describe("calibre_get_content handler", () => {
   it("reports a scanned/image PDF when extraction is empty", async () => {
     const r = await getContentTool.handler(
       args(),
-      deps({ getText: async () => ({ text: "   ", backend: "pdftotext", chars: 3, cached: false }) }),
+      deps({ getText: async () => ({ text: "   ", backend: "pdftotext", chars: 3, cached: false, markers: [] }) }),
     );
     expect(r.isError).toBe(true);
     expect((r.content[0] as { text: string }).text).toContain("scanned/image PDF");
@@ -186,7 +187,7 @@ describe("calibre_get_content handler", () => {
       "Chapter 3", "", "Usage", prose("ccc"),
     ].join("\n");
     const withChapters = () =>
-      deps({ getText: async () => ({ text: chapterText, backend: "pdftotext", chars: chapterText.length, cached: false }) });
+      deps({ getText: async () => ({ text: chapterText, backend: "pdftotext", chars: chapterText.length, cached: false, markers: [] }) });
 
     it("returns a chapter map with per-chapter cursors, not book text", async () => {
       const r = await getContentTool.handler(args({ structure: true }), withChapters());
@@ -223,7 +224,7 @@ describe("calibre_get_content handler", () => {
       const flat = "Just prose, no headings anywhere in this book at all.";
       const r = await getContentTool.handler(
         args({ structure: true }),
-        deps({ getText: async () => ({ text: flat, backend: "pdftotext", chars: flat.length, cached: false }) }),
+        deps({ getText: async () => ({ text: flat, backend: "pdftotext", chars: flat.length, cached: false, markers: [] }) }),
       );
       expect(r.isError).toBeFalsy();
       expect((r.structuredContent as { chapters: unknown[] }).chapters).toEqual([]);

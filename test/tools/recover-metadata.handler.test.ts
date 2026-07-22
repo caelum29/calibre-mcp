@@ -32,7 +32,7 @@ function deps(f: Fixture): ToolDeps {
   const extractor = {
     getText:
       f.getText ??
-      (async () => ({ text: f.text ?? "", backend: "test", chars: (f.text ?? "").length, cached: false })),
+      (async () => ({ text: f.text ?? "", backend: "test", chars: (f.text ?? "").length, cached: false, markers: [] })),
   };
   const provider = (name: "openlibrary" | "googlebooks") => ({
     name,
@@ -129,7 +129,7 @@ describe("calibre_recover_metadata handler", () => {
       book: book({ title: "B0CZS7H23N", formats: ["pdf"] }),
       getText: async (a: GetTextArgs) => {
         seen.push(a.timeoutMs ?? -1);
-        return { text: "ISBN: 978-0-306-40615-7\n", backend: "test", chars: 24, cached: false };
+        return { text: "ISBN: 978-0-306-40615-7\n", backend: "test", chars: 24, cached: false, markers: [] };
       },
       hits: [hit({ title: "Found By Text" })],
     };

@@ -49,12 +49,13 @@ const UI_TOOL_META: Record<string, UiToolMeta> = {
 
 export function buildServer(): McpServer {
   const config = loadConfig();
+  const figures = new FigureInventoryService(config);
   const deps: ToolDeps = {
     config,
     content: new ContentServerClient(config),
     calibre: new CalibreClient(config),
-    extractor: new Extractor(config),
-    figures: new FigureInventoryService(config),
+    extractor: new Extractor(config, figures), // figures dep = inline image markers (#84)
+    figures,
     embedder: new TransformersEmbedder(config), // lazy: no model load until first embed
     reranker: new TransformersReranker(config), // lazy: no model load until first rerank
     index: new SqliteIndexStore(config, log), // lazy: no db file until first index op

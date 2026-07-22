@@ -2,6 +2,10 @@
 // search cursor (cursor.ts) but binds {offset, id, format} so a cursor minted for one
 // book/format can't be replayed against another — the handler rejects mismatches (#26).
 
+// v2: image markers entered the extracted text (D-018 Phase B / #84) — every char offset
+// shifted, so v1 cursors must fail loud, never resume at a silently drifted position.
+export const CONTENT_CURSOR_VERSION = 2;
+
 export interface ContentCursor {
   offset: number;
   id: number;
@@ -10,7 +14,7 @@ export interface ContentCursor {
 
 /** Encode a content cursor to a base64url JSON string. */
 export function encodeContentCursor(c: ContentCursor): string {
-  return Buffer.from(JSON.stringify(c), "utf8").toString("base64url");
+  return Buffer.from(JSON.stringify({ v: CONTENT_CURSOR_VERSION, ...c }), "utf8").toString("base64url");
 }
 
 /**
@@ -23,6 +27,7 @@ export function decodeContentCursor(s: string | undefined): ContentCursor | unde
     const parsed = JSON.parse(Buffer.from(s, "base64url").toString("utf8")) as unknown;
     if (typeof parsed !== "object" || parsed === null) return undefined;
     const c = parsed as Record<string, unknown>;
+    if (c.v !== CONTENT_CURSOR_VERSION) return undefined; // pre-marker cursors: offsets drifted
     if (typeof c.offset !== "number" || !Number.isFinite(c.offset) || c.offset < 0) return undefined;
     if (typeof c.id !== "number" || !Number.isFinite(c.id)) return undefined;
     if (typeof c.format !== "string") return undefined;

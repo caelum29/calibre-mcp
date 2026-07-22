@@ -27,7 +27,7 @@ function deps(f: Fixture): { deps: ToolDeps; calls: { args: string[] }[] } {
   const extractor = {
     getText:
       f.getText ??
-      (async () => ({ text: f.text ?? "", backend: "test", chars: (f.text ?? "").length, cached: false })),
+      (async () => ({ text: f.text ?? "", backend: "test", chars: (f.text ?? "").length, cached: false, markers: [] })),
   };
   const calibre = {
     calibredb:

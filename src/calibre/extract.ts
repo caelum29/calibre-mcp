@@ -16,7 +16,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import type { Config } from "../config.js";
+import { type FigureMarker, injectFigureMarkers } from "../domain/figures/markers.js";
 import { log } from "../logging.js";
+import type { GetInventoryArgs, InventoryResult } from "./figure-inventory.js";
 import { downloadToFile } from "./http.js";
 import { spawnCollect, SpawnMaxBufferError, SpawnTimeoutError } from "./spawn.js";
 
@@ -40,6 +42,13 @@ export interface ExtractedText {
   backend: string;
   chars: number;
   cached: boolean;
+  /** Placed image markers (D-018 Phase B); [] when the book has none or figures were unavailable. */
+  markers: FigureMarker[];
+}
+
+/** Structural seam for the figure-inventory service — keeps the extractor testable. */
+export interface InventorySource {
+  getInventory(args: GetInventoryArgs): Promise<InventoryResult>;
 }
 
 export interface GetTextArgs {
@@ -53,6 +62,12 @@ export interface GetTextArgs {
 }
 
 const CACHE_DIR = path.join(tmpdir(), "calibre-mcp-cache");
+/**
+ * Bump when the extracted-text layout changes — v2: inline image markers (#84) shifted
+ * every char offset, so pre-marker `.txt` cache entries must never be served again
+ * (they become LRU-evicted orphans). Rides in the cache filename AND the JSON envelope.
+ */
+const TEXT_CACHE_VERSION = 2;
 const MAX_CACHE_ENTRIES = 50;
 const MAX_CACHE_BYTES = 200 * 1024 * 1024;
 const CONVERT_TIMEOUT_MS = 120_000;
@@ -105,7 +120,11 @@ async function python3HasFitz(python3: string): Promise<boolean> {
 export class Extractor {
   #report?: Promise<BackendReport>;
 
-  constructor(private readonly cfg: Config) {}
+  constructor(
+    private readonly cfg: Config,
+    /** Optional: when present, PDF/EPUB text gets inline image markers at extraction time. */
+    private readonly inventories?: InventorySource,
+  ) {}
 
   /** Detect available extraction backends (memoized for the process lifetime). */
   detectBackends(): Promise<BackendReport> {
@@ -143,11 +162,11 @@ export class Extractor {
     };
   }
 
-  /** Cache-keyed full-text extraction. Returns cached text when available. */
+  /** Cache-keyed full-text extraction (marker-injected, D-018). Returns cached text when available. */
   async getText(args: GetTextArgs): Promise<ExtractedText> {
     const report = await this.detectBackends();
     const fmt = args.format.toLowerCase();
-    const cacheFile = path.join(CACHE_DIR, `${hashKey(args.cacheKey)}.txt`);
+    const cacheFile = path.join(CACHE_DIR, `${hashKey(args.cacheKey)}.v${TEXT_CACHE_VERSION}.json`);
 
     // Path-boundary guard: the resolved cache file must stay inside CACHE_DIR (DESIGN §5).
     if (!path.resolve(cacheFile).startsWith(path.resolve(CACHE_DIR) + path.sep)) {
@@ -155,14 +174,13 @@ export class Extractor {
     }
 
     if (existsSync(cacheFile)) {
-      try {
-        const text = await readFile(cacheFile, "utf8");
+      const hit = parseTextCacheEnvelope(await readFile(cacheFile, "utf8").catch(() => ""));
+      if (hit) {
         const now = new Date();
         await utimes(cacheFile, now, now).catch(() => {}); // LRU touch
-        return { text, backend: "cache", chars: text.length, cached: true };
-      } catch {
-        // fall through and re-extract if the cached file is unreadable
+        return { text: hit.text, backend: "cache", chars: hit.text.length, cached: true, markers: hit.markers };
       }
+      // unreadable/corrupt envelope: fall through and re-extract
     }
 
     await mkdir(CACHE_DIR, { recursive: true });
@@ -174,13 +192,51 @@ export class Extractor {
         maxBytes: args.maxBytes ?? this.cfg.maxBookBytes,
         timeoutMs: args.timeoutMs,
       });
-      const { text, backend } = await this.#convert(fmt, tmpSrc, tmpOut, report, args.timeoutMs);
-      await writeFile(cacheFile, text, "utf8");
+      const converted = await this.#convert(fmt, tmpSrc, tmpOut, report, args.timeoutMs);
+      const { text, markers } = await this.#injectMarkers(converted.text, fmt, args);
+      const envelope: TextCacheEnvelope = { v: TEXT_CACHE_VERSION, backend: converted.backend, text, markers };
+      await writeFile(cacheFile, JSON.stringify(envelope), "utf8");
       await evictCache().catch(() => {});
-      return { text, backend, chars: text.length, cached: false };
+      return { text, backend: converted.backend, chars: text.length, cached: false, markers };
     } finally {
       await unlink(tmpSrc).catch(() => {});
       await unlink(tmpOut).catch(() => {});
+    }
+  }
+
+  /**
+   * Inject inline image markers into freshly extracted text (D-018 Phase B). Figures are
+   * best-effort by design: a missing toolchain, an unsupported format, or a scan failure
+   * degrades to plain text — extraction itself must never fail because figures did.
+   */
+  async #injectMarkers(
+    text: string,
+    fmt: string,
+    args: GetTextArgs,
+  ): Promise<{ text: string; markers: FigureMarker[] }> {
+    if (!this.inventories || (fmt !== "pdf" && fmt !== "epub") || text.trim().length === 0) {
+      return { text, markers: [] };
+    }
+    try {
+      const { inventory } = await this.inventories.getInventory({
+        bookId: args.bookId,
+        format: fmt,
+        downloadUrl: args.downloadUrl,
+        cacheKey: args.cacheKey,
+        timeoutMs: args.timeoutMs,
+      });
+      const marked = injectFigureMarkers(text, inventory, fmt);
+      if (marked.unplaced > 0) {
+        log.warn("figure markers unplaced", { bookId: args.bookId, format: fmt, unplaced: marked.unplaced });
+      }
+      return { text: marked.text, markers: marked.markers };
+    } catch (err) {
+      log.warn("figure marker injection skipped", {
+        bookId: args.bookId,
+        format: fmt,
+        msg: err instanceof Error ? err.message.slice(0, 200) : String(err),
+      });
+      return { text, markers: [] };
     }
   }
 
@@ -274,6 +330,25 @@ async function binaryExists(bin: string): Promise<boolean> {
 /** Absolute path to the bundled PyMuPDF bridge (resolved relative to this module). */
 function pymupdfScriptPath(): string {
   return fileURLToPath(new URL("../../scripts/pymupdf_extract.py", import.meta.url));
+}
+
+interface TextCacheEnvelope {
+  v: number;
+  backend: string;
+  text: string;
+  markers: FigureMarker[];
+}
+
+/** Parse + validate a text-cache envelope; null on corruption or version mismatch. */
+export function parseTextCacheEnvelope(raw: string): TextCacheEnvelope | null {
+  try {
+    const parsed = JSON.parse(raw) as Partial<TextCacheEnvelope>;
+    if (parsed.v !== TEXT_CACHE_VERSION) return null;
+    if (typeof parsed.text !== "string" || !Array.isArray(parsed.markers)) return null;
+    return { v: parsed.v, backend: typeof parsed.backend === "string" ? parsed.backend : "cache", text: parsed.text, markers: parsed.markers };
+  } catch {
+    return null;
+  }
 }
 
 function hashKey(key: string): string {

@@ -110,6 +110,7 @@ function deps(opts: FakeOpts = {}): ToolDeps {
         backend: "pdftotext",
         chars: 5000,
         cached: false,
+        markers: [],
       })),
   };
   return {
@@ -161,7 +162,7 @@ describe("calibre_build_index handler", () => {
     const r = await buildIndexTool.handler(
       args({ bookId: 1 }),
       deps({
-        getText: async () => ({ text: "   ", backend: "pdftotext", chars: 3, cached: false }),
+        getText: async () => ({ text: "   ", backend: "pdftotext", chars: 3, cached: false, markers: [] }),
       }),
     );
     expect(r.isError).toBeFalsy();
@@ -314,7 +315,7 @@ describe("front-matter flagging at build time (issue #18)", () => {
     const store = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
     const d = deps({
       store,
-      getText: async () => ({ text: front + body, backend: "pdftotext", chars: front.length + body.length, cached: false }),
+      getText: async () => ({ text: front + body, backend: "pdftotext", chars: front.length + body.length, cached: false, markers: [] }),
     });
     const r = await buildIndexTool.handler(args({ bookId: 1 }), d);
     expect(r.isError).toBeUndefined();

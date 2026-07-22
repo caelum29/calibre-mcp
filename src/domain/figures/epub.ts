@@ -187,15 +187,21 @@ export function adjacentCaption(html: string, from: number): { label: string; te
   return matchCaptionLine(text);
 }
 
+// Accented-letter and typographic entities publishers actually use in captions
+// (probe #84: RLHF's `T&uuml;lu` broke marker placement — the extracted text has the
+// decoded character, so undecoded inventory captions never match).
+const NAMED_ENTITIES: Record<string, string> = {
+  nbsp: " ", amp: "&", lt: "<", gt: ">", quot: '"', apos: "'",
+  ndash: "–", mdash: "—", hellip: "…", ldquo: "“", rdquo: "”", lsquo: "‘", rsquo: "’",
+  auml: "ä", ouml: "ö", uuml: "ü", Auml: "Ä", Ouml: "Ö", Uuml: "Ü", szlig: "ß",
+  eacute: "é", egrave: "è", ecirc: "ê", agrave: "à", acirc: "â", ccedil: "ç",
+  ntilde: "ñ", aacute: "á", iacute: "í", oacute: "ó", uacute: "ú",
+};
+
 /** Minimal entity decode — captions only need the common named/numeric forms. */
 function decodeEntities(text: string): string {
   return text
     .replace(/&#(\d+);/g, (_, n: string) => String.fromCodePoint(Number(n)))
     .replace(/&#x([0-9a-fA-F]+);/g, (_, n: string) => String.fromCodePoint(Number.parseInt(n, 16)))
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'");
+    .replace(/&([a-zA-Z]+);/g, (whole, name: string) => NAMED_ENTITIES[name] ?? whole);
 }
