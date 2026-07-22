@@ -53,6 +53,9 @@ pnpm eval --rerank off         # disable the shipped D-011 rerank stage (on by d
   The JSON is deterministic: two runs at the same commit are byte-identical.
 - `live-relevance.json` — live-mode labels keyed to real library bookIds, **unverified**
   until Artem confirms them.
+- `thresholds.json` — Phase B pass/fail gates declared BEFORE the atomic re-index
+  (D-012 protocol; human record = issue #85 verdict comment). `pnpm eval --gate`
+  (to be built with the Phase B fixture work) prints mechanical PASS/FAIL against it.
 - `hash-embedder.ts` + `harness.test.ts` — model-free smoke tests that run in the normal
   `pnpm test` suite (seconds): plumbing, query-set contract, determinism, and the
   "deliberately broken ranking degrades the metrics" proof that the harness measures.

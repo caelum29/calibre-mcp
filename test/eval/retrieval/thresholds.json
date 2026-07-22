@@ -1,0 +1,27 @@
+{
+  "$comment": "Phase B eval gates, declared BEFORE the atomic re-index build (D-012 protocol). Human record: issue #85 verdict comment (2026-07-22). Consumed by `pnpm eval --gate`.",
+  "baselineReport": "reports/2026-07-15-9725d1e-issue18-after.json",
+  "nonRegression": {
+    "$comment": "Existing kinds with markers now inside chunk text. Gate compares per-query Hit@1 vs the baseline report; every dropped query must be explained in the report regardless of gate color.",
+    "hybrid": { "maxBrokenHit1Queries": 0, "negativesFlagged": 6 },
+    "vector": { "maxBrokenHit1Queries": 0, "negativesFlagged": 6 },
+    "keyword": { "maxBrokenHit1Queries": 1 }
+  },
+  "figureCaption": {
+    "$comment": "New kind: caption semantic search (target: figures). RU-monolingual queries (2) are inside this gate; cross-lingual caption queries are ungated diagnostics (known unweighted-RRF pathology, fixed by the 06-seam effort).",
+    "queryCount": { "min": 6, "max": 8 },
+    "gatedModes": ["hybrid"],
+    "hybrid": { "hit1Min": 0.8, "ndcg10Min": 0.9 },
+    "measuredUngatedModes": ["vector", "keyword"]
+  },
+  "figureNegative": {
+    "$comment": "Active only once the figures cosine floor is calibrated (two-tier: fixture tier mandatory — 100% flagged, zero positives zeroed; live tier decides ENABLING only, never the release).",
+    "queryCount": { "min": 3, "max": 4 },
+    "flaggedRate": 1.0,
+    "positivesZeroedByFloor": 0
+  },
+  "liveEval": {
+    "$comment": "Before/after diff on the real library is a mandatory triage artifact, NOT a gate — live-relevance.json labels are unverified and the re-index mixes markers + figures + D-016 demotion.",
+    "gate": false
+  }
+}
