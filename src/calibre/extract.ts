@@ -283,7 +283,8 @@ function hashKey(key: string): string {
 /** LRU sweep: drop oldest cache files when over the entry/byte caps. Best-effort. */
 async function evictCache(): Promise<void> {
   const names = await readdir(CACHE_DIR).catch(() => [] as string[]);
-  const files = names.filter((n) => n.endsWith(".txt"));
+  // .txt = extracted text; fg-*.json = figure inventories (same LRU pool, D-018).
+  const files = names.filter((n) => n.endsWith(".txt") || n.endsWith(".json"));
   const entries = await Promise.all(
     files.map(async (n) => {
       const p = path.join(CACHE_DIR, n);
