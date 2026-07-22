@@ -4,6 +4,16 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.4] — 2026-07-22
+
+### Fixed
+
+- Claude Desktop 1.24012.x: every tool declaring an `outputSchema` failed with
+  "Tool execution failed" — the client rejects the call pre-dispatch when the schema
+  contains the `$schema` meta-key, which the MCP TS SDK always emits. The server now
+  strips the `$schema` key from `outputSchema` in outgoing `tools/list` results
+  (semantics-free), restoring all tools in Desktop.
+
 ## [0.6.3] — 2026-07-22
 
 ### Fixed
