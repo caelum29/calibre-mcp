@@ -53,6 +53,23 @@ export const buildIndexTool = defineTool({
     semanticAvailable: z.boolean().optional(),
     semanticReason: z.string().optional(),
     failures: z.array(z.string()).optional(),
+    // Per-book triage record (#87): format/backend chosen, cache hit, front-matter and
+    // figure-marker diagnostics — the raw material for re-index failure-bucket analysis.
+    bookDetails: z
+      .array(
+        z.object({
+          bookId: z.number(),
+          format: z.string(),
+          backend: z.string(),
+          cached: z.boolean(),
+          chars: z.number(),
+          chunks: z.number(),
+          frontMatterChunks: z.number(),
+          figures: z.number(),
+          unplaced: z.number(),
+        }),
+      )
+      .optional(),
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
   // readOnlyHint:false but NOT write-gated: this writes to the server's own index dir, not the
@@ -154,6 +171,8 @@ export const buildIndexTool = defineTool({
     let booksSkipped = 0;
     let totalChunks = 0;
     let totalFigures = 0;
+    let totalUnplaced = 0;
+    const bookDetails: BookDetail[] = [];
     for (const bookId of targets) {
       try {
         const n = await indexBook(deps, libraryId, bookId, args.force, args.library, keywordOnly, tokenBudgeted);
@@ -162,10 +181,18 @@ export const buildIndexTool = defineTool({
           booksIndexed++;
           totalChunks += n.chunks;
           totalFigures += n.figures;
+          totalUnplaced += n.unplaced;
+          bookDetails.push(n);
         }
       } catch (err) {
         failures.push(`book ${bookId}: ${describeError(err)}`);
       }
+    }
+    if (totalUnplaced > 0) {
+      // Unplaced markers are silent figure-linkage gaps — say so instead of a clean-looking count.
+      notes.push(
+        `${totalUnplaced} figure marker(s) could not be placed (caption not found in extracted text) — those figures are missing from figure search.`,
+      );
     }
 
     if (args.enableFts) {
@@ -193,10 +220,24 @@ export const buildIndexTool = defineTool({
       keywordOnly,
       semanticAvailable: !keywordOnly,
       ...(semanticReason !== undefined ? { semanticReason } : {}),
+      ...(bookDetails.length > 0 ? { bookDetails } : {}),
       failures,
     });
   },
 });
+
+/** Per-book diagnostics surfaced to structuredContent — the re-index triage record (#87). */
+interface BookDetail {
+  bookId: number;
+  format: string;
+  backend: string;
+  cached: boolean;
+  chars: number;
+  chunks: number;
+  frontMatterChunks: number;
+  figures: number;
+  unplaced: number;
+}
 
 /** Index one book. Returns chunk/figure counts, or "skipped" when already up to date. */
 async function indexBook(
@@ -207,7 +248,7 @@ async function indexBook(
   library: string | undefined,
   keywordOnly: boolean,
   tokenBudgeted: boolean,
-): Promise<{ chunks: number; figures: number } | "skipped"> {
+): Promise<BookDetail | "skipped"> {
   const book = await deps.content.getBook(bookId, library);
 
   if (!force && deps.index.isBookIndexed(libraryId, bookId, book.lastModified ?? "")) {
@@ -294,14 +335,28 @@ async function indexBook(
     indexed,
     figures,
   );
+  const frontMatterChunks = indexed.filter((c) => c.frontMatter).length;
   deps.log.info("indexed book", {
     bookId,
     chunks: indexed.length,
     figures: figures.length,
+    unplaced: extracted.unplaced,
+    frontMatterChunks,
     format: fmt,
+    backend: extracted.backend,
     keywordOnly,
   });
-  return { chunks: indexed.length, figures: figures.length };
+  return {
+    bookId,
+    format: fmt,
+    backend: extracted.backend,
+    cached: extracted.cached,
+    chars: extracted.chars,
+    chunks: indexed.length,
+    frontMatterChunks,
+    figures: figures.length,
+    unplaced: extracted.unplaced,
+  };
 }
 
 /**
