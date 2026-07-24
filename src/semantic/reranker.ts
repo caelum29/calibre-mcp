@@ -27,8 +27,6 @@ export const RERANKER_REVISION = "6f5ff65298512715a1e669753bc754d2bc8f367b";
 export const RERANK_POOL = 30;
 /** Sigmoid scores below this are weak matches — the reranker's own confidence signal. */
 export const RERANK_FLOOR = 0.3;
-/** Pairs per model forward — bounds peak memory. */
-const BATCH = 16;
 /** Pair truncation length. Chunks are budgeted to the e5 window, so nothing real is lost. */
 const MAX_TOKENS = 512;
 
@@ -73,15 +71,20 @@ export class TransformersReranker implements Reranker {
     if (passages.length === 0) return [];
     const { tokenizer, model } = await this.#components();
     const scores: number[] = [];
-    for (let i = 0; i < passages.length; i += BATCH) {
-      const batch = passages.slice(i, i + BATCH);
-      const inputs = tokenizer(
-        batch.map(() => query),
-        { text_pair: batch, padding: true, truncation: true, max_length: MAX_TOKENS },
-      );
+    // Solo scoring (D-011 amendment, #98): one pair per forward. Batched padding made a
+    // pair's q8 logit depend on which passages shared its batch (0.1–0.6 logit shifts →
+    // pool-composition-dependent order); solo keeps the score a pure function of the pair
+    // for ~+6% latency on a full 30-pool (CPU batching buys almost nothing here).
+    for (const passage of passages) {
+      const inputs = tokenizer([query], {
+        text_pair: [passage],
+        padding: true,
+        truncation: true,
+        max_length: MAX_TOKENS,
+      });
       const { logits } = await model(inputs);
-      // [batch, 1] logits → sigmoid → one score per pair.
-      for (const row of logits.sigmoid().tolist()) scores.push(row[0] ?? 0);
+      // [1, 1] logits → sigmoid → one score for the pair.
+      scores.push(logits.sigmoid().tolist()[0]?.[0] ?? 0);
     }
     return scores;
   }

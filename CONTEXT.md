@@ -5,6 +5,32 @@ ebook library (catalog + single-book content) to AI agents.
 
 ## Language
 
+### Library filtering
+
+**Saved search**:
+A Calibre-native named, reusable search expression stored in library preferences. Composable: one saved search can reference another via `search:"=Name"`. Has a safe live write path (routed `calibredb`), so it is the storage mechanism for Bundles and Exclusion markers.
+
+**Virtual library**:
+A Calibre-native named filter that scopes the entire GUI view (tag browser, counts) to a subset of books. Read-only for the server — no write API exists; usable as a Bundle, never created or edited by tools.
+_Avoid_: VL write, virtual library management
+
+**Bundle**:
+A named topical filter — backed by a saved search or virtual library — that an agent selects to scope a search to a themed subset of the library (e.g. a "Rust" query runs inside the "Rust" bundle).
+_Avoid_: collection, shelf
+
+**Exclusion marker**:
+A saved search whose name starts with `-` (e.g. `-outdated`, `-noise`). All exclusion markers are automatically subtracted from every search unless the caller explicitly opts out. Adding a new marker takes effect immediately, without configuration.
+_Avoid_: noise filter (as a term; fine as a description)
+
+### Search ranking
+
+**Rerank near-tie**:
+Two search candidates whose cross-encoder score gap is smaller than the padding-composition shift of batched inference (0.1–0.6 logits) — under batching, their order depended on which passages shared the batch, not on the pair itself. Solo scoring dissolved the category: scores are now pair-deterministic, so any gap is a stable preference.
+_Avoid_: tie (alone, when noise-band equality is meant)
+
+**Solo scoring**:
+Scoring each (query, passage) rerank pair in its own model forward (batch=1). Removes padding-neighbor dependence — the score is a pure function of the pair, so result order is deterministic under pool-composition changes. Costs ~6% latency vs batched-16 on CPU.
+
 ### Book images
 
 **Embedded image**:

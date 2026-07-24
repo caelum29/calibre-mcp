@@ -130,6 +130,10 @@ export function loadCorpus(): LoadedCorpus {
       ) as FigureInventory;
       // Fixture texts carry no caption lines, so the real injector places every marker via
       // the PDF page-boundary fallback (page 1 → offset 0) — hence format "pdf" here.
+      // Caveat (#90): that stacks ALL markers at offset 0, front-loading the book's first
+      // chunk in a way real extractions never do. If a query flips on a marker-topped first
+      // chunk, suspect this artifact before blaming the pipeline (documented, not fixed —
+      // spreading markers would mean touching fixture .txt files and re-baselining).
       const marked = injectFigureMarkers(text, inventory, "pdf");
       if (marked.unplaced > 0) {
         throw new Error(`fixture book ${b.bookId}: ${marked.unplaced} figure marker(s) unplaced — keep inventory pages at 1`);
