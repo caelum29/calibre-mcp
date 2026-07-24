@@ -140,14 +140,24 @@ function scanPageStarts(text: string): number[] {
  */
 function findCaptionLine(lines: CaptionLine[], from: number, entry: FigureEntry): number {
   const label = entry.label ?? "";
-  const head = collapseWs(entry.caption ?? "").slice(0, 30).toLowerCase();
+  const head = comparable(entry.caption ?? "").slice(0, 30);
   for (let i = from; i < lines.length; i++) {
     const line = lines[i]!;
     if (normalizeLabel(line.label) !== normalizeLabel(label)) continue;
-    if (head.length > 0 && !collapseWs(line.text).toLowerCase().includes(head)) continue;
+    if (head.length > 0 && !comparable(line.text).includes(head)) continue;
     return i;
   }
   return -1;
+}
+
+/**
+ * Comparison form for caption-head containment: ws-collapsed, lowercased, backslashes
+ * stripped. ebook-convert's txt escapes markdown specials (`\(A\)`, `\+`) while the
+ * inventory caption is clean HTML text — an escapable char inside the 30-char head made
+ * the figure silently unplaceable (book 929: Figs 2-2, 7-6).
+ */
+function comparable(s: string): string {
+  return collapseWs(s).replace(/\\/g, "").toLowerCase();
 }
 
 /** Fallback caption when the line itself wasn't found (page-boundary placement). */

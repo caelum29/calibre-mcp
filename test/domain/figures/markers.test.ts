@@ -144,3 +144,14 @@ describe("injectFigureMarkers — placement", () => {
     expect(out.markers[0]!.caption).toBe("Рис. 15.7. Схема репликации данных");
   });
 });
+
+describe("injectFigureMarkers — escaped caption text (book 929)", () => {
+  // ebook-convert escapes markdown specials in txt output; the inventory caption is clean
+  // HTML text. A paren inside the first 30 chars used to break the head containment check.
+  it("matches a caption whose parens are backslash-escaped in the extracted text", () => {
+    const text = "Intro\n###### *Figure 7-6. *HNSW index structure \\(conceptual\\)\nbody\n";
+    const out = injectFigureMarkers(text, inv([{ label: "7-6", caption: "HNSW index structure (conceptual)" }]), "epub");
+    expect(out.unplaced).toBe(0);
+    expect(out.text).toContain("[image #0:");
+  });
+});
