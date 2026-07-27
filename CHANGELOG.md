@@ -6,8 +6,28 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-07-27
+
+Book **figures** — the diagrams, charts and schemas your books explain things with — are now
+first-class: listable, viewable in chat, searchable by caption, and visible as markers in
+extracted text.
+
 ### Added
 
+- **`calibre_get_figures` (new tool, #18).** Lists a book's captioned figures with page and
+  caption so you can judge relevance before spending image tokens, then fetches up to 3 of
+  them per call as actual images. Works on EPUB (preferred) and PDF; diagrams drawn as
+  vectors — invisible to image extraction — are rendered from the page as a cropped band
+  above their caption. Uncaptioned images (covers, decorations, equation art) stay hidden
+  unless `include_uncaptioned: true`, and scanned PDFs honestly report 0 figures.
+- **Figure search: `target: figures` on `calibre_semantic_search`.** Runs the full hybrid
+  pipeline over figure *captions* instead of book text, so "find a diagram of the JWT
+  signature flow" ranks captions directly rather than hoping a passage mentions the figure.
+  Orthogonal to `scope` — search figures library-wide or inside one book. Hits carry the
+  caption, page, surrounding passage, and a ready-made `calibre_get_figures` call.
+- **Inline image markers in `calibre_get_content`.** Extracted text now shows
+  `[image #N: page 71, "Figure 3-1. …"]` where a figure sits, so a passage that says "as
+  shown below" no longer reads as a gap — and the marker names the figure to fetch.
 - `calibre_build_index` takes `prune: true` — deletes index entries for books that are no
   longer in the library. Indexing only ever upserts, so removals and merges left orphaned
   chunks that semantic search still returned, pointing at ids that 404 on
@@ -23,6 +43,16 @@ All notable changes to this project are documented here. The format is based on
   stalled download says so, with the byte count received (#100).
 - The "no extractable text" message no longer diagnoses every format as a scanned PDF —
   an empty EPUB/AZW3 now reads as a missing text layer (image-only pages or DRM) (#100).
+- Reranked result order no longer depends on which other candidates happened to share the
+  batch: pairs are now scored one at a time, so the same query returns the same ordering
+  regardless of how the candidate pool composed itself.
+
+### Changed
+
+- **Figures and markers enter the index at build time**, so an index built by an earlier
+  version needs a `force: true` rebuild before `target: figures` finds anything and before
+  extracted text carries image markers. The extraction cache is versioned, so a rebuild
+  re-extracts rather than reusing marker-free text.
 
 ## [0.6.4] — 2026-07-22
 
