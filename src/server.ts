@@ -26,6 +26,7 @@ import type { ToolDeps } from "./tools/types.js";
 import { BoardCache } from "./ui/board-cache.js";
 import { boardHtml, BOARD_KEYWORD_URI, BOARD_SEMANTIC_URI } from "./ui/board-html.js";
 import { cardHtml, CARD_URI } from "./ui/card-html.js";
+import { figuresHtml, FIGURES_URI } from "./ui/figures-html.js";
 import { log } from "./logging.js";
 import { VERSION } from "./version.js";
 
@@ -43,6 +44,7 @@ const UI_TOOL_META: Record<string, UiToolMeta> = {
   calibre_search: { resourceUri: BOARD_KEYWORD_URI },
   calibre_semantic_search: { resourceUri: BOARD_SEMANTIC_URI },
   calibre_get_book: { resourceUri: CARD_URI },
+  calibre_get_figures: { resourceUri: FIGURES_URI },
   calibre_board_data: { visibility: ["app"] },
   calibre_open_book: { visibility: ["app"] },
 };
@@ -265,6 +267,12 @@ function registerUiResources(server: McpServer, config: Config): void {
       uri: CARD_URI,
       description: "In-chat book details card for calibre_get_book.",
       html: cardHtml(VERSION, widgetDebug),
+    },
+    {
+      name: "Book figures",
+      uri: FIGURES_URI,
+      description: "Reading pane for the figures calibre_get_figures fetched.",
+      html: figuresHtml(VERSION, widgetDebug),
     },
   ];
   for (const wdg of widgets) {

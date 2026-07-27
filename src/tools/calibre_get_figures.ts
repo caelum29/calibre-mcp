@@ -31,7 +31,7 @@ export const getFiguresTool = defineTool({
   name: "calibre_get_figures",
   title: "Get book figures",
   description:
-    "List a book's figures — images the text references, identified by caption (Figure 1-2 / Рис. 3.1) — with page + caption per figure, then fetch chosen ones as images via indexes (≤3 per call). Captions let you pick figures before spending image tokens.",
+    "List a book's figures — images the text references, identified by caption (Figure 1-2 / Рис. 3.1) — with page + caption per figure, then fetch chosen ones as images via indexes (≤3 per call). Captions let you pick figures before spending image tokens. In MCP Apps hosts the fetched figures also render for the user in an in-chat viewer, so you can point at them by figure number — but describe only what the pixels you received actually show.",
   inputSchema: {
     id: BookId().optional(),
     bookId: BookId().optional(),
@@ -223,13 +223,24 @@ async function fetchFigures(
     // figure questions from priors without reading the delivered pixels.
     blocks.push({
       type: "text",
-      text: "Describe only what is visible in the image(s) above — examine the pixels before answering; do not fill gaps from prior knowledge of similar diagrams.",
+      text:
+        "The image(s) above are attached to this result — look at them before answering. " +
+        "Ground your answer by first naming two things actually visible in the figure (a box " +
+        "label, an axis, an arrow direction), then interpret. Do not fill gaps from prior " +
+        "knowledge of similar diagrams, and if you cannot see the image content, say so " +
+        "plainly instead of guessing.",
     });
   }
   if (blocks.length === 0) blocks.push({ type: "text", text: "No figures could be fetched." });
 
   const anyFailed = outcome.images.length === 0 && outcome.skipped.length > 0;
-  const summary = `Book ${numericId} (${fmt}): returned ${outcome.images.length}/${indexes.length} figures at detail=${args.detail}.`;
+  // The lead block repeats the "actually look" cue: some hosts show the model the first
+  // text block most prominently, and #80's failure mode is answering before looking.
+  const summary =
+    `Book ${numericId} (${fmt}): returned ${outcome.images.length}/${indexes.length} figures at detail=${args.detail}.` +
+    (outcome.images.length > 0
+      ? ` The ${outcome.images.length} image(s) below are in your context — read them rather than recalling what this figure usually looks like.`
+      : "");
   blocks.unshift({ type: "text", text: summary });
   // No structuredContent when images are present: clients drop the whole content
   // array (images included) if structuredContent coexists (anthropics/claude-code

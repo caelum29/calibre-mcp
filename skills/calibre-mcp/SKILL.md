@@ -1,6 +1,6 @@
 ---
 name: calibre-mcp
-description: "Search, read, and curate your Calibre ebook library. The operating manual for the calibre-mcp server (17 tools) with the calibre CLI as escape hatch. Covers picking the right search (metadata query vs full-text vs semantic), reading book content and chapter maps, gated preview-first writes (metadata, tags, bulk edits), deduplication, quality audits, ISBN extraction + metadata recovery, add/remove/merge books, semantic-index builds, and safe CLI routing through the Content Server while the Calibre GUI is running (convert, export, catalog). Use for any ebook/library task: finding books, searching inside them, curating metadata, or maintenance. Triggers on 'book', 'ebook', 'calibre', 'library', 'книга', 'бібліотека', 'знайди в книзі'."
+description: "Search, read, and curate your Calibre ebook library. The operating manual for the calibre-mcp server (17 tools) with the calibre CLI as escape hatch. Covers picking the right search (metadata query vs full-text vs semantic), reading book content, chapter maps and book figures, gated preview-first writes (metadata, tags, bulk edits), deduplication, quality audits, ISBN extraction + metadata recovery, add/remove/merge books, semantic-index builds, and safe CLI routing through the Content Server while the Calibre GUI is running (convert, export, catalog). Use for any ebook/library task: finding books, searching inside them, curating metadata, or maintenance. Triggers on 'book', 'ebook', 'calibre', 'library', 'книга', 'бібліотека', 'знайди в книзі'."
 ---
 
 # Calibre MCP Skill
@@ -34,13 +34,14 @@ Mostly PDF/EPUB, technical, EN + RU. Calibre GUI + Content Server on `:8080` are
   then re-call with the apply flag.
 - All tools take an optional `library` param (display name is fine); omitted = default library.
 
-## Tool map (16)
+## Tool map (17)
 
 | Tool | Purpose | Key params |
 |---|---|---|
 | `calibre_search` | Find books by metadata or full text; also keyword search *inside* one book | `query`, `mode: meta\|fts`, `scope: library\|book`, `bookId`, `sort`, `limit`, `cursor` |
 | `calibre_get_book` | Full metadata + formats + cover for one book | `id` (number or uuid) |
 | `calibre_get_content` | Read book text chunk-by-chunk without flooding context | `id`, `maxChars` (default 8k, max 40k), `cursor`, `structure` (outline), `sentenceAware` |
+| `calibre_get_figures` | List a book's captioned figures, then fetch ≤3 as images (also rendered for the user in an in-chat figure viewer on MCP Apps hosts) | `id`, `indexes` (omit to list), `detail: standard\|high`, `include_uncaptioned`, `format` |
 | `calibre_list_categories` | Tags/authors/series/etc. values + counts; schema discovery | `field`, `valueFilter` (regex), `limit`, `cursor` |
 | `calibre_list_libraries` | Library map + default | — |
 | `calibre_semantic_search` | Meaning-based search across the library or within one book | `query`, `scope: library\|book`, `bookId`, `mode: hybrid\|vector\|keyword`, `topK` |

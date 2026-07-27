@@ -96,13 +96,16 @@
     { "name": "calibre_list_libraries", "description": "List the libraries the Content Server exposes" },
     { "name": "calibre_semantic_search", "description": "Meaning-based search (hybrid vector + keyword), across the library or inside one book" },
     { "name": "calibre_build_index", "description": "Build the local semantic/keyword index for selected books" },
+    { "name": "calibre_get_figures", "description": "List a book's figures/illustrations with captions and page locations, and show fetched ones in an in-chat figure viewer" },
     { "name": "calibre_find_duplicates", "description": "Find duplicate book groups with merge-safety scoring" },
     { "name": "calibre_quality_report", "description": "Audit metadata quality: missing fields, raw filenames, invalid ISBNs, series gaps" },
     { "name": "calibre_recover_metadata", "description": "Propose real metadata for raw-filename books via Open Library / Google Books (preview-only, never writes)" },
+    { "name": "calibre_extract_isbn", "description": "Extract a candidate ISBN from a book's content or filename" },
     { "name": "calibre_update_book", "description": "Set metadata fields on one book (write-gated)" },
     { "name": "calibre_bulk_update", "description": "Apply the same metadata changes to a set of books, preview-first (write-gated)" },
     { "name": "calibre_add_book", "description": "Import a local ebook file into the library, path-whitelisted (write-gated)" },
     { "name": "calibre_remove_book", "description": "Permanently delete books — records and files; requires confirm (write-gated)" },
+    { "name": "calibre_merge_books", "description": "Merge duplicate book records into one, preview-first (write-gated)" },
     { "name": "calibre_ping", "description": "Health check for the Calibre connection" }
   ],
   "compatibility": {

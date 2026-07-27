@@ -30,8 +30,9 @@ your library, all through natural language.
   library *or inside a single book*. Multilingual (English + Russian verified,
   cross-lingual queries work). No other Calibre MCP server has this.
 - **In-chat UI (MCP Apps)** — in hosts that support MCP Apps (Claude Desktop), library
-  searches render an interactive cover carousel and `calibre_get_book` a book detail card
-  with cover, rating, and read/similar actions. Text-only hosts are unaffected.
+  searches render an interactive cover carousel, `calibre_get_book` a book detail card
+  with cover, rating, and read/similar actions, and `calibre_get_figures` a figure viewer
+  that shows you the same diagrams the assistant fetched. Text-only hosts are unaffected.
 - **Curation tools** — find duplicates with merge-safety scoring, audit metadata quality,
   and recover real metadata for books with raw filenames (`795731065.pdf` →
   *Fundamentals of Software Engineering*) via Open Library / Google Books.
@@ -148,9 +149,11 @@ logs an actionable hint to stderr. Then try, in order:
    the cover carousel above.
 3. *“show me The Rust Programming Language”* — full metadata; renders as a book card with
    cover, rating, and per-format read buttons.
-4. *“build the semantic index for my Kafka books”* — one-time prep for meaning-based search
+4. *“show me figure 2.3 from the JWT Handbook”* — the figure arrives as an image for the
+   assistant and, in Claude Desktop, in a figure viewer you can zoom and pan.
+5. *“build the semantic index for my Kafka books”* — one-time prep for meaning-based search
    (see below).
-5. *“which of my books explain consumer-group rebalancing?”* — semantic search; answers
+6. *“which of my books explain consumer-group rebalancing?”* — semantic search; answers
    with ranked books, or exact passages when scoped to one book.
 
 Bonus: *“what’s wrong with my library?”* runs the quality audit (missing metadata,
@@ -251,9 +254,11 @@ and `mode: hybrid` degrades to keyword (with a note); rebuild with the model ins
 | `calibre_ping` | read | Health check: is Calibre reachable end-to-end? |
 
 In MCP Apps hosts, `calibre_search` and `calibre_semantic_search` (library scope) render
-their results as a cover-board carousel and `calibre_get_book` as a book card — covers load
-from your local Content Server. Everywhere else the same tools return their usual text
-results; no configuration needed either way.
+their results as a cover-board carousel, `calibre_get_book` as a book card, and
+`calibre_get_figures` as a figure viewer (reading pane + margin rail, click to zoom to 100%)
+so you see the diagrams the assistant is reading — covers load from your local Content
+Server. Everywhere else the same tools return their usual text results; no configuration
+needed either way.
 
 ## 📚 Companion skill: calibre-distill
 

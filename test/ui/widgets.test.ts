@@ -4,18 +4,23 @@
 import { describe, it, expect } from "vitest";
 import { boardHtml, BOARD_KEYWORD_URI, BOARD_SEMANTIC_URI } from "../../src/ui/board-html.js";
 import { cardHtml, CARD_URI } from "../../src/ui/card-html.js";
+import { figuresHtml, FIGURES_URI } from "../../src/ui/figures-html.js";
 
 const board = boardHtml("calibre_search", "9.9.9");
 const semanticBoard = boardHtml("calibre_semantic_search", "9.9.9");
 const coverflow = boardHtml("calibre_search", "9.9.9", "coverflow");
 const semanticCoverflow = boardHtml("calibre_semantic_search", "9.9.9", "coverflow");
 const card = cardHtml("9.9.9");
+const figures = figuresHtml("9.9.9");
 const boards = [board, semanticBoard, coverflow, semanticCoverflow];
+// The figures widget has no action-button layer (no open-link / ui/message), so it joins
+// only the hygiene + handshake checks, not the degrade-contract ones.
 const all = [...boards, card];
+const every = [...all, figures];
 
 describe("widget templates", () => {
   it("should_substitute_all_placeholder_tokens", () => {
-    for (const html of all) {
+    for (const html of every) {
       expect(html).not.toContain("__TOOL__");
       expect(html).not.toContain("__VERSION__");
       expect(html).not.toContain("__VARIANT__");
@@ -49,7 +54,7 @@ describe("widget templates", () => {
   });
 
   it("should_never_use_innerHTML_or_eval", () => {
-    for (const html of all) {
+    for (const html of every) {
       expect(html).not.toContain("innerHTML");
       expect(html).not.toContain("eval(");
       expect(html).not.toContain("document.write");
@@ -57,11 +62,11 @@ describe("widget templates", () => {
   });
 
   it("should_not_log_to_console", () => {
-    for (const html of all) expect(html).not.toContain("console.");
+    for (const html of every) expect(html).not.toContain("console.");
   });
 
   it("should_handshake_with_appInfo_not_clientInfo", () => {
-    for (const html of all) {
+    for (const html of every) {
       expect(html).toContain("appInfo");
       expect(html).toContain('"2026-01-26"');
       expect(html).not.toContain("clientInfo");
@@ -69,8 +74,8 @@ describe("widget templates", () => {
   });
 
   it("should_have_distinct_ui_uris", () => {
-    expect(new Set([BOARD_KEYWORD_URI, BOARD_SEMANTIC_URI, CARD_URI]).size).toBe(3);
-    for (const uri of [BOARD_KEYWORD_URI, BOARD_SEMANTIC_URI, CARD_URI]) {
+    expect(new Set([BOARD_KEYWORD_URI, BOARD_SEMANTIC_URI, CARD_URI, FIGURES_URI]).size).toBe(4);
+    for (const uri of [BOARD_KEYWORD_URI, BOARD_SEMANTIC_URI, CARD_URI, FIGURES_URI]) {
       expect(uri.startsWith("ui://calibre/")).toBe(true);
     }
   });
@@ -133,15 +138,51 @@ describe("widget templates", () => {
   it("should_emit_valid_regex_escapes_not_double_backslashes", () => {
     // The TS template literal must collapse \\ to \ in the emitted JS (a stray double
     // backslash means the widget regex/string literals are broken).
-    for (const html of all) expect(html).not.toContain("\\\\");
+    for (const html of every) expect(html).not.toContain("\\\\");
+  });
+});
+
+describe("figures widget (issue #112)", () => {
+  it("should_read_its_data_from_the_tool_result_notification", () => {
+    // Probe #111: content[] survives the notification, structuredContent/_meta do not —
+    // so the widget parses blocks and never re-calls the tool.
+    expect(figures).toContain('m.method === "ui/notifications/tool-result"');
+    expect(figures).not.toContain('name: "calibre_get_figures"');
+    expect(figures).not.toContain("res.structuredContent");
+  });
+
+  it("should_build_data_uris_from_the_block_mime_type", () => {
+    // The host transcodes to WebP (#111) — the mime named in the caption text is stale.
+    expect(figures).toContain('"data:" + b.mimeType + ";base64," + b.data');
+  });
+
+  it("should_collapse_on_a_caption_list_call", () => {
+    // List mode carries no image blocks, so the widget must take zero height.
+    expect(figures).toContain("if (!hasIndexes(toolArgs)) setState(\"collapsed\")");
+    expect(figures).toContain(".is-collapsed{padding:0;margin:0;height:0");
+  });
+
+  it("should_hide_the_steering_line_and_the_host_injected_note", () => {
+    // Only "Figure index …" text blocks are rendered; every other text block is dropped.
+    expect(figures).not.toContain("Describe only what is visible");
+    expect(figures).not.toContain("rendered an interactive widget");
+  });
+
+  it("should_render_a_skipped_figure_as_a_placard_not_an_error", () => {
+    expect(figures).toContain("skipped: ");
+    expect(figures).toContain("not extracted");
   });
 });
 
 describe("widget debug probe (issues #69/#72)", () => {
-  const debugAll = [boardHtml("calibre_search", "9.9.9", "shelf", true), cardHtml("9.9.9", true)];
+  const debugAll = [
+    boardHtml("calibre_search", "9.9.9", "shelf", true),
+    cardHtml("9.9.9", true),
+    figuresHtml("9.9.9", true),
+  ];
 
   it("should_contain_no_probe_code_when_debug_is_off", () => {
-    for (const html of all) {
+    for (const html of every) {
       expect(html).not.toContain("dbgLog");
       expect(html).not.toContain("calibre_widget_log");
     }
@@ -152,6 +193,16 @@ describe("widget debug probe (issues #69/#72)", () => {
       expect(html).toContain('dbgPre.id = "dbgLog"');
       expect(html).toContain("calibre_widget_log");
     }
+  });
+
+  it("should_not_call_tools_other_than_the_widget_log", () => {
+    // The #82 CSP probe is retired: a debug build must no longer fire its own
+    // calibre_get_figures round-trip (or paint an overlay) on top of the widget.
+    for (const html of debugAll) {
+      expect(html).not.toContain("p82");
+      expect(html).not.toContain("securitypolicyviolation");
+    }
+    expect(figuresHtml("9.9.9", true)).not.toContain("calibre_get_figures");
   });
 
   it("should_keep_hygiene_rules_in_the_probe_layer", () => {

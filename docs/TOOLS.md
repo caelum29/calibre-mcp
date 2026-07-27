@@ -113,6 +113,12 @@ source) so you can judge relevance before spending image tokens; then pass `inde
 up to 3 of them as actual images in the chat. Raw uncaptioned images (covers, decorations,
 inline equation art) are hidden unless `include_uncaptioned: true`.
 
+In MCP Apps hosts (Claude Desktop), a fetch also renders the figures **for you** in an in-chat
+viewer — a large reading pane with a margin rail when several figures come back, click (or
+Enter) to zoom to 100% and drag to pan, caption and page under each one. A figure that couldn't
+be extracted shows as a quiet placard instead of an error, and the listing call renders nothing
+at all. Text-only hosts just get the images in the transcript, as before.
+
 Works on EPUB (preferred) and PDF sources. Diagrams drawn as vectors — invisible to image
 extraction — are rendered from the page as a cropped band above their caption. Scanned PDFs
 honestly report 0 figures (Calibre has no OCR); some print-style publishers use unnumbered
