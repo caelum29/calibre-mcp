@@ -107,5 +107,19 @@ Russian book and vice versa. The keyword half stems both languages, so
 - **Scanned PDFs** (image-only, no text layer) can't be indexed — no OCR.
 - Indexing is CPU-bound: a few seconds per book on Apple Silicon; large libraries
   take a while on the first pass (later passes skip unchanged books).
+- **Figure search doesn't reach every figure.** A caption is linked to the book text by
+  matching it back into the extracted text; when a publisher's EPUB conversion doesn't
+  reproduce the caption line, that figure is left out of the figure corpus — it is never
+  linked to the *wrong* passage, just absent. Measured at ~97% of captioned figures on a
+  790-book library, with the gaps confined to EPUBs (PDFs linked fully).
+- **Front-matter demotion depends on chapter detection.** Books whose front matter is
+  itself heading-structured — a title page, copyright, and praise pages that all look like
+  headings, common in EPUBs — report no front matter at all and get no demotion. It applies
+  to roughly half a mixed library.
+- **Extraction improves between releases, but only for books indexed afterwards.** Text
+  extraction, figure linkage, and front-matter detection all run at index time, so upgrading
+  the server does not retroactively improve an existing index. Rebuild with `force: true`
+  (whole library, or just the books you care about) after an upgrade whose notes mention
+  extraction or figures.
 - Retrieval is book-level or passage-level; exact PDF page mapping depends on the
   extractor's quality for that file.
