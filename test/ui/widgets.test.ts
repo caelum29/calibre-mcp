@@ -159,7 +159,14 @@ describe("figures widget (issue #112)", () => {
   it("should_collapse_on_a_caption_list_call", () => {
     // List mode carries no image blocks, so the widget must take zero height.
     expect(figures).toContain("if (!hasIndexes(toolArgs)) setState(\"collapsed\")");
-    expect(figures).toContain(".is-collapsed{padding:0;margin:0;height:0");
+    expect(figures).toContain('body[data-collapsed="1"]{display:none}');
+  });
+
+  it("should_report_an_explicit_zero_height_when_collapsed", () => {
+    // A zero-height widget div is not enough: documentElement.scrollHeight never drops
+    // below the iframe viewport, so the host keeps a tall empty frame (board precedent).
+    expect(figures).toContain('var h = M.state === "collapsed" ? 0 : document.documentElement.scrollHeight');
+    expect(board).toContain('var h = document.body.dataset.collapsed === "1" ? 0 : document.documentElement.scrollHeight');
   });
 
   it("should_hide_the_steering_line_and_the_host_injected_note", () => {

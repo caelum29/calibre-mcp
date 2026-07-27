@@ -63,8 +63,10 @@ svg.i{width:14px;height:14px;stroke:currentColor;stroke-width:2.4;fill:none;
 
 /* ============ widget shell ============ */
 .widget{position:relative; max-width:700px; margin:0 auto; padding:10px 16px 12px}
-.widget.is-collapsed{padding:0;margin:0;height:0;overflow:hidden;border:0}
-.widget.is-collapsed *{display:none}
+/* Collapsed = the whole document goes away AND reportSize() sends height 0: a zero-height
+   widget div is not enough, documentElement.scrollHeight never drops below the iframe
+   viewport, so the host would keep a tall empty frame (board-widget precedent). */
+body[data-collapsed="1"]{display:none}
 
 /* ============ reading pane + margin rail ============ */
 .reader{display:grid; grid-template-columns:auto minmax(0,1fr); gap:10px; align-items:stretch}
@@ -318,8 +320,10 @@ __DEBUG__
 
   /* ================= rendering ================= */
   function render() {
-    w.classList.toggle("is-collapsed", M.state === "collapsed");
-    if (M.state === "collapsed") { w.replaceChildren(); reportSize(); return; }
+    var collapsed = M.state === "collapsed";
+    if (collapsed) document.body.dataset.collapsed = "1";
+    else document.body.dataset.collapsed = "";
+    if (collapsed) { w.replaceChildren(); reportSize(); return; }
     if (M.state === "loading") { w.replaceChildren(skeleton()); reportSize(); return; }
     if (M.state === "error" || !M.items.length) { w.replaceChildren(errorBox()); reportSize(); return; }
 
@@ -510,9 +514,9 @@ __DEBUG__
     });
   }
 
-  var lastH = 0;
+  var lastH = -1;
   function reportSize() {
-    var h = document.documentElement.scrollHeight;
+    var h = M.state === "collapsed" ? 0 : document.documentElement.scrollHeight;
     if (h === lastH) return;
     lastH = h;
     rpcNotify("ui/notifications/size-changed", { height: h, width: document.documentElement.scrollWidth });
