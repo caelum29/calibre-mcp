@@ -6,6 +6,14 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.7.2] — 2026-07-27
+
+### Fixed
+
+- **Empty frame after listing figures.** In MCP Apps hosts, a `calibre_get_figures` call
+  that only lists captions left a tall blank panel in the chat instead of rendering
+  nothing. The figure viewer now reports zero height when it has nothing to show.
+
 ## [0.7.1] — 2026-07-27
 
 ### Added
