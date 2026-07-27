@@ -50,8 +50,16 @@ export async function getJson<T>(url: string, opts: HttpOptions = {}): Promise<T
   }
 }
 
+/** Absolute ceiling on one download, so a byte-per-second drip can't hang a build forever. */
+const DOWNLOAD_HARD_TIMEOUT_MS = 60 * 60 * 1000;
+
 export interface DownloadOptions {
-  /** Per-download timeout in ms. Defaults to 120s (book files can be large). */
+  /**
+   * Stall timeout in ms — the clock RESTARTS on every received chunk, so it bounds how long
+   * the transfer may make no progress, not how long a big file may take (#100: a 183 MB PDF
+   * legitimately needs minutes from cold disk and used to die on a fixed 120s elapsed cap).
+   * Defaults to 120s.
+   */
   timeoutMs?: number;
   /** Hard byte ceiling; the download aborts if exceeded. Defaults to 64 MiB. */
   maxBytes?: number;
@@ -60,7 +68,8 @@ export interface DownloadOptions {
 
 /**
  * Stream a GET response body to `destPath` with a hard byte cap. Aborts on overflow
- * (declared Content-Length or actual streamed bytes) and removes any partial file.
+ * (declared Content-Length or actual streamed bytes), on a stalled transfer, or at the
+ * absolute ceiling — and removes any partial file.
  * Throws {@link CalibreHttpError}; never leaks host paths in the message.
  */
 export async function downloadToFile(
@@ -69,8 +78,21 @@ export async function downloadToFile(
   opts: DownloadOptions = {},
 ): Promise<{ bytes: number }> {
   const maxBytes = opts.maxBytes ?? 64 * 1024 * 1024;
+  const stallMs = opts.timeoutMs ?? 120_000;
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), opts.timeoutMs ?? 120_000);
+
+  let stalled = false;
+  let stallTimer: ReturnType<typeof setTimeout> | undefined;
+  // (Re)arm the stall clock: pending before the first byte, then again after every chunk.
+  const armStall = (): void => {
+    clearTimeout(stallTimer);
+    stallTimer = setTimeout(() => {
+      stalled = true;
+      controller.abort();
+    }, stallMs);
+  };
+  armStall();
+  const hardTimer = setTimeout(() => controller.abort(), DOWNLOAD_HARD_TIMEOUT_MS);
   if (opts.signal) opts.signal.addEventListener("abort", () => controller.abort(), { once: true });
 
   let bytes = 0;
@@ -87,9 +109,11 @@ export async function downloadToFile(
     if (!res.body) throw new CalibreHttpError(0, url, "Empty response body");
 
     // Count bytes as they stream; abort the pipeline the moment we cross the cap.
+    // Every chunk is progress — it resets the stall clock.
     const counter = new Transform({
       transform(chunk: Buffer, _enc, cb) {
         bytes += chunk.length;
+        armStall();
         if (bytes > maxBytes) {
           cb(new CalibreHttpError(0, url, "Book file exceeds the size limit"));
           return;
@@ -107,10 +131,20 @@ export async function downloadToFile(
     log.error("download failed", {
       url,
       aborted,
+      stalled,
+      bytes,
       cause: err instanceof Error ? err.message : String(err),
     });
-    throw new CalibreHttpError(0, url, aborted ? "Download timed out" : "Download failed");
+    // "Stalled" and "timed out" are different diagnoses: the first means the server stopped
+    // sending, the second only fires at the hour-long ceiling. Neither means "file too big".
+    const message = stalled
+      ? `Download stalled — no data for ${Math.round(stallMs / 1000)}s (${bytes} bytes received)`
+      : aborted
+        ? "Download timed out"
+        : "Download failed";
+    throw new CalibreHttpError(0, url, message);
   } finally {
-    clearTimeout(timeout);
+    clearTimeout(stallTimer);
+    clearTimeout(hardTimer);
   }
 }

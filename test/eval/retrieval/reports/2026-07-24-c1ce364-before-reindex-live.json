@@ -1,0 +1,2435 @@
+{
+  "meta": {
+    "model": "Xenova/multilingual-e5-small",
+    "indexVersion": 3,
+    "corpus": {
+      "books": 780,
+      "chunks": 312551,
+      "figures": 304
+    },
+    "queryCount": 30,
+    "ruInvolved": 6,
+    "modes": [
+      "hybrid",
+      "vector",
+      "keyword"
+    ],
+    "topK": 10,
+    "live": true,
+    "unverifiedLabels": true,
+    "rerank": "onnx-community/bge-reranker-v2-m3-ONNX q8",
+    "rerankedRows": 60,
+    "gitSha": "c1ce364"
+  },
+  "overall": {
+    "hybrid": {
+      "n": 24,
+      "hit1": 0.75,
+      "recall5": 0.5208,
+      "mrr": 0.8194,
+      "ndcg10": 0.4899
+    },
+    "vector": {
+      "n": 24,
+      "hit1": 0.7083,
+      "recall5": 0.5104,
+      "mrr": 0.7917,
+      "ndcg10": 0.4898
+    },
+    "keyword": {
+      "n": 24,
+      "hit1": 0.5833,
+      "recall5": 0.4688,
+      "mrr": 0.6875,
+      "ndcg10": 0.4244
+    }
+  },
+  "ruInvolved": {
+    "hybrid": {
+      "n": 4,
+      "hit1": 0.5,
+      "recall5": 0.55,
+      "mrr": 0.75,
+      "ndcg10": 0.3919
+    },
+    "vector": {
+      "n": 4,
+      "hit1": 0.5,
+      "recall5": 0.55,
+      "mrr": 0.75,
+      "ndcg10": 0.4797
+    },
+    "keyword": {
+      "n": 4,
+      "hit1": 0.75,
+      "recall5": 0.5,
+      "mrr": 0.8333,
+      "ndcg10": 0.3989
+    }
+  },
+  "byKind": {
+    "semantic-paraphrase": {
+      "hybrid": {
+        "n": 13,
+        "hit1": 0.6923,
+        "recall5": 0.4769,
+        "mrr": 0.7436,
+        "ndcg10": 0.4934
+      },
+      "vector": {
+        "n": 13,
+        "hit1": 0.6923,
+        "recall5": 0.4769,
+        "mrr": 0.7692,
+        "ndcg10": 0.4912
+      },
+      "keyword": {
+        "n": 13,
+        "hit1": 0.6154,
+        "recall5": 0.4769,
+        "mrr": 0.7179,
+        "ndcg10": 0.4347
+      }
+    },
+    "exact-identifier": {
+      "hybrid": {
+        "n": 7,
+        "hit1": 1,
+        "recall5": 0.5857,
+        "mrr": 1,
+        "ndcg10": 0.5395
+      },
+      "vector": {
+        "n": 7,
+        "hit1": 0.8571,
+        "recall5": 0.55,
+        "mrr": 0.8571,
+        "ndcg10": 0.4932
+      },
+      "keyword": {
+        "n": 7,
+        "hit1": 0.4286,
+        "recall5": 0.4357,
+        "mrr": 0.5476,
+        "ndcg10": 0.4199
+      }
+    },
+    "cross-lingual": {
+      "hybrid": {
+        "n": 4,
+        "hit1": 0.5,
+        "recall5": 0.55,
+        "mrr": 0.75,
+        "ndcg10": 0.3919
+      },
+      "vector": {
+        "n": 4,
+        "hit1": 0.5,
+        "recall5": 0.55,
+        "mrr": 0.75,
+        "ndcg10": 0.4797
+      },
+      "keyword": {
+        "n": 4,
+        "hit1": 0.75,
+        "recall5": 0.5,
+        "mrr": 0.8333,
+        "ndcg10": 0.3989
+      }
+    }
+  },
+  "negatives": {
+    "hybrid": {
+      "n": 6,
+      "flaggedRate": 1
+    },
+    "vector": {
+      "n": 6,
+      "flaggedRate": 1
+    },
+    "keyword": {
+      "n": 6,
+      "flaggedRate": 0
+    }
+  },
+  "figureNegatives": {
+    "hybrid": {
+      "n": 0,
+      "flaggedRate": 0
+    },
+    "vector": {
+      "n": 0,
+      "flaggedRate": 0
+    },
+    "keyword": {
+      "n": 0,
+      "flaggedRate": 0
+    }
+  },
+  "perQuery": [
+    {
+      "id": "sp-01",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "hybrid",
+      "ru": false,
+      "retrieved": [
+        "688",
+        "226",
+        "2",
+        "285",
+        "5",
+        "635",
+        "292",
+        "18",
+        "348",
+        "622"
+      ],
+      "maxScore": 0.8961,
+      "reranked": true,
+      "metrics": {
+        "hit1": 1,
+        "recall5": 0.6,
+        "rr": 1,
+        "ndcg10": 0.6848
+      }
+    },
+    {
+      "id": "sp-02",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "hybrid",
+      "ru": false,
+      "retrieved": [
+        "202",
+        "665",
+        "296",
+        "116",
+        "175",
+        "816",
+        "153",
+        "866",
+        "288",
+        "141"
+      ],
+      "maxScore": 0.9071,
+      "reranked": true,
+      "metrics": {
+        "hit1": 1,
+        "recall5": 0.6,
+        "rr": 1,
+        "ndcg10": 0.606
+      }
+    },
+    {
+      "id": "sp-03",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "hybrid",
+      "ru": false,
+      "retrieved": [
+        "280",
+        "13",
+        "377",
+        "265",
+        "801",
+        "155",
+        "498",
+        "730",
+        "371",
+        "500"
+      ],
+      "maxScore": 0.8928,
+      "reranked": true,
+      "metrics": {
+        "hit1": 1,
+        "recall5": 0.6,
+        "rr": 1,
+        "ndcg10": 0.6817
+      }
+    },
+    {
+      "id": "sp-04",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "hybrid",
+      "ru": false,
+      "retrieved": [
+        "573",
+        "404",
+        "413",
+        "796",
+        "689",
+        "428",
+        "297",
+        "692",
+        "713",
+        "381"
+      ],
+      "maxScore": 0.8874,
+      "reranked": true,
+      "metrics": {
+        "hit1": 1,
+        "recall5": 0.4,
+        "rr": 1,
+        "ndcg10": 0.3811
+      }
+    },
+    {
+      "id": "sp-05",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "hybrid",
+      "ru": false,
+      "retrieved": [
+        "525",
+        "210",
+        "284",
+        "178",
+        "344",
+        "380",
+        "810",
+        "734",
+        "849",
+        "640"
+      ],
+      "maxScore": 0.8565,
+      "reranked": true,
+      "metrics": {
+        "hit1": 1,
+        "recall5": 0.4,
+        "rr": 1,
+        "ndcg10": 0.5366
+      }
+    },
+    {
+      "id": "sp-06",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "hybrid",
+      "ru": false,
+      "retrieved": [
+        "868",
+        "174",
+        "852",
+        "788",
+        "138",
+        "742",
+        "59",
+        "13",
+        "479",
+        "193"
+      ],
+      "maxScore": 0.9002,
+      "reranked": true,
+      "metrics": {
+        "hit1": 1,
+        "recall5": 0.4,
+        "rr": 1,
+        "ndcg10": 0.4125
+      }
+    },
+    {
+      "id": "sp-07",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "hybrid",
+      "ru": false,
+      "retrieved": [
+        "403",
+        "862",
+        "126",
+        "767",
+        "284",
+        "301",
+        "199",
+        "525",
+        "849",
+        "694"
+      ],
+      "maxScore": 0.8531,
+      "reranked": true,
+      "metrics": {
+        "hit1": 0,
+        "recall5": 0,
+        "rr": 0,
+        "ndcg10": 0
+      }
+    },
+    {
+      "id": "sp-09",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "hybrid",
+      "ru": false,
+      "retrieved": [
+        "421",
+        "417",
+        "906",
+        "377",
+        "889",
+        "652",
+        "636",
+        "660",
+        "379",
+        "330"
+      ],
+      "maxScore": 0.8869,
+      "reranked": true,
+      "metrics": {
+        "hit1": 0,
+        "recall5": 0.6,
+        "rr": 0.3333,
+        "ndcg10": 0.4983
+      }
+    },
+    {
+      "id": "sp-10",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "hybrid",
+      "ru": false,
+      "retrieved": [
+        "862",
+        "96",
+        "587",
+        "635",
+        "294",
+        "636",
+        "660",
+        "471",
+        "290",
+        "597"
+      ],
+      "maxScore": 0.8886,
+      "reranked": true,
+      "metrics": {
+        "hit1": 0,
+        "recall5": 0,
+        "rr": 0,
+        "ndcg10": 0
+      }
+    },
+    {
+      "id": "sp-11",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "hybrid",
+      "ru": false,
+      "retrieved": [
+        "622",
+        "748",
+        "5",
+        "294",
+        "635",
+        "664",
+        "18",
+        "292",
+        "268",
+        "111"
+      ],
+      "maxScore": 0.8725,
+      "reranked": true,
+      "metrics": {
+        "hit1": 1,
+        "recall5": 1,
+        "rr": 1,
+        "ndcg10": 0.858
+      }
+    },
+    {
+      "id": "sp-12",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "hybrid",
+      "ru": false,
+      "retrieved": [
+        "833",
+        "413",
+        "573",
+        "428",
+        "594",
+        "618",
+        "659",
+        "699",
+        "799",
+        "813"
+      ],
+      "maxScore": 0.8918,
+      "reranked": true,
+      "metrics": {
+        "hit1": 0,
+        "recall5": 0.4,
+        "rr": 0.3333,
+        "ndcg10": 0.2646
+      }
+    },
+    {
+      "id": "sp-13",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "hybrid",
+      "ru": false,
+      "retrieved": [
+        "211",
+        "864",
+        "71",
+        "852",
+        "876",
+        "901",
+        "206",
+        "180",
+        "68",
+        "868"
+      ],
+      "maxScore": 0.8902,
+      "reranked": true,
+      "metrics": {
+        "hit1": 1,
+        "recall5": 0.2,
+        "rr": 1,
+        "ndcg10": 0.4902
+      }
+    },
+    {
+      "id": "sp-14",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "hybrid",
+      "ru": false,
+      "retrieved": [
+        "308",
+        "280",
+        "311",
+        "54",
+        "365",
+        "391",
+        "760",
+        "371",
+        "823",
+        "155"
+      ],
+      "maxScore": 0.9079,
+      "reranked": true,
+      "metrics": {
+        "hit1": 1,
+        "recall5": 1,
+        "rr": 1,
+        "ndcg10": 1
+      }
+    },
+    {
+      "id": "id-01",
+      "kind": "exact-identifier",
+      "scope": "library",
+      "mode": "hybrid",
+      "ru": false,
+      "retrieved": [
+        "379",
+        "652",
+        "627",
+        "703",
+        "753",
+        "842",
+        "412",
+        "344",
+        "54",
+        "365"
+      ],
+      "maxScore": 0.8811,
+      "reranked": true,
+      "metrics": {
+        "hit1": 1,
+        "recall5": 0.6,
+        "rr": 1,
+        "ndcg10": 0.469
+      }
+    },
+    {
+      "id": "id-03",
+      "kind": "exact-identifier",
+      "scope": "library",
+      "mode": "hybrid",
+      "ru": false,
+      "retrieved": [
+        "816",
+        "146",
+        "412",
+        "409",
+        "753",
+        "100",
+        "403",
+        "848",
+        "284",
+        "679"
+      ],
+      "maxScore": 0.8494,
+      "reranked": true,
+      "metrics": {
+        "hit1": 1,
+        "recall5": 0.25,
+        "rr": 1,
+        "ndcg10": 0.3904
+      }
+    },
+    {
+      "id": "id-04",
+      "kind": "exact-identifier",
+      "scope": "library",
+      "mode": "hybrid",
+      "ru": false,
+      "retrieved": [
+        "734",
+        "848",
+        "640",
+        "810",
+        "774",
+        "396",
+        "724",
+        "212",
+        "561",
+        "139"
+      ],
+      "maxScore": 0.8837,
+      "reranked": true,
+      "metrics": {
+        "hit1": 1,
+        "recall5": 0.8,
+        "rr": 1,
+        "ndcg10": 0.5101
+      }
+    },
+    {
+      "id": "id-05",
+      "kind": "exact-identifier",
+      "scope": "library",
+      "mode": "hybrid",
+      "ru": false,
+      "retrieved": [
+        "145",
+        "624",
+        "655",
+        "627",
+        "479",
+        "132",
+        "748",
+        "617",
+        "267",
+        "919"
+      ],
+      "maxScore": 0.8822,
+      "reranked": true,
+      "metrics": {
+        "hit1": 1,
+        "recall5": 0.25,
+        "rr": 1,
+        "ndcg10": 0.3904
+      }
+    },
+    {
+      "id": "id-06",
+      "kind": "exact-identifier",
+      "scope": "library",
+      "mode": "hybrid",
+      "ru": false,
+      "retrieved": [
+        "180",
+        "45",
+        "868",
+        "94",
+        "82",
+        "645",
+        "721",
+        "542",
+        "226",
+        "742"
+      ],
+      "maxScore": 0.8825,
+      "reranked": true,
+      "metrics": {
+        "hit1": 1,
+        "recall5": 0.8,
+        "rr": 1,
+        "ndcg10": 0.6479
+      }
+    },
+    {
+      "id": "id-07",
+      "kind": "exact-identifier",
+      "scope": "library",
+      "mode": "hybrid",
+      "ru": false,
+      "retrieved": [
+        "285",
+        "652",
+        "268",
+        "273",
+        "289",
+        "648",
+        "628",
+        "636",
+        "660",
+        "271"
+      ],
+      "maxScore": 0.8786,
+      "reranked": true,
+      "metrics": {
+        "hit1": 1,
+        "recall5": 1,
+        "rr": 1,
+        "ndcg10": 1
+      }
+    },
+    {
+      "id": "id-09",
+      "kind": "exact-identifier",
+      "scope": "library",
+      "mode": "hybrid",
+      "ru": false,
+      "retrieved": [
+        "774",
+        "698",
+        "396",
+        "55",
+        "640",
+        "178",
+        "218",
+        "68",
+        "743",
+        "98"
+      ],
+      "maxScore": 0.8566,
+      "reranked": true,
+      "metrics": {
+        "hit1": 1,
+        "recall5": 0.4,
+        "rr": 1,
+        "ndcg10": 0.3689
+      }
+    },
+    {
+      "id": "xl-02",
+      "kind": "cross-lingual",
+      "scope": "library",
+      "mode": "hybrid",
+      "ru": true,
+      "retrieved": [
+        "647",
+        "653",
+        "646",
+        "635",
+        "656",
+        "113",
+        "93",
+        "197",
+        "6",
+        "215"
+      ],
+      "maxScore": 0.8863,
+      "reranked": true,
+      "metrics": {
+        "hit1": 1,
+        "recall5": 1,
+        "rr": 1,
+        "ndcg10": 0.6489
+      }
+    },
+    {
+      "id": "xl-03",
+      "kind": "cross-lingual",
+      "scope": "library",
+      "mode": "hybrid",
+      "ru": true,
+      "retrieved": [
+        "485",
+        "488",
+        "675",
+        "186",
+        "702",
+        "653",
+        "189",
+        "15",
+        "94",
+        "250"
+      ],
+      "maxScore": 0.8983,
+      "reranked": true,
+      "metrics": {
+        "hit1": 0,
+        "recall5": 0.4,
+        "rr": 0.5,
+        "ndcg10": 0.2489
+      }
+    },
+    {
+      "id": "xl-04",
+      "kind": "cross-lingual",
+      "scope": "library",
+      "mode": "hybrid",
+      "ru": true,
+      "retrieved": [
+        "493",
+        "207",
+        "610",
+        "27",
+        "58",
+        "37",
+        "32",
+        "122",
+        "184",
+        "503"
+      ],
+      "maxScore": 0.8872,
+      "reranked": true,
+      "metrics": {
+        "hit1": 1,
+        "recall5": 0.4,
+        "rr": 1,
+        "ndcg10": 0.359
+      }
+    },
+    {
+      "id": "xl-08",
+      "kind": "cross-lingual",
+      "scope": "library",
+      "mode": "hybrid",
+      "ru": true,
+      "retrieved": [
+        "59",
+        "439",
+        "313",
+        "819",
+        "720",
+        "295",
+        "576",
+        "803",
+        "732",
+        "432"
+      ],
+      "maxScore": 0.8876,
+      "reranked": true,
+      "metrics": {
+        "hit1": 0,
+        "recall5": 0.4,
+        "rr": 0.5,
+        "ndcg10": 0.3109
+      }
+    },
+    {
+      "id": "neg-01",
+      "kind": "negative",
+      "scope": "library",
+      "mode": "hybrid",
+      "ru": false,
+      "retrieved": [
+        "568",
+        "102",
+        "875",
+        "252",
+        "378",
+        "406",
+        "373",
+        "422",
+        "23",
+        "754"
+      ],
+      "maxScore": 0.8376,
+      "reranked": true,
+      "flagged": true
+    },
+    {
+      "id": "neg-02",
+      "kind": "negative",
+      "scope": "library",
+      "mode": "hybrid",
+      "ru": false,
+      "retrieved": [
+        "74",
+        "870",
+        "699",
+        "648",
+        "808",
+        "273",
+        "781",
+        "893",
+        "634",
+        "726"
+      ],
+      "maxScore": 0.853,
+      "reranked": true,
+      "flagged": true
+    },
+    {
+      "id": "neg-03",
+      "kind": "negative",
+      "scope": "library",
+      "mode": "hybrid",
+      "ru": false,
+      "retrieved": [
+        "752",
+        "80",
+        "565",
+        "875",
+        "369",
+        "643",
+        "301",
+        "849",
+        "383",
+        "564"
+      ],
+      "maxScore": 0.8688,
+      "reranked": true,
+      "flagged": true
+    },
+    {
+      "id": "neg-04",
+      "kind": "negative",
+      "scope": "library",
+      "mode": "hybrid",
+      "ru": true,
+      "retrieved": [
+        "505",
+        "250",
+        "539",
+        "117",
+        "503",
+        "224",
+        "25",
+        "530",
+        "545",
+        "491"
+      ],
+      "maxScore": 0.8239,
+      "reranked": true,
+      "flagged": true
+    },
+    {
+      "id": "neg-05",
+      "kind": "negative",
+      "scope": "library",
+      "mode": "hybrid",
+      "ru": true,
+      "retrieved": [
+        "7",
+        "20",
+        "530",
+        "505",
+        "118",
+        "475",
+        "678",
+        "469",
+        "613",
+        "4"
+      ],
+      "maxScore": 0.8216,
+      "reranked": true,
+      "flagged": true
+    },
+    {
+      "id": "neg-06",
+      "kind": "negative",
+      "scope": "library",
+      "mode": "hybrid",
+      "ru": false,
+      "retrieved": [
+        "782",
+        "865",
+        "190",
+        "801",
+        "232",
+        "773",
+        "397",
+        "33",
+        "719",
+        "35"
+      ],
+      "maxScore": 0.8273,
+      "reranked": true,
+      "flagged": true
+    },
+    {
+      "id": "sp-01",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "vector",
+      "ru": false,
+      "retrieved": [
+        "688",
+        "226",
+        "2",
+        "5",
+        "13",
+        "292",
+        "18",
+        "348",
+        "846",
+        "266"
+      ],
+      "maxScore": 0.8961,
+      "reranked": true,
+      "metrics": {
+        "hit1": 1,
+        "recall5": 0.4,
+        "rr": 1,
+        "ndcg10": 0.5303
+      }
+    },
+    {
+      "id": "sp-02",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "vector",
+      "ru": false,
+      "retrieved": [
+        "202",
+        "665",
+        "296",
+        "116",
+        "816",
+        "153",
+        "866",
+        "141",
+        "205",
+        "559"
+      ],
+      "maxScore": 0.9071,
+      "reranked": true,
+      "metrics": {
+        "hit1": 1,
+        "recall5": 0.6,
+        "rr": 1,
+        "ndcg10": 0.6805
+      }
+    },
+    {
+      "id": "sp-03",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "vector",
+      "ru": false,
+      "retrieved": [
+        "280",
+        "13",
+        "377",
+        "265",
+        "801",
+        "155",
+        "753",
+        "730",
+        "371",
+        "500"
+      ],
+      "maxScore": 0.8928,
+      "reranked": true,
+      "metrics": {
+        "hit1": 1,
+        "recall5": 0.6,
+        "rr": 1,
+        "ndcg10": 0.6083
+      }
+    },
+    {
+      "id": "sp-04",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "vector",
+      "ru": false,
+      "retrieved": [
+        "573",
+        "404",
+        "796",
+        "689",
+        "428",
+        "713",
+        "381",
+        "889",
+        "634",
+        "833"
+      ],
+      "maxScore": 0.8874,
+      "reranked": true,
+      "metrics": {
+        "hit1": 1,
+        "recall5": 0.4,
+        "rr": 1,
+        "ndcg10": 0.4085
+      }
+    },
+    {
+      "id": "sp-05",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "vector",
+      "ru": false,
+      "retrieved": [
+        "210",
+        "284",
+        "178",
+        "380",
+        "810",
+        "734",
+        "60",
+        "640",
+        "85",
+        "710"
+      ],
+      "maxScore": 0.8568,
+      "reranked": true,
+      "metrics": {
+        "hit1": 0,
+        "recall5": 0.4,
+        "rr": 0.5,
+        "ndcg10": 0.3718
+      }
+    },
+    {
+      "id": "sp-06",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "vector",
+      "ru": false,
+      "retrieved": [
+        "868",
+        "174",
+        "852",
+        "138",
+        "742",
+        "59",
+        "180",
+        "721",
+        "316",
+        "564"
+      ],
+      "maxScore": 0.9002,
+      "reranked": true,
+      "metrics": {
+        "hit1": 1,
+        "recall5": 0.4,
+        "rr": 1,
+        "ndcg10": 0.4968
+      }
+    },
+    {
+      "id": "sp-07",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "vector",
+      "ru": false,
+      "retrieved": [
+        "208",
+        "284",
+        "525",
+        "849",
+        "423",
+        "919",
+        "141",
+        "212",
+        "378",
+        "718"
+      ],
+      "maxScore": 0.8557,
+      "reranked": true,
+      "metrics": {
+        "hit1": 0,
+        "recall5": 0,
+        "rr": 0,
+        "ndcg10": 0
+      }
+    },
+    {
+      "id": "sp-09",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "vector",
+      "ru": false,
+      "retrieved": [
+        "906",
+        "377",
+        "889",
+        "652",
+        "636",
+        "660",
+        "379",
+        "330",
+        "407",
+        "387"
+      ],
+      "maxScore": 0.8869,
+      "reranked": true,
+      "metrics": {
+        "hit1": 1,
+        "recall5": 0.8,
+        "rr": 1,
+        "ndcg10": 0.7728
+      }
+    },
+    {
+      "id": "sp-10",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "vector",
+      "ru": false,
+      "retrieved": [
+        "862",
+        "96",
+        "587",
+        "635",
+        "648",
+        "294",
+        "636",
+        "660",
+        "290",
+        "266"
+      ],
+      "maxScore": 0.8886,
+      "reranked": true,
+      "metrics": {
+        "hit1": 0,
+        "recall5": 0,
+        "rr": 0,
+        "ndcg10": 0
+      }
+    },
+    {
+      "id": "sp-11",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "vector",
+      "ru": false,
+      "retrieved": [
+        "5",
+        "635",
+        "633",
+        "664",
+        "292",
+        "279",
+        "268",
+        "111",
+        "285",
+        "36"
+      ],
+      "maxScore": 0.8725,
+      "reranked": true,
+      "metrics": {
+        "hit1": 1,
+        "recall5": 0.8,
+        "rr": 1,
+        "ndcg10": 0.6938
+      }
+    },
+    {
+      "id": "sp-12",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "vector",
+      "ru": false,
+      "retrieved": [
+        "833",
+        "573",
+        "428",
+        "594",
+        "699",
+        "799",
+        "813",
+        "889",
+        "134",
+        "705"
+      ],
+      "maxScore": 0.8918,
+      "reranked": true,
+      "metrics": {
+        "hit1": 0,
+        "recall5": 0.6,
+        "rr": 0.5,
+        "ndcg10": 0.3188
+      }
+    },
+    {
+      "id": "sp-13",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "vector",
+      "ru": false,
+      "retrieved": [
+        "211",
+        "864",
+        "71",
+        "852",
+        "876",
+        "206",
+        "180",
+        "68",
+        "868",
+        "841"
+      ],
+      "maxScore": 0.8902,
+      "reranked": true,
+      "metrics": {
+        "hit1": 1,
+        "recall5": 0.2,
+        "rr": 1,
+        "ndcg10": 0.5035
+      }
+    },
+    {
+      "id": "sp-14",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "vector",
+      "ru": false,
+      "retrieved": [
+        "308",
+        "280",
+        "311",
+        "54",
+        "365",
+        "391",
+        "760",
+        "371",
+        "155",
+        "198"
+      ],
+      "maxScore": 0.9079,
+      "reranked": true,
+      "metrics": {
+        "hit1": 1,
+        "recall5": 1,
+        "rr": 1,
+        "ndcg10": 1
+      }
+    },
+    {
+      "id": "id-01",
+      "kind": "exact-identifier",
+      "scope": "library",
+      "mode": "vector",
+      "ru": false,
+      "retrieved": [
+        "379",
+        "652",
+        "627",
+        "703",
+        "753",
+        "842",
+        "412",
+        "344",
+        "54",
+        "365"
+      ],
+      "maxScore": 0.8811,
+      "reranked": true,
+      "metrics": {
+        "hit1": 1,
+        "recall5": 0.6,
+        "rr": 1,
+        "ndcg10": 0.469
+      }
+    },
+    {
+      "id": "id-03",
+      "kind": "exact-identifier",
+      "scope": "library",
+      "mode": "vector",
+      "ru": false,
+      "retrieved": [
+        "412",
+        "85",
+        "71",
+        "212",
+        "861",
+        "808",
+        "346",
+        "777",
+        "157",
+        "543"
+      ],
+      "maxScore": 0.8559,
+      "reranked": true,
+      "metrics": {
+        "hit1": 0,
+        "recall5": 0,
+        "rr": 0,
+        "ndcg10": 0
+      }
+    },
+    {
+      "id": "id-04",
+      "kind": "exact-identifier",
+      "scope": "library",
+      "mode": "vector",
+      "ru": false,
+      "retrieved": [
+        "734",
+        "640",
+        "810",
+        "774",
+        "396",
+        "724",
+        "561",
+        "818",
+        "799",
+        "813"
+      ],
+      "maxScore": 0.8837,
+      "reranked": true,
+      "metrics": {
+        "hit1": 1,
+        "recall5": 0.8,
+        "rr": 1,
+        "ndcg10": 0.5638
+      }
+    },
+    {
+      "id": "id-05",
+      "kind": "exact-identifier",
+      "scope": "library",
+      "mode": "vector",
+      "ru": false,
+      "retrieved": [
+        "145",
+        "624",
+        "479",
+        "411",
+        "748",
+        "821",
+        "919",
+        "818",
+        "366",
+        "902"
+      ],
+      "maxScore": 0.8822,
+      "reranked": true,
+      "metrics": {
+        "hit1": 1,
+        "recall5": 0.25,
+        "rr": 1,
+        "ndcg10": 0.3904
+      }
+    },
+    {
+      "id": "id-06",
+      "kind": "exact-identifier",
+      "scope": "library",
+      "mode": "vector",
+      "ru": false,
+      "retrieved": [
+        "180",
+        "45",
+        "868",
+        "94",
+        "82",
+        "286",
+        "645",
+        "721",
+        "542",
+        "742"
+      ],
+      "maxScore": 0.8825,
+      "reranked": true,
+      "metrics": {
+        "hit1": 1,
+        "recall5": 0.8,
+        "rr": 1,
+        "ndcg10": 0.6479
+      }
+    },
+    {
+      "id": "id-07",
+      "kind": "exact-identifier",
+      "scope": "library",
+      "mode": "vector",
+      "ru": false,
+      "retrieved": [
+        "285",
+        "652",
+        "268",
+        "273",
+        "648",
+        "636",
+        "660",
+        "271",
+        "658",
+        "266"
+      ],
+      "maxScore": 0.8786,
+      "reranked": true,
+      "metrics": {
+        "hit1": 1,
+        "recall5": 1,
+        "rr": 1,
+        "ndcg10": 1
+      }
+    },
+    {
+      "id": "id-09",
+      "kind": "exact-identifier",
+      "scope": "library",
+      "mode": "vector",
+      "ru": false,
+      "retrieved": [
+        "774",
+        "698",
+        "396",
+        "640",
+        "178",
+        "218",
+        "68",
+        "743",
+        "98",
+        "192"
+      ],
+      "maxScore": 0.8566,
+      "reranked": true,
+      "metrics": {
+        "hit1": 1,
+        "recall5": 0.4,
+        "rr": 1,
+        "ndcg10": 0.3811
+      }
+    },
+    {
+      "id": "xl-02",
+      "kind": "cross-lingual",
+      "scope": "library",
+      "mode": "vector",
+      "ru": true,
+      "retrieved": [
+        "647",
+        "653",
+        "633",
+        "646",
+        "636",
+        "660",
+        "635",
+        "656",
+        "285",
+        "630"
+      ],
+      "maxScore": 0.8863,
+      "reranked": true,
+      "metrics": {
+        "hit1": 1,
+        "recall5": 1,
+        "rr": 1,
+        "ndcg10": 1
+      }
+    },
+    {
+      "id": "xl-03",
+      "kind": "cross-lingual",
+      "scope": "library",
+      "mode": "vector",
+      "ru": true,
+      "retrieved": [
+        "485",
+        "488",
+        "675",
+        "186",
+        "702",
+        "653",
+        "189",
+        "15",
+        "94",
+        "250"
+      ],
+      "maxScore": 0.8983,
+      "reranked": true,
+      "metrics": {
+        "hit1": 0,
+        "recall5": 0.4,
+        "rr": 0.5,
+        "ndcg10": 0.2489
+      }
+    },
+    {
+      "id": "xl-04",
+      "kind": "cross-lingual",
+      "scope": "library",
+      "mode": "vector",
+      "ru": true,
+      "retrieved": [
+        "493",
+        "207",
+        "610",
+        "27",
+        "58",
+        "32",
+        "53",
+        "503",
+        "495",
+        "16"
+      ],
+      "maxScore": 0.8872,
+      "reranked": true,
+      "metrics": {
+        "hit1": 1,
+        "recall5": 0.4,
+        "rr": 1,
+        "ndcg10": 0.359
+      }
+    },
+    {
+      "id": "xl-08",
+      "kind": "cross-lingual",
+      "scope": "library",
+      "mode": "vector",
+      "ru": true,
+      "retrieved": [
+        "59",
+        "439",
+        "313",
+        "819",
+        "720",
+        "295",
+        "576",
+        "803",
+        "432",
+        "139"
+      ],
+      "maxScore": 0.8876,
+      "reranked": true,
+      "metrics": {
+        "hit1": 0,
+        "recall5": 0.4,
+        "rr": 0.5,
+        "ndcg10": 0.3109
+      }
+    },
+    {
+      "id": "neg-01",
+      "kind": "negative",
+      "scope": "library",
+      "mode": "vector",
+      "ru": false,
+      "retrieved": [
+        "102",
+        "875",
+        "774",
+        "378",
+        "406",
+        "373",
+        "811",
+        "422",
+        "412",
+        "725"
+      ],
+      "maxScore": 0.8376,
+      "reranked": true,
+      "flagged": true
+    },
+    {
+      "id": "neg-02",
+      "kind": "negative",
+      "scope": "library",
+      "mode": "vector",
+      "ru": false,
+      "retrieved": [
+        "191",
+        "74",
+        "699",
+        "622",
+        "781",
+        "755",
+        "353",
+        "634",
+        "796",
+        "344"
+      ],
+      "maxScore": 0.853,
+      "reranked": true,
+      "flagged": true
+    },
+    {
+      "id": "neg-03",
+      "kind": "negative",
+      "scope": "library",
+      "mode": "vector",
+      "ru": false,
+      "retrieved": [
+        "752",
+        "875",
+        "629",
+        "643",
+        "301",
+        "849",
+        "383",
+        "425",
+        "217",
+        "818"
+      ],
+      "maxScore": 0.8688,
+      "reranked": true,
+      "flagged": true
+    },
+    {
+      "id": "neg-04",
+      "kind": "negative",
+      "scope": "library",
+      "mode": "vector",
+      "ru": true,
+      "retrieved": [
+        "505",
+        "250",
+        "113",
+        "539",
+        "117",
+        "197",
+        "534",
+        "530",
+        "122",
+        "495"
+      ],
+      "maxScore": 0.8239,
+      "reranked": true,
+      "flagged": true
+    },
+    {
+      "id": "neg-05",
+      "kind": "negative",
+      "scope": "library",
+      "mode": "vector",
+      "ru": true,
+      "retrieved": [
+        "875",
+        "7",
+        "719",
+        "539",
+        "505",
+        "215",
+        "118",
+        "475",
+        "678",
+        "469"
+      ],
+      "maxScore": 0.8216,
+      "reranked": true,
+      "flagged": true
+    },
+    {
+      "id": "neg-06",
+      "kind": "negative",
+      "scope": "library",
+      "mode": "vector",
+      "ru": false,
+      "retrieved": [
+        "396",
+        "782",
+        "865",
+        "190",
+        "343",
+        "115",
+        "694",
+        "801",
+        "232",
+        "773"
+      ],
+      "maxScore": 0.8273,
+      "reranked": true,
+      "flagged": true
+    },
+    {
+      "id": "sp-01",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "keyword",
+      "ru": false,
+      "retrieved": [
+        "226",
+        "2",
+        "688",
+        "285",
+        "622",
+        "18",
+        "5",
+        "585",
+        "427",
+        "292"
+      ],
+      "metrics": {
+        "hit1": 0,
+        "recall5": 0.6,
+        "rr": 0.3333,
+        "ndcg10": 0.5054
+      }
+    },
+    {
+      "id": "sp-02",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "keyword",
+      "ru": false,
+      "retrieved": [
+        "296",
+        "2",
+        "116",
+        "665",
+        "175",
+        "153",
+        "301",
+        "288",
+        "101",
+        "205"
+      ],
+      "metrics": {
+        "hit1": 1,
+        "recall5": 0.6,
+        "rr": 1,
+        "ndcg10": 0.6718
+      }
+    },
+    {
+      "id": "sp-03",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "keyword",
+      "ru": false,
+      "retrieved": [
+        "155",
+        "377",
+        "395",
+        "498",
+        "138",
+        "371",
+        "597",
+        "193",
+        "280",
+        "866"
+      ],
+      "metrics": {
+        "hit1": 1,
+        "recall5": 0.4,
+        "rr": 1,
+        "ndcg10": 0.4595
+      }
+    },
+    {
+      "id": "sp-04",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "keyword",
+      "ru": false,
+      "retrieved": [
+        "833",
+        "573",
+        "891",
+        "713",
+        "428",
+        "873",
+        "747",
+        "381",
+        "426",
+        "705"
+      ],
+      "metrics": {
+        "hit1": 0,
+        "recall5": 0.6,
+        "rr": 0.5,
+        "ndcg10": 0.3437
+      }
+    },
+    {
+      "id": "sp-05",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "keyword",
+      "ru": false,
+      "retrieved": [
+        "525",
+        "774",
+        "788",
+        "810",
+        "178",
+        "640",
+        "85",
+        "284",
+        "778",
+        "268"
+      ],
+      "metrics": {
+        "hit1": 1,
+        "recall5": 0.6,
+        "rr": 1,
+        "ndcg10": 0.6016
+      }
+    },
+    {
+      "id": "sp-06",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "keyword",
+      "ru": false,
+      "retrieved": [
+        "206",
+        "868",
+        "368",
+        "180",
+        "319",
+        "788",
+        "138",
+        "479",
+        "13",
+        "808"
+      ],
+      "metrics": {
+        "hit1": 1,
+        "recall5": 0.6,
+        "rr": 1,
+        "ndcg10": 0.5215
+      }
+    },
+    {
+      "id": "sp-07",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "keyword",
+      "ru": false,
+      "retrieved": [
+        "790",
+        "199",
+        "767",
+        "433",
+        "301",
+        "126",
+        "862",
+        "694",
+        "403",
+        "777"
+      ],
+      "metrics": {
+        "hit1": 0,
+        "recall5": 0,
+        "rr": 0,
+        "ndcg10": 0
+      }
+    },
+    {
+      "id": "sp-09",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "keyword",
+      "ru": false,
+      "retrieved": [
+        "379",
+        "652",
+        "636",
+        "660",
+        "407",
+        "627",
+        "417",
+        "421",
+        "61",
+        "886"
+      ],
+      "metrics": {
+        "hit1": 1,
+        "recall5": 0.6,
+        "rr": 1,
+        "ndcg10": 0.5225
+      }
+    },
+    {
+      "id": "sp-10",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "keyword",
+      "ru": false,
+      "retrieved": [
+        "294",
+        "587",
+        "96",
+        "862",
+        "575",
+        "715",
+        "354",
+        "509",
+        "281",
+        "432"
+      ],
+      "metrics": {
+        "hit1": 0,
+        "recall5": 0,
+        "rr": 0,
+        "ndcg10": 0
+      }
+    },
+    {
+      "id": "sp-11",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "keyword",
+      "ru": false,
+      "retrieved": [
+        "622",
+        "281",
+        "18",
+        "294",
+        "138",
+        "266",
+        "875",
+        "175",
+        "664",
+        "861"
+      ],
+      "metrics": {
+        "hit1": 1,
+        "recall5": 0.8,
+        "rr": 1,
+        "ndcg10": 0.6422
+      }
+    },
+    {
+      "id": "sp-12",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "keyword",
+      "ru": false,
+      "retrieved": [
+        "699",
+        "889",
+        "618",
+        "659",
+        "833",
+        "477",
+        "381",
+        "713",
+        "799",
+        "813"
+      ],
+      "metrics": {
+        "hit1": 1,
+        "recall5": 0.2,
+        "rr": 1,
+        "ndcg10": 0.2895
+      }
+    },
+    {
+      "id": "sp-13",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "keyword",
+      "ru": false,
+      "retrieved": [
+        "852",
+        "868",
+        "180",
+        "567",
+        "211",
+        "781",
+        "864",
+        "267",
+        "174",
+        "138"
+      ],
+      "metrics": {
+        "hit1": 0,
+        "recall5": 0.6,
+        "rr": 0.5,
+        "ndcg10": 0.4601
+      }
+    },
+    {
+      "id": "sp-14",
+      "kind": "semantic-paraphrase",
+      "scope": "library",
+      "mode": "keyword",
+      "ru": false,
+      "retrieved": [
+        "280",
+        "753",
+        "29",
+        "310",
+        "403",
+        "308",
+        "18",
+        "201",
+        "760",
+        "391"
+      ],
+      "metrics": {
+        "hit1": 1,
+        "recall5": 0.6,
+        "rr": 1,
+        "ndcg10": 0.6332
+      }
+    },
+    {
+      "id": "id-01",
+      "kind": "exact-identifier",
+      "scope": "library",
+      "mode": "keyword",
+      "ru": false,
+      "retrieved": [],
+      "metrics": {
+        "hit1": 0,
+        "recall5": 0,
+        "rr": 0,
+        "ndcg10": 0
+      }
+    },
+    {
+      "id": "id-03",
+      "kind": "exact-identifier",
+      "scope": "library",
+      "mode": "keyword",
+      "ru": false,
+      "retrieved": [
+        "146",
+        "412",
+        "816",
+        "403",
+        "100",
+        "318",
+        "409",
+        "848",
+        "151",
+        "165"
+      ],
+      "metrics": {
+        "hit1": 0,
+        "recall5": 0.25,
+        "rr": 0.3333,
+        "ndcg10": 0.3342
+      }
+    },
+    {
+      "id": "id-04",
+      "kind": "exact-identifier",
+      "scope": "library",
+      "mode": "keyword",
+      "ru": false,
+      "retrieved": [
+        "810",
+        "561",
+        "774",
+        "488",
+        "848",
+        "734",
+        "724",
+        "396",
+        "640",
+        "698"
+      ],
+      "metrics": {
+        "hit1": 1,
+        "recall5": 0.6,
+        "rr": 1,
+        "ndcg10": 0.5696
+      }
+    },
+    {
+      "id": "id-05",
+      "kind": "exact-identifier",
+      "scope": "library",
+      "mode": "keyword",
+      "ru": false,
+      "retrieved": [
+        "655",
+        "748",
+        "617",
+        "267",
+        "266",
+        "18",
+        "5",
+        "637",
+        "132",
+        "290"
+      ],
+      "metrics": {
+        "hit1": 0,
+        "recall5": 0,
+        "rr": 0,
+        "ndcg10": 0
+      }
+    },
+    {
+      "id": "id-06",
+      "kind": "exact-identifier",
+      "scope": "library",
+      "mode": "keyword",
+      "ru": false,
+      "retrieved": [
+        "45",
+        "180",
+        "94",
+        "868",
+        "82",
+        "174",
+        "645",
+        "185",
+        "819",
+        "211"
+      ],
+      "metrics": {
+        "hit1": 1,
+        "recall5": 0.8,
+        "rr": 1,
+        "ndcg10": 0.8112
+      }
+    },
+    {
+      "id": "id-07",
+      "kind": "exact-identifier",
+      "scope": "library",
+      "mode": "keyword",
+      "ru": false,
+      "retrieved": [
+        "267",
+        "273",
+        "293",
+        "646",
+        "268",
+        "748",
+        "266",
+        "648",
+        "636",
+        "660"
+      ],
+      "metrics": {
+        "hit1": 1,
+        "recall5": 1,
+        "rr": 1,
+        "ndcg10": 1
+      }
+    },
+    {
+      "id": "id-09",
+      "kind": "exact-identifier",
+      "scope": "library",
+      "mode": "keyword",
+      "ru": false,
+      "retrieved": [
+        "561",
+        "640",
+        "55",
+        "396",
+        "525"
+      ],
+      "metrics": {
+        "hit1": 0,
+        "recall5": 0.4,
+        "rr": 0.5,
+        "ndcg10": 0.224
+      }
+    },
+    {
+      "id": "xl-02",
+      "kind": "cross-lingual",
+      "scope": "library",
+      "mode": "keyword",
+      "ru": true,
+      "retrieved": [
+        "647",
+        "653",
+        "646",
+        "656",
+        "197",
+        "610",
+        "6",
+        "593",
+        "24",
+        "26"
+      ],
+      "metrics": {
+        "hit1": 1,
+        "recall5": 0.8,
+        "rr": 1,
+        "ndcg10": 0.5638
+      }
+    },
+    {
+      "id": "xl-03",
+      "kind": "cross-lingual",
+      "scope": "library",
+      "mode": "keyword",
+      "ru": true,
+      "retrieved": [
+        "488",
+        "485",
+        "675",
+        "480",
+        "129",
+        "19",
+        "51",
+        "55",
+        "45",
+        "15"
+      ],
+      "metrics": {
+        "hit1": 1,
+        "recall5": 0.4,
+        "rr": 1,
+        "ndcg10": 0.3301
+      }
+    },
+    {
+      "id": "xl-04",
+      "kind": "cross-lingual",
+      "scope": "library",
+      "mode": "keyword",
+      "ru": true,
+      "retrieved": [
+        "493",
+        "207",
+        "32",
+        "30",
+        "610",
+        "593",
+        "128",
+        "184",
+        "122",
+        "7"
+      ],
+      "metrics": {
+        "hit1": 1,
+        "recall5": 0.4,
+        "rr": 1,
+        "ndcg10": 0.359
+      }
+    },
+    {
+      "id": "xl-08",
+      "kind": "cross-lingual",
+      "scope": "library",
+      "mode": "keyword",
+      "ru": true,
+      "retrieved": [
+        "401",
+        "889",
+        "313",
+        "549",
+        "701",
+        "397",
+        "734",
+        "439",
+        "432",
+        "720"
+      ],
+      "metrics": {
+        "hit1": 0,
+        "recall5": 0.4,
+        "rr": 0.3333,
+        "ndcg10": 0.3425
+      }
+    },
+    {
+      "id": "neg-01",
+      "kind": "negative",
+      "scope": "library",
+      "mode": "keyword",
+      "ru": false,
+      "retrieved": [
+        "23",
+        "518",
+        "824",
+        "252",
+        "85",
+        "93",
+        "389",
+        "312",
+        "561",
+        "710"
+      ],
+      "flagged": false
+    },
+    {
+      "id": "neg-02",
+      "kind": "negative",
+      "scope": "library",
+      "mode": "keyword",
+      "ru": false,
+      "retrieved": [
+        "870",
+        "515",
+        "808",
+        "796",
+        "699",
+        "888",
+        "273",
+        "794",
+        "726",
+        "548"
+      ],
+      "flagged": false
+    },
+    {
+      "id": "neg-03",
+      "kind": "negative",
+      "scope": "library",
+      "mode": "keyword",
+      "ru": false,
+      "retrieved": [
+        "752",
+        "113",
+        "565",
+        "729",
+        "643",
+        "875",
+        "24",
+        "301",
+        "218",
+        "369"
+      ],
+      "flagged": false
+    },
+    {
+      "id": "neg-04",
+      "kind": "negative",
+      "scope": "library",
+      "mode": "keyword",
+      "ru": true,
+      "retrieved": [
+        "250",
+        "539",
+        "246",
+        "503",
+        "207",
+        "468",
+        "610",
+        "45",
+        "481",
+        "22"
+      ],
+      "flagged": false
+    },
+    {
+      "id": "neg-05",
+      "kind": "negative",
+      "scope": "library",
+      "mode": "keyword",
+      "ru": true,
+      "retrieved": [
+        "530",
+        "191",
+        "216",
+        "25",
+        "207",
+        "606",
+        "108",
+        "55",
+        "474",
+        "475"
+      ],
+      "flagged": false
+    },
+    {
+      "id": "neg-06",
+      "kind": "negative",
+      "scope": "library",
+      "mode": "keyword",
+      "ru": false,
+      "retrieved": [
+        "742",
+        "480",
+        "572",
+        "365",
+        "528",
+        "906",
+        "35",
+        "715",
+        "717",
+        "719"
+      ],
+      "flagged": false
+    }
+  ]
+}

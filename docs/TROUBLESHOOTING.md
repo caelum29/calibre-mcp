@@ -85,6 +85,13 @@ skipped straight to searching on a fresh machine, the first hybrid/vector query 
 After that everything runs offline. Reranking itself also costs seconds of CPU per query;
 `CALIBRE_MCP_RERANK=off` disables it (faster, noticeably less precise ranking).
 
+### A search hit points at a book that no longer exists
+
+`calibre_get_book` / `calibre_get_content` 404 on an id that semantic search just returned:
+the book was removed (or merged away) after it was indexed, and indexing never deletes on its
+own. Run `calibre_build_index` with `prune: true` (any selector — the prune runs on the whole
+index) to drop the stale entries; it reports how many books and chunks it removed.
+
 ### Semantic results flagged "low confidence"
 
 The best match scored below the confidence floor (`CALIBRE_MCP_SEMANTIC_FLOOR`,
@@ -100,7 +107,16 @@ just flagged; treat them as "closest we have", not an answer.
 It's a scanned/image-only PDF — no text layer. Calibre has no OCR and neither does this
 server; such books can't be read or semantically indexed. (For best extraction of normal
 PDFs, install poppler's `pdftotext` or Python with PyMuPDF — the server picks the best
-backend available and falls back to Calibre's `ebook-convert`.)
+backend available and falls back to Calibre's `ebook-convert`.) For a non-PDF format the same
+message names that format instead: an EPUB/AZW3 with no extractable text is usually DRM'd or
+built entirely from page images.
+
+### "Download stalled — no data for 120s"
+
+The Content Server stopped sending mid-transfer. The clock measures **silence**, not total
+time, so a legitimately huge file (a 180 MB PDF takes minutes from cold disk) is not what
+trips it. Just retry — the second attempt reads a warm page cache and is much faster. If it
+keeps stalling, check whether the Calibre GUI is busy converting or rebuilding something.
 
 ### "Book too large — skipped"
 

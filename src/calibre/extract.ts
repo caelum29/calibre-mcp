@@ -44,6 +44,8 @@ export interface ExtractedText {
   cached: boolean;
   /** Placed image markers (D-018 Phase B); [] when the book has none or figures were unavailable. */
   markers: FigureMarker[];
+  /** Inventory figures whose caption line was not found in the text (silent linkage gap signal). */
+  unplaced: number;
 }
 
 /** Structural seam for the figure-inventory service — keeps the extractor testable. */
@@ -86,6 +88,17 @@ export function chooseExtractFormat(formats: string[], preference?: string): str
   if (preference && have.has(preference.toLowerCase())) return preference.toLowerCase();
   for (const f of FORMAT_PREFERENCE) if (have.has(f)) return f;
   return undefined;
+}
+
+/**
+ * Why a format yielded zero text, worded for the format actually extracted (#100): a
+ * scanned-page diagnosis is only honest for PDFs — an empty EPUB/AZW3 is a DRM/structure
+ * problem, and naming "PDF" there sent triage down the wrong path.
+ */
+export function noTextReason(format: string): string {
+  return format.toLowerCase() === "pdf"
+    ? "likely a scanned/image PDF (Calibre has no OCR)"
+    : `the ${format.toUpperCase()} has no extractable text layer (image-only pages, or DRM/structure the converter can't read)`;
 }
 
 /** pdftotext argv: UTF-8 output, quiet, src → dest. */
@@ -178,7 +191,8 @@ export class Extractor {
       if (hit) {
         const now = new Date();
         await utimes(cacheFile, now, now).catch(() => {}); // LRU touch
-        return { text: hit.text, backend: "cache", chars: hit.text.length, cached: true, markers: hit.markers };
+        // Pre-diagnostics cache entries lack the count — 0 keeps the field honest-optimistic.
+        return { text: hit.text, backend: "cache", chars: hit.text.length, cached: true, markers: hit.markers, unplaced: hit.unplaced ?? 0 };
       }
       // unreadable/corrupt envelope: fall through and re-extract
     }
@@ -193,11 +207,11 @@ export class Extractor {
         timeoutMs: args.timeoutMs,
       });
       const converted = await this.#convert(fmt, tmpSrc, tmpOut, report, args.timeoutMs);
-      const { text, markers } = await this.#injectMarkers(converted.text, fmt, args);
-      const envelope: TextCacheEnvelope = { v: TEXT_CACHE_VERSION, backend: converted.backend, text, markers };
+      const { text, markers, unplaced } = await this.#injectMarkers(converted.text, fmt, args);
+      const envelope: TextCacheEnvelope = { v: TEXT_CACHE_VERSION, backend: converted.backend, text, markers, unplaced };
       await writeFile(cacheFile, JSON.stringify(envelope), "utf8");
       await evictCache().catch(() => {});
-      return { text, backend: converted.backend, chars: text.length, cached: false, markers };
+      return { text, backend: converted.backend, chars: text.length, cached: false, markers, unplaced };
     } finally {
       await unlink(tmpSrc).catch(() => {});
       await unlink(tmpOut).catch(() => {});
@@ -213,9 +227,9 @@ export class Extractor {
     text: string,
     fmt: string,
     args: GetTextArgs,
-  ): Promise<{ text: string; markers: FigureMarker[] }> {
+  ): Promise<{ text: string; markers: FigureMarker[]; unplaced: number }> {
     if (!this.inventories || (fmt !== "pdf" && fmt !== "epub") || text.trim().length === 0) {
-      return { text, markers: [] };
+      return { text, markers: [], unplaced: 0 };
     }
     try {
       const { inventory } = await this.inventories.getInventory({
@@ -229,14 +243,14 @@ export class Extractor {
       if (marked.unplaced > 0) {
         log.warn("figure markers unplaced", { bookId: args.bookId, format: fmt, unplaced: marked.unplaced });
       }
-      return { text: marked.text, markers: marked.markers };
+      return { text: marked.text, markers: marked.markers, unplaced: marked.unplaced };
     } catch (err) {
       log.warn("figure marker injection skipped", {
         bookId: args.bookId,
         format: fmt,
         msg: err instanceof Error ? err.message.slice(0, 200) : String(err),
       });
-      return { text, markers: [] };
+      return { text, markers: [], unplaced: 0 };
     }
   }
 
@@ -337,6 +351,8 @@ interface TextCacheEnvelope {
   backend: string;
   text: string;
   markers: FigureMarker[];
+  /** Optional (added post-#87 pre-flight): absent in older v2 entries — read as 0. */
+  unplaced?: number;
 }
 
 /** Parse + validate a text-cache envelope; null on corruption or version mismatch. */

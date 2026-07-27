@@ -4,7 +4,7 @@
 // are cached so paging doesn't reconvert. Scanned PDFs yield empty text (no OCR).
 
 import { z } from "zod";
-import { chooseExtractFormat } from "../calibre/extract.js";
+import { chooseExtractFormat, noTextReason } from "../calibre/extract.js";
 import { detectChapters } from "../domain/structure/chapters.js";
 import { CalibreHttpError } from "../domain/errors.js";
 import { BookId, CoercedBool, CursorParam, limitParam } from "./coerce.js";
@@ -102,6 +102,11 @@ export const getContentTool = defineTool({
         if (m === "NO_EPUB_BACKEND") {
           return toolError("No ebook extractor found — Calibre's ebook-convert is required.");
         }
+        // A stall is the Content Server going quiet mid-transfer — retrying usually works
+        // (the partially warmed page cache makes the second attempt much faster).
+        if (m.includes("Download stalled")) {
+          return toolError(`${m} while fetching book ${numericId} (${fmt}). Retry — the file is likely just very large.`);
+        }
         if (m === "EXTRACT_TIMEOUT" || m.toLowerCase().includes("timed out")) {
           return toolError(`Text extraction timed out for book ${numericId} (${fmt}). The file may be very large.`);
         }
@@ -116,7 +121,7 @@ export const getContentTool = defineTool({
 
       if (extracted.text.trim().length === 0) {
         return toolError(
-          `No extractable text found in book ${numericId} (${fmt}) — likely a scanned/image PDF (Calibre has no OCR).`,
+          `No extractable text found in book ${numericId} (${fmt}) — ${noTextReason(fmt)}.`,
         );
       }
 

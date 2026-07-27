@@ -4,6 +4,26 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `calibre_build_index` takes `prune: true` — deletes index entries for books that are no
+  longer in the library. Indexing only ever upserts, so removals and merges left orphaned
+  chunks that semantic search still returned, pointing at ids that 404 on
+  `calibre_get_content`. The prune reports how many books/chunks/figures it dropped, and
+  refuses to run at all if the library reports zero books (an empty listing must never wipe
+  the index) (#100).
+
+### Fixed
+
+- Large books no longer fail to index with "Download timed out": the download budget now
+  bounds **stalled** transfers (no bytes received for 120s, clock reset by every chunk)
+  instead of total elapsed time, which a 183 MB PDF cannot meet from a cold cache. A
+  stalled download says so, with the byte count received (#100).
+- The "no extractable text" message no longer diagnoses every format as a scanned PDF —
+  an empty EPUB/AZW3 now reads as a missing text layer (image-only pages or DRM) (#100).
+
 ## [0.6.4] — 2026-07-22
 
 ### Fixed
