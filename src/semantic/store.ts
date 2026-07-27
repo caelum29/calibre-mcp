@@ -119,6 +119,13 @@ export interface BookHit {
   frontMatter: boolean;
 }
 
+/** What a prune actually removed — reported by the build tool, never a silent cleanup (#100). */
+export interface PruneCounts {
+  books: number;
+  chunks: number;
+  figures: number;
+}
+
 export interface IndexStore {
   /** Cheap, side-effect-free check for an existing index (no db file is created). */
   hasIndex(libraryId: string): boolean;
@@ -128,6 +135,10 @@ export interface IndexStore {
   isBookIndexed(libraryId: string, bookId: number, lastModified?: string): boolean;
   /** Replace all of a book's chunks/embeddings/figures atomically (idempotent re-index). */
   replaceBook(libraryId: string, meta: BookMeta, chunks: IndexedChunk[], figures?: IndexedFigure[]): void;
+  /** Every book id currently in the index (empty for an absent index) — the prune diff input. */
+  indexedBookIds(libraryId: string): number[];
+  /** Drop all rows for these books (books/chunks/embeddings/figures + FTS shadows). */
+  deleteBooks(libraryId: string, bookIds: number[]): PruneCounts;
   /** Rank books by their single best-matching chunk (best chunk per book), vector cosine. */
   searchLibrary(libraryId: string, query: Float32Array, k: number): LibraryHit[];
   /** Rank passages within one book, vector cosine. */
@@ -375,6 +386,40 @@ export class SqliteIndexStore implements IndexStore {
     } finally {
       // Any write (even a rolled-back one — a needless rebuild is harmless) drops the
       // library's candidate caches; the next vector query rebuilds them from SQLite.
+      this.#candidateCaches.delete(libraryId);
+      this.#figureCaches.delete(libraryId);
+    }
+  }
+
+  indexedBookIds(libraryId: string): number[] {
+    if (!this.hasIndex(libraryId)) return [];
+    const rows = this.#db(libraryId).prepare("SELECT book_id FROM books").all() as Row[];
+    return rows.map((r) => Number(r.book_id));
+  }
+
+  deleteBooks(libraryId: string, bookIds: number[]): PruneCounts {
+    const counts: PruneCounts = { books: 0, chunks: 0, figures: 0 };
+    if (bookIds.length === 0 || !this.hasIndex(libraryId)) return counts;
+    const db = this.#db(libraryId);
+    db.exec("BEGIN");
+    try {
+      const delEmb = db.prepare("DELETE FROM embeddings WHERE book_id = ?");
+      const delChunks = db.prepare("DELETE FROM chunks WHERE book_id = ?");
+      const delFigures = db.prepare("DELETE FROM figures WHERE book_id = ?");
+      const delBook = db.prepare("DELETE FROM books WHERE book_id = ?");
+      for (const id of bookIds) {
+        delEmb.run(id);
+        // The chunks/figures DELETE triggers keep the FTS shadow tables in sync.
+        counts.chunks += Number(delChunks.run(id).changes);
+        counts.figures += Number(delFigures.run(id).changes);
+        counts.books += Number(delBook.run(id).changes);
+      }
+      db.exec("COMMIT");
+      return counts;
+    } catch (err) {
+      db.exec("ROLLBACK");
+      throw err;
+    } finally {
       this.#candidateCaches.delete(libraryId);
       this.#figureCaches.delete(libraryId);
     }

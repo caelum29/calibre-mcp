@@ -85,6 +85,13 @@ skipped straight to searching on a fresh machine, the first hybrid/vector query 
 After that everything runs offline. Reranking itself also costs seconds of CPU per query;
 `CALIBRE_MCP_RERANK=off` disables it (faster, noticeably less precise ranking).
 
+### A search hit points at a book that no longer exists
+
+`calibre_get_book` / `calibre_get_content` 404 on an id that semantic search just returned:
+the book was removed (or merged away) after it was indexed, and indexing never deletes on its
+own. Run `calibre_build_index` with `prune: true` (any selector — the prune runs on the whole
+index) to drop the stale entries; it reports how many books and chunks it removed.
+
 ### Semantic results flagged "low confidence"
 
 The best match scored below the confidence floor (`CALIBRE_MCP_SEMANTIC_FLOOR`,

@@ -210,6 +210,10 @@ after adding books; use `force: true` to re-index books that haven't changed. Ea
 figure captions (see `calibre_get_figures`) are indexed alongside its text, powering
 `calibre_semantic_search` with `target: figures`.
 
+Indexing only ever adds or replaces books, so books you later **remove or merge away** keep
+their (now unreachable) passages in the index. Pass `prune: true` to reconcile: it deletes the
+index entries for every book that is no longer in the library and reports how many it dropped.
+
 This writes only to the server's own local index directory — not to your Calibre library — so
 it's safe to run without enabling library writes.
 
@@ -221,6 +225,7 @@ it's safe to run without enabling library writes.
 | `library` | string | *(default)* | Library name or id |
 | `force` | boolean | `false` | Re-index books even if unchanged |
 | `keywordOnly` | boolean | `false` | Build a keyword-only index (no embedding model needed) |
+| `prune` | boolean | `false` | Also delete index entries for books no longer in the library |
 
 *(At least one of `bookId`, `ids`, or `query` is required.)*
 

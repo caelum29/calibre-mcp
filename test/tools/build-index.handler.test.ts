@@ -94,13 +94,23 @@ interface FakeOpts {
   embedder?: Embedder;
   reranker?: Reranker;
   env?: NodeJS.ProcessEnv;
+  /** Book ids the library currently holds — what a prune reconciles the index against. */
+  libraryIds?: number[];
 }
 
 function deps(opts: FakeOpts = {}): ToolDeps {
+  const ids = opts.libraryIds ?? [1];
   const content = {
     getBook: async (): Promise<Book> => ({ ...baseBook, ...opts.book }),
     resolveLibraryId: async () => "Programming_Books",
-    search: async () => ({ bookIds: [1], total: 1, num: 1, offset: 0, sort: "", libraryId: "Programming_Books" }),
+    search: async () => ({
+      bookIds: ids,
+      total: ids.length,
+      num: ids.length,
+      offset: 0,
+      sort: "",
+      libraryId: "Programming_Books",
+    }),
   };
   const extractor = {
     getText:
@@ -129,8 +139,18 @@ const args = (over: Record<string, unknown> = {}) => ({
   force: false,
   enableFts: false,
   keywordOnly: false,
+  prune: false,
   ...over,
 });
+
+/** Seed an index row for a book that is NOT in the library — an orphan from a removal/merge. */
+function seedOrphan(store: SqliteIndexStore, bookId: number): void {
+  store.replaceBook(
+    "Programming_Books",
+    { bookId, title: "Deleted Book", authors: ["Ghost"], lastModified: "2026-01-01" },
+    [{ charStart: 0, charEnd: 20, body: "orphaned passage", frontMatter: false }],
+  );
+}
 
 describe("calibre_build_index handler", () => {
   it("requires a selector (bookId, ids, or query)", async () => {
@@ -261,6 +281,74 @@ describe("calibre_build_index handler", () => {
     const r = await buildIndexTool.handler(args({ bookId: 1, keywordOnly: true }), deps());
     expect(r.isError).toBeFalsy();
     expectUniversalRemediation((r.content[0] as { text: string }).text);
+  });
+});
+
+describe("orphan prune (issue #100)", () => {
+  const LIB = "Programming_Books";
+
+  it("deletes index rows for books that are no longer in the library", async () => {
+    const store = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
+    seedOrphan(store, 42);
+    const r = await buildIndexTool.handler(args({ bookId: 1, prune: true }), deps({ store, libraryIds: [1] }));
+    expect(r.isError).toBeFalsy();
+    expect(r.structuredContent).toMatchObject({ prunedBooks: 1, prunedChunks: 1 });
+    expect(store.isBookIndexed(LIB, 42)).toBe(false);
+    expect(store.isBookIndexed(LIB, 1)).toBe(true);
+  });
+
+  it("leaves the index alone without prune=true", async () => {
+    const store = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
+    seedOrphan(store, 42);
+    const r = await buildIndexTool.handler(args({ bookId: 1 }), deps({ store, libraryIds: [1] }));
+    expect(r.structuredContent?.prunedBooks).toBeUndefined();
+    expect(store.isBookIndexed(LIB, 42)).toBe(true);
+  });
+
+  it("reports the pruned count in the text block, not just structuredContent", async () => {
+    const store = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
+    seedOrphan(store, 42);
+    const r = await buildIndexTool.handler(args({ bookId: 1, prune: true }), deps({ store, libraryIds: [1] }));
+    expect((r.content[0] as { text: string }).text).toContain("Pruned 1 book(s)");
+  });
+
+  it("refuses to prune when the library lists zero books — an empty listing must not wipe the index", async () => {
+    const store = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
+    seedOrphan(store, 42);
+    const r = await buildIndexTool.handler(args({ bookId: 1, prune: true }), deps({ store, libraryIds: [] }));
+    expect(r.isError).toBeFalsy();
+    expect((r.content[0] as { text: string }).text).toContain("Prune skipped");
+    expect(store.isBookIndexed(LIB, 42)).toBe(true);
+  });
+
+  it("says so when there is nothing stale to prune", async () => {
+    const store = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
+    const r = await buildIndexTool.handler(args({ bookId: 1, prune: true }), deps({ store, libraryIds: [1] }));
+    expect(r.structuredContent).toMatchObject({ prunedBooks: 0 });
+    expect((r.content[0] as { text: string }).text).toContain("no stale books");
+  });
+});
+
+describe("empty-extraction message (issue #100 nit)", () => {
+  it("blames the EPUB, not a scanned PDF, when an EPUB yields no text", async () => {
+    const r = await buildIndexTool.handler(
+      args({ bookId: 1 }),
+      deps({
+        book: { formats: ["epub"] },
+        getText: async () => ({ text: "   ", backend: "ebook-convert", chars: 3, cached: false, markers: [] }),
+      }),
+    );
+    const failure = (r.structuredContent?.failures as string[])[0]!;
+    expect(failure).toContain("EPUB has no extractable text layer");
+    expect(failure).not.toContain("PDF");
+  });
+
+  it("still diagnoses a scanned PDF for PDFs", async () => {
+    const r = await buildIndexTool.handler(
+      args({ bookId: 1 }),
+      deps({ getText: async () => ({ text: "   ", backend: "pdftotext", chars: 3, cached: false, markers: [] }) }),
+    );
+    expect((r.structuredContent?.failures as string[])[0]).toContain("scanned/image PDF");
   });
 });
 

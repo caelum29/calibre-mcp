@@ -6,14 +6,14 @@
 // Per-book failures are collected, not fatal. The write gate disables this tool by default.
 
 import { z } from "zod";
-import { chooseExtractFormat } from "../calibre/extract.js";
+import { chooseExtractFormat, noTextReason } from "../calibre/extract.js";
 import { frontMatterEnd } from "../domain/structure/chapters.js";
 import { BookId, CoercedBool, jsonArray } from "./coerce.js";
 import { defineTool } from "./define.js";
 import { resolveNumericId } from "./resolve-id.js";
 import { INSTALL_TRANSFORMERS } from "./remediation.js";
 import { toolError, toolOk } from "./result.js";
-import type { IndexedChunk, IndexedFigure } from "../semantic/store.js";
+import type { IndexedChunk, IndexedFigure, PruneCounts } from "../semantic/store.js";
 import type { FigureMarker } from "../domain/figures/markers.js";
 import type { ToolDeps } from "./types.js";
 import type { EmbedChunk } from "../semantic/chunk.js";
@@ -23,6 +23,11 @@ import { MAX_TOKENS, PASSAGE_PREFIX } from "../semantic/model.js";
 /** Cap on books selected by a query, so a broad query can't kick off a huge build. */
 const MAX_QUERY_BOOKS = 100;
 
+/** Page size when listing the whole library for a prune (ids only — the response is tiny). */
+const PRUNE_PAGE = 1000;
+/** Runaway guard on the prune paging loop (1000 × 1000 ids ≫ any real library). */
+const PRUNE_MAX_PAGES = 1000;
+
 /** Floor on the token budget — a pathologically long title/authors prefix can't starve chunks. */
 const MIN_TOKEN_BUDGET = 64;
 
@@ -30,7 +35,7 @@ export const buildIndexTool = defineTool({
   name: "calibre_build_index",
   title: "Build semantic index",
   description:
-    "Build the semantic index for specific books (required: bookId, ids, or query — full-library indexing is deferred). Extracts, chunks, and embeds each book. Set keywordOnly=true (or when the embedding model is absent, it happens automatically) to build a keyword-only index that powers mode:\"keyword\" search with zero ML dependencies. Re-run after adding books; use force to re-index unchanged ones.",
+    "Build the semantic index for specific books (required: bookId, ids, or query — full-library indexing is deferred). Extracts, chunks, and embeds each book. Set keywordOnly=true (or when the embedding model is absent, it happens automatically) to build a keyword-only index that powers mode:\"keyword\" search with zero ML dependencies. Re-run after adding books; use force to re-index unchanged ones. Set prune=true to also drop index entries for books that no longer exist in the library (removals/merges leave searchable orphans behind).",
   inputSchema: {
     bookId: BookId().optional(),
     ids: jsonArray(BookId()).optional(),
@@ -39,6 +44,7 @@ export const buildIndexTool = defineTool({
     force: CoercedBool().default(false),
     enableFts: CoercedBool().default(false),
     keywordOnly: CoercedBool().default(false),
+    prune: CoercedBool().default(false),
   },
   outputSchema: {
     booksRequested: z.number().optional(),
@@ -46,6 +52,10 @@ export const buildIndexTool = defineTool({
     booksSkipped: z.number().optional(),
     chunks: z.number().optional(),
     figures: z.number().optional(),
+    // Orphan prune (#100) — only present when prune=true ran; 0s mean "checked, nothing stale".
+    prunedBooks: z.number().optional(),
+    prunedChunks: z.number().optional(),
+    prunedFigures: z.number().optional(),
     elapsedMs: z.number().optional(),
     keywordOnly: z.boolean().optional(),
     // Degradation surfacing (issue #41): false whenever the built index has no embeddings —
@@ -195,6 +205,29 @@ export const buildIndexTool = defineTool({
       );
     }
 
+    // Orphan prune (#100): indexing only ever upserts, so books removed from the library (or
+    // merged away) keep searchable chunks that 404 on calibre_get_content. Reconcile the index
+    // against the CURRENT library id set. Opt-in: a narrow selector must not imply a sweep.
+    let pruned: PruneCounts | undefined;
+    if (args.prune) {
+      try {
+        const live = await liveBookIds(deps, args.library);
+        // An empty live set means the library listing failed or the server lied — pruning then
+        // would wipe the whole index. Refuse instead.
+        if (live.size === 0) throw new Error("the library reported 0 books");
+        const orphans = deps.index.indexedBookIds(libraryId).filter((id) => !live.has(id));
+        pruned = deps.index.deleteBooks(libraryId, orphans);
+        notes.push(
+          pruned.books > 0
+            ? `Pruned ${pruned.books} book(s) no longer in the library (${pruned.chunks} chunks, ${pruned.figures} figures).`
+            : "Prune found no stale books — the index matches the library.",
+        );
+      } catch (err) {
+        // A failed prune never fails the build: the indexing above already committed.
+        notes.push(`Prune skipped — could not list the library (${describeError(err)}).`);
+      }
+    }
+
     if (args.enableFts) {
       notes.push("enableFts is accepted but not yet implemented in this version (semantic-only index).");
     }
@@ -216,6 +249,9 @@ export const buildIndexTool = defineTool({
       booksSkipped,
       chunks: totalChunks,
       figures: totalFigures,
+      ...(pruned
+        ? { prunedBooks: pruned.books, prunedChunks: pruned.chunks, prunedFigures: pruned.figures }
+        : {}),
       elapsedMs,
       keywordOnly,
       semanticAvailable: !keywordOnly,
@@ -225,6 +261,24 @@ export const buildIndexTool = defineTool({
     });
   },
 });
+
+/**
+ * Every book id currently in the library, paged through the search endpoint (empty query =
+ * everything). Used as the keep-set for the orphan prune, so it must be complete — a partial
+ * page walk would look like "these books are gone" and delete live rows.
+ */
+async function liveBookIds(deps: ToolDeps, library: string | undefined): Promise<Set<number>> {
+  const ids = new Set<number>();
+  let offset = 0;
+  for (let page = 0; page < PRUNE_MAX_PAGES; page++) {
+    const res = await deps.content.search({ query: "", library, num: PRUNE_PAGE, offset });
+    for (const id of res.bookIds) ids.add(id);
+    if (res.bookIds.length === 0) break;
+    offset += res.bookIds.length;
+    if (offset >= res.total) break;
+  }
+  return ids;
+}
 
 /** Per-book diagnostics surfaced to structuredContent — the re-index triage record (#87). */
 interface BookDetail {
@@ -267,7 +321,7 @@ async function indexBook(
   const extracted = await deps.extractor.getText({ bookId, format: fmt, downloadUrl, cacheKey });
 
   if (extracted.text.trim().length === 0) {
-    throw new Error(`no extractable text (${fmt}) — likely a scanned/image PDF (no OCR)`);
+    throw new Error(`no extractable text (${fmt}) — ${noTextReason(fmt)}`);
   }
 
   // Deterministic context prefix — captures most of contextual-retrieval's benefit at zero
