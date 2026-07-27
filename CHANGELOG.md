@@ -6,6 +6,27 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.7.1] — 2026-07-27
+
+### Added
+
+- **In-chat figure viewer (MCP Apps hosts, #112).** Fetching figures with
+  `calibre_get_figures` now shows them to *you*, not just to the assistant: a large reading
+  pane with a margin rail when several figures come back, caption and page under each one,
+  click (or Enter) to zoom to 100% and drag to pan. A figure that couldn't be extracted
+  appears as a quiet placard rather than an error, and a plain listing call renders nothing
+  at all. Text-only hosts are unaffected — same images in the transcript as before.
+
+### Changed
+
+- **The figure viewer is now documented** in the tool reference, the README and the
+  companion `calibre-mcp` skill, where `calibre_get_figures` had been missing from the tool
+  map entirely.
+- **Stronger nudge to actually read the figure.** Fetch results now tell the assistant the
+  images are in its context, ask it to name two things visible in the figure before
+  interpreting, and to say plainly when it can't see the image instead of guessing from
+  what similar diagrams usually look like.
+
 ## [0.7.0] — 2026-07-27
 
 Book **figures** — the diagrams, charts and schemas your books explain things with — are now
