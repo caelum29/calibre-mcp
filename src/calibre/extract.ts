@@ -90,6 +90,17 @@ export function chooseExtractFormat(formats: string[], preference?: string): str
   return undefined;
 }
 
+/**
+ * Why a format yielded zero text, worded for the format actually extracted (#100): a
+ * scanned-page diagnosis is only honest for PDFs — an empty EPUB/AZW3 is a DRM/structure
+ * problem, and naming "PDF" there sent triage down the wrong path.
+ */
+export function noTextReason(format: string): string {
+  return format.toLowerCase() === "pdf"
+    ? "likely a scanned/image PDF (Calibre has no OCR)"
+    : `the ${format.toUpperCase()} has no extractable text layer (image-only pages, or DRM/structure the converter can't read)`;
+}
+
 /** pdftotext argv: UTF-8 output, quiet, src → dest. */
 export function pdftotextArgs(src: string, dest: string): string[] {
   return ["-q", "-enc", "UTF-8", src, dest];

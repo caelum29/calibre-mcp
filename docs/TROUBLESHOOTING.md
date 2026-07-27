@@ -100,7 +100,9 @@ just flagged; treat them as "closest we have", not an answer.
 It's a scanned/image-only PDF — no text layer. Calibre has no OCR and neither does this
 server; such books can't be read or semantically indexed. (For best extraction of normal
 PDFs, install poppler's `pdftotext` or Python with PyMuPDF — the server picks the best
-backend available and falls back to Calibre's `ebook-convert`.)
+backend available and falls back to Calibre's `ebook-convert`.) For a non-PDF format the same
+message names that format instead: an EPUB/AZW3 with no extractable text is usually DRM'd or
+built entirely from page images.
 
 ### "Book too large — skipped"
 

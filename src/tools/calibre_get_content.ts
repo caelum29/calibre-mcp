@@ -4,7 +4,7 @@
 // are cached so paging doesn't reconvert. Scanned PDFs yield empty text (no OCR).
 
 import { z } from "zod";
-import { chooseExtractFormat } from "../calibre/extract.js";
+import { chooseExtractFormat, noTextReason } from "../calibre/extract.js";
 import { detectChapters } from "../domain/structure/chapters.js";
 import { CalibreHttpError } from "../domain/errors.js";
 import { BookId, CoercedBool, CursorParam, limitParam } from "./coerce.js";
@@ -116,7 +116,7 @@ export const getContentTool = defineTool({
 
       if (extracted.text.trim().length === 0) {
         return toolError(
-          `No extractable text found in book ${numericId} (${fmt}) — likely a scanned/image PDF (Calibre has no OCR).`,
+          `No extractable text found in book ${numericId} (${fmt}) — ${noTextReason(fmt)}.`,
         );
       }
 
