@@ -8,6 +8,10 @@ All notable changes to this project are documented here. The format is based on
 
 ### Fixed
 
+- Large books no longer fail to index with "Download timed out": the download budget now
+  bounds **stalled** transfers (no bytes received for 120s, clock reset by every chunk)
+  instead of total elapsed time, which a 183 MB PDF cannot meet from a cold cache. A
+  stalled download says so, with the byte count received (#100).
 - The "no extractable text" message no longer diagnoses every format as a scanned PDF —
   an empty EPUB/AZW3 now reads as a missing text layer (image-only pages or DRM) (#100).
 

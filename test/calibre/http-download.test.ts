@@ -39,4 +39,56 @@ describe("downloadToFile", () => {
       CalibreHttpError,
     );
   });
+
+  // The timeout bounds STALL, not total elapsed (#100): a genuinely huge PDF takes minutes
+  // from cold disk and used to be killed mid-transfer by a fixed elapsed cap.
+  it("completes a slow-but-progressing download that outlives the timeout window", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(drip(["ab", "cd", "ef", "gh"], 25))));
+    const out = dest();
+    try {
+      const { bytes } = await downloadToFile("http://x/big", out, { timeoutMs: 60 });
+      expect(bytes).toBe(8); // ~100 ms of transfer under a 60 ms stall timeout
+    } finally {
+      await unlink(out).catch(() => {});
+    }
+  });
+
+  it("aborts with a stall message when the stream goes quiet", async () => {
+    // Mirror real fetch: the abort signal errors the body stream.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((_url: string, init?: { signal?: AbortSignal }) =>
+        Promise.resolve(new Response(drip(["ab"], 10_000, init?.signal))),
+      ),
+    );
+    await expect(downloadToFile("http://x/hung", dest(), { timeoutMs: 30 })).rejects.toThrow(
+      /Download stalled/,
+    );
+  });
 });
+
+/** A body that emits one chunk every `gapMs`, then closes — a slow but progressing transfer. */
+function drip(chunks: string[], gapMs: number, signal?: AbortSignal): ReadableStream<Uint8Array> {
+  const enc = new TextEncoder();
+  let i = 0;
+  return new ReadableStream({
+    pull(controller) {
+      return new Promise<void>((resolve) => {
+        const timer = setTimeout(() => {
+          if (i < chunks.length) controller.enqueue(enc.encode(chunks[i++]!));
+          else controller.close();
+          resolve();
+        }, gapMs);
+        signal?.addEventListener(
+          "abort",
+          () => {
+            clearTimeout(timer);
+            controller.error(new DOMException("aborted", "AbortError"));
+            resolve();
+          },
+          { once: true },
+        );
+      });
+    },
+  });
+}

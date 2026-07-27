@@ -104,6 +104,13 @@ backend available and falls back to Calibre's `ebook-convert`.) For a non-PDF fo
 message names that format instead: an EPUB/AZW3 with no extractable text is usually DRM'd or
 built entirely from page images.
 
+### "Download stalled — no data for 120s"
+
+The Content Server stopped sending mid-transfer. The clock measures **silence**, not total
+time, so a legitimately huge file (a 180 MB PDF takes minutes from cold disk) is not what
+trips it. Just retry — the second attempt reads a warm page cache and is much faster. If it
+keeps stalling, check whether the Calibre GUI is busy converting or rebuilding something.
+
 ### "Book too large — skipped"
 
 `calibre_get_content` and `calibre_build_index` cap the download at
