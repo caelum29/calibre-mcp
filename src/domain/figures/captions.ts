@@ -33,6 +33,23 @@ const CAPTION_PATTERNS: readonly RegExp[] = [
   /^[\f\s]*(?:Рис(?:унок)?|рис(?:унок)?)\.?\s?(\d+(?:[.,–-]\d+)?)\.?\s*[–—-]?\s*(.*)$/u,
 ];
 
+// Context guard (#116): an in-text reference that wraps to the start of a line is
+// indistinguishable from a caption on the line alone ("Figure 2.10. This instruction
+// pipeline is…" — the `.` is the *referring* sentence's period). The distinguishing
+// signal is the previous line: a caption is preceded by a blank line or a line ending
+// in terminal punctuation, a wrapped reference by prose whose sentence runs on.
+// Length-gated because short run-on lines are diagram inner labels ("Выход",
+// "спортсмен"), not prose — probe over 30 sampled PDFs: 21 rejections, all genuine
+// in-text references bar one ambiguous two-column RU case, 0 real captions lost.
+const PROSE_LINE_MIN = 40;
+const RUNS_ON = /[a-zа-яё,;\-–—¬­]\s*$/u;
+
+/** True when `prevLine` is a wrapped prose line whose sentence continues into the next. */
+export function runsOnIntoNextLine(prevLine: string): boolean {
+  const prev = prevLine.replace(/\s+$/u, "");
+  return prev.length >= PROSE_LINE_MIN && RUNS_ON.test(prev);
+}
+
 /** Split extracted PDF text into pages on the form feeds pdftotext emits. */
 export function splitPages(text: string): string[] {
   return text.split("\f");
@@ -43,19 +60,28 @@ export function scanCaptions(text: string): Caption[] {
   const captions: Caption[] = [];
   const pages = splitPages(text);
   for (let p = 0; p < pages.length; p++) {
-    for (const line of (pages[p] ?? "").split("\n")) {
-      const hit = matchCaptionLine(line);
+    const lines = (pages[p] ?? "").split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      const hit = matchCaptionLine(lines[i] ?? "", lines[i - 1]);
       if (hit) captions.push({ page: p + 1, ...hit });
     }
   }
   return captions;
 }
 
-/** Match one line against the caption patterns; null when it isn't a caption. */
-export function matchCaptionLine(line: string): { label: string; text: string } | null {
+/**
+ * Match one line against the caption patterns; null when it isn't a caption.
+ * `prevLine` is the physically preceding line when the caller has one (PDF page text);
+ * callers matching a standalone block (EPUB caption elements) omit it.
+ */
+export function matchCaptionLine(
+  line: string,
+  prevLine?: string,
+): { label: string; text: string } | null {
   // Guard: long lines are prose that happens to start with "Figure …" mid-sentence
   // wrapped to line start; real captions are short. 300 chars is generous.
   if (line.length > 300) return null;
+  if (prevLine !== undefined && runsOnIntoNextLine(prevLine)) return null;
   for (const re of CAPTION_PATTERNS) {
     const m = re.exec(line);
     if (m) return { label: m[1] ?? "", text: (m[2] ?? "").trim() };

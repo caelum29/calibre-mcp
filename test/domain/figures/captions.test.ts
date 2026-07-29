@@ -67,6 +67,37 @@ describe("scanCaptions", () => {
   });
 });
 
+describe("wrapped in-text references (#116)", () => {
+  const wrappedRef = "Figure 2.10. This instruction pipeline is identified as the TYP pipeline";
+  const runOn = "types resulted in the six-stage instruction pipeline shown in the right-hand side of";
+
+  it("rejects a caption-shaped line whose previous line's sentence runs on", () => {
+    expect(matchCaptionLine(wrappedRef, runOn)).toBeNull();
+  });
+
+  it("rejects when the previous line breaks on a hyphenation mark", () => {
+    expect(matchCaptionLine(wrappedRef, "the four sequences of subcomputations required by these instruc¬")).toBeNull();
+  });
+
+  it("keeps captions after a blank line or terminal punctuation", () => {
+    expect(matchCaptionLine(wrappedRef, "")?.label).toBe("2.10");
+    expect(matchCaptionLine(wrappedRef, "…required to support them. This procedure results in a definition.")?.label).toBe("2.10");
+  });
+
+  it("keeps captions after a short diagram inner label (RU false-rejection case)", () => {
+    expect(matchCaptionLine("Рис. 2.3. Джейн Доу представлена двумя сущностями", "спортсмен")?.label).toBe("2.3");
+  });
+
+  it("scanCaptions applies the guard with real page context", () => {
+    const page = [runOn, wrappedRef, "", "Figure 2.11. The physical organization of the pipeline"].join("\n");
+    expect(scanCaptions(page)).toEqual([{ page: 1, label: "2.11", text: "The physical organization of the pipeline" }]);
+  });
+
+  it("does not apply the guard when no context is supplied (EPUB blocks)", () => {
+    expect(matchCaptionLine(wrappedRef)?.label).toBe("2.10");
+  });
+});
+
 describe("Manning double-space captions (probe #77)", () => {
   it("keeps the dotted label whole when a wide gap separates it from the text", () => {
     expect(matchCaptionLine("Figure 4.1  The producer sends records to the broker")).toEqual({
