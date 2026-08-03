@@ -21,6 +21,11 @@
     "flaggedRate": 1.0,
     "positivesZeroedByFloor": 0
   },
+  "filterLayer": {
+    "$comment": "#93 filter param (D-019), declared BEFORE implementation (D-012). The semantic filter is candidate-set restriction before exact brute-force cosine/topK — a pure subset of the unfiltered ranking, no ANN recall loss is possible — so no new gated query kind. Gate = (a) the unfiltered suite must not regress: the existing nonRegression block vs baselineReport re-run after the filter layer lands; (b) mandatory unit property tests: restricted searchLibrary/searchLibraryFts return exactly the unfiltered ranking intersected with the allow set, order preserved. Human record: issue #93 resolution comment.",
+    "unfilteredSuite": { "reusesGate": "nonRegression" },
+    "propertyTests": { "required": true, "location": "test/semantic/store-restrict.test.ts" }
+  },
   "liveEval": {
     "$comment": "Before/after diff on the real library is a mandatory triage artifact, NOT a gate — live-relevance.json labels are unverified and the re-index mixes markers + figures + D-016 demotion.",
     "gate": false
