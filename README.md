@@ -238,13 +238,13 @@ and `mode: hybrid` degrades to keyword (with a note); rebuild with the model ins
 
 | Tool | Access | What it does |
 |---|---|---|
-| `calibre_search` | read | Find books by title/author/ISBN/tag or Calibre query syntax (`mode: meta`), or full text (`mode: fts`); `scope: book` searches inside one book |
+| `calibre_search` | read | Find books by title/author/ISBN/tag or Calibre query syntax (`mode: meta`), or full text (`mode: fts`); `scope: book` searches inside one book; `filter` scopes to a bundle |
 | `calibre_get_book` | read | Full metadata, formats, and cover link for one book (id or uuid); `include_cover: true` embeds the cover image in the result |
 | `calibre_get_content` | read | Read a book’s text as capped excerpts; walk the whole book via cursor. `structure: true` returns a chapter map (headings, offsets, per-chapter cursors) — EN + RU/UK |
 | `calibre_get_figures` | read | List a book’s figures/illustrations with captions and page locations; fetched ones render in an in-chat figure viewer |
 | `calibre_list_categories` | read | Browse tags, authors, series, publishers, custom columns with counts |
 | `calibre_list_libraries` | read | List the libraries the Content Server exposes (+ which is default) |
-| `calibre_semantic_search` | read | Meaning-based search; `mode: hybrid\|vector\|keyword`, library- or book-scoped |
+| `calibre_semantic_search` | read | Meaning-based search; `mode: hybrid\|vector\|keyword`, library- or book-scoped; `filter` scopes to a bundle |
 | `calibre_build_index` | read* | Build/refresh the local semantic index for selected books (writes only a local index file); `keywordOnly: true` builds a model-free keyword index |
 | `calibre_find_duplicates` | read | Duplicate groups with merge-safety scores; `mode: compare` diffs two books |
 | `calibre_quality_report` | read | Audit: missing metadata, raw-filename titles, invalid ISBNs, author-sort issues, series gaps |
@@ -255,7 +255,7 @@ and `mode: hybrid` degrades to keyword (with a note); rebuild with the model ins
 | `calibre_add_book` | **write** | Import a local ebook file (path-whitelisted) |
 | `calibre_remove_book` | **write, destructive** | Permanently delete books (records + files); dry-run unless confirmed |
 | `calibre_merge_books` | **write, destructive** | Merge duplicate records: move formats into a target, merge metadata per Calibre's rules, trash sources; dry-run plan unless confirmed |
-| `calibre_manage_bundles` | **write** | List/create/update/delete Bundles — named topical filters backed by Calibre saved searches; lists virtual libraries read-only; preview-first |
+| `calibre_manage_bundles` | **write** | List/create/update/delete Bundles — named topical filters backed by Calibre saved searches; `-`-named bundles auto-hide their books from discovery searches; preview-first |
 | `calibre_ping` | read | Health check: is Calibre reachable end-to-end? |
 
 In MCP Apps hosts, `calibre_search` and `calibre_semantic_search` (library scope) render

@@ -38,24 +38,40 @@ Mostly PDF/EPUB, technical, EN + RU. Calibre GUI + Content Server on `:8080` are
 
 | Tool | Purpose | Key params |
 |---|---|---|
-| `calibre_search` | Find books by metadata or full text; also keyword search *inside* one book | `query`, `mode: meta\|fts`, `scope: library\|book`, `bookId`, `sort`, `limit`, `cursor` |
+| `calibre_search` | Find books by metadata or full text; also keyword search *inside* one book | `query`, `mode: meta\|fts`, `scope: library\|book`, `bookId`, `sort`, `limit`, `cursor`, `filter` (bundle), `include_excluded` |
 | `calibre_get_book` | Full metadata + formats + cover for one book | `id` (number or uuid) |
 | `calibre_get_content` | Read book text chunk-by-chunk without flooding context | `id`, `maxChars` (default 8k, max 40k), `cursor`, `structure` (outline), `sentenceAware` |
 | `calibre_get_figures` | List a book's captioned figures, then fetch ≤3 as images (also rendered for the user in an in-chat figure viewer on MCP Apps hosts) | `id`, `indexes` (omit to list), `detail: standard\|high`, `include_uncaptioned`, `format` |
 | `calibre_list_categories` | Tags/authors/series/etc. values + counts; schema discovery | `field`, `valueFilter` (regex), `limit`, `cursor` |
 | `calibre_list_libraries` | Library map + default | — |
-| `calibre_semantic_search` | Meaning-based search across the library or within one book | `query`, `scope: library\|book`, `bookId`, `mode: hybrid\|vector\|keyword`, `topK` |
+| `calibre_semantic_search` | Meaning-based search across the library or within one book | `query`, `scope: library\|book`, `bookId`, `mode: hybrid\|vector\|keyword`, `topK`, `filter` (bundle), `include_excluded` |
 | `calibre_build_index` | Build/refresh the semantic index (needed before semantic search) | `ids`/`query`/`bookId` to scope, `force`, `enableFts`, `keywordOnly` |
-| `calibre_find_duplicates` | Dup detection | `mode: identical\|similar\|compare`, `ids`, `query` |
-| `calibre_quality_report` | Library audit: missing metadata, rule violations, readability | `checks`, `ids`/`query`, `readability` |
+| `calibre_find_duplicates` | Dup detection | `mode: identical\|similar\|compare`, `ids`, `query`, `filter` (bundle) |
+| `calibre_quality_report` | Library audit: missing metadata, rule violations, readability | `checks`, `ids`/`query`/`filter`, `readability` |
 | `calibre_recover_metadata` | Propose metadata for raw-filename books (ISBN → OpenLibrary → Google Books) | `id`, `sources` — returns a *proposal*; apply via `calibre_update_book` |
 | `calibre_update_book` | Write metadata for one book | `id`, `changes` (object incl. `#custom` fields) |
-| `calibre_bulk_update` | Same change across many books | `changes`, `ids` OR `query` (one required), `preview` |
+| `calibre_bulk_update` | Same change across many books | `changes`, `ids` OR `query` OR `filter` (one required), `preview` |
 | `calibre_add_book` | Import a file (path must be under the whitelisted roots) | `path` |
 | `calibre_remove_book` | Delete books | `ids`, `confirm` |
 | `calibre_merge_books` | Merge duplicate records: formats + metadata into a target, sources → trash | `targetId`, `sourceIds`, `mode: merge\|safe\|formatsOnly`, `confirm` |
 | `calibre_extract_isbn` | Scan book text for ISBN, optionally write it | `id`, `apply` |
 | `calibre_manage_bundles` | Bundles = named topical filters (Calibre saved searches); `-name` = exclusion marker. Lists virtual libraries read-only — never creates one | `action: list\|create\|update\|delete`, `name`, `expression`, `confirm` |
+
+## Bundles (topical filters)
+
+Bundles are named filters backed by Calibre saved searches (`calibre_manage_bundles`, write-gated).
+Use them to scope work to a topic instead of the whole 800-book library:
+
+- **Topical query → try the matching bundle first.** "What do my databases books say about X?" →
+  `calibre_semantic_search { query: "X", filter: "databases" }`. An unknown filter name errors
+  with the list of available bundles — that error IS the discovery mechanism, don't pre-list.
+- **Exclusion markers**: bundles named `-something` are auto-subtracted from discovery searches
+  (`calibre_search`, `calibre_semantic_search` library scope). The result always says what was
+  subtracted (`exclusions applied: […]`); pass `include_excluded: true` to see everything.
+  Targeting the marker itself (`filter: "-outdated"`) shows exactly its books.
+- **Maintenance sees everything**: `quality_report`/`find_duplicates`/`bulk_update` accept
+  `filter` but never auto-subtract markers — noise books need curation most.
+- Filtering is query-time; creating/changing bundles needs no re-index.
 
 ## Tag Convention
 

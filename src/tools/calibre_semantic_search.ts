@@ -19,7 +19,8 @@ import { RERANK_FLOOR, RERANK_POOL } from "../semantic/reranker.js";
 import { stemText } from "../semantic/stem.js";
 import type { BookHit, FigureHit, LibraryHit } from "../semantic/store.js";
 import type { BoardPayload } from "../ui/board-cache.js";
-import { BookId, limitParam } from "./coerce.js";
+import { type FilterResolution, honestyLines, restrictSet, resolveFilter } from "./bundles.js";
+import { BookId, CoercedBool, limitParam } from "./coerce.js";
 import { defineTool } from "./define.js";
 import { bookResourceLink } from "./resource-link.js";
 import { resolveNumericId } from "./resolve-id.js";
@@ -55,7 +56,7 @@ export const semanticSearchTool = defineTool({
   name: "calibre_semantic_search",
   title: "Semantic search",
   description:
-    "Meaning-based search over the local index. scope=library ranks books; scope=book (needs bookId) ranks passages within one book. target=figures searches figure captions instead of text — use when the user asks for a diagram/chart/schema; hits point at calibre_get_figures for the pixels. mode=hybrid (default) fuses semantic + keyword matches; mode=vector is semantic-only; mode=keyword is exact keyword/FTS (no model at query time). All modes need an index built by calibre_build_index.",
+    "Meaning-based search over the local index. scope=library ranks books; scope=book (needs bookId) ranks passages within one book. target=figures searches figure captions instead of text — use when the user asks for a diagram/chart/schema; hits point at calibre_get_figures for the pixels. mode=hybrid (default) fuses semantic + keyword matches; mode=vector is semantic-only; mode=keyword is exact keyword/FTS (no model at query time). All modes need an index built by calibre_build_index. filter accepts a bundle name to scope library searches (list bundles via calibre_manage_bundles).",
   inputSchema: {
     query: z.string().min(1).max(512),
     scope: z.enum(["library", "book"]).default("library"),
@@ -66,6 +67,8 @@ export const semanticSearchTool = defineTool({
     bookId: BookId().optional(),
     topK: limitParam(50, 10),
     library: z.string().optional(),
+    filter: z.string().trim().min(1).max(256).optional(),
+    include_excluded: CoercedBool().optional(),
   },
   outputSchema: {
     scope: z.string().optional(),
@@ -82,6 +85,8 @@ export const semanticSearchTool = defineTool({
     semanticAvailable: z.boolean().optional(),
     semanticReason: z.string().optional(),
     note: z.string().optional(),
+    filter: z.string().optional(),
+    exclusionsApplied: z.array(z.string()).optional(),
     bookIds: z.array(z.number()).optional(),
     // Ranked hits mirrored into structuredContent so structured-only clients (that render
     // structuredContent but drop text content blocks) still surface the snippets/passages.
@@ -171,6 +176,10 @@ export const semanticSearchTool = defineTool({
       const effArgs: Args = { ...args, mode };
 
       if (effArgs.scope === "book") {
+        // Bundles scope LIBRARY discovery; a named book is already the narrowest scope.
+        if (effArgs.filter !== undefined) {
+          return toolError("filter (bundle) applies to scope=library only — scope=book already names one book.");
+        }
         if (effArgs.bookId === undefined) {
           return toolError("scope=book requires bookId (the book to search within).");
         }
@@ -187,10 +196,24 @@ export const semanticSearchTool = defineTool({
         return await bookScope(effArgs, deps, libraryId, numericId, sem, note);
       }
 
+      // Library scope = discovery: resolve the bundle filter + auto exclusion markers (#93).
+      // Restriction is query-time only — an allowed-book-id set intersected with the index
+      // candidates before exact ranking; the index itself never bakes bundles in (D-019).
+      const fr = await resolveFilter(deps, {
+        filter: effArgs.filter,
+        includeExcluded: effArgs.include_excluded,
+        autoExclude: true,
+        library: effArgs.library,
+      });
+      if (!fr.ok) return toolError(fr.error);
+      const allow = await restrictSet(deps, fr.res, effArgs.library);
+      const scope: FilterCtx = { fRes: fr.res, ...(allow ? { allow } : {}) };
+      note = joinNotes(note, ...honestyLines(fr.res, allow?.size));
+
       if (effArgs.target === "figures") {
-        return await figuresTarget(effArgs, deps, libraryId, undefined, sem, note);
+        return await figuresTarget(effArgs, deps, libraryId, undefined, sem, note, scope);
       }
-      return await libraryScope(effArgs, deps, libraryId, sem, note);
+      return await libraryScope(effArgs, deps, libraryId, sem, note, scope);
     } catch (err) {
       return mapError(err);
     }
@@ -205,7 +228,29 @@ type Args = {
   bookId?: number | string;
   topK: number;
   library?: string;
+  filter?: string;
+  include_excluded?: boolean;
 };
+
+/** Resolved bundle scope for a library-scope call (#93): the resolution + allowed id set. */
+interface FilterCtx {
+  fRes: FilterResolution;
+  /** Absent = unscoped call (no filter, no markers) — candidates are unrestricted. */
+  allow?: ReadonlySet<number>;
+}
+
+/** Neutral scope for paths the filter layer doesn't reach (scope=book). */
+const UNSCOPED: FilterCtx = { fRes: { markers: [] } };
+
+/** filter/exclusions mirrored into structuredContent + the board payload. */
+function filterFields(scope: FilterCtx): { filter?: string; exclusionsApplied?: string[] } {
+  return {
+    ...(scope.fRes.bundle ? { filter: scope.fRes.bundle.name } : {}),
+    ...(scope.fRes.markers.length > 0
+      ? { exclusionsApplied: scope.fRes.markers.map((m) => m.name) }
+      : {}),
+  };
+}
 
 /** Semantic-capability verdict for the resolved library's index, spread into every success. */
 interface SemStatus {
@@ -239,6 +284,7 @@ function boardMeta(
   libraryId: string,
   ranked: RankedBook[],
   lowConfidence: boolean,
+  scope: FilterCtx,
 ): Record<string, unknown> {
   const payload: BoardPayload = {
     tool: "calibre_semantic_search",
@@ -249,6 +295,7 @@ function boardMeta(
     serverUrl: deps.config.serverUrl,
     lowConfidence,
     total: ranked.length,
+    ...filterFields(scope),
     books: ranked.map((r) => ({
       bookId: r.hit.bookId,
       title: r.hit.title,
@@ -263,8 +310,15 @@ function boardMeta(
 }
 
 /** scope=library — rank books; emit resource_links + fenced snippets. */
-async function libraryScope(args: Args, deps: ToolDeps, libraryId: string, sem: SemStatus, degradeNote?: string) {
-  const pool = await rankBooks(args, deps, libraryId);
+async function libraryScope(
+  args: Args,
+  deps: ToolDeps,
+  libraryId: string,
+  sem: SemStatus,
+  degradeNote?: string,
+  scope: FilterCtx = UNSCOPED,
+) {
+  const pool = await rankBooks(args, deps, libraryId, scope.allow);
   const rr = await applyRerank(pool, (r) => r.hit.body, args, deps);
   const ranked = rr.hits;
   const note = joinNotes(degradeNote, rr.note);
@@ -278,6 +332,7 @@ async function libraryScope(args: Args, deps: ToolDeps, libraryId: string, sem: 
       ...rerankFields(args, rr),
       ...sem,
       note,
+      ...filterFields(scope),
       bookIds: [],
     });
   }
@@ -316,10 +371,11 @@ async function libraryScope(args: Args, deps: ToolDeps, libraryId: string, sem: 
       ...rerankFields(args, rr),
       ...sem,
       note,
+      ...filterFields(scope),
       bookIds: ranked.map((r) => r.hit.bookId),
       results,
     }),
-    _meta: boardMeta(deps, args, libraryId, ranked, lowConfidence),
+    _meta: boardMeta(deps, args, libraryId, ranked, lowConfidence, scope),
   };
 }
 
@@ -414,6 +470,7 @@ async function figuresTarget(
   bookId: number | undefined,
   sem: SemStatus,
   degradeNote?: string,
+  scope: FilterCtx = UNSCOPED,
 ) {
   const scopeWord = bookId === undefined ? "library" : `book ${bookId}`;
   const indexed = deps.index.figureCount(libraryId, bookId);
@@ -430,11 +487,11 @@ async function figuresTarget(
           ),
         },
       ],
-      { scope: args.scope, target: "figures", mode: args.mode, count: 0, ...sem, note: degradeNote },
+      { scope: args.scope, target: "figures", mode: args.mode, count: 0, ...sem, note: degradeNote, ...filterFields(scope) },
     );
   }
 
-  const pool = await rankFigures(args, deps, libraryId, bookId);
+  const pool = await rankFigures(args, deps, libraryId, bookId, scope.allow);
   const rr = await applyRerank(pool, (r) => r.hit.caption, args, deps);
   const ranked = rr.hits;
   const floorNote = args.mode !== "keyword" && ranked.length > 0 && FIGURES_SEMANTIC_FLOOR === null ? FIGURES_FLOOR_NOTE : undefined;
@@ -451,6 +508,7 @@ async function figuresTarget(
         ...rerankFields(args, rr),
         ...sem,
         note,
+        ...filterFields(scope),
         figures: [],
       },
     );
@@ -507,6 +565,7 @@ async function figuresTarget(
     ...rerankFields(args, rr),
     ...sem,
     note,
+    ...filterFields(scope),
     figures,
   });
 }
@@ -517,19 +576,20 @@ async function rankFigures(
   deps: ToolDeps,
   libraryId: string,
   bookId: number | undefined,
+  allow?: ReadonlySet<number>,
 ): Promise<RankedFigure[]> {
   if (args.mode === "keyword") {
     return deps.index
-      .searchFiguresFts(libraryId, stemText(args.query), args.topK, bookId)
+      .searchFiguresFts(libraryId, stemText(args.query), args.topK, bookId, allow)
       .map((hit) => ({ hit }));
   }
   const k = poolK(args, deps);
   const q = await deps.embedder.embedQuery(args.query);
   if (args.mode === "vector") {
-    return deps.index.searchFigures(libraryId, q, k, bookId).map((hit) => ({ hit, cosine: hit.score }));
+    return deps.index.searchFigures(libraryId, q, k, bookId, allow).map((hit) => ({ hit, cosine: hit.score }));
   }
-  const vec = deps.index.searchFigures(libraryId, q, POOL, bookId);
-  const kw = deps.index.searchFiguresFts(libraryId, stemText(args.query), POOL, bookId);
+  const vec = deps.index.searchFigures(libraryId, q, POOL, bookId, allow);
+  const kw = deps.index.searchFiguresFts(libraryId, stemText(args.query), POOL, bookId, allow);
   const vById = new Map(vec.map((h) => [h.figureId, h]));
   const kById = new Map(kw.map((h) => [h.figureId, h]));
   return rrfFuse([vec.map((h) => h.figureId), kw.map((h) => h.figureId)], RRF_K, RRF_WEIGHTS)
@@ -639,20 +699,25 @@ function rerankFields(args: Args, rr: RerankOutcome<unknown>): Record<string, un
 }
 
 /** Rank books per mode. hybrid RRF-fuses the two halves; vector/keyword use one half each. */
-async function rankBooks(args: Args, deps: ToolDeps, libraryId: string): Promise<RankedBook[]> {
+async function rankBooks(
+  args: Args,
+  deps: ToolDeps,
+  libraryId: string,
+  allow?: ReadonlySet<number>,
+): Promise<RankedBook[]> {
   if (args.mode === "keyword") {
     return deps.index
-      .searchLibraryFts(libraryId, stemText(args.query), args.topK)
+      .searchLibraryFts(libraryId, stemText(args.query), args.topK, allow)
       .map((hit) => ({ hit }));
   }
   const k = poolK(args, deps);
   const q = await deps.embedder.embedQuery(args.query);
   if (args.mode === "vector") {
-    return deps.index.searchLibrary(libraryId, q, k).map((hit) => ({ hit, cosine: hit.score }));
+    return deps.index.searchLibrary(libraryId, q, k, allow).map((hit) => ({ hit, cosine: hit.score }));
   }
   // hybrid: fuse book rankings from both halves by bookId (vector first — RRF_WEIGHTS order).
-  const vec = deps.index.searchLibrary(libraryId, q, POOL);
-  const kw = deps.index.searchLibraryFts(libraryId, stemText(args.query), POOL);
+  const vec = deps.index.searchLibrary(libraryId, q, POOL, allow);
+  const kw = deps.index.searchLibraryFts(libraryId, stemText(args.query), POOL, allow);
   const vById = new Map(vec.map((h) => [h.bookId, h]));
   const kById = new Map(kw.map((h) => [h.bookId, h]));
   return rrfFuse([vec.map((h) => h.bookId), kw.map((h) => h.bookId)], RRF_K, RRF_WEIGHTS)

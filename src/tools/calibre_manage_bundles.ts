@@ -8,44 +8,14 @@
 
 import { z } from "zod";
 import { CalibreHttpError } from "../domain/errors.js";
+import { type BundleEntry, invalidateBundleCache, isExclusionMarker, loadBundles } from "./bundles.js";
 import { CoercedBool } from "./coerce.js";
 import { defineTool } from "./define.js";
 import { toolError, toolOk } from "./result.js";
 import type { ToolDeps } from "./types.js";
 import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "./write-refusal.js";
 
-export interface BundleEntry {
-  name: string;
-  expression: string;
-  kind: "saved_search" | "virtual_library";
-  /** Virtual libraries can be read and used as filters, but not written from here. */
-  read_only: boolean;
-  /** A leading `-` marks a bundle whose books discovery searches subtract by default. */
-  is_exclusion_marker: boolean;
-}
-
-/**
- * Parse `calibredb saved_searches list` stdout. The CLI prints one `Name:` / `Search string:`
- * pair per search, and prepends unrelated noise ("Integration status: False") that must be
- * tolerated rather than parsed. A pair is only emitted once its search string arrives.
- */
-export function parseSavedSearches(stdout: string): Array<{ name: string; expression: string }> {
-  const out: Array<{ name: string; expression: string }> = [];
-  let pending: string | undefined;
-  for (const line of stdout.split(/\r?\n/)) {
-    const name = /^Name:\s*(.*)$/.exec(line);
-    if (name) {
-      pending = (name[1] ?? "").trim();
-      continue;
-    }
-    const expr = /^Search string:\s*(.*)$/.exec(line);
-    if (expr && pending !== undefined) {
-      out.push({ name: pending, expression: (expr[1] ?? "").trim() });
-      pending = undefined;
-    }
-  }
-  return out;
-}
+export { type BundleEntry, isExclusionMarker, mergeBundles, parseSavedSearches } from "./bundles.js";
 
 /**
  * argv for a saved-search write. The `--` separator MUST come after every option (the client
@@ -62,49 +32,6 @@ export function buildSavedSearchArgs(
   const args = ["saved_searches", action, "--", name];
   if (action === "add") args.push(expression ?? "");
   return args;
-}
-
-export function isExclusionMarker(name: string): boolean {
-  return name.startsWith("-");
-}
-
-/** Merge saved searches (writable) with virtual libraries (read-only) into one bundle list. */
-export function mergeBundles(
-  savedSearches: Array<{ name: string; expression: string }>,
-  virtualLibraries: Record<string, string>,
-): BundleEntry[] {
-  const entries: BundleEntry[] = savedSearches.map((s) => ({
-    name: s.name,
-    expression: s.expression,
-    kind: "saved_search",
-    read_only: false,
-    is_exclusion_marker: isExclusionMarker(s.name),
-  }));
-  for (const [name, expression] of Object.entries(virtualLibraries)) {
-    entries.push({
-      name,
-      expression,
-      kind: "virtual_library",
-      read_only: true,
-      is_exclusion_marker: isExclusionMarker(name),
-    });
-  }
-  return entries;
-}
-
-/** Read every bundle. VLs are a nicety — a failing /interface-data must not kill `list`. */
-async function loadBundles(deps: ToolDeps, library?: string): Promise<BundleEntry[]> {
-  const libId = await deps.content.resolveLibraryId(library);
-  const { stdout } = await deps.calibre.calibredb(["saved_searches", "list"], { library: libId });
-  let vls: Record<string, string> = {};
-  try {
-    vls = await deps.content.virtualLibraries(library);
-  } catch (err) {
-    deps.log.warn("virtual-library listing failed", {
-      msg: err instanceof Error ? err.message : String(err),
-    });
-  }
-  return mergeBundles(parseSavedSearches(stdout), vls);
 }
 
 /**
@@ -183,6 +110,9 @@ async function tryWrite(
 ): Promise<string | undefined> {
   try {
     await deps.calibre.calibredb(args, { library: libId });
+    // The discovery tools read bundles through a TTL cache — a committed write must be
+    // visible to the very next filtered search, not TTL-later.
+    invalidateBundleCache(libId);
     return undefined;
   } catch (err) {
     if (isWriteRefused(err)) return WRITE_REFUSED_MESSAGE;

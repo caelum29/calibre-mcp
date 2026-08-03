@@ -12,6 +12,7 @@ import {
 } from "../calibre/metadata-fields.js";
 import type { ChangeValue } from "../calibre/metadata-fields.js";
 import { CalibreCliTimeoutError } from "../domain/errors.js";
+import { buildScopedQuery, honestyLines, resolveFilter } from "./bundles.js";
 import { BookId, CoercedBool, jsonArray, jsonRecord } from "./coerce.js";
 import { defineTool } from "./define.js";
 import { fence, toolError, toolOk } from "./result.js";
@@ -27,12 +28,14 @@ export const bulkUpdateTool = defineTool({
   title: "Bulk update book metadata",
   description:
     "Apply the same metadata changes (tags, series, publisher, etc.) to a set of books selected " +
-    "by ids or a search query. Preview-first: returns the per-book diff without writing unless " +
-    "preview is set false. A book set is required (never all books). Requires writes to be enabled.",
+    "by ids, a search query, or filter (a bundle name). Preview-first: returns the per-book diff " +
+    "without writing unless preview is set false. A book set is required (never all books). " +
+    "Requires writes to be enabled.",
   inputSchema: {
     changes: jsonRecord(ChangeValueSchema),
     ids: jsonArray(BookId()).optional(),
     query: z.string().optional(),
+    filter: z.string().trim().min(1).max(256).optional(),
     library: z.string().optional(),
     preview: CoercedBool().default(true),
   },
@@ -68,15 +71,24 @@ export const bulkUpdateTool = defineTool({
       }
 
       // A set is mandatory — refuse an unbounded all-books write (the FaceDeer default we fix).
+      // A bundle filter counts: it is a bounded, named set (#93). No auto-exclusion on writes.
       const hasIds = Array.isArray(args.ids) && args.ids.length > 0;
       const hasQuery = typeof args.query === "string" && args.query.trim().length > 0;
-      if (!hasIds && !hasQuery) {
-        return toolError("Select a book set: pass ids or a non-empty query (all-books is not allowed).");
+      const hasFilter = args.filter !== undefined;
+      if (!hasIds && !hasQuery && !hasFilter) {
+        return toolError(
+          "Select a book set: pass ids, a non-empty query, or filter (a bundle name) — all-books is not allowed.",
+        );
       }
+      if (hasFilter && hasIds) {
+        return toolError("Pass either ids or filter (a bundle name), not both.");
+      }
+      const fr = await resolveFilter(deps, { filter: args.filter, autoExclude: false, library: args.library });
+      if (!fr.ok) return toolError(fr.error);
 
       const selection = await selectBooks(deps, {
         ids: hasIds ? args.ids : undefined,
-        query: hasQuery ? args.query : undefined,
+        query: hasIds ? undefined : buildScopedQuery(hasQuery ? (args.query as string) : "", fr.res) || undefined,
         library: args.library,
       });
       if (selection.books.length === 0) return toolError("No books matched the selection.");
@@ -105,7 +117,9 @@ export const bulkUpdateTool = defineTool({
           return `#${b.id} ${b.title}\n${parts.join("\n")}`;
         });
         const changing = perBook.filter((b) => b.diff.some((d) => d.changed)).length;
+        const honesty = honestyLines(fr.res, hasFilter && !hasQuery ? selection.total : undefined);
         const text =
+          (honesty.length ? `${honesty.join("\n")}\n` : "") +
           `Preview — ${selection.books.length} book(s) selected, ${changing} would change. ` +
           `Re-run with preview=false to apply.\n` +
           fence("BULK UPDATE PREVIEW", lines.join("\n\n"));

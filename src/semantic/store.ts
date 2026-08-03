@@ -139,18 +139,22 @@ export interface IndexStore {
   indexedBookIds(libraryId: string): number[];
   /** Drop all rows for these books (books/chunks/embeddings/figures + FTS shadows). */
   deleteBooks(libraryId: string, bookIds: number[]): PruneCounts;
-  /** Rank books by their single best-matching chunk (best chunk per book), vector cosine. */
-  searchLibrary(libraryId: string, query: Float32Array, k: number): LibraryHit[];
+  /**
+   * Rank books by their single best-matching chunk (best chunk per book), vector cosine.
+   * `allow` (bundle filter, #93) restricts candidates BEFORE ranking — the result is exactly
+   * the unfiltered ranking intersected with the set, order preserved (brute-force is exact).
+   */
+  searchLibrary(libraryId: string, query: Float32Array, k: number, allow?: ReadonlySet<number>): LibraryHit[];
   /** Rank passages within one book, vector cosine. */
   searchBook(libraryId: string, bookId: number, query: Float32Array, k: number): BookHit[];
   /** Keyword half: rank books by best weighted-bm25 FTS5 match (score is negative, lower is better). */
-  searchLibraryFts(libraryId: string, stemmedQuery: string, k: number): LibraryHit[];
+  searchLibraryFts(libraryId: string, stemmedQuery: string, k: number, allow?: ReadonlySet<number>): LibraryHit[];
   /** Keyword half: rank passages within one book by weighted-bm25 FTS5 match. */
   searchBookFts(libraryId: string, bookId: number, stemmedQuery: string, k: number): BookHit[];
   /** Rank figure captions by vector cosine — the whole library, or one book. */
-  searchFigures(libraryId: string, query: Float32Array, k: number, bookId?: number): FigureHit[];
+  searchFigures(libraryId: string, query: Float32Array, k: number, bookId?: number, allow?: ReadonlySet<number>): FigureHit[];
   /** Keyword half over figure captions (weighted-bm25 FTS5). */
-  searchFiguresFts(libraryId: string, stemmedQuery: string, k: number, bookId?: number): FigureHit[];
+  searchFiguresFts(libraryId: string, stemmedQuery: string, k: number, bookId?: number, allow?: ReadonlySet<number>): FigureHit[];
   /** Indexed-figure count (library or one book); 0 for an absent index. Cheap COUNT. */
   figureCount(libraryId: string, bookId?: number): number;
   /** The chunk containing a figure marker offset (figure → context direction). */
@@ -270,6 +274,15 @@ END;
 `;
 
 type Row = Record<string, unknown>;
+
+/**
+ * Bundle-filter candidate restriction (#93): drop candidates outside the allowed book set
+ * BEFORE exact brute-force ranking, so a filtered ranking is precisely the unfiltered one
+ * intersected with the set — never a post-hoc truncation that loses recall.
+ */
+function restrict(cands: Candidate[], allow?: ReadonlySet<number>): Candidate[] {
+  return allow === undefined ? cands : cands.filter((c) => allow.has(c.bookId));
+}
 
 /**
  * Decoded candidate vectors for one library, held in memory so vector queries don't
@@ -425,9 +438,10 @@ export class SqliteIndexStore implements IndexStore {
     }
   }
 
-  searchLibrary(libraryId: string, query: Float32Array, k: number): LibraryHit[] {
+  searchLibrary(libraryId: string, query: Float32Array, k: number, allow?: ReadonlySet<number>): LibraryHit[] {
     const db = this.#db(libraryId);
-    const hits = topK(query, this.#candidates(libraryId), Number.MAX_SAFE_INTEGER);
+    const cands = restrict(this.#candidates(libraryId), allow);
+    const hits = topK(query, cands, Number.MAX_SAFE_INTEGER);
 
     // Keep the best chunk per book (hits are already sorted desc), up to k books.
     const bestPerBook = new Map<number, { chunkId: number; score: number }>();
@@ -475,19 +489,32 @@ export class SqliteIndexStore implements IndexStore {
     });
   }
 
-  searchLibraryFts(libraryId: string, stemmedQuery: string, k: number): LibraryHit[] {
+  searchLibraryFts(libraryId: string, stemmedQuery: string, k: number, allow?: ReadonlySet<number>): LibraryHit[] {
     const db = this.#db(libraryId);
     const match = ftsMatch(stemmedQuery);
     if (!match) return [];
     // Pull a generous pool of chunk hits, then keep the best (first, since bm25-ranked) per book.
     const pool = Math.max(k * 20, 200);
-    const rows = db
-      .prepare(
-        `SELECT c.id AS chunk_id, c.book_id, c.char_start, c.char_end, c.body, ${WEIGHTED_BM25} AS score
-         FROM chunk_fts JOIN chunks c ON c.id = chunk_fts.rowid
-         WHERE chunk_fts MATCH ? ORDER BY score LIMIT ?`,
-      )
-      .all(match, pool) as Row[];
+    // The allow filter lives in SQL (json_each keeps it to one variable) so a small bundle
+    // can't be starved by the pool cap eating unfiltered hits first.
+    const rows = (
+      allow === undefined
+        ? db
+            .prepare(
+              `SELECT c.id AS chunk_id, c.book_id, c.char_start, c.char_end, c.body, ${WEIGHTED_BM25} AS score
+               FROM chunk_fts JOIN chunks c ON c.id = chunk_fts.rowid
+               WHERE chunk_fts MATCH ? ORDER BY score LIMIT ?`,
+            )
+            .all(match, pool)
+        : db
+            .prepare(
+              `SELECT c.id AS chunk_id, c.book_id, c.char_start, c.char_end, c.body, ${WEIGHTED_BM25} AS score
+               FROM chunk_fts JOIN chunks c ON c.id = chunk_fts.rowid
+               WHERE chunk_fts MATCH ? AND c.book_id IN (SELECT value FROM json_each(?))
+               ORDER BY score LIMIT ?`,
+            )
+            .all(match, JSON.stringify([...allow]), pool)
+    ) as Row[];
 
     const seen = new Set<number>();
     const out: LibraryHit[] = [];
@@ -533,34 +560,45 @@ export class SqliteIndexStore implements IndexStore {
     }));
   }
 
-  searchFigures(libraryId: string, query: Float32Array, k: number, bookId?: number): FigureHit[] {
+  searchFigures(libraryId: string, query: Float32Array, k: number, bookId?: number, allow?: ReadonlySet<number>): FigureHit[] {
     const db = this.#db(libraryId);
-    const hits = topK(query, this.#figureCandidates(libraryId, bookId), k);
+    const hits = topK(query, restrict(this.#figureCandidates(libraryId, bookId), allow), k);
     return hits
       .map((h) => this.#figureHit(db, h.chunkId, h.score))
       .filter((h): h is FigureHit => h !== undefined);
   }
 
-  searchFiguresFts(libraryId: string, stemmedQuery: string, k: number, bookId?: number): FigureHit[] {
+  searchFiguresFts(libraryId: string, stemmedQuery: string, k: number, bookId?: number, allow?: ReadonlySet<number>): FigureHit[] {
     const db = this.#db(libraryId);
     const match = ftsMatch(stemmedQuery);
     if (!match) return [];
-    const rows =
-      bookId === undefined
-        ? (db
-            .prepare(
-              `SELECT f.id AS fig_id, ${WEIGHTED_FIG_BM25} AS score
-               FROM figure_fts JOIN figures f ON f.id = figure_fts.rowid
-               WHERE figure_fts MATCH ? ORDER BY score LIMIT ?`,
-            )
-            .all(match, k) as Row[])
-        : (db
-            .prepare(
-              `SELECT f.id AS fig_id, ${WEIGHTED_FIG_BM25} AS score
-               FROM figure_fts JOIN figures f ON f.id = figure_fts.rowid
-               WHERE figure_fts MATCH ? AND f.book_id = ? ORDER BY score LIMIT ?`,
-            )
-            .all(match, bookId, k) as Row[]);
+    let rows: Row[];
+    if (bookId !== undefined) {
+      rows = db
+        .prepare(
+          `SELECT f.id AS fig_id, ${WEIGHTED_FIG_BM25} AS score
+           FROM figure_fts JOIN figures f ON f.id = figure_fts.rowid
+           WHERE figure_fts MATCH ? AND f.book_id = ? ORDER BY score LIMIT ?`,
+        )
+        .all(match, bookId, k) as Row[];
+    } else if (allow !== undefined) {
+      rows = db
+        .prepare(
+          `SELECT f.id AS fig_id, ${WEIGHTED_FIG_BM25} AS score
+           FROM figure_fts JOIN figures f ON f.id = figure_fts.rowid
+           WHERE figure_fts MATCH ? AND f.book_id IN (SELECT value FROM json_each(?))
+           ORDER BY score LIMIT ?`,
+        )
+        .all(match, JSON.stringify([...allow]), k) as Row[];
+    } else {
+      rows = db
+        .prepare(
+          `SELECT f.id AS fig_id, ${WEIGHTED_FIG_BM25} AS score
+           FROM figure_fts JOIN figures f ON f.id = figure_fts.rowid
+           WHERE figure_fts MATCH ? ORDER BY score LIMIT ?`,
+        )
+        .all(match, k) as Row[];
+    }
     return rows
       .map((r) => this.#figureHit(db, Number(r.fig_id), Number(r.score)))
       .filter((h): h is FigureHit => h !== undefined);

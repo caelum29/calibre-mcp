@@ -8,6 +8,15 @@
 import { z } from "zod";
 import { CalibreCliError, CalibreNotFoundError } from "../domain/errors.js";
 import type { BoardPayload } from "../ui/board-cache.js";
+import {
+  buildScopedQuery,
+  type FilterResolution,
+  honestyLines,
+  isScoped,
+  restrictSet,
+  resolveFilter,
+  scopeExpression,
+} from "./bundles.js";
 import { BookId, CoercedBool, CursorParam, limitParam } from "./coerce.js";
 import { decodeCursor, encodeCursor } from "./cursor.js";
 import { defineTool } from "./define.js";
@@ -27,6 +36,8 @@ type SearchArgs = {
   limit: number;
   cursor?: string;
   countOnly?: boolean;
+  filter?: string;
+  include_excluded?: boolean;
 };
 
 const FTS_START = ">>";
@@ -47,13 +58,36 @@ function boardMeta(
   return { calibreBoard: full };
 }
 
+/**
+ * Honesty suffix (#93): what the filter layer scoped/subtracted, appended to the TEXT
+ * result (clients strip structuredContent — silence there would be silent subtraction).
+ * The bundle count is the post-exclusion scope size: reuses the restrict set where one
+ * was computed, else one cheap /ajax/search?num=0 on the scope expression.
+ */
+async function filterSuffix(
+  deps: ToolDeps,
+  fRes: FilterResolution,
+  library?: string,
+  scopeSize?: number,
+): Promise<string> {
+  let n = scopeSize;
+  if (n === undefined && fRes.bundle) {
+    n = (await deps.content.search({ query: scopeExpression(fRes), library, num: 0 })).total;
+  }
+  const lines = honestyLines(fRes, n);
+  return lines.length ? `\n${lines.join("\n")}` : "";
+}
+
 /** scope=library, mode=meta — Content Server /ajax/search (the original v1 path). */
-async function metaLibraryScope(args: SearchArgs, deps: ToolDeps): Promise<ToolResult> {
+async function metaLibraryScope(args: SearchArgs, deps: ToolDeps, fRes: FilterResolution): Promise<ToolResult> {
+  // The bundle scope expands into the server-side query; the cursor keys on the EFFECTIVE
+  // query so a page walk that changes filter args can't silently replay a stale offset.
+  const effQuery = buildScopedQuery(args.query, fRes);
   const cur = decodeCursor(args.cursor);
-  const offset = cur && cur.query === args.query ? cur.offset : 0;
+  const offset = cur && cur.query === effQuery ? cur.offset : 0;
 
   const page = await deps.content.search({
-    query: args.query,
+    query: effQuery,
     library: args.library,
     // countOnly needs only the total — don't ask the server for a full page of ids
     num: args.countOnly ? 1 : args.limit,
@@ -61,11 +95,12 @@ async function metaLibraryScope(args: SearchArgs, deps: ToolDeps): Promise<ToolR
     sort: args.sort,
     sortOrder: args.sortOrder,
   });
+  const honesty = await filterSuffix(deps, fRes, args.library);
 
   // Count intent (issue #67): answer the aggregate question with COUNT(*) semantics —
   // no row fetch, no board, no cache write.
   if (args.countOnly) {
-    return toolOk([{ type: "text", text: `${page.total} books match "${args.query}".` }], {
+    return toolOk([{ type: "text", text: `${page.total} books match "${args.query}".${honesty}` }], {
       total: page.total,
       query: args.query,
     });
@@ -73,7 +108,7 @@ async function metaLibraryScope(args: SearchArgs, deps: ToolDeps): Promise<ToolR
 
   if (page.total === 0) {
     // Zero results attach no board (issue #68) — an empty shelf adds nothing over the text.
-    return toolOk([{ type: "text", text: `0 books matched "${args.query}".` }], {
+    return toolOk([{ type: "text", text: `0 books matched "${args.query}".${honesty}` }], {
       total: 0,
       offset: 0,
       count: 0,
@@ -90,15 +125,16 @@ async function metaLibraryScope(args: SearchArgs, deps: ToolDeps): Promise<ToolR
   const fetched = page.bookIds.length;
   const more = offset + fetched < page.total;
   const nextCursor = more
-    ? encodeCursor({ offset: offset + fetched, query: args.query, sort: args.sort })
+    ? encodeCursor({ offset: offset + fetched, query: effQuery, sort: args.sort })
     : undefined;
-  const text = `Found ${page.total} books, showing ${offset + 1}–${offset + fetched}.`;
+  const text = `Found ${page.total} books, showing ${offset + 1}–${offset + fetched}.${honesty}`;
 
   const _meta = boardMeta(deps, {
     query: args.query,
     kind: "keyword",
     libraryId: page.libraryId,
     total: page.total,
+    ...boardFilterFields(fRes),
     books: page.bookIds.map((id) => {
       const b = books.get(id);
       return { bookId: id, title: b?.title ?? `book ${id}`, authors: b?.authors ?? [] };
@@ -113,22 +149,41 @@ async function metaLibraryScope(args: SearchArgs, deps: ToolDeps): Promise<ToolR
       nextCursor,
       bookIds: page.bookIds,
       mode: "meta",
+      ...structuredFilterFields(fRes),
     }),
     _meta,
   };
 }
 
+/** BoardPayload filter/exclusion fields for a resolution (#93). */
+function boardFilterFields(fRes: FilterResolution): Partial<BoardPayload> {
+  return {
+    ...(fRes.bundle ? { filter: fRes.bundle.name } : {}),
+    ...(fRes.markers.length > 0 ? { exclusionsApplied: fRes.markers.map((m) => m.name) } : {}),
+  };
+}
+
+/** The same fields mirrored into structuredContent for structured-only clients. */
+function structuredFilterFields(fRes: FilterResolution): Record<string, unknown> {
+  return boardFilterFields(fRes);
+}
+
 /** scope=library, mode=fts — group FTS hits by book → resource_links + fenced snippets. */
-async function ftsLibraryScope(args: SearchArgs, deps: ToolDeps): Promise<ToolResult> {
+async function ftsLibraryScope(args: SearchArgs, deps: ToolDeps, fRes: FilterResolution): Promise<ToolResult> {
   // calibredb's --with-library fragment needs the library ID, not the display name
   // (the display form 404s) — resolve first, same as the write path (commit 71531d2).
   const libId = await deps.content.resolveLibraryId(args.library);
-  const hits = await deps.calibre.ftsSearch(args.query, {
+  // The FTS query is raw match syntax — no Calibre grammar to expand a bundle into — so
+  // the filter restricts by book-id set instead (one /ajax/search on the scope expression).
+  const allow = await restrictSet(deps, fRes, args.library);
+  const rawHits = await deps.calibre.ftsSearch(args.query, {
     snippets: true,
     matchStartMarker: FTS_START,
     matchEndMarker: FTS_END,
     library: libId,
   });
+  const hits = allow === undefined ? rawHits : rawHits.filter((h) => allow.has(h.bookId));
+  const honesty = await filterSuffix(deps, fRes, args.library, allow?.size);
 
   if (hits.length === 0) {
     // Zero results attach no board (issue #68).
@@ -136,7 +191,7 @@ async function ftsLibraryScope(args: SearchArgs, deps: ToolDeps): Promise<ToolRe
       [
         {
           type: "text",
-          text: `0 full-text matches for "${args.query}". If you expected matches, the FTS index may not be built (calibredb fts_index --enable).`,
+          text: `0 full-text matches for "${args.query}". If you expected matches, the FTS index may not be built (calibredb fts_index --enable).${honesty}`,
         },
       ],
       { total: 0, offset: 0, count: 0, mode: "fts" },
@@ -155,20 +210,22 @@ async function ftsLibraryScope(args: SearchArgs, deps: ToolDeps): Promise<ToolRe
   // Count intent (issue #67): total is known after grouping — skip the row fetch and board.
   if (args.countOnly) {
     return toolOk(
-      [{ type: "text", text: `${bookIds.length} books have full-text matches for "${args.query}".` }],
-      { total: bookIds.length, query: args.query, mode: "fts" },
+      [{ type: "text", text: `${bookIds.length} books have full-text matches for "${args.query}".${honesty}` }],
+      { total: bookIds.length, query: args.query, mode: "fts", ...structuredFilterFields(fRes) },
     );
   }
 
+  // Filter args change what an offset means — key the cursor on the scoped query.
+  const cursorKey = isScoped(fRes) ? `${args.query}::${scopeExpression(fRes)}` : args.query;
   const cur = decodeCursor(args.cursor);
-  const offset = cur && cur.query === args.query ? cur.offset : 0;
+  const offset = cur && cur.query === cursorKey ? cur.offset : 0;
   const pageIds = bookIds.slice(offset, offset + args.limit);
   const books = await deps.content.booksByIds(pageIds, args.library);
 
   const blocks: ContentBlock[] = [
     {
       type: "text",
-      text: `Found ${bookIds.length} books with full-text matches for "${args.query}", showing ${offset + 1}–${offset + pageIds.length}.`,
+      text: `Found ${bookIds.length} books with full-text matches for "${args.query}", showing ${offset + 1}–${offset + pageIds.length}.${honesty}`,
     },
   ];
   for (const id of pageIds) {
@@ -180,13 +237,14 @@ async function ftsLibraryScope(args: SearchArgs, deps: ToolDeps): Promise<ToolRe
 
   const more = offset + pageIds.length < bookIds.length;
   const nextCursor = more
-    ? encodeCursor({ offset: offset + pageIds.length, query: args.query })
+    ? encodeCursor({ offset: offset + pageIds.length, query: cursorKey })
     : undefined;
   const _meta = boardMeta(deps, {
     query: args.query,
     kind: "keyword",
     libraryId: libId,
     total: bookIds.length,
+    ...boardFilterFields(fRes),
     books: pageIds.map((id) => {
       const b = books.get(id);
       return { bookId: id, title: b?.title ?? `book ${id}`, authors: b?.authors ?? [] };
@@ -200,6 +258,7 @@ async function ftsLibraryScope(args: SearchArgs, deps: ToolDeps): Promise<ToolRe
       nextCursor,
       bookIds: pageIds,
       mode: "fts",
+      ...structuredFilterFields(fRes),
     }),
     _meta,
   };
@@ -273,7 +332,7 @@ export const searchTool = defineTool({
   name: "calibre_search",
   title: "Search books",
   description:
-    "Find books by exact title, author, ISBN, tag, or Calibre query syntax (mode=meta), or by full text (mode=fts). scope=book returns short keyword snippets from inside one book; first hits often land in TOC/front matter — for definitional or topic questions within a book prefer calibre_semantic_search scope=book (ranked passages with char offsets). Use calibre_semantic_search for meaning/topic queries. For \"how many\" questions use countOnly=true (returns only the count).",
+    "Find books by exact title, author, ISBN, tag, or Calibre query syntax (mode=meta), or by full text (mode=fts). scope=book returns short keyword snippets from inside one book; first hits often land in TOC/front matter — for definitional or topic questions within a book prefer calibre_semantic_search scope=book (ranked passages with char offsets). Use calibre_semantic_search for meaning/topic queries. For \"how many\" questions use countOnly=true (returns only the count). filter accepts a bundle name to scope the search (list bundles via calibre_manage_bundles).",
   inputSchema: {
     query: z.string().min(1).max(512),
     mode: z.enum(["meta", "fts"]).optional().default("meta"),
@@ -285,6 +344,8 @@ export const searchTool = defineTool({
     limit: limitParam(50, 20),
     cursor: CursorParam,
     countOnly: CoercedBool().optional(),
+    filter: z.string().trim().min(1).max(256).optional(),
+    include_excluded: CoercedBool().optional(),
   },
   outputSchema: {
     total: z.number().optional(),
@@ -296,19 +357,32 @@ export const searchTool = defineTool({
     mode: z.string().optional(),
     scope: z.string().optional(),
     bookId: z.number().optional(),
+    filter: z.string().optional(),
+    exclusionsApplied: z.array(z.string()).optional(),
   },
   annotations: { readOnlyHint: true, openWorldHint: true },
   handler: async (args, deps) => {
     try {
       // scope=book → full-text within one book (metadata search on a single record is moot).
+      // Bundles scope LIBRARY discovery; a named book is already the narrowest scope.
       if (args.scope === "book") {
+        if (args.filter !== undefined) {
+          return toolError("filter (bundle) applies to scope=library only — scope=book already names one book.");
+        }
         if (args.bookId === undefined) return toolError("scope=book requires bookId");
         const bookId = await resolveNumericId(deps, args.bookId, args.library);
         if (bookId === undefined) return toolError(`No book with id/uuid ${args.bookId}`);
         return await ftsBookScope(args, deps, bookId);
       }
-      if (args.mode === "fts") return await ftsLibraryScope(args, deps);
-      return await metaLibraryScope(args, deps);
+      const fr = await resolveFilter(deps, {
+        filter: args.filter,
+        includeExcluded: args.include_excluded,
+        autoExclude: true,
+        library: args.library,
+      });
+      if (!fr.ok) return toolError(fr.error);
+      if (args.mode === "fts") return await ftsLibraryScope(args, deps, fr.res);
+      return await metaLibraryScope(args, deps, fr.res);
     } catch (err) {
       // A missing calibredb binary carries its own install hint — don't blame the index.
       if (err instanceof CalibreNotFoundError) return toolError(err.message);

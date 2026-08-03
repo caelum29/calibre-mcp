@@ -5,6 +5,7 @@
 
 import { z } from "zod";
 import { compareBooks, findDuplicateGroups } from "../domain/curation/duplicates.js";
+import { buildScopedQuery, honestyLines, resolveFilter } from "./bundles.js";
 import { BookId, CursorParam, jsonArray, limitParam } from "./coerce.js";
 import { decodeCursor, encodeCursor } from "./cursor.js";
 import { defineTool } from "./define.js";
@@ -17,11 +18,12 @@ export const findDuplicatesTool = defineTool({
   name: "calibre_find_duplicates",
   title: "Find duplicates",
   description:
-    "Find probable duplicate books. mode=identical (exact title+authors) or similar (fuzzy) group the library (or ids/query subset) with a merge-safety score; mode=compare diffs 2+ ids field-by-field. Read-only — never merges.",
+    "Find probable duplicate books. mode=identical (exact title+authors) or similar (fuzzy) group the library (or ids/query/filter subset — filter takes a bundle name) with a merge-safety score; mode=compare diffs 2+ ids field-by-field. Read-only — never merges.",
   inputSchema: {
     mode: z.enum(["identical", "similar", "compare"]).default("identical"),
     ids: jsonArray(BookId()).optional(),
     query: z.string().max(512).optional(),
+    filter: z.string().trim().min(1).max(256).optional(),
     library: z.string().optional(),
     limit: limitParam(200, 50),
     cursor: CursorParam,
@@ -76,15 +78,21 @@ export const findDuplicatesTool = defineTool({
         });
       }
 
-      // identical | similar → group the selection.
+      // identical | similar → group the selection. Bundle filter (#93) scopes the sweep;
+      // no auto-exclusion — dedupe is most needed exactly on the noise books.
+      if (args.filter !== undefined && args.ids?.length) {
+        return toolError("Pass either ids or filter (a bundle name), not both.");
+      }
+      const fr = await resolveFilter(deps, { filter: args.filter, autoExclude: false, library: args.library });
+      if (!fr.ok) return toolError(fr.error);
       const { books, total, capped } = await selectBooks(deps, {
         ids: args.ids,
-        query: args.query,
+        query: buildScopedQuery(args.query ?? "", fr.res) || undefined,
         library: args.library,
       });
       const groups = findDuplicateGroups(books, args.mode);
 
-      const cursorKey = `dup:${args.mode}:${args.query ?? ""}`;
+      const cursorKey = `dup:${args.mode}:${args.query ?? ""}:${args.filter ?? ""}`;
       const cur = decodeCursor(args.cursor);
       const offset = cur && cur.query === cursorKey ? cur.offset : 0;
       const pageGroups = groups.slice(offset, offset + args.limit);
@@ -94,7 +102,10 @@ export const findDuplicatesTool = defineTool({
         : undefined;
 
       const content: ContentBlock[] = [];
+      // The count is only the bundle's size when the bundle alone selected the set.
+      const honesty = honestyLines(fr.res, args.filter !== undefined && !args.query ? total : undefined);
       const header =
+        (honesty.length ? `${honesty.join("\n")}\n` : "") +
         `${groups.length} duplicate group(s) across ${books.length} books scanned` +
         `${capped ? ` (capped — ${total} matched)` : ""}. ` +
         `Showing ${pageGroups.length ? offset + 1 : 0}–${offset + pageGroups.length}.\n` +

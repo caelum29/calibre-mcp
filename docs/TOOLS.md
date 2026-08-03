@@ -61,8 +61,15 @@ of contents or front matter; for a definitional or topic question within a book,
 | `sortOrder` | `asc` \| `desc` | — | Sort direction |
 | `limit` | number | `20` | Results per page (max 50) |
 | `cursor` | string | — | Continuation token from a previous response's `nextCursor` |
+| `filter` | string | — | Bundle name to scope the search to (library scope; see `calibre_manage_bundles`) |
+| `include_excluded` | boolean | `false` | Include books from `-`-named exclusion bundles |
 
-> Ask: *"find books about Rust"* · *"search my library for author:knuth"* · *"where does book 187 mention rebalancing?"* (`scope: book`)
+Library-scope searches automatically subtract books in **exclusion-marker** bundles (saved
+searches whose name starts with `-`), and say so in the result: `exclusions applied: [-noise]
+(pass include_excluded=true to disable)`. There is no silent subtraction — if nothing is
+reported, nothing was subtracted.
+
+> Ask: *"find books about Rust"* · *"search my library for author:knuth"* · *"where does book 187 mention rebalancing?"* (`scope: book`) · *"search async runtimes in the Rust bundle"* (`filter`)
 
 ### `calibre_get_book`
 
@@ -202,8 +209,14 @@ figure support need a `force: true` rebuild before `target: figures` finds them.
 | `bookId` | number \| uuid | — | Required when `scope: book` |
 | `topK` | number | `10` | How many results to return (max 50) |
 | `library` | string | *(default)* | Library name or id |
+| `filter` | string | — | Bundle name to scope library-scope searches to (see `calibre_manage_bundles`) |
+| `include_excluded` | boolean | `false` | Include books from `-`-named exclusion bundles |
 
-> Ask: *"which of my books explain consumer-group rebalancing?"* · *"find passages in book 187 about idempotent producers"* (`scope: book`) · *"find a diagram of the JWT signature flow"* (`target: figures`)
+Like `calibre_search`, library-scope calls subtract exclusion-marker bundles by default and
+report it (`exclusions applied: […]`). The filter never touches the index — it restricts
+candidates at query time, so creating or changing bundles needs no re-index.
+
+> Ask: *"which of my books explain consumer-group rebalancing?"* · *"find passages in book 187 about idempotent producers"* (`scope: book`) · *"find a diagram of the JWT signature flow"* (`target: figures`) · *"what do my databases books say about LSM trees?"* (`filter: databases`)
 
 ### `calibre_build_index`
 
@@ -255,6 +268,7 @@ score with a review warning.
 | `mode` | `identical` \| `similar` \| `compare` | `identical` | Grouping strategy, or field-by-field compare |
 | `ids` | array of ids | — | Restrict grouping to these books; **required** (2+) for `compare` |
 | `query` | string | — | Restrict grouping to books matching a Calibre query |
+| `filter` | string | — | Restrict grouping to a bundle (no auto-exclusion: maintenance sees everything) |
 | `library` | string | *(default)* | Library name or id |
 | `limit` | number | `50` | Groups per page (max 200) |
 | `cursor` | string | — | Continuation token |
@@ -273,6 +287,7 @@ into `calibre_recover_metadata`.
 | `checks` | array of `missing_metadata` \| `raw_filename_title` \| `isbn_invalid` \| `author_sort_mismatch` \| `series_gaps` | *(all)* | Which checks to run |
 | `ids` | array of ids | — | Restrict to these books |
 | `query` | string | — | Restrict to books matching a Calibre query |
+| `filter` | string | — | Restrict to a bundle (no auto-exclusion: maintenance sees everything) |
 | `library` | string | *(default)* | Library name or id |
 | `limit` | number | `100` | Issues per page (max 500) |
 | `cursor` | string | — | Continuation token |
@@ -338,15 +353,17 @@ are left untouched. Returns the applied before/after diff.
 
 ### `calibre_bulk_update`
 
-Apply the **same** metadata change to a set of books selected by `ids` or a `query`. A selection
-is required — there is no all-books default. Preview-first: it returns the per-book diff without
-writing unless you pass `preview: false`. Capped at 500 books per call.
+Apply the **same** metadata change to a set of books selected by `ids`, a `query`, or a
+`filter` (bundle name). A selection is required — there is no all-books default. Preview-first:
+it returns the per-book diff without writing unless you pass `preview: false`. Capped at 500
+books per call.
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
 | `changes` | object | *(required)* | Field → new value applied to every selected book |
-| `ids` | array of ids | — | Books to change (one of `ids`/`query` required) |
+| `ids` | array of ids | — | Books to change (one of `ids`/`query`/`filter` required) |
 | `query` | string | — | Select books by a Calibre query |
+| `filter` | string | — | Select a bundle's books (no auto-exclusion on writes) |
 | `preview` | boolean | `true` | Preview the diff; set `false` to write |
 | `library` | string | *(default)* | Library name or id |
 
@@ -430,6 +447,16 @@ The whole tool is write-gated, so `list` needs writes enabled too.
 | `library` | string | *(default)* | Library name or id |
 
 > Ask: *"what bundles do I have?"* · *"make a rust bundle for tag:rust"* then *"confirm it"*
+
+**Using bundles.** Once created, bundles plug into the read tools via their `filter` parameter:
+`calibre_search`, `calibre_semantic_search` (library scope), `calibre_bulk_update`,
+`calibre_quality_report`, and `calibre_find_duplicates` all accept `filter: "<bundle name>"`.
+Discovery searches additionally subtract every `-`-named exclusion bundle by default (opt out
+per call with `include_excluded: true`); maintenance/write tools never auto-subtract — quality
+and dedupe work is most needed exactly on the noise books. Passing an exclusion marker itself
+as the filter (e.g. `filter: "-outdated"`) targets those books and disables the subtraction for
+that call. An unknown filter name errors with the list of available bundles. Filtering is
+query-time only — bundle changes never require a semantic re-index.
 
 ---
 
