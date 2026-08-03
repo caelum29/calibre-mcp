@@ -1,6 +1,6 @@
 # Tool reference
 
-The calibre-mcp server exposes 17 tools your AI assistant can call to work with your
+The calibre-mcp server exposes 19 tools your AI assistant can call to work with your
 [Calibre](https://calibre-ebook.com) library. They fall into two scopes:
 
 - **Catalog / library** — search across the whole library, browse categories, curate
@@ -400,6 +400,37 @@ the same call to finish.
 
 > Ask: *"plan a merge of books 340 and 341 into 12"* then *"do it"*
 
+### `calibre_manage_bundles`
+
+Manage **Bundles** — named topical filters over your library, backed by Calibre **saved
+searches**. A bundle called `rust` with the expression `tag:rust or title:rust` lets you (and
+the assistant) scope work to that slice instead of the whole library. A bundle whose name starts
+with `-` (e.g. `-outdated`) is an **exclusion marker**: a set of books to keep out of the way.
+
+`action: list` also shows your **virtual libraries**, marked `read_only`. Calibre exposes no way
+to write virtual libraries without racing the running GUI, so this tool never creates or changes
+one — bundles it writes are always saved searches, and the result says so (`created_as:
+saved_search`). Trying to update or delete a virtual library returns an error pointing you at the
+Calibre GUI.
+
+`create` and `update` are preview-first: the first call runs the expression against your library
+and reports how many books match — free validation before anything is written. An invalid
+expression is reported as a syntax error. A count of `0` is ambiguous: Calibre also returns 0
+matches for an unknown field name, so check spelling before confirming. `delete` removes only the
+saved search; no books are touched.
+
+The whole tool is write-gated, so `list` needs writes enabled too.
+
+| Parameter | Type | Default | Meaning |
+|---|---|---|---|
+| `action` | `list` \| `create` \| `update` \| `delete` | *(required)* | What to do |
+| `name` | string | — | Bundle name (required for everything but `list`); leading `-` = exclusion marker |
+| `expression` | string | — | Calibre search grammar (required for `create`/`update`), e.g. `tag:rust and format:EPUB` |
+| `confirm` | boolean | `false` | Must be `true` to write; otherwise a preview |
+| `library` | string | *(default)* | Library name or id |
+
+> Ask: *"what bundles do I have?"* · *"make a rust bundle for tag:rust"* then *"confirm it"*
+
 ---
 
 ## Write safety
@@ -424,6 +455,7 @@ they'll do and change nothing until you explicitly confirm:
 | `calibre_remove_book` | `confirm: true` |
 | `calibre_merge_books` | `confirm: true` |
 | `calibre_extract_isbn` | `apply: true` |
+| `calibre_manage_bundles` | `confirm: true` |
 
 `calibre_add_book` only imports files from folders listed in `CALIBRE_MCP_ADD_ROOTS`
 (symlink-resolved, so paths can't escape the allowed roots). All writes route through the

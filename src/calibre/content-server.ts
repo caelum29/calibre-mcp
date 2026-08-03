@@ -59,6 +59,11 @@ interface RawUserMetadata {
   "#extra#"?: number | null;
 }
 
+/** /interface-data/init payload (loose; we only read the virtual-library map). */
+interface RawInterfaceInit {
+  virtual_libraries?: Record<string, unknown>;
+}
+
 interface RawCategory {
   name?: string;
   url?: string;
@@ -250,6 +255,24 @@ export class ContentServerClient {
     } finally {
       clearTimeout(timeout);
     }
+  }
+
+  /**
+   * GET /interface-data/init?library_id={libId} → the library's virtual libraries as
+   * name → search expression. This is the ONLY endpoint that exposes them; nothing on the
+   * server writes them back, which is why VLs are read/use-only for us (D-019).
+   */
+  async virtualLibraries(library?: string): Promise<Record<string, string>> {
+    const libId = await this.resolveLibraryId(library);
+    const url = `${this.base}/interface-data/init?library_id=${encodeURIComponent(libId)}`;
+    const raw = await getJson<RawInterfaceInit>(url);
+    const vls = raw.virtual_libraries;
+    if (!vls || typeof vls !== "object") return {};
+    const out: Record<string, string> = {};
+    for (const [name, expr] of Object.entries(vls)) {
+      if (typeof expr === "string") out[name] = expr;
+    }
+    return out;
   }
 
   /** GET /ajax/categories/{libId} → Category[]. */

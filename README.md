@@ -24,8 +24,9 @@ your library, all through natural language.
 
 ## ✨ Highlights
 
-- **17 tools** covering the full surface: search, read content, browse categories, curate,
-  and (opt-in) write — update metadata, bulk-edit, merge duplicates, import, delete.
+- **19 tools** covering the full surface: search, read content, browse categories, curate,
+  and (opt-in) write — update metadata, bulk-edit, merge duplicates, import, delete, and
+  manage bundles (named topical filters).
 - **Semantic search** — meaning-based, hybrid vector + keyword retrieval over your whole
   library *or inside a single book*. Multilingual (English + Russian verified,
   cross-lingual queries work). No other Calibre MCP server has this.
@@ -162,7 +163,9 @@ raw-filename titles, invalid ISBNs).
 ## ✍️ Enabling writes
 
 Write tools (`calibre_update_book`, `calibre_bulk_update`, `calibre_add_book`,
-`calibre_remove_book`, `calibre_merge_books`) are **hidden by default**. Two independent switches must be on:
+`calibre_remove_book`, `calibre_merge_books`, `calibre_manage_bundles`) are **hidden by
+default** — including `calibre_manage_bundles`' read-only `list` action, since the gate works
+per tool, not per action. Two independent switches must be on:
 
 1. **The MCP-side gate** — set `CALIBRE_MCP_ENABLE_WRITE=1` (or tick *Enable writes* in
    the Desktop bundle settings). Without it the write tools aren’t even registered.
@@ -238,6 +241,7 @@ and `mode: hybrid` degrades to keyword (with a note); rebuild with the model ins
 | `calibre_search` | read | Find books by title/author/ISBN/tag or Calibre query syntax (`mode: meta`), or full text (`mode: fts`); `scope: book` searches inside one book |
 | `calibre_get_book` | read | Full metadata, formats, and cover link for one book (id or uuid); `include_cover: true` embeds the cover image in the result |
 | `calibre_get_content` | read | Read a book’s text as capped excerpts; walk the whole book via cursor. `structure: true` returns a chapter map (headings, offsets, per-chapter cursors) — EN + RU/UK |
+| `calibre_get_figures` | read | List a book’s figures/illustrations with captions and page locations; fetched ones render in an in-chat figure viewer |
 | `calibre_list_categories` | read | Browse tags, authors, series, publishers, custom columns with counts |
 | `calibre_list_libraries` | read | List the libraries the Content Server exposes (+ which is default) |
 | `calibre_semantic_search` | read | Meaning-based search; `mode: hybrid\|vector\|keyword`, library- or book-scoped |
@@ -251,6 +255,7 @@ and `mode: hybrid` degrades to keyword (with a note); rebuild with the model ins
 | `calibre_add_book` | **write** | Import a local ebook file (path-whitelisted) |
 | `calibre_remove_book` | **write, destructive** | Permanently delete books (records + files); dry-run unless confirmed |
 | `calibre_merge_books` | **write, destructive** | Merge duplicate records: move formats into a target, merge metadata per Calibre's rules, trash sources; dry-run plan unless confirmed |
+| `calibre_manage_bundles` | **write** | List/create/update/delete Bundles — named topical filters backed by Calibre saved searches; lists virtual libraries read-only; preview-first |
 | `calibre_ping` | read | Health check: is Calibre reachable end-to-end? |
 
 In MCP Apps hosts, `calibre_search` and `calibre_semantic_search` (library scope) render

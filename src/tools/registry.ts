@@ -19,6 +19,7 @@ import { bulkUpdateTool } from "./calibre_bulk_update.js";
 import { addBookTool } from "./calibre_add_book.js";
 import { removeBookTool } from "./calibre_remove_book.js";
 import { mergeBooksTool } from "./calibre_merge_books.js";
+import { manageBundlesTool } from "./calibre_manage_bundles.js";
 import { boardDataTool } from "./calibre_board_data.js";
 import { openBookTool } from "./calibre_open_book.js";
 
@@ -42,8 +43,9 @@ export const allTools: AnyToolDescriptor[] = [
   addBookTool,
   removeBookTool,
   mergeBooksTool,
+  manageBundlesTool,
   // Widget-internal (_meta.ui.visibility ["app"], issues #22/#53) — hosts that honor MCP
-  // Apps hide these from the model, so the model-facing surface stays at 17 tools (+ ping).
+  // Apps hide these from the model, so the model-facing surface stays at 18 tools (+ ping).
   boardDataTool,
   openBookTool,
 ];

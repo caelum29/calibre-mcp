@@ -19,6 +19,7 @@ describe("tool registry", () => {
       "calibre_add_book",
       "calibre_remove_book",
       "calibre_merge_books",
+      "calibre_manage_bundles",
     ]);
   });
 

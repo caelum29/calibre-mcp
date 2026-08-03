@@ -106,6 +106,7 @@
     { "name": "calibre_add_book", "description": "Import a local ebook file into the library, path-whitelisted (write-gated)" },
     { "name": "calibre_remove_book", "description": "Permanently delete books — records and files; requires confirm (write-gated)" },
     { "name": "calibre_merge_books", "description": "Merge duplicate book records into one, preview-first (write-gated)" },
+    { "name": "calibre_manage_bundles", "description": "List/create/update/delete Bundles — named topical filters backed by Calibre saved searches, preview-first (write-gated)" },
     { "name": "calibre_ping", "description": "Health check for the Calibre connection" }
   ],
   "compatibility": {
