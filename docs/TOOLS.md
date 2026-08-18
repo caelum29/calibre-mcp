@@ -143,6 +143,13 @@ captions, which only `include_uncaptioned` can surface.
 Responses are capped at ~2 MB — oversized figures are downscaled, and anything still over the
 cap is skipped with a note telling you how to re-fetch it.
 
+**Caveat — first-pass confabulation.** The images do reach the assistant, but models sometimes
+describe a figure from prior knowledge of similar diagrams *before* reading the delivered pixels,
+then get it right when asked again. Every fetch result therefore ends with a "look at the image
+first, name two things you can see" instruction; if a description still doesn't match the
+picture, re-ask with that cue, or fetch one figure per call so the image is the last thing in
+context. See [Troubleshooting](./TROUBLESHOOTING.md#the-assistant-describes-a-figure-wrongly-on-the-first-try).
+
 > Ask: *"what figures does book 397 have?"* · *"show me figure 2.3 from the JWT Handbook"*
 
 ### `calibre_list_categories`
