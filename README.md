@@ -151,7 +151,10 @@ logs an actionable hint to stderr. Then try, in order:
 3. *“show me The Rust Programming Language”* — full metadata; renders as a book card with
    cover, rating, and per-format read buttons.
 4. *“show me figure 2.3 from the JWT Handbook”* — the figure arrives as an image for the
-   assistant and, in Claude Desktop, in a figure viewer you can zoom and pan.
+   assistant and, in Claude Desktop, in a figure viewer you can zoom and pan. If the
+   first description doesn’t match what you see, ask *“look at the image — what does it
+   actually show?”*: models sometimes answer figure questions from memory before reading
+   the pixels (the tool result nudges them to look; see Troubleshooting).
 5. *“build the semantic index for my Kafka books”* — one-time prep for meaning-based search
    (see below).
 6. *“which of my books explain consumer-group rebalancing?”* — semantic search; answers

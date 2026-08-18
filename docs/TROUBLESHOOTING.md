@@ -134,6 +134,24 @@ and jump from there). `cursor` and `offset` are mutually exclusive — pass one 
 
 ---
 
+### The assistant describes a figure wrongly on the first try
+
+**Symptom:** you ask for a figure, the image renders (in the viewer or the transcript), but the
+first description doesn't match it — a plausible textbook diagram gets described instead of the
+one on screen. Asking again ("look at the image — what does it actually show?") gives the right
+answer.
+
+**Cause:** first-pass confabulation — the model answers a figure question from prior knowledge
+of similar diagrams without reading the delivered pixels. It is a model behaviour, not an
+extraction failure: the bytes are there. `calibre_get_figures` already appends a "look at the
+image first, name two things you can see" instruction to every fetch result, which fixes most
+cases but not all.
+
+**Fix:** re-ask with an explicit grounding cue ("name two labels visible in the figure, then
+explain it"), or fetch one figure per call so the image is the last thing in context. If the
+description is *empty* rather than wrong (or the viewer shows a "not extracted" placard), that
+is a real extraction problem — see the PDF and vector-figure notes in `docs/TOOLS.md`.
+
 ## Writes
 
 ### Write tools don't appear at all
