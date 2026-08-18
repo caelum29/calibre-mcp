@@ -1,6 +1,6 @@
 {
   "name": "calibre-mcp",
-  "version": "0.7.2",
+  "version": "0.7.3",
   "description": "The most capable Calibre MCP server — full read/write tool surface plus library- and book-scoped semantic search.",
   "type": "module",
   "license": "MIT",
@@ -50,7 +50,7 @@
   "dependencies": {
     "@modelcontextprotocol/ext-apps": "1.7.4",
     "@modelcontextprotocol/sdk": "1.29.0",
-    "open": "^11.0.0",
+    "open": "^11.0.1",
     "snowball-stemmers": "^0.6.0",
     "zod": "4.4.3"
   },

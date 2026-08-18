@@ -6,6 +6,21 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.7.3] — 2026-08-18
+
+### Fixed
+
+- **Cover-board click now opens the book card in Claude Desktop (#130).** Clicking a
+  cover sends a `ui/message` request instead of a widget-initiated `tools/call` — Desktop
+  never surfaced the result of the latter in the chat, so the click only flashed
+  "Opening…" and nothing appeared. Hosts without `ui/message` still fall back to the
+  `tools/call` path.
+
+### Chore
+
+- Added `pnpm-workspace.yaml` with `allowBuilds` for `esbuild`/`onnxruntime-node`/
+  `protobufjs`/`sharp` (required by pnpm 11); bumped the `open` dependency to `^11.0.1`.
+
 ## [0.7.2] — 2026-07-27
 
 ### Fixed
