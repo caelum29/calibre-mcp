@@ -17,9 +17,9 @@ exact chapter — across 800+ books or inside one. Curate metadata, dedupe, and 
 your library, all through natural language.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/caelum29/calibre-mcp/main/demo.gif" width="720" alt="Claude Desktop searching a Calibre library and rendering the results as an interactive cover carousel" />
+  <img src="https://raw.githubusercontent.com/caelum29/calibre-mcp/main/demo.gif" width="720" alt="Claude Desktop: a plain-language question becomes a semantic search across the library, results render as a 3D cover flow, a click opens the book card, search-inside returns the exact passage with its location, and the figure viewer shows the book's diagrams" />
   <br/>
-  <em>Claude Desktop rendering a library search as an interactive cover board (MCP&nbsp;Apps)</em>
+  <em>One question → semantic search → 3D cover flow → book card → exact passage → figure viewer, all inside Claude Desktop (MCP&nbsp;Apps)</em>
 </p>
 
 ## ✨ Highlights
