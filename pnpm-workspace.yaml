@@ -1,5 +1,10 @@
 allowBuilds:
+  '@modelcontextprotocol/inspector': true
   esbuild: true
   onnxruntime-node: true
   protobufjs: true
   sharp: true
+# transitive CVE fixes (via @huggingface/transformers): sharp GHSA-f88m-g3jw-g9cj, adm-zip 4GB zip bomb
+overrides:
+  sharp: ">=0.35.0"
+  adm-zip: ">=0.6.0"
