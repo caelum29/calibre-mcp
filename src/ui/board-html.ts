@@ -4,7 +4,7 @@
 // client-side toggle keeps the served resource static, so per-call switching stays spec-legal
 // (issues #24/#53). Both variants share one MCP plumbing core: appInfo handshake, data pull via
 // widget-initiated tools/call (Desktop strips structuredContent from the tool-result
-// notification), card click → calibre_get_book, Open → calibre_open_book (a tools/call, never a
+// notification), card click → ui/message "Show me book …" (#130), Open → calibre_open_book (a tools/call, never a
 // link, so it never degrades), Search-inside → ui/message. SDK-free; served by server.ts as two
 // ui:// resources (one per search tool, so the widget knows its tool without guessing).
 // Injection hygiene: all book fields land via textContent/createElement — no innerHTML, no eval.
@@ -624,10 +624,20 @@ __DEBUG__
     return null;
   }
 
+  // Cover click → ui/message ("Show me book …") so the host renders the book card as a new
+  // chat turn (#130). A widget-initiated tools/call result never reaches the chat in Desktop,
+  // so that path stays only as the fallback for hosts without ui/message.
   function onCardClick(bookId) {
-    rpcRequest("tools/call", { name: "calibre_get_book", arguments: { id: bookId } })
-      .then(clearOpening)
-      .catch(clearOpening);
+    if (document.body.dataset.nomsg === "1") {
+      rpcRequest("tools/call", { name: "calibre_get_book", arguments: { id: bookId } })
+        .then(clearOpening)
+        .catch(clearOpening);
+      return;
+    }
+    var b = bookById(bookId);
+    var title = String((b && b.title) || "book " + bookId);
+    sendMessage('Show me book ' + bookId + ' ("' + title + '")');
+    clearOpening();
   }
   function clearOpening() {
     clearTimeout(S._t);
@@ -721,7 +731,7 @@ __DEBUG__
     return cover;
   }
 
-  // Shared card selection: reset siblings, mark this one opening, fire calibre_get_book.
+  // Shared card selection: reset siblings, mark this one opening, ask the host to show the book.
   function activateCard(root, card) {
     root.querySelectorAll(".card").forEach(function (c) {
       c.setAttribute("aria-pressed", "false"); c.setAttribute("aria-selected", "false"); c.classList.remove("is-opening");
