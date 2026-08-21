@@ -4,7 +4,7 @@
 //
 // Backend preference (detected at startup, logged to stderr):
 //   PDF : pdftotext (poppler) > PyMuPDF (python bridge) > ebook-convert (Calibre)
-//   EPUB/others : ebook-convert (--txt-output-formatting=markdown)
+//   EPUB/MD/others : ebook-convert (--txt-output-formatting=markdown)
 // Calibre has no OCR — scanned PDFs extract to empty text (the tool reports that).
 
 import { execFile } from "node:child_process";
@@ -79,8 +79,29 @@ const CONVERT_TIMEOUT_MS = 120_000;
 const PDFTOTEXT_CANDIDATES = ["/opt/homebrew/bin/pdftotext", "/usr/local/bin/pdftotext", "/usr/bin/pdftotext"];
 const PYTHON_CANDIDATES = ["/opt/homebrew/bin/python3", "/usr/local/bin/python3", "/usr/bin/python3"];
 
-/** Extractable formats in preference order (best text structure first). */
-const FORMAT_PREFERENCE = ["epub", "pdf", "txt", "azw3", "mobi", "docx", "htmlz", "fb2", "rtf"];
+/**
+ * Extractable formats in preference order (best text structure first).
+ * Markdown ranks above PDF: it round-trips through ebook-convert with headings intact,
+ * which the chunker leans on, while a PDF of the same book loses that structure (#12).
+ */
+const FORMAT_PREFERENCE = [
+  "epub",
+  "md",
+  "markdown",
+  "pdf",
+  "txt",
+  "txtz",
+  "text",
+  "azw3",
+  "mobi",
+  "docx",
+  "htmlz",
+  "fb2",
+  "rtf",
+];
+
+/** Plain-text-family formats — an empty extraction means an empty file, not a broken one. */
+const TEXT_FAMILY = new Set(["md", "markdown", "txt", "txtz", "text"]);
 
 /** Pick a format to extract: honor `preference` if available, else first preferred present. */
 export function chooseExtractFormat(formats: string[], preference?: string): string | undefined {
@@ -96,9 +117,10 @@ export function chooseExtractFormat(formats: string[], preference?: string): str
  * problem, and naming "PDF" there sent triage down the wrong path.
  */
 export function noTextReason(format: string): string {
-  return format.toLowerCase() === "pdf"
-    ? "likely a scanned/image PDF (Calibre has no OCR)"
-    : `the ${format.toUpperCase()} has no extractable text layer (image-only pages, or DRM/structure the converter can't read)`;
+  const fmt = format.toLowerCase();
+  if (fmt === "pdf") return "likely a scanned/image PDF (Calibre has no OCR)";
+  if (TEXT_FAMILY.has(fmt)) return `the ${format.toUpperCase()} file is empty or holds no readable text`;
+  return `the ${format.toUpperCase()} has no extractable text layer (image-only pages, or DRM/structure the converter can't read)`;
 }
 
 /** pdftotext argv: UTF-8 output, quiet, src → dest. */

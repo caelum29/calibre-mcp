@@ -34,7 +34,9 @@ Semantic search needs a local index, built once per book with `calibre_build_ind
 1. **Extract** the book's text. EPUBs are parsed natively; PDFs use the best
    extractor available on your machine (`pdftotext` from poppler, then PyMuPDF, then
    Calibre's `ebook-convert` as the last resort). Scanned/image-only PDFs yield no
-   text — there is no OCR.
+   text — there is no OCR. Markdown (`MD`/`MARKDOWN`), `TXT`/`TXTZ`, AZW3, MOBI,
+   DOCX, HTMLZ, FB2 and RTF are extracted too; when a book has several formats the
+   best-structured one wins (EPUB → Markdown → PDF → the rest).
 2. **Chunk** the text into ~460-token passages with overlap, split along headings
    where possible. Each chunk keeps its location (page / chapter position) and is
    prefixed with the book title, author, and heading path so the embedding carries
