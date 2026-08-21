@@ -272,6 +272,10 @@ export class FigureInventoryService {
   async scanEpubFile(unzip: string, src: string, timeoutMs?: number): Promise<FigureInventory> {
     const extractDir = path.join(CACHE_DIR, `ep-${randomUUID()}`);
     try {
+      // `unzip -d` creates only ONE missing level, so a not-yet-existing CACHE_DIR (fresh
+      // boot, tmp reaper) made it exit 2 → FIGURES_SCAN_FAILED. Own the dir here instead of
+      // relying on the caller having mkdir'd it.
+      await mkdir(extractDir, { recursive: true });
       // -o overwrite, -qq silent; unzip itself refuses paths that escape -d.
       // Exit 1 = warnings only (EPUB mimetype quirks trigger it) — extraction still succeeded.
       await this.#run(unzip, ["-o", "-qq", src, "-d", extractDir], timeoutMs ?? RUN_TIMEOUT_MS, [0, 1]);

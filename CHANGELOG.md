@@ -15,6 +15,13 @@ All notable changes to this project are documented here. The format is based on
   through `ebook-convert` with headings intact, which chunking leans on. An empty
   markdown/text file now says so instead of blaming an image-only page layer.
 
+### Fixed
+
+- **EPUB figure scans no longer fail when the cache directory is missing.** `unzip -d`
+  creates only one missing directory level, so a scan starting from a not-yet-created cache
+  dir (fresh boot, or the OS tmp reaper having cleaned it) exited 2 and surfaced as
+  `FIGURES_SCAN_FAILED`; the extraction dir is now created up front.
+
 ## [0.7.3] — 2026-08-18
 
 ### Fixed
