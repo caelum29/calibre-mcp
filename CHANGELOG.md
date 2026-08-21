@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.7.4] — 2026-08-21
+
 ### Added
 
 - **Markdown books are now extractable and indexable (#12).** `MD`/`MARKDOWN` (plus
