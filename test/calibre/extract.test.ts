@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   chooseExtractFormat,
   ebookConvertArgs,
+  noTextReason,
   parseTextCacheEnvelope,
   pdftotextArgs,
 } from "../../src/calibre/extract.js";
@@ -18,6 +19,30 @@ describe("chooseExtractFormat", () => {
   });
   it("returns undefined when nothing is extractable", () => {
     expect(chooseExtractFormat(["cbz", "djvu"])).toBeUndefined();
+  });
+  it("extracts a markdown-only book (#12)", () => {
+    expect(chooseExtractFormat(["md"])).toBe("md");
+  });
+  it("accepts Calibre's other markdown spelling", () => {
+    expect(chooseExtractFormat(["markdown"])).toBe("markdown");
+  });
+  it("prefers markdown over pdf — headings survive the conversion", () => {
+    expect(chooseExtractFormat(["pdf", "md"])).toBe("md");
+  });
+  it("still prefers epub over markdown", () => {
+    expect(chooseExtractFormat(["md", "epub"])).toBe("epub");
+  });
+});
+
+describe("noTextReason", () => {
+  it("blames OCR for an empty pdf", () => {
+    expect(noTextReason("pdf")).toContain("no OCR");
+  });
+  it("calls an empty markdown file empty, not image-only", () => {
+    expect(noTextReason("md")).toBe("the MD file is empty or holds no readable text");
+  });
+  it("blames the text layer for an empty epub", () => {
+    expect(noTextReason("epub")).toContain("no extractable text layer");
   });
 });
 

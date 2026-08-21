@@ -6,6 +6,15 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- **Markdown books are now extractable and indexable (#12).** `MD`/`MARKDOWN` (plus
+  `TXTZ`/`TEXT`) joined the extractor's format-preference list, so a markdown-only book
+  is no longer reported as having "no extractable text format" by `calibre_get_content`,
+  `calibre_build_index` and ISBN scanning. Markdown ranks **above PDF** — it round-trips
+  through `ebook-convert` with headings intact, which chunking leans on. An empty
+  markdown/text file now says so instead of blaming an image-only page layer.
+
 ## [0.7.3] — 2026-08-18
 
 ### Fixed
