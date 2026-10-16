@@ -188,7 +188,7 @@ describe("calibre_build_index handler", () => {
     );
     expect(r.isError).toBeFalsy();
     expect(r.structuredContent).toMatchObject({ booksIndexed: 0 });
-    expect((r.structuredContent?.failures as string[])[0]).toContain("book 1");
+    expect((r.structuredContent?.failures as string[] | undefined)?.[0]).toContain("book 1");
   });
 
   it("a query selects EVERY match across pages, not just the first 100 (#138)", async () => {
@@ -204,7 +204,7 @@ describe("calibre_build_index handler", () => {
     expect(r.isError).toBeFalsy();
     expect(r.structuredContent).toMatchObject({ booksRequested: 1150 });
     expect(r.structuredContent?.failures as string[]).toHaveLength(1150);
-    expect((r.structuredContent?.failures as string[]).at(-1)).toContain("book 1150");
+    expect((r.structuredContent?.failures as string[] | undefined)?.at(-1)).toContain("book 1150");
     // Large selections tell the model a re-run resumes an interrupted build.
     expect((r.content[0] as { text: string }).text).toContain("re-run the same call to resume");
   });
@@ -366,7 +366,7 @@ describe("empty-extraction message (issue #100 nit)", () => {
         getText: async () => ({ text: "   ", backend: "ebook-convert", chars: 3, cached: false, markers: [], unplaced: 0, outline: [] }),
       }),
     );
-    const failure = (r.structuredContent?.failures as string[])[0]!;
+    const failure = (r.structuredContent?.failures as string[] | undefined)?.[0] ?? "";
     expect(failure).toContain("EPUB has no extractable text layer");
     expect(failure).not.toContain("PDF");
   });
@@ -376,7 +376,7 @@ describe("empty-extraction message (issue #100 nit)", () => {
       args({ bookId: 1 }),
       deps({ getText: async () => ({ text: "   ", backend: "pdftotext", chars: 3, cached: false, markers: [], unplaced: 0, outline: [] }) }),
     );
-    expect((r.structuredContent?.failures as string[])[0]).toContain("scanned/image PDF");
+    expect((r.structuredContent?.failures as string[] | undefined)?.[0]).toContain("scanned/image PDF");
   });
 });
 

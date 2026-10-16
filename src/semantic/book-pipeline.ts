@@ -44,7 +44,7 @@ export async function runBookPipeline<P>(
   hooks: BookPipelineHooks<P>,
 ): Promise<BookOutcome<P>[]> {
   const workers = Math.max(1, Math.min(Math.floor(concurrency) || 1, bookIds.length));
-  const outcomes: BookOutcome<P>[] = new Array(bookIds.length);
+  const outcomes = Array.from<BookOutcome<P>>({ length: bookIds.length });
   const writer = new SerialWriter();
   let next = 0;
 

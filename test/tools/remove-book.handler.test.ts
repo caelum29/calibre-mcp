@@ -36,7 +36,7 @@ describe("calibre_remove_book handler", () => {
     expect(r.isError).toBeFalsy();
     expect(spy).not.toHaveBeenCalled();
     expect(r.structuredContent?.deleted).toBe(false);
-    expect((r.structuredContent?.wouldRemove as unknown[]).length).toBe(2);
+    expect((r.structuredContent?.wouldRemove as unknown[] | undefined)?.length).toBe(2);
   });
 
   it("removes with a comma-separated id list when confirmed", async () => {

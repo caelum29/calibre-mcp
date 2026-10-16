@@ -163,7 +163,7 @@ describe("calibre_semantic_search handler", () => {
     const r = await semanticSearchTool.handler(args(), deps(preloaded()));
     const results = r.structuredContent?.results as Array<Record<string, unknown>>;
     expect(results).toBeInstanceOf(Array);
-    expect(results.length).toBe((r.structuredContent?.bookIds as number[]).length);
+    expect(results.length).toBe((r.structuredContent?.bookIds as number[] | undefined)?.length);
     const top = results[0];
     expect(top).toMatchObject({ bookId: expect.any(Number), title: expect.any(String) });
     // The fenced snippet is carried so it survives clients that drop text content blocks.
@@ -244,7 +244,7 @@ describe("calibre_semantic_search handler", () => {
   it("vector mode ranks by cosine only", async () => {
     const r = await semanticSearchTool.handler(args({ mode: "vector" }), deps(preloaded()));
     expect(r.structuredContent).toMatchObject({ mode: "vector" });
-    expect((r.structuredContent?.bookIds as number[])[0]).toBe(1);
+    expect((r.structuredContent?.bookIds as number[] | undefined)?.[0]).toBe(1);
     expect(r.structuredContent?.maxScore as number).toBeGreaterThan(0.9);
   });
 
@@ -320,7 +320,7 @@ describe("calibre_semantic_search rerank stage", () => {
       args({ mode: "vector" }),
       deps(preloaded(), queryEmbedder, reranker),
     );
-    expect((r.structuredContent?.bookIds as number[])[0]).toBe(2);
+    expect((r.structuredContent?.bookIds as number[] | undefined)?.[0]).toBe(2);
     expect(r.structuredContent).toMatchObject({ reranked: true });
   });
 
@@ -353,7 +353,7 @@ describe("calibre_semantic_search rerank stage", () => {
   it("degrades to the fused order with an advisory note when the reranker fails", async () => {
     const r = await semanticSearchTool.handler(args(), deps(preloaded(), queryEmbedder, brokenReranker));
     expect(r.isError).toBeFalsy();
-    expect((r.structuredContent?.bookIds as number[])[0]).toBe(1); // fused order intact
+    expect((r.structuredContent?.bookIds as number[] | undefined)?.[0]).toBe(1); // fused order intact
     expect(r.structuredContent).toMatchObject({ reranked: false });
     expect(r.structuredContent?.note as string).toContain("Reranker unavailable");
     expect((r.content[0] as { text: string }).text).toContain("Reranker unavailable");
@@ -685,7 +685,7 @@ describe("target=figures (D-018/#83/#86)", () => {
       deps(s, throwingEmbedder),
     );
     expect(r.isError).toBeUndefined();
-    expect((r.structuredContent?.figures as unknown[]).length).toBe(1);
+    expect((r.structuredContent?.figures as unknown[] | undefined)?.length).toBe(1);
   });
 
   it("an empty figure corpus reports honest-empty with the rebuild + get_figures steering", async () => {
