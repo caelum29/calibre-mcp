@@ -72,7 +72,10 @@ export function extractProse(markdown: string): string {
   return kept.join("\n");
 }
 
-/** Rough token estimate for the compression floor (whitespace words ≈ tokens; good enough). */
+/**
+ * Rough token estimate for the compression floor (whitespace words ≈ tokens; good enough).
+ * @public — consumed by scripts/legal-gate.mjs through dist/.
+ */
 export function estimateTokens(text: string): number {
   return normalizeWords(text).length;
 }

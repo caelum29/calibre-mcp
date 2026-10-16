@@ -23,8 +23,6 @@ import { manageBundlesTool } from "./calibre_manage_bundles.js";
 import { boardDataTool } from "./calibre_board_data.js";
 import { openBookTool } from "./calibre_open_book.js";
 
-export { defineTool } from "./define.js";
-
 export const allTools: AnyToolDescriptor[] = [
   listLibrariesTool,
   searchTool,
