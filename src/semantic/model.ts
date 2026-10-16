@@ -124,8 +124,9 @@ export const EMBED_DIM = ACTIVE_MODEL.dim;
 export const MAX_TOKENS = ACTIVE_MODEL.maxTokens;
 
 // e5 REQUIRES asymmetric prefixes: "query: " on searches, "passage: " on indexed text.
-// Skipping them silently degrades retrieval, so they are prepended inside the embedder.
-export const QUERY_PREFIX = ACTIVE_MODEL.queryPrefix;
+// Skipping them silently degrades retrieval, so they are prepended inside the embedder
+// (which reads ACTIVE_MODEL.queryPrefix directly). The passage prefix is exported for the
+// indexer's token budget.
 export const PASSAGE_PREFIX = ACTIVE_MODEL.passagePrefix;
 
 /**
