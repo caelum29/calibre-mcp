@@ -1,5 +1,14 @@
-# Release pipeline, triggered by pushing a v* tag:
-#   npm publish (with provenance) -> .mcpb on the GitHub release -> MCP Registry.
+# Release pipeline, driven by release-please:
+#   push to main -> release-please opens/updates the release PR (version bump in package.json,
+#   server.json, manifest.json, .claude-plugin/plugin.json + CHANGELOG.md from Conventional
+#   Commits). Merging that PR creates the vX.Y.Z tag + GitHub release, and the `publish` job
+#   below runs IN THIS SAME WORKFLOW: npm publish (with provenance) -> .mcpb on the GitHub
+#   release -> MCP Registry.
+# Why one workflow: a tag created with GITHUB_TOKEN does not trigger other workflows'
+# `on: push: tags`, so a separate tag-triggered release workflow would never run.
+# Escape hatch: Actions -> Release -> Run workflow with an existing tag re-runs `publish`
+# for that tag (e.g. after a transient registry failure).
+#
 # npm auth = Trusted Publishing (OIDC), configured on npmjs.com under the package's
 # Settings -> Trusted Publisher (repo caelum29/calibre-mcp, workflow release.yml).
 # No secrets anywhere: MCP Registry auth is also OIDC (io.github.caelum29 namespace).
@@ -7,16 +16,63 @@ name: Release
 
 on:
   push:
-    tags: ["v*"]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag to (re)publish, e.g. v0.7.5"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+# Never cancel a release half-way; queue instead.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  HUSKY: "0"
 
 jobs:
-  release:
-    runs-on: ubuntu-latest
+  release-please:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write # release commit, tag, GitHub release
+      pull-requests: write # the release PR
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - id: release
+        uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4.4.1
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  publish:
+    needs: release-please
+    # !cancelled(): on workflow_dispatch the release-please job is skipped, which would
+    # otherwise skip this dependent job too.
+    if: >-
+      ${{ !cancelled() && (
+        (github.event_name == 'push' && needs.release-please.outputs.release_created == 'true') ||
+        github.event_name == 'workflow_dispatch'
+      ) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     permissions:
       id-token: write # npm provenance + mcp-publisher OIDC
-      contents: write # create the GitHub release / upload the .mcpb
+      contents: write # upload the .mcpb to the GitHub release
+    env:
+      TAG: ${{ needs.release-please.outputs.tag_name || inputs.tag }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ env.TAG }}
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
         with:
           version: 10
@@ -30,7 +86,7 @@ jobs:
       - name: Check tag matches package.json version
         run: |
           PKG_V="$(node -p "require('./package.json').version")"
-          [ "v$PKG_V" = "$GITHUB_REF_NAME" ] || { echo "tag $GITHUB_REF_NAME != package.json v$PKG_V"; exit 1; }
+          [ "v$PKG_V" = "$TAG" ] || { echo "tag $TAG != package.json v$PKG_V"; exit 1; }
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm versions:check
@@ -48,9 +104,9 @@ jobs:
           echo "${MCP_PUBLISHER_SHA256}  mcp-publisher.tar.gz" | sha256sum --check --strict
           tar xzf mcp-publisher.tar.gz mcp-publisher
 
-      # server.json versions are committed (pnpm versions:check gates them), not
-      # rewritten here — what is published is what is in the tagged commit. Validated
-      # before npm publish so a bad server.json fails the release before anything ships.
+      # server.json versions are committed (release-please bumps them, pnpm versions:check
+      # gates them), not rewritten here — what is published is what is in the tagged commit.
+      # Validated before npm publish so a bad server.json fails the release before anything ships.
       - name: Validate server.json against the MCP Registry
         run: ./mcp-publisher validate
 
@@ -60,7 +116,7 @@ jobs:
       - name: Upgrade npm for OIDC support
         run: npm install -g npm@11.18.0 && npm --version
 
-      # prepublishOnly runs build + tests; auth is OIDC (trusted publisher), no token.
+      # prepublishOnly runs versions:check + build + tests; auth is OIDC (trusted publisher).
       # Skipped when the version is already on npm, so a failed run can be re-run safely.
       - name: Publish to npm
         run: |
@@ -74,10 +130,12 @@ jobs:
       - name: Build the MCPB bundle
         run: pnpm pack:mcpb
 
-      - name: Create GitHub release with the .mcpb
+      # release-please already created the GitHub release; `create` only matters for a
+      # workflow_dispatch re-run of a tag that has no release yet.
+      - name: Attach the .mcpb to the GitHub release
         run: |
-          gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes || true
-          gh release upload "$GITHUB_REF_NAME" dist-mcpb/*.mcpb --clobber
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --verify-tag --generate-notes
+          gh release upload "$TAG" dist-mcpb/*.mcpb --clobber
         env:
           GH_TOKEN: ${{ github.token }}
 

@@ -20,6 +20,7 @@ const server = read("server.json");
 const manifest = read("manifest.json");
 const plugin = read(".claude-plugin/plugin.json");
 const marketplace = read(".claude-plugin/marketplace.json");
+const releasePlease = read(".release-please-manifest.json");
 
 /** [what, actual, expected] */
 const checks = [
@@ -34,6 +35,7 @@ const checks = [
     pkg.engines?.node,
   ],
   [".claude-plugin/plugin.json version", plugin.version, pkg.version],
+  [".release-please-manifest.json .", releasePlease["."], pkg.version],
 ];
 // marketplace.json entries carry no version today; check any that start to.
 for (const [i, entry] of (marketplace.plugins ?? []).entries()) {
