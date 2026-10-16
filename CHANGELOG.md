@@ -4,6 +4,11 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+Releases are cut by release-please from Conventional Commit messages: each release PR
+inserts its generated section above the newest entry. Hand-written notes still go under
+`[Unreleased]`; when merging a release PR, fold them into the generated section and leave
+`[Unreleased]` empty.
+
 ## [Unreleased]
 
 ### Added
@@ -25,6 +30,9 @@ All notable changes to this project are documented here. The format is based on
   failed to start with `ERR_UNKNOWN_BUILTIN_MODULE`), and 22.13–22.15 ship SQLite without
   FTS5 (index builds failed with `no such module: fts5`). `engines` and the MCPB manifest now
   say `>=22.16`; Node 22 is tested in CI alongside Node 24.
+- **Releases are automated with release-please.** Merging the release PR tags `vX.Y.Z`,
+  creates the GitHub release and publishes to npm, the GitHub release (`.mcpb`) and the MCP
+  Registry from one workflow.
 - **Tool counts in the docs and manifests are now generated and correct.** The plugin and
   marketplace descriptions said 17 tools, the skill and `CLAUDE.md` 18; the server advertises
   19 model-facing tools (18 task tools + `calibre_ping`) plus 2 widget-internal ones. Every
