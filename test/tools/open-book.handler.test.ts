@@ -10,6 +10,7 @@ function deps(content: Partial<Record<"resolveLibraryId" | "getBook", unknown>>)
     content: content as unknown as ToolDeps["content"],
     calibre: {} as ToolDeps["calibre"],
     extractor: {} as ToolDeps["extractor"],
+    figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],
     index: {} as ToolDeps["index"],
     log,

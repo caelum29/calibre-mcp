@@ -36,6 +36,9 @@ function deps(opts: FakeOpts = {}): ToolDeps {
     content: content as unknown as ToolDeps["content"],
     calibre: { calibredb: opts.calibredb ?? (async () => ({ stdout: "", stderr: "" })) } as unknown as ToolDeps["calibre"],
     extractor: {} as unknown as ToolDeps["extractor"],
+    figures: {} as ToolDeps["figures"],
+    embedder: {} as ToolDeps["embedder"],
+    index: {} as ToolDeps["index"],
     log,
   };
 }
@@ -133,7 +136,7 @@ describe("calibre_bulk_update handler", () => {
     );
     expect(r.structuredContent?.applied).toEqual([]);
     const failed = r.structuredContent?.failed as { id: number; error: string }[];
-    expect(failed[0].id).toBe(1);
-    expect(failed[0].error).toContain("calibre_get_book id=1");
+    expect(failed[0]?.id).toBe(1);
+    expect(failed[0]?.error).toContain("calibre_get_book id=1");
   });
 });

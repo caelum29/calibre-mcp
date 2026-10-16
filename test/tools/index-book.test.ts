@@ -47,6 +47,8 @@ function deps(store: SqliteIndexStore): ToolDeps {
     config: loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }),
     content: { getBook: async () => book } as unknown as ToolDeps["content"],
     calibre: {} as unknown as ToolDeps["calibre"],
+    // no markers are placed, so the figure inventory is never consulted
+    figures: {} as unknown as ToolDeps["figures"],
     extractor: {
       getText: async (): Promise<ExtractedText> => ({
         text: "Ownership and borrowing. ".repeat(300),

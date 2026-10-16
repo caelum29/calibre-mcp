@@ -119,6 +119,8 @@ function deps(opts: FakeOpts = {}): ToolDeps {
         chars: 5000,
         cached: false,
         markers: [],
+        unplaced: 0,
+        outline: [],
       })),
   };
   return {
@@ -126,6 +128,7 @@ function deps(opts: FakeOpts = {}): ToolDeps {
     content: content as unknown as ToolDeps["content"],
     calibre: {} as unknown as ToolDeps["calibre"],
     extractor: extractor as unknown as ToolDeps["extractor"],
+    figures: {} as ToolDeps["figures"],
     embedder: opts.embedder ?? makeFakeEmbedder(),
     ...(opts.reranker ? { reranker: opts.reranker } : {}),
     index: opts.store ?? new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" })),
@@ -180,7 +183,7 @@ describe("calibre_build_index handler", () => {
     const r = await buildIndexTool.handler(
       args({ bookId: 1 }),
       deps({
-        getText: async () => ({ text: "   ", backend: "pdftotext", chars: 3, cached: false, markers: [] }),
+        getText: async () => ({ text: "   ", backend: "pdftotext", chars: 3, cached: false, markers: [], unplaced: 0, outline: [] }),
       }),
     );
     expect(r.isError).toBeFalsy();
@@ -195,7 +198,7 @@ describe("calibre_build_index handler", () => {
       args({ query: "id:>=0", keywordOnly: true }),
       deps({
         libraryIds,
-        getText: async () => ({ text: " ", backend: "pdftotext", chars: 1, cached: false, markers: [] }),
+        getText: async () => ({ text: " ", backend: "pdftotext", chars: 1, cached: false, markers: [], unplaced: 0, outline: [] }),
       }),
     );
     expect(r.isError).toBeFalsy();
@@ -360,7 +363,7 @@ describe("empty-extraction message (issue #100 nit)", () => {
       args({ bookId: 1 }),
       deps({
         book: { formats: ["epub"] },
-        getText: async () => ({ text: "   ", backend: "ebook-convert", chars: 3, cached: false, markers: [] }),
+        getText: async () => ({ text: "   ", backend: "ebook-convert", chars: 3, cached: false, markers: [], unplaced: 0, outline: [] }),
       }),
     );
     const failure = (r.structuredContent?.failures as string[])[0]!;
@@ -371,7 +374,7 @@ describe("empty-extraction message (issue #100 nit)", () => {
   it("still diagnoses a scanned PDF for PDFs", async () => {
     const r = await buildIndexTool.handler(
       args({ bookId: 1 }),
-      deps({ getText: async () => ({ text: "   ", backend: "pdftotext", chars: 3, cached: false, markers: [] }) }),
+      deps({ getText: async () => ({ text: "   ", backend: "pdftotext", chars: 3, cached: false, markers: [], unplaced: 0, outline: [] }) }),
     );
     expect((r.structuredContent?.failures as string[])[0]).toContain("scanned/image PDF");
   });
@@ -428,7 +431,7 @@ describe("front-matter flagging at build time (issue #18)", () => {
     const store = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
     const d = deps({
       store,
-      getText: async () => ({ text: front + body, backend: "pdftotext", chars: front.length + body.length, cached: false, markers: [] }),
+      getText: async () => ({ text: front + body, backend: "pdftotext", chars: front.length + body.length, cached: false, markers: [], unplaced: 0, outline: [] }),
     });
     const r = await buildIndexTool.handler(args({ bookId: 1 }), d);
     expect(r.isError).toBeUndefined();
@@ -467,6 +470,8 @@ describe("figure caption indexing (D-018 Phase B / #86)", () => {
       { index: 0, charOffset: 0, page: 3, caption: 'Figure 1-1. The ownership tree' },
       { index: 1, charOffset: 120, page: 7, caption: "Figure 2-4. Borrow checker flow" },
     ],
+    unplaced: 0,
+    outline: [],
   });
   /** Inventory matching the markers by entry index — the source/dims join input. */
   const inventory = {
