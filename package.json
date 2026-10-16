@@ -30,7 +30,7 @@
     "scripts/pymupdf_extract.py"
   ],
   "engines": {
-    "node": ">=22.5"
+    "node": ">=22.16"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -79,7 +79,7 @@
     "ajv": "8.20.0",
     "husky": "9.1.7",
     "knip": "6.41.0",
-    "lint-staged": "17.6.0",
+    "lint-staged": "16.4.0",
     "oxfmt": "0.73.0",
     "oxlint": "1.88.0",
     "tsx": "4.22.4",

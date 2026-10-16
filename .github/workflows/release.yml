@@ -16,13 +16,13 @@ jobs:
       id-token: write # npm provenance + mcp-publisher OIDC
       contents: write # create the GitHub release / upload the .mcpb
     steps:
-      - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
         with:
           version: 10
       # No registry-url here: it writes an .npmrc _authToken placeholder that overrides
       # the OIDC trusted-publishing flow with an empty token (PUT then 404s).
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: 24
           cache: pnpm

@@ -14,6 +14,11 @@ All notable changes to this project are documented here. The format is based on
 
 ### Changed
 
+- **Minimum Node.js is now 22.16 (was 22.5).** The semantic index needs `node:sqlite` with
+  FTS5: on 22.5–22.12 `node:sqlite` exists only behind `--experimental-sqlite` (the server
+  failed to start with `ERR_UNKNOWN_BUILTIN_MODULE`), and 22.13–22.15 ship SQLite without
+  FTS5 (index builds failed with `no such module: fts5`). `engines` and the MCPB manifest now
+  say `>=22.16`; Node 22 is tested in CI alongside Node 24.
 - **Tool counts in the docs and manifests are now generated and correct.** The plugin and
   marketplace descriptions said 17 tools, the skill and `CLAUDE.md` 18; the server advertises
   19 model-facing tools (18 task tools + `calibre_ping`) plus 2 widget-internal ones. Every

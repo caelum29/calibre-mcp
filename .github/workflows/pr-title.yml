@@ -1,0 +1,31 @@
+# The PR title becomes the squash-merge commit subject, which release-please reads to
+# pick the next version and write the changelog — so it must be a Conventional Commit.
+name: PR title
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  conventional-title:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Check the PR title is a Conventional Commit
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          node -e '
+            const title = process.env.TITLE ?? "";
+            const types = ["feat", "fix", "perf", "refactor", "docs", "test", "build", "ci", "chore", "style", "revert"];
+            const re = new RegExp(`^(${types.join("|")})(\\([a-z0-9._/-]+\\))?!?: \\S.*$`);
+            if (!re.test(title)) {
+              console.error(`PR title is not a Conventional Commit: "${title}"`);
+              console.error(`Expected "<type>(<optional scope>)!: <subject>", type one of: ${types.join(", ")}`);
+              process.exit(1);
+            }
+            console.log(`ok: ${title}`);
+          '
