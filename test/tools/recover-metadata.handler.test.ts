@@ -44,6 +44,7 @@ function deps(f: Fixture): ToolDeps {
     content: content as unknown as ToolDeps["content"],
     calibre: {} as unknown as ToolDeps["calibre"],
     extractor: extractor as unknown as ToolDeps["extractor"],
+    figures: {} as ToolDeps["figures"],
     embedder: {} as unknown as ToolDeps["embedder"],
     index: {} as unknown as ToolDeps["index"],
     providers: { openlibrary: provider("openlibrary"), googlebooks: provider("googlebooks") },
