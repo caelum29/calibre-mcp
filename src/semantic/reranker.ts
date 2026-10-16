@@ -14,6 +14,7 @@ import { InferenceQueue, QUEUE_BUSY } from "./queue.js";
 // multilingual (EN+RU), ~52 BEIR nDCG@10; runs on CPU via transformers.js.
 export const RERANKER_MODEL_ID = "onnx-community/bge-reranker-v2-m3-ONNX";
 /**
+ * @public — documentation constant, intentionally unreferenced.
  * Repo revision this build was verified against (2025-09-01) — documentation, NOT passed to
  * from_pretrained: transformers.js 4.2.0's tokenizer-file existence probe drops the revision
  * (and cache_dir) options, so a revision-pinned cache misses and every offline load fails.

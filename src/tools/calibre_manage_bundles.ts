@@ -15,7 +15,7 @@ import { toolError, toolOk } from "./result.js";
 import type { ToolDeps } from "./types.js";
 import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "./write-refusal.js";
 
-export { type BundleEntry, isExclusionMarker, mergeBundles, parseSavedSearches } from "./bundles.js";
+export { mergeBundles, parseSavedSearches } from "./bundles.js";
 
 /**
  * argv for a saved-search write. The `--` separator MUST come after every option (the client
