@@ -3,12 +3,7 @@
 // and prev-caption band bounding. Fixture coordinates mimic pdftotext -bbox.
 
 import { describe, expect, it } from "vitest";
-import {
-  computeBand,
-  findAnchors,
-  parseBboxPage,
-  selectAnchor,
-} from "../../../src/domain/figures/band.js";
+import { computeBand, findAnchors, parseBboxPage, selectAnchor } from "../../../src/domain/figures/band.js";
 
 function bbox(words: Array<[number, number, number, number, string]>): string {
   const w = words

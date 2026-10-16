@@ -29,8 +29,7 @@ const DEFAULT_SOURCES: Provider["name"][] = ["openlibrary", "googlebooks"];
 
 /** Lazily construct the real providers (no network until a method is called). */
 function providersFor(deps: ToolDeps, order: Provider["name"][]): Provider[] {
-  const map =
-    deps.providers ?? { openlibrary: createOpenLibrary(), googlebooks: createGoogleBooks() };
+  const map = deps.providers ?? { openlibrary: createOpenLibrary(), googlebooks: createGoogleBooks() };
   return order.map((n) => map[n]).filter(Boolean);
 }
 
@@ -63,9 +62,8 @@ export const recoverMetadataTool = defineTool({
       const book = await deps.content.getBook(numericId, args.library);
 
       // Pick the lookup key: existing valid ISBN → text-scraped ISBN → usable title.
-      const existingIsbn = book.identifiers.isbn && isValidIsbn(book.identifiers.isbn)
-        ? book.identifiers.isbn
-        : undefined;
+      const existingIsbn =
+        book.identifiers.isbn && isValidIsbn(book.identifiers.isbn) ? book.identifiers.isbn : undefined;
       let scan: IsbnScanResult | undefined;
       if (!existingIsbn) {
         scan = await scanForIsbn(deps, book, numericId, args.library);
@@ -102,9 +100,7 @@ export const recoverMetadataTool = defineTool({
       let hits: ProviderHit[] = [];
       let usedSource: string | undefined;
       for (const p of providers) {
-        const res = byIsbn
-          ? await p.lookupByIsbn(isbn!)
-          : await p.searchByTitleAuthor(book.title, author);
+        const res = byIsbn ? await p.lookupByIsbn(isbn!) : await p.searchByTitleAuthor(book.title, author);
         if (res.length) {
           hits = res;
           usedSource = p.name;

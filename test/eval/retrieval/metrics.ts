@@ -96,8 +96,7 @@ export function queryMetrics(r: RankedRelevance): QueryMetrics {
 /** Mean the per-query metrics (empty input → zeros with n=0). */
 export function aggregate(rows: QueryMetrics[]): AggregateMetrics {
   const n = rows.length;
-  const mean = (f: (m: QueryMetrics) => number) =>
-    n === 0 ? 0 : round4(rows.reduce((s, m) => s + f(m), 0) / n);
+  const mean = (f: (m: QueryMetrics) => number) => (n === 0 ? 0 : round4(rows.reduce((s, m) => s + f(m), 0) / n));
   return {
     n,
     hit1: mean((m) => m.hit1),

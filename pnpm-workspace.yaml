@@ -1,5 +1,5 @@
 allowBuilds:
-  '@modelcontextprotocol/inspector': true
+  "@modelcontextprotocol/inspector": true
   esbuild: true
   onnxruntime-node: true
   protobufjs: true

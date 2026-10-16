@@ -35,10 +35,7 @@ export const getFiguresTool = defineTool({
   inputSchema: {
     id: BookId().optional(),
     bookId: BookId().optional(),
-    format: z
-      .string()
-      .optional()
-      .describe("Source format override (epub or pdf). Default: epub if present, else pdf."),
+    format: z.string().optional().describe("Source format override (epub or pdf). Default: epub if present, else pdf."),
     indexes: jsonArray(CoercedInt())
       .optional()
       .describe(
@@ -117,10 +114,7 @@ interface BookCtx {
   inventory: FigureInventory;
 }
 
-function listFigures(
-  args: { include_uncaptioned: boolean },
-  { numericId, fmt, inventory }: BookCtx,
-) {
+function listFigures(args: { include_uncaptioned: boolean }, { numericId, fmt, inventory }: BookCtx) {
   const visible = inventory.entries.filter((e) => e.captioned || args.include_uncaptioned);
   const { counts } = inventory;
 
@@ -185,9 +179,7 @@ async function fetchFigures(
   }
   const hidden = indexes.filter((i) => !inventory.entries[i]?.captioned);
   if (hidden.length > 0 && !args.include_uncaptioned) {
-    return toolError(
-      `Index ${hidden.join(", ")} is an uncaptioned image — pass include_uncaptioned=true to fetch it.`,
-    );
+    return toolError(`Index ${hidden.join(", ")} is an uncaptioned image — pass include_uncaptioned=true to fetch it.`);
   }
 
   const outcome = await deps.figures.fetchFigures({

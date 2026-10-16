@@ -53,7 +53,10 @@ export const listCategoriesTool = defineTool({
 
       const node = matchCategory(cats, args.field);
       if (!node) {
-        const names = cats.map((c) => c.name).filter(Boolean).join(", ");
+        const names = cats
+          .map((c) => c.name)
+          .filter(Boolean)
+          .join(", ");
         return toolError(`Unknown category "${args.field}". Available: ${names}`);
       }
 
@@ -88,9 +91,7 @@ export const listCategoriesTool = defineTool({
       const fetched = items.length;
       const more = offset + fetched < total;
       const nextCursor = more ? encodeCursor({ offset: offset + fetched, query: cursorKey }) : undefined;
-      const lines = items
-        .map((it) => `${it.name}${it.count !== undefined ? ` (${it.count})` : ""}`)
-        .join("\n");
+      const lines = items.map((it) => `${it.name}${it.count !== undefined ? ` (${it.count})` : ""}`).join("\n");
       const text = `${node.name}: ${total} values, showing ${offset + 1}–${offset + fetched}\n${lines}`;
 
       return toolOk([{ type: "text", text: fence("CATEGORY VALUES", text) }], {

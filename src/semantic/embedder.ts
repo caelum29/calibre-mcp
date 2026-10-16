@@ -66,10 +66,7 @@ type FeaturePipeline = ((
   opts: { pooling: "mean" | "cls"; normalize: boolean },
 ) => Promise<{ tolist(): number[][] }>) & { tokenizer: Tokenizer };
 // baked-in path (EmbeddingGemma): callable tokenizer → model → `sentence_embedding`.
-type BatchTokenizer = ((
-  texts: string[],
-  opts: { padding: boolean; truncation: boolean },
-) => Record<string, unknown>) &
+type BatchTokenizer = ((texts: string[], opts: { padding: boolean; truncation: boolean }) => Record<string, unknown>) &
   Tokenizer;
 type SentenceEmbeddingModel = (inputs: Record<string, unknown>) => Promise<{
   sentence_embedding: { tolist(): number[][] };
@@ -96,8 +93,7 @@ export class TransformersEmbedder implements Embedder {
 
   constructor(
     private readonly cfg: Config,
-    private readonly loadTransformers: TransformersLoader = () =>
-      import("@huggingface/transformers"),
+    private readonly loadTransformers: TransformersLoader = () => import("@huggingface/transformers"),
   ) {}
 
   async warmup(): Promise<void> {

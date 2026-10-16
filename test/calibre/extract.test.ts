@@ -48,7 +48,12 @@ describe("noTextReason", () => {
 
 describe("text cache envelope (v2, #84)", () => {
   it("round-trips a valid envelope", () => {
-    const env = { v: 2, backend: "pdftotext", text: "body [image #0]", markers: [{ index: 0, charOffset: 5, page: 1, caption: "c" }] };
+    const env = {
+      v: 2,
+      backend: "pdftotext",
+      text: "body [image #0]",
+      markers: [{ index: 0, charOffset: 5, page: 1, caption: "c" }],
+    };
     expect(parseTextCacheEnvelope(JSON.stringify(env))).toEqual(env);
   });
   it("rejects a pre-marker cache payload (raw text, no envelope)", () => {

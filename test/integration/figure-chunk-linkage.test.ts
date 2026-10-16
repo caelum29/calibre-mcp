@@ -29,8 +29,25 @@ function fixtureText(): string {
 
 const inventory: FigureInventory = {
   entries: [
-    { index: 0, page: 1, captioned: true, label: "1-1", caption: "The ownership tree with parent scopes", source: "page-render" },
-    { index: 1, page: 2, captioned: true, label: "2-3", caption: "Borrow checker decision flow", source: "raster", width: 640, height: 480, pdfImageNum: 3 },
+    {
+      index: 0,
+      page: 1,
+      captioned: true,
+      label: "1-1",
+      caption: "The ownership tree with parent scopes",
+      source: "page-render",
+    },
+    {
+      index: 1,
+      page: 2,
+      captioned: true,
+      label: "2-3",
+      caption: "Borrow checker decision flow",
+      source: "raster",
+      width: 640,
+      height: 480,
+      pdfImageNum: 3,
+    },
   ],
   pageCount: 2,
   scanned: false,

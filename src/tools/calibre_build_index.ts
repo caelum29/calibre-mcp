@@ -35,7 +35,7 @@ export const buildIndexTool = defineTool({
   name: "calibre_build_index",
   title: "Build semantic index",
   description:
-    "Build the semantic index for specific books (required: bookId, ids, or query — full-library indexing is deferred). Extracts, chunks, and embeds each book. Set keywordOnly=true (or when the embedding model is absent, it happens automatically) to build a keyword-only index that powers mode:\"keyword\" search with zero ML dependencies. Re-run after adding books; use force to re-index unchanged ones. Set prune=true to also drop index entries for books that no longer exist in the library (removals/merges leave searchable orphans behind).",
+    'Build the semantic index for specific books (required: bookId, ids, or query — full-library indexing is deferred). Extracts, chunks, and embeds each book. Set keywordOnly=true (or when the embedding model is absent, it happens automatically) to build a keyword-only index that powers mode:"keyword" search with zero ML dependencies. Re-run after adding books; use force to re-index unchanged ones. Set prune=true to also drop index entries for books that no longer exist in the library (removals/merges leave searchable orphans behind).',
   inputSchema: {
     bookId: BookId().optional(),
     ids: jsonArray(BookId()).optional(),
@@ -116,7 +116,9 @@ export const buildIndexTool = defineTool({
       const page = await deps.content.search({ query: args.query, library: args.library, num: MAX_QUERY_BOOKS });
       for (const id of page.bookIds) targets.add(id);
       if (page.total > page.bookIds.length) {
-        notes.push(`query matched ${page.total} books; indexing the first ${page.bookIds.length} (cap ${MAX_QUERY_BOOKS}).`);
+        notes.push(
+          `query matched ${page.total} books; indexing the first ${page.bookIds.length} (cap ${MAX_QUERY_BOOKS}).`,
+        );
       }
     }
 
@@ -153,8 +155,7 @@ export const buildIndexTool = defineTool({
           semanticReason =
             "embedding model (@huggingface/transformers) unavailable — automatically degraded to a keyword-only index (no vectors).";
           // Must LEAD the text block (test-asserted at index 0) and carry the universal fix (#47).
-          degradeWarning =
-            `Embedding model unavailable — built a KEYWORD-ONLY index instead (mode:"keyword" search works now). ${INSTALL_TRANSFORMERS} After restarting, rebuild with force=true for vector & hybrid semantic search.`;
+          degradeWarning = `Embedding model unavailable — built a KEYWORD-ONLY index instead (mode:"keyword" search works now). ${INSTALL_TRANSFORMERS} After restarting, rebuild with force=true for vector & hybrid semantic search.`;
         }
         // Other warmup errors (e.g. a download hiccup) fall through — the per-book embed
         // attempt below surfaces them as collected failures (char-budget chunking applies).
@@ -249,9 +250,7 @@ export const buildIndexTool = defineTool({
       booksSkipped,
       chunks: totalChunks,
       figures: totalFigures,
-      ...(pruned
-        ? { prunedBooks: pruned.books, prunedChunks: pruned.chunks, prunedFigures: pruned.figures }
-        : {}),
+      ...(pruned ? { prunedBooks: pruned.books, prunedChunks: pruned.chunks, prunedFigures: pruned.figures } : {}),
       elapsedMs,
       keywordOnly,
       semanticAvailable: !keywordOnly,

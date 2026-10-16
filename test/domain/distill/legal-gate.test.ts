@@ -170,9 +170,7 @@ describe("headingMatch", () => {
 
 describe("cursorLeak", () => {
   it("detects an encoded content-cursor token", () => {
-    const token = Buffer.from(JSON.stringify({ offset: 29290, id: 187, format: "pdf" }), "utf8").toString(
-      "base64url",
-    );
+    const token = Buffer.from(JSON.stringify({ offset: 29290, id: 187, format: "pdf" }), "utf8").toString("base64url");
     const hits = cursorLeak(`Jump here: ${token} for chapter 1.`);
     expect(hits.length).toBeGreaterThan(0);
     expect(hits[0]!.token).toBe(token);

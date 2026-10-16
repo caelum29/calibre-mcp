@@ -36,9 +36,7 @@ export async function getJson<T>(url: string, opts: HttpOptions = {}): Promise<T
   } catch (err) {
     if (err instanceof CalibreHttpError) throw err;
     const aborted = err instanceof Error && err.name === "AbortError";
-    const message = aborted
-      ? "Content Server request timed out"
-      : "Cannot reach Calibre Content Server";
+    const message = aborted ? "Content Server request timed out" : "Cannot reach Calibre Content Server";
     log.error("content-server request failed", {
       url,
       aborted,

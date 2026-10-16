@@ -49,10 +49,7 @@ const FTS_END = "<<";
  * spec hosts that forward it. Library-scope results only — scope=book renders passages
  * in chat and the widget collapses itself.
  */
-function boardMeta(
-  deps: ToolDeps,
-  payload: Omit<BoardPayload, "tool" | "serverUrl">,
-): Record<string, unknown> {
+function boardMeta(deps: ToolDeps, payload: Omit<BoardPayload, "tool" | "serverUrl">): Record<string, unknown> {
   const full: BoardPayload = { tool: "calibre_search", serverUrl: deps.config.serverUrl, ...payload };
   deps.boardCache?.set(full);
   return { calibreBoard: full };
@@ -124,9 +121,7 @@ async function metaLibraryScope(args: SearchArgs, deps: ToolDeps, fRes: FilterRe
 
   const fetched = page.bookIds.length;
   const more = offset + fetched < page.total;
-  const nextCursor = more
-    ? encodeCursor({ offset: offset + fetched, query: effQuery, sort: args.sort })
-    : undefined;
+  const nextCursor = more ? encodeCursor({ offset: offset + fetched, query: effQuery, sort: args.sort }) : undefined;
   const text = `Found ${page.total} books, showing ${offset + 1}–${offset + fetched}.${honesty}`;
 
   const _meta = boardMeta(deps, {
@@ -236,9 +231,7 @@ async function ftsLibraryScope(args: SearchArgs, deps: ToolDeps, fRes: FilterRes
   }
 
   const more = offset + pageIds.length < bookIds.length;
-  const nextCursor = more
-    ? encodeCursor({ offset: offset + pageIds.length, query: cursorKey })
-    : undefined;
+  const nextCursor = more ? encodeCursor({ offset: offset + pageIds.length, query: cursorKey }) : undefined;
   const _meta = boardMeta(deps, {
     query: args.query,
     kind: "keyword",
@@ -332,7 +325,7 @@ export const searchTool = defineTool({
   name: "calibre_search",
   title: "Search books",
   description:
-    "Find books by exact title, author, ISBN, tag, or Calibre query syntax (mode=meta), or by full text (mode=fts). scope=book returns short keyword snippets from inside one book; first hits often land in TOC/front matter — for definitional or topic questions within a book prefer calibre_semantic_search scope=book (ranked passages with char offsets). Use calibre_semantic_search for meaning/topic queries. For \"how many\" questions use countOnly=true (returns only the count). filter accepts a bundle name to scope the search (list bundles via calibre_manage_bundles).",
+    'Find books by exact title, author, ISBN, tag, or Calibre query syntax (mode=meta), or by full text (mode=fts). scope=book returns short keyword snippets from inside one book; first hits often land in TOC/front matter — for definitional or topic questions within a book prefer calibre_semantic_search scope=book (ranked passages with char offsets). Use calibre_semantic_search for meaning/topic queries. For "how many" questions use countOnly=true (returns only the count). filter accepts a bundle name to scope the search (list bundles via calibre_manage_bundles).',
   inputSchema: {
     query: z.string().min(1).max(512),
     mode: z.enum(["meta", "fts"]).optional().default("meta"),

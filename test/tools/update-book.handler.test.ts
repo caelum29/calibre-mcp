@@ -64,10 +64,7 @@ describe("calibre_update_book handler", () => {
   });
 
   it("detects a no-op when before equals after", async () => {
-    const r = await updateBookTool.handler(
-      { id: 658, changes: { tags: ["old"] } },
-      deps({ books: [book(), book()] }),
-    );
+    const r = await updateBookTool.handler({ id: 658, changes: { tags: ["old"] } }, deps({ books: [book(), book()] }));
     expect(r.structuredContent?.noop).toBe(true);
   });
 
@@ -105,16 +102,11 @@ describe("calibre_update_book handler", () => {
       if (calls > 1) throw new CalibreHttpError(0, "u", "Content Server request timed out");
       return book();
     };
-    const r = await updateBookTool.handler(
-      { id: 658, changes: { publisher: "MIT Press" } },
-      deps({ getBook }),
-    );
+    const r = await updateBookTool.handler({ id: 658, changes: { publisher: "MIT Press" } }, deps({ getBook }));
     expect(r.isError).toBeFalsy();
     expect((r.content[0] as { text: string }).text).toContain("Updated book 658");
     // diff falls back to the intended value when the re-read is unavailable
-    expect(r.structuredContent?.changed).toEqual([
-      { field: "publisher", before: undefined, after: "MIT Press" },
-    ]);
+    expect(r.structuredContent?.changed).toEqual([{ field: "publisher", before: undefined, after: "MIT Press" }]);
   });
 
   it("verifies a timed-out write via re-read and reports success when it landed", async () => {

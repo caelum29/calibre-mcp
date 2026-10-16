@@ -7,8 +7,15 @@ import { CalibreCliTimeoutError } from "../../src/domain/errors.js";
 import type { ToolDeps } from "../../src/tools/types.js";
 
 const book = (over: Partial<Book> = {}): Book => ({
-  id: 1, uuid: "u", title: "T", authors: ["A"], identifiers: {}, formats: ["pdf"],
-  tags: ["old"], languages: ["en"], ...over,
+  id: 1,
+  uuid: "u",
+  title: "T",
+  authors: ["A"],
+  identifiers: {},
+  formats: ["pdf"],
+  tags: ["old"],
+  languages: ["en"],
+  ...over,
 });
 
 interface FakeOpts {
@@ -25,15 +32,21 @@ function deps(opts: FakeOpts = {}): ToolDeps {
     resolveLibraryId: async (name?: string): Promise<string> => name ?? "Programming_Books",
     getBook: opts.getBook ?? (async (id: number): Promise<Book> => byId.get(id) ?? book({ id })),
     search: async () => ({
-      bookIds: fixture.map((b) => b.id), total: fixture.length,
-      num: fixture.length, offset: 0, sort: "title", libraryId: "Lib",
+      bookIds: fixture.map((b) => b.id),
+      total: fixture.length,
+      num: fixture.length,
+      offset: 0,
+      sort: "title",
+      libraryId: "Lib",
     }),
     booksByIds: async (ids: number[]) => new Map(ids.map((id) => [id, byId.get(id) ?? null] as const)),
   };
   return {
     config: loadConfig({}),
     content: content as unknown as ToolDeps["content"],
-    calibre: { calibredb: opts.calibredb ?? (async () => ({ stdout: "", stderr: "" })) } as unknown as ToolDeps["calibre"],
+    calibre: {
+      calibredb: opts.calibredb ?? (async () => ({ stdout: "", stderr: "" })),
+    } as unknown as ToolDeps["calibre"],
     extractor: {} as unknown as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],
@@ -57,10 +70,7 @@ describe("calibre_bulk_update handler", () => {
 
   it("requires a book set (no ids and no query)", async () => {
     const spy = vi.fn(async () => ({ stdout: "", stderr: "" }));
-    const r = await bulkUpdateTool.handler(
-      { changes: { tags: ["new"] }, preview: false },
-      deps({ calibredb: spy }),
-    );
+    const r = await bulkUpdateTool.handler({ changes: { tags: ["new"] }, preview: false }, deps({ calibredb: spy }));
     expect(r.isError).toBe(true);
     expect(spy).not.toHaveBeenCalled();
   });
@@ -73,9 +83,11 @@ describe("calibre_bulk_update handler", () => {
     );
     expect(r.isError).toBeFalsy();
     expect(spy).toHaveBeenCalledTimes(2);
-    expect(spy).toHaveBeenNthCalledWith(1,
+    expect(spy).toHaveBeenNthCalledWith(
+      1,
       ["set_metadata", "1", "--field", "tags:new"],
-      expect.objectContaining({ library: "Programming_Books" }));
+      expect.objectContaining({ library: "Programming_Books" }),
+    );
     expect(r.structuredContent?.applied).toEqual([1, 2]);
   });
 

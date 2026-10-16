@@ -6,8 +6,15 @@ import type { Book } from "../../src/domain/book.js";
 import type { ToolDeps } from "../../src/tools/types.js";
 
 const book = (over: Partial<Book> = {}): Book => ({
-  id: 1, uuid: "u", title: "Doomed", authors: ["A"], identifiers: {}, formats: ["pdf"],
-  tags: [], languages: [], ...over,
+  id: 1,
+  uuid: "u",
+  title: "Doomed",
+  authors: ["A"],
+  identifiers: {},
+  formats: ["pdf"],
+  tags: [],
+  languages: [],
+  ...over,
 });
 
 function deps(calibredb: (args: readonly string[]) => Promise<{ stdout: string; stderr: string }>): ToolDeps {
@@ -36,17 +43,14 @@ describe("calibre_remove_book handler", () => {
     expect(r.isError).toBeFalsy();
     expect(spy).not.toHaveBeenCalled();
     expect(r.structuredContent?.deleted).toBe(false);
-    expect((r.structuredContent?.wouldRemove as unknown[]).length).toBe(2);
+    expect((r.structuredContent?.wouldRemove as unknown[] | undefined)?.length).toBe(2);
   });
 
   it("removes with a comma-separated id list when confirmed", async () => {
     const spy = vi.fn(async () => ({ stdout: "", stderr: "" }));
     const r = await removeBookTool.handler({ ids: [1, 2], confirm: true }, deps(spy));
     expect(r.isError).toBeFalsy();
-    expect(spy).toHaveBeenCalledWith(
-      ["remove", "1,2"],
-      expect.objectContaining({ library: "Programming_Books" }),
-    );
+    expect(spy).toHaveBeenCalledWith(["remove", "1,2"], expect.objectContaining({ library: "Programming_Books" }));
     expect(r.structuredContent?.removedIds).toEqual([1, 2]);
   });
 

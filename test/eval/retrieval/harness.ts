@@ -125,9 +125,7 @@ export function loadCorpus(): LoadedCorpus {
   for (const b of raw.books) {
     const text = readFileSync(path.join(HERE, "corpus", b.file), "utf8");
     if (b.figures) {
-      const inventory = JSON.parse(
-        readFileSync(path.join(HERE, "corpus", b.figures), "utf8"),
-      ) as FigureInventory;
+      const inventory = JSON.parse(readFileSync(path.join(HERE, "corpus", b.figures), "utf8")) as FigureInventory;
       // Fixture texts carry no caption lines, so the real injector places every marker via
       // the PDF page-boundary fallback (page 1 → offset 0) — hence format "pdf" here.
       // Caveat (#90): that stacks ALL markers at offset 0, front-loading the book's first
@@ -136,7 +134,9 @@ export function loadCorpus(): LoadedCorpus {
       // spreading markers would mean touching fixture .txt files and re-baselining).
       const marked = injectFigureMarkers(text, inventory, "pdf");
       if (marked.unplaced > 0) {
-        throw new Error(`fixture book ${b.bookId}: ${marked.unplaced} figure marker(s) unplaced — keep inventory pages at 1`);
+        throw new Error(
+          `fixture book ${b.bookId}: ${marked.unplaced} figure marker(s) unplaced — keep inventory pages at 1`,
+        );
       }
       texts.set(b.bookId, marked.text);
       markers.set(b.bookId, marked.markers);

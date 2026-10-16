@@ -6,12 +6,7 @@ import { loadConfig } from "../../src/config.js";
 import type { Book } from "../../src/domain/book.js";
 import type { FtsHit, SearchPage } from "../../src/domain/search.js";
 import { log } from "../../src/logging.js";
-import {
-  buildScopedQuery,
-  invalidateBundleCache,
-  resolveFilter,
-  scopeExpression,
-} from "../../src/tools/bundles.js";
+import { buildScopedQuery, invalidateBundleCache, resolveFilter, scopeExpression } from "../../src/tools/bundles.js";
 import { searchTool } from "../../src/tools/calibre_search.js";
 import type { ToolDeps } from "../../src/tools/types.js";
 

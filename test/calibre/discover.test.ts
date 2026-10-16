@@ -21,9 +21,7 @@ describe("discoverCalibredb", () => {
   });
 
   it("finds a linux system install", () => {
-    expect(discoverCalibredb({}, "linux", (p) => p === "/usr/bin/calibredb")).toBe(
-      "/usr/bin/calibredb",
-    );
+    expect(discoverCalibredb({}, "linux", (p) => p === "/usr/bin/calibredb")).toBe("/usr/bin/calibredb");
   });
 
   it("falls back to bare calibredb (PATH) when nothing exists", () => {

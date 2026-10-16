@@ -5,9 +5,7 @@
 import { realpathSync, statSync } from "node:fs";
 import path from "node:path";
 
-export type AddPathResult =
-  | { ok: true; resolved: string }
-  | { ok: false; reason: string };
+export type AddPathResult = { ok: true; resolved: string } | { ok: false; reason: string };
 
 /**
  * Validate that `candidate` is a real file inside one of `roots`. Resolving with realpath

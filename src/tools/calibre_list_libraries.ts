@@ -12,9 +12,7 @@ export const listLibrariesTool = defineTool({
     "List the Calibre libraries available on the Content Server and which one is the default. Call this first to discover valid library names.",
   inputSchema: {},
   outputSchema: {
-    libraries: z
-      .array(z.object({ id: z.string(), name: z.string(), isDefault: z.boolean() }))
-      .optional(),
+    libraries: z.array(z.object({ id: z.string(), name: z.string(), isDefault: z.boolean() })).optional(),
     default: z.string().optional(),
   },
   annotations: { readOnlyHint: true, openWorldHint: true },
