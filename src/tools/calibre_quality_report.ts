@@ -45,7 +45,7 @@ export const qualityReportTool = defineTool({
     nextCursor: z.string().optional(),
   },
   annotations: { readOnlyHint: true, openWorldHint: true },
-  handler: async (args, deps) => {
+  handler: async (args, deps, ctx) => {
     try {
       const checks: QualityCheck[] = args.checks?.length ? args.checks : ALL_CHECKS;
 
@@ -57,6 +57,7 @@ export const qualityReportTool = defineTool({
       const fr = await resolveFilter(deps, { filter: args.filter, autoExclude: false, library: args.library });
       if (!fr.ok) return toolError(fr.error);
 
+      ctx?.progress?.(0, "Selecting books…", 2);
       const {
         books,
         total: matched,
@@ -66,7 +67,9 @@ export const qualityReportTool = defineTool({
         query: buildScopedQuery(args.query ?? "", fr.res) || undefined,
         library: args.library,
       });
+      ctx?.progress?.(1, `Checking ${books.length} book(s)…`, 2);
       const issues = runQualityChecks(books, checks);
+      ctx?.progress?.(2, `Checked ${books.length} book(s)`, 2);
 
       // Counts by check over ALL issues (not just the page).
       const byCheck: Record<string, number> = {};

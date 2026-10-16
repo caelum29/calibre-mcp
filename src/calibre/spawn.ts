@@ -25,6 +25,12 @@ export interface SpawnCollectOptions {
   timeoutMs: number;
   /** Byte cap per stream; over it we kill the group and reject (execFile parity). */
   maxBuffer: number;
+  /**
+   * Cancellation (e.g. the MCP client cancelled the request). On abort the whole process
+   * group is SIGKILLed and the promise rejects with {@link SpawnAbortedError}; an
+   * already-aborted signal rejects without spawning.
+   */
+  signal?: AbortSignal;
 }
 
 /** Timed out and the process group was force-killed. Distinct so callers don't
@@ -33,6 +39,14 @@ export class SpawnTimeoutError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "SpawnTimeoutError";
+  }
+}
+
+/** The caller's AbortSignal fired; the process group was killed. */
+export class SpawnAbortedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "SpawnAbortedError";
   }
 }
 
@@ -95,6 +109,10 @@ export function killAllChildren(): number {
  */
 export function spawnCollect(bin: string, args: readonly string[], opts: SpawnCollectOptions): Promise<SpawnResult> {
   return new Promise<SpawnResult>((resolve, reject) => {
+    if (opts.signal?.aborted) {
+      reject(new SpawnAbortedError("process cancelled before start"));
+      return;
+    }
     // detached:true → child is its own process-group leader (pgid === pid on POSIX)
     // so `process.kill(-pid, …)` reaches the worker grandchild too. Do NOT unref():
     // we await this child. stdio defaults to "pipe", so stdout/stderr exist.
@@ -112,14 +130,25 @@ export function spawnCollect(bin: string, args: readonly string[], opts: SpawnCo
     const timer = setTimeout(() => {
       if (settled) return;
       settled = true;
+      opts.signal?.removeEventListener("abort", onAbort);
       killGroup();
       reject(new SpawnTimeoutError(`process timed out after ${opts.timeoutMs}ms`));
     }, opts.timeoutMs);
+
+    const onAbort = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      killGroup();
+      reject(new SpawnAbortedError("process cancelled"));
+    };
+    opts.signal?.addEventListener("abort", onAbort, { once: true });
 
     const finish = (fn: () => void) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      opts.signal?.removeEventListener("abort", onAbort);
       fn();
     };
 

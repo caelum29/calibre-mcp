@@ -28,7 +28,8 @@ import {
 } from "./figure-fetch.js";
 import type { FigureEntry } from "../domain/figures/inventory.js";
 import { downloadToFile } from "./http.js";
-import { spawnCollect, SpawnTimeoutError } from "./spawn.js";
+import { OperationCancelledError } from "../domain/errors.js";
+import { SpawnAbortedError, spawnCollect, SpawnTimeoutError } from "./spawn.js";
 
 export interface GetInventoryArgs {
   bookId: number;
@@ -38,6 +39,8 @@ export interface GetInventoryArgs {
   cacheKey: string;
   maxBytes?: number;
   timeoutMs?: number;
+  /** Cancellation: aborts the download and kills the scanner's process group. */
+  signal?: AbortSignal;
 }
 
 export interface InventoryResult {
@@ -133,11 +136,18 @@ export class FigureInventoryService {
       await downloadToFile(args.downloadUrl, tmpSrc, {
         maxBytes: args.maxBytes ?? this.cfg.maxBookBytes,
         timeoutMs: args.timeoutMs,
+        signal: args.signal,
       });
       const inventory =
         format === "epub" && unzip
-          ? await this.scanEpubFile(unzip, tmpSrc, args.timeoutMs)
-          : await this.scanFile(bins as { pdfimages: string; pdftotext: string }, tmpSrc, tmpTxt, args.timeoutMs);
+          ? await this.scanEpubFile(unzip, tmpSrc, args.timeoutMs, args.signal)
+          : await this.scanFile(
+              bins as { pdfimages: string; pdftotext: string },
+              tmpSrc,
+              tmpTxt,
+              args.timeoutMs,
+              args.signal,
+            );
       const envelope: CacheEnvelope = { v: INVENTORY_VERSION, inventory };
       await writeFile(cacheFile, JSON.stringify(envelope), "utf8");
       return { inventory, cached: false };
@@ -273,7 +283,7 @@ export class FigureInventoryService {
    * the spine HTML for figures (no cache, no download). DRM/corrupt zips surface
    * as FIGURES_SCAN_FAILED — unzip exits non-zero on them.
    */
-  async scanEpubFile(unzip: string, src: string, timeoutMs?: number): Promise<FigureInventory> {
+  async scanEpubFile(unzip: string, src: string, timeoutMs?: number, signal?: AbortSignal): Promise<FigureInventory> {
     const extractDir = path.join(CACHE_DIR, `ep-${randomUUID()}`);
     try {
       // `unzip -d` creates only ONE missing level, so a not-yet-existing CACHE_DIR (fresh
@@ -282,7 +292,7 @@ export class FigureInventoryService {
       await mkdir(extractDir, { recursive: true });
       // -o overwrite, -qq silent; unzip itself refuses paths that escape -d.
       // Exit 1 = warnings only (EPUB mimetype quirks trigger it) — extraction still succeeded.
-      await this.#run(unzip, ["-o", "-qq", src, "-d", extractDir], timeoutMs ?? RUN_TIMEOUT_MS, [0, 1]);
+      await this.#run(unzip, ["-o", "-qq", src, "-d", extractDir], timeoutMs ?? RUN_TIMEOUT_MS, [0, 1], signal);
       const readInside = async (href: string): Promise<string> => {
         const abs = path.resolve(extractDir, href);
         if (!abs.startsWith(path.resolve(extractDir) + path.sep)) throw new Error("FIGURES_SCAN_FAILED");
@@ -314,11 +324,12 @@ export class FigureInventoryService {
     src: string,
     tmpTxt: string,
     timeoutMs?: number,
+    signal?: AbortSignal,
   ): Promise<FigureInventory> {
     const timeout = timeoutMs ?? RUN_TIMEOUT_MS;
     // pdftotext keeps \f page breaks — that's what page-scoped caption matching needs.
-    await this.#run(bins.pdftotext, ["-q", "-enc", "UTF-8", src, tmpTxt], timeout);
-    const listOut = await this.#run(bins.pdfimages, ["-list", src], timeout);
+    await this.#run(bins.pdftotext, ["-q", "-enc", "UTF-8", src, tmpTxt], timeout, [0], signal);
+    const listOut = await this.#run(bins.pdfimages, ["-list", src], timeout, [0], signal);
     const text = await readFile(tmpTxt, "utf8");
     const layout = await this.#readLayout(bins.pdftotext, src, tmpTxt, text, timeout);
     return buildInventory(text, parsePdfImagesList(listOut), layout);
@@ -356,15 +367,23 @@ export class FigureInventoryService {
     }
   }
 
-  async #run(bin: string, args: string[], timeout: number, okCodes: number[] = [0]): Promise<string> {
+  async #run(
+    bin: string,
+    args: string[],
+    timeout: number,
+    okCodes: number[] = [0],
+    signal?: AbortSignal,
+  ): Promise<string> {
     try {
       const { stdout, code } = await spawnCollect(bin, args, {
         timeoutMs: timeout,
         maxBuffer: MAX_LIST_BUFFER,
+        signal,
       });
       if (code === null || !okCodes.includes(code)) throw new Error(`exit ${code}`);
       return stdout;
     } catch (err) {
+      if (err instanceof SpawnAbortedError) throw new OperationCancelledError();
       const timedOut = err instanceof SpawnTimeoutError;
       log.error("figure inventory scan failed", {
         bin: path.basename(bin),

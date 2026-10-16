@@ -7,7 +7,7 @@ import { unlink } from "node:fs/promises";
 import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { ReadableStream as WebReadableStream } from "node:stream/web";
-import { CalibreHttpError } from "../domain/errors.js";
+import { CalibreHttpError, OperationCancelledError } from "../domain/errors.js";
 import { log } from "../logging.js";
 
 export interface HttpOptions {
@@ -21,10 +21,12 @@ export interface HttpOptions {
  * transport failure, non-2xx, or invalid JSON — never leaks host paths in the message.
  */
 export async function getJson<T>(url: string, opts: HttpOptions = {}): Promise<T> {
+  if (opts.signal?.aborted) throw new OperationCancelledError();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), opts.timeoutMs ?? 30_000);
   // Honor a caller-supplied signal too (e.g. request cancellation).
-  if (opts.signal) opts.signal.addEventListener("abort", () => controller.abort(), { once: true });
+  const onAbort = () => controller.abort();
+  opts.signal?.addEventListener("abort", onAbort, { once: true });
 
   try {
     const res = await fetch(url, { signal: controller.signal });
@@ -35,6 +37,7 @@ export async function getJson<T>(url: string, opts: HttpOptions = {}): Promise<T
     return (await res.json()) as T;
   } catch (err) {
     if (err instanceof CalibreHttpError) throw err;
+    if (opts.signal?.aborted) throw new OperationCancelledError();
     const aborted = err instanceof Error && err.name === "AbortError";
     const message = aborted ? "Content Server request timed out" : "Cannot reach Calibre Content Server";
     log.error("content-server request failed", {
@@ -45,6 +48,7 @@ export async function getJson<T>(url: string, opts: HttpOptions = {}): Promise<T
     throw new CalibreHttpError(0, url, message);
   } finally {
     clearTimeout(timeout);
+    opts.signal?.removeEventListener("abort", onAbort);
   }
 }
 
@@ -75,6 +79,7 @@ export async function downloadToFile(
   destPath: string,
   opts: DownloadOptions = {},
 ): Promise<{ bytes: number }> {
+  if (opts.signal?.aborted) throw new OperationCancelledError();
   const maxBytes = opts.maxBytes ?? 64 * 1024 * 1024;
   const stallMs = opts.timeoutMs ?? 120_000;
   const controller = new AbortController();
@@ -91,7 +96,8 @@ export async function downloadToFile(
   };
   armStall();
   const hardTimer = setTimeout(() => controller.abort(), DOWNLOAD_HARD_TIMEOUT_MS);
-  if (opts.signal) opts.signal.addEventListener("abort", () => controller.abort(), { once: true });
+  const onAbort = () => controller.abort();
+  opts.signal?.addEventListener("abort", onAbort, { once: true });
 
   let bytes = 0;
   try {
@@ -125,6 +131,7 @@ export async function downloadToFile(
   } catch (err) {
     await unlink(destPath).catch(() => {}); // best-effort: drop the partial file
     if (err instanceof CalibreHttpError) throw err;
+    if (opts.signal?.aborted) throw new OperationCancelledError();
     const aborted = err instanceof Error && err.name === "AbortError";
     log.error("download failed", {
       url,
@@ -144,5 +151,6 @@ export async function downloadToFile(
   } finally {
     clearTimeout(stallTimer);
     clearTimeout(hardTimer);
+    opts.signal?.removeEventListener("abort", onAbort);
   }
 }

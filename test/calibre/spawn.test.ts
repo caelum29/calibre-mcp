@@ -2,7 +2,13 @@ import { describe, it, expect } from "vitest";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { killAllChildren, spawnCollect, SpawnTimeoutError, SpawnMaxBufferError } from "../../src/calibre/spawn.js";
+import {
+  killAllChildren,
+  SpawnAbortedError,
+  spawnCollect,
+  SpawnTimeoutError,
+  SpawnMaxBufferError,
+} from "../../src/calibre/spawn.js";
 
 const node = process.execPath;
 
@@ -111,6 +117,35 @@ describe("spawnCollect", () => {
 
   it("forgets children that exited on their own", async () => {
     await spawnCollect(node, ["-e", "0"], { timeoutMs: 5_000, maxBuffer: 1 << 20 });
+    expect(killAllChildren()).toBe(0);
+  });
+
+  it("kills the process group and rejects with SpawnAbortedError when the signal aborts", async () => {
+    const controller = new AbortController();
+    const start = Date.now();
+    const run = spawnCollect(node, ["-e", "setTimeout(()=>{},30000)"], {
+      timeoutMs: 30_000,
+      maxBuffer: 1 << 20,
+      signal: controller.signal,
+    });
+    setTimeout(() => controller.abort(), 100);
+    await expect(run).rejects.toBeInstanceOf(SpawnAbortedError);
+    expect(Date.now() - start).toBeLessThan(5_000);
+    // The killed child leaves the live registry once it has actually exited ('close').
+    let live = 1;
+    for (let i = 0; i < 40 && live > 0; i++) {
+      await new Promise((r) => setTimeout(r, 25));
+      live = killAllChildren();
+    }
+    expect(live).toBe(0);
+  });
+
+  it("does not spawn at all when the signal is already aborted", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    await expect(
+      spawnCollect(node, ["-e", "0"], { timeoutMs: 5_000, maxBuffer: 1 << 20, signal: controller.signal }),
+    ).rejects.toBeInstanceOf(SpawnAbortedError);
     expect(killAllChildren()).toBe(0);
   });
 });

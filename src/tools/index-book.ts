@@ -46,6 +46,8 @@ export interface PrepareOptions {
   tokenBudgeted: boolean;
   /** Chunk+embed engine for this worker; defaults to deps.embedder on the calling thread. */
   encoder?: BookEncoder;
+  /** Caller cancellation: kills the in-flight extraction / figure-scan subprocess. */
+  signal?: AbortSignal;
 }
 
 /**
@@ -78,7 +80,7 @@ export async function prepareBook(deps: ToolDeps, bookId: number, opts: PrepareO
   const base = deps.config.serverUrl.replace(/\/+$/, "");
   const downloadUrl = `${base}/get/${fmt.toUpperCase()}/${bookId}/${encodeURIComponent(libraryId)}`;
   const cacheKey = `${bookId}:${fmt}:${book.lastModified ?? ""}`;
-  const extracted = await deps.extractor.getText({ bookId, format: fmt, downloadUrl, cacheKey });
+  const extracted = await deps.extractor.getText({ bookId, format: fmt, downloadUrl, cacheKey, signal: opts.signal });
   const extractMs = lap();
 
   if (extracted.text.trim().length === 0) {
@@ -96,7 +98,7 @@ export async function prepareBook(deps: ToolDeps, bookId: number, opts: PrepareO
   // their own embeddings so target:"figures" search ranks them directly.
   const figureRowsP: Promise<IndexedFigure[]> =
     extracted.markers.length > 0
-      ? figureRows(deps, { bookId, format: fmt, downloadUrl, cacheKey }, extracted.markers)
+      ? figureRows(deps, { bookId, format: fmt, downloadUrl, cacheKey, signal: opts.signal }, extracted.markers)
       : Promise.resolve([]);
   const encoder = opts.encoder ?? inThreadEncoder(deps.embedder);
   const encoded = await encoder.encode({
@@ -176,7 +178,7 @@ export function commitBook(deps: ToolDeps, libraryId: string, book: PreparedBook
  */
 async function figureRows(
   deps: ToolDeps,
-  invArgs: { bookId: number; format: string; downloadUrl: string; cacheKey: string },
+  invArgs: { bookId: number; format: string; downloadUrl: string; cacheKey: string; signal?: AbortSignal },
   markers: FigureMarker[],
 ): Promise<IndexedFigure[]> {
   let entries: Array<{ source?: "raster" | "page-render" | "svg-render"; width?: number; height?: number }> = [];

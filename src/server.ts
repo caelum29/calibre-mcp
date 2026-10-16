@@ -4,7 +4,8 @@
 
 import { z } from "zod";
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import type { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
+import type { CallToolResult, ServerNotification, ServerRequest } from "@modelcontextprotocol/sdk/types.js";
 import { registerAppTool, registerAppResource, RESOURCE_MIME_TYPE } from "@modelcontextprotocol/ext-apps/server";
 import { loadConfig, type Config } from "./config.js";
 import { CalibreClient } from "./calibre/client.js";
@@ -18,7 +19,9 @@ import { computeSemanticStatus, formatSemanticStatusLine } from "./semantic/stat
 import { readBookResource } from "./resources/book.js";
 import { allTools, assertWriteClassification } from "./tools/registry.js";
 import { toolError } from "./tools/result.js";
-import type { ToolDeps } from "./tools/types.js";
+import type { ToolContext, ToolDeps } from "./tools/types.js";
+import { OperationCancelledError } from "./domain/errors.js";
+import { createProgressReporter } from "./progress.js";
 import { BoardCache } from "./ui/board-cache.js";
 import { boardHtml, BOARD_KEYWORD_URI, BOARD_SEMANTIC_URI } from "./ui/board-html.js";
 import { cardHtml, CARD_URI } from "./ui/card-html.js";
@@ -95,10 +98,17 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
     };
     // ToolResult is structurally a CallToolResult minus the SDK's loose index signature;
     // cast once here (the seam) rather than weaken the shared ToolResult type.
-    const handler = async (args: unknown): Promise<CallToolResult> => {
+    const handler = async (
+      args: unknown,
+      extra: RequestHandlerExtra<ServerRequest, ServerNotification>,
+    ): Promise<CallToolResult> => {
       try {
-        return (await t.handler(args, deps)) as CallToolResult;
+        return (await t.handler(args, deps, toolContext(extra))) as CallToolResult;
       } catch (err) {
+        if (err instanceof OperationCancelledError) {
+          // The client cancelled; the SDK drops this response anyway. Keep it a result.
+          return toolError(`${t.name} was cancelled.`, { errorCode: err.name }) as CallToolResult;
+        }
         const name = err instanceof Error ? err.name : "Error";
         const msg = err instanceof Error ? err.message : String(err);
         log.error("tool threw", {
@@ -216,6 +226,24 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
     serverUrl: config.serverUrl,
   });
   return server;
+}
+
+/**
+ * Adapt the SDK's per-request extra into the SDK-free ToolContext handlers receive: the
+ * cancellation signal as-is, and a throttled monotonic progress callback only when the
+ * client sent a progressToken (otherwise there is nobody to notify).
+ */
+function toolContext(extra: RequestHandlerExtra<ServerRequest, ServerNotification>): ToolContext {
+  const progressToken = extra._meta?.progressToken;
+  if (progressToken === undefined) return { signal: extra.signal };
+  return {
+    signal: extra.signal,
+    progress: createProgressReporter({
+      progressToken,
+      send: (params) => extra.sendNotification({ method: "notifications/progress", params }),
+      onError: (err) => log.debug("progress notification failed", { msg: String(err) }),
+    }),
+  };
 }
 
 /**

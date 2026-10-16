@@ -13,7 +13,7 @@ import { resolveNumericId } from "./resolve-id.js";
 import { INSTALL_TRANSFORMERS } from "./remediation.js";
 import { toolError, toolOk } from "./result.js";
 import type { PruneCounts } from "../semantic/store.js";
-import type { ToolDeps } from "./types.js";
+import type { ToolDeps, ToolResult } from "./types.js";
 import { runBookPipeline } from "../semantic/book-pipeline.js";
 
 /** Page size when listing query matches / the whole library (ids only — the response is tiny). */
@@ -88,7 +88,8 @@ export const buildIndexTool = defineTool({
   // readOnlyHint:false but NOT write-gated: this writes to the server's own index dir, not the
   // user's library, so the library write gate doesn't apply. localWrite marks that carve-out.
   localWrite: true,
-  handler: async (args, deps) => {
+  handler: async (args, deps, ctx) => {
+    const signal = ctx?.signal;
     if (args.bookId === undefined && !args.ids?.length && !args.query) {
       return toolError("Specify bookId, ids, or query — full-library indexing is deferred.");
     }
@@ -191,11 +192,23 @@ export const buildIndexTool = defineTool({
     let totalUnplaced = 0;
     const bookDetails: BookDetail[] = [];
     let settled = 0;
+    ctx?.progress?.(0, `Indexing ${booksRequested} book(s)…`, booksRequested);
     // Book-level pipeline (#99): write-free prepare per book, one serialized writer commits —
     // the same path the threaded bulk re-index uses, so both keep the single-writer invariant.
     const outcomes = await runBookPipeline<PrepareResult>([...targets], BUILD_CONCURRENCY, {
-      prepare: (bookId) =>
-        prepareBook(deps, bookId, { libraryId, library: args.library, force: args.force, keywordOnly, tokenBudgeted }),
+      prepare: async (bookId) => {
+        // Cancelled (client sent notifications/cancelled or went away): queued books never start.
+        // Books already committed stay indexed; the in-flight subprocess is killed by its signal.
+        signal?.throwIfAborted();
+        return prepareBook(deps, bookId, {
+          libraryId,
+          library: args.library,
+          force: args.force,
+          keywordOnly,
+          tokenBudgeted,
+          signal,
+        });
+      },
       commit: (_bookId, prepared) => {
         if (prepared.kind === "ready") commitBook(deps, libraryId, prepared);
       },
@@ -204,15 +217,18 @@ export const buildIndexTool = defineTool({
         if (settled % PROGRESS_EVERY === 0) {
           deps.log.info("build progress", { done: settled, of: booksRequested });
         }
+        if (signal?.aborted) return;
         if (!o.ok) {
           deps.log.warn("book failed", { bookId: o.bookId, stage: o.stage, reason: describeError(o.error) });
         }
+        ctx?.progress?.(settled, `Indexed ${settled}/${booksRequested} book(s)`, booksRequested);
       },
     });
     // Tally in selection order, so the result reads the same whatever order books finished in.
     for (const o of outcomes) {
       if (!o.ok) {
-        failures.push(`book ${o.bookId}: ${describeError(o.error)}`);
+        // A book cut short by the cancel did not fail — it just never finished.
+        if (!signal?.aborted) failures.push(`book ${o.bookId}: ${describeError(o.error)}`);
       } else if (o.prepared.kind === "skipped") {
         booksSkipped++;
       } else {
@@ -223,6 +239,10 @@ export const buildIndexTool = defineTool({
         totalUnplaced += d.unplaced;
         bookDetails.push(d);
       }
+    }
+    if (signal?.aborted) {
+      const done = booksIndexed + booksSkipped;
+      return cancelledResult({ done, booksRequested, booksIndexed, booksSkipped, chunks: totalChunks });
     }
     if (totalUnplaced > 0) {
       // Unplaced markers are silent figure-linkage gaps — say so instead of a clean-looking count.
@@ -286,6 +306,28 @@ export const buildIndexTool = defineTool({
     });
   },
 });
+
+/** isError result for a build the client cancelled — partial counts, and how to resume. */
+function cancelledResult(c: {
+  done: number;
+  booksRequested: number;
+  booksIndexed: number;
+  booksSkipped: number;
+  chunks: number;
+}): ToolResult {
+  return toolError(
+    `Index build cancelled after ${c.done}/${c.booksRequested} book(s) (${c.booksIndexed} indexed, ` +
+      `${c.booksSkipped} up-to-date). Books finished before the cancel stay indexed — re-run the same ` +
+      "call to continue (finished books are skipped).",
+    {
+      booksRequested: c.booksRequested,
+      booksIndexed: c.booksIndexed,
+      booksSkipped: c.booksSkipped,
+      chunks: c.chunks,
+      cancelled: true,
+    },
+  );
+}
 
 /**
  * Every book id matching `query` (empty = the whole library), paged through the search
