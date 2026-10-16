@@ -37,7 +37,7 @@
     "dev": "tsx watch src/run-stdio.ts",
     "start": "node dist/run-stdio.js",
     "inspect": "tsc -p tsconfig.json && mcp-inspector node dist/run-stdio.js",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p test/tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:model": "RUN_MODEL_TESTS=1 vitest run test/semantic/embedder.integration.test.ts",

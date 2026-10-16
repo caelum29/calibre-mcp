@@ -75,6 +75,7 @@ function deps(
     content: content as unknown as ToolDeps["content"],
     calibre: {} as unknown as ToolDeps["calibre"],
     extractor: {} as unknown as ToolDeps["extractor"],
+    figures: {} as ToolDeps["figures"],
     embedder,
     ...(reranker ? { reranker } : {}),
     index: store,
@@ -166,7 +167,7 @@ describe("calibre_semantic_search handler", () => {
     const top = results[0];
     expect(top).toMatchObject({ bookId: expect.any(Number), title: expect.any(String) });
     // The fenced snippet is carried so it survives clients that drop text content blocks.
-    expect(top.snippet as string).toContain("UNTRUSTED");
+    expect(top?.snippet as string).toContain("UNTRUSTED");
   });
 
   it("book scope requires bookId", async () => {
@@ -192,7 +193,7 @@ describe("calibre_semantic_search handler", () => {
     const top = passages[0];
     expect(top).toMatchObject({ charStart: expect.any(Number), charEnd: expect.any(Number) });
     // The fenced passage body is carried verbatim from the text block.
-    expect(top.body as string).toContain("ownership rules");
+    expect(top?.body as string).toContain("ownership rules");
   });
 
   it("errors when the requested book is not indexed", async () => {

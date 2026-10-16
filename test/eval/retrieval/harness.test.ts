@@ -17,6 +17,8 @@ function reversed(inner: IndexStore): IndexStore {
     hasVectors: (l) => inner.hasVectors(l),
     isBookIndexed: (l, b, m) => inner.isBookIndexed(l, b, m),
     replaceBook: (l, m, c, f) => inner.replaceBook(l, m, c, f),
+    indexedBookIds: (l) => inner.indexedBookIds(l),
+    deleteBooks: (l, b) => inner.deleteBooks(l, b),
     searchLibrary: (l, q, k) => inner.searchLibrary(l, q, k).reverse(),
     searchBook: (l, b, q, k) => inner.searchBook(l, b, q, k).reverse(),
     searchLibraryFts: (l, q, k) => inner.searchLibraryFts(l, q, k).reverse(),

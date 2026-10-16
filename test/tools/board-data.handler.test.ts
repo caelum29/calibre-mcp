@@ -20,6 +20,7 @@ function deps(cache?: BoardCache): ToolDeps {
     content: {} as ToolDeps["content"],
     calibre: {} as ToolDeps["calibre"],
     extractor: {} as ToolDeps["extractor"],
+    figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],
     index: {} as ToolDeps["index"],
     boardCache: cache,

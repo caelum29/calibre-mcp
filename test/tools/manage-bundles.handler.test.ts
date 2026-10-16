@@ -8,7 +8,7 @@ import {
 import { CalibreHttpError } from "../../src/domain/errors.js";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
-import type { ToolDeps } from "../../src/tools/types.js";
+import type { ToolDeps, ToolResult } from "../../src/tools/types.js";
 
 const LIST_STDOUT = [
   "Integration status: False",
@@ -24,6 +24,14 @@ interface Stubs {
   calibredb?: (args: readonly string[], opts?: unknown) => Promise<{ stdout: string; stderr: string }>;
   virtualLibraries?: () => Promise<Record<string, string>>;
   search?: (p: { query: string }) => Promise<{ total: number }>;
+}
+
+type CalibredbStub = NonNullable<Stubs["calibredb"]>;
+
+/** Text of the first content block ("" when it is not a text block). */
+function firstText(r: ToolResult): string {
+  const block = r.content[0];
+  return block?.type === "text" ? block.text : "";
 }
 
 function deps(stubs: Stubs = {}): ToolDeps {
@@ -147,7 +155,7 @@ describe("calibre_manage_bundles handler", () => {
   });
 
   it("previews a create with the match count and writes nothing", async () => {
-    const spy = vi.fn(async () => ({ stdout: LIST_STDOUT, stderr: "" }));
+    const spy = vi.fn<CalibredbStub>(async () => ({ stdout: LIST_STDOUT, stderr: "" }));
     const r = await manageBundlesTool.handler(
       { action: "create", name: "kafka", expression: "tag:kafka", confirm: false },
       deps({ calibredb: spy }),
@@ -155,10 +163,10 @@ describe("calibre_manage_bundles handler", () => {
     expect(r.isError).toBeFalsy();
     expect(r.structuredContent?.applied).toBe(false);
     expect(r.structuredContent?.matches).toBe(7);
-    expect(r.content[0].type === "text" && r.content[0].text).toContain("Matches 7 book(s)");
+    expect(firstText(r)).toContain("Matches 7 book(s)");
     // Only the list read — no add.
     expect(spy).toHaveBeenCalledTimes(1);
-    expect(spy.mock.calls[0][0]).toEqual(["saved_searches", "list"]);
+    expect(spy.mock.calls[0]?.[0]).toEqual(["saved_searches", "list"]);
   });
 
   it("hedges on a zero match count (an unknown field also returns 0)", async () => {
@@ -166,7 +174,7 @@ describe("calibre_manage_bundles handler", () => {
       { action: "create", name: "kafka", expression: "tagz:kafka", confirm: false },
       deps({ search: async () => ({ total: 0 }) }),
     );
-    const text = r.content[0].type === "text" ? r.content[0].text : "";
+    const text = firstText(r);
     expect(text).toContain("unknown field");
   });
 
@@ -180,11 +188,11 @@ describe("calibre_manage_bundles handler", () => {
       }),
     );
     expect(r.isError).toBe(true);
-    expect(r.content[0].type === "text" && r.content[0].text).toContain("invalid syntax");
+    expect(firstText(r)).toContain("invalid syntax");
   });
 
   it("creates via `saved_searches add` when confirmed and reports created_as", async () => {
-    const spy = vi.fn(async () => ({ stdout: LIST_STDOUT, stderr: "" }));
+    const spy = vi.fn<CalibredbStub>(async () => ({ stdout: LIST_STDOUT, stderr: "" }));
     const r = await manageBundlesTool.handler(
       { action: "create", name: "-noise", expression: "tag:noise", confirm: true },
       deps({ calibredb: spy }),
@@ -195,11 +203,11 @@ describe("calibre_manage_bundles handler", () => {
       expect.objectContaining({ library: "Programming_Books" }),
     );
     expect(r.structuredContent?.created_as).toBe("saved_search");
-    expect(r.content[0].type === "text" && r.content[0].text).toContain("created_as: saved_search");
+    expect(firstText(r)).toContain("created_as: saved_search");
   });
 
   it("updates by removing then adding", async () => {
-    const spy = vi.fn(async () => ({ stdout: LIST_STDOUT, stderr: "" }));
+    const spy = vi.fn<CalibredbStub>(async () => ({ stdout: LIST_STDOUT, stderr: "" }));
     await manageBundlesTool.handler(
       { action: "update", name: "rust", expression: "tag:rust or title:rust", confirm: true },
       deps({ calibredb: spy }),
@@ -224,7 +232,7 @@ describe("calibre_manage_bundles handler", () => {
       deps({ calibredb }),
     );
     expect(r.isError).toBe(true);
-    const text = r.content[0].type === "text" ? r.content[0].text : "";
+    const text = firstText(r);
     expect(text).toContain("was restored");
     expect(text).toContain("tag:rust");
     // The last call re-adds the ORIGINAL expression.
@@ -241,7 +249,7 @@ describe("calibre_manage_bundles handler", () => {
       deps({ calibredb }),
     );
     expect(r.isError).toBe(true);
-    const text = r.content[0].type === "text" ? r.content[0].text : "";
+    const text = firstText(r);
     expect(text).toContain("no longer exists");
     expect(text).toContain("action=create");
     expect(text).toContain("tag:rust"); // the old expression, so it can be recreated
@@ -253,35 +261,35 @@ describe("calibre_manage_bundles handler", () => {
       deps(),
     );
     expect(r.isError).toBe(true);
-    expect(r.content[0].type === "text" && r.content[0].text).toContain("action=update");
+    expect(firstText(r)).toContain("action=update");
   });
 
   it("errors on deleting a nonexistent bundle and lists the available names", async () => {
-    const spy = vi.fn(async () => ({ stdout: LIST_STDOUT, stderr: "" }));
+    const spy = vi.fn<CalibredbStub>(async () => ({ stdout: LIST_STDOUT, stderr: "" }));
     const r = await manageBundlesTool.handler(
       { action: "delete", name: "nope", confirm: true },
       deps({ calibredb: spy }),
     );
     expect(r.isError).toBe(true);
-    const text = r.content[0].type === "text" ? r.content[0].text : "";
+    const text = firstText(r);
     expect(text).toContain("rust");
     expect(text).toContain("-outdated");
     expect(spy).toHaveBeenCalledTimes(1); // list only
   });
 
   it("refuses to delete a virtual library and points at the Calibre GUI", async () => {
-    const spy = vi.fn(async () => ({ stdout: LIST_STDOUT, stderr: "" }));
+    const spy = vi.fn<CalibredbStub>(async () => ({ stdout: LIST_STDOUT, stderr: "" }));
     const r = await manageBundlesTool.handler(
       { action: "delete", name: "Fiction", confirm: true },
       deps({ calibredb: spy }),
     );
     expect(r.isError).toBe(true);
-    expect(r.content[0].type === "text" && r.content[0].text).toContain("Calibre GUI");
+    expect(firstText(r)).toContain("Calibre GUI");
     expect(spy).toHaveBeenCalledTimes(1); // list only
   });
 
   it("dry-runs a delete without confirm", async () => {
-    const spy = vi.fn(async () => ({ stdout: LIST_STDOUT, stderr: "" }));
+    const spy = vi.fn<CalibredbStub>(async () => ({ stdout: LIST_STDOUT, stderr: "" }));
     const r = await manageBundlesTool.handler(
       { action: "delete", name: "rust", confirm: false },
       deps({ calibredb: spy }),
