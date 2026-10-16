@@ -1,5 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { spawnCollect, SpawnTimeoutError, SpawnMaxBufferError } from "../../src/calibre/spawn.js";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import {
+  killAllChildren,
+  spawnCollect,
+  SpawnTimeoutError,
+  SpawnMaxBufferError,
+} from "../../src/calibre/spawn.js";
 
 const node = process.execPath;
 
@@ -51,5 +59,63 @@ describe("spawnCollect", () => {
         maxBuffer: 10,
       }),
     ).rejects.toBeInstanceOf(SpawnMaxBufferError);
+  });
+
+  // Shutdown path: a still-running group (child + worker grandchild) must not outlive us.
+  it("killAllChildren kills every live process group, grandchildren included", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "spawn-kill-"));
+    const pidFile = path.join(dir, "grandchild.pid");
+    try {
+      // Child spawns a grandchild that records its pid, then both sleep for 30s.
+      const grandchild = `require('node:fs').writeFileSync(${JSON.stringify(pidFile)},String(process.pid));setTimeout(()=>{},30000)`;
+      const script =
+        "const {spawn}=require('node:child_process');" +
+        `spawn(process.execPath,['-e',${JSON.stringify(grandchild)}],{stdio:'ignore'});` +
+        "setTimeout(()=>{},30000);";
+      const run = spawnCollect(node, ["-e", script], { timeoutMs: 30_000, maxBuffer: 1 << 20 });
+      const deadline = Date.now() + 5_000;
+      while (!existsSync(pidFile) || readFileSync(pidFile, "utf8") === "") {
+        if (Date.now() > deadline) throw new Error("grandchild never started");
+        await new Promise((r) => setTimeout(r, 25));
+      }
+      const grandchildPid = Number(readFileSync(pidFile, "utf8"));
+
+      expect(killAllChildren()).toBe(1);
+      // The direct child dies by signal, so spawnCollect settles promptly with code null.
+      const r = await run;
+      expect(r.code).toBeNull();
+      // The grandchild was in the same group — dead too. "Dead" = ESRCH, or a zombie on
+      // Linux: an orphan is reparented to PID 1, and container init processes that don't
+      // reap leave it as `Z` — killed, just not yet waited for.
+      const isDead = (pid: number): boolean => {
+        try {
+          process.kill(pid, 0);
+        } catch (err) {
+          return (err as NodeJS.ErrnoException).code === "ESRCH";
+        }
+        try {
+          return readFileSync(`/proc/${pid}/stat`, "utf8").split(") ")[1]?.startsWith("Z") ?? false;
+        } catch {
+          return false;
+        }
+      };
+      const gone = async (): Promise<boolean> => {
+        for (let i = 0; i < 40; i++) {
+          if (isDead(grandchildPid)) return true;
+          await new Promise((res) => setTimeout(res, 25));
+        }
+        return false;
+      };
+      if (process.platform !== "win32") expect(await gone()).toBe(true);
+      // Idempotent: nothing left to kill.
+      expect(killAllChildren()).toBe(0);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }, 15_000);
+
+  it("forgets children that exited on their own", async () => {
+    await spawnCollect(node, ["-e", "0"], { timeoutMs: 5_000, maxBuffer: 1 << 20 });
+    expect(killAllChildren()).toBe(0);
   });
 });

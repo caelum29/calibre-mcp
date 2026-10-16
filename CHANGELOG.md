@@ -6,6 +6,15 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Fixed
+
+- **No orphaned `calibredb` / `ebook-convert` processes after the client disconnects.**
+  Subprocesses run in their own (detached) process group so a timeout can kill the
+  conversion worker too — but that also let them outlive the server when the client
+  closed stdin or sent SIGTERM mid-call, keeping the library write lock. The server now
+  shuts down on stdin EOF/close, SIGINT and SIGTERM, kills every still-running process
+  group first, closes the MCP server and exits 0.
+
 ## [0.8.0] — 2026-10-23
 
 ### Added

@@ -7,6 +7,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
 import { buildServer } from "./server.js";
 import { log } from "./logging.js";
+import { createShutdown, installShutdownHandlers } from "./shutdown.js";
 
 // Claude Desktop 1.24012.x rejects a tools/call CLIENT-SIDE (pre-dispatch) for any tool
 // whose outputSchema contains the `$schema` meta-key — which zod-to-json-schema (inside
@@ -53,6 +54,11 @@ async function main(): Promise<void> {
   const send = transport.send.bind(transport);
   transport.send = (msg) => send(stripDollarSchema(msg));
   await server.connect(transport);
+  // Exit with the client: stdin EOF/close or SIGINT/SIGTERM kills any running calibredb /
+  // ebook-convert process groups, closes the server and exits 0 (idempotent).
+  installShutdownHandlers(
+    createShutdown({ close: () => server.close(), exit: (code) => process.exit(code) }),
+  );
   // Banner to stderr only — stdout carries the JSON-RPC stream.
   log.info("calibre-mcp listening on stdio");
 }

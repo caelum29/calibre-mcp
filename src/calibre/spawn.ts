@@ -7,8 +7,12 @@
 // inherits the stdout/stderr pipes — so the promise never settles and the orphan
 // keeps the library write lock. We spawn `detached` (child becomes a group leader)
 // and hard-kill the whole GROUP on timeout, taking the worker down too.
+//
+// Because the groups are detached, they would also OUTLIVE this server if it exits
+// mid-call (client closes stdin, SIGTERM) and keep holding the library lock. Every live
+// group is tracked here so the transport's shutdown can kill them (killAllChildren).
 
-import { spawn } from "node:child_process";
+import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 
 export interface SpawnResult {
   stdout: string;
@@ -40,6 +44,47 @@ export class SpawnMaxBufferError extends Error {
   }
 }
 
+/** Children whose process group may still be running (added on spawn, removed on close). */
+const liveChildren = new Set<ChildProcess>();
+
+/**
+ * SIGKILL `child`'s whole process group (worker grandchild included); fall back to the
+ * lone child. On Windows (no POSIX groups) `taskkill /T` kills the tree by pid — run
+ * synchronously when the caller is about to exit, so the kill is not lost with us.
+ */
+function killTree(child: ChildProcess, sync: boolean): void {
+  const pid = child.pid;
+  if (pid === undefined) return;
+  try {
+    if (process.platform === "win32") {
+      const taskkillArgs = ["/pid", String(pid), "/T", "/F"];
+      if (sync) spawnSync("taskkill", taskkillArgs, { stdio: "ignore", timeout: 5_000 });
+      else spawn("taskkill", taskkillArgs, { stdio: "ignore" });
+    } else {
+      process.kill(-pid, "SIGKILL");
+    }
+  } catch {
+    // Group gone already, or race with natural exit — try the direct child.
+    try {
+      child.kill("SIGKILL");
+    } catch {
+      /* nothing left to kill */
+    }
+  }
+}
+
+/**
+ * Kill every process group spawned by {@link spawnCollect} that has not exited yet.
+ * Synchronous and idempotent — meant for the shutdown path right before process exit.
+ * Returns how many groups were signalled.
+ */
+export function killAllChildren(): number {
+  const n = liveChildren.size;
+  for (const child of liveChildren) killTree(child, true);
+  liveChildren.clear();
+  return n;
+}
+
 /**
  * Spawn `bin` with a literal argv array (never a shell string) and collect its
  * output. Resolves `{ stdout, stderr, code }` for ANY exit code — the caller
@@ -58,6 +103,7 @@ export function spawnCollect(
     // so `process.kill(-pid, …)` reaches the worker grandchild too. Do NOT unref():
     // we await this child. stdio defaults to "pipe", so stdout/stderr exist.
     const child = spawn(bin, args as string[], { detached: true });
+    if (child.pid !== undefined) liveChildren.add(child);
 
     let stdout = "";
     let stderr = "";
@@ -65,26 +111,7 @@ export function spawnCollect(
     let stderrBytes = 0;
     let settled = false;
 
-    /** SIGKILL the whole group (worker included); fall back to the lone child. */
-    const killGroup = () => {
-      const pid = child.pid;
-      if (pid === undefined) return;
-      try {
-        if (process.platform === "win32") {
-          // Windows has no POSIX process groups — kill the tree by pid.
-          spawn("taskkill", ["/pid", String(pid), "/T", "/F"]);
-        } else {
-          process.kill(-pid, "SIGKILL");
-        }
-      } catch {
-        // Group gone already, or race with natural exit — try the direct child.
-        try {
-          child.kill("SIGKILL");
-        } catch {
-          /* nothing left to kill */
-        }
-      }
-    };
+    const killGroup = () => killTree(child, false);
 
     const timer = setTimeout(() => {
       if (settled) return;
@@ -120,7 +147,13 @@ export function spawnCollect(
     });
 
     // Spawn failure (ENOENT etc.) — preserve the original error for .code checks.
-    child.on("error", (err) => finish(() => reject(err)));
-    child.on("close", (code) => finish(() => resolve({ stdout, stderr, code })));
+    child.on("error", (err) => {
+      liveChildren.delete(child);
+      finish(() => reject(err));
+    });
+    child.on("close", (code) => {
+      liveChildren.delete(child);
+      finish(() => resolve({ stdout, stderr, code }));
+    });
   });
 }
