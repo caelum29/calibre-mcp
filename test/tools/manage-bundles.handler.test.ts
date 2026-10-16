@@ -138,7 +138,7 @@ describe("calibre_manage_bundles handler", () => {
     expect(text).toContain("rust");
     expect(text).toContain("exclusion marker");
     expect(text).toContain("virtual library, read-only");
-    expect((r.structuredContent?.bundles as unknown[]).length).toBe(3);
+    expect((r.structuredContent?.bundles as unknown[] | undefined)?.length).toBe(3);
   });
 
   it("still lists saved searches when the virtual-library read fails", async () => {
@@ -151,7 +151,7 @@ describe("calibre_manage_bundles handler", () => {
       }),
     );
     expect(r.isError).toBeFalsy();
-    expect((r.structuredContent?.bundles as unknown[]).length).toBe(2);
+    expect((r.structuredContent?.bundles as unknown[] | undefined)?.length).toBe(2);
   });
 
   it("previews a create with the match count and writes nothing", async () => {

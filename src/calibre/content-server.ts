@@ -315,7 +315,7 @@ export class ContentServerClient {
   /** Normalize a raw /ajax book dict → domain Book. The single /ajax-key-aware spot. */
   private mapBook(raw: RawBook, fallbackId: number, libId: string): Book {
     const id = raw.application_id ?? raw.id ?? fallbackId;
-    const identifiers: Identifiers = { ...(raw.identifiers ?? {}) };
+    const identifiers: Identifiers = { ...raw.identifiers };
     return {
       id,
       uuid: raw.uuid ?? "",

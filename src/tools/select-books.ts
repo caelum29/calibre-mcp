@@ -46,7 +46,7 @@ async function fetchBooks(deps: ToolDeps, ids: number[], library?: string): Prom
   const batches: number[][] = [];
   for (let i = 0; i < ids.length; i += BATCH) batches.push(ids.slice(i, i + BATCH));
 
-  const maps = new Array<Map<number, Book | null>>(batches.length);
+  const maps: Array<Map<number, Book | null> | undefined> = Array.from({ length: batches.length });
   const started = Date.now();
   let next = 0;
 

@@ -189,7 +189,7 @@ describe("calibre_build_index handler", () => {
     );
     expect(r.isError).toBeFalsy();
     expect(r.structuredContent).toMatchObject({ booksIndexed: 0 });
-    expect((r.structuredContent?.failures as string[])[0]).toContain("book 1");
+    expect((r.structuredContent?.failures as string[] | undefined)?.[0]).toContain("book 1");
   });
 
   it("notes that enableFts is not yet implemented", async () => {
@@ -340,7 +340,7 @@ describe("empty-extraction message (issue #100 nit)", () => {
         getText: async () => ({ text: "   ", backend: "ebook-convert", chars: 3, cached: false, markers: [], unplaced: 0 }),
       }),
     );
-    const failure = (r.structuredContent?.failures as string[])[0]!;
+    const failure = (r.structuredContent?.failures as string[] | undefined)?.[0] ?? "";
     expect(failure).toContain("EPUB has no extractable text layer");
     expect(failure).not.toContain("PDF");
   });
@@ -350,7 +350,7 @@ describe("empty-extraction message (issue #100 nit)", () => {
       args({ bookId: 1 }),
       deps({ getText: async () => ({ text: "   ", backend: "pdftotext", chars: 3, cached: false, markers: [], unplaced: 0 }) }),
     );
-    expect((r.structuredContent?.failures as string[])[0]).toContain("scanned/image PDF");
+    expect((r.structuredContent?.failures as string[] | undefined)?.[0]).toContain("scanned/image PDF");
   });
 });
 
