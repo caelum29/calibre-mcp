@@ -1,4 +1,5 @@
-// SQLite-backed vector index for semantic search. Uses node:sqlite (built into Node 22.5+),
+// SQLite-backed vector index for semantic search. Uses node:sqlite (built in; unflagged and
+// shipping FTS5 from Node 22.16 — 22.5–22.12 need --experimental-sqlite, 22.13–22.15 lack FTS5),
 // so the npx/MCPB bundle ships with ZERO native addons — no node-gyp, no ABI lock, no macOS
 // quarantine on a prebuilt .node (the exact install failure the project avoids). Vectors are
 // L2-normalized Float32 BLOBs; retrieval is in-memory brute-force cosine (== dot product) over
