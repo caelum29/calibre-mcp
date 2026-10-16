@@ -44,7 +44,9 @@ describe("buildProposal", () => {
   });
 
   it("treats Calibre's 0101-01-01 undefined-date sentinel as a missing pubdate", () => {
-    const sentinel = buildProposal(book({ title: "x", pubdate: "0101-01-01T00:00:00+00:00" }), [hit({ pubdate: "2020" })]);
+    const sentinel = buildProposal(book({ title: "x", pubdate: "0101-01-01T00:00:00+00:00" }), [
+      hit({ pubdate: "2020" }),
+    ]);
     expect(sentinel.changes.pubdate).toBe("2020");
     expect(sentinel.fields.find((f) => f.field === "pubdate")?.reason).toBe("missing");
 

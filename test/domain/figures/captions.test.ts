@@ -3,7 +3,12 @@
 // #107 real-page quirk fixtures.
 
 import { describe, expect, it } from "vitest";
-import { matchCaptionElement, matchCaptionLine, scanCaptions, splitPages } from "../../../src/domain/figures/captions.js";
+import {
+  matchCaptionElement,
+  matchCaptionLine,
+  scanCaptions,
+  splitPages,
+} from "../../../src/domain/figures/captions.js";
 import * as quirks from "./fixtures/caption-quirks-107.js";
 
 describe("matchCaptionLine", () => {
@@ -83,7 +88,9 @@ describe("wrapped in-text references (#116)", () => {
 
   it("keeps captions after a blank line or terminal punctuation", () => {
     expect(matchCaptionLine(wrappedRef, "")?.label).toBe("2.10");
-    expect(matchCaptionLine(wrappedRef, "…required to support them. This procedure results in a definition.")?.label).toBe("2.10");
+    expect(
+      matchCaptionLine(wrappedRef, "…required to support them. This procedure results in a definition.")?.label,
+    ).toBe("2.10");
   });
 
   it("keeps captions after a short diagram inner label (RU false-rejection case)", () => {
@@ -145,7 +152,13 @@ describe("caption continuation (#107)", () => {
   });
 
   it("should_mark_a_caption_cut_on_a_dangling_word_with_an_ellipsis", () => {
-    const page = ["Figure 1-5: Execution in kernel and user mode. The CPU executes", "code in a", "loop and the", "next one and the", "last one."].join("\n");
+    const page = [
+      "Figure 1-5: Execution in kernel and user mode. The CPU executes",
+      "code in a",
+      "loop and the",
+      "next one and the",
+      "last one.",
+    ].join("\n");
     expect(scanCaptions(page)[0]?.text.endsWith("the…")).toBe(true);
   });
 
@@ -154,11 +167,15 @@ describe("caption continuation (#107)", () => {
   });
 
   it("should_keep_an_EN_compound_dash_when_joining", () => {
-    expect(scanCaptions("Figure 3-1: A kernel-\nlevel view of the scheduler.")[0]?.text).toBe("A kernel-level view of the scheduler.");
+    expect(scanCaptions("Figure 3-1: A kernel-\nlevel view of the scheduler.")[0]?.text).toBe(
+      "A kernel-level view of the scheduler.",
+    );
   });
 
   it("should_reject_a_period_ended_label_whose_sentence_ran_on_past_a_blank_line", () => {
-    const page = ["The layout of the virtual address space is indicated by an arrow in", "", "Figure 3-34.", ""].join("\n");
+    const page = ["The layout of the virtual address space is indicated by an arrow in", "", "Figure 3-34.", ""].join(
+      "\n",
+    );
     expect(scanCaptions(page)).toEqual([]);
   });
 
@@ -181,7 +198,24 @@ describe("stray label-only heads (#107)", () => {
 
   it("should_drop_label_only_heads_on_a_list_of_figures_page", () => {
     // back-of-book index of The TCP/IP Guide (book 1111): topic / label / page number
-    const page = ["ARP message format", "", "Figure 13-6", "", "218", "", "ARP Proxy operation", "", "Figure 13-7", "", "222", "", "Figure 30-9", "", "Figure 13-1", ""].join("\n");
+    const page = [
+      "ARP message format",
+      "",
+      "Figure 13-6",
+      "",
+      "218",
+      "",
+      "ARP Proxy operation",
+      "",
+      "Figure 13-7",
+      "",
+      "222",
+      "",
+      "Figure 30-9",
+      "",
+      "Figure 13-1",
+      "",
+    ].join("\n");
     expect(scanCaptions(page)).toEqual([]);
   });
 
@@ -204,18 +238,38 @@ describe("block captions under a bare label (#107)", () => {
   });
 
   it("should_not_join_prose_after_a_short_title_line", () => {
-    const page = ["Figure 8-1", "The methods of Map", "If our application needs a Map of Sensors, you might find them here", "Map<String, Sensor> sensors;"].join("\n");
+    const page = [
+      "Figure 8-1",
+      "The methods of Map",
+      "If our application needs a Map of Sensors, you might find them here",
+      "Map<String, Sensor> sensors;",
+    ].join("\n");
     expect(scanCaptions(page)[0]?.text).toBe("");
   });
 
   it("should_keep_label_only_when_body_prose_follows_the_label", () => {
     // book 947 p.71: the label sits under the diagram, the paragraph resumes right after
-    const page = ["Vice President", "", "Figure 2-3", "You can even think of the information in this book as a tree", "paragraphs and sections; sections contain paragraphs", "which contain words, which contain characters.)", "More text follows here."].join("\n");
+    const page = [
+      "Vice President",
+      "",
+      "Figure 2-3",
+      "You can even think of the information in this book as a tree",
+      "paragraphs and sections; sections contain paragraphs",
+      "which contain words, which contain characters.)",
+      "More text follows here.",
+    ].join("\n");
     expect(scanCaptions(page)).toEqual([{ page: 1, label: "2-3", text: "" }]);
   });
 
   it("should_not_take_a_figure_reference_as_the_caption_text", () => {
-    const page = ["Accounting", "", "Figure 2-2", "Figure 2-3 shows the same information in a slightly different way", "vertically in a way similar to that used by Windows", "In a pipe system"].join("\n");
+    const page = [
+      "Accounting",
+      "",
+      "Figure 2-2",
+      "Figure 2-3 shows the same information in a slightly different way",
+      "vertically in a way similar to that used by Windows",
+      "In a pipe system",
+    ].join("\n");
     expect(scanCaptions(page)[0]).toEqual({ page: 1, label: "2-2", text: "" });
   });
 });

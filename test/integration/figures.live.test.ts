@@ -24,9 +24,11 @@ let ready = false;
 if (RUN) {
   try {
     const probe = async (id: number) =>
-      (await fetch(`${config.serverUrl}/ajax/book/${id}/Programming_Books`, {
-        signal: AbortSignal.timeout(3_000),
-      })).ok;
+      (
+        await fetch(`${config.serverUrl}/ajax/book/${id}/Programming_Books`, {
+          signal: AbortSignal.timeout(3_000),
+        })
+      ).ok;
     ready = (await probe(PDF_BOOK)) && (await probe(EPUB_BOOK));
   } catch {
     ready = false;
@@ -51,7 +53,11 @@ describe.skipIf(!RUN || !ready)("calibre_get_figures (live Content Server)", () 
   it("lists PDF figures with captions and counts", { timeout: 180_000 }, async () => {
     const r = await getFiguresTool.handler({ id: PDF_BOOK, detail: "standard", include_uncaptioned: false }, deps);
     expect(r.isError).toBeFalsy();
-    const s = r.structuredContent as { format: string; counts: { figures: number }; entries: Array<{ caption?: string }> };
+    const s = r.structuredContent as {
+      format: string;
+      counts: { figures: number };
+      entries: Array<{ caption?: string }>;
+    };
     expect(s.format).toBe("pdf");
     expect(s.counts.figures).toBeGreaterThan(50);
     expect(s.entries.some((e) => e.caption && e.caption.length > 5)).toBe(true);
@@ -77,7 +83,11 @@ describe.skipIf(!RUN || !ready)("calibre_get_figures (live Content Server)", () 
   it("lists and fetches EPUB figures", { timeout: 180_000 }, async () => {
     const list = await getFiguresTool.handler({ id: EPUB_BOOK, detail: "standard", include_uncaptioned: false }, deps);
     expect(list.isError).toBeFalsy();
-    const s = list.structuredContent as { format: string; counts: { figures: number }; entries: Array<{ index: number; source: string }> };
+    const s = list.structuredContent as {
+      format: string;
+      counts: { figures: number };
+      entries: Array<{ index: number; source: string }>;
+    };
     expect(s.format).toBe("epub");
     expect(s.counts.figures).toBeGreaterThan(50);
     const raster = s.entries.find((e) => e.source === "raster");

@@ -57,9 +57,7 @@ export const allTools: AnyToolDescriptor[] = [
  * silent, unclassified mutation and a gate-audit hole; fail loud at boot rather than ship it.
  */
 export function assertWriteClassification(tools: AnyToolDescriptor[] = allTools): void {
-  const unclassified = tools.filter(
-    (t) => t.annotations.readOnlyHint === false && !t.write && !t.localWrite,
-  );
+  const unclassified = tools.filter((t) => t.annotations.readOnlyHint === false && !t.write && !t.localWrite);
   if (unclassified.length > 0) {
     const names = unclassified.map((t) => t.name).join(", ");
     throw new Error(

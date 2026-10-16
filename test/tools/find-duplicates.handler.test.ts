@@ -14,7 +14,14 @@ function deps(fixture: Book[]): ToolDeps {
   const byId = new Map(fixture.map((b) => [b.id, b] as const));
   const content = {
     resolveLibraryId: async () => "Lib",
-    search: async () => ({ bookIds: fixture.map((b) => b.id), total: fixture.length, num: fixture.length, offset: 0, sort: "title", libraryId: "Lib" }),
+    search: async () => ({
+      bookIds: fixture.map((b) => b.id),
+      total: fixture.length,
+      num: fixture.length,
+      offset: 0,
+      sort: "title",
+      libraryId: "Lib",
+    }),
     booksByIds: async (ids: number[]) => new Map(ids.map((id) => [id, byId.get(id) ?? null] as const)),
   };
   return {

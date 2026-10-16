@@ -111,12 +111,7 @@ describe("buildSavedSearchArgs", () => {
       "-outdated",
       "tag:outdated",
     ]);
-    expect(buildSavedSearchArgs("remove", "-outdated")).toEqual([
-      "saved_searches",
-      "remove",
-      "--",
-      "-outdated",
-    ]);
+    expect(buildSavedSearchArgs("remove", "-outdated")).toEqual(["saved_searches", "remove", "--", "-outdated"]);
   });
 
   it("keeps every option ahead of `--` once the client prepends --with-library", () => {

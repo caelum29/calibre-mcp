@@ -66,7 +66,9 @@ export async function runBookPipeline<P>(
       try {
         prepared = await hooks.prepare(bookId, w);
       } catch (error) {
-        await writer.run(() => settle(i, { bookId, ok: false, stage: "prepare", error, worker: w, ms: Date.now() - t0 }));
+        await writer.run(() =>
+          settle(i, { bookId, ok: false, stage: "prepare", error, worker: w, ms: Date.now() - t0 }),
+        );
         continue;
       }
       await writer.run(async () => {

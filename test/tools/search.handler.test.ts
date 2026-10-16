@@ -128,7 +128,12 @@ describe("calibre_search handler — countOnly (issue #67)", () => {
   it("counts_in_book_matches_for_book_scope", async () => {
     const r = await searchTool.handler(
       { query: "x", mode: "fts", scope: "book", bookId: 1, limit: 20, countOnly: true },
-      deps({ ftsHits: [{ bookId: 1, snippet: "a" }, { bookId: 1, snippet: "b" }] }),
+      deps({
+        ftsHits: [
+          { bookId: 1, snippet: "a" },
+          { bookId: 1, snippet: "b" },
+        ],
+      }),
     );
     expect(r.structuredContent).toMatchObject({ total: 2, scope: "book", bookId: 1 });
   });

@@ -178,7 +178,10 @@ describe("calibre_semantic_search handler", () => {
       const texts = r.content.filter((b) => b.type === "text").map((b) => (b as { text: string }).text);
       expect(texts[0]).toContain(`indexVersion ${INDEX_VERSION}`);
       expect(texts.filter((t) => t.includes("indexVersion")).length).toBe(1);
-      for (const hit of [...((r.structuredContent?.results as object[]) ?? []), ...((r.structuredContent?.passages as object[]) ?? [])]) {
+      for (const hit of [
+        ...((r.structuredContent?.results as object[]) ?? []),
+        ...((r.structuredContent?.passages as object[]) ?? []),
+      ]) {
         expect(hit).not.toHaveProperty("indexVersion");
       }
     }
@@ -267,10 +270,7 @@ describe("calibre_semantic_search handler", () => {
   });
 
   it("vector mode errors actionably on a keyword-only index", async () => {
-    const r = await semanticSearchTool.handler(
-      args({ mode: "vector" }),
-      deps(keywordOnly(), throwingEmbedder),
-    );
+    const r = await semanticSearchTool.handler(args({ mode: "vector" }), deps(keywordOnly(), throwingEmbedder));
     expect(r.isError).toBe(true);
     const text = (r.content[0] as { text: string }).text;
     expect(text).toContain("keyword-only");
@@ -316,10 +316,7 @@ describe("calibre_semantic_search rerank stage", () => {
 
   it("reorders vector-mode results too", async () => {
     const reranker = scoreByBody({ "async passage": 0.9, ownership: 0.2 });
-    const r = await semanticSearchTool.handler(
-      args({ mode: "vector" }),
-      deps(preloaded(), queryEmbedder, reranker),
-    );
+    const r = await semanticSearchTool.handler(args({ mode: "vector" }), deps(preloaded(), queryEmbedder, reranker));
     expect((r.structuredContent?.bookIds as number[] | undefined)?.[0]).toBe(2);
     expect(r.structuredContent).toMatchObject({ reranked: true });
   });
@@ -340,10 +337,7 @@ describe("calibre_semantic_search rerank stage", () => {
       { charStart: 10, charEnd: 30, body: "borrow checker details", vector: axis(1) },
     ]);
     const reranker = scoreByBody({ "borrow checker": 0.95, ownership: 0.3 });
-    const r = await semanticSearchTool.handler(
-      args({ scope: "book", bookId: 1 }),
-      deps(s, queryEmbedder, reranker),
-    );
+    const r = await semanticSearchTool.handler(args({ scope: "book", bookId: 1 }), deps(s, queryEmbedder, reranker));
     expect(r.isError).toBeFalsy();
     expect(r.structuredContent).toMatchObject({ reranked: true, maxRerank: 0.95 });
     // The reranker's pick comes first despite its near-zero cosine.
@@ -505,10 +499,7 @@ describe("calibre_semantic_search front-matter demotion (issue #18)", () => {
   });
 
   it("claims no demotion when nothing is front matter", async () => {
-    const r = await semanticSearchTool.handler(
-      args({ scope: "book", bookId: 1, mode: "vector" }),
-      deps(preloaded()),
-    );
+    const r = await semanticSearchTool.handler(args({ scope: "book", bookId: 1, mode: "vector" }), deps(preloaded()));
     const texts = r.content.filter((b): b is { type: "text"; text: string } => b.type === "text").map((b) => b.text);
     expect(texts[0]).not.toContain("demoted");
     expect(texts.join("\n")).not.toContain("[front matter]");
@@ -524,10 +515,7 @@ describe("semantic degradation surfacing (issue #41 / #46)", () => {
   });
 
   it("explicit keyword mode on a keyword-only index still reports semanticAvailable:false", async () => {
-    const r = await semanticSearchTool.handler(
-      args({ mode: "keyword" }),
-      deps(keywordOnly(), throwingEmbedder),
-    );
+    const r = await semanticSearchTool.handler(args({ mode: "keyword" }), deps(keywordOnly(), throwingEmbedder));
     expect(r.isError).toBeUndefined();
     expect(r.structuredContent?.semanticAvailable).toBe(false);
     expect(r.structuredContent?.semanticReason as string).toContain("keyword-only");

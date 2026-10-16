@@ -236,10 +236,7 @@ export function joinLine(text: string, cont: string): string {
  * `prevLine` is the physically preceding line when the caller has one (PDF page text);
  * callers matching a standalone block (EPUB caption elements) omit it.
  */
-export function matchCaptionLine(
-  line: string,
-  prevLine?: string,
-): { label: string; text: string } | null {
+export function matchCaptionLine(line: string, prevLine?: string): { label: string; text: string } | null {
   // Guard: long lines are prose that happens to start with "Figure …" mid-sentence
   // wrapped to line start; real captions are short. 300 chars is generous.
   if (line.length > 300) return null;

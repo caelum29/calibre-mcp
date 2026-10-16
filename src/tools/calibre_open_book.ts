@@ -59,9 +59,7 @@ export const openBookTool = defineTool({
     const want = args.format?.toLowerCase();
     const fmt = want ? formats.find((f) => f.toLowerCase() === want) : formats[0];
     if (!fmt) {
-      return toolError(
-        `Book ${args.id} has no ${args.format ?? ""} format — available: ${formats.join(", ")}.`,
-      );
+      return toolError(`Book ${args.id} has no ${args.format ?? ""} format — available: ${formats.join(", ")}.`);
     }
     const url = `calibre://view-book/${libraryId}/${args.id}/${fmt.toUpperCase()}`;
     try {

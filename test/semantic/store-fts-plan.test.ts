@@ -99,9 +99,9 @@ describe("FTS-first rewrite ≡ legacy JOIN SQL", () => {
       it(`identical ranking for "${q}" k=${k}`, () => {
         const stemmed = stemText(q);
         for (let book = 1; book <= 6; book++) {
-          const legacy = (raw.prepare(LEGACY_BOOK_FTS).all(ftsMatch(stemmed), book, k) as Record<string, unknown>[]).map(
-            (r) => ({ id: Number(r.chunk_id), score: Number(r.score) }),
-          );
+          const legacy = (
+            raw.prepare(LEGACY_BOOK_FTS).all(ftsMatch(stemmed), book, k) as Record<string, unknown>[]
+          ).map((r) => ({ id: Number(r.chunk_id), score: Number(r.score) }));
           const got = s.searchBookFts(LIB, book, stemmed, k).map((h) => ({ id: h.chunkId, score: h.score }));
           expect(got.map((r) => r.score)).toEqual(legacy.map((r) => r.score)); // rank order of scores
           expect(canon(got)).toEqual(canon(legacy)); // same chunks per score
@@ -116,7 +116,10 @@ describe("FTS-first rewrite ≡ legacy JOIN SQL", () => {
         const stemmed = stemText(q);
         const k = 10;
         const pool = Math.max(k * 20, 200); // mirrors searchLibraryFts
-        const rows = raw.prepare(LEGACY_ALLOW_FTS).all(ftsMatch(stemmed), JSON.stringify(allow), pool) as Record<string, unknown>[];
+        const rows = raw.prepare(LEGACY_ALLOW_FTS).all(ftsMatch(stemmed), JSON.stringify(allow), pool) as Record<
+          string,
+          unknown
+        >[];
         // Legacy best-chunk-per-book, as searchLibraryFts reduces the pool.
         const seen = new Set<number>();
         const legacy: { bookId: number; score: number }[] = [];
@@ -126,7 +129,9 @@ describe("FTS-first rewrite ≡ legacy JOIN SQL", () => {
           seen.add(bookId);
           legacy.push({ bookId, score: Number(r.score) });
         }
-        const got = s.searchLibraryFts(LIB, stemmed, k, new Set(allow)).map((h) => ({ bookId: h.bookId, score: h.score }));
+        const got = s
+          .searchLibraryFts(LIB, stemmed, k, new Set(allow))
+          .map((h) => ({ bookId: h.bookId, score: h.score }));
         expect(got).toEqual(legacy.slice(0, k));
       });
     }

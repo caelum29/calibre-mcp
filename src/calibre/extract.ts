@@ -189,8 +189,7 @@ export class Extractor {
     const dbDir = path.dirname(this.cfg.calibredbPath);
     const convertName = process.platform === "win32" ? "ebook-convert.exe" : "ebook-convert";
     const ebookConvertPath = dbDir === "." ? "ebook-convert" : path.join(dbDir, convertName);
-    const hasEbookConvert =
-      dbDir === "." ? await binaryExists(ebookConvertPath) : existsSync(ebookConvertPath);
+    const hasEbookConvert = dbDir === "." ? await binaryExists(ebookConvertPath) : existsSync(ebookConvertPath);
 
     const pdftotextPath = resolveBinary(PDFTOTEXT_CANDIDATES, "pdftotext");
     const hasPdftotext = PDFTOTEXT_CANDIDATES.some(existsSync) || (await binaryExists(pdftotextPath));
@@ -264,7 +263,14 @@ export class Extractor {
       const { text, markers, unplaced } = await this.#injectMarkers(converted.text, fmt, args);
       // Read while the downloaded PDF still exists; best-effort, [] on any failure.
       const outline = fmt === "pdf" && report.pdftohtmlPath ? await readPdfOutline(report.pdftohtmlPath, tmpSrc) : [];
-      const envelope: TextCacheEnvelope = { v: TEXT_CACHE_VERSION, backend: converted.backend, text, markers, unplaced, outline };
+      const envelope: TextCacheEnvelope = {
+        v: TEXT_CACHE_VERSION,
+        backend: converted.backend,
+        text,
+        markers,
+        unplaced,
+        outline,
+      };
       await writeFile(cacheFile, JSON.stringify(envelope), "utf8");
       await evictCache().catch(() => {});
       return { text, backend: converted.backend, chars: text.length, cached: false, markers, unplaced, outline };
@@ -352,7 +358,12 @@ export class Extractor {
    * a float (e.g. `calc(1em / 2)`), which would otherwise drop the whole book from the index for
    * a purely cosmetic reason. A timeout is NOT retried — that would double the time budget.
    */
-  async #ebookConvert(bin: string, src: string, out: string, timeout: number): Promise<{ text: string; backend: string }> {
+  async #ebookConvert(
+    bin: string,
+    src: string,
+    out: string,
+    timeout: number,
+  ): Promise<{ text: string; backend: string }> {
     try {
       await this.#run(bin, ebookConvertArgs(src, out, "markdown"), timeout);
       return { text: await readFile(out, "utf8"), backend: "ebook-convert" };
@@ -380,7 +391,12 @@ export class Extractor {
         bin: path.basename(bin),
         killed: timedOut,
         code: (err as NodeJS.ErrnoException).code,
-        msg: err instanceof SpawnMaxBufferError ? "maxBuffer" : err instanceof Error ? err.message.slice(0, 300) : String(err),
+        msg:
+          err instanceof SpawnMaxBufferError
+            ? "maxBuffer"
+            : err instanceof Error
+              ? err.message.slice(0, 300)
+              : String(err),
       });
       throw new Error(timedOut ? "EXTRACT_TIMEOUT" : "EXTRACT_FAILED");
     }

@@ -11,9 +11,7 @@ const cfg = loadConfig({ CALIBRE_MCP_INDEX_DIR: "/tmp/unused-index" } as NodeJS.
 
 /** ERR_MODULE_NOT_FOUND as Node raises it for a missing optional dep. */
 function moduleNotFound(): NodeJS.ErrnoException {
-  const err: NodeJS.ErrnoException = new Error(
-    "Cannot find package '@huggingface/transformers'",
-  );
+  const err: NodeJS.ErrnoException = new Error("Cannot find package '@huggingface/transformers'");
   err.code = "ERR_MODULE_NOT_FOUND";
   return err;
 }

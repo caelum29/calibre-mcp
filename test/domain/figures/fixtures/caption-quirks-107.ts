@@ -25,7 +25,10 @@ export const WRAPPED_CAPTION: CaptionQuirkFixture = {
     "1.3.1 Processes, Task Switching, and Scheduling",
   ].join("\n"),
   expected: [
-    { label: "1-1", text: "High-level overview of the structure of the Linux kernel and the layers in a complete Linux system." },
+    {
+      label: "1-1",
+      text: "High-level overview of the structure of the Linux kernel and the layers in a complete Linux system.",
+    },
   ],
 };
 
@@ -71,9 +74,14 @@ export const LABEL_ONLY_REFERENCE: CaptionQuirkFixture = {
  */
 export const LABEL_THEN_TEXT_COLUMN: CaptionQuirkFixture = {
   source: "175 p.767",
-  page: ["B", "", "Figure 12-2:", "Network-linked", "computers.", "1 Predominantly coaxial cable, twisted-pair cable"].join(
-    "\n",
-  ),
+  page: [
+    "B",
+    "",
+    "Figure 12-2:",
+    "Network-linked",
+    "computers.",
+    "1 Predominantly coaxial cable, twisted-pair cable",
+  ].join("\n"),
   expected: [{ label: "12-2", text: "Network-linked computers." }],
 };
 

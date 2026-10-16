@@ -134,7 +134,17 @@ describe("calibre_get_content handler", () => {
       const short = "tiny book text.";
       const r = await getContentTool.handler(
         args(),
-        deps({ getText: async () => ({ text: short, backend: "pdftotext", chars: short.length, cached: false, markers: [], unplaced: 0, outline: [] }) }),
+        deps({
+          getText: async () => ({
+            text: short,
+            backend: "pdftotext",
+            chars: short.length,
+            cached: false,
+            markers: [],
+            unplaced: 0,
+            outline: [],
+          }),
+        }),
       );
       expect(r.isError).toBeFalsy();
       expect((r.content[0] as { text: string }).text).not.toContain("More remains");
@@ -150,7 +160,17 @@ describe("calibre_get_content handler", () => {
   it("reports a scanned/image PDF when extraction is empty", async () => {
     const r = await getContentTool.handler(
       args(),
-      deps({ getText: async () => ({ text: "   ", backend: "pdftotext", chars: 3, cached: false, markers: [], unplaced: 0, outline: [] }) }),
+      deps({
+        getText: async () => ({
+          text: "   ",
+          backend: "pdftotext",
+          chars: 3,
+          cached: false,
+          markers: [],
+          unplaced: 0,
+          outline: [],
+        }),
+      }),
     );
     expect(r.isError).toBe(true);
     expect((r.content[0] as { text: string }).text).toContain("scanned/image PDF");
@@ -187,12 +207,31 @@ describe("calibre_get_content handler", () => {
     // Realistic pdftotext layout: bare "Chapter N", blank, title line, wide prose lines.
     const prose = (s: string) => `${s} `.repeat(20).trim();
     const chapterText = [
-      "Chapter 1", "", "Intro", prose("aaa"),
-      "Chapter 2", "", "Setup", prose("bbb"),
-      "Chapter 3", "", "Usage", prose("ccc"),
+      "Chapter 1",
+      "",
+      "Intro",
+      prose("aaa"),
+      "Chapter 2",
+      "",
+      "Setup",
+      prose("bbb"),
+      "Chapter 3",
+      "",
+      "Usage",
+      prose("ccc"),
     ].join("\n");
     const withChapters = () =>
-      deps({ getText: async () => ({ text: chapterText, backend: "pdftotext", chars: chapterText.length, cached: false, markers: [], unplaced: 0, outline: [] }) });
+      deps({
+        getText: async () => ({
+          text: chapterText,
+          backend: "pdftotext",
+          chars: chapterText.length,
+          cached: false,
+          markers: [],
+          unplaced: 0,
+          outline: [],
+        }),
+      });
 
     it("returns a chapter map with per-chapter cursors, not book text", async () => {
       const r = await getContentTool.handler(args({ structure: true }), withChapters());
@@ -234,18 +273,40 @@ describe("calibre_get_content handler", () => {
       ];
       const r = await getContentTool.handler(
         args({ structure: true }),
-        deps({ getText: async () => ({ text: paged, backend: "pdftotext", chars: paged.length, cached: false, markers: [], unplaced: 0, outline }) }),
+        deps({
+          getText: async () => ({
+            text: paged,
+            backend: "pdftotext",
+            chars: paged.length,
+            cached: false,
+            markers: [],
+            unplaced: 0,
+            outline,
+          }),
+        }),
       );
       const text = (r.content[0] as { text: string }).text;
       expect(text).toContain("2 chapters (pdf-outline)");
-      expect((r.structuredContent as { chapters: { startChar: number }[] }).chapters[0]!.startChar).toBe(paged.indexOf("Getting Started"));
+      expect((r.structuredContent as { chapters: { startChar: number }[] }).chapters[0]!.startChar).toBe(
+        paged.indexOf("Getting Started"),
+      );
     });
 
     it("reports 0 chapters as a non-error with a steer to the plain walk", async () => {
       const flat = "Just prose, no headings anywhere in this book at all.";
       const r = await getContentTool.handler(
         args({ structure: true }),
-        deps({ getText: async () => ({ text: flat, backend: "pdftotext", chars: flat.length, cached: false, markers: [], unplaced: 0, outline: [] }) }),
+        deps({
+          getText: async () => ({
+            text: flat,
+            backend: "pdftotext",
+            chars: flat.length,
+            cached: false,
+            markers: [],
+            unplaced: 0,
+            outline: [],
+          }),
+        }),
       );
       expect(r.isError).toBeFalsy();
       expect((r.structuredContent as { chapters: unknown[] }).chapters).toEqual([]);

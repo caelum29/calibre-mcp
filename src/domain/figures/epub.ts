@@ -18,7 +18,21 @@ export interface SpineDoc {
 const CAPTION_WINDOW = 2000;
 
 // Tags whose closing marks the end of a caption candidate once text was seen.
-const BLOCK_CLOSERS = new Set(["p", "h1", "h2", "h3", "h4", "h5", "h6", "figcaption", "div", "figure", "caption", "li", "td"]);
+const BLOCK_CLOSERS = new Set([
+  "p",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "figcaption",
+  "div",
+  "figure",
+  "caption",
+  "li",
+  "td",
+]);
 
 /** Resolve `META-INF/container.xml` to the OPF path. */
 export function parseContainerRootfile(xml: string): string | null {
@@ -183,11 +197,37 @@ export function adjacentCaption(html: string, from: number): { label: string; te
 // (probe #84: RLHF's `T&uuml;lu` broke marker placement — the extracted text has the
 // decoded character, so undecoded inventory captions never match).
 const NAMED_ENTITIES: Record<string, string> = {
-  nbsp: " ", amp: "&", lt: "<", gt: ">", quot: '"', apos: "'",
-  ndash: "–", mdash: "—", hellip: "…", ldquo: "“", rdquo: "”", lsquo: "‘", rsquo: "’",
-  auml: "ä", ouml: "ö", uuml: "ü", Auml: "Ä", Ouml: "Ö", Uuml: "Ü", szlig: "ß",
-  eacute: "é", egrave: "è", ecirc: "ê", agrave: "à", acirc: "â", ccedil: "ç",
-  ntilde: "ñ", aacute: "á", iacute: "í", oacute: "ó", uacute: "ú",
+  nbsp: " ",
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  quot: '"',
+  apos: "'",
+  ndash: "–",
+  mdash: "—",
+  hellip: "…",
+  ldquo: "“",
+  rdquo: "”",
+  lsquo: "‘",
+  rsquo: "’",
+  auml: "ä",
+  ouml: "ö",
+  uuml: "ü",
+  Auml: "Ä",
+  Ouml: "Ö",
+  Uuml: "Ü",
+  szlig: "ß",
+  eacute: "é",
+  egrave: "è",
+  ecirc: "ê",
+  agrave: "à",
+  acirc: "â",
+  ccedil: "ç",
+  ntilde: "ñ",
+  aacute: "á",
+  iacute: "í",
+  oacute: "ó",
+  uacute: "ú",
 };
 
 /** Minimal entity decode — captions only need the common named/numeric forms. */

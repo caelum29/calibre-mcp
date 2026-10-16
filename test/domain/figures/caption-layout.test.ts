@@ -74,7 +74,9 @@ describe("recoverCaptionText — caption in the label's block", () => {
   it("should_not_read_a_caption_for_a_reference_inside_another_caption", () => {
     // book 371 p.201: "…relationship in / Figure 3-5." ends Figure 3-6's caption
     const page = fixturePage("371-p201");
-    expect(recoverCaptionText(page, "3-6")).toBe("A relational model representation of the one-to-many relationship in Figure 3-5.");
+    expect(recoverCaptionText(page, "3-6")).toBe(
+      "A relational model representation of the one-to-many relationship in Figure 3-5.",
+    );
     expect(recoverCaptionText(page, "3-5")).toBeNull();
   });
 
@@ -145,7 +147,11 @@ describe("layout captions end to end", () => {
     const plain = buildInventory(text, []);
     const inv = buildInventory(text, [], layout);
     expect(plain.entries[0]).toMatchObject({ index: 0, label: "1.2", caption: "" });
-    expect(inv.entries[0]).toMatchObject({ index: 0, label: "1.2", caption: "Kafka’s flow from producers to consumers" });
+    expect(inv.entries[0]).toMatchObject({
+      index: 0,
+      label: "1.2",
+      caption: "Kafka’s flow from producers to consumers",
+    });
   });
 
   it("should_place_the_marker_when_the_label_opens_its_page", () => {
@@ -157,7 +163,11 @@ describe("layout captions end to end", () => {
 
   it("should_place_the_marker_on_the_label_line_not_the_page_boundary", () => {
     const inv = buildInventory(text, [], new Map([[1, fixturePage("182-p30")]]));
-    const marked = injectFigureMarkers(`Intro page\f${text}`, { ...inv, entries: inv.entries.map((e) => ({ ...e, page: 2 })) }, "pdf");
+    const marked = injectFigureMarkers(
+      `Intro page\f${text}`,
+      { ...inv, entries: inv.entries.map((e) => ({ ...e, page: 2 })) },
+      "pdf",
+    );
     expect(marked.markers).toHaveLength(1);
     expect(marked.markers[0]!.caption).toContain("Kafka’s flow");
     // the label line, not the page start right after the form feed

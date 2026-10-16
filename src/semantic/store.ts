@@ -170,9 +170,21 @@ export interface IndexStore {
   /** Keyword half: rank passages within one book by weighted-bm25 FTS5 match. */
   searchBookFts(libraryId: string, bookId: number, stemmedQuery: string, k: number): BookHit[];
   /** Rank figure captions by vector cosine — the whole library, or one book. */
-  searchFigures(libraryId: string, query: Float32Array, k: number, bookId?: number, allow?: ReadonlySet<number>): FigureHit[];
+  searchFigures(
+    libraryId: string,
+    query: Float32Array,
+    k: number,
+    bookId?: number,
+    allow?: ReadonlySet<number>,
+  ): FigureHit[];
   /** Keyword half over figure captions (weighted-bm25 FTS5). */
-  searchFiguresFts(libraryId: string, stemmedQuery: string, k: number, bookId?: number, allow?: ReadonlySet<number>): FigureHit[];
+  searchFiguresFts(
+    libraryId: string,
+    stemmedQuery: string,
+    k: number,
+    bookId?: number,
+    allow?: ReadonlySet<number>,
+  ): FigureHit[];
   /** Indexed-figure count (library or one book); 0 for an absent index. Cheap COUNT. */
   figureCount(libraryId: string, bookId?: number): number;
   /** The chunk containing a figure marker offset (figure → context direction). */
@@ -365,9 +377,7 @@ export class SqliteIndexStore implements IndexStore {
 
   isBookIndexed(libraryId: string, bookId: number, lastModified?: string): boolean {
     const db = this.#db(libraryId);
-    const row = db.prepare("SELECT last_modified FROM books WHERE book_id = ?").get(bookId) as
-      | Row
-      | undefined;
+    const row = db.prepare("SELECT last_modified FROM books WHERE book_id = ?").get(bookId) as Row | undefined;
     if (!row) return false;
     if (lastModified === undefined) return true;
     return String(row.last_modified ?? "") === lastModified;
@@ -496,9 +506,7 @@ export class SqliteIndexStore implements IndexStore {
     const out: LibraryHit[] = [];
     for (const [bookId, best] of bestPerBook) {
       const book = db.prepare("SELECT title, authors FROM books WHERE book_id = ?").get(bookId) as Row;
-      const chunk = db
-        .prepare("SELECT char_start, char_end, body FROM chunks WHERE id = ?")
-        .get(best.chunkId) as Row;
+      const chunk = db.prepare("SELECT char_start, char_end, body FROM chunks WHERE id = ?").get(best.chunkId) as Row;
       const body = String(chunk?.body ?? "");
       out.push({
         bookId,
@@ -614,15 +622,25 @@ export class SqliteIndexStore implements IndexStore {
     }));
   }
 
-  searchFigures(libraryId: string, query: Float32Array, k: number, bookId?: number, allow?: ReadonlySet<number>): FigureHit[] {
+  searchFigures(
+    libraryId: string,
+    query: Float32Array,
+    k: number,
+    bookId?: number,
+    allow?: ReadonlySet<number>,
+  ): FigureHit[] {
     const db = this.#db(libraryId);
     const hits = topK(query, restrict(this.#figureCandidates(libraryId, bookId), allow), k);
-    return hits
-      .map((h) => this.#figureHit(db, h.chunkId, h.score))
-      .filter((h): h is FigureHit => h !== undefined);
+    return hits.map((h) => this.#figureHit(db, h.chunkId, h.score)).filter((h): h is FigureHit => h !== undefined);
   }
 
-  searchFiguresFts(libraryId: string, stemmedQuery: string, k: number, bookId?: number, allow?: ReadonlySet<number>): FigureHit[] {
+  searchFiguresFts(
+    libraryId: string,
+    stemmedQuery: string,
+    k: number,
+    bookId?: number,
+    allow?: ReadonlySet<number>,
+  ): FigureHit[] {
     const db = this.#db(libraryId);
     const match = ftsMatch(stemmedQuery);
     if (!match) return [];
@@ -738,9 +756,7 @@ export class SqliteIndexStore implements IndexStore {
   /** Materialize one figures row (+ its book identity) into a FigureHit. */
   #figureHit(db: DatabaseSync, figRowId: number, score: number): FigureHit | undefined {
     const r = db
-      .prepare(
-        "SELECT book_id, fig_index, page, caption, char_offset, format, source FROM figures WHERE id = ?",
-      )
+      .prepare("SELECT book_id, fig_index, page, caption, char_offset, format, source FROM figures WHERE id = ?")
       .get(figRowId) as Row | undefined;
     if (!r) return undefined;
     const bookId = Number(r.book_id);
@@ -791,9 +807,7 @@ export class SqliteIndexStore implements IndexStore {
    * @internal public only as a spy seam for the cache tests; not part of `IndexStore`.
    */
   loadCandidates(libraryId: string): Candidate[] {
-    const rows = this.#db(libraryId)
-      .prepare("SELECT chunk_id, book_id, vector FROM embeddings")
-      .all() as Row[];
+    const rows = this.#db(libraryId).prepare("SELECT chunk_id, book_id, vector FROM embeddings").all() as Row[];
     return rows.map((r) => ({
       chunkId: Number(r.chunk_id),
       bookId: Number(r.book_id),

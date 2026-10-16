@@ -10,11 +10,7 @@ import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
 import type { CustomFieldValue } from "../../src/domain/merge.js";
-import {
-  CalibreCliError,
-  CalibreCliTimeoutError,
-  CalibreHttpError,
-} from "../../src/domain/errors.js";
+import { CalibreCliError, CalibreCliTimeoutError, CalibreHttpError } from "../../src/domain/errors.js";
 import type { ToolDeps } from "../../src/tools/types.js";
 
 vi.mock("../../src/calibre/http.js", () => ({
@@ -22,8 +18,15 @@ vi.mock("../../src/calibre/http.js", () => ({
 }));
 
 const book = (over: Partial<Book> = {}): Book => ({
-  id: 1, uuid: "u", title: "Dup Book", authors: ["A"], identifiers: {}, formats: [],
-  tags: [], languages: [], ...over,
+  id: 1,
+  uuid: "u",
+  title: "Dup Book",
+  authors: ["A"],
+  identifiers: {},
+  formats: [],
+  tags: [],
+  languages: [],
+  ...over,
 });
 
 type CalibredbFake = (
@@ -42,7 +45,13 @@ interface FakeOpts {
 function fakeDeps(opts: FakeOpts = {}) {
   const books = opts.books ?? [
     book({ id: 10, formats: ["epub"], tags: ["t1"], identifiers: { isbn: "111" }, comments: "dest c" }),
-    book({ id: 12, formats: ["pdf", "epub"], tags: ["t1", "t2"], identifiers: { isbn: "222", doi: "d1" }, comments: "src c" }),
+    book({
+      id: 12,
+      formats: ["pdf", "epub"],
+      tags: ["t1", "t2"],
+      identifiers: { isbn: "222", doi: "d1" },
+      comments: "src c",
+    }),
   ];
   const byId = new Map(books.map((b) => [b.id, b] as const));
   const calls: string[][] = [];
@@ -69,8 +78,7 @@ function fakeDeps(opts: FakeOpts = {}) {
         if (!b) throw new CalibreHttpError(404, "u", "not found");
         return { ...b, formats: [...b.formats, ...(addedFormats.get(id) ?? [])] };
       }),
-    bookMergeFacts: async (id: number) =>
-      opts.facts?.get(id) ?? { customFields: [], hasCover: true },
+    bookMergeFacts: async (id: number) => opts.facts?.get(id) ?? { customFields: [], hasCover: true },
   };
   const deps = {
     config: loadConfig({}),
@@ -103,10 +111,7 @@ describe("calibre_merge_books dry run", () => {
 
   it("prepends an advisory warning when a source looks like a different work", async () => {
     const d = fakeDeps({
-      books: [
-        book({ id: 10, title: "Rust Book" }),
-        book({ id: 12, title: "Cooking For Two", authors: ["Z"] }),
-      ],
+      books: [book({ id: 10, title: "Rust Book" }), book({ id: 12, title: "Cooking For Two", authors: ["Z"] })],
     });
     const r = await run({ targetId: 10, sourceIds: [12] }, d);
     expect((r.content[0] as { text: string }).text).toContain("does not look like the same work");
@@ -144,7 +149,9 @@ describe("calibre_merge_books execution order", () => {
     // client-side unions written whole: tags union + identifiers with target precedence
     const fields = d.calls[1]!.filter((a) => a !== "--field" && a !== "set_metadata" && a !== "10");
     expect(fields).toContain("tags:t1,t2");
-    expect(fields.some((f) => f.startsWith("identifiers:") && f.includes("isbn:111") && f.includes("doi:d1"))).toBe(true);
+    expect(fields.some((f) => f.startsWith("identifiers:") && f.includes("isbn:111") && f.includes("doi:d1"))).toBe(
+      true,
+    );
     expect(d.calls[2]).toEqual(["remove", "12"]);
     expect(r.structuredContent?.status).toBe("merged");
   });

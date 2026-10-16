@@ -31,8 +31,7 @@ export function parseBboxPage(html: string): BboxPage | null {
   const pageTag = /<page\s+width="([\d.]+)"\s+height="([\d.]+)"/.exec(html);
   if (!pageTag) return null;
   const words: BboxWord[] = [];
-  const wordRe =
-    /<word\s+xMin="([\d.-]+)"\s+yMin="([\d.-]+)"\s+xMax="([\d.-]+)"\s+yMax="([\d.-]+)">([^<]*)<\/word>/g;
+  const wordRe = /<word\s+xMin="([\d.-]+)"\s+yMin="([\d.-]+)"\s+xMax="([\d.-]+)"\s+yMax="([\d.-]+)">([^<]*)<\/word>/g;
   for (const m of html.matchAll(wordRe)) {
     words.push({
       x0: Number(m[1]),
@@ -83,8 +82,7 @@ export function findAnchors(page: BboxPage, label: string): AnchorMatch[] {
       continue;
     }
     // "same line" = vertical overlap with the label word; \p{L} = real caption text
-    const hasTextAfter =
-      !!after && after.y0 < labelWord.y1 && after.y1 > labelWord.y0 && /\p{L}/u.test(after.text);
+    const hasTextAfter = !!after && after.y0 < labelWord.y1 && after.y1 > labelWord.y0 && /\p{L}/u.test(after.text);
     out.push({ y0: labelWord.y0, y1: labelWord.y1, hasTextAfter });
   }
   return out;

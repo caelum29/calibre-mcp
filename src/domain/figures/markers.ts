@@ -158,9 +158,25 @@ function scanCaptionLines(text: string, markdown: boolean): CaptionLine[] {
     // the next line, so compare that
     const head = hit ?? matchBareLabel(stripped);
     if (head && head.text === "") {
-      found.push({ start, label: head.label, text: `${stripped} ${nextLine}`, captionText: nextLine, nextLine: "", bare: true, own: stripped });
+      found.push({
+        start,
+        label: head.label,
+        text: `${stripped} ${nextLine}`,
+        captionText: nextLine,
+        nextLine: "",
+        bare: true,
+        own: stripped,
+      });
     } else if (head) {
-      found.push({ start, label: head.label, text: stripped, captionText: head.text, nextLine, bare: false, own: stripped });
+      found.push({
+        start,
+        label: head.label,
+        text: stripped,
+        captionText: head.text,
+        nextLine,
+        bare: false,
+        own: stripped,
+      });
     }
     start += raw.length + 1;
   }
@@ -199,7 +215,8 @@ function findCaptionLine(
     // +1: a page-first line starts on the form feed that opens its page (book 836)
     const page = pageOf(line.start + 1, pageStarts);
     if (page > entry.page) break;
-    if (line.bare && page === entry.page && normalizeLabel(line.label) === normalizeLabel(label)) return { index: i, byPage: true };
+    if (line.bare && page === entry.page && normalizeLabel(line.label) === normalizeLabel(label))
+      return { index: i, byPage: true };
   }
   return null;
 }

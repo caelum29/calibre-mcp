@@ -81,10 +81,13 @@ export const extractIsbnTool = defineTool({
 
       // No-op guard: the found ISBN already matches, so skip the round-trip.
       if (!changed) {
-        return toolOk(
-          [{ type: "text", text: `Book #${numericId} already has isbn ${isbn}; no change.` }],
-          { bookId: numericId, isbn, currentIsbn, changed: false, applied: false },
-        );
+        return toolOk([{ type: "text", text: `Book #${numericId} already has isbn ${isbn}; no change.` }], {
+          bookId: numericId,
+          isbn,
+          currentIsbn,
+          changed: false,
+          applied: false,
+        });
       }
 
       // Apply: merge into the existing identifiers so set_metadata (which replaces the whole

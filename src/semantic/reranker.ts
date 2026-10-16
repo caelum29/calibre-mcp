@@ -69,8 +69,7 @@ export class TransformersReranker implements Reranker {
 
   constructor(
     private readonly cfg: Config,
-    private readonly loadTransformers: TransformersLoader = () =>
-      import("@huggingface/transformers"),
+    private readonly loadTransformers: TransformersLoader = () => import("@huggingface/transformers"),
   ) {}
 
   async warmup(): Promise<void> {
@@ -89,12 +88,7 @@ export class TransformersReranker implements Reranker {
     }
   }
 
-  async #score(
-    tokenizer: PairTokenizer,
-    model: SeqClassifier,
-    query: string,
-    passages: string[],
-  ): Promise<number[]> {
+  async #score(tokenizer: PairTokenizer, model: SeqClassifier, query: string, passages: string[]): Promise<number[]> {
     const scores: number[] = [];
     // Solo scoring (D-011 amendment, #98): one pair per forward. Batched padding made a
     // pair's q8 logit depend on which passages shared its batch (0.1–0.6 logit shifts →
@@ -144,9 +138,7 @@ export class TransformersReranker implements Reranker {
     mod.env.cacheDir = path.join(this.cfg.indexDir, "models");
     mod.env.allowRemoteModels = true;
     // No revision option (see RERANKER_REVISION docs) — default "main", like the embedder.
-    const tokenizer = (await mod.AutoTokenizer.from_pretrained(
-      RERANKER_MODEL_ID,
-    )) as unknown as PairTokenizer;
+    const tokenizer = (await mod.AutoTokenizer.from_pretrained(RERANKER_MODEL_ID)) as unknown as PairTokenizer;
     const model = (await mod.AutoModelForSequenceClassification.from_pretrained(RERANKER_MODEL_ID, {
       dtype: "q8",
     })) as unknown as SeqClassifier;

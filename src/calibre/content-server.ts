@@ -103,8 +103,7 @@ export function matchCategory(categories: Category[], field: string): Category |
   const raw = field.trim().toLowerCase();
   const target = FIELD_SYNONYMS[raw] ?? raw;
   return (
-    categories.find((c) => c.name.toLowerCase() === target) ??
-    categories.find((c) => c.name.toLowerCase() === raw)
+    categories.find((c) => c.name.toLowerCase() === target) ?? categories.find((c) => c.name.toLowerCase() === raw)
   );
 }
 
@@ -204,10 +203,7 @@ export class ContentServerClient {
    * (from `/ajax/book` user_metadata — the Book mapping drops them) and whether the
    * book actually has a cover (for the fill-if-empty cover rule).
    */
-  async bookMergeFacts(
-    id: number,
-    library?: string,
-  ): Promise<{ customFields: CustomFieldValue[]; hasCover: boolean }> {
+  async bookMergeFacts(id: number, library?: string): Promise<{ customFields: CustomFieldValue[]; hasCover: boolean }> {
     const libId = await this.resolveLibraryId(library);
     const url = `${this.base}/ajax/book/${id}/${encodeURIComponent(libId)}`;
     const raw = await getJson<RawBook>(url);
@@ -219,9 +215,7 @@ export class ContentServerClient {
         // Trust the value shape over the is_multiple flag (empty multis arrive as null).
         isMultiple:
           Array.isArray(m["#value#"]) ||
-          (typeof m.is_multiple === "object" &&
-            m.is_multiple !== null &&
-            Object.keys(m.is_multiple).length > 0),
+          (typeof m.is_multiple === "object" && m.is_multiple !== null && Object.keys(m.is_multiple).length > 0),
         value: m["#value#"],
         extra: typeof m["#extra#"] === "number" ? m["#extra#"] : undefined,
       }));
@@ -236,11 +230,7 @@ export class ContentServerClient {
    * include_cover opt-in (issue #22). The cover is a nicety: any failure (no cover,
    * server down, timeout) returns null and the caller degrades with a note.
    */
-  async coverThumb(
-    id: number,
-    library?: string,
-    sz = "300x400",
-  ): Promise<{ data: string; mimeType: string } | null> {
+  async coverThumb(id: number, library?: string, sz = "300x400"): Promise<{ data: string; mimeType: string } | null> {
     const libId = await this.resolveLibraryId(library);
     const url = `${this.base}/get/thumb/${id}/${encodeURIComponent(libId)}?sz=${sz}`;
     const controller = new AbortController();
@@ -278,9 +268,7 @@ export class ContentServerClient {
   /** GET /ajax/categories/{libId} → Category[]. */
   async categories(library?: string): Promise<Category[]> {
     const libId = await this.resolveLibraryId(library);
-    const raw = await getJson<RawCategory[]>(
-      `${this.base}/ajax/categories/${encodeURIComponent(libId)}`,
-    );
+    const raw = await getJson<RawCategory[]>(`${this.base}/ajax/categories/${encodeURIComponent(libId)}`);
     return raw.map((c) => ({ name: c.name ?? "", url: c.url ?? "", count: c.count }));
   }
 

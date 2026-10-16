@@ -25,7 +25,15 @@ const t: SweepThresholds = {
 const agg = (ndcg10: number) => ({ hybrid: { n: 1, hit1: ndcg10, recall5: 1, mrr: ndcg10, ndcg10 } });
 
 function row(id: string, kind: QueryKind, hit1: number): PerQueryRow {
-  return { id, kind, scope: "library", mode: "hybrid", ru: false, retrieved: [], metrics: { hit1, recall5: 1, rr: hit1, ndcg10: hit1 } };
+  return {
+    id,
+    kind,
+    scope: "library",
+    mode: "hybrid",
+    ru: false,
+    retrieved: [],
+    metrics: { hit1, recall5: 1, rr: hit1, ndcg10: hit1 },
+  };
 }
 
 /** Report with given RU / cross-lingual / exact-identifier nDCG and per-query exact-id Hit@1. */

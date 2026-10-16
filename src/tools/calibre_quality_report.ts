@@ -57,7 +57,11 @@ export const qualityReportTool = defineTool({
       const fr = await resolveFilter(deps, { filter: args.filter, autoExclude: false, library: args.library });
       if (!fr.ok) return toolError(fr.error);
 
-      const { books, total: matched, capped } = await selectBooks(deps, {
+      const {
+        books,
+        total: matched,
+        capped,
+      } = await selectBooks(deps, {
         ids: args.ids,
         query: buildScopedQuery(args.query ?? "", fr.res) || undefined,
         library: args.library,
@@ -73,9 +77,7 @@ export const qualityReportTool = defineTool({
       const offset = cur && cur.query === cursorKey ? cur.offset : 0;
       const page = issues.slice(offset, offset + args.limit);
       const more = offset + page.length < issues.length;
-      const nextCursor = more
-        ? encodeCursor({ offset: offset + page.length, query: cursorKey })
-        : undefined;
+      const nextCursor = more ? encodeCursor({ offset: offset + page.length, query: cursorKey }) : undefined;
 
       // The count is only the bundle's size when the bundle alone selected the set.
       const honesty = honestyLines(fr.res, args.filter !== undefined && !args.query ? matched : undefined);
@@ -84,12 +86,14 @@ export const qualityReportTool = defineTool({
         `${issues.length} issue(s) across ${books.length} books scanned` +
         `${capped ? ` (capped — ${matched} matched)` : ""}. ` +
         `Showing ${page.length ? offset + 1 : 0}–${offset + page.length}. ` +
-        `By check: ${Object.entries(byCheck).map(([k, v]) => `${k}=${v}`).join(", ") || "none"}.` +
+        `By check: ${
+          Object.entries(byCheck)
+            .map(([k, v]) => `${k}=${v}`)
+            .join(", ") || "none"
+        }.` +
         (args.readability ? "\nreadability check is deferred in v1 (needs full-text extraction)." : "");
 
-      const lines = page.map(
-        (i) => `[${i.severity}] #${i.bookId} "${i.title}" — ${i.check}: ${i.message}`,
-      );
+      const lines = page.map((i) => `[${i.severity}] #${i.bookId} "${i.title}" — ${i.check}: ${i.message}`);
       const text = `${summary}\n${lines.join("\n")}`;
 
       return toolOk([{ type: "text", text: fence("QUALITY REPORT", text) }], {

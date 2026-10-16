@@ -50,8 +50,12 @@ export function buildProposal(current: Book, hits: ProviderHit[]): Proposal {
     add("title", current.title || undefined, hit.title, current.title.trim() ? "weak" : "missing");
   }
   if (hit.authors?.length && authorsAreWeak(current.authors)) {
-    add("authors", current.authors.length ? current.authors : undefined, hit.authors,
-      current.authors.length ? "weak" : "missing");
+    add(
+      "authors",
+      current.authors.length ? current.authors : undefined,
+      hit.authors,
+      current.authors.length ? "weak" : "missing",
+    );
   }
   if (hit.publisher && !current.publisher) {
     add("publisher", undefined, hit.publisher, "missing");

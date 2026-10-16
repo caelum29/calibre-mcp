@@ -45,7 +45,9 @@ export function parsePdfOutlineXml(xml: string): OutlineEntry[] {
     } else if (depth > 0) {
       const pageAttr = /\bpage\s*=\s*"(\d+)"/.exec(m[2] ?? "");
       const page = pageAttr ? Number(pageAttr[1]) : null;
-      const title = decodeEntities((m[3] ?? "").replace(/<[^>]*>/g, "")).replace(/\s+/g, " ").trim();
+      const title = decodeEntities((m[3] ?? "").replace(/<[^>]*>/g, ""))
+        .replace(/\s+/g, " ")
+        .trim();
       if (title) out.push({ title, page: page !== null && page >= 1 ? page : null, level: depth });
     }
   }
@@ -59,23 +61,71 @@ export function parsePdfOutlineXml(xml: string): OutlineEntry[] {
 const FRONT_MATTER = new RegExp(
   "^(?:" +
     [
-      "cover", "front cover", "title", "title page", "half title", "copyright", "copyright page",
-      "copyright and credits", "credits", "dedication", "epigraph", "contents", "table of contents",
-      "brief contents", "contents at a glance", "toc", "praise", "praise for.*", "endorsements",
-      "forewords?(?: .*)?", "preface(?: .*)?", "acknowledgments?", "acknowledgements?", "contributors",
-      "about the authors?.*", "about the (?:technical )?reviewers?.*", "about this book",
-      "about the cover.*", "who this book is for", "list of (?:figures|tables)", "packt.*",
-      "обложка", "титул", "титульный лист", "оглавление", "содержание", "зміст", "предисловие.*",
-      "передмова.*", "благодарности", "подяки", "об автор.*", "про автор.*", "об этой книге",
-      "о книге", "про книгу", "отзывы.*", "відгуки.*", "о научн\\S* редактор.*", "о рецензент.*",
-      "от издательства", "від видавництва", "посвящение", "присвята",
+      "cover",
+      "front cover",
+      "title",
+      "title page",
+      "half title",
+      "copyright",
+      "copyright page",
+      "copyright and credits",
+      "credits",
+      "dedication",
+      "epigraph",
+      "contents",
+      "table of contents",
+      "brief contents",
+      "contents at a glance",
+      "toc",
+      "praise",
+      "praise for.*",
+      "endorsements",
+      "forewords?(?: .*)?",
+      "preface(?: .*)?",
+      "acknowledgments?",
+      "acknowledgements?",
+      "contributors",
+      "about the authors?.*",
+      "about the (?:technical )?reviewers?.*",
+      "about this book",
+      "about the cover.*",
+      "who this book is for",
+      "list of (?:figures|tables)",
+      "packt.*",
+      "обложка",
+      "титул",
+      "титульный лист",
+      "оглавление",
+      "содержание",
+      "зміст",
+      "предисловие.*",
+      "передмова.*",
+      "благодарности",
+      "подяки",
+      "об автор.*",
+      "про автор.*",
+      "об этой книге",
+      "о книге",
+      "про книгу",
+      "отзывы.*",
+      "відгуки.*",
+      "о научн\\S* редактор.*",
+      "о рецензент.*",
+      "от издательства",
+      "від видавництва",
+      "посвящение",
+      "присвята",
     ].join("|") +
     ")$",
   "u",
 );
 
 function norm(s: string): string {
-  return s.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  return s
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
 }
 
 /** True when an outline title names a front-matter section (cover, copyright, preface…). */

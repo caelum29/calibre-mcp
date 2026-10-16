@@ -75,7 +75,9 @@ describe("parsePdfOutlineXml", () => {
   });
 
   it("decodes entities, strips inline tags and collapses whitespace (Cyrillic intact)", () => {
-    const es = parsePdfOutlineXml(`<outline><item page="4"><b>Глава&#160;1.</b>\n  Об&#x430;сти &quot;видимости&quot;</item></outline>`);
+    const es = parsePdfOutlineXml(
+      `<outline><item page="4"><b>Глава&#160;1.</b>\n  Об&#x430;сти &quot;видимости&quot;</item></outline>`,
+    );
     expect(es[0]!.title).toBe('Глава 1. Обaсти "видимости"'.replace("a", "а"));
   });
 
@@ -91,7 +93,18 @@ describe("parsePdfOutlineXml", () => {
 
 describe("isFrontMatterTitle", () => {
   it("recognizes EN and RU front matter", () => {
-    for (const t of ["Cover", "Copyright and Credits", "Table of Contents", "Preface", "Preface: Invalidating Axioms", "About the Authors", "Об авторе", "О научном редакторе русского издания", "Отзывы о книге «X»", "Предисловие"]) {
+    for (const t of [
+      "Cover",
+      "Copyright and Credits",
+      "Table of Contents",
+      "Preface",
+      "Preface: Invalidating Axioms",
+      "About the Authors",
+      "Об авторе",
+      "О научном редакторе русского издания",
+      "Отзывы о книге «X»",
+      "Предисловие",
+    ]) {
       expect(isFrontMatterTitle(t), t).toBe(true);
     }
   });
@@ -109,7 +122,10 @@ describe("selectChapterEntries", () => {
   it("uses top-level entries minus leading front matter", () => {
     const picked = selectChapterEntries(parsePdfOutlineXml(EN_XML), 10);
     expect(picked?.map((x) => x.title)).toEqual([
-      "Chapter 1: Understanding the Kill Chain", "Chapter 2: Reconnaissance & Recon", "Chapter 3: Delivery", "Index",
+      "Chapter 1: Understanding the Kill Chain",
+      "Chapter 2: Reconnaissance & Recon",
+      "Chapter 3: Delivery",
+      "Index",
     ]);
   });
 
@@ -121,17 +137,33 @@ describe("selectChapterEntries", () => {
   it("expands Part entries mixed with chapters at the top level (RU Часть)", () => {
     const es = [
       e("Введение", 3),
-      e("Часть 1. Основы", 5), e("Глава 1. A", 6, 2), e("Глава 2. B", 9, 2),
-      e("Часть 2. Практика", 12), e("Глава 3. C", 13, 2), e("Глава 4. D", 16, 2),
+      e("Часть 1. Основы", 5),
+      e("Глава 1. A", 6, 2),
+      e("Глава 2. B", 9, 2),
+      e("Часть 2. Практика", 12),
+      e("Глава 3. C", 13, 2),
+      e("Глава 4. D", 16, 2),
       e("Предметный указатель", 20),
     ];
     expect(selectChapterEntries(es, 30)?.map((x) => x.title)).toEqual([
-      "Введение", "Глава 1. A", "Глава 2. B", "Глава 3. C", "Глава 4. D", "Предметный указатель",
+      "Введение",
+      "Глава 1. A",
+      "Глава 2. B",
+      "Глава 3. C",
+      "Глава 4. D",
+      "Предметный указатель",
     ]);
   });
 
   it("descends a thin top level of unlabeled parts", () => {
-    const es = [e("Setup", 2), e("Install", 3, 2), e("Configure", 6, 2), e("Fundamentals", 9), e("Types", 10, 2), e("Loops", 13, 2)];
+    const es = [
+      e("Setup", 2),
+      e("Install", 3, 2),
+      e("Configure", 6, 2),
+      e("Fundamentals", 9),
+      e("Types", 10, 2),
+      e("Loops", 13, 2),
+    ];
     expect(selectChapterEntries(es, 20)?.map((x) => x.title)).toEqual(["Install", "Configure", "Types", "Loops"]);
   });
 
@@ -198,7 +230,12 @@ describe("outlineChapters (page → offset)", () => {
 
 describe("detectChapters precedence", () => {
   const body = (w: string) => `${w} `.repeat(400);
-  const text = pages("Cover", `Getting Started\n${body("aaa")}`, `Going Further\n${body("bbb")}`, `Chapter 7\n${body("ccc")}`);
+  const text = pages(
+    "Cover",
+    `Getting Started\n${body("aaa")}`,
+    `Going Further\n${body("bbb")}`,
+    `Chapter 7\n${body("ccc")}`,
+  );
 
   it("prefers a usable outline over text headings (detector pdf-outline)", () => {
     const r = detectChapters(text, { outline: [e("Getting Started", 2), e("Going Further", 3)] });

@@ -28,9 +28,7 @@ export const removeBookTool = defineTool({
   outputSchema: {
     deleted: z.boolean().optional(),
     removedIds: z.array(z.number()).optional(),
-    wouldRemove: z
-      .array(z.object({ id: z.number(), title: z.string().optional() }))
-      .optional(),
+    wouldRemove: z.array(z.object({ id: z.number(), title: z.string().optional() })).optional(),
   },
   annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
   write: true,

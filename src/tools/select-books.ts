@@ -60,9 +60,7 @@ async function fetchBooks(deps: ToolDeps, ids: number[], library?: string): Prom
       maps[idx] = await deps.content.booksByIds(batch, library);
     }
   }
-  await Promise.all(
-    Array.from({ length: Math.min(BATCH_CONCURRENCY, batches.length) }, () => worker()),
-  );
+  await Promise.all(Array.from({ length: Math.min(BATCH_CONCURRENCY, batches.length) }, () => worker()));
 
   const books: Book[] = [];
   for (let b = 0; b < batches.length; b++) {

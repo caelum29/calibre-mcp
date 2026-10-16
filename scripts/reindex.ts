@@ -76,14 +76,19 @@ const warmupMs = Date.now() - tWarm;
 const libraryId = await deps.content.resolveLibraryId(opt.library);
 let ids: number[];
 if (opt.ids) {
-  ids = opt.ids.split(",").map((s) => Number(s.trim())).filter(Number.isInteger);
+  ids = opt.ids
+    .split(",")
+    .map((s) => Number(s.trim()))
+    .filter(Number.isInteger);
 } else {
   const page = await deps.content.search({ query: "", library: opt.library, num: 5000 });
   ids = page.bookIds;
 }
 const done = resumeProgress(progressFile);
 const todo = ids.filter((id) => !done.has(id));
-say(`${ids.length} selected, ${done.size} already done, ${todo.length} to index — concurrency ${concurrency}, ${threaded ? "thread-per-worker" : "shared main-thread"} encoder, warmup ${warmupMs} ms`);
+say(
+  `${ids.length} selected, ${done.size} already done, ${todo.length} to index — concurrency ${concurrency}, ${threaded ? "thread-per-worker" : "shared main-thread"} encoder, warmup ${warmupMs} ms`,
+);
 
 const freeGb = (): number => {
   const s = statfsSync(indexDir);
@@ -121,7 +126,8 @@ await runBookPipeline<PrepareResult>(todo, concurrency, {
     if (!o.ok && describeError(o.error) === "ABORTED_LOW_DISK") return;
     const ready = o.ok && o.prepared.kind === "ready" ? o.prepared : undefined;
     const detail = ready ? { ...ready.detail, phaseMs: ready.phaseMs } : {};
-    if (ready) for (const k of Object.keys(phaseTotals) as Array<keyof typeof phaseTotals>) phaseTotals[k] += ready.phaseMs[k];
+    if (ready)
+      for (const k of Object.keys(phaseTotals) as Array<keyof typeof phaseTotals>) phaseTotals[k] += ready.phaseMs[k];
     appendProgress(progressFile, {
       bookId: o.bookId,
       ok: o.ok,
@@ -137,7 +143,9 @@ await runBookPipeline<PrepareResult>(todo, concurrency, {
     }
     if (settled % 10 === 0) {
       const avg = (Date.now() - t0) / settled;
-      say(`progress ${settled}/${todo.length} (${(avg / 1000).toFixed(1)} s/book wall, ~${Math.round(((todo.length - settled) * avg) / 60000)} min left)`);
+      say(
+        `progress ${settled}/${todo.length} (${(avg / 1000).toFixed(1)} s/book wall, ~${Math.round(((todo.length - settled) * avg) / 60000)} min left)`,
+      );
     }
   },
 });

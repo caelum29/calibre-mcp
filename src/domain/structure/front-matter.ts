@@ -34,31 +34,106 @@ export const FM_MAX_RUN_SECTIONS = 40;
 // decoration stripping, so "Preface" matches but "Prefaces in Kotlin" does not.
 const FRONT_MATTER_TITLES = [
   // EN: title/legal/praise/TOC
-  "praise", "praise for .*", "advance praise.*", "what (?:people|readers|others) are saying.*",
-  "copyright", "copyright page", "dedication", "epigraph", "title page", "half title",
-  "inside front cover", "front matter", "also by .*", "other books .*", "books by .*",
-  "contents", "table of contents", "brief contents", "contents in detail", "brief table of contents.*",
-  "revision history.*", "colophon",
+  "praise",
+  "praise for .*",
+  "advance praise.*",
+  "what (?:people|readers|others) are saying.*",
+  "copyright",
+  "copyright page",
+  "dedication",
+  "epigraph",
+  "title page",
+  "half title",
+  "inside front cover",
+  "front matter",
+  "also by .*",
+  "other books .*",
+  "books by .*",
+  "contents",
+  "table of contents",
+  "brief contents",
+  "contents in detail",
+  "brief table of contents.*",
+  "revision history.*",
+  "colophon",
   // EN: foreword/preface and the publisher-boilerplate preface sections
-  "foreword(?: (?:to|by) .*)?", "preface(?: to .*)?", "author['’]?s note", "a note .*", "welcome",
-  "acknowledg(?:e)?ments?", "about the authors?", "about the (?:technical )?reviewers?",
-  "about the contributors?", "contributors", "about this book", "about the cover.*",
-  "who (?:this book is for|should read this book).*", "what you will learn",
-  "how to (?:read|use) this book", "how this book is organized.*", "conventions(?: used)?(?: in this book)?",
-  "using code examples", "o['’]reilly (?:online learning|safari)", "safari.*", "how to contact us",
-  "errata", "submitting errata", "get in touch", "download the example code files?",
-  "why i wrote this book", "liveBook discussion forum", "author online", "early praise.*",
-  "who is this book for\\??", "what['’]s in (?:this|the) book\\??", "a note about the code", "online resources",
+  "foreword(?: (?:to|by) .*)?",
+  "preface(?: to .*)?",
+  "author['’]?s note",
+  "a note .*",
+  "welcome",
+  "acknowledg(?:e)?ments?",
+  "about the authors?",
+  "about the (?:technical )?reviewers?",
+  "about the contributors?",
+  "contributors",
+  "about this book",
+  "about the cover.*",
+  "who (?:this book is for|should read this book).*",
+  "what you will learn",
+  "how to (?:read|use) this book",
+  "how this book is organized.*",
+  "conventions(?: used)?(?: in this book)?",
+  "using code examples",
+  "o['’]reilly (?:online learning|safari)",
+  "safari.*",
+  "how to contact us",
+  "errata",
+  "submitting errata",
+  "get in touch",
+  "download the example code files?",
+  "why i wrote this book",
+  "liveBook discussion forum",
+  "author online",
+  "early praise.*",
+  "who is this book for\\??",
+  "what['’]s in (?:this|the) book\\??",
+  "a note about the code",
+  "online resources",
   // EN: Packt/BPB preface boilerplate
-  "why subscribe\\??", "packt\\.com", "(?:www\\.)?packtpub\\.com", "packt is searching for authors like you", "credits",
-  "customer feedback", "customer support", "reader feedback", "what you need for this book",
-  "what this book covers", "(?:to get|getting) the most out of this book", "downloading the code", "download(?:ing)? the (?:example code(?: files)?|colou?r images)",
-  "code bundle.*", "colou?red images", "piracy", "questions", "reviews", "share your thoughts", "acknowledgement",
+  "why subscribe\\??",
+  "packt\\.com",
+  "(?:www\\.)?packtpub\\.com",
+  "packt is searching for authors like you",
+  "credits",
+  "customer feedback",
+  "customer support",
+  "reader feedback",
+  "what you need for this book",
+  "what this book covers",
+  "(?:to get|getting) the most out of this book",
+  "downloading the code",
+  "download(?:ing)? the (?:example code(?: files)?|colou?r images)",
+  "code bundle.*",
+  "colou?red images",
+  "piracy",
+  "questions",
+  "reviews",
+  "share your thoughts",
+  "acknowledgement",
   // RU/UK
-  "предисловие(?: .*)?", "от автора", "от издательства", "об автор(?:е|ах)", "о книге", "об этой книге",
-  "оглавление", "содержание", "краткое содержание", "благодарности", "посвящение", "отзывы.*",
-  "для кого эта книга", "условные обозначения", "о научном редакторе", "о рецензент(?:е|ах)",
-  "передмова", "зміст", "подяки", "про автора", "про авторів", "про книгу",
+  "предисловие(?: .*)?",
+  "от автора",
+  "от издательства",
+  "об автор(?:е|ах)",
+  "о книге",
+  "об этой книге",
+  "оглавление",
+  "содержание",
+  "краткое содержание",
+  "благодарности",
+  "посвящение",
+  "отзывы.*",
+  "для кого эта книга",
+  "условные обозначения",
+  "о научном редакторе",
+  "о рецензент(?:е|ах)",
+  "передмова",
+  "зміст",
+  "подяки",
+  "про автора",
+  "про авторів",
+  "про книгу",
 ];
 const FRONT_MATTER_TITLE = new RegExp(`^(?:${FRONT_MATTER_TITLES.join("|")})$`, "iu");
 
@@ -108,7 +183,10 @@ function scanHeadings(text: string): Heading[] {
 export function anchorNumber(title: string): number | null {
   // "Part I" / "Part 1: Introduction" — chapterNumber knows Часть/Частина but not "Part".
   const part = /^(?:part|часть|частина)\s+(\d{1,2}|[ivx]{1,4})\b/i.exec(title);
-  if (part) return /^\d/.test(part[1]!) ? Number(part[1]) : ({ i: 1, ii: 2, iii: 3, iv: 4 } as Record<string, number>)[part[1]!.toLowerCase()] ?? null;
+  if (part)
+    return /^\d/.test(part[1]!)
+      ? Number(part[1])
+      : (({ i: 1, ii: 2, iii: 3, iv: 4 } as Record<string, number>)[part[1]!.toLowerCase()] ?? null);
   const n = chapterNumber(title);
   if (n !== null) return n;
   if (/^\d{1,2}\.\d/.test(title)) return null;
@@ -151,7 +229,9 @@ export function leadingFrontMatter(text: string): LeadingFrontMatter {
   // list item ("**1.** **Transaction Support**") does not.
   if (best && gap(best) >= FM_SHORT_SECTION_CHARS) {
     // Part I precedes Chapter 1: start the body at the part heading.
-    const part = hs.filter((h) => h.start < best.start && /^(?:part|часть|частина)\b/i.test(h.title) && anchorNumber(h.title) === 1).pop();
+    const part = hs
+      .filter((h) => h.start < best.start && /^(?:part|часть|частина)\b/i.test(h.title) && anchorNumber(h.title) === 1)
+      .pop();
     const anchor = part && best.start - part.start < FM_SHORT_SECTION_CHARS ? part : best;
     if (anchor.start > 0) return { end: anchor.start, rule: "anchor", heading: anchor.title };
   }

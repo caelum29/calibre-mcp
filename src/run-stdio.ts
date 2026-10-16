@@ -56,14 +56,12 @@ async function main(): Promise<void> {
   await server.connect(transport);
   // Exit with the client: stdin EOF/close or SIGINT/SIGTERM kills any running calibredb /
   // ebook-convert process groups, closes the server and exits 0 (idempotent).
-  installShutdownHandlers(
-    createShutdown({ close: () => server.close(), exit: (code) => process.exit(code) }),
-  );
+  installShutdownHandlers(createShutdown({ close: () => server.close(), exit: (code) => process.exit(code) }));
   // Banner to stderr only — stdout carries the JSON-RPC stream.
   log.info("calibre-mcp listening on stdio");
 }
 
 main().catch((err) => {
-  log.error("fatal", err instanceof Error ? err.stack ?? err.message : err);
+  log.error("fatal", err instanceof Error ? (err.stack ?? err.message) : err);
   process.exit(1);
 });

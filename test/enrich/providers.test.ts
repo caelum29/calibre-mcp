@@ -40,7 +40,9 @@ describe("createOpenLibrary", () => {
   });
 
   it("returns [] on a network failure (degrades to the next provider)", async () => {
-    const fj = fakeFetch(() => { throw new Error("HTTP 500"); });
+    const fj = fakeFetch(() => {
+      throw new Error("HTTP 500");
+    });
     expect(await createOpenLibrary(fj).lookupByIsbn("9780306406157")).toEqual([]);
   });
 });
@@ -48,19 +50,21 @@ describe("createOpenLibrary", () => {
 describe("createGoogleBooks", () => {
   it("maps an ISBN lookup, joining subtitle and preferring ISBN-13", async () => {
     const fj = fakeFetch(() => ({
-      items: [{
-        volumeInfo: {
-          title: "Programming Rust",
-          subtitle: "Fast, Safe Systems Development",
-          authors: ["Jim Blandy"],
-          publisher: "O'Reilly",
-          publishedDate: "2021",
-          industryIdentifiers: [
-            { type: "ISBN_10", identifier: "1492052590" },
-            { type: "ISBN_13", identifier: "9781492052593" },
-          ],
+      items: [
+        {
+          volumeInfo: {
+            title: "Programming Rust",
+            subtitle: "Fast, Safe Systems Development",
+            authors: ["Jim Blandy"],
+            publisher: "O'Reilly",
+            publishedDate: "2021",
+            industryIdentifiers: [
+              { type: "ISBN_10", identifier: "1492052590" },
+              { type: "ISBN_13", identifier: "9781492052593" },
+            ],
+          },
         },
-      }],
+      ],
     }));
     const [hit] = await createGoogleBooks(fj).lookupByIsbn("9781492052593");
     expect(hit).toMatchObject({

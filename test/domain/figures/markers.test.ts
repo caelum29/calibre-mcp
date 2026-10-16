@@ -67,7 +67,11 @@ describe("injectFigureMarkers — placement", () => {
   });
 
   it("reports unplaced instead of guessing when nothing matches (epub has no pages)", () => {
-    const out = injectFigureMarkers("plain text, no captions", inv([{ label: "1.1", caption: "Ghost figure" }]), "epub");
+    const out = injectFigureMarkers(
+      "plain text, no captions",
+      inv([{ label: "1.1", caption: "Ghost figure" }]),
+      "epub",
+    );
     expect(out.unplaced).toBe(1);
     expect(out.text).toBe("plain text, no captions");
   });
@@ -80,7 +84,11 @@ describe("injectFigureMarkers — placement", () => {
 
   it("matches an emphasis-wrapped markdown caption (ebook-convert epub output)", () => {
     const text = "chapter text\n*Figure 12.1 – Logical architecture of the system*\nmore\n";
-    const out = injectFigureMarkers(text, inv([{ label: "12.1", caption: "Logical architecture of the system" }]), "epub");
+    const out = injectFigureMarkers(
+      text,
+      inv([{ label: "12.1", caption: "Logical architecture of the system" }]),
+      "epub",
+    );
     expect(out.markers).toHaveLength(1);
     expect(out.text).toContain('[image #0: "Figure 12.1 – Logical architecture of the system"]\n*Figure 12.1');
   });
@@ -150,7 +158,11 @@ describe("injectFigureMarkers — escaped caption text (book 929)", () => {
   // HTML text. A paren inside the first 30 chars used to break the head containment check.
   it("matches a caption whose parens are backslash-escaped in the extracted text", () => {
     const text = "Intro\n###### *Figure 7-6. *HNSW index structure \\(conceptual\\)\nbody\n";
-    const out = injectFigureMarkers(text, inv([{ label: "7-6", caption: "HNSW index structure (conceptual)" }]), "epub");
+    const out = injectFigureMarkers(
+      text,
+      inv([{ label: "7-6", caption: "HNSW index structure (conceptual)" }]),
+      "epub",
+    );
     expect(out.unplaced).toBe(0);
     expect(out.text).toContain("[image #0:");
   });
@@ -177,13 +189,21 @@ describe("injectFigureMarkers — separator-less heading caption (newer Manning 
   // <h5>Figure 1.1 Text</h5> → `##### Figure 1.1 Text`: no `.`/`:`, a single space.
   it("should place a plain heading caption", () => {
     const text = "prose\n##### Figure 1.1 DB-Engines ranking showing Postgres trending up in popularity\nmore\n";
-    const out = injectFigureMarkers(text, inv([{ label: "1.1", caption: "DB-Engines ranking showing Postgres trending up in popularity" }]), "epub");
+    const out = injectFigureMarkers(
+      text,
+      inv([{ label: "1.1", caption: "DB-Engines ranking showing Postgres trending up in popularity" }]),
+      "epub",
+    );
     expect(out.markers).toHaveLength(1);
   });
 
   it("should place a fully bold heading caption", () => {
     const text = "prose\n##### **Figure 1.1 A hierarchy of classes and subclasses.**\nmore\n";
-    const out = injectFigureMarkers(text, inv([{ label: "1.1", caption: "A hierarchy of classes and subclasses." }]), "epub");
+    const out = injectFigureMarkers(
+      text,
+      inv([{ label: "1.1", caption: "A hierarchy of classes and subclasses." }]),
+      "epub",
+    );
     expect(out.markers[0]?.caption).toBe("Figure 1.1 A hierarchy of classes and subclasses.");
   });
 
@@ -197,7 +217,11 @@ describe("injectFigureMarkers — separator-less heading caption (newer Manning 
 describe("injectFigureMarkers — markdown debris inside captions (#101)", () => {
   it("should treat an escaped underscore as literal text, not an emphasis edge", () => {
     const text = "*Figure 14-1: The HTML documentation for the add\\_one function*\n";
-    const out = injectFigureMarkers(text, inv([{ label: "14-1", caption: "The HTML documentation for the add_one function" }]), "epub");
+    const out = injectFigureMarkers(
+      text,
+      inv([{ label: "14-1", caption: "The HTML documentation for the add_one function" }]),
+      "epub",
+    );
     expect(out.markers).toHaveLength(1);
   });
 
@@ -213,13 +237,21 @@ describe("injectFigureMarkers — markdown debris inside captions (#101)", () =>
 
   it("should match a caption whose <br/>-joined credit sits on the next txt line", () => {
     const text = "***Figure 7.3:** Postman screenshot  \nSource: www.postman.com*\n";
-    const out = injectFigureMarkers(text, inv([{ label: "7.3", caption: "Postman screenshotSource: www.postman.com" }]), "epub");
+    const out = injectFigureMarkers(
+      text,
+      inv([{ label: "7.3", caption: "Postman screenshotSource: www.postman.com" }]),
+      "epub",
+    );
     expect(out.markers).toHaveLength(1);
   });
 
   it("should not prefix-match a too-short line caption", () => {
     const text = "Figure 7.3: Postman\n";
-    const out = injectFigureMarkers(text, inv([{ label: "7.3", caption: "Postman screenshotSource: www.postman.com" }]), "epub");
+    const out = injectFigureMarkers(
+      text,
+      inv([{ label: "7.3", caption: "Postman screenshotSource: www.postman.com" }]),
+      "epub",
+    );
     expect(out.unplaced).toBe(1);
   });
 });
@@ -227,7 +259,11 @@ describe("injectFigureMarkers — markdown debris inside captions (#101)", () =>
 describe("injectFigureMarkers — inline code and bold-paragraph captions (#101)", () => {
   it("should not read underscores inside inline code as emphasis", () => {
     const text = "###### Figure 3-15. Metadata of the `managed_new_default` table\n";
-    const out = injectFigureMarkers(text, inv([{ label: "3-15", caption: "Metadata of the managed_new_default table" }]), "epub");
+    const out = injectFigureMarkers(
+      text,
+      inv([{ label: "3-15", caption: "Metadata of the managed_new_default table" }]),
+      "epub",
+    );
     expect(out.markers).toHaveLength(1);
   });
 
@@ -267,7 +303,11 @@ describe("bare-label captions (#107)", () => {
 
   it("should_not_anchor_on_a_label_only_line_followed_by_unrelated_text", () => {
     const text = "prose\nFigure 12-32.\nsys_socket\nlater\nFigure 12-32: Code flow diagram for sys_socket.\n";
-    const out = injectFigureMarkers(text, inv([{ label: "12-32", caption: "Code flow diagram for sys_socket." }]), "epub");
+    const out = injectFigureMarkers(
+      text,
+      inv([{ label: "12-32", caption: "Code flow diagram for sys_socket." }]),
+      "epub",
+    );
     expect(out.markers[0]?.charOffset).toBe(text.indexOf("Figure 12-32:"));
   });
 });

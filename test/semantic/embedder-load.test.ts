@@ -12,9 +12,7 @@ const cfg = loadConfig({ CALIBRE_MCP_INDEX_DIR: "/tmp/unused-index" } as NodeJS.
 
 /** ERR_MODULE_NOT_FOUND as Node raises it for a missing optional dep. */
 function moduleNotFound(): NodeJS.ErrnoException {
-  const err: NodeJS.ErrnoException = new Error(
-    "Cannot find package '@huggingface/transformers'",
-  );
+  const err: NodeJS.ErrnoException = new Error("Cannot find package '@huggingface/transformers'");
   err.code = "ERR_MODULE_NOT_FOUND";
   return err;
 }
@@ -24,8 +22,7 @@ function fakeTransformersModule() {
   const pipe = Object.assign(async () => ({ tolist: () => [] }), {
     tokenizer: { encode: (text: string) => text.split(" ") },
   });
-  return { env: {}, pipeline: async () => pipe } as unknown as
-    typeof import("@huggingface/transformers");
+  return { env: {}, pipeline: async () => pipe } as unknown as typeof import("@huggingface/transformers");
 }
 
 describe("TransformersEmbedder load failures", () => {

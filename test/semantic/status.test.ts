@@ -94,11 +94,7 @@ describe("computeSemanticStatus", () => {
   });
 
   it("dep missing text line steers to keyword search + restart-after-install", () => {
-    const s = computeSemanticStatus(
-      { config: memCfg, embedder: embedder(), index: memoryStore() },
-      LIB,
-      depDir(false),
-    );
+    const s = computeSemanticStatus({ config: memCfg, embedder: embedder(), index: memoryStore() }, LIB, depDir(false));
     const line = formatSemanticStatusLine(s);
     expect(line).toContain("UNAVAILABLE");
     expect(line).toContain("keyword search still works");
@@ -192,11 +188,7 @@ describe("computeSemanticStatus", () => {
   });
 
   it("absent loadState() accessor reads as not-attempted (available when dep present)", () => {
-    const s = computeSemanticStatus(
-      { config: memCfg, embedder: embedder(), index: memoryStore() },
-      LIB,
-      depDir(true),
-    );
+    const s = computeSemanticStatus({ config: memCfg, embedder: embedder(), index: memoryStore() }, LIB, depDir(true));
     expect(s.loaded).toBe("not-attempted");
     expect(s.available).toBe(true);
   });
@@ -205,11 +197,19 @@ describe("computeSemanticStatus", () => {
     const dir = mkdtempSync(path.join(tmpdir(), "calibre-idx-"));
     tmpDirs.push(dir);
     const cfg = loadConfig({ CALIBRE_MCP_INDEX_DIR: dir } as NodeJS.ProcessEnv);
-    const cold = computeSemanticStatus({ config: cfg, embedder: embedder(), index: memoryStore() }, undefined, depDir(true));
+    const cold = computeSemanticStatus(
+      { config: cfg, embedder: embedder(), index: memoryStore() },
+      undefined,
+      depDir(true),
+    );
     expect(cold.modelCached).toBe(false);
 
     mkdirSync(path.join(dir, "models", MODEL_ID), { recursive: true });
-    const warm = computeSemanticStatus({ config: cfg, embedder: embedder(), index: memoryStore() }, undefined, depDir(true));
+    const warm = computeSemanticStatus(
+      { config: cfg, embedder: embedder(), index: memoryStore() },
+      undefined,
+      depDir(true),
+    );
     expect(warm.modelCached).toBe(true);
   });
 });
@@ -234,7 +234,12 @@ describe("computeSemanticStatus — index provenance (#136)", () => {
   it("reports indexVersion/model/dim read from the index meta", () => {
     const { store } = fileStore();
     const s = computeSemanticStatus({ config: memCfg, embedder: embedder("loaded"), index: store }, LIB, depDir(true));
-    expect(s).toMatchObject({ indexVersion: INDEX_VERSION, serverIndexVersion: INDEX_VERSION, model: MODEL_ID, dim: EMBED_DIM });
+    expect(s).toMatchObject({
+      indexVersion: INDEX_VERSION,
+      serverIndexVersion: INDEX_VERSION,
+      model: MODEL_ID,
+      dim: EMBED_DIM,
+    });
     expect(s.indexStale).toBeUndefined();
     expect(s.available).toBe(true);
     store.close();

@@ -343,7 +343,11 @@ export class FigureInventoryService {
     const last = pages[pages.length - 1] as number;
     const tmpHtml = `${tmpTxt}.bbox.html`;
     try {
-      await this.#run(pdftotext, ["-q", "-enc", "UTF-8", "-bbox-layout", "-f", String(first), "-l", String(last), src, tmpHtml], timeout);
+      await this.#run(
+        pdftotext,
+        ["-q", "-enc", "UTF-8", "-bbox-layout", "-f", String(first), "-l", String(last), src, tmpHtml],
+        timeout,
+      );
       return parseBboxLayout(await readFile(tmpHtml, "utf8"), new Set(pages), first);
     } catch {
       return undefined; // #run logged it

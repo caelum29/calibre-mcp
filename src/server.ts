@@ -5,11 +5,7 @@
 import { z } from "zod";
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import {
-  registerAppTool,
-  registerAppResource,
-  RESOURCE_MIME_TYPE,
-} from "@modelcontextprotocol/ext-apps/server";
+import { registerAppTool, registerAppResource, RESOURCE_MIME_TYPE } from "@modelcontextprotocol/ext-apps/server";
 import { loadConfig, type Config } from "./config.js";
 import { CalibreClient } from "./calibre/client.js";
 import { ContentServerClient } from "./calibre/content-server.js";
@@ -276,15 +272,9 @@ function registerUiResources(server: McpServer, config: Config): void {
     },
   ];
   for (const wdg of widgets) {
-    registerAppResource(
-      server,
-      wdg.name,
-      wdg.uri,
-      { description: wdg.description, _meta: cspMeta },
-      async () => ({
-        contents: [{ uri: wdg.uri, mimeType: RESOURCE_MIME_TYPE, text: wdg.html, _meta: cspMeta }],
-        _meta: cspMeta,
-      }),
-    );
+    registerAppResource(server, wdg.name, wdg.uri, { description: wdg.description, _meta: cspMeta }, async () => ({
+      contents: [{ uri: wdg.uri, mimeType: RESOURCE_MIME_TYPE, text: wdg.html, _meta: cspMeta }],
+      _meta: cspMeta,
+    }));
   }
 }

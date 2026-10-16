@@ -34,10 +34,8 @@ export interface LayoutPage {
 
 const PAGE_RE = /<page\s[^>]*>([\s\S]*?)<\/page>/g;
 const BLOCK_RE = /<block\s[^>]*>([\s\S]*?)<\/block>/g;
-const LINE_RE =
-  /<line\s+xMin="([\d.-]+)"\s+yMin="([\d.-]+)"\s+xMax="([\d.-]+)"\s+yMax="([\d.-]+)">([\s\S]*?)<\/line>/g;
-const WORD_RE =
-  /<word\s+xMin="([\d.-]+)"\s+yMin="([\d.-]+)"\s+xMax="([\d.-]+)"\s+yMax="([\d.-]+)">([^<]*)<\/word>/g;
+const LINE_RE = /<line\s+xMin="([\d.-]+)"\s+yMin="([\d.-]+)"\s+xMax="([\d.-]+)"\s+yMax="([\d.-]+)">([\s\S]*?)<\/line>/g;
+const WORD_RE = /<word\s+xMin="([\d.-]+)"\s+yMin="([\d.-]+)"\s+xMax="([\d.-]+)"\s+yMax="([\d.-]+)">([^<]*)<\/word>/g;
 
 /**
  * Parse `pdftotext -bbox-layout` output into lines, for the wanted 1-based pages only
@@ -56,7 +54,13 @@ export function parseBboxLayout(html: string, wanted: ReadonlySet<number>, first
       for (const lm of (bm[1] ?? "").matchAll(LINE_RE)) {
         const words: BboxWord[] = [];
         for (const wm of (lm[5] ?? "").matchAll(WORD_RE)) {
-          words.push({ x0: Number(wm[1]), y0: Number(wm[2]), x1: Number(wm[3]), y1: Number(wm[4]), text: decodeXml(wm[5] ?? "") });
+          words.push({
+            x0: Number(wm[1]),
+            y0: Number(wm[2]),
+            x1: Number(wm[3]),
+            y1: Number(wm[4]),
+            text: decodeXml(wm[5] ?? ""),
+          });
         }
         if (words.length === 0) continue;
         lines.push({
@@ -167,7 +171,10 @@ function blockBelowText(page: LayoutPage, anchor: LayoutLine): LayoutLine[] | nu
   // which label edges the line is flush with: bit 1 = left, bit 2 = right, 0 = neither
   const flush = (line: LayoutLine): number => {
     if (line.x1 - line.x0 > maxWidth || !similarSize(line, anchor)) return 0;
-    return (Math.abs(line.x0 - anchor.x0) <= ALIGN_TOLERANCE ? 1 : 0) | (Math.abs(line.x1 - anchor.x1) <= ALIGN_TOLERANCE ? 2 : 0);
+    return (
+      (Math.abs(line.x0 - anchor.x0) <= ALIGN_TOLERANCE ? 1 : 0) |
+      (Math.abs(line.x1 - anchor.x1) <= ALIGN_TOLERANCE ? 2 : 0)
+    );
   };
   // the nearest flush line starting right under the label, in its block or the next one
   let first: LayoutLine | null = null;
@@ -200,7 +207,13 @@ function wideLineBelow(page: LayoutPage, anchor: LayoutLine): LayoutLine[] | nul
   const h = height(anchor);
   const first = page.lines.find((line) => {
     const gap = line.y0 - anchor.y1;
-    return line !== anchor && gap >= -1 && gap <= h && Math.abs(line.x0 - anchor.x0) <= ALIGN_TOLERANCE && similarSize(line, anchor);
+    return (
+      line !== anchor &&
+      gap >= -1 &&
+      gap <= h &&
+      Math.abs(line.x0 - anchor.x0) <= ALIGN_TOLERANCE &&
+      similarSize(line, anchor)
+    );
   });
   if (!first) return null;
   const block = page.lines.filter((l) => l.block === first.block);

@@ -73,9 +73,7 @@ describe("SqliteIndexStore", () => {
 
   it("isBookIndexed honors lastModified", () => {
     const s = store();
-    s.replaceBook(LIB, { bookId: 7, title: "T", authors: [], lastModified: "2026-01-01" }, [
-      chunk("x", 0),
-    ]);
+    s.replaceBook(LIB, { bookId: 7, title: "T", authors: [], lastModified: "2026-01-01" }, [chunk("x", 0)]);
     expect(s.isBookIndexed(LIB, 7)).toBe(true);
     expect(s.isBookIndexed(LIB, 7, "2026-01-01")).toBe(true);
     expect(s.isBookIndexed(LIB, 7, "2026-02-02")).toBe(false); // stale → needs re-index
@@ -171,12 +169,8 @@ describe("SqliteIndexStore", () => {
 
     it("a prose (body) match outranks a title-only match — meta helps, never dominates", () => {
       const s = store();
-      s.replaceBook(LIB, { bookId: 1, title: "Rust Book", authors: [] }, [
-        chunk("ownership and borrowing rules", 0),
-      ]);
-      s.replaceBook(LIB, { bookId: 2, title: "Ownership Guide", authors: [] }, [
-        chunk("unrelated cooking recipes", 1),
-      ]);
+      s.replaceBook(LIB, { bookId: 1, title: "Rust Book", authors: [] }, [chunk("ownership and borrowing rules", 0)]);
+      s.replaceBook(LIB, { bookId: 2, title: "Ownership Guide", authors: [] }, [chunk("unrelated cooking recipes", 1)]);
       const hits = s.searchLibraryFts(LIB, stemText("ownership"), 5);
       expect(hits.map((h) => h.bookId)).toEqual([1, 2]); // body match first, meta-only second
       s.close();
@@ -368,13 +362,18 @@ describe("figures (D-018 Phase B / #86)", () => {
 
   it("round-trips figures and ranks captions by cosine, library-wide and per book", () => {
     const s = store();
-    s.replaceBook(LIB, { bookId: 1, title: "SQL Book", authors: ["A"] }, [chunk("btree chapter", 2)], [
-      fig(0, "A B-tree node layout", 0, 5),
-      fig(1, "The query planner's chosen plan", 1, 40),
-    ]);
-    s.replaceBook(LIB, { bookId: 2, title: "Bee Book", authors: ["B"] }, [chunk("hive chapter", 3)], [
-      fig(0, "Frames inside a hive body", 1, 9, { source: "raster", width: 100, height: 50 }),
-    ]);
+    s.replaceBook(
+      LIB,
+      { bookId: 1, title: "SQL Book", authors: ["A"] },
+      [chunk("btree chapter", 2)],
+      [fig(0, "A B-tree node layout", 0, 5), fig(1, "The query planner's chosen plan", 1, 40)],
+    );
+    s.replaceBook(
+      LIB,
+      { bookId: 2, title: "Bee Book", authors: ["B"] },
+      [chunk("hive chapter", 3)],
+      [fig(0, "Frames inside a hive body", 1, 9, { source: "raster", width: 100, height: 50 })],
+    );
 
     const lib = s.searchFigures(LIB, axis(0), 5);
     expect(lib[0]!.caption).toBe("A B-tree node layout");
@@ -393,12 +392,18 @@ describe("figures (D-018 Phase B / #86)", () => {
 
   it("keyword FTS over captions matches stemmed words and respects the book filter", () => {
     const s = store();
-    s.replaceBook(LIB, { bookId: 1, title: "SQL", authors: [] }, [chunk("body", 0)], [
-      fig(0, "A B-tree node: sorted keys with child pointers", 0, 0),
-    ]);
-    s.replaceBook(LIB, { bookId: 2, title: "Bees", authors: [] }, [chunk("body", 1)], [
-      fig(0, "Frames hanging inside the hive", 1, 0),
-    ]);
+    s.replaceBook(
+      LIB,
+      { bookId: 1, title: "SQL", authors: [] },
+      [chunk("body", 0)],
+      [fig(0, "A B-tree node: sorted keys with child pointers", 0, 0)],
+    );
+    s.replaceBook(
+      LIB,
+      { bookId: 2, title: "Bees", authors: [] },
+      [chunk("body", 1)],
+      [fig(0, "Frames hanging inside the hive", 1, 0)],
+    );
     const hits = s.searchFiguresFts(LIB, stemText("child pointers"), 5);
     expect(hits).toHaveLength(1);
     expect(hits[0]!.bookId).toBe(1);
@@ -444,9 +449,14 @@ describe("figures (D-018 Phase B / #86)", () => {
 
   it("figureCount counts per library and per book; vectorless figures stay FTS-searchable only", () => {
     const s = store();
-    s.replaceBook(LIB, { bookId: 1, title: "T", authors: [] }, [chunk("body", 0)], [
-      fig(0, "keyword only caption", undefined, 0), // no vector — keyword-only build
-    ]);
+    s.replaceBook(
+      LIB,
+      { bookId: 1, title: "T", authors: [] },
+      [chunk("body", 0)],
+      [
+        fig(0, "keyword only caption", undefined, 0), // no vector — keyword-only build
+      ],
+    );
     expect(s.figureCount(LIB)).toBe(1);
     expect(s.figureCount(LIB, 1)).toBe(1);
     expect(s.figureCount(LIB, 2)).toBe(0);

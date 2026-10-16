@@ -140,9 +140,7 @@ export function select(verdicts: WeightVerdict[], baselineWeight: number): Selec
   const passing = candidates.filter((v) => v.pass);
   if (passing.length > 0) {
     // max liveOn RU nDCG; ties → smaller weight (least departure from plain RRF).
-    const best = [...passing].sort(
-      (a, b) => b.numbers.liveOn.ru - a.numbers.liveOn.ru || a.weight - b.weight,
-    )[0]!;
+    const best = [...passing].sort((a, b) => b.numbers.liveOn.ru - a.numbers.liveOn.ru || a.weight - b.weight)[0]!;
     return { kind: "ship", weight: best.weight };
   }
   const ruOnly = candidates.filter((v) => v.ruPass && !v.enPass);
@@ -157,7 +155,9 @@ export function select(verdicts: WeightVerdict[], baselineWeight: number): Selec
 
 /** Latest report in `dir` whose filename ends with `suffix` (filenames start with the ISO date). */
 function findReport(dir: string, suffix: string): EvalReport {
-  const hits = readdirSync(dir).filter((f) => f.endsWith(suffix)).sort();
+  const hits = readdirSync(dir)
+    .filter((f) => f.endsWith(suffix))
+    .sort();
   const file = hits.at(-1);
   if (!file) throw new Error(`no report *${suffix} in ${dir} — run rrf-sweep.sh first`);
   return JSON.parse(readFileSync(path.join(dir, file), "utf8")) as EvalReport;
@@ -199,7 +199,9 @@ function main(): void {
   });
 
   const out: string[] = [];
-  out.push("| VECTOR_RRF_WEIGHT | liveOn RU / xl | liveOn exact-id | fixtureOff RU / xl | fixtureOff exact-id / fmt | fixtureOn RU / xl | fixtureOn exact-id / fmt | zero-broken | RU gate | EN gate |");
+  out.push(
+    "| VECTOR_RRF_WEIGHT | liveOn RU / xl | liveOn exact-id | fixtureOff RU / xl | fixtureOff exact-id / fmt | fixtureOn RU / xl | fixtureOn exact-id / fmt | zero-broken | RU gate | EN gate |",
+  );
   out.push("|---|---|---|---|---|---|---|---|---|---|");
   const n = (x: number | undefined) => (x === undefined ? "—" : x.toFixed(4));
   const pf = (b: boolean) => (b ? "PASS" : "FAIL");

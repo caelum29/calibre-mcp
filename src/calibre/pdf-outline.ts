@@ -25,7 +25,11 @@ export function pdftohtmlOutlineArgs(src: string): string[] {
 }
 
 /** Read a PDF's outline entries. Never throws: a missing binary, timeout or junk output → []. */
-export async function readPdfOutline(bin: string, src: string, timeoutMs = OUTLINE_TIMEOUT_MS): Promise<OutlineEntry[]> {
+export async function readPdfOutline(
+  bin: string,
+  src: string,
+  timeoutMs = OUTLINE_TIMEOUT_MS,
+): Promise<OutlineEntry[]> {
   try {
     const { code, stdout } = await spawnCollect(bin, pdftohtmlOutlineArgs(src), {
       timeoutMs,

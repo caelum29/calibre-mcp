@@ -104,8 +104,7 @@ function budgetEnd(
     // Next probe: project the budget through the measured density, then clamp strictly
     // inside the open bracket so the interval shrinks every iteration (no repeats).
     const density = units > 0 ? (guess - start) / units : hint;
-    const next =
-      probes < INTERPOLATION_PROBES ? start + Math.round(budget * density) : lo + ((hi - lo) >> 1);
+    const next = probes < INTERPOLATION_PROBES ? start + Math.round(budget * density) : lo + ((hi - lo) >> 1);
     guess = Math.min(Math.max(next, lo + 1), hi - 1);
   }
 
@@ -133,10 +132,7 @@ const YIELD_EVERY_MS = 20;
  * build (#99) that froze every other book's I/O, and their 10 s request timers then fired
  * on responses that had already arrived — spurious "Content Server request timed out".
  */
-export async function chunkForEmbeddingAsync(
-  text: string,
-  opts: ChunkForEmbeddingOptions = {},
-): Promise<EmbedChunk[]> {
+export async function chunkForEmbeddingAsync(text: string, opts: ChunkForEmbeddingOptions = {}): Promise<EmbedChunk[]> {
   const chunks: EmbedChunk[] = [];
   let slice = Date.now();
   for (const c of chunkSteps(text, opts)) {

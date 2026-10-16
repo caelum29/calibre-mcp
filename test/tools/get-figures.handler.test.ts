@@ -48,8 +48,7 @@ function deps(formats: string[], inv: FigureInventory = inventory): ToolDeps {
   };
 }
 
-const args = (over: Record<string, unknown> = {}) =>
-  z.object(getFiguresTool.inputSchema).parse({ id: 929, ...over });
+const args = (over: Record<string, unknown> = {}) => z.object(getFiguresTool.inputSchema).parse({ id: 929, ...over });
 
 const textOf = (r: { content: Array<{ type: string }> }) => (r.content[0] as unknown as { text: string }).text;
 

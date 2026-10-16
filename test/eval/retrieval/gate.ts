@@ -9,9 +9,7 @@ import type { EvalReport, Mode, PerQueryRow } from "./harness.js";
 /** Shape of thresholds.json (extra $comment keys tolerated). */
 export interface Thresholds {
   baselineReport: string;
-  nonRegression: Partial<
-    Record<Mode, { maxBrokenHit1Queries: number; negativesFlagged?: number }>
-  >;
+  nonRegression: Partial<Record<Mode, { maxBrokenHit1Queries: number; negativesFlagged?: number }>>;
   figureCaption: {
     queryCount: { min: number; max: number };
     gatedModes: Mode[];
@@ -135,9 +133,7 @@ export function evaluateGate(current: EvalReport, baseline: EvalReport, t: Thres
   checks.push({
     name: "figure-negative: query count",
     active: true,
-    pass:
-      figNegs.length >= t.figureNegative.queryCount.min &&
-      figNegs.length <= t.figureNegative.queryCount.max,
+    pass: figNegs.length >= t.figureNegative.queryCount.min && figNegs.length <= t.figureNegative.queryCount.max,
     detail: `${figNegs.length} queries (want ${t.figureNegative.queryCount.min}-${t.figureNegative.queryCount.max})`,
   });
   const negActive = t.figureNegative.active === true;

@@ -8,9 +8,7 @@ import { inThreadEncoder, type EncodeJob, type EncodeResult } from "./book-encod
 import { TransformersEmbedder } from "./embedder.js";
 
 export type EncodeRequest = { id: number; job: EncodeJob } | { id: number; warmup: true };
-export type EncodeReply =
-  | { id: number; ok: true; result?: EncodeResult }
-  | { id: number; ok: false; message: string };
+export type EncodeReply = { id: number; ok: true; result?: EncodeResult } | { id: number; ok: false; message: string };
 
 const port = parentPort;
 if (!port) throw new Error("encode-worker must run as a worker thread");
@@ -23,7 +21,13 @@ port.on("message", (req: EncodeRequest) => {
     // Hand the vector buffers over instead of copying them (~1.5 KB per chunk adds up).
     const transfer =
       reply.ok && reply.result
-        ? [...new Set([...(reply.result.vectors ?? []), ...(reply.result.captionVectors ?? [])].map((v) => v.buffer as ArrayBuffer))]
+        ? [
+            ...new Set(
+              [...(reply.result.vectors ?? []), ...(reply.result.captionVectors ?? [])].map(
+                (v) => v.buffer as ArrayBuffer,
+              ),
+            ),
+          ]
         : [];
     port.postMessage(reply, transfer);
   });

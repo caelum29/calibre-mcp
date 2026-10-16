@@ -29,7 +29,9 @@ export function compileUserRegex(pattern: string, defaultFlags = "i"): CompileRe
     const inline = m[1];
     for (const f of inline) {
       if (!SUPPORTED_INLINE_FLAGS.includes(f)) {
-        return { error: `unsupported inline flag "(?${inline})" — JS regex supports ${SUPPORTED_INLINE_FLAGS.split("").join(", ")}` };
+        return {
+          error: `unsupported inline flag "(?${inline})" — JS regex supports ${SUPPORTED_INLINE_FLAGS.split("").join(", ")}`,
+        };
       }
       flags.add(f);
     }

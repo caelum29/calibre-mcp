@@ -46,8 +46,7 @@ type Mode = "hybrid" | "vector" | "keyword";
 // positive; live tier decides enabling). Until then only the reranker floor signals confidence.
 const FIGURES_SEMANTIC_FLOOR: number | null = null;
 
-const FIGURES_FLOOR_NOTE =
-  "Figure-caption cosine floor not yet calibrated — lowConfidence reflects the reranker only.";
+const FIGURES_FLOOR_NOTE = "Figure-caption cosine floor not yet calibrated — lowConfidence reflects the reranker only.";
 
 /** Chars of the linked context chunk shown per figure hit (mirrors the store's snippet cap). */
 const CONTEXT_SNIPPET_CHARS = 320;
@@ -192,9 +191,7 @@ export const semanticSearchTool = defineTool({
         const numericId = await resolveNumericId(deps, effArgs.bookId, effArgs.library);
         if (numericId === undefined) return toolError(`No book with id/uuid ${effArgs.bookId}`);
         if (!deps.index.isBookIndexed(libraryId, numericId)) {
-          return toolError(
-            `Book ${numericId} is not indexed. Run calibre_build_index { bookId: ${numericId} } first.`,
-          );
+          return toolError(`Book ${numericId} is not indexed. Run calibre_build_index { bookId: ${numericId} } first.`);
         }
         if (effArgs.target === "figures") {
           return withIndexVersion(await figuresTarget(effArgs, deps, libraryId, numericId, sem, note), indexVersion);
@@ -217,7 +214,10 @@ export const semanticSearchTool = defineTool({
       note = joinNotes(note, ...honestyLines(fr.res, allow?.size));
 
       if (effArgs.target === "figures") {
-        return withIndexVersion(await figuresTarget(effArgs, deps, libraryId, undefined, sem, note, scope), indexVersion);
+        return withIndexVersion(
+          await figuresTarget(effArgs, deps, libraryId, undefined, sem, note, scope),
+          indexVersion,
+        );
       }
       return withIndexVersion(await libraryScope(effArgs, deps, libraryId, sem, note, scope), indexVersion);
     } catch (err) {
@@ -252,9 +252,7 @@ const UNSCOPED: FilterCtx = { fRes: { markers: [] } };
 function filterFields(scope: FilterCtx): { filter?: string; exclusionsApplied?: string[] } {
   return {
     ...(scope.fRes.bundle ? { filter: scope.fRes.bundle.name } : {}),
-    ...(scope.fRes.markers.length > 0
-      ? { exclusionsApplied: scope.fRes.markers.map((m) => m.name) }
-      : {}),
+    ...(scope.fRes.markers.length > 0 ? { exclusionsApplied: scope.fRes.markers.map((m) => m.name) } : {}),
   };
 }
 
@@ -306,9 +304,7 @@ function boardMeta(
       bookId: r.hit.bookId,
       title: r.hit.title,
       authors: r.hit.authors,
-      ...(r.cosine !== undefined || r.rerankScore !== undefined
-        ? { score: r.cosine ?? r.rerankScore }
-        : {}),
+      ...(r.cosine !== undefined || r.rerankScore !== undefined ? { score: r.cosine ?? r.rerankScore } : {}),
     })),
   };
   deps.boardCache?.set(payload);
@@ -386,7 +382,14 @@ async function libraryScope(
 }
 
 /** scope=book — rank passages within one book; emit fenced excerpts with char spans. */
-async function bookScope(args: Args, deps: ToolDeps, libraryId: string, bookId: number, sem: SemStatus, degradeNote?: string) {
+async function bookScope(
+  args: Args,
+  deps: ToolDeps,
+  libraryId: string,
+  bookId: number,
+  sem: SemStatus,
+  degradeNote?: string,
+) {
   const pool = await rankPassages(args, deps, libraryId, bookId);
   const rr = await applyRerank(pool, (r) => r.hit.body, args, deps);
   // Front-matter demotion (issue #18): TOC/praise/foreword chunks are keyword-dense but
@@ -394,28 +397,24 @@ async function bookScope(args: Args, deps: ToolDeps, libraryId: string, bookId: 
   // wanted. Stable-partition AFTER the rerank — body passages first, front matter after,
   // internal order preserved; nothing is dropped ("what does the foreword say" still works).
   const demoted = rr.hits.filter((r) => r.hit.frontMatter).length;
-  const ranked = demoted > 0 ? [...rr.hits.filter((r) => !r.hit.frontMatter), ...rr.hits.filter((r) => r.hit.frontMatter)] : rr.hits;
+  const ranked =
+    demoted > 0 ? [...rr.hits.filter((r) => !r.hit.frontMatter), ...rr.hits.filter((r) => r.hit.frontMatter)] : rr.hits;
   const note = joinNotes(
     degradeNote,
     rr.note,
-    demoted > 0
-      ? `${demoted} front-matter passage(s) (TOC/praise/foreword) demoted below body matches.`
-      : undefined,
+    demoted > 0 ? `${demoted} front-matter passage(s) (TOC/praise/foreword) demoted below body matches.` : undefined,
   );
   if (ranked.length === 0) {
-    return toolOk(
-      [{ type: "text", text: withNote(`No passages in book ${bookId} matched "${args.query}".`, note) }],
-      {
-        scope: "book",
-        target: "text",
-        mode: args.mode,
-        bookId,
-        count: 0,
-        ...rerankFields(args, rr),
-        ...sem,
-        note,
-      },
-    );
+    return toolOk([{ type: "text", text: withNote(`No passages in book ${bookId} matched "${args.query}".`, note) }], {
+      scope: "book",
+      target: "text",
+      mode: args.mode,
+      bookId,
+      count: 0,
+      ...rerankFields(args, rr),
+      ...sem,
+      note,
+    });
   }
 
   const { maxScore, lowConfidence } = confidence(ranked, deps, rr);
@@ -493,14 +492,23 @@ async function figuresTarget(
           ),
         },
       ],
-      { scope: args.scope, target: "figures", mode: args.mode, count: 0, ...sem, note: degradeNote, ...filterFields(scope) },
+      {
+        scope: args.scope,
+        target: "figures",
+        mode: args.mode,
+        count: 0,
+        ...sem,
+        note: degradeNote,
+        ...filterFields(scope),
+      },
     );
   }
 
   const pool = await rankFigures(args, deps, libraryId, bookId, scope.allow);
   const rr = await applyRerank(pool, (r) => r.hit.caption, args, deps);
   const ranked = rr.hits;
-  const floorNote = args.mode !== "keyword" && ranked.length > 0 && FIGURES_SEMANTIC_FLOOR === null ? FIGURES_FLOOR_NOTE : undefined;
+  const floorNote =
+    args.mode !== "keyword" && ranked.length > 0 && FIGURES_SEMANTIC_FLOOR === null ? FIGURES_FLOOR_NOTE : undefined;
   const note = joinNotes(degradeNote, rr.note, floorNote);
   if (ranked.length === 0) {
     return toolOk(
@@ -618,8 +626,7 @@ async function rankFigures(
 function figuresConfidence(ranked: Array<{ cosine?: number }>, rr?: RerankOutcome<unknown>) {
   const cosines = ranked.map((r) => r.cosine).filter((c): c is number => c !== undefined);
   const maxScore = cosines.length ? Math.max(...cosines) : undefined;
-  const cosineLow =
-    FIGURES_SEMANTIC_FLOOR !== null && maxScore !== undefined && maxScore < FIGURES_SEMANTIC_FLOOR;
+  const cosineLow = FIGURES_SEMANTIC_FLOOR !== null && maxScore !== undefined && maxScore < FIGURES_SEMANTIC_FLOOR;
   const rerankLow = rr?.reranked === true && rr.maxRerank !== undefined && rr.maxRerank < RERANK_FLOOR;
   return { maxScore, lowConfidence: cosineLow || rerankLow };
 }
@@ -634,7 +641,9 @@ function withIndexVersion(res: ToolResult, indexVersion: number | undefined): To
   const [first, ...rest] = res.content;
   const line = `indexVersion ${indexVersion} — char offsets/pages here are valid within this index generation only.`;
   const content: ContentBlock[] =
-    first?.type === "text" ? [{ ...first, text: `${first.text}\n${line}` }, ...rest] : [{ type: "text", text: line }, ...res.content];
+    first?.type === "text"
+      ? [{ ...first, text: `${first.text}\n${line}` }, ...rest]
+      : [{ type: "text", text: line }, ...res.content];
   return { ...res, content, structuredContent: { ...res.structuredContent, indexVersion } };
 }
 
@@ -680,8 +689,7 @@ const RERANK_BUSY_NOTE =
   "Reranker busy with other concurrent searches — results keep the fused (pre-rerank) order. " +
   "For reranked results, issue library-scope semantic searches one at a time.";
 
-const RERANK_DISABLED_NOTE =
-  "Reranking disabled via CALIBRE_MCP_RERANK — results keep the fused (pre-rerank) order.";
+const RERANK_DISABLED_NOTE = "Reranking disabled via CALIBRE_MCP_RERANK — results keep the fused (pre-rerank) order.";
 
 /**
  * Cross-encoder rerank (D-011): score (query, chunk body) pairs over the top-RERANK_POOL fused
@@ -738,9 +746,7 @@ async function rankBooks(
   allow?: ReadonlySet<number>,
 ): Promise<RankedBook[]> {
   if (args.mode === "keyword") {
-    return deps.index
-      .searchLibraryFts(libraryId, stemText(args.query), args.topK, allow)
-      .map((hit) => ({ hit }));
+    return deps.index.searchLibraryFts(libraryId, stemText(args.query), args.topK, allow).map((hit) => ({ hit }));
   }
   const k = poolK(args, deps);
   const q = await deps.embedder.embedQuery(args.query);
@@ -761,16 +767,9 @@ async function rankBooks(
 }
 
 /** Rank passages within one book per mode, mirroring rankBooks but fusing on chunkId. */
-async function rankPassages(
-  args: Args,
-  deps: ToolDeps,
-  libraryId: string,
-  bookId: number,
-): Promise<RankedPassage[]> {
+async function rankPassages(args: Args, deps: ToolDeps, libraryId: string, bookId: number): Promise<RankedPassage[]> {
   if (args.mode === "keyword") {
-    return deps.index
-      .searchBookFts(libraryId, bookId, stemText(args.query), args.topK)
-      .map((hit) => ({ hit }));
+    return deps.index.searchBookFts(libraryId, bookId, stemText(args.query), args.topK).map((hit) => ({ hit }));
   }
   const k = poolK(args, deps);
   const q = await deps.embedder.embedQuery(args.query);

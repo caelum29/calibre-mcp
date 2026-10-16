@@ -155,10 +155,7 @@ describe("calibre_semantic_search board wiring", () => {
     const cache = new BoardCache();
     const deps = semanticDeps(cache);
     (deps.index as unknown as Record<string, unknown>).searchLibrary = () => [];
-    const r = await semanticSearchTool.handler(
-      { query: "zzz", scope: "library", mode: "vector", topK: 10 },
-      deps,
-    );
+    const r = await semanticSearchTool.handler({ query: "zzz", scope: "library", mode: "vector", topK: 10 }, deps);
     expect(r._meta).toBeUndefined();
     expect(cache.get("calibre_semantic_search", "zzz")).toBeUndefined();
   });

@@ -22,11 +22,7 @@ export const DETAIL_MAX_SIDE: Record<"standard" | "high", number> = {
 const RENDER_DPI = 150;
 const PT_TO_PX = RENDER_DPI / 72;
 
-export const PDFTOPPM_CANDIDATES = [
-  "/opt/homebrew/bin/pdftoppm",
-  "/usr/local/bin/pdftoppm",
-  "/usr/bin/pdftoppm",
-];
+export const PDFTOPPM_CANDIDATES = ["/opt/homebrew/bin/pdftoppm", "/usr/local/bin/pdftoppm", "/usr/bin/pdftoppm"];
 const SIPS_CANDIDATES = ["/usr/bin/sips"];
 const QLMANAGE_CANDIDATES = ["/usr/bin/qlmanage"];
 
@@ -152,11 +148,7 @@ export async function rasterizeSvg(
 }
 
 /** Pull the n-th inline `<svg>` block (no imageHref) out of a spine doc into a file. */
-export async function inlineSvgToFile(
-  html: string,
-  ordinal: number,
-  scratch: string,
-): Promise<string> {
+export async function inlineSvgToFile(html: string, ordinal: number, scratch: string): Promise<string> {
   const blocks = [...html.matchAll(/<svg\b[\s\S]*?<\/svg\s*>/gi)]
     .map((m) => m[0])
     // wrapped-raster svgs (an <image href> inside) carry an imageHref in the
@@ -164,9 +156,7 @@ export async function inlineSvgToFile(
     .filter((b) => !/<image\b[^>]*\b(?:xlink:)?href=/i.test(b));
   const block = blocks[ordinal];
   if (!block) throw new Error("FIGURES_FETCH_FAILED");
-  const svg = /\bxmlns=/.test(block)
-    ? block
-    : block.replace(/<svg\b/i, '<svg xmlns="http://www.w3.org/2000/svg"');
+  const svg = /\bxmlns=/.test(block) ? block : block.replace(/<svg\b/i, '<svg xmlns="http://www.w3.org/2000/svg"');
   const file = path.join(scratch, `inline-${ordinal}.svg`);
   await writeFile(file, svg, "utf8");
   return file;
@@ -177,11 +167,7 @@ export async function inlineSvgToFile(
  * (line-art keeps PNG, photos flip to JPEG). sips is macOS-only; without it the
  * original bytes pass through untouched (the byte cap still protects the response).
  */
-export async function encodeSmallest(
-  run: Runner,
-  imageFile: string,
-  maxSide: number,
-): Promise<EncodedImage> {
+export async function encodeSmallest(run: Runner, imageFile: string, maxSide: number): Promise<EncodedImage> {
   const sips = findBin(SIPS_CANDIDATES);
   if (!sips) {
     const raw = await readFile(imageFile);

@@ -1,13 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { EMBED_DIM } from "../../src/semantic/model.js";
-import {
-  type Candidate,
-  decodeVector,
-  dot,
-  encodeVector,
-  l2normalize,
-  topK,
-} from "../../src/semantic/vector.js";
+import { type Candidate, decodeVector, dot, encodeVector, l2normalize, topK } from "../../src/semantic/vector.js";
 
 /** A 384-dim vector filled by a generator (for round-trip fidelity checks). */
 function vec(fn: (i: number) => number): Float32Array {

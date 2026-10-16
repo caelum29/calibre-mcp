@@ -35,10 +35,7 @@ export const getFiguresTool = defineTool({
   inputSchema: {
     id: BookId().optional(),
     bookId: BookId().optional(),
-    format: z
-      .string()
-      .optional()
-      .describe("Source format override (epub or pdf). Default: epub if present, else pdf."),
+    format: z.string().optional().describe("Source format override (epub or pdf). Default: epub if present, else pdf."),
     indexes: jsonArray(CoercedInt())
       .optional()
       .describe(
@@ -95,9 +92,7 @@ export const getFiguresTool = defineTool({
       if (args.indexes !== undefined && args.indexes.length > 0) {
         return fetchFigures(args, deps, { numericId, fmt, downloadUrl, inventory });
       }
-      const otherFormats = FIGURE_FORMATS.filter(
-        (f) => f !== fmt && book.formats.some((b) => b.toLowerCase() === f),
-      );
+      const otherFormats = FIGURE_FORMATS.filter((f) => f !== fmt && book.formats.some((b) => b.toLowerCase() === f));
       return listFigures(args, { numericId, fmt, inventory }, otherFormats);
     } catch (err) {
       if (err instanceof CalibreHttpError && err.status === 404) {
@@ -160,7 +155,11 @@ function listFigures(
     `Book ${numericId} — ${countPart}. Indexes are valid for format=${fmt} only.${alsoHas} ` +
     `Fetch with indexes=[…] (≤${MAX_INDEXES_PER_CALL} per call).`;
   const rows = visible.map((e) => {
-    const cap = e.caption ? clip(e.caption, LIST_CAPTION_MAX) : e.captioned ? "(label only — no caption text)" : "(uncaptioned)";
+    const cap = e.caption
+      ? clip(e.caption, LIST_CAPTION_MAX)
+      : e.captioned
+        ? "(label only — no caption text)"
+        : "(uncaptioned)";
     const label = e.label ? ` ${e.label}` : "";
     return `${e.index} | p.${e.page} | ${e.source}${label} | ${cap}`;
   });
@@ -205,9 +204,7 @@ async function fetchFigures(
   }
   const hidden = indexes.filter((i) => !inventory.entries[i]?.captioned);
   if (hidden.length > 0 && !args.include_uncaptioned) {
-    return toolError(
-      `Index ${hidden.join(", ")} is an uncaptioned image — pass include_uncaptioned=true to fetch it.`,
-    );
+    return toolError(`Index ${hidden.join(", ")} is an uncaptioned image — pass include_uncaptioned=true to fetch it.`);
   }
 
   const outcome = await deps.figures.fetchFigures({

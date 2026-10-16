@@ -58,10 +58,20 @@ const ROMAN_VALUES: Record<string, number> = { I: 1, V: 5, X: 10, L: 50, C: 100,
 
 // CJK chapter headings: explicit "第N章" and Markdown "## 一 · …" / "## 第一讲".
 const CN_NUM_VALUES: Record<string, number> = {
-  "〇": 0, "零": 0, "一": 1, "二": 2, "两": 2, "三": 3, "四": 4, "五": 5,
-  "六": 6, "七": 7, "八": 8, "九": 9,
+  〇: 0,
+  零: 0,
+  一: 1,
+  二: 2,
+  两: 2,
+  三: 3,
+  四: 4,
+  五: 5,
+  六: 6,
+  七: 7,
+  八: 8,
+  九: 9,
 };
-const CN_NUM_UNITS: Record<string, number> = { "十": 10, "百": 100, "千": 1000 };
+const CN_NUM_UNITS: Record<string, number> = { 十: 10, 百: 100, 千: 1000 };
 const CN_NUM_CLASS = "〇零一二两三四五六七八九十百千";
 const FW_DIGITS = "０-９"; // full-width Arabic digits (Japanese typesetting: "第１章")
 const CN_CHAPTER = new RegExp(`^\\s*第\\s*([0-9${FW_DIGITS}${CN_NUM_CLASS}]+)\\s*[章回卷节篇讲]`);
@@ -71,13 +81,21 @@ const MD_CN_HEADING = new RegExp(`^#{1,6}\\s+第?\\s*([${FW_DIGITS}${CN_NUM_CLAS
 // chapter" never matches. EN/ES/PT/CJK/FR/DE/IT/NL + Cyrillic (ru: оглавление/содержание,
 // uk: зміст).
 const TOC_HEADERS = [
-  "table of contents", "contents", "índice", "sumário",
-  "目录", "目錄", "目次",
+  "table of contents",
+  "contents",
+  "índice",
+  "sumário",
+  "目录",
+  "目錄",
+  "目次",
   "table des matières",
   "inhaltsverzeichnis",
-  "indice", "sommario",
+  "indice",
+  "sommario",
   "inhoudsopgave",
-  "оглавление", "содержание", "зміст",
+  "оглавление",
+  "содержание",
+  "зміст",
 ];
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const TOC_PATTERN = new RegExp(`^\\s*(?:${TOC_HEADERS.map(escapeRe).join("|")})\\s*$`, "im");
@@ -90,8 +108,19 @@ const SETEXT_UNDERLINE = /^(={2,}|-{2,})$/;
 
 function intToRoman(n: number): string {
   const table: [number, string][] = [
-    [1000, "M"], [900, "CM"], [500, "D"], [400, "CD"], [100, "C"],
-    [90, "XC"], [50, "L"], [40, "XL"], [10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"],
+    [1000, "M"],
+    [900, "CM"],
+    [500, "D"],
+    [400, "CD"],
+    [100, "C"],
+    [90, "XC"],
+    [50, "L"],
+    [40, "XL"],
+    [10, "X"],
+    [9, "IX"],
+    [5, "V"],
+    [4, "IV"],
+    [1, "I"],
   ];
   let out = "";
   for (const [val, sym] of table) {
@@ -184,8 +213,19 @@ function structuralChapters(lineStarts: LineInfo[]): StructHeading[] {
       continue;
     }
     // Setext underline directly under a title line at least as long as the underline.
-    if (SETEXT_UNDERLINE.test(s) && prev && prev.text && !SETEXT_UNDERLINE.test(prev.text) && s.length >= prev.text.length) {
-      found.push({ depth: s[0] === "=" ? 1 : 2, title: prev.text.toLowerCase(), heading: prev.text, startChar: prev.start });
+    if (
+      SETEXT_UNDERLINE.test(s) &&
+      prev &&
+      prev.text &&
+      !SETEXT_UNDERLINE.test(prev.text) &&
+      s.length >= prev.text.length
+    ) {
+      found.push({
+        depth: s[0] === "=" ? 1 : 2,
+        title: prev.text.toLowerCase(),
+        heading: prev.text,
+        startChar: prev.start,
+      });
       prev = null;
       continue;
     }
@@ -264,8 +304,7 @@ function enrichHeading(heading: string, lines: LineInfo[], lineIdx: number): str
     const t = lines[i]!.text.trim();
     if (!t) continue; // skip blanks between number and title
     // Title-like: short, has letters, not itself a heading, not a ToC dot-leader/page number.
-    const titleLike =
-      t.length <= 80 && /\p{L}/u.test(t) && chapterNumber(t) === null && !/^[\d.\s·…]+$/.test(t);
+    const titleLike = t.length <= 80 && /\p{L}/u.test(t) && chapterNumber(t) === null && !/^[\d.\s·…]+$/.test(t);
     return titleLike ? `${heading.replace(/[.:\-—–\s]+$/, "")} — ${t}` : heading;
   }
   return heading;
@@ -317,7 +356,8 @@ export function detectChapters(text: string, opts: DetectOptions = {}): Structur
   if (occ.length > 0) {
     // Body of occurrence i = distance to the next heading occurrence (ToC lines cluster
     // → tiny bodies; real chapters → large bodies).
-    const bodyLen = (i: number): number => (i + 1 < occ.length ? occ[i + 1]!.startChar : text.length) - occ[i]!.startChar;
+    const bodyLen = (i: number): number =>
+      (i + 1 < occ.length ? occ[i + 1]!.startChar : text.length) - occ[i]!.startChar;
 
     // For each distinct number, keep the largest-body occurrence.
     const best = new Map<number, { heading: string; startChar: number }>();
@@ -346,9 +386,7 @@ export function detectChapters(text: string, opts: DetectOptions = {}): Structur
       }
     }
 
-    const picked = [...best.entries()]
-      .map(([n, v]) => ({ n, ...v }))
-      .sort((a, b) => a.startChar - b.startChar);
+    const picked = [...best.entries()].map(([n, v]) => ({ n, ...v })).sort((a, b) => a.startChar - b.startChar);
 
     const chapters: ChapterSpan[] = picked.map((c, i) => ({
       n: c.n,
