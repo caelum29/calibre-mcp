@@ -54,7 +54,7 @@ export const getFiguresTool = defineTool({
   // result, and clients drop the content array (images!) when structuredContent is
   // present (anthropics/claude-code#54737/#45575). Fetch results must be content-only.
   annotations: { readOnlyHint: true, openWorldHint: true },
-  handler: async (args, deps) => {
+  handler: async (args, deps, ctx) => {
     const idArg = bookIdArg(args);
     if (idArg === undefined) return toolError("Provide id (the book's db id or uuid).");
     try {
@@ -84,6 +84,7 @@ export const getFiguresTool = defineTool({
           format: fmt,
           downloadUrl,
           cacheKey,
+          signal: ctx?.signal,
         }));
       } catch (err) {
         return figuresError(err, numericId, fmt);

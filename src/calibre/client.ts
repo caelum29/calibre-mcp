@@ -6,16 +6,23 @@
 // GUI-concurrency lock — never race the GUI on the on-disk DB (CLAUDE.md gotchas).
 
 import type { Config } from "../config.js";
-import { CalibreCliError, CalibreCliTimeoutError, CalibreNotFoundError } from "../domain/errors.js";
+import {
+  CalibreCliError,
+  CalibreCliTimeoutError,
+  CalibreNotFoundError,
+  OperationCancelledError,
+} from "../domain/errors.js";
 import type { FtsHit } from "../domain/search.js";
 import { log } from "../logging.js";
-import { spawnCollect, SpawnTimeoutError } from "./spawn.js";
+import { SpawnAbortedError, spawnCollect, SpawnTimeoutError } from "./spawn.js";
 
 export interface CalibreClientOptions {
   /** Per-call timeout in ms. macOS calibredb can hang against a busy GUI. */
   timeoutMs?: number;
   /** Target library display name; defaults to config's library. */
   library?: string;
+  /** Cancellation: kills the calibredb process group and throws OperationCancelledError. */
+  signal?: AbortSignal;
 }
 
 export interface FtsSearchOptions {
@@ -27,6 +34,7 @@ export interface FtsSearchOptions {
   matchEndMarker?: string;
   library?: string;
   timeoutMs?: number;
+  signal?: AbortSignal;
 }
 
 interface RawFtsHit {
@@ -99,6 +107,7 @@ export class CalibreClient {
       result = await spawnCollect(this.cfg.calibredbPath, fullArgs, {
         timeoutMs: opts.timeoutMs ?? 30_000,
         maxBuffer: 32 * 1024 * 1024,
+        signal: opts.signal,
       });
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code === "ENOENT") {
@@ -106,6 +115,10 @@ export class CalibreClient {
           `calibredb not found at "${this.cfg.calibredbPath}". Install Calibre ` +
             "(https://calibre-ebook.com/download) or set CALIBRE_MCP_CALIBREDB_PATH.",
         );
+      }
+      if (err instanceof SpawnAbortedError) {
+        log.info("calibredb cancelled", { args });
+        throw new OperationCancelledError();
       }
       // A hung child (worker grandchild) is now force-killed as a group and surfaced
       // as a settled error instead of an infinite hang (spawn.ts).
@@ -136,6 +149,7 @@ export class CalibreClient {
     const { stdout } = await this.calibredb(buildFtsArgs(query, opts), {
       library: opts.library,
       timeoutMs: opts.timeoutMs ?? 60_000,
+      signal: opts.signal,
     });
     return parseFtsResults(stdout);
   }

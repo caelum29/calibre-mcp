@@ -15,7 +15,7 @@ import { INSTALL_TRANSFORMERS } from "./remediation.js";
 import { toolError, toolOk } from "./result.js";
 import type { IndexedChunk, IndexedFigure, PruneCounts } from "../semantic/store.js";
 import type { FigureMarker } from "../domain/figures/markers.js";
-import type { ToolDeps } from "./types.js";
+import type { ToolDeps, ToolResult } from "./types.js";
 import type { EmbedChunk } from "../semantic/chunk.js";
 import { chunkForEmbedding } from "../semantic/chunk.js";
 import { MAX_TOKENS, PASSAGE_PREFIX } from "../semantic/model.js";
@@ -85,7 +85,8 @@ export const buildIndexTool = defineTool({
   // readOnlyHint:false but NOT write-gated: this writes to the server's own index dir, not the
   // user's library, so the library write gate doesn't apply. localWrite marks that carve-out.
   localWrite: true,
-  handler: async (args, deps) => {
+  handler: async (args, deps, ctx) => {
+    const signal = ctx?.signal;
     if (args.bookId === undefined && !args.ids?.length && !args.query) {
       return toolError("Specify bookId, ids, or query — full-library indexing is deferred.");
     }
@@ -184,9 +185,25 @@ export const buildIndexTool = defineTool({
     let totalFigures = 0;
     let totalUnplaced = 0;
     const bookDetails: BookDetail[] = [];
+    let done = 0;
+    ctx?.progress?.(0, `Indexing ${booksRequested} book(s)…`, booksRequested);
     for (const bookId of targets) {
+      // Cancelled (client sent notifications/cancelled or went away): stop between books.
+      // Books already written stay indexed; the in-flight subprocess was killed by its signal.
+      if (signal?.aborted) {
+        return cancelledResult({ done, booksRequested, booksIndexed, booksSkipped, chunks: totalChunks });
+      }
       try {
-        const n = await indexBook(deps, libraryId, bookId, args.force, args.library, keywordOnly, tokenBudgeted);
+        const n = await indexBook(
+          deps,
+          libraryId,
+          bookId,
+          args.force,
+          args.library,
+          keywordOnly,
+          tokenBudgeted,
+          signal,
+        );
         if (n === "skipped") booksSkipped++;
         else {
           booksIndexed++;
@@ -196,8 +213,14 @@ export const buildIndexTool = defineTool({
           bookDetails.push(n);
         }
       } catch (err) {
-        failures.push(`book ${bookId}: ${describeError(err)}`);
+        if (!signal?.aborted) failures.push(`book ${bookId}: ${describeError(err)}`);
       }
+      done++;
+      if (!signal?.aborted) ctx?.progress?.(done, `Indexed ${done}/${booksRequested} book(s)`, booksRequested);
+    }
+    if (signal?.aborted) {
+      // The book in flight when the cancel landed did not finish.
+      return cancelledResult({ done: done - 1, booksRequested, booksIndexed, booksSkipped, chunks: totalChunks });
     }
     if (totalUnplaced > 0) {
       // Unplaced markers are silent figure-linkage gaps — say so instead of a clean-looking count.
@@ -261,6 +284,28 @@ export const buildIndexTool = defineTool({
   },
 });
 
+/** isError result for a build the client cancelled — partial counts, and how to resume. */
+function cancelledResult(c: {
+  done: number;
+  booksRequested: number;
+  booksIndexed: number;
+  booksSkipped: number;
+  chunks: number;
+}): ToolResult {
+  return toolError(
+    `Index build cancelled after ${c.done}/${c.booksRequested} book(s) (${c.booksIndexed} indexed, ` +
+      `${c.booksSkipped} up-to-date). Books finished before the cancel stay indexed — re-run the same ` +
+      "call to continue (finished books are skipped).",
+    {
+      booksRequested: c.booksRequested,
+      booksIndexed: c.booksIndexed,
+      booksSkipped: c.booksSkipped,
+      chunks: c.chunks,
+      cancelled: true,
+    },
+  );
+}
+
 /**
  * Every book id currently in the library, paged through the search endpoint (empty query =
  * everything). Used as the keep-set for the orphan prune, so it must be complete — a partial
@@ -301,6 +346,7 @@ async function indexBook(
   library: string | undefined,
   keywordOnly: boolean,
   tokenBudgeted: boolean,
+  signal?: AbortSignal,
 ): Promise<BookDetail | "skipped"> {
   const book = await deps.content.getBook(bookId, library);
 
@@ -317,7 +363,7 @@ async function indexBook(
   const base = deps.config.serverUrl.replace(/\/+$/, "");
   const downloadUrl = `${base}/get/${fmt.toUpperCase()}/${bookId}/${encodeURIComponent(libraryId)}`;
   const cacheKey = `${bookId}:${fmt}:${book.lastModified ?? ""}`;
-  const extracted = await deps.extractor.getText({ bookId, format: fmt, downloadUrl, cacheKey });
+  const extracted = await deps.extractor.getText({ bookId, format: fmt, downloadUrl, cacheKey, signal });
 
   if (extracted.text.trim().length === 0) {
     throw new Error(`no extractable text (${fmt}) — ${noTextReason(fmt)}`);
@@ -375,7 +421,7 @@ async function indexBook(
   // their own embeddings so target:"figures" search ranks them directly.
   let figures: IndexedFigure[] = [];
   if (extracted.markers.length > 0) {
-    figures = await figureRows(deps, { bookId, format: fmt, downloadUrl, cacheKey }, extracted.markers);
+    figures = await figureRows(deps, { bookId, format: fmt, downloadUrl, cacheKey, signal }, extracted.markers);
     if (!keywordOnly && figures.length > 0) {
       const vectors = await deps.embedder.embedPassages(figures.map((f) => ctx + f.caption));
       figures = figures.map((f, i) => ({ ...f, vector: vectors[i]! }));
@@ -419,7 +465,7 @@ async function indexBook(
  */
 async function figureRows(
   deps: ToolDeps,
-  invArgs: { bookId: number; format: string; downloadUrl: string; cacheKey: string },
+  invArgs: { bookId: number; format: string; downloadUrl: string; cacheKey: string; signal?: AbortSignal },
   markers: FigureMarker[],
 ): Promise<IndexedFigure[]> {
   let entries: Array<{ source?: "raster" | "page-render" | "svg-render"; width?: number; height?: number }> = [];

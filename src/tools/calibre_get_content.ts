@@ -70,7 +70,7 @@ export const getContentTool = defineTool({
     detector: z.string().optional(),
   },
   annotations: { readOnlyHint: true, openWorldHint: true },
-  handler: async (args, deps) => {
+  handler: async (args, deps, ctx) => {
     const idArg = bookIdArg(args);
     if (idArg === undefined) return toolError("Provide id (the book's db id or uuid).");
     try {
@@ -91,7 +91,13 @@ export const getContentTool = defineTool({
 
       let extracted;
       try {
-        extracted = await deps.extractor.getText({ bookId: numericId, format: fmt, downloadUrl, cacheKey });
+        extracted = await deps.extractor.getText({
+          bookId: numericId,
+          format: fmt,
+          downloadUrl,
+          cacheKey,
+          signal: ctx?.signal,
+        });
       } catch (err) {
         const m = err instanceof Error ? err.message : String(err);
         if (m === "NO_PDF_BACKEND") {

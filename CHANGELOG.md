@@ -11,6 +11,12 @@ All notable changes to this project are documented here. The format is based on
 - **`docs/tool-catalog.json`** — the generated, exact `tools/list` the server advertises
   (writes enabled; client-compat rewrites applied), so schema changes show up as a reviewable
   diff. `pnpm catalog` regenerates it; `pnpm catalog:check` fails on drift.
+- **Cancellation.** Cancelling a tool call from the client (MCP `notifications/cancelled`)
+  now stops the work: running `calibredb` / `ebook-convert` / `pdftotext` / figure-scan
+  process groups are killed and downloads are aborted. `calibre_build_index` stops between
+  books and reports what was already indexed (re-running the same call resumes).
+- **Progress notifications.** `calibre_build_index` (per book) and `calibre_quality_report`
+  send MCP progress notifications when the client asks for them (throttled, monotonic).
 
 ### Changed
 
