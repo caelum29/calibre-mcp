@@ -33,7 +33,26 @@ jobs:
           [ "v$PKG_V" = "$GITHUB_REF_NAME" ] || { echo "tag $GITHUB_REF_NAME != package.json v$PKG_V"; exit 1; }
 
       - run: pnpm install --frozen-lockfile
+      - run: pnpm versions:check
       - run: pnpm typecheck
+
+      # Pinned + checksum-verified: this job holds id-token: write, so a moved `latest`
+      # asset must not be able to run here. The sha256 is the linux_amd64 entry of the
+      # release's registry_<ver>_checksums.txt (the job runs on ubuntu, x86_64).
+      - name: Install mcp-publisher (pinned)
+        env:
+          MCP_PUBLISHER_VERSION: v1.8.1
+          MCP_PUBLISHER_SHA256: a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc
+        run: |
+          curl -fsSLo mcp-publisher.tar.gz "https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}/mcp-publisher_linux_amd64.tar.gz"
+          echo "${MCP_PUBLISHER_SHA256}  mcp-publisher.tar.gz" | sha256sum --check --strict
+          tar xzf mcp-publisher.tar.gz mcp-publisher
+
+      # server.json versions are committed (pnpm versions:check gates them), not
+      # rewritten here — what is published is what is in the tagged commit. Validated
+      # before npm publish so a bad server.json fails the release before anything ships.
+      - name: Validate server.json against the MCP Registry
+        run: ./mcp-publisher validate
 
       # Trusted-publishing OIDC auto-detection needs npm >= 11.5.1; runners can lag.
       # Pin to 11.18.0 — npm@latest (12.0.0) ships a libnpmpublish whose provenance
@@ -61,15 +80,6 @@ jobs:
           gh release upload "$GITHUB_REF_NAME" dist-mcpb/*.mcpb --clobber
         env:
           GH_TOKEN: ${{ github.token }}
-
-      - name: Install mcp-publisher
-        run: |
-          curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
-
-      - name: Sync server.json version from package.json
-        run: |
-          V="$(node -p "require('./package.json').version")"
-          jq --arg v "$V" '.version = $v | .packages[0].version = $v' server.json > server.tmp && mv server.tmp server.json
 
       # the registry validates the npm version right away; wait out npm propagation lag
       - name: Wait for the version on npm
