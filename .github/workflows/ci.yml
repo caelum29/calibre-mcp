@@ -1,5 +1,6 @@
-# Typecheck + unit tests on every push/PR. The gated model tests (RUN_MODEL_TESTS)
-# stay excluded — no 118 MB model download in CI.
+# Static checks + unit tests on every push to main and every PR. The gated model tests
+# (RUN_MODEL_TESTS) and live-Calibre tests (RUN_CALIBRE_TESTS) stay excluded — no 118 MB
+# model download and no Calibre install in CI.
 name: CI
 
 on:
@@ -7,18 +8,56 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
+# PR runs supersede each other; pushes to main always run to completion.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  HUSKY: "0" # no git hooks in CI
+
 jobs:
-  test:
-    runs-on: ubuntu-latest
+  static:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
         with:
           version: 10
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
-          node-version: 24
+          node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm lint
       - run: pnpm typecheck
+      # Non-blocking until the knip baseline has held for a while.
+      - run: pnpm knip
+        continue-on-error: true
+      - run: pnpm versions:check
+      - run: pnpm build
+      - run: pnpm catalog:check
+
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["22", "24"]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+        with:
+          version: 10
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - run: pnpm test

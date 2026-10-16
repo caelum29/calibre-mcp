@@ -45,7 +45,7 @@ your library, all through natural language.
 
 - **Calibre** with the **Content Server running** (in Calibre: *Connect/share → Start
   Content server*). Tested against Calibre 9.x; any recent version should work.
-- **Node.js ≥ 22.5** for the npm/npx install (not needed for the Claude Desktop
+- **Node.js ≥ 22.16** for the npm/npx install (not needed for the Claude Desktop
   one-click bundle — Desktop ships its own runtime).
 - Optional, for best PDF text extraction: poppler's `pdftotext`
   (`brew install poppler`) or Python 3 with PyMuPDF (`pip install pymupdf`). Without

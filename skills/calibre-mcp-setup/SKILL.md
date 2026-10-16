@@ -33,7 +33,7 @@ and which client(s) to install into.
 
 Check in order. Apply reversible remediations; stop for the rest.
 
-1. **Node ≥ 22.5** (not needed for the Claude Desktop `.mcpb` path — Desktop ships its
+1. **Node ≥ 22.16** (not needed for the Claude Desktop `.mcpb` path — Desktop ships its
    own runtime): `node --version`. Missing/old → if the user only wants Desktop,
    continue; otherwise stop (user installs Node).
 2. **Calibre present** — try `calibredb --version`, then the platform default:
