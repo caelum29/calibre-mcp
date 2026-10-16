@@ -1,6 +1,6 @@
 # Tool reference
 
-The calibre-mcp server exposes 19 tools your AI assistant can call to work with your
+The calibre-mcp server exposes <!-- tool-count:modelFacing -->19<!-- /tool-count:modelFacing --> tools your AI assistant can call to work with your
 [Calibre](https://calibre-ebook.com) library. They fall into two scopes:
 
 - **Catalog / library** — search across the whole library, browse categories, curate
@@ -499,7 +499,7 @@ Content Server, so they never race an open Calibre GUI.
 
 ## A note on the widget-internal tools
 
-Two extra tools exist that aren't meant for the assistant to call; MCP-Apps hosts (like
+<!-- tool-count:appOnly -->2<!-- /tool-count:appOnly --> extra tools exist that aren't meant for the assistant to call; MCP-Apps hosts (like
 Claude Desktop) hide them from the model:
 
 - `calibre_board_data` — the in-chat cover board re-fetches its own search data through it.

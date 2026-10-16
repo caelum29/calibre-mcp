@@ -24,7 +24,7 @@ your library, all through natural language.
 
 ## ✨ Highlights
 
-- **19 tools** covering the full surface: search, read content, browse categories, curate,
+- **<!-- tool-count:modelFacing -->19<!-- /tool-count:modelFacing --> tools** covering the full surface: search, read content, browse categories, curate,
   and (opt-in) write — update metadata, bulk-edit, merge duplicates, import, delete, and
   manage bundles (named topical filters).
 - **Semantic search** — meaning-based, hybrid vector + keyword retrieval over your whole
