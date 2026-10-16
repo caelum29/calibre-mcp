@@ -4,6 +4,8 @@
   "sortImports": false,
   "sortPackageJson": false,
   "ignorePatterns": [
+    "manifest.json",
+    ".claude-plugin/plugin.json",
     "docs/tool-catalog.json",
     "**/*.md",
     "pnpm-lock.yaml",

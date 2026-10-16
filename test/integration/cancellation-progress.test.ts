@@ -11,7 +11,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { ProgressNotificationSchema, type CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { buildServer } from "../../src/server.js";
 
 const posix = process.platform !== "win32";
@@ -228,9 +228,11 @@ describe.runIf(posix)("progress", () => {
   it("sends no progress notifications without a progressToken", async () => {
     const { client, close } = await connect();
     let notified = 0;
-    client.fallbackNotificationHandler = async (n) => {
-      if (n.method === "notifications/progress") notified++;
-    };
+    // Replace the SDK's own progress handler (the fallback handler never sees progress
+    // notifications, so counting there could not fail).
+    client.setNotificationHandler(ProgressNotificationSchema, async () => {
+      notified++;
+    });
     try {
       const r = (await client.callTool({
         name: "calibre_build_index",

@@ -43,6 +43,7 @@ jobs:
     permissions:
       contents: write # release commit, tag, GitHub release
       pull-requests: write # the release PR
+      issues: write # release-please labels the release PR (autorelease: pending/tagged) via the issues API
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
