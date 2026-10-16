@@ -45,8 +45,20 @@ const UI_TOOL_META: Record<string, UiToolMeta> = {
   calibre_open_book: { visibility: ["app"] },
 };
 
-export function buildServer(): McpServer {
-  const config = loadConfig();
+export interface BuildServerOptions {
+  /** Environment to read config from (default: process.env). */
+  env?: NodeJS.ProcessEnv;
+  /**
+   * Run the boot-time background probes — extraction-backend detection (spawns
+   * ebook-convert / pdftotext / python3) and the Content Server reachability check (HTTP).
+   * Default true; the tool-catalog generator turns them off so building the server for a
+   * tools/list touches no subprocess, network or library.
+   */
+  probes?: boolean;
+}
+
+export function buildServer(options: BuildServerOptions = {}): McpServer {
+  const config = loadConfig(options.env);
   const figures = new FigureInventoryService(config);
   const deps: ToolDeps = {
     config,
@@ -61,30 +73,7 @@ export function buildServer(): McpServer {
     log,
   };
 
-  // Detect extraction backends in the background and log the chosen path to stderr;
-  // the first calibre_get_content call awaits the same memoized promise (DESIGN open item).
-  void deps.extractor
-    .detectBackends()
-    .then((r) => log.info("extractor backends", r))
-    .catch((e) => log.warn("extractor detection failed", { msg: String(e) }));
-
-  // Onboarding probe (stderr only): tell a first-time user whether the Content Server
-  // is up before the first tool call fails. Also warms the library-map cache.
-  void deps.content
-    .libraryInfo()
-    .then((info) =>
-      log.info("content server reachable", {
-        url: config.serverUrl,
-        libraries: Object.keys(info.libraryMap).length,
-        default: info.defaultLibrary,
-      }),
-    )
-    .catch(() =>
-      log.warn(
-        `Calibre Content Server not reachable at ${config.serverUrl} — start it in ` +
-          "Calibre (Connect/share → Start Content server) or set CALIBRE_MCP_SERVER_URL",
-      ),
-    );
+  if (options.probes !== false) startBootProbes(deps);
 
   const server = new McpServer(
     { name: "calibre-mcp", version: VERSION },
@@ -227,6 +216,36 @@ export function buildServer(): McpServer {
     serverUrl: config.serverUrl,
   });
   return server;
+}
+
+/**
+ * Background boot probes (stderr only). Detect extraction backends and log the chosen path;
+ * the first calibre_get_content call awaits the same memoized promise (DESIGN open item).
+ * Then tell a first-time user whether the Content Server is up before the first tool call
+ * fails — which also warms the library-map cache.
+ */
+function startBootProbes(deps: ToolDeps): void {
+  const { config } = deps;
+  void deps.extractor
+    .detectBackends()
+    .then((r) => log.info("extractor backends", r))
+    .catch((e) => log.warn("extractor detection failed", { msg: String(e) }));
+
+  void deps.content
+    .libraryInfo()
+    .then((info) =>
+      log.info("content server reachable", {
+        url: config.serverUrl,
+        libraries: Object.keys(info.libraryMap).length,
+        default: info.defaultLibrary,
+      }),
+    )
+    .catch(() =>
+      log.warn(
+        `Calibre Content Server not reachable at ${config.serverUrl} — start it in ` +
+          "Calibre (Connect/share → Start Content server) or set CALIBRE_MCP_SERVER_URL",
+      ),
+    );
 }
 
 /**

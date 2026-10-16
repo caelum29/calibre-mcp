@@ -4,6 +4,7 @@
   "sortImports": false,
   "sortPackageJson": false,
   "ignorePatterns": [
+    "docs/tool-catalog.json",
     "**/*.md",
     "pnpm-lock.yaml",
     "test/eval/retrieval/*.json",
