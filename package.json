@@ -45,6 +45,7 @@
     "knip": "knip",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "test:model": "RUN_MODEL_TESTS=1 vitest run test/semantic/embedder.integration.test.ts",
     "test:calibre": "RUN_CALIBRE_TESTS=1 vitest run test/integration/merge.live.test.ts",
     "eval": "node --import tsx test/eval/retrieval/run.ts",
@@ -77,6 +78,7 @@
   "devDependencies": {
     "@modelcontextprotocol/inspector": "2.2.0",
     "@types/node": "24.13.2",
+    "@vitest/coverage-v8": "4.1.9",
     "ajv": "8.20.0",
     "husky": "9.1.7",
     "knip": "6.41.0",
