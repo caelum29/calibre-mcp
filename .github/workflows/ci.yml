@@ -61,3 +61,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
+        if: matrix.node != '24'
+      # Coverage (with the ratchet thresholds in vitest.config.ts) once, on the .nvmrc Node.
+      - run: pnpm test:coverage
+        if: matrix.node == '24'
