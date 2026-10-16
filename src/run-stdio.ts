@@ -4,27 +4,10 @@
 // owns the transport so an HTTP transport could be added without touching it.
 
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
 import { buildServer } from "./server.js";
 import { log } from "./logging.js";
 import { createShutdown, installShutdownHandlers } from "./shutdown.js";
-
-// Claude Desktop 1.24012.x rejects a tools/call CLIENT-SIDE (pre-dispatch) for any tool
-// whose outputSchema contains the `$schema` meta-key — which zod-to-json-schema (inside
-// the SDK) always emits. Stripping the key is semantics-free (it's pure metadata), so we
-// do it unconditionally on outgoing tools/list results until the client is fixed.
-// Bisection + upstream report: docs/dev/bug-reports/2026-07-22-…-except-ping.md, #79933.
-function stripDollarSchema(msg: JSONRPCMessage): JSONRPCMessage {
-  if ("result" in msg && msg.result && Array.isArray((msg.result as { tools?: unknown }).tools)) {
-    for (const tool of (msg.result as { tools: Array<Record<string, unknown>> }).tools) {
-      const out = tool.outputSchema;
-      if (out && typeof out === "object" && "$schema" in out) {
-        delete (out as Record<string, unknown>).$schema;
-      }
-    }
-  }
-  return msg;
-}
+import { stripDollarSchema } from "./wire-compat.js";
 
 // Process-level safety net (issue #73). On Node >=15 a single unhandled rejection kills
 // the process — the client then sees only a generic "Tool execution failed" with zero
@@ -52,6 +35,8 @@ async function main(): Promise<void> {
   const server = buildServer();
   const transport = new StdioServerTransport();
   const send = transport.send.bind(transport);
+  // Client-compat rewrite of outgoing tools/list results (wire-compat.ts) — the same one the
+  // tool-catalog generator applies, so docs/tool-catalog.json matches the wire.
   transport.send = (msg) => send(stripDollarSchema(msg));
   await server.connect(transport);
   // Exit with the client: stdin EOF/close or SIGINT/SIGTERM kills any running calibredb /

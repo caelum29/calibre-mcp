@@ -6,6 +6,19 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- **`docs/tool-catalog.json`** — the generated, exact `tools/list` the server advertises
+  (writes enabled; client-compat rewrites applied), so schema changes show up as a reviewable
+  diff. `pnpm catalog` regenerates it; `pnpm catalog:check` fails on drift.
+
+### Changed
+
+- **Tool counts in the docs and manifests are now generated and correct.** The plugin and
+  marketplace descriptions said 17 tools, the skill and `CLAUDE.md` 18; the server advertises
+  19 model-facing tools (18 task tools + `calibre_ping`) plus 2 widget-internal ones. Every
+  stated count is now maintained from the catalog.
+
 ### Fixed
 
 - **No orphaned `calibredb` / `ebook-convert` processes after the client disconnects.**

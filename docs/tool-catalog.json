@@ -1,0 +1,2237 @@
+{
+  "counts": {
+    "registered": 21,
+    "modelFacing": 19,
+    "appOnly": 2,
+    "task": 18
+  },
+  "tools": [
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Import a local ebook file (EPUB/PDF/MOBI/…) into the library. The file must live under an allowed import root and be reachable by the Calibre server process. Requires writes to be enabled.",
+      "execution": {
+        "taskSupport": "forbidden"
+      },
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "properties": {
+          "library": {
+            "type": "string"
+          },
+          "path": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      },
+      "name": "calibre_add_book",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "addedIds": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "title": "Add a book file"
+    },
+    {
+      "_meta": {
+        "ui": {
+          "visibility": [
+            "app"
+          ]
+        }
+      },
+      "annotations": {
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Internal endpoint for the in-chat cover-board widget. Returns the cached payload of a recent search. Do not call as the model — search results already contain everything this returns.",
+      "execution": {
+        "taskSupport": "forbidden"
+      },
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "properties": {
+          "query": {
+            "type": "string"
+          },
+          "tool": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "calibre_board_data",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "books": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "authors": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "bookId": {
+                  "type": "number"
+                },
+                "score": {
+                  "type": "number"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "bookId",
+                "title",
+                "authors"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "libraryId": {
+            "type": "string"
+          },
+          "lowConfidence": {
+            "type": "boolean"
+          },
+          "query": {
+            "type": "string"
+          },
+          "serverUrl": {
+            "type": "string"
+          },
+          "tool": {
+            "type": "string"
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "title": "Cover board data (widget-internal)"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": true,
+        "readOnlyHint": false
+      },
+      "description": "Build the semantic index for specific books (required: bookId, ids, or query — full-library indexing is deferred). A query selects ALL matching books (no 100-book cap); large selections run long and may outlive the client timeout — re-run the same call to resume, since up-to-date books are skipped. Extracts, chunks, and embeds each book. Set keywordOnly=true (or when the embedding model is absent, it happens automatically) to build a keyword-only index that powers mode:\"keyword\" search with zero ML dependencies. Re-run after adding books; use force to re-index unchanged ones. Set prune=true to also drop index entries for books that no longer exist in the library (removals/merges leave searchable orphans behind).",
+      "execution": {
+        "taskSupport": "forbidden"
+      },
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "properties": {
+          "bookId": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "minLength": 1,
+                "type": "string"
+              }
+            ]
+          },
+          "enableFts": {
+            "type": "boolean"
+          },
+          "force": {
+            "type": "boolean"
+          },
+          "ids": {
+            "items": {
+              "anyOf": [
+                {
+                  "maximum": 9007199254740991,
+                  "minimum": -9007199254740991,
+                  "type": "integer"
+                },
+                {
+                  "minLength": 1,
+                  "type": "string"
+                }
+              ]
+            },
+            "type": "array"
+          },
+          "keywordOnly": {
+            "type": "boolean"
+          },
+          "library": {
+            "type": "string"
+          },
+          "prune": {
+            "type": "boolean"
+          },
+          "query": {
+            "maxLength": 512,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "calibre_build_index",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "bookDetails": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "backend": {
+                  "type": "string"
+                },
+                "bookId": {
+                  "type": "number"
+                },
+                "cached": {
+                  "type": "boolean"
+                },
+                "chars": {
+                  "type": "number"
+                },
+                "chunks": {
+                  "type": "number"
+                },
+                "figures": {
+                  "type": "number"
+                },
+                "format": {
+                  "type": "string"
+                },
+                "frontMatterChunks": {
+                  "type": "number"
+                },
+                "unplaced": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "bookId",
+                "format",
+                "backend",
+                "cached",
+                "chars",
+                "chunks",
+                "frontMatterChunks",
+                "figures",
+                "unplaced"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "booksIndexed": {
+            "type": "number"
+          },
+          "booksRequested": {
+            "type": "number"
+          },
+          "booksSkipped": {
+            "type": "number"
+          },
+          "chunks": {
+            "type": "number"
+          },
+          "elapsedMs": {
+            "type": "number"
+          },
+          "failures": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "figures": {
+            "type": "number"
+          },
+          "keywordOnly": {
+            "type": "boolean"
+          },
+          "prunedBooks": {
+            "type": "number"
+          },
+          "prunedChunks": {
+            "type": "number"
+          },
+          "prunedFigures": {
+            "type": "number"
+          },
+          "semanticAvailable": {
+            "type": "boolean"
+          },
+          "semanticReason": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "title": "Build semantic index"
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Apply the same metadata changes (tags, series, publisher, etc.) to a set of books selected by ids, a search query, or filter (a bundle name). Preview-first: returns the per-book diff without writing unless preview is set false. A book set is required (never all books). Requires writes to be enabled.",
+      "execution": {
+        "taskSupport": "forbidden"
+      },
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "properties": {
+          "changes": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                }
+              ]
+            },
+            "propertyNames": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "filter": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "ids": {
+            "items": {
+              "anyOf": [
+                {
+                  "maximum": 9007199254740991,
+                  "minimum": -9007199254740991,
+                  "type": "integer"
+                },
+                {
+                  "minLength": 1,
+                  "type": "string"
+                }
+              ]
+            },
+            "type": "array"
+          },
+          "library": {
+            "type": "string"
+          },
+          "preview": {
+            "type": "boolean"
+          },
+          "query": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "calibre_bulk_update",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "applied": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          },
+          "books": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "changed": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "after": {},
+                      "before": {},
+                      "field": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "field",
+                      "before",
+                      "after"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "id": {
+                  "type": "number"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "changed"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "failed": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "error": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "id",
+                "error"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "matched": {
+            "type": "number"
+          },
+          "preview": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "title": "Bulk update book metadata"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "readOnlyHint": false
+      },
+      "description": "Offline scan of a book's own text for a checksum-valid ISBN → sets identifiers:isbn (no network; for online lookup use calibre_recover_metadata). Preview-first: apply=false reports only, merges into existing identifiers. Requires writes enabled.",
+      "execution": {
+        "taskSupport": "forbidden"
+      },
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "properties": {
+          "apply": {
+            "type": "boolean"
+          },
+          "bookId": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "minLength": 1,
+                "type": "string"
+              }
+            ]
+          },
+          "id": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "minLength": 1,
+                "type": "string"
+              }
+            ]
+          },
+          "library": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "calibre_extract_isbn",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "applied": {
+            "type": "boolean"
+          },
+          "bookId": {
+            "type": "number"
+          },
+          "changed": {
+            "type": "boolean"
+          },
+          "currentIsbn": {
+            "type": "string"
+          },
+          "isbn": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "title": "Extract ISBN from book text"
+    },
+    {
+      "annotations": {
+        "openWorldHint": true,
+        "readOnlyHint": true
+      },
+      "description": "Find probable duplicate books. mode=identical (exact title+authors) or similar (fuzzy) group the library (or ids/query/filter subset — filter takes a bundle name) with a merge-safety score; mode=compare diffs 2+ ids field-by-field. Read-only — never merges.",
+      "execution": {
+        "taskSupport": "forbidden"
+      },
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "properties": {
+          "cursor": {
+            "type": "string"
+          },
+          "filter": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "ids": {
+            "items": {
+              "anyOf": [
+                {
+                  "maximum": 9007199254740991,
+                  "minimum": -9007199254740991,
+                  "type": "integer"
+                },
+                {
+                  "minLength": 1,
+                  "type": "string"
+                }
+              ]
+            },
+            "type": "array"
+          },
+          "library": {
+            "type": "string"
+          },
+          "limit": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          "mode": {
+            "default": "identical",
+            "enum": [
+              "identical",
+              "similar",
+              "compare"
+            ],
+            "type": "string"
+          },
+          "query": {
+            "maxLength": 512,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "calibre_find_duplicates",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "booksScanned": {
+            "type": "number"
+          },
+          "capped": {
+            "type": "boolean"
+          },
+          "count": {
+            "type": "number"
+          },
+          "groupCount": {
+            "type": "number"
+          },
+          "keep": {
+            "type": "number"
+          },
+          "languagesDiffer": {
+            "type": "boolean"
+          },
+          "mergeSafety": {
+            "type": "number"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "nextCursor": {
+            "type": "string"
+          },
+          "offset": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "mode"
+        ],
+        "type": "object"
+      },
+      "title": "Find duplicates"
+    },
+    {
+      "_meta": {
+        "ui": {
+          "resourceUri": "ui://calibre/book-card.html"
+        },
+        "ui/resourceUri": "ui://calibre/book-card.html"
+      },
+      "annotations": {
+        "openWorldHint": true,
+        "readOnlyHint": true
+      },
+      "description": "Get full metadata (authors, ISBN, formats, comments, cover) for one book by its id or uuid (id and bookId are interchangeable — pass the bookId from a search result). Set include_cover=true only when the cover image itself must be inspected.",
+      "execution": {
+        "taskSupport": "forbidden"
+      },
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "properties": {
+          "bookId": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "minLength": 1,
+                "type": "string"
+              }
+            ]
+          },
+          "id": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "minLength": 1,
+                "type": "string"
+              }
+            ]
+          },
+          "include_cover": {
+            "type": "boolean"
+          },
+          "library": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "calibre_get_book",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "book": {
+            "additionalProperties": false,
+            "properties": {
+              "authorSort": {
+                "type": "string"
+              },
+              "authors": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "comments": {
+                "type": "string"
+              },
+              "coverUrl": {
+                "type": "string"
+              },
+              "formats": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "id": {
+                "type": "number"
+              },
+              "identifiers": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "propertyNames": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "languages": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "lastModified": {
+                "type": "string"
+              },
+              "pages": {
+                "type": "number"
+              },
+              "pubdate": {
+                "type": "string"
+              },
+              "publisher": {
+                "type": "string"
+              },
+              "rating": {
+                "type": "number"
+              },
+              "series": {
+                "type": "string"
+              },
+              "seriesIndex": {
+                "type": "number"
+              },
+              "tags": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "title": {
+                "type": "string"
+              },
+              "uuid": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "libraryId": {
+            "type": "string"
+          },
+          "serverUrl": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "title": "Get book metadata"
+    },
+    {
+      "annotations": {
+        "openWorldHint": true,
+        "readOnlyHint": true
+      },
+      "description": "Extract a book's text as a capped, fenced excerpt; pass the returned nextCursor token verbatim to walk the whole book, or jump to a char position with offset (e.g. a search passage's charStart). Set structure=true for a chapter map with per-chapter cursors. To find text inside a book, use calibre_search scope=book.",
+      "execution": {
+        "taskSupport": "forbidden"
+      },
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "properties": {
+          "bookId": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "minLength": 1,
+                "type": "string"
+              }
+            ]
+          },
+          "cursor": {
+            "description": "Opaque continuation token from a previous response (nextCursor or a chapter cursor). Pass it verbatim — do not construct one.",
+            "type": "string"
+          },
+          "format": {
+            "type": "string"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "minLength": 1,
+                "type": "string"
+              }
+            ]
+          },
+          "library": {
+            "type": "string"
+          },
+          "maxChars": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          "offset": {
+            "description": "Char position to start reading from — e.g. a search passage's charStart. Mutually exclusive with cursor.",
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "sentenceAware": {
+            "type": "boolean"
+          },
+          "structure": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "name": "calibre_get_content",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "backend": {
+            "type": "string"
+          },
+          "chapters": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "approxTokens": {
+                  "type": "number"
+                },
+                "cursor": {
+                  "type": "string"
+                },
+                "endChar": {
+                  "type": "number"
+                },
+                "heading": {
+                  "type": "string"
+                },
+                "n": {
+                  "type": "number"
+                },
+                "startChar": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "n",
+                "heading",
+                "startChar",
+                "endChar",
+                "approxTokens",
+                "cursor"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "count": {
+            "type": "number"
+          },
+          "detector": {
+            "type": "string"
+          },
+          "format": {
+            "type": "string"
+          },
+          "hasMore": {
+            "type": "boolean"
+          },
+          "hasToc": {
+            "type": "boolean"
+          },
+          "nextCursor": {
+            "type": "string"
+          },
+          "offset": {
+            "type": "number"
+          },
+          "text": {
+            "type": "string"
+          },
+          "totalChars": {
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "title": "Read book text"
+    },
+    {
+      "_meta": {
+        "ui": {
+          "resourceUri": "ui://calibre/figures.html"
+        },
+        "ui/resourceUri": "ui://calibre/figures.html"
+      },
+      "annotations": {
+        "openWorldHint": true,
+        "readOnlyHint": true
+      },
+      "description": "List a book's figures — images the text references, identified by caption (Figure 1-2 / Рис. 3.1) — with page + caption per figure, then fetch chosen ones as images via indexes (≤3 per call). Captions let you pick figures before spending image tokens. In MCP Apps hosts the fetched figures also render for the user in an in-chat viewer, so you can point at them by figure number — but describe only what the pixels you received actually show.",
+      "execution": {
+        "taskSupport": "forbidden"
+      },
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "properties": {
+          "bookId": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "minLength": 1,
+                "type": "string"
+              }
+            ]
+          },
+          "detail": {
+            "default": "standard",
+            "description": "Image resolution: standard ≤1024px longest side (default), high ≤1568px.",
+            "enum": [
+              "standard",
+              "high"
+            ],
+            "type": "string"
+          },
+          "format": {
+            "description": "Source format override (epub or pdf). Default: epub if present, else pdf.",
+            "type": "string"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "minLength": 1,
+                "type": "string"
+              }
+            ]
+          },
+          "include_uncaptioned": {
+            "description": "Also list/fetch images with no caption (covers, decorations, equation images).",
+            "type": "boolean"
+          },
+          "indexes": {
+            "description": "Figure indexes from a previous list call — returns those figures as images (≤3 per call). Omit to list. Indexes are per-format; re-list after changing format.",
+            "items": {
+              "maximum": 9007199254740991,
+              "minimum": -9007199254740991,
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "library": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "calibre_get_figures",
+      "title": "Get book figures"
+    },
+    {
+      "annotations": {
+        "openWorldHint": true,
+        "readOnlyHint": true
+      },
+      "description": "Browse library categories (Authors, Tags, Series, Languages, Publisher). No field → list the categories; with a field → its values + counts, filterable via a valueFilter regex (case-insensitive by default; a leading inline flag like `(?i)` is accepted).",
+      "execution": {
+        "taskSupport": "forbidden"
+      },
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "properties": {
+          "cursor": {
+            "type": "string"
+          },
+          "field": {
+            "type": "string"
+          },
+          "library": {
+            "type": "string"
+          },
+          "limit": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          "valueFilter": {
+            "maxLength": 200,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "calibre_list_categories",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "count": {
+            "type": "number"
+          },
+          "field": {
+            "type": "string"
+          },
+          "mode": {
+            "enum": [
+              "fields",
+              "values"
+            ],
+            "type": "string"
+          },
+          "nextCursor": {
+            "type": "string"
+          },
+          "offset": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          },
+          "values": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "count": {
+                  "type": "number"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "title": "List categories"
+    },
+    {
+      "annotations": {
+        "openWorldHint": true,
+        "readOnlyHint": true
+      },
+      "description": "List the Calibre libraries available on the Content Server and which one is the default. Call this first to discover valid library names.",
+      "execution": {
+        "taskSupport": "forbidden"
+      },
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "properties": {},
+        "type": "object"
+      },
+      "name": "calibre_list_libraries",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "default": {
+            "type": "string"
+          },
+          "libraries": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "isDefault": {
+                  "type": "boolean"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "isDefault"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "title": "List Calibre libraries"
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "readOnlyHint": false
+      },
+      "description": "List, create, update or delete Bundles — named topical filters backed by Calibre saved searches (e.g. a 'rust' bundle scoping searches to Rust books). A name starting with '-' is an exclusion marker. Also lists virtual libraries, which are read-only here. Preview-first: create/update report the match count until confirm=true. Requires writes to be enabled.",
+      "execution": {
+        "taskSupport": "forbidden"
+      },
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "properties": {
+          "action": {
+            "enum": [
+              "list",
+              "create",
+              "update",
+              "delete"
+            ],
+            "type": "string"
+          },
+          "confirm": {
+            "type": "boolean"
+          },
+          "expression": {
+            "type": "string"
+          },
+          "library": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "type": "object"
+      },
+      "name": "calibre_manage_bundles",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "applied": {
+            "type": "boolean"
+          },
+          "bundles": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "expression": {
+                  "type": "string"
+                },
+                "is_exclusion_marker": {
+                  "type": "boolean"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "read_only": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "name",
+                "expression",
+                "kind",
+                "read_only",
+                "is_exclusion_marker"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "created_as": {
+            "type": "string"
+          },
+          "matches": {
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "title": "Manage bundles (saved searches)"
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "readOnlyHint": false
+      },
+      "description": "Merge duplicate book records: moves formats from source books into a target (target's copy wins conflicts), merges metadata per Calibre's rules, then trashes the sources. mode=safe keeps sources; mode=formatsOnly moves formats only. Dry-run unless confirm=true. Requires writes to be enabled.",
+      "execution": {
+        "taskSupport": "forbidden"
+      },
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "properties": {
+          "confirm": {
+            "type": "boolean"
+          },
+          "library": {
+            "type": "string"
+          },
+          "mode": {
+            "default": "merge",
+            "enum": [
+              "merge",
+              "safe",
+              "formatsOnly"
+            ],
+            "type": "string"
+          },
+          "sourceIds": {
+            "items": {
+              "maximum": 9007199254740991,
+              "minimum": -9007199254740991,
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "targetId": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "targetId"
+        ],
+        "type": "object"
+      },
+      "name": "calibre_merge_books",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "formatMoves": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "action": {
+                  "type": "string"
+                },
+                "format": {
+                  "type": "string"
+                },
+                "sourceId": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "format",
+                "sourceId",
+                "action"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "metadataChanges": {
+            "additionalProperties": {},
+            "propertyNames": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "sourceIds": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "planned",
+              "merged",
+              "incomplete"
+            ],
+            "type": "string"
+          },
+          "steps": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "note": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "step": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "step",
+                "status"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "targetId": {
+            "type": "number"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "title": "Merge duplicate books"
+    },
+    {
+      "_meta": {
+        "ui": {
+          "visibility": [
+            "app"
+          ]
+        }
+      },
+      "annotations": {
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Internal endpoint for the in-chat widgets' Open button. Launches a book in the local Calibre viewer via the calibre:// scheme. Do not call as the model — use calibre_get_book to show a book instead.",
+      "execution": {
+        "taskSupport": "forbidden"
+      },
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "properties": {
+          "format": {
+            "type": "string"
+          },
+          "id": {
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991,
+            "type": "integer"
+          },
+          "library": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
+      "name": "calibre_open_book",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "format": {
+            "type": "string"
+          },
+          "opened": {
+            "type": "boolean"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "opened",
+          "url",
+          "format"
+        ],
+        "type": "object"
+      },
+      "title": "Open book in local viewer (widget-internal)"
+    },
+    {
+      "annotations": {
+        "openWorldHint": true,
+        "readOnlyHint": true
+      },
+      "description": "Health check: confirms the MCP server can reach the running Calibre Content Server via calibredb, and reports semantic-search status (embedding model, dependency, index vector count). Returns library categories on success.",
+      "execution": {
+        "taskSupport": "forbidden"
+      },
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "properties": {},
+        "type": "object"
+      },
+      "name": "calibre_ping",
+      "title": "Calibre ping"
+    },
+    {
+      "annotations": {
+        "openWorldHint": true,
+        "readOnlyHint": true
+      },
+      "description": "Scan books for metadata problems: missing fields, raw-filename titles, invalid ISBNs, author-sort mismatches, series gaps. Defaults to the whole library; narrow with ids/query/filter (a bundle name) or specific checks. Read-only.",
+      "execution": {
+        "taskSupport": "forbidden"
+      },
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "properties": {
+          "checks": {
+            "items": {
+              "enum": [
+                "missing_metadata",
+                "raw_filename_title",
+                "isbn_invalid",
+                "author_sort_mismatch",
+                "series_gaps"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "cursor": {
+            "type": "string"
+          },
+          "filter": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "ids": {
+            "items": {
+              "anyOf": [
+                {
+                  "maximum": 9007199254740991,
+                  "minimum": -9007199254740991,
+                  "type": "integer"
+                },
+                {
+                  "minLength": 1,
+                  "type": "string"
+                }
+              ]
+            },
+            "type": "array"
+          },
+          "library": {
+            "type": "string"
+          },
+          "limit": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          "query": {
+            "maxLength": 512,
+            "type": "string"
+          },
+          "readability": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "name": "calibre_quality_report",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "booksScanned": {
+            "type": "number"
+          },
+          "byCheck": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "propertyNames": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "capped": {
+            "type": "boolean"
+          },
+          "count": {
+            "type": "number"
+          },
+          "nextCursor": {
+            "type": "string"
+          },
+          "offset": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "title": "Quality report"
+    },
+    {
+      "annotations": {
+        "openWorldHint": true,
+        "readOnlyHint": true
+      },
+      "description": "Propose real metadata for a book with a missing/raw-filename title via online provider lookup (ISBN from its identifiers or text, else title/author) on Open Library and Google Books. Preview only — returns a changes object for calibre_update_book; never writes.",
+      "execution": {
+        "taskSupport": "forbidden"
+      },
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "properties": {
+          "bookId": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "minLength": 1,
+                "type": "string"
+              }
+            ]
+          },
+          "id": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "minLength": 1,
+                "type": "string"
+              }
+            ]
+          },
+          "library": {
+            "type": "string"
+          },
+          "sources": {
+            "items": {
+              "enum": [
+                "openlibrary",
+                "googlebooks"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "name": "calibre_recover_metadata",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "bookId": {
+            "type": "number"
+          },
+          "changes": {
+            "additionalProperties": {},
+            "propertyNames": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "confidence": {
+            "type": "number"
+          },
+          "fieldCount": {
+            "type": "number"
+          },
+          "lookupKey": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "title": "Recover book metadata"
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "readOnlyHint": false
+      },
+      "description": "Remove books from the library. Removed books go to Calibre's Trash and can be restored from the Calibre GUI, so this is recoverable. Two-step: the first call is a dry-run listing what would be removed; re-run with confirm=true to proceed. Requires writes to be enabled.",
+      "execution": {
+        "taskSupport": "forbidden"
+      },
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "properties": {
+          "confirm": {
+            "type": "boolean"
+          },
+          "ids": {
+            "items": {
+              "anyOf": [
+                {
+                  "maximum": 9007199254740991,
+                  "minimum": -9007199254740991,
+                  "type": "integer"
+                },
+                {
+                  "minLength": 1,
+                  "type": "string"
+                }
+              ]
+            },
+            "type": "array"
+          },
+          "library": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "calibre_remove_book",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "deleted": {
+            "type": "boolean"
+          },
+          "removedIds": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          },
+          "wouldRemove": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "number"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "title": "Remove books"
+    },
+    {
+      "_meta": {
+        "ui": {
+          "resourceUri": "ui://calibre/board-keyword.html"
+        },
+        "ui/resourceUri": "ui://calibre/board-keyword.html"
+      },
+      "annotations": {
+        "openWorldHint": true,
+        "readOnlyHint": true
+      },
+      "description": "Find books by exact title, author, ISBN, tag, or Calibre query syntax (mode=meta), or by full text (mode=fts). scope=book returns short keyword snippets from inside one book; first hits often land in TOC/front matter — for definitional or topic questions within a book prefer calibre_semantic_search scope=book (ranked passages with char offsets). Use calibre_semantic_search for meaning/topic queries. For \"how many\" questions use countOnly=true (returns only the count). filter accepts a bundle name to scope the search (list bundles via calibre_manage_bundles).",
+      "execution": {
+        "taskSupport": "forbidden"
+      },
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "properties": {
+          "bookId": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "minLength": 1,
+                "type": "string"
+              }
+            ]
+          },
+          "countOnly": {
+            "type": "boolean"
+          },
+          "cursor": {
+            "type": "string"
+          },
+          "filter": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "include_excluded": {
+            "type": "boolean"
+          },
+          "library": {
+            "type": "string"
+          },
+          "limit": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          "mode": {
+            "default": "meta",
+            "enum": [
+              "meta",
+              "fts"
+            ],
+            "type": "string"
+          },
+          "query": {
+            "maxLength": 512,
+            "minLength": 1,
+            "type": "string"
+          },
+          "scope": {
+            "default": "library",
+            "enum": [
+              "library",
+              "book"
+            ],
+            "type": "string"
+          },
+          "sort": {
+            "enum": [
+              "title",
+              "authors",
+              "pubdate",
+              "timestamp",
+              "rating",
+              "last_modified"
+            ],
+            "type": "string"
+          },
+          "sortOrder": {
+            "enum": [
+              "asc",
+              "desc"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "type": "object"
+      },
+      "name": "calibre_search",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "bookId": {
+            "type": "number"
+          },
+          "bookIds": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          },
+          "count": {
+            "type": "number"
+          },
+          "exclusionsApplied": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "filter": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "nextCursor": {
+            "type": "string"
+          },
+          "offset": {
+            "type": "number"
+          },
+          "query": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "title": "Search books"
+    },
+    {
+      "_meta": {
+        "ui": {
+          "resourceUri": "ui://calibre/board-semantic.html"
+        },
+        "ui/resourceUri": "ui://calibre/board-semantic.html"
+      },
+      "annotations": {
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Meaning-based search over the local index. scope=library ranks books; scope=book (needs bookId) ranks passages within one book. target=figures searches figure captions instead of text — use when the user asks for a diagram/chart/schema; hits point at calibre_get_figures for the pixels. mode=hybrid (default) fuses semantic + keyword matches; mode=vector is semantic-only; mode=keyword is exact keyword/FTS (no model at query time). All modes need an index built by calibre_build_index. filter accepts a bundle name to scope library searches (list bundles via calibre_manage_bundles). Model inference is serialized: prefer one call at a time — parallel calls queue, and past a few the extras skip the rerank.",
+      "execution": {
+        "taskSupport": "forbidden"
+      },
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "properties": {
+          "bookId": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "minLength": 1,
+                "type": "string"
+              }
+            ]
+          },
+          "filter": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "include_excluded": {
+            "type": "boolean"
+          },
+          "library": {
+            "type": "string"
+          },
+          "mode": {
+            "default": "hybrid",
+            "enum": [
+              "hybrid",
+              "vector",
+              "keyword"
+            ],
+            "type": "string"
+          },
+          "query": {
+            "maxLength": 512,
+            "minLength": 1,
+            "type": "string"
+          },
+          "scope": {
+            "default": "library",
+            "enum": [
+              "library",
+              "book"
+            ],
+            "type": "string"
+          },
+          "target": {
+            "default": "text",
+            "enum": [
+              "text",
+              "figures"
+            ],
+            "type": "string"
+          },
+          "topK": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "type": "object"
+      },
+      "name": "calibre_semantic_search",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "bookId": {
+            "type": "number"
+          },
+          "bookIds": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          },
+          "count": {
+            "type": "number"
+          },
+          "exclusionsApplied": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "figures": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "authors": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "bookId": {
+                  "type": "number"
+                },
+                "caption": {
+                  "type": "string"
+                },
+                "charOffset": {
+                  "type": "number"
+                },
+                "contextCharEnd": {
+                  "type": "number"
+                },
+                "contextCharStart": {
+                  "type": "number"
+                },
+                "contextSnippet": {
+                  "type": "string"
+                },
+                "cosine": {
+                  "type": "number"
+                },
+                "figIndex": {
+                  "type": "number"
+                },
+                "format": {
+                  "type": "string"
+                },
+                "page": {
+                  "type": "number"
+                },
+                "rerankScore": {
+                  "type": "number"
+                },
+                "source": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "bookId",
+                "title",
+                "authors",
+                "figIndex",
+                "page",
+                "caption",
+                "format",
+                "charOffset"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "filter": {
+            "type": "string"
+          },
+          "indexVersion": {
+            "type": "number"
+          },
+          "lowConfidence": {
+            "type": "boolean"
+          },
+          "maxRerank": {
+            "type": "number"
+          },
+          "maxScore": {
+            "type": "number"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "passages": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "body": {
+                  "type": "string"
+                },
+                "charEnd": {
+                  "type": "number"
+                },
+                "charStart": {
+                  "type": "number"
+                },
+                "cosine": {
+                  "type": "number"
+                },
+                "frontMatter": {
+                  "type": "boolean"
+                },
+                "rerankScore": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "charStart",
+                "charEnd",
+                "body"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "reranked": {
+            "type": "boolean"
+          },
+          "results": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "authors": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "bookId": {
+                  "type": "number"
+                },
+                "charEnd": {
+                  "type": "number"
+                },
+                "charStart": {
+                  "type": "number"
+                },
+                "cosine": {
+                  "type": "number"
+                },
+                "rerankScore": {
+                  "type": "number"
+                },
+                "snippet": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "bookId",
+                "title",
+                "authors",
+                "charStart",
+                "charEnd",
+                "snippet"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "semanticAvailable": {
+            "type": "boolean"
+          },
+          "semanticReason": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "title": "Semantic search"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "readOnlyHint": false
+      },
+      "description": "Replace metadata fields on one book (title, authors, tags, series, rating, identifiers, comments, or any #custom column). Omitted fields are untouched. Requires writes to be enabled.",
+      "execution": {
+        "taskSupport": "forbidden"
+      },
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "properties": {
+          "bookId": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "minLength": 1,
+                "type": "string"
+              }
+            ]
+          },
+          "changes": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                }
+              ]
+            },
+            "propertyNames": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "minLength": 1,
+                "type": "string"
+              }
+            ]
+          },
+          "library": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "calibre_update_book",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "changed": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "after": {},
+                "before": {},
+                "field": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "field",
+                "before",
+                "after"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "id": {
+            "type": "number"
+          },
+          "noop": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "title": "Update book metadata"
+    }
+  ]
+}

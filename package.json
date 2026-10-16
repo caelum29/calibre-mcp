@@ -50,6 +50,8 @@
     "eval": "node --import tsx test/eval/retrieval/run.ts",
     "reindex": "node --import tsx scripts/reindex.ts",
     "versions:check": "node scripts/check-versions.mjs",
+    "catalog": "pnpm build && node scripts/gen-tool-catalog.mjs",
+    "catalog:check": "node scripts/gen-tool-catalog.mjs --check",
     "prepublishOnly": "pnpm run versions:check && pnpm run build && pnpm run test",
     "pack:mcpb": "node scripts/pack-mcpb.mjs",
     "pack:mcpb:dev": "node scripts/pack-mcpb.mjs --dev",
@@ -75,6 +77,7 @@
   "devDependencies": {
     "@modelcontextprotocol/inspector": "2.2.0",
     "@types/node": "24.13.2",
+    "ajv": "8.20.0",
     "husky": "9.1.7",
     "knip": "6.41.0",
     "lint-staged": "17.6.0",
