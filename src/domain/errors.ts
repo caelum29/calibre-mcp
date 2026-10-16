@@ -53,3 +53,16 @@ export class CalibreNotFoundError extends CalibreCliError {
     this.name = "CalibreNotFoundError";
   }
 }
+
+/**
+ * The caller cancelled the operation (MCP notifications/cancelled, or the client went away)
+ * and any subprocess or download was stopped. Deliberately NOT a CalibreCliError/HttpError
+ * subclass, so callers that classify those don't misreport a cancellation as e.g. "FTS not
+ * ready" or "server unreachable".
+ */
+export class OperationCancelledError extends Error {
+  constructor(message = "The operation was cancelled.") {
+    super(message);
+    this.name = "OperationCancelledError";
+  }
+}

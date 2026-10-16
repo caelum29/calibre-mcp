@@ -164,7 +164,12 @@ function structuredFilterFields(fRes: FilterResolution): Record<string, unknown>
 }
 
 /** scope=library, mode=fts — group FTS hits by book → resource_links + fenced snippets. */
-async function ftsLibraryScope(args: SearchArgs, deps: ToolDeps, fRes: FilterResolution): Promise<ToolResult> {
+async function ftsLibraryScope(
+  args: SearchArgs,
+  deps: ToolDeps,
+  fRes: FilterResolution,
+  signal?: AbortSignal,
+): Promise<ToolResult> {
   // calibredb's --with-library fragment needs the library ID, not the display name
   // (the display form 404s) — resolve first, same as the write path (commit 71531d2).
   const libId = await deps.content.resolveLibraryId(args.library);
@@ -176,6 +181,7 @@ async function ftsLibraryScope(args: SearchArgs, deps: ToolDeps, fRes: FilterRes
     matchStartMarker: FTS_START,
     matchEndMarker: FTS_END,
     library: libId,
+    signal,
   });
   const hits = allow === undefined ? rawHits : rawHits.filter((h) => allow.has(h.bookId));
   const honesty = await filterSuffix(deps, fRes, args.library, allow?.size);
@@ -258,7 +264,12 @@ async function ftsLibraryScope(args: SearchArgs, deps: ToolDeps, fRes: FilterRes
 }
 
 /** scope=book — full-text search within one book; returns fenced in-book snippets. */
-async function ftsBookScope(args: SearchArgs, deps: ToolDeps, bookId: number): Promise<ToolResult> {
+async function ftsBookScope(
+  args: SearchArgs,
+  deps: ToolDeps,
+  bookId: number,
+  signal?: AbortSignal,
+): Promise<ToolResult> {
   const libId = await deps.content.resolveLibraryId(args.library);
   const hits = await deps.calibre.ftsSearch(args.query, {
     restrictToIds: [bookId],
@@ -266,6 +277,7 @@ async function ftsBookScope(args: SearchArgs, deps: ToolDeps, bookId: number): P
     matchStartMarker: FTS_START,
     matchEndMarker: FTS_END,
     library: libId,
+    signal,
   });
   const snippets = hits.map((h) => h.snippet).filter((s): s is string => Boolean(s));
 
@@ -354,7 +366,7 @@ export const searchTool = defineTool({
     exclusionsApplied: z.array(z.string()).optional(),
   },
   annotations: { readOnlyHint: true, openWorldHint: true },
-  handler: async (args, deps) => {
+  handler: async (args, deps, ctx) => {
     try {
       // scope=book → full-text within one book (metadata search on a single record is moot).
       // Bundles scope LIBRARY discovery; a named book is already the narrowest scope.
@@ -365,7 +377,7 @@ export const searchTool = defineTool({
         if (args.bookId === undefined) return toolError("scope=book requires bookId");
         const bookId = await resolveNumericId(deps, args.bookId, args.library);
         if (bookId === undefined) return toolError(`No book with id/uuid ${args.bookId}`);
-        return await ftsBookScope(args, deps, bookId);
+        return await ftsBookScope(args, deps, bookId, ctx?.signal);
       }
       const fr = await resolveFilter(deps, {
         filter: args.filter,
@@ -374,7 +386,7 @@ export const searchTool = defineTool({
         library: args.library,
       });
       if (!fr.ok) return toolError(fr.error);
-      if (args.mode === "fts") return await ftsLibraryScope(args, deps, fr.res);
+      if (args.mode === "fts") return await ftsLibraryScope(args, deps, fr.res, ctx?.signal);
       return await metaLibraryScope(args, deps, fr.res);
     } catch (err) {
       // A missing calibredb binary carries its own install hint — don't blame the index.
