@@ -28,7 +28,11 @@ const checks = [
   ["server.json name (== package.json mcpName)", server.name, pkg.mcpName],
   ["server.json packages[0].identifier (== package.json name)", server.packages?.[0]?.identifier, pkg.name],
   ["manifest.json version", manifest.version, pkg.version],
-  ["manifest.json compatibility.runtimes.node (== engines.node)", manifest.compatibility?.runtimes?.node, pkg.engines?.node],
+  [
+    "manifest.json compatibility.runtimes.node (== engines.node)",
+    manifest.compatibility?.runtimes?.node,
+    pkg.engines?.node,
+  ],
   [".claude-plugin/plugin.json version", plugin.version, pkg.version],
 ];
 // marketplace.json entries carry no version today; check any that start to.

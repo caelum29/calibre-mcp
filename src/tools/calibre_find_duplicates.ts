@@ -53,9 +53,7 @@ export const findDuplicatesTool = defineTool({
           return toolError(`compare needs 2+ resolvable books; got ${books.length}.`);
         }
         const report = compareBooks(books);
-        const lines = report.diffs.map(
-          (d) => `${d.agree ? "=" : "≠"} ${d.field}: ${d.values.join(" | ")}`,
-        );
+        const lines = report.diffs.map((d) => `${d.agree ? "=" : "≠"} ${d.field}: ${d.values.join(" | ")}`);
         // A differing-language pair is a translation, not a duplicate — say so loudly, since
         // the rest of the diff can look identical and read as a safe delete (#51).
         const langDiff = report.diffs.find((d) => d.field === "languages" && !d.agree);
@@ -97,9 +95,7 @@ export const findDuplicatesTool = defineTool({
       const offset = cur && cur.query === cursorKey ? cur.offset : 0;
       const pageGroups = groups.slice(offset, offset + args.limit);
       const more = offset + pageGroups.length < groups.length;
-      const nextCursor = more
-        ? encodeCursor({ offset: offset + pageGroups.length, query: cursorKey })
-        : undefined;
+      const nextCursor = more ? encodeCursor({ offset: offset + pageGroups.length, query: cursorKey }) : undefined;
 
       const content: ContentBlock[] = [];
       // The count is only the bundle's size when the bundle alone selected the set.
@@ -118,13 +114,11 @@ export const findDuplicatesTool = defineTool({
         const summary = g.books
           .map(
             (b) =>
-              `#${b.id} "${b.title}" — ${b.authors.join(", ") || "?"}` +
-              ` [${b.languages.join(", ") || "lang ?"}]`,
+              `#${b.id} "${b.title}" — ${b.authors.join(", ") || "?"}` + ` [${b.languages.join(", ") || "lang ?"}]`,
           )
           .join("\n");
         const mixedLangs = new Set(g.books.flatMap((b) => b.languages.map((l) => l.toLowerCase())));
-        const note =
-          mixedLangs.size > 1 ? "\n⚠ REVIEW — mixed languages: likely translations, not duplicates." : "";
+        const note = mixedLangs.size > 1 ? "\n⚠ REVIEW — mixed languages: likely translations, not duplicates." : "";
         content.push({
           type: "text",
           text: fence("DUP GROUP", `mergeSafety ${g.mergeSafety.toFixed(2)}\n${summary}${note}`),

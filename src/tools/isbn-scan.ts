@@ -44,12 +44,7 @@ function deadline(ms: number): { race: Promise<never>; cancel: () => void } {
  * fetch), and a wall-clock race caps the summed per-layer timeouts. Never throws → the caller
  * degrades gracefully.
  */
-export async function scanForIsbn(
-  deps: ToolDeps,
-  book: Book,
-  id: number,
-  library?: string,
-): Promise<IsbnScanResult> {
+export async function scanForIsbn(deps: ToolDeps, book: Book, id: number, library?: string): Promise<IsbnScanResult> {
   const fmt = chooseExtractFormat(book.formats);
   if (!fmt) return { outcome: "no-format" };
   const { race, cancel } = deadline(ISBN_SCAN_TIMEOUT_MS);

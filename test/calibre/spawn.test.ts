@@ -2,12 +2,7 @@ import { describe, it, expect } from "vitest";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import {
-  killAllChildren,
-  spawnCollect,
-  SpawnTimeoutError,
-  SpawnMaxBufferError,
-} from "../../src/calibre/spawn.js";
+import { killAllChildren, spawnCollect, SpawnTimeoutError, SpawnMaxBufferError } from "../../src/calibre/spawn.js";
 
 const node = process.execPath;
 
@@ -45,9 +40,9 @@ describe("spawnCollect", () => {
       "spawn(process.execPath,['-e','setTimeout(()=>{},30000)'],{stdio:['ignore','inherit','inherit']});" +
       "setTimeout(()=>{},30000);";
     const start = Date.now();
-    await expect(
-      spawnCollect(node, ["-e", script], { timeoutMs: 400, maxBuffer: 1 << 20 }),
-    ).rejects.toBeInstanceOf(SpawnTimeoutError);
+    await expect(spawnCollect(node, ["-e", script], { timeoutMs: 400, maxBuffer: 1 << 20 })).rejects.toBeInstanceOf(
+      SpawnTimeoutError,
+    );
     // Must settle near the timeout, NOT wait for the 30s grandchild.
     expect(Date.now() - start).toBeLessThan(5_000);
   });

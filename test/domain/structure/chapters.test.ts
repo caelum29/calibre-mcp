@@ -85,7 +85,9 @@ describe("detectChapters — bare-heading title enrichment (#29)", () => {
     // Running headers repeat "Chapter 1" mid-chapter with a bigger body than the real
     // titled heading; the titled occurrence must still win (book 911's Chapter 11).
     const page = `${prose}\n`;
-    const text = ["Chapter 1", "", "Real Title", page.repeat(20), "Chapter 1", "", "11.1.5", page.repeat(100)].join("\n");
+    const text = ["Chapter 1", "", "Real Title", page.repeat(20), "Chapter 1", "", "11.1.5", page.repeat(100)].join(
+      "\n",
+    );
     const r = detectChapters(text);
     expect(r.chapters[0]!.heading).toBe("Chapter 1 — Real Title");
     expect(r.chapters[0]!.startChar).toBe(0);
@@ -146,7 +148,9 @@ describe("detectChapters — numeric", () => {
 
 describe("detectChapters — structural fallback", () => {
   it("picks the shallowest depth with >= 2 distinct ATX titles", () => {
-    const text = ["# Book Title", "intro", "## Introduction", "aaa", "## Methods", "bbb", "## Results", "ccc"].join("\n");
+    const text = ["# Book Title", "intro", "## Introduction", "aaa", "## Methods", "bbb", "## Results", "ccc"].join(
+      "\n",
+    );
     const r = detectChapters(text);
     expect(r.detector).toBe("structural");
     expect(r.chapters.map((c) => c.heading)).toEqual(["Introduction", "Methods", "Results"]);
@@ -195,7 +199,11 @@ describe("detectChapters — ToC + none", () => {
 describe("frontMatterEnd", () => {
   it("returns the first chapter's start when front matter precedes it", () => {
     const front = "Praise for This Book\n\nGreat stuff.\n\nContents\n\nChapter 1: Alpha ..... 9\n";
-    const body = "Chapter 1: Alpha\n\n" + "Real body prose about alpha. ".repeat(20) + "\nChapter 2: Beta\n\n" + "More body prose about beta. ".repeat(20);
+    const body =
+      "Chapter 1: Alpha\n\n" +
+      "Real body prose about alpha. ".repeat(20) +
+      "\nChapter 2: Beta\n\n" +
+      "More body prose about beta. ".repeat(20);
     const text = front + body;
     expect(frontMatterEnd(text)).toBe(text.indexOf("Chapter 1: Alpha\n\nReal body"));
   });

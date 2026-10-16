@@ -93,11 +93,7 @@ describe("computeSemanticStatus", () => {
   });
 
   it("dep missing text line steers to keyword search + restart-after-install", () => {
-    const s = computeSemanticStatus(
-      { config: memCfg, embedder: embedder(), index: memoryStore() },
-      LIB,
-      depDir(false),
-    );
+    const s = computeSemanticStatus({ config: memCfg, embedder: embedder(), index: memoryStore() }, LIB, depDir(false));
     const line = formatSemanticStatusLine(s);
     expect(line).toContain("UNAVAILABLE");
     expect(line).toContain("keyword search still works");
@@ -173,11 +169,7 @@ describe("computeSemanticStatus", () => {
   });
 
   it("absent loadState() accessor reads as not-attempted (available when dep present)", () => {
-    const s = computeSemanticStatus(
-      { config: memCfg, embedder: embedder(), index: memoryStore() },
-      LIB,
-      depDir(true),
-    );
+    const s = computeSemanticStatus({ config: memCfg, embedder: embedder(), index: memoryStore() }, LIB, depDir(true));
     expect(s.loaded).toBe("not-attempted");
     expect(s.available).toBe(true);
   });
@@ -186,11 +178,19 @@ describe("computeSemanticStatus", () => {
     const dir = mkdtempSync(path.join(tmpdir(), "calibre-idx-"));
     tmpDirs.push(dir);
     const cfg = loadConfig({ CALIBRE_MCP_INDEX_DIR: dir } as NodeJS.ProcessEnv);
-    const cold = computeSemanticStatus({ config: cfg, embedder: embedder(), index: memoryStore() }, undefined, depDir(true));
+    const cold = computeSemanticStatus(
+      { config: cfg, embedder: embedder(), index: memoryStore() },
+      undefined,
+      depDir(true),
+    );
     expect(cold.modelCached).toBe(false);
 
     mkdirSync(path.join(dir, "models", MODEL_ID), { recursive: true });
-    const warm = computeSemanticStatus({ config: cfg, embedder: embedder(), index: memoryStore() }, undefined, depDir(true));
+    const warm = computeSemanticStatus(
+      { config: cfg, embedder: embedder(), index: memoryStore() },
+      undefined,
+      depDir(true),
+    );
     expect(warm.modelCached).toBe(true);
   });
 });

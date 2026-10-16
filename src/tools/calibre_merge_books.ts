@@ -13,11 +13,7 @@ import { downloadToFile } from "../calibre/http.js";
 import type { Book } from "../domain/book.js";
 import { similarKey } from "../domain/curation/normalize.js";
 import { CalibreCliError, CalibreCliTimeoutError, CalibreHttpError } from "../domain/errors.js";
-import {
-  mergeBuiltinMetadata,
-  mergeCustomMetadata,
-  planFormatMoves,
-} from "../domain/merge.js";
+import { mergeBuiltinMetadata, mergeCustomMetadata, planFormatMoves } from "../domain/merge.js";
 import type { FormatMove } from "../domain/merge.js";
 import { CoercedBool, CoercedInt, jsonArray } from "./coerce.js";
 import { defineTool } from "./define.js";
@@ -66,13 +62,9 @@ export const mergeBooksTool = defineTool({
     sourceIds: z.array(z.number()).optional(),
     mode: z.string().optional(),
     warnings: z.array(z.string()).optional(),
-    formatMoves: z
-      .array(z.object({ format: z.string(), sourceId: z.number(), action: z.string() }))
-      .optional(),
+    formatMoves: z.array(z.object({ format: z.string(), sourceId: z.number(), action: z.string() })).optional(),
     metadataChanges: z.record(z.string(), z.unknown()).optional(),
-    steps: z
-      .array(z.object({ step: z.string(), status: z.string(), note: z.string().optional() }))
-      .optional(),
+    steps: z.array(z.object({ step: z.string(), status: z.string(), note: z.string().optional() })).optional(),
   },
   annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
   write: true,
@@ -83,9 +75,7 @@ export const mergeBooksTool = defineTool({
         return toolError("Provide at least one source book id in sourceIds.");
       }
       if (sourceIds.includes(args.targetId)) {
-        return toolError(
-          "sourceIds must not include targetId — the target is the surviving record.",
-        );
+        return toolError("sourceIds must not include targetId — the target is the surviving record.");
       }
 
       // Fresh reads every call: the confirm run re-verifies the sources still exist.
@@ -110,9 +100,7 @@ export const mergeBooksTool = defineTool({
       let metadataChanges: Record<string, ChangeValue> = {};
       let coverFrom: number | undefined;
       if (!formatsOnly) {
-        const facts = await Promise.all(
-          allIds.map((id) => deps.content.bookMergeFacts(id, args.library)),
-        );
+        const facts = await Promise.all(allIds.map((id) => deps.content.bookMergeFacts(id, args.library)));
         const targetFacts = facts[0]!;
         const sourceFacts = facts.slice(1);
         metadataChanges = {
@@ -202,8 +190,7 @@ function planResult(
   );
 
   const text =
-    `Dry run — nothing written. Re-run with confirm=true to execute.\n` +
-    fence("MERGE PLAN", lines.join("\n"));
+    `Dry run — nothing written. Re-run with confirm=true to execute.\n` + fence("MERGE PLAN", lines.join("\n"));
   return toolOk([{ type: "text", text }], {
     status: "planned",
     targetId: target.id,
@@ -243,8 +230,7 @@ async function executeMerge(deps: ToolDeps, job: MergeJob) {
     status: "pending",
   }));
   const hasMetadata =
-    mode !== "formatsOnly" &&
-    (Object.keys(job.metadataChanges).length > 0 || job.coverFrom !== undefined);
+    mode !== "formatsOnly" && (Object.keys(job.metadataChanges).length > 0 || job.coverFrom !== undefined);
   const metaStep: Step | undefined = hasMetadata
     ? { step: `merge metadata into #${target.id}`, status: "pending" }
     : undefined;
@@ -265,14 +251,8 @@ async function executeMerge(deps: ToolDeps, job: MergeJob) {
       const step = moveSteps[i]!;
       try {
         const file = join(await tmp(), `${m.sourceId}.${m.format}`);
-        await downloadToFile(
-          `${base}/get/${m.format.toUpperCase()}/${m.sourceId}/${encodeURIComponent(libId)}`,
-          file,
-        );
-        await deps.calibre.calibredb(
-          ["add_format", "--dont-replace", String(target.id), file],
-          { library: libId },
-        );
+        await downloadToFile(`${base}/get/${m.format.toUpperCase()}/${m.sourceId}/${encodeURIComponent(libId)}`, file);
+        await deps.calibre.calibredb(["add_format", "--dont-replace", String(target.id), file], { library: libId });
         step.status = "done";
       } catch (err) {
         if (isFormatCollision(err)) {
@@ -293,11 +273,7 @@ async function executeMerge(deps: ToolDeps, job: MergeJob) {
           }
         }
         step.status = "failed";
-        step.note = isWriteRefused(err)
-          ? WRITE_REFUSED_MESSAGE
-          : err instanceof Error
-            ? err.message
-            : String(err);
+        step.note = isWriteRefused(err) ? WRITE_REFUSED_MESSAGE : err instanceof Error ? err.message : String(err);
         aborted = true;
         break;
       }
@@ -329,10 +305,7 @@ async function executeMerge(deps: ToolDeps, job: MergeJob) {
         const changes: Record<string, ChangeValue> = { ...job.metadataChanges };
         if (job.coverFrom !== undefined) {
           const coverPath = join(await tmp(), `cover-${job.coverFrom}.jpg`);
-          await downloadToFile(
-            `${base}/get/cover/${job.coverFrom}/${encodeURIComponent(libId)}`,
-            coverPath,
-          );
+          await downloadToFile(`${base}/get/cover/${job.coverFrom}/${encodeURIComponent(libId)}`, coverPath);
           changes.cover = coverPath;
         }
         await deps.calibre.calibredb(buildSetMetadataArgs(target.id, changes), {
@@ -343,9 +316,7 @@ async function executeMerge(deps: ToolDeps, job: MergeJob) {
         let handled = false;
         if (err instanceof CalibreCliTimeoutError) {
           // Verify on the built-in subset (custom #columns aren't carried on Book).
-          const builtin = Object.fromEntries(
-            Object.entries(job.metadataChanges).filter(([k]) => !k.startsWith("#")),
-          );
+          const builtin = Object.fromEntries(Object.entries(job.metadataChanges).filter(([k]) => !k.startsWith("#")));
           if (Object.keys(builtin).length > 0) {
             const landed = await deps.content
               .getBook(target.id, job.library)
@@ -426,9 +397,7 @@ function ledgerResult(job: MergeJob, steps: Step[]) {
   const { target, sourceIds, mode } = job;
   const failed = steps.filter((s) => s.status === "failed");
   const committed = steps.some((s) => s.status === "done");
-  const ledger = steps
-    .map((s) => `  ${STATUS_MARK[s.status]} ${s.step}${s.note ? ` — ${s.note}` : ""}`)
-    .join("\n");
+  const ledger = steps.map((s) => `  ${STATUS_MARK[s.status]} ${s.step}${s.note ? ` — ${s.note}` : ""}`).join("\n");
   const structured = {
     targetId: target.id,
     sourceIds,
@@ -439,8 +408,7 @@ function ledgerResult(job: MergeJob, steps: Step[]) {
 
   if (failed.length === 0) {
     const kept = mode === "safe" ? " Sources kept (mode=safe)." : "";
-    const trashed =
-      mode !== "safe" ? " Sources are in Calibre's trash (recoverable ~14 days)." : "";
+    const trashed = mode !== "safe" ? " Sources are in Calibre's trash (recoverable ~14 days)." : "";
     const summary =
       steps.length === 0
         ? `Nothing to do — #${target.id} already has every source format and no metadata differs.`
@@ -453,8 +421,7 @@ function ledgerResult(job: MergeJob, steps: Step[]) {
 
   if (!committed) {
     return toolError(
-      `Merge did not start — ${failed[0]!.note ?? failed[0]!.step}. Nothing was changed.\n` +
-        `Steps:\n${ledger}`,
+      `Merge did not start — ${failed[0]!.note ?? failed[0]!.step}. Nothing was changed.\n` + `Steps:\n${ledger}`,
       { ...structured, status: "incomplete" },
     );
   }

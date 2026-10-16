@@ -4,12 +4,7 @@
 // classifies a server write-refusal into an actionable message (CAPABILITIES §2).
 
 import { z } from "zod";
-import {
-  bookFieldValue,
-  buildSetMetadataArgs,
-  changesSatisfied,
-  isAllowedField,
-} from "../calibre/metadata-fields.js";
+import { bookFieldValue, buildSetMetadataArgs, changesSatisfied, isAllowedField } from "../calibre/metadata-fields.js";
 import type { ChangeValue } from "../calibre/metadata-fields.js";
 import type { Book } from "../domain/book.js";
 import { CalibreCliTimeoutError } from "../domain/errors.js";
@@ -42,9 +37,7 @@ export const updateBookTool = defineTool({
   },
   outputSchema: {
     id: z.number().optional(),
-    changed: z
-      .array(z.object({ field: z.string(), before: z.unknown(), after: z.unknown() }))
-      .optional(),
+    changed: z.array(z.object({ field: z.string(), before: z.unknown(), after: z.unknown() })).optional(),
     noop: z.boolean().optional(),
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },

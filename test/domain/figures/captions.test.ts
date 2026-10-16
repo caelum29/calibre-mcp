@@ -81,7 +81,9 @@ describe("wrapped in-text references (#116)", () => {
 
   it("keeps captions after a blank line or terminal punctuation", () => {
     expect(matchCaptionLine(wrappedRef, "")?.label).toBe("2.10");
-    expect(matchCaptionLine(wrappedRef, "…required to support them. This procedure results in a definition.")?.label).toBe("2.10");
+    expect(
+      matchCaptionLine(wrappedRef, "…required to support them. This procedure results in a definition.")?.label,
+    ).toBe("2.10");
   });
 
   it("keeps captions after a short diagram inner label (RU false-rejection case)", () => {

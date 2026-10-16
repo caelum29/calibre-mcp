@@ -80,9 +80,7 @@ export function buildInventory(extractedText: string, rasters: RasterImage[]): F
 
   const byPageCaptions = groupBy(captions, (c) => c.page);
   const byPageImages = groupBy(images, (r) => r.page);
-  const pagesWithContent = [...new Set([...byPageCaptions.keys(), ...byPageImages.keys()])].sort(
-    (a, b) => a - b,
-  );
+  const pagesWithContent = [...new Set([...byPageCaptions.keys(), ...byPageImages.keys()])].sort((a, b) => a - b);
 
   const entries: FigureEntry[] = [];
   for (const page of pagesWithContent) {
@@ -100,7 +98,15 @@ export function buildInventory(extractedText: string, rasters: RasterImage[]): F
     }
     // decorations/covers/openers: raster present, caption missing
     for (const r of imgs.slice(paired)) {
-      entries.push({ index: 0, page, captioned: false, source: "raster", width: r.width, height: r.height, pdfImageNum: r.num });
+      entries.push({
+        index: 0,
+        page,
+        captioned: false,
+        source: "raster",
+        width: r.width,
+        height: r.height,
+        pdfImageNum: r.num,
+      });
     }
   }
   entries.forEach((e, i) => (e.index = i));

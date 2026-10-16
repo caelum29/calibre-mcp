@@ -204,9 +204,7 @@ async function main(): Promise<void> {
 
   if (args.gate) {
     const thresholds = JSON.parse(readFileSync(path.join(HERE, "thresholds.json"), "utf8")) as Thresholds;
-    const baseline = JSON.parse(
-      readFileSync(path.join(HERE, thresholds.baselineReport), "utf8"),
-    ) as EvalReport;
+    const baseline = JSON.parse(readFileSync(path.join(HERE, thresholds.baselineReport), "utf8")) as EvalReport;
     const result = evaluateGate(report, baseline, thresholds);
     process.stdout.write(`\n${renderGate(result)}\n`);
     if (!result.pass) process.exit(1);

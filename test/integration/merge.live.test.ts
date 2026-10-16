@@ -69,8 +69,16 @@ describe.skipIf(!RUN || !serverUp)("calibre_merge_books (live Content Server)", 
   /** An empty-record target (no formats) so the source's TXT genuinely MOVES. */
   const addEmptyTarget = async (suffix: string): Promise<number> => {
     const { stdout } = await calibre.calibredb(
-      ["add", "--empty", "--title", `ZZZ MCP Merge Test target ${suffix}`, "--authors",
-        "MCP Test", "--tags", "mcp-test-scrap"],
+      [
+        "add",
+        "--empty",
+        "--title",
+        `ZZZ MCP Merge Test target ${suffix}`,
+        "--authors",
+        "MCP Test",
+        "--tags",
+        "mcp-test-scrap",
+      ],
       { library: libId },
     );
     return parseAddedId(stdout);
@@ -80,18 +88,23 @@ describe.skipIf(!RUN || !serverUp)("calibre_merge_books (live Content Server)", 
     const file = join(scratch, `source-${suffix}.txt`);
     await writeFile(file, `ZZZ MCP merge test scrap ${suffix}\n`);
     const { stdout } = await calibre.calibredb(
-      ["add", file, "--title", `ZZZ MCP Merge Test source ${suffix}`, "--authors",
-        "MCP Test", "--tags", `mcp-test-scrap,zzz-${suffix}`],
+      [
+        "add",
+        file,
+        "--title",
+        `ZZZ MCP Merge Test source ${suffix}`,
+        "--authors",
+        "MCP Test",
+        "--tags",
+        `mcp-test-scrap,zzz-${suffix}`,
+      ],
       { library: libId },
     );
     return parseAddedId(stdout);
   };
 
   const merge = (args: Record<string, unknown>) =>
-    mergeBooksTool.handler(
-      { mode: "merge", confirm: false, library: TEST_LIBRARY, ...args },
-      deps,
-    );
+    mergeBooksTool.handler({ mode: "merge", confirm: false, library: TEST_LIBRARY, ...args }, deps);
 
   beforeAll(async () => {
     scratch = await mkdtemp(join(tmpdir(), "calibre-mcp-merge-live-"));

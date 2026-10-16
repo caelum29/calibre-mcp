@@ -25,8 +25,7 @@ export const CoercedNumber = (): z.ZodType<number> => z.coerce.number();
  * Book id as either a coerced integer (db id) or a non-empty string (uuid). Numeric
  * strings become numbers; anything non-numeric stays a string for uuid resolution.
  */
-export const BookId = (): z.ZodType<number | string> =>
-  z.union([z.coerce.number().int(), z.string().min(1)]);
+export const BookId = (): z.ZodType<number | string> => z.union([z.coerce.number().int(), z.string().min(1)]);
 
 /** Array arg that may arrive as a JSON string (`'["a","b"]'` → ["a","b"]). */
 export function jsonArray<T extends z.ZodTypeAny>(item: T) {

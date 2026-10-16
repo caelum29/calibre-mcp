@@ -104,11 +104,7 @@ export interface ShingleOptions {
  * plain extracted text. Any shingle fully contained in an allowlist phrase (title/authors) is
  * exempt. Returns the hits (empty = clean).
  */
-export function shingleOverlaps(
-  skillText: string,
-  sourceText: string,
-  opts: ShingleOptions = {},
-): ShingleHit[] {
+export function shingleOverlaps(skillText: string, sourceText: string, opts: ShingleOptions = {}): ShingleHit[] {
   const size = opts.size ?? SHINGLE_SIZE;
   const allow = (opts.allowlist ?? []).map((p) => normalizeWords(p).join(" ")).filter(Boolean);
 
@@ -351,13 +347,7 @@ export function attributionPresent(skillText: string): AttributionResult {
 
 // ── Aggregate ──────────────────────────────────────────────────────────────────────────────
 
-export type LegalCheck =
-  | "shingle"
-  | "compression_floor"
-  | "heading_match"
-  | "cursors"
-  | "quote_budget"
-  | "attribution";
+export type LegalCheck = "shingle" | "compression_floor" | "heading_match" | "cursors" | "quote_budget" | "attribution";
 
 export interface LegalFinding {
   check: LegalCheck;
@@ -443,7 +433,8 @@ export function runLegalGate(inputs: LegalGateInputs): LegalGateResult {
   findings.push({
     check: "cursors",
     pass: cursorHits.length === 0,
-    detail: cursorHits.length === 0 ? "no cursor tokens in shareable text" : `${cursorHits.length} cursor token(s) leaked`,
+    detail:
+      cursorHits.length === 0 ? "no cursor tokens in shareable text" : `${cursorHits.length} cursor token(s) leaked`,
     data: cursorHits,
   });
 

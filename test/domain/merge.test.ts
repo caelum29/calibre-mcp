@@ -5,15 +5,18 @@
 import { describe, it, expect } from "vitest";
 import type { Book } from "../../src/domain/book.js";
 import type { CustomFieldValue } from "../../src/domain/merge.js";
-import {
-  mergeBuiltinMetadata,
-  mergeCustomMetadata,
-  planFormatMoves,
-} from "../../src/domain/merge.js";
+import { mergeBuiltinMetadata, mergeCustomMetadata, planFormatMoves } from "../../src/domain/merge.js";
 
 const book = (over: Partial<Book> = {}): Book => ({
-  id: 1, uuid: "u", title: "T", authors: ["A"], identifiers: {}, formats: [],
-  tags: [], languages: [], ...over,
+  id: 1,
+  uuid: "u",
+  title: "T",
+  authors: ["A"],
+  identifiers: {},
+  formats: [],
+  tags: [],
+  languages: [],
+  ...over,
 });
 
 describe("planFormatMoves", () => {
@@ -99,7 +102,11 @@ describe("mergeBuiltinMetadata", () => {
 });
 
 const field = (over: Partial<CustomFieldValue>): CustomFieldValue => ({
-  label: "#x", datatype: "text", isMultiple: false, value: null, ...over,
+  label: "#x",
+  datatype: "text",
+  isMultiple: false,
+  value: null,
+  ...over,
 });
 
 describe("mergeCustomMetadata", () => {
@@ -115,11 +122,13 @@ describe("mergeCustomMetadata", () => {
       field({ label: "#s", datatype: "series", value: null }),
       field({ label: "#i", datatype: "int", value: null }),
     ];
-    const src = [[
-      field({ label: "#b", datatype: "bool", value: true }),
-      field({ label: "#s", datatype: "series", value: "Saga", extra: 2 }),
-      field({ label: "#i", datatype: "int", value: 42 }),
-    ]];
+    const src = [
+      [
+        field({ label: "#b", datatype: "bool", value: true }),
+        field({ label: "#s", datatype: "series", value: "Saga", extra: 2 }),
+        field({ label: "#i", datatype: "int", value: 42 }),
+      ],
+    ];
     expect(mergeCustomMetadata(target, src)).toEqual({ "#b": "true", "#s": "Saga [2]", "#i": 42 });
   });
 

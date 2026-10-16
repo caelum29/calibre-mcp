@@ -7,9 +7,7 @@
 import type { z } from "zod";
 import type { AnyToolDescriptor, ToolDescriptor } from "./types.js";
 
-export function defineTool<Shape extends z.ZodRawShape>(
-  d: ToolDescriptor<Shape>,
-): AnyToolDescriptor {
+export function defineTool<Shape extends z.ZodRawShape>(d: ToolDescriptor<Shape>): AnyToolDescriptor {
   return {
     name: d.name,
     title: d.title,

@@ -77,18 +77,30 @@ export function buildSetMetadataArgs(id: number, changes: Record<string, ChangeV
  */
 export function bookFieldValue(book: Book, field: string): unknown {
   switch (field) {
-    case "title": return book.title;
-    case "authors": return book.authors;
-    case "tags": return book.tags;
-    case "series": return book.series;
-    case "series_index": return book.seriesIndex;
-    case "rating": return book.rating;
-    case "publisher": return book.publisher;
-    case "pubdate": return book.pubdate;
-    case "languages": return book.languages;
-    case "comments": return book.comments;
-    case "identifiers": return book.identifiers;
-    default: return undefined;
+    case "title":
+      return book.title;
+    case "authors":
+      return book.authors;
+    case "tags":
+      return book.tags;
+    case "series":
+      return book.series;
+    case "series_index":
+      return book.seriesIndex;
+    case "rating":
+      return book.rating;
+    case "publisher":
+      return book.publisher;
+    case "pubdate":
+      return book.pubdate;
+    case "languages":
+      return book.languages;
+    case "comments":
+      return book.comments;
+    case "identifiers":
+      return book.identifiers;
+    default:
+      return undefined;
   }
 }
 
@@ -99,11 +111,7 @@ export function bookFieldValue(book: Book, field: string): unknown {
  * fields Calibre normalizes on write, e.g. pubdate). Custom #columns aren't carried on Book
  * → unverifiable → false, so callers stay cautious rather than claim success (issue #33).
  */
-export function changesSatisfied(
-  before: Book,
-  after: Book,
-  changes: Record<string, ChangeValue>,
-): boolean {
+export function changesSatisfied(before: Book, after: Book, changes: Record<string, ChangeValue>): boolean {
   return Object.entries(changes).every(([field, intended]) => {
     const b = JSON.stringify(bookFieldValue(before, field));
     const a = JSON.stringify(bookFieldValue(after, field));
@@ -124,10 +132,7 @@ export interface FieldDiff {
  * behind calibre_bulk_update's `preview` mode. `changed` compares the current value against
  * the proposed one structurally (JSON), so a value already current shows as a no-op.
  */
-export function previewBookChanges(
-  book: Book,
-  changes: Record<string, ChangeValue>,
-): FieldDiff[] {
+export function previewBookChanges(book: Book, changes: Record<string, ChangeValue>): FieldDiff[] {
   return Object.entries(changes).map(([field, after]) => {
     const before = bookFieldValue(book, field);
     return { field, before, after, changed: JSON.stringify(before) !== JSON.stringify(after) };

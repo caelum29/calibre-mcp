@@ -53,9 +53,7 @@ function isEmptyDate(d?: string): boolean {
 
 /** "Unknown" is Calibre's placeholder author — counts as empty for fill-if-empty. */
 function authorsEmpty(authors: string[]): boolean {
-  return (
-    authors.length === 0 || (authors.length === 1 && authors[0]!.trim().toLowerCase() === "unknown")
-  );
+  return authors.length === 0 || (authors.length === 1 && authors[0]!.trim().toLowerCase() === "unknown");
 }
 
 /** First source (in order) whose field passes `has`; undefined when none does. */
@@ -139,10 +137,7 @@ export function mergeBuiltinMetadata(target: Book, sources: Book[]): Record<stri
   for (const [scheme, v] of Object.entries(target.identifiers)) {
     if (v !== undefined) mergedIds[scheme] = v;
   }
-  if (
-    Object.keys(mergedIds).length > 0 &&
-    JSON.stringify(mergedIds) !== JSON.stringify(target.identifiers)
-  ) {
+  if (Object.keys(mergedIds).length > 0 && JSON.stringify(mergedIds) !== JSON.stringify(target.identifiers)) {
     changes.identifiers = mergedIds;
   }
 
@@ -187,9 +182,7 @@ export function mergeCustomMetadata(
 
   for (const tf of targetFields) {
     if (tf.datatype === "composite") continue;
-    const srcFields = bySource
-      .map((m) => m.get(tf.label))
-      .filter((f): f is CustomFieldValue => f !== undefined);
+    const srcFields = bySource.map((m) => m.get(tf.label)).filter((f): f is CustomFieldValue => f !== undefined);
 
     if (tf.datatype === "comments") {
       const tv = typeof tf.value === "string" ? tf.value : "";

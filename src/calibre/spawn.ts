@@ -93,11 +93,7 @@ export function killAllChildren(): number {
  * overflow ({@link SpawnMaxBufferError}). On timeout/overflow the whole process
  * group is SIGKILLed so no worker grandchild is left holding the DB lock.
  */
-export function spawnCollect(
-  bin: string,
-  args: readonly string[],
-  opts: SpawnCollectOptions,
-): Promise<SpawnResult> {
+export function spawnCollect(bin: string, args: readonly string[], opts: SpawnCollectOptions): Promise<SpawnResult> {
   return new Promise<SpawnResult>((resolve, reject) => {
     // detached:true → child is its own process-group leader (pgid === pid on POSIX)
     // so `process.kill(-pid, …)` reaches the worker grandchild too. Do NOT unref():

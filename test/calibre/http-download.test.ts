@@ -35,9 +35,7 @@ describe("downloadToFile", () => {
 
   it("aborts and throws when the stream exceeds maxBytes", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("hello")));
-    await expect(downloadToFile("http://x/big", dest(), { maxBytes: 3 })).rejects.toBeInstanceOf(
-      CalibreHttpError,
-    );
+    await expect(downloadToFile("http://x/big", dest(), { maxBytes: 3 })).rejects.toBeInstanceOf(CalibreHttpError);
   });
 
   // The timeout bounds STALL, not total elapsed (#100): a genuinely huge PDF takes minutes
@@ -61,9 +59,7 @@ describe("downloadToFile", () => {
         Promise.resolve(new Response(drip(["ab"], 10_000, init?.signal))),
       ),
     );
-    await expect(downloadToFile("http://x/hung", dest(), { timeoutMs: 30 })).rejects.toThrow(
-      /Download stalled/,
-    );
+    await expect(downloadToFile("http://x/hung", dest(), { timeoutMs: 30 })).rejects.toThrow(/Download stalled/);
   });
 });
 

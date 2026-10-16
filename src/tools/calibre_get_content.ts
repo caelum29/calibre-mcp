@@ -38,7 +38,9 @@ export const getContentTool = defineTool({
         return Number.isFinite(n) ? Math.max(0, Math.trunc(n)) : v;
       }, z.number().int().min(0))
       .optional()
-      .describe("Char position to start reading from — e.g. a search passage's charStart. Mutually exclusive with cursor."),
+      .describe(
+        "Char position to start reading from — e.g. a search passage's charStart. Mutually exclusive with cursor.",
+      ),
     library: z.string().optional(),
   },
   outputSchema: {
@@ -79,9 +81,7 @@ export const getContentTool = defineTool({
       const fmt = chooseExtractFormat(book.formats, args.format);
       if (!fmt) {
         const avail = book.formats.length ? book.formats.join(", ") : "none";
-        return toolError(
-          `Book ${numericId} has no extractable text format (available: ${avail}). Add an EPUB or PDF.`,
-        );
+        return toolError(`Book ${numericId} has no extractable text format (available: ${avail}). Add an EPUB or PDF.`);
       }
 
       const libId = await deps.content.resolveLibraryId(args.library);
@@ -105,7 +105,9 @@ export const getContentTool = defineTool({
         // A stall is the Content Server going quiet mid-transfer — retrying usually works
         // (the partially warmed page cache makes the second attempt much faster).
         if (m.includes("Download stalled")) {
-          return toolError(`${m} while fetching book ${numericId} (${fmt}). Retry — the file is likely just very large.`);
+          return toolError(
+            `${m} while fetching book ${numericId} (${fmt}). Retry — the file is likely just very large.`,
+          );
         }
         if (m === "EXTRACT_TIMEOUT" || m.toLowerCase().includes("timed out")) {
           return toolError(`Text extraction timed out for book ${numericId} (${fmt}). The file may be very large.`);
@@ -120,9 +122,7 @@ export const getContentTool = defineTool({
       }
 
       if (extracted.text.trim().length === 0) {
-        return toolError(
-          `No extractable text found in book ${numericId} (${fmt}) — ${noTextReason(fmt)}.`,
-        );
+        return toolError(`No extractable text found in book ${numericId} (${fmt}) — ${noTextReason(fmt)}.`);
       }
 
       // structure mode: return a chapter map (with per-chapter cursors), not book text.

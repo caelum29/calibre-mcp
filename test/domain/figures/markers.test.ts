@@ -67,7 +67,11 @@ describe("injectFigureMarkers — placement", () => {
   });
 
   it("reports unplaced instead of guessing when nothing matches (epub has no pages)", () => {
-    const out = injectFigureMarkers("plain text, no captions", inv([{ label: "1.1", caption: "Ghost figure" }]), "epub");
+    const out = injectFigureMarkers(
+      "plain text, no captions",
+      inv([{ label: "1.1", caption: "Ghost figure" }]),
+      "epub",
+    );
     expect(out.unplaced).toBe(1);
     expect(out.text).toBe("plain text, no captions");
   });
@@ -80,7 +84,11 @@ describe("injectFigureMarkers — placement", () => {
 
   it("matches an emphasis-wrapped markdown caption (ebook-convert epub output)", () => {
     const text = "chapter text\n*Figure 12.1 – Logical architecture of the system*\nmore\n";
-    const out = injectFigureMarkers(text, inv([{ label: "12.1", caption: "Logical architecture of the system" }]), "epub");
+    const out = injectFigureMarkers(
+      text,
+      inv([{ label: "12.1", caption: "Logical architecture of the system" }]),
+      "epub",
+    );
     expect(out.markers).toHaveLength(1);
     expect(out.text).toContain('[image #0: "Figure 12.1 – Logical architecture of the system"]\n*Figure 12.1');
   });
@@ -150,7 +158,11 @@ describe("injectFigureMarkers — escaped caption text (book 929)", () => {
   // HTML text. A paren inside the first 30 chars used to break the head containment check.
   it("matches a caption whose parens are backslash-escaped in the extracted text", () => {
     const text = "Intro\n###### *Figure 7-6. *HNSW index structure \\(conceptual\\)\nbody\n";
-    const out = injectFigureMarkers(text, inv([{ label: "7-6", caption: "HNSW index structure (conceptual)" }]), "epub");
+    const out = injectFigureMarkers(
+      text,
+      inv([{ label: "7-6", caption: "HNSW index structure (conceptual)" }]),
+      "epub",
+    );
     expect(out.unplaced).toBe(0);
     expect(out.text).toContain("[image #0:");
   });

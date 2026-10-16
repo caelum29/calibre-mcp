@@ -21,12 +21,7 @@ const thresholds: Thresholds = {
   figureNegative: { active: false, queryCount: { min: 1, max: 2 }, flaggedRate: 1.0, positivesZeroedByFloor: 0 },
 };
 
-function row(
-  id: string,
-  mode: Mode,
-  kind: QueryKind,
-  over: Partial<PerQueryRow> = {},
-): PerQueryRow {
+function row(id: string, mode: Mode, kind: QueryKind, over: Partial<PerQueryRow> = {}): PerQueryRow {
   const metricful = kind !== "negative" && kind !== "figure-negative";
   return {
     id,
@@ -82,9 +77,7 @@ describe("evaluateGate", () => {
 
   it("fails hybrid on a single broken baseline query, and reports the drop", () => {
     const rows = healthyRows().map((r) =>
-      r.id === "sp-01" && r.mode === "hybrid"
-        ? { ...r, metrics: { hit1: 0, recall5: 0, rr: 0, ndcg10: 0 } }
-        : r,
+      r.id === "sp-01" && r.mode === "hybrid" ? { ...r, metrics: { hit1: 0, recall5: 0, rr: 0, ndcg10: 0 } } : r,
     );
     const res = evaluateGate(report(rows), baseline, thresholds);
     expect(res.pass).toBe(false);
@@ -94,9 +87,7 @@ describe("evaluateGate", () => {
   it("keyword tolerates one broken query (declared tolerance) but not two", () => {
     const breakKw = (ids: string[]) =>
       healthyRows().map((r) =>
-        ids.includes(r.id) && r.mode === "keyword"
-          ? { ...r, metrics: { hit1: 0, recall5: 0, rr: 0, ndcg10: 0 } }
-          : r,
+        ids.includes(r.id) && r.mode === "keyword" ? { ...r, metrics: { hit1: 0, recall5: 0, rr: 0, ndcg10: 0 } } : r,
       );
     expect(evaluateGate(report(breakKw(["sp-01"])), baseline, thresholds).pass).toBe(true);
     expect(evaluateGate(report(breakKw(["sp-01", "id-01"])), baseline, thresholds).pass).toBe(false);
@@ -125,9 +116,7 @@ describe("evaluateGate", () => {
   });
 
   it("figure-negative flagged rate is measured but inactive until the floor is calibrated", () => {
-    const rows = healthyRows().map((r) =>
-      r.kind === "figure-negative" ? { ...r, flagged: false } : r,
-    );
+    const rows = healthyRows().map((r) => (r.kind === "figure-negative" ? { ...r, flagged: false } : r));
     const res = evaluateGate(report(rows), baseline, thresholds);
     expect(res.pass).toBe(true); // inactive check can't fail the gate…
     const check = res.checks.find((c) => c.name.startsWith("figure-negative: flagged rate"));
