@@ -1,0 +1,19 @@
+docs/research/pg-vectorsearch-evaluation.md
+  s_d6b92c7b553a41::t_360559a5fa3e5d 1-353
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6187abc0ffa7b8c814c497b8500bc38c2c3699b6",
+  "prompts": {},
+  "sessions": {
+    "s_d6b92c7b553a41": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "89e16170-65d5-4e75-b011-b6ec07fa2e5d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
