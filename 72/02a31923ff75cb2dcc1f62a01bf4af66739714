@@ -1,0 +1,28 @@
+src/domain/structure/front-matter.ts
+  s_b05aada43899ec::t_103cddceab96e7 24-28,50-52,54,56,77,109-111,145-146,156,158-159
+  s_b05aada43899ec::t_c17560a2e1df46 43
+  s_b05aada43899ec::t_e13e70dac382d0 58,60
+  s_b05aada43899ec::t_4abc4938924f81 132-135,161-165,172,177
+  s_b05aada43899ec::t_2fcab7bd41b948 148,150-152
+  s_b05aada43899ec::t_dfcf97a7d89790 1-23,29-42,44-49,57,59,61-76,78,81-108,112-131,136-144,147,153-155,157,160,166-171,173-176,178-182
+  s_b05aada43899ec::t_15bd922e4f911d 53,55
+  s_b05aada43899ec::t_f0b7c5b1fab13b 79-80,149
+test/domain/structure/front-matter.test.ts
+  s_b05aada43899ec::t_63fb9a0942ce36 1-124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7202a31923ff75cb2dcc1f62a01bf4af66739714",
+  "prompts": {},
+  "sessions": {
+    "s_b05aada43899ec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "077d80e1-ba8f-4f45-bdf3-d9cbdfbf9678",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
