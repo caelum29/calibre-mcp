@@ -1,0 +1,30 @@
+src/semantic/book-encoder.ts
+  s_8e1ff56bb605eb::t_1b88ed2cc134a5 1-70
+test/tools/index-book.test.ts
+  s_8e1ff56bb605eb::t_3623bafec87626 1-106
+src/semantic/encode-worker.ts
+  s_8e1ff56bb605eb::t_b7ba20584dc8be 1-25,27-43
+  s_8e1ff56bb605eb::t_6e539d7159b171 26
+src/semantic/thread-encoder.ts
+  s_8e1ff56bb605eb::t_1e2339936247bf 1-64
+scripts/reindex.ts
+  s_8e1ff56bb605eb::t_6e539d7159b171 3,14-16,28-30,51,68-71,73,86,110,149,161
+src/tools/index-book.ts
+  s_8e1ff56bb605eb::t_ab40c5ce68fee7 8,47-48,93-109,115,119-129,139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "30b43ee548aa7ca8e8066417b7ddf6f4834af2fc",
+  "prompts": {},
+  "sessions": {
+    "s_8e1ff56bb605eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9ff2cc16-27c4-4bf0-acb8-369613e0f35a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
