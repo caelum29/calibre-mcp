@@ -1,0 +1,23 @@
+test/eval/retrieval/rrf-sweep.ts
+  s_72cfd2e910e35d::t_0f2aeaffc82dc0 1-232
+test/eval/retrieval/rrf-sweep.test.ts
+  s_72cfd2e910e35d::t_a8e119f52baedd 1-84
+test/eval/retrieval/rrf-sweep.sh
+  s_72cfd2e910e35d::t_f61e66e12a98cb 1-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "de319601dd07aa91d63613b8cb126e5221b4f368",
+  "prompts": {},
+  "sessions": {
+    "s_72cfd2e910e35d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ff275c81-d0e2-4f98-b026-11a0a83e483b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
