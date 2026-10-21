@@ -1,0 +1,31 @@
+docs/SEMANTIC-SEARCH.md
+  s_b05aada43899ec::t_23e128f55b3f8b 140-147
+node_modules
+  s_b05aada43899ec::t_18a29268737515 1
+src/domain/structure/front-matter.ts
+  s_b05aada43899ec::t_317c31367bbed8 1-4,6,18-19,183-199
+src/tools/calibre_build_index.ts
+  s_b05aada43899ec::t_f4fa0a55f0fce7 10
+test/domain/structure/chapters.test.ts
+  s_b05aada43899ec::t_cec8b3a96a7cd1 2-3
+test/domain/structure/front-matter.test.ts
+  s_b05aada43899ec::t_7b3eaa6e9a539b 8,126-141
+test/domain/structure/pdf-outline.test.ts
+  s_b05aada43899ec::t_3fd892a97de6d9 9-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9efe37f89ec0d9ad42d256e74bd97235ddd7f944",
+  "prompts": {},
+  "sessions": {
+    "s_b05aada43899ec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "077d80e1-ba8f-4f45-bdf3-d9cbdfbf9678",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
