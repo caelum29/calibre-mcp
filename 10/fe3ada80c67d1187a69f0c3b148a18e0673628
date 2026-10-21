@@ -1,0 +1,19 @@
+test/tools/build-index.handler.test.ts
+  s_ff4b7000adfbb9::t_b075863d888974 193,196-199,202-204
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "10fe3ada80c67d1187a69f0c3b148a18e0673628",
+  "prompts": {},
+  "sessions": {
+    "s_ff4b7000adfbb9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6c47435b-3793-4cb1-8263-67c330bd9bce",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
