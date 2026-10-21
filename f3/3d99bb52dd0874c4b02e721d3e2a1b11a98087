@@ -1,0 +1,47 @@
+src/tools/index-book.ts
+  s_8e1ff56bb605eb::t_6400461e6c411c 1-38,41-64,72,74-88,90-121,124-161,164-241
+  s_8e1ff56bb605eb::t_fb919813dc683d 39-40,65-71,73,89,122-123,162-163
+src/tools/calibre_build_index.ts
+  s_8e1ff56bb605eb::t_966ba5758b08b6 11,15,17,28-31,47-53,197-209,211-228
+scripts/reindex.ts
+  s_8e1ff56bb605eb::t_acffd30bb02820 94-95,121,154
+  s_8e1ff56bb605eb::t_fb919813dc683d 119-120
+  s_8e1ff56bb605eb::t_84638a7f5440ca 1-93,96-118,122-153,155-158
+docs/TOOLS.md
+  s_8e1ff56bb605eb::t_19a7d05e9210a1 252
+test/calibre/extract.test.ts
+  s_8e1ff56bb605eb::t_74b21372fea9bb 5,89-102
+  s_8e1ff56bb605eb::t_4e667cf14493d6 103
+test/semantic/book-pipeline.test.ts
+  s_8e1ff56bb605eb::t_b04ad783b1d8d6 9,169-170
+  s_8e1ff56bb605eb::t_ce780fe436ddda 1-8,10-168,171-191
+src/semantic/book-pipeline.ts
+  s_8e1ff56bb605eb::t_b04ad783b1d8d6 53-57
+  s_8e1ff56bb605eb::t_f6cc146acef4be 1-52,58-86
+test/tools/build-index.handler.test.ts
+  s_8e1ff56bb605eb::t_33fe5287f1c6ce 2-7,551-598
+  s_8e1ff56bb605eb::t_4c6e9626a6265d 599
+package.json
+  s_8e1ff56bb605eb::t_62c80fe3177047 46
+src/calibre/extract.ts
+  s_8e1ff56bb605eb::t_462cff2ba2b531 399-410,414
+src/semantic/build-progress.ts
+  s_8e1ff56bb605eb::t_b04ad783b1d8d6 41-53
+  s_8e1ff56bb605eb::t_c84acaa94a38ce 1-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f33d99bb52dd0874c4b02e721d3e2a1b11a98087",
+  "prompts": {},
+  "sessions": {
+    "s_8e1ff56bb605eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9ff2cc16-27c4-4bf0-acb8-369613e0f35a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
