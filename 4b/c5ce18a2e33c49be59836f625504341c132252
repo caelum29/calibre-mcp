@@ -1,0 +1,19 @@
+skills/calibre-distill/SKILL.md
+  s_bebff71e8d9e44::t_6ff60ed07f5854 168-169
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4bc5ce18a2e33c49be59836f625504341c132252",
+  "prompts": {},
+  "sessions": {
+    "s_bebff71e8d9e44": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01ad23dd-cf93-49fb-8d99-3ee0e836aff4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
