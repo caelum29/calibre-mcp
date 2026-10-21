@@ -1,0 +1,94 @@
+src/tools/calibre_semantic_search.ts
+  s_72cfd2e910e35d::t_a61475d6dad401 34-35
+  s_72cfd2e910e35d::t_a5669877953657 36
+test/eval/retrieval/reports/2026-10-21-rrf-weight-sweep.md
+  s_72cfd2e910e35d::t_86795617c396e8 1-2,4-79,81-101
+  s_72cfd2e910e35d::t_961a56c526ebc2 80
+  s_72cfd2e910e35d::t_a5669877953657 3
+test/eval/retrieval/rrf-sweep.ts
+  s_72cfd2e910e35d::t_bc6bd0c23ebc6c 207-209,214
+test/eval/retrieval/reports/2026-10-21-4e06eaa-rrf142-w1.0-on.json
+  s_8afdc79fd289d3::t_91f18b17b2f4f9 1-1758
+test/eval/retrieval/reports/2026-10-21-4e06eaa-rrf142-w1.0-on.md
+  s_8afdc79fd289d3::t_7163572d27baf1 1-145
+test/eval/retrieval/reports/2026-10-21-71cc6f2-rrf142-v1.0.json
+  s_bebff71e8d9e44::t_6ada59198639c5 1-4839
+test/eval/retrieval/reports/2026-10-21-71cc6f2-rrf142-v1.0.md
+  s_bebff71e8d9e44::t_41cb13de0eeec0 1-309
+test/eval/retrieval/reports/2026-10-21-de31960-rrf142-w1.0-off.json
+  s_8afdc79fd289d3::t_2adedfc4c6bdbf 1-1758
+test/eval/retrieval/reports/2026-10-21-de31960-rrf142-w1.0-off.md
+  s_8afdc79fd289d3::t_30c70832a98af3 1-145
+test/eval/retrieval/reports/2026-10-21-de31960-rrf142-w1.0-on-live.json
+  s_72cfd2e910e35d::t_a3470af3274bc5 1-863
+test/eval/retrieval/reports/2026-10-21-de31960-rrf142-w1.0-on-live.md
+  s_72cfd2e910e35d::t_e73265b37d0a81 1-88
+test/eval/retrieval/reports/2026-10-21-de31960-rrf142-w1.25-off.json
+  s_72cfd2e910e35d::t_15782b2b5912b0 1-1758
+test/eval/retrieval/reports/2026-10-21-de31960-rrf142-w1.25-off.md
+  s_72cfd2e910e35d::t_b6d6ad9b148bf0 1-145
+test/eval/retrieval/reports/2026-10-21-de31960-rrf142-w1.25-on-live.json
+  s_72cfd2e910e35d::t_aac26866ff1b28 1-863
+test/eval/retrieval/reports/2026-10-21-de31960-rrf142-w1.25-on-live.md
+  s_72cfd2e910e35d::t_9a3816b5334d67 1-88
+test/eval/retrieval/reports/2026-10-21-de31960-rrf142-w1.25-on.json
+  s_72cfd2e910e35d::t_77d72a814aa846 1-1758
+test/eval/retrieval/reports/2026-10-21-de31960-rrf142-w1.25-on.md
+  s_72cfd2e910e35d::t_13138ebbf7acd0 1-145
+test/eval/retrieval/reports/2026-10-21-de31960-rrf142-w1.5-off.json
+  s_72cfd2e910e35d::t_3518ac8990b084 1-1758
+test/eval/retrieval/reports/2026-10-21-de31960-rrf142-w1.5-off.md
+  s_72cfd2e910e35d::t_90c7ea52a8d69c 1-145
+test/eval/retrieval/reports/2026-10-21-de31960-rrf142-w1.5-on-live.json
+  s_72cfd2e910e35d::t_dffdabc09fb317 1-863
+test/eval/retrieval/reports/2026-10-21-de31960-rrf142-w1.5-on-live.md
+  s_72cfd2e910e35d::t_7210b9b5eb82e9 1-88
+test/eval/retrieval/reports/2026-10-21-de31960-rrf142-w1.5-on.json
+  s_72cfd2e910e35d::t_50dc2a356c3502 1-1758
+test/eval/retrieval/reports/2026-10-21-de31960-rrf142-w1.5-on.md
+  s_72cfd2e910e35d::t_2b615b8235ede6 1-145
+test/eval/retrieval/reports/2026-10-21-de31960-rrf142-w2.0-off.json
+  s_72cfd2e910e35d::t_8268c4205c9062 1-1758
+test/eval/retrieval/reports/2026-10-21-de31960-rrf142-w2.0-off.md
+  s_72cfd2e910e35d::t_9d85edaf1dedf7 1-145
+test/eval/retrieval/reports/2026-10-21-de31960-rrf142-w2.0-on-live.json
+  s_72cfd2e910e35d::t_94cc6c48925a52 1-863
+test/eval/retrieval/reports/2026-10-21-de31960-rrf142-w2.0-on-live.md
+  s_72cfd2e910e35d::t_3bb6c924280799 1-88
+test/eval/retrieval/reports/2026-10-21-de31960-rrf142-w2.0-on.json
+  s_72cfd2e910e35d::t_5071dd533bfbeb 1-1758
+test/eval/retrieval/reports/2026-10-21-de31960-rrf142-w2.0-on.md
+  s_72cfd2e910e35d::t_f942b03e3f960d 1-145
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1eb4e3f0ba1c4ade3b5c5035b3dc7dba44d5a455",
+  "prompts": {},
+  "sessions": {
+    "s_72cfd2e910e35d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ff275c81-d0e2-4f98-b026-11a0a83e483b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    },
+    "s_8afdc79fd289d3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc224301-7475-4f78-8de4-3cc1721d5dd3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    },
+    "s_bebff71e8d9e44": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01ad23dd-cf93-49fb-8d99-3ee0e836aff4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
