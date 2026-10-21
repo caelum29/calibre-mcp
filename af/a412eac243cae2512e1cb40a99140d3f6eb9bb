@@ -1,0 +1,35 @@
+docs/TOOLS.md
+  s_509a65ae3bb586::t_1583891057baad 105
+src/domain/page-offsets.ts
+  s_509a65ae3bb586::t_315db59380043f 1-11
+test/calibre/extract.test.ts
+  s_509a65ae3bb586::t_315db59380043f 35-44,59,61,70-72,74
+docs/SEMANTIC-SEARCH.md
+  s_509a65ae3bb586::t_1583891057baad 38
+scripts/pymupdf_extract.py
+  s_509a65ae3bb586::t_1583891057baad 4-5,24
+test/domain/page-offsets.test.ts
+  s_509a65ae3bb586::t_3611abd742c7e4 1-11
+src/calibre/extract.ts
+  s_509a65ae3bb586::t_1583891057baad 70-72,74,100
+src/domain/figures/markers.ts
+  s_509a65ae3bb586::t_315db59380043f 6
+test/calibre/pymupdf-extract.test.ts
+  s_509a65ae3bb586::t_3611abd742c7e4 1-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "afa412eac243cae2512e1cb40a99140d3f6eb9bb",
+  "prompts": {},
+  "sessions": {
+    "s_509a65ae3bb586": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1ad57b74-0bf6-4434-bbf4-efe217dd4ab8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
