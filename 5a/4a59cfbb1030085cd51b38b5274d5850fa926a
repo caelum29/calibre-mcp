@@ -1,0 +1,34 @@
+src/tools/calibre_update_book.ts
+  s_cffc37b59ca452::t_38bbafc482f266 99-100,124-125,128-129
+test/tools/bulk-update.handler.test.ts
+  s_cffc37b59ca452::t_fb037141ce2bd2 2,56-61
+  s_cffc37b59ca452::t_c1cc18aee73038 62-63
+test/tools/update-book.handler.test.ts
+  s_cffc37b59ca452::t_f84afd21604fbe 126
+  s_cffc37b59ca452::t_fb037141ce2bd2 2,64-73
+  s_cffc37b59ca452::t_c9101a5f96d312 74-75
+src/domain/enrich/proposal.ts
+  s_cffc37b59ca452::t_be4db2319c75ad 9,59-60
+src/tools/calibre_bulk_update.ts
+  s_cffc37b59ca452::t_38bbafc482f266 132-137
+src/domain/merge.ts
+  s_cffc37b59ca452::t_be4db2319c75ad 50
+test/domain/enrich/proposal.test.ts
+  s_cffc37b59ca452::t_fb037141ce2bd2 46-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5a4a59cfbb1030085cd51b38b5274d5850fa926a",
+  "prompts": {},
+  "sessions": {
+    "s_cffc37b59ca452": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "142d26a3-54a8-4469-b760-ea540941db96",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
