@@ -2,5 +2,5 @@
 #   git config blame.ignoreRevsFile .git-blame-ignore-revs
 # (GitHub applies this file automatically.)
 
-# style: format with oxfmt
-9eda1cdeaaded1090698dd8fd6f4a3dc3aac44ad
+# chore: add oxlint, oxfmt, husky and lint-staged (#146) — squash of the oxfmt reformat
+56d6a5e902885018a07997ff1509b463e63f6642
