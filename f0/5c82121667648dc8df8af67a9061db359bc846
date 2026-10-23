@@ -1,0 +1,21 @@
+src/domain/figures/captions.ts
+  s_0cae0adefb1495::t_a1bdc1cdf8914e 152-153,156,161-168,173-179
+test/domain/figures/captions.test.ts
+  s_0cae0adefb1495::t_05a9a6b9f05ae9 194-206
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f05c82121667648dc8df8af67a9061db359bc846",
+  "prompts": {},
+  "sessions": {
+    "s_0cae0adefb1495": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "50c1f97f-af59-410b-9406-f151e8933215",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
