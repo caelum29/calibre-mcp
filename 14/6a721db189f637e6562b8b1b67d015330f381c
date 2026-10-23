@@ -1,0 +1,76 @@
+test/domain/figures/fixtures/layout/938-p145.html
+  s_588c1b7538ef4c::t_283b8951d0021a 1-87
+test/domain/figures/fixtures/layout/403-p250.html
+  s_588c1b7538ef4c::t_8e7a9b902017de 1-20
+test/domain/figures/fixtures/layout/1234-p59.html
+  s_588c1b7538ef4c::t_8e7a9b902017de 1-29
+src/domain/figures/caption-layout.ts
+  s_588c1b7538ef4c::t_5c3053775b26d1 116-118,160-163,165-166,171-178,182-185,188-190
+  s_588c1b7538ef4c::t_41e8f3ed490b17 157,214-216,218,226-228
+  s_588c1b7538ef4c::t_af174f8f6d9d44 109
+  s_588c1b7538ef4c::t_573fcf0e713d38 15,120,128,246-254
+  s_588c1b7538ef4c::t_a3e2f0a6572b7e 213,229-230
+  s_588c1b7538ef4c::t_80328e0acccd39 259,264
+  s_588c1b7538ef4c::t_d276a9674ea070 167-170,180-181,186-187
+  s_588c1b7538ef4c::t_a9dbc12283176a 1-7,18-108,110-115,119,121-125,129-156,158-159,164,210-212,217,219-225,231-236,257,260-263,266-281
+  s_588c1b7538ef4c::t_34bc69508ffb8f 8-14,16-17,126-127,237-245,255-256,258,265
+  s_588c1b7538ef4c::t_9933753795dd8c 179,191-209
+src/domain/figures/markers.ts
+  s_588c1b7538ef4c::t_5b881a0f5d0487 64-70,114-117,161,163,176-178,180-185,194,196-216
+src/calibre/figure-inventory.ts
+  s_588c1b7538ef4c::t_af174f8f6d9d44 12-13,80-81,323-352
+test/domain/figures/fixtures/layout/110-p386.html
+  s_588c1b7538ef4c::t_8e7a9b902017de 1-107
+test/domain/figures/fixtures/layout/182-p139.html
+  s_588c1b7538ef4c::t_8e7a9b902017de 1-15
+test/domain/figures/fixtures/layout/74-p28.html
+  s_588c1b7538ef4c::t_8e7a9b902017de 1-212
+src/domain/figures/captions.ts
+  s_588c1b7538ef4c::t_33aa852fdcff9e 230
+  s_588c1b7538ef4c::t_4cb69caea07944 72,84,176,180-186,198,227
+  s_588c1b7538ef4c::t_34bc69508ffb8f 194
+  s_588c1b7538ef4c::t_573fcf0e713d38 195
+test/domain/figures/fixtures/layout/403-p102.html
+  s_588c1b7538ef4c::t_8e7a9b902017de 1-56
+docs/TOOLS.md
+  s_588c1b7538ef4c::t_3bcb71c905e0c4 132-134
+test/domain/figures/fixtures/layout/371-p201.html
+  s_588c1b7538ef4c::t_752b2bd2ca749d 1-33
+test/domain/figures/fixtures/layout/836-p25.html
+  s_588c1b7538ef4c::t_752b2bd2ca749d 1-28
+src/calibre/extract.ts
+  s_588c1b7538ef4c::t_e17917ff268a2e 84,87
+test/domain/figures/caption-layout.test.ts
+  s_588c1b7538ef4c::t_1606fd706d7958 62-80
+  s_588c1b7538ef4c::t_92fe184f412582 1-43,51-61,81-150,158-161,163,167-168
+  s_588c1b7538ef4c::t_96ed79d26472a0 44-50
+  s_588c1b7538ef4c::t_b8514c06e85908 151-152,155-157,162
+  s_588c1b7538ef4c::t_ce3b6447212972 153-154
+  s_588c1b7538ef4c::t_8788f2d6da18c8 164-166
+test/domain/figures/fixtures/layout/182-p30.html
+  s_588c1b7538ef4c::t_8e7a9b902017de 1-61
+test/domain/figures/fixtures/layout/1231-p42.html
+  s_588c1b7538ef4c::t_752b2bd2ca749d 1-103
+src/domain/figures/band.ts
+  s_588c1b7538ef4c::t_017ede2cd9ed2a 126
+src/domain/figures/inventory.ts
+  s_588c1b7538ef4c::t_213d811b785fcc 5,75-76,78-82,84-85
+test/calibre/extract.test.ts
+  s_588c1b7538ef4c::t_2297cab2c2e18b 60,62,80-81,84,87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "146a721db189f637e6562b8b1b67d015330f381c",
+  "prompts": {},
+  "sessions": {
+    "s_588c1b7538ef4c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "96df5270-e148-489c-ad56-ae34f12e83a5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
