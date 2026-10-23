@@ -1,0 +1,19 @@
+src/semantic/reranker.ts
+  s_4fbcd6a5bcae17::t_2614ff655f716e 29-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d6067b3f22ba9755c791db75724d97395fd4a807",
+  "prompts": {},
+  "sessions": {
+    "s_4fbcd6a5bcae17": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1b8a88f7-714b-4777-980c-1a0b1259a602",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
