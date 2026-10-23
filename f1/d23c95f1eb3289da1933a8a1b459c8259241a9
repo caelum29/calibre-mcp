@@ -1,0 +1,25 @@
+test/domain/figures/captions.test.ts
+  s_0cae0adefb1495::t_262eeab74fb063 196-210
+src/domain/figures/captions.ts
+  s_0cae0adefb1495::t_262eeab74fb063 155,162
+  s_0cae0adefb1495::t_2495c380dc2acc 184,188-189
+  s_0cae0adefb1495::t_6a3d5e9e5dc9fb 190
+  s_0cae0adefb1495::t_f039ff450f3608 191,199
+  s_0cae0adefb1495::t_8ca1884fa4a308 145-149,160-161,163,165,183,185-187,192-198,200-201
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f1d23c95f1eb3289da1933a8a1b459c8259241a9",
+  "prompts": {},
+  "sessions": {
+    "s_0cae0adefb1495": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "50c1f97f-af59-410b-9406-f151e8933215",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
