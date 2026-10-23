@@ -1,0 +1,19 @@
+.github/dependabot.yml
+  s_b15e74e60794a0::t_b16d16669bd22b 19-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c29181e4200d4e2f2d68740ad56330b86cec0331",
+  "prompts": {},
+  "sessions": {
+    "s_b15e74e60794a0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b4bdd845-67b2-43d0-b790-5de1f74bb48b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
