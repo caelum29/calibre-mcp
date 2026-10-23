@@ -1,0 +1,35 @@
+test/tools/semantic-search.handler.test.ts
+  s_4fbcd6a5bcae17::t_82ab5c54a6ee59 400
+docs/TROUBLESHOOTING.md
+  s_4fbcd6a5bcae17::t_aa8920648b7508 106-108
+test/eval/retrieval/rerank-floor.test.ts
+  s_4fbcd6a5bcae17::t_527dca2db27836 1-49
+test/eval/retrieval/reports/2026-10-23-acc89db-rerankfloor-fixture.json
+  s_4fbcd6a5bcae17::t_cfbf40c6b3e66e 1-5188
+test/eval/retrieval/reports/2026-10-23-acc89db-rerankfloor-fixture.md
+  s_4fbcd6a5bcae17::t_cfbf40c6b3e66e 1-318
+src/semantic/reranker.ts
+  s_4fbcd6a5bcae17::t_82ab5c54a6ee59 29-35
+test/eval/retrieval/rerank-floor.ts
+  s_4fbcd6a5bcae17::t_04435991029fb3 1-136
+test/eval/retrieval/reports/2026-10-23-acc89db-rerankfloor-live.json
+  s_4fbcd6a5bcae17::t_6a31b661cc363e 1-1747
+test/eval/retrieval/reports/2026-10-23-acc89db-rerankfloor-live.md
+  s_4fbcd6a5bcae17::t_02048cac3eb164 1-131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "26ca0673448f352b5b9cb619c5608f757f348c5e",
+  "prompts": {},
+  "sessions": {
+    "s_4fbcd6a5bcae17": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1b8a88f7-714b-4777-980c-1a0b1259a602",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
