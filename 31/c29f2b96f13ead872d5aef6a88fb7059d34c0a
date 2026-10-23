@@ -1,0 +1,42 @@
+src/calibre/extract.ts
+  s_dc81d33fb7297c::t_fd3b7d61c37a08 72-73,76
+src/domain/figures/markers.ts
+  s_dc81d33fb7297c::t_657f7460eec50c 48-50,113,127-134,143
+  s_dc81d33fb7297c::t_2cc601c1833bfa 122-126,140-142
+  s_dc81d33fb7297c::t_07c15e0fc72304 7,135-137
+  s_dc81d33fb7297c::t_82e00f0d8d3e7c 121,161-162
+  s_dc81d33fb7297c::t_77c4bef66424fd 138-139
+  s_dc81d33fb7297c::t_a12538ddbca6dc 108-109,144,153-156,160,166,172-179,181,184-185,188
+test/domain/figures/captions.test.ts
+  s_dc81d33fb7297c::t_0294530d3ab25b 117-126
+  s_dc81d33fb7297c::t_89a565d8961240 5
+test/calibre/extract.test.ts
+  s_dc81d33fb7297c::t_112fe5a7ffd3ac 59,61,73-75,77
+test/domain/figures/markers.test.ts
+  s_dc81d33fb7297c::t_5ee59ac6fd94ef 226-239
+  s_dc81d33fb7297c::t_82e00f0d8d3e7c 196-204,210-225
+  s_dc81d33fb7297c::t_c4a64aa50ecbb7 158-174
+  s_dc81d33fb7297c::t_0294530d3ab25b 175-195
+  s_dc81d33fb7297c::t_37fc8fb0895bc4 205-209
+src/domain/figures/captions.ts
+  s_dc81d33fb7297c::t_fdaf3cba034a52 91-109
+src/domain/figures/epub.ts
+  s_dc81d33fb7297c::t_07c15e0fc72304 178
+  s_dc81d33fb7297c::t_fdaf3cba034a52 6,146-147
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "31c29f2b96f13ead872d5aef6a88fb7059d34c0a",
+  "prompts": {},
+  "sessions": {
+    "s_dc81d33fb7297c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38311de3-4609-452c-a3b7-0d044c0aa901",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
