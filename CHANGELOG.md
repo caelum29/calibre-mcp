@@ -9,6 +9,20 @@ inserts its generated section above the newest entry. Hand-written notes still g
 `[Unreleased]`; when merging a release PR, fold them into the generated section and leave
 `[Unreleased]` empty.
 
+## [0.9.0](https://github.com/caelum29/calibre-mcp/compare/v0.8.0...v0.9.0) (2026-10-23)
+
+
+### Added
+
+* cancel long tool calls and report progress ([#150](https://github.com/caelum29/calibre-mcp/issues/150)) ([d39c263](https://github.com/caelum29/calibre-mcp/commit/d39c2630387b71c8e69bad73f0138ca9da60d7a6))
+* generate the tool catalog and keep tool counts in sync ([#148](https://github.com/caelum29/calibre-mcp/issues/148)) ([bda73ca](https://github.com/caelum29/calibre-mcp/commit/bda73ca2a06a9ab3b8e772648f7fcd728e79e741))
+
+
+### Fixed
+
+* address verifier findings on the hygiene stack ([#154](https://github.com/caelum29/calibre-mcp/issues/154)) ([9e8c106](https://github.com/caelum29/calibre-mcp/commit/9e8c106fdf6a1989bdd6c4d4d9a621ef58f5ba02))
+* kill child process groups and exit when the client goes away ([#145](https://github.com/caelum29/calibre-mcp/issues/145)) ([47cc35d](https://github.com/caelum29/calibre-mcp/commit/47cc35de0cecc779d414ecd8c01fbbc7894c0e04))
+
 ## [Unreleased]
 
 ### Added
