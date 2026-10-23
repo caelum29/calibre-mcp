@@ -1,0 +1,127 @@
+test/eval/retrieval/bakeoff-140.sh
+  s_8afdc79fd289d3::t_1d184d305f3eea 1-39,41-43
+  s_8afdc79fd289d3::t_c1999f6d21ca44 40
+test/eval/retrieval/embed-throughput.ts
+  s_8afdc79fd289d3::t_acd052496810da 1-87
+test/eval/retrieval/harness.ts
+  s_8afdc79fd289d3::t_33b73b9b4b977b 225-226
+  s_8afdc79fd289d3::t_a2044a5d6f571a 359,371,389,406,432,511-512
+test/eval/retrieval/reports/bakeoff-140/scores.md
+  s_8afdc79fd289d3::t_5961cf68dcea37 1-113
+test/eval/retrieval/bakeoff-140.ts
+  s_8afdc79fd289d3::t_5867d5a6602dde 1-234
+test/eval/retrieval/reports/2026-10-21-embedder-bakeoff-140.md
+  s_8afdc79fd289d3::t_f5f9a9f6831cc6 1-173
+test/eval/retrieval/reports/bakeoff-140/2026-10-21-25ae4c3-b140-gemma2-256-w1.5-off.json
+  s_72cfd2e910e35d::t_46ffbf108fb4cf 1-1758
+test/eval/retrieval/reports/bakeoff-140/2026-10-21-25ae4c3-b140-gemma2-256-w1.5-off.md
+  s_72cfd2e910e35d::t_c6ce59d182708a 1-145
+test/eval/retrieval/reports/bakeoff-140/2026-10-21-25ae4c3-b140-gemma2-256-w1.5-on.json
+  s_72cfd2e910e35d::t_4bb73e9db0265f 1-1823
+test/eval/retrieval/reports/bakeoff-140/2026-10-21-25ae4c3-b140-gemma2-256-w1.5-on.md
+  s_72cfd2e910e35d::t_1650ed84fc0211 1-145
+test/eval/retrieval/reports/bakeoff-140/2026-10-21-25ae4c3-b140-gemma2-256-w2.0-off.json
+  s_72cfd2e910e35d::t_b3b3e9f6c166f8 1-1758
+test/eval/retrieval/reports/bakeoff-140/2026-10-21-25ae4c3-b140-gemma2-256-w2.0-off.md
+  s_72cfd2e910e35d::t_db06368523c60c 1-145
+test/eval/retrieval/reports/bakeoff-140/2026-10-21-25ae4c3-b140-gemma2-256-w2.0-on.json
+  s_72cfd2e910e35d::t_a63956457d3a38 1-1823
+test/eval/retrieval/reports/bakeoff-140/2026-10-21-25ae4c3-b140-gemma2-256-w2.0-on.md
+  s_72cfd2e910e35d::t_c3c11b4c6f8777 1-145
+test/eval/retrieval/reports/bakeoff-140/2026-10-21-25ae4c3-b140-gemma2-768-w1.0-on.json
+  s_7ac7695e529d08::t_d4ea33985c5a9e 1-4969
+test/eval/retrieval/reports/bakeoff-140/2026-10-21-25ae4c3-b140-gemma2-768-w1.0-on.md
+  s_7ac7695e529d08::t_16de5356ddd8c6 1-309
+test/eval/retrieval/reports/bakeoff-140/2026-10-21-25ae4c3-b140-gemma2-768-w2.0-on.json
+  s_8e1ff56bb605eb::t_5574247b965b1b 1-1823
+test/eval/retrieval/reports/bakeoff-140/2026-10-21-25ae4c3-b140-gemma2-768-w2.0-on.md
+  s_8e1ff56bb605eb::t_f5b942dd352054 1-145
+test/eval/retrieval/reports/bakeoff-140/2026-10-21-25ae4c3-b140-e5-small-w1.0-off.json
+  s_8afdc79fd289d3::t_e53e719fa62c3a 1-4839
+test/eval/retrieval/reports/bakeoff-140/2026-10-21-25ae4c3-b140-e5-small-w1.0-off.md
+  s_8afdc79fd289d3::t_692fc83fd6e6c8 1-309
+test/eval/retrieval/reports/bakeoff-140/2026-10-21-25ae4c3-b140-e5-small-w1.0-on.json
+  s_8afdc79fd289d3::t_4fc37012bb0e9b 1-4969
+test/eval/retrieval/reports/bakeoff-140/2026-10-21-25ae4c3-b140-e5-small-w1.0-on.md
+  s_8afdc79fd289d3::t_a738958928247a 1-309
+test/eval/retrieval/reports/bakeoff-140/2026-10-21-25ae4c3-b140-e5-small-w1.5-off.json
+  s_8afdc79fd289d3::t_4e627f8d8d786c 1-1758
+test/eval/retrieval/reports/bakeoff-140/2026-10-21-25ae4c3-b140-e5-small-w1.5-off.md
+  s_8afdc79fd289d3::t_b7e18608b98c76 1-145
+test/eval/retrieval/reports/bakeoff-140/2026-10-21-25ae4c3-b140-e5-small-w1.5-on.json
+  s_8afdc79fd289d3::t_748b902cba019a 1-1823
+test/eval/retrieval/reports/bakeoff-140/2026-10-21-25ae4c3-b140-e5-small-w1.5-on.md
+  s_8afdc79fd289d3::t_8b854d0ff41429 1-145
+test/eval/retrieval/reports/bakeoff-140/2026-10-21-25ae4c3-b140-e5-small-w2.0-off.json
+  s_8afdc79fd289d3::t_85ea19d5a0f053 1-1758
+test/eval/retrieval/reports/bakeoff-140/2026-10-21-25ae4c3-b140-e5-small-w2.0-off.md
+  s_8afdc79fd289d3::t_56691b4e0e98cd 1-145
+test/eval/retrieval/reports/bakeoff-140/2026-10-21-25ae4c3-b140-e5-small-w2.0-on.json
+  s_8afdc79fd289d3::t_75a1f2559ee8d0 1-1823
+test/eval/retrieval/reports/bakeoff-140/2026-10-21-25ae4c3-b140-e5-small-w2.0-on.md
+  s_8afdc79fd289d3::t_55fd5bde9789d2 1-145
+test/eval/retrieval/reports/bakeoff-140/2026-10-21-25ae4c3-b140-gemma2-256-w1.0-off.json
+  s_8afdc79fd289d3::t_a8209648304c7e 1-4839
+test/eval/retrieval/reports/bakeoff-140/2026-10-21-25ae4c3-b140-gemma2-256-w1.0-off.md
+  s_8afdc79fd289d3::t_3eee16a8af0302 1-309
+test/eval/retrieval/reports/bakeoff-140/2026-10-21-25ae4c3-b140-gemma2-256-w1.0-on.json
+  s_8afdc79fd289d3::t_5d6eb3b10a5042 1-4969
+test/eval/retrieval/reports/bakeoff-140/2026-10-21-25ae4c3-b140-gemma2-256-w1.0-on.md
+  s_8afdc79fd289d3::t_d9f7d8e7445df9 1-309
+test/eval/retrieval/reports/bakeoff-140/2026-10-21-25ae4c3-b140-gemma2-768-w1.0-off.json
+  s_8afdc79fd289d3::t_1fea72f6d19a0c 1-4839
+test/eval/retrieval/reports/bakeoff-140/2026-10-21-25ae4c3-b140-gemma2-768-w1.0-off.md
+  s_8afdc79fd289d3::t_841c7f5f9f5c44 1-309
+test/eval/retrieval/reports/bakeoff-140/2026-10-21-25ae4c3-b140-gemma2-768-w1.5-off.json
+  s_8afdc79fd289d3::t_74c4628a5024f8 1-1758
+test/eval/retrieval/reports/bakeoff-140/2026-10-21-25ae4c3-b140-gemma2-768-w1.5-off.md
+  s_8afdc79fd289d3::t_c0cc763025a9a6 1-145
+test/eval/retrieval/reports/bakeoff-140/2026-10-21-25ae4c3-b140-gemma2-768-w1.5-on.json
+  s_8afdc79fd289d3::t_67e614423db4a4 1-1823
+test/eval/retrieval/reports/bakeoff-140/2026-10-21-25ae4c3-b140-gemma2-768-w1.5-on.md
+  s_8afdc79fd289d3::t_e851468d1752ad 1-145
+test/eval/retrieval/reports/bakeoff-140/2026-10-21-25ae4c3-b140-gemma2-768-w2.0-off.json
+  s_8afdc79fd289d3::t_af1ab8e0ce6c40 1-1758
+test/eval/retrieval/reports/bakeoff-140/2026-10-21-25ae4c3-b140-gemma2-768-w2.0-off.md
+  s_8afdc79fd289d3::t_00015c4c3b72ce 1-145
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "79dc8146efea58934c827cbd1abf04b3c411fc25",
+  "prompts": {},
+  "sessions": {
+    "s_72cfd2e910e35d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ff275c81-d0e2-4f98-b026-11a0a83e483b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    },
+    "s_7ac7695e529d08": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8b428c5c-45c7-48fc-8536-a422fa61ce59",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    },
+    "s_8afdc79fd289d3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc224301-7475-4f78-8de4-3cc1721d5dd3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    },
+    "s_8e1ff56bb605eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9ff2cc16-27c4-4bf0-acb8-369613e0f35a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
