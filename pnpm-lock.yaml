@@ -14,10 +14,10 @@ importers:
     dependencies:
       '@modelcontextprotocol/ext-apps':
         specifier: 1.7.5
-        version: 1.7.5(@modelcontextprotocol/sdk@1.29.0(supports-color@7.2.0)(zod@4.6.7))(react@19.2.8)(zod@4.6.7)
+        version: 1.7.5(@modelcontextprotocol/sdk@1.32.1(supports-color@7.2.0)(zod@4.6.7))(react@19.2.8)(zod@4.6.7)
       '@modelcontextprotocol/sdk':
-        specifier: 1.29.0
-        version: 1.29.0(supports-color@7.2.0)(zod@4.6.7)
+        specifier: 1.32.1
+        version: 1.32.1(supports-color@7.2.0)(zod@4.6.7)
       open:
         specifier: ^11.0.1
         version: 11.0.4
@@ -264,12 +264,6 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@hono/node-server@1.19.17':
-    resolution: {integrity: sha512-dSneS5qhiauZWGDCeK4o695Xd9nUNjviSZCMQrj10eetr8Uln1ucn6bbphOM6UynAMMtNIzZNSpL9vnASJwrPQ==}
-    engines: {node: '>=18.14.1'}
-    peerDependencies:
-      hono: ^4
-
   '@hono/node-server@2.1.1':
     resolution: {integrity: sha512-ELuehkj5VCBdgEw9zs+ivkKwyzzUCSQuE96YmiPvn1ECBoZCczbFXJLeEGMTYjphP6gydh4pHMqEYPVMYUVgQg==}
     engines: {node: '>=20'}
@@ -511,8 +505,8 @@ packages:
     engines: {node: '>=22.19.0'}
     hasBin: true
 
-  '@modelcontextprotocol/sdk@1.29.0':
-    resolution: {integrity: sha512-zo37mZA9hJWpULgkRpowewez1y6ML5GsXJPY8FI0tBBCd77HEvza4jDqRKOXgHNn867PVGCyTdzqpz0izu5ZjQ==}
+  '@modelcontextprotocol/sdk@1.32.1':
+    resolution: {integrity: sha512-2DdE+SJDtzLEEWzY1ZjY7Q+VcPhcV1KisD3zI4u0XZyktsjHum1mwbMI+JaulUBi2OZk+KJAi2uPXzxichPkdw==}
     engines: {node: '>=18'}
     peerDependencies:
       '@cfworker/json-schema': ^4.1.1
@@ -1642,10 +1636,6 @@ packages:
     resolution: {integrity: sha512-CQ46U0ZkAGmbT/4UxdzzGJpacP2IeKgY4a5/tOI9AABbpOMfK739wfDXmv1usCk+3RkKj1hQy4/fjhiwa2xlrA==}
     engines: {node: '>=16.9.0'}
 
-  hono@4.13.2:
-    resolution: {integrity: sha512-JydRilDRkYBQMt9qR9U92mXxmbGqsqSn/IKOrh4e7/gEbn+0zSr8igTu0obwJoNGN4sez28DIql7FBHWydoJpA==}
-    engines: {node: '>=16.9.0'}
-
   html-escaper@2.0.2:
     resolution: {integrity: sha512-H2iMtd0I4Mt5eYiapRdIDjp+XzelXQ0tFE4JS7YFwFevXXMmOp9myNrUvCg0D6ws8iqkRPBfKHgbwig1SmlLfg==}
 
@@ -2611,10 +2601,6 @@ snapshots:
   '@esbuild/win32-x64@0.28.2':
     optional: true
 
-  '@hono/node-server@1.19.17(hono@4.13.2)':
-    dependencies:
-      hono: 4.13.2
-
   '@hono/node-server@2.1.1(hono@4.13.13)':
     dependencies:
       hono: 4.13.13
@@ -2766,9 +2752,9 @@ snapshots:
     dependencies:
       zod: 4.6.7
 
-  '@modelcontextprotocol/ext-apps@1.7.5(@modelcontextprotocol/sdk@1.29.0(supports-color@7.2.0)(zod@4.6.7))(react@19.2.8)(zod@4.6.7)':
+  '@modelcontextprotocol/ext-apps@1.7.5(@modelcontextprotocol/sdk@1.32.1(supports-color@7.2.0)(zod@4.6.7))(react@19.2.8)(zod@4.6.7)':
     dependencies:
-      '@modelcontextprotocol/sdk': 1.29.0(supports-color@7.2.0)(zod@4.6.7)
+      '@modelcontextprotocol/sdk': 1.32.1(supports-color@7.2.0)(zod@4.6.7)
       '@standard-schema/spec': 1.1.0
       zod: 4.6.7
     optionalDependencies:
@@ -2834,9 +2820,9 @@ snapshots:
       - tsx
       - utf-8-validate
 
-  '@modelcontextprotocol/sdk@1.29.0(supports-color@7.2.0)(zod@4.6.7)':
+  '@modelcontextprotocol/sdk@1.32.1(supports-color@7.2.0)(zod@4.6.7)':
     dependencies:
-      '@hono/node-server': 1.19.17(hono@4.13.2)
+      '@hono/node-server': 2.1.1(hono@4.13.13)
       ajv: 8.20.0
       ajv-formats: 3.0.1(ajv@8.20.0)
       content-type: 1.0.5
@@ -2846,7 +2832,7 @@ snapshots:
       eventsource-parser: 3.1.1
       express: 5.2.1(supports-color@7.2.0)
       express-rate-limit: 8.6.2(express@5.2.1(supports-color@7.2.0))(supports-color@7.2.0)
-      hono: 4.13.2
+      hono: 4.13.13
       jose: 6.2.9
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.1
@@ -3694,8 +3680,6 @@ snapshots:
       function-bind: 1.1.2
 
   hono@4.13.13: {}
-
-  hono@4.13.2: {}
 
   html-escaper@2.0.2: {}
 
