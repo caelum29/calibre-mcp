@@ -1,0 +1,29 @@
+test/eval/retrieval/reports/2026-10-23-021cf6d-issue102-fixture-rule-off.json
+  s_add1e860c5ddca::t_bde3bc6297c75d 1-5052
+test/eval/retrieval/reports/2026-10-23-021cf6d-issue102-fixture-rule-off.md
+  s_add1e860c5ddca::t_bde3bc6297c75d 1-318
+test/eval/README.md
+  s_add1e860c5ddca::t_40f8a4b35dcfc2 37-40
+test/eval/retrieval/reports/2026-10-23-issue102-heading-fixture.md
+  s_add1e860c5ddca::t_491db1c1bfd251 1-78
+test/eval/retrieval/reports/2026-10-23-bab0b03-issue102-fixture.json
+  s_add1e860c5ddca::t_7e5c1c3c3aaca6 1-5052
+test/eval/retrieval/reports/2026-10-23-bab0b03-issue102-fixture.md
+  s_add1e860c5ddca::t_9daedd07ae448a 1-318
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b00d023a20129673a0af742fc9b4b4782ae10313",
+  "prompts": {},
+  "sessions": {
+    "s_add1e860c5ddca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2be5781b-d6d2-4d9e-ae41-ee673466059d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
