@@ -1,0 +1,19 @@
+test/eval/retrieval/reports/2026-10-23-issue102-heading-fixture.md
+  s_add1e860c5ddca::t_a1e24771b4a903 79-84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cb24c942f046fc18ac2f7e34c83b331c5412a97b",
+  "prompts": {},
+  "sessions": {
+    "s_add1e860c5ddca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2be5781b-d6d2-4d9e-ae41-ee673466059d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
