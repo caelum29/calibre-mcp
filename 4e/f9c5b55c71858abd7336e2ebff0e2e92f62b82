@@ -1,0 +1,19 @@
+test/domain/figures/fixtures/caption-quirks-107.md
+  s_588c1b7538ef4c::t_aff8a3f1620fa5 139-201
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4ef9c5b55c71858abd7336e2ebff0e2e92f62b82",
+  "prompts": {},
+  "sessions": {
+    "s_588c1b7538ef4c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "96df5270-e148-489c-ad56-ae34f12e83a5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
