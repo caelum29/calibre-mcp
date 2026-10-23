@@ -1,0 +1,31 @@
+test/eval/retrieval/rerank-floor.ts
+  s_4fbcd6a5bcae17::t_b5fe76eb7d9b08 1-156
+test/eval/retrieval/rerank-floor.test.ts
+  s_4fbcd6a5bcae17::t_b5fe76eb7d9b08 1-55
+test/eval/retrieval/reports/2026-10-23-acc89db-rerankfloor-fixture.json
+  s_4fbcd6a5bcae17::t_a95ece6e8f71cb 1-5188
+test/eval/retrieval/reports/2026-10-23-acc89db-rerankfloor-fixture.md
+  s_4fbcd6a5bcae17::t_a3c214f0d2a694 1-318
+test/eval/retrieval/reports/2026-10-23-acc89db-rerankfloor-live.json
+  s_4fbcd6a5bcae17::t_21c9040f6acb94 1-1747
+test/eval/retrieval/reports/2026-10-23-acc89db-rerankfloor-live.md
+  s_4fbcd6a5bcae17::t_d3003873690282 1-131
+test/eval/retrieval/reports/2026-10-23-rerank-floor-calibration.md
+  s_4fbcd6a5bcae17::t_efe2d7629f6015 1-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0544ca8434676a2acaeb943373b8865a8925279a",
+  "prompts": {},
+  "sessions": {
+    "s_4fbcd6a5bcae17": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1b8a88f7-714b-4777-980c-1a0b1259a602",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
