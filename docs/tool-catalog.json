@@ -375,6 +375,9 @@
             "type": "string"
           }
         },
+        "required": [
+          "changes"
+        ],
         "type": "object"
       },
       "name": "calibre_bulk_update",
@@ -1262,7 +1265,8 @@
           }
         },
         "required": [
-          "targetId"
+          "targetId",
+          "sourceIds"
         ],
         "type": "object"
       },
@@ -1653,6 +1657,9 @@
             "type": "string"
           }
         },
+        "required": [
+          "ids"
+        ],
         "type": "object"
       },
       "name": "calibre_remove_book",
@@ -2197,6 +2204,9 @@
             "type": "string"
           }
         },
+        "required": [
+          "changes"
+        ],
         "type": "object"
       },
       "name": "calibre_update_book",
