@@ -1,0 +1,21 @@
+test/eval/retrieval/rerank-floor.ts
+  s_b15e74e60794a0::t_118cc172d6b341 64-68,93-95,104-105
+test/eval/retrieval/rerank-floor.test.ts
+  s_b15e74e60794a0::t_118cc172d6b341 17-29,43-50,58-65,72-76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "266ea6527d7e4c2571f99008754887b427a0feff",
+  "prompts": {},
+  "sessions": {
+    "s_b15e74e60794a0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b4bdd845-67b2-43d0-b790-5de1f74bb48b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
