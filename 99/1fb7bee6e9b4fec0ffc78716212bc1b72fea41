@@ -1,0 +1,63 @@
+src/calibre/extract.ts
+  s_3c5dfcb18f04a2::t_1f48c7865d8e25 20,24,58-59,92-93,96,257,277-278,286,290-299,306-309,311-315,469-470,486,493-496
+  s_3c5dfcb18f04a2::t_ccf65670e09090 310
+  s_3c5dfcb18f04a2::t_bd8d6bdc77c1db 497-498
+src/domain/structure/epub-toc.ts
+  s_3c5dfcb18f04a2::t_ccf65670e09090 10,297
+  s_3c5dfcb18f04a2::t_75a7ee61495097 1-9,11-47,52-162,167-187,192,195-255,264-267,270-272,278,284-296,298-310
+  s_3c5dfcb18f04a2::t_101eb2af96a4bc 48-51,281-282
+  s_3c5dfcb18f04a2::t_82ba8914b0a3a2 163-166,188-191,193-194
+  s_3c5dfcb18f04a2::t_a2ecff51fb6cef 256-263,268-269,273-277,279-280,283
+docs/TOOLS.md
+  s_3c5dfcb18f04a2::t_dfb402979891e0 108
+src/domain/structure/pdf-outline.ts
+  s_3c5dfcb18f04a2::t_1adf43014a627e 20-21,140,151-159,163-165,167,182-185,189-192,197,204-211,225
+  s_3c5dfcb18f04a2::t_dd4c787a16d354 149,193-196,198-203
+  s_3c5dfcb18f04a2::t_ccf65670e09090 233,236-244,246-248,250,258
+test/tools/index-book.test.ts
+  s_3c5dfcb18f04a2::t_8b691562a1cbd7 61
+skills/calibre-distill/SKILL.md
+  s_3c5dfcb18f04a2::t_dfb402979891e0 168-170
+test/calibre/extract.test.ts
+  s_3c5dfcb18f04a2::t_2c41787d88014b 60,63,92-96,98,102,111-124
+test/domain/structure/epub-toc.test.ts
+  s_3c5dfcb18f04a2::t_101eb2af96a4bc 148-155,191-196
+  s_3c5dfcb18f04a2::t_31879d34598ba5 1-147,156-190,197-217,235-291,293-299,301-312
+  s_3c5dfcb18f04a2::t_a05f1850a0c9b7 218-234,292,300
+src/domain/structure/chapters.ts
+  s_3c5dfcb18f04a2::t_a2ecff51fb6cef 10-11,13,32-33,35,41-42,351-352
+  s_3c5dfcb18f04a2::t_ccf65670e09090 331-346,362-363
+  s_3c5dfcb18f04a2::t_d8b8af59814446 330
+test/tools/get-content.handler.test.ts
+  s_3c5dfcb18f04a2::t_126cdf5abad359 289,300-327
+  s_3c5dfcb18f04a2::t_8b691562a1cbd7 42,147,174,236,343
+  s_3c5dfcb18f04a2::t_3b04955fb140ab 328-329
+test/tools/build-index.handler.test.ts
+  s_3c5dfcb18f04a2::t_8b691562a1cbd7 124,195,219,387,408,469,511
+test/calibre/epub-toc.test.ts
+  s_3c5dfcb18f04a2::t_ccf65670e09090 49,65
+  s_3c5dfcb18f04a2::t_fe14497c2cde14 1-48,50-64,66-67
+src/tools/calibre_get_content.ts
+  s_3c5dfcb18f04a2::t_1f48c7865d8e25 137-140
+src/calibre/epub-toc.ts
+  s_3c5dfcb18f04a2::t_ccf65670e09090 32-37,47
+  s_3c5dfcb18f04a2::t_f27dc2f688ac18 1-31,38-46,48-93
+src/calibre/figure-inventory.ts
+  s_3c5dfcb18f04a2::t_1f48c7865d8e25 30,111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "991fb7bee6e9b4fec0ffc78716212bc1b72fea41",
+  "prompts": {},
+  "sessions": {
+    "s_3c5dfcb18f04a2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e3eb86c-edb6-45ac-8d5d-1ab959187a28",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
