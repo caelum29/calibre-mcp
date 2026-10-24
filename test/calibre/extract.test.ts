@@ -57,10 +57,10 @@ describe("noTextReason", () => {
   });
 });
 
-describe("text cache envelope (v7, #84/#133/#134/#101/#107)", () => {
+describe("text cache envelope (v8, #84/#133/#134/#101/#107/#135)", () => {
   it("round-trips a valid envelope", () => {
     const env = {
-      v: 7,
+      v: 8,
       backend: "pdftotext",
       text: "body [image #0]",
       markers: [{ index: 0, charOffset: 5, page: 1, caption: "c" }],
@@ -89,12 +89,17 @@ describe("text cache envelope (v7, #84/#133/#134/#101/#107)", () => {
   it("rejects a v6 envelope — PDF markers cached before layout-read captions carry no caption text", () => {
     expect(parseTextCacheEnvelope(JSON.stringify({ v: 6, backend: "pdftotext", text: "t", markers: [] }))).toBeNull();
   });
+  it("rejects a v7 envelope — EPUB text cached before the TOC rode along (#135)", () => {
+    expect(
+      parseTextCacheEnvelope(JSON.stringify({ v: 7, backend: "ebook-convert", text: "t", markers: [] })),
+    ).toBeNull();
+  });
   it("rejects an envelope missing markers", () => {
-    expect(parseTextCacheEnvelope(JSON.stringify({ v: 7, backend: "x", text: "t" }))).toBeNull();
+    expect(parseTextCacheEnvelope(JSON.stringify({ v: 8, backend: "x", text: "t" }))).toBeNull();
   });
   it("round-trips the outline and the unplaced count", () => {
     const env = {
-      v: 7,
+      v: 8,
       backend: "pdftotext",
       text: "t",
       markers: [],
@@ -102,6 +107,20 @@ describe("text cache envelope (v7, #84/#133/#134/#101/#107)", () => {
       outline: [{ title: "Intro", page: 3, level: 1 }],
     };
     expect(parseTextCacheEnvelope(JSON.stringify(env))).toEqual(env);
+  });
+  it("round-trips the EPUB TOC with its spine anchors (#135)", () => {
+    const env = {
+      v: 8,
+      backend: "ebook-convert",
+      text: "t",
+      markers: [],
+      epubToc: { entries: [{ title: "One", level: 1, href: "a.xhtml" }], anchors: [{ href: "a.xhtml", start: 0 }] },
+    };
+    expect(parseTextCacheEnvelope(JSON.stringify(env))).toEqual(env);
+  });
+  it("drops a malformed EPUB TOC instead of serving it", () => {
+    const env = { v: 8, backend: "ebook-convert", text: "t", markers: [], epubToc: { entries: "junk" } };
+    expect(parseTextCacheEnvelope(JSON.stringify(env))?.epubToc).toBeUndefined();
   });
 });
 

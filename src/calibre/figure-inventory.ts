@@ -27,6 +27,7 @@ import {
   type Runner,
 } from "./figure-fetch.js";
 import type { FigureEntry } from "../domain/figures/inventory.js";
+import { unzipBinary } from "./epub-toc.js";
 import { downloadToFile } from "./http.js";
 import { OperationCancelledError } from "../domain/errors.js";
 import { SpawnAbortedError, spawnCollect, SpawnTimeoutError } from "./spawn.js";
@@ -87,8 +88,6 @@ const MAX_LIST_BUFFER = 8 * 1024 * 1024;
 
 const PDFIMAGES_CANDIDATES = ["/opt/homebrew/bin/pdfimages", "/usr/local/bin/pdfimages", "/usr/bin/pdfimages"];
 const PDFTOTEXT_CANDIDATES = ["/opt/homebrew/bin/pdftotext", "/usr/local/bin/pdftotext", "/usr/bin/pdftotext"];
-// EPUB = zip; system unzip is universal on macOS/Linux, keeps the zero-new-deps rule.
-const UNZIP_CANDIDATES = ["/usr/bin/unzip", "/opt/homebrew/bin/unzip", "/usr/local/bin/unzip"];
 
 interface CacheEnvelope {
   v: number;
@@ -109,7 +108,7 @@ export class FigureInventoryService {
 
   /** System unzip, or null when missing (never on macOS; minimal Linux images only). */
   unzipBinary(): string | null {
-    return UNZIP_CANDIDATES.find(existsSync) ?? null;
+    return unzipBinary();
   }
 
   /** Cache-keyed inventory. Downloads + scans on miss; JSON round-trip on hit. */

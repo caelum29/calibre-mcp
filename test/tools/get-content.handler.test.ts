@@ -39,6 +39,7 @@ function deps(opts: FakeOpts = {}): ToolDeps {
         markers: [],
         unplaced: 0,
         outline: [],
+        epubToc: null,
       })),
   };
   return {
@@ -143,6 +144,7 @@ describe("calibre_get_content handler", () => {
             markers: [],
             unplaced: 0,
             outline: [],
+            epubToc: null,
           }),
         }),
       );
@@ -169,6 +171,7 @@ describe("calibre_get_content handler", () => {
           markers: [],
           unplaced: 0,
           outline: [],
+          epubToc: null,
         }),
       }),
     );
@@ -230,6 +233,7 @@ describe("calibre_get_content handler", () => {
           markers: [],
           unplaced: 0,
           outline: [],
+          epubToc: null,
         }),
       });
 
@@ -282,6 +286,7 @@ describe("calibre_get_content handler", () => {
             markers: [],
             unplaced: 0,
             outline,
+            epubToc: null,
           }),
         }),
       );
@@ -290,6 +295,36 @@ describe("calibre_get_content handler", () => {
       expect((r.structuredContent as { chapters: { startChar: number }[] }).chapters[0]!.startChar).toBe(
         paged.indexOf("Getting Started"),
       );
+    });
+
+    it("uses the EPUB TOC when present and labels the detector epub-toc (#135)", async () => {
+      const flat = "# Cover\n\n# Loomings\n\nCall me Ishmael.\n\n# The Carpet-Bag\n\nI stuffed a shirt or two.";
+      const epubToc = {
+        entries: [
+          { title: "Loomings", level: 1, href: "ch1.xhtml" },
+          { title: "The Carpet-Bag", level: 1, href: "ch2.xhtml" },
+        ],
+        anchors: [
+          { href: "ch1.xhtml", start: flat.indexOf("# Loomings") },
+          { href: "ch2.xhtml", start: flat.indexOf("# The Carpet-Bag") },
+        ],
+      };
+      const r = await getContentTool.handler(
+        args({ structure: true }),
+        deps({
+          getText: async () => ({
+            text: flat,
+            backend: "ebook-convert",
+            chars: flat.length,
+            cached: false,
+            markers: [],
+            unplaced: 0,
+            outline: [],
+            epubToc,
+          }),
+        }),
+      );
+      expect((r.content[0] as { text: string }).text).toContain("2 chapters (epub-toc)");
     });
 
     it("reports 0 chapters as a non-error with a steer to the plain walk", async () => {
@@ -305,6 +340,7 @@ describe("calibre_get_content handler", () => {
             markers: [],
             unplaced: 0,
             outline: [],
+            epubToc: null,
           }),
         }),
       );
