@@ -1,0 +1,25 @@
+test/semantic/status.test.ts
+  s_4b3515709d5dc5::t_9f79ad54db892a 113,130
+src/semantic/model.ts
+  s_4b3515709d5dc5::t_dc468214953e94 147-149,151
+package.json
+  s_4b3515709d5dc5::t_44d3451cbf2b4a 76
+pnpm-lock.yaml
+  s_4b3515709d5dc5::t_12097bfab3d15f 17,20,69-70,273-274,277-278,280-281,1592-1593,1831-1832,1902-1903,1905-1906,1908-1909,1912-1913,2114-2115,2276-2277,2585,2588,2591,2593-2596,2732,2734,2800,2810-2811,3320,3324,3400,3507,3509-3510,3515,3518,3523,3528,3539-3541,3560,3562,3612,3614-3615,3617,3838,3886,3889,3892,3895-3896,3899,3904,4089,4156,4158,4176,4178,4192,4194,4197,4202,4370
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f8bb6171650a6794b9ec53c9c4970bd99ae11903",
+  "prompts": {},
+  "sessions": {
+    "s_4b3515709d5dc5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "68fef79a-be78-4693-be02-dcdaaf6e1ae6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
