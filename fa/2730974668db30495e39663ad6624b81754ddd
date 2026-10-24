@@ -1,0 +1,33 @@
+src/server.ts
+  s_5906801c9ac248::t_2e0519d40f3db6 6-7,102,187,235-237,239
+  s_5906801c9ac248::t_7d9dc4ce038857 94-95,150,242
+test/integration/cancellation-progress.test.ts
+  s_5906801c9ac248::t_2e0519d40f3db6 12-13,136,231
+package.json
+  s_5906801c9ac248::t_2e0519d40f3db6 72-74
+  s_5906801c9ac248::t_9d9fa484ed9fbc 69
+scripts/gen-tool-catalog.mjs
+  s_5906801c9ac248::t_2e0519d40f3db6 38-39
+src/run-stdio.ts
+  s_5906801c9ac248::t_2e0519d40f3db6 6
+test/tools/schema-compat.test.ts
+  s_5906801c9ac248::t_2e0519d40f3db6 10
+pnpm-lock.yaml
+  s_5906801c9ac248::t_c2874c546460f8 15-17,19-23,462-465,470-471,509-512,2468-2477,2482,2496-2505,2556,2558,2561,2563,3129-3130,3132-3133,3233-3234
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fa2730974668db30495e39663ad6624b81754ddd",
+  "prompts": {},
+  "sessions": {
+    "s_5906801c9ac248": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fb258b36-6a9c-4c7f-87ff-c651f96dde10",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
