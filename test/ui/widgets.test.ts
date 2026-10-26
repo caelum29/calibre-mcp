@@ -209,9 +209,21 @@ describe("widget debug probe (issues #69/#72)", () => {
     // calibre_get_figures round-trip (or paint an overlay) on top of the widget.
     for (const html of debugAll) {
       expect(html).not.toContain("p82");
-      expect(html).not.toContain("securitypolicyviolation");
     }
     expect(figuresHtml("9.9.9", true)).not.toContain("calibre_get_figures");
+  });
+
+  it("should_inject_the_csp_image_probe_when_debug_is_on", () => {
+    // Code-tab covers: the probe must report the host CSP and every img load/fail.
+    for (const html of debugAll) {
+      expect(html).toContain('addEventListener("securitypolicyviolation"');
+    }
+  });
+
+  it("should_not_inject_the_csp_image_probe_when_debug_is_off", () => {
+    for (const html of every) {
+      expect(html).not.toContain("securitypolicyviolation");
+    }
   });
 
   it("should_keep_hygiene_rules_in_the_probe_layer", () => {
