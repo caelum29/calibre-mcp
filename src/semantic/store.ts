@@ -376,6 +376,8 @@ export class SqliteIndexStore implements IndexStore {
     let db: DatabaseSync | undefined;
     try {
       db = open ?? new DatabaseSync(this.#file(libraryId), { readOnly: true });
+      // Read-only can't switch journal mode, but must still wait out a concurrent writer (#196).
+      if (!open) db.exec(`PRAGMA busy_timeout = ${this.cfg.indexBusyTimeoutMs}`);
       const kv = new Map<string, string>();
       for (const r of db.prepare("SELECT key, value FROM meta").all() as Row[]) {
         kv.set(String(r.key), String(r.value));
@@ -443,9 +445,9 @@ export class SqliteIndexStore implements IndexStore {
   ): ReplaceOutcome {
     const db = this.#db(libraryId);
     const embedded = chunks.reduce((n, c) => n + (c.vector ? 1 : 0), 0);
-    // IMMEDIATE takes the write lock up front: the preserve check below reads the state it
-    // then overwrites (no other writer can slip in between), and a busy db fails at BEGIN —
-    // before any row is touched — instead of on a deferred read→write lock upgrade.
+    // IMMEDIATE takes the write lock up front, where busy_timeout applies (#196) — a deferred
+    // BEGIN that upgrades to a writer mid-transaction can fail with SQLITE_BUSY without waiting —
+    // and the preserve check below reads the state it then overwrites with no writer in between.
     // Callers compute every embedding BEFORE this point, so the lock is never held over the model.
     db.exec("BEGIN IMMEDIATE");
     try {
@@ -538,7 +540,9 @@ export class SqliteIndexStore implements IndexStore {
     const counts: PruneCounts = { books: 0, chunks: 0, figures: 0 };
     if (bookIds.length === 0 || !this.hasIndex(libraryId)) return counts;
     const db = this.#db(libraryId);
-    db.exec("BEGIN");
+    // IMMEDIATE takes the write lock up front, where busy_timeout applies (#196); a deferred
+    // BEGIN that upgrades to a writer mid-transaction can fail with SQLITE_BUSY without waiting.
+    db.exec("BEGIN IMMEDIATE");
     try {
       const delEmb = db.prepare("DELETE FROM embeddings WHERE book_id = ?");
       const delChunks = db.prepare("DELETE FROM chunks WHERE book_id = ?");
@@ -818,7 +822,16 @@ export class SqliteIndexStore implements IndexStore {
   }
 
   close(): void {
-    for (const db of this.#dbs.values()) db.close();
+    for (const db of this.#dbs.values()) {
+      // Fold the -wal side file back into the .sqlite so it is a self-contained file to copy/move.
+      // Best-effort: another process reading the index can keep the checkpoint from completing.
+      try {
+        db.exec("PRAGMA wal_checkpoint(TRUNCATE)");
+      } catch {
+        /* checkpoint is an optimization; closing still succeeds */
+      }
+      db.close();
+    }
     this.#dbs.clear();
     this.#candidateCaches.clear();
     this.#figureCaches.clear();
@@ -932,6 +945,11 @@ export class SqliteIndexStore implements IndexStore {
     const file = this.#file(libraryId);
     if (file !== ":memory:") mkdirSync(this.cfg.indexDir, { recursive: true });
     db = new DatabaseSync(file);
+    // Another server process (Desktop + Claude Code) may hold the same file (#196): wait on its
+    // lock instead of failing at once, and use WAL so readers never block the writer. WAL is
+    // persistent in the file; ":memory:" silently stays in "memory" mode.
+    db.exec(`PRAGMA busy_timeout = ${this.cfg.indexBusyTimeoutMs}`);
+    db.exec("PRAGMA journal_mode = WAL");
     db.exec(SCHEMA);
     this.#migrate(db);
     this.#ensureMeta(db);

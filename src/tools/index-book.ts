@@ -233,6 +233,28 @@ async function figureRows(
   });
 }
 
+/** SQLITE_BUSY (5) / SQLITE_LOCKED (6), incl. extended codes: another process holds the index lock. */
+export function isDbBusy(err: unknown): boolean {
+  const code = (err as { errcode?: unknown } | null)?.errcode;
+  if (typeof code === "number" && [5, 6].includes(code & 0xff)) return true;
+  return err instanceof Error && /database (table )?is locked/i.test(err.message);
+}
+
+/**
+ * Run an index write, retrying it ONCE after a short pause if another server process still held
+ * the db lock past busy_timeout (#196 — Desktop + Claude Code share one index file). Any other
+ * error, or a second busy, propagates and is recorded as the book's failure.
+ */
+export async function withBusyRetry<T>(fn: () => T | Promise<T>, pauseMs = 1000): Promise<T> {
+  try {
+    return await fn();
+  } catch (err) {
+    if (!isDbBusy(err)) throw err;
+    await new Promise((r) => setTimeout(r, pauseMs));
+    return await fn();
+  }
+}
+
 /** Concise, LLM-actionable reason for a per-book failure (coded errors → plain English). */
 export function describeError(err: unknown): string {
   const m = err instanceof Error ? err.message : String(err);

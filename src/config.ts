@@ -19,6 +19,12 @@ export interface Config {
    * A DATA dir, not tmp — the index is expensive to build and must survive reboots.
    */
   indexDir: string;
+  /**
+   * How long an index-db statement waits on another process's lock before failing with
+   * SQLITE_BUSY (#196: Desktop + Claude Code servers share one index file). Override via
+   * CALIBRE_MCP_INDEX_BUSY_TIMEOUT_MS.
+   */
+  indexBusyTimeoutMs: number;
   /** Min cosine score below which semantic results are flagged low-confidence. */
   semanticFloor: number;
   /**
@@ -93,6 +99,7 @@ function dataDir(env: NodeJS.ProcessEnv): string {
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const floor = Number(envStr(env.CALIBRE_MCP_SEMANTIC_FLOOR));
   const maxBytes = Number(envStr(env.CALIBRE_MCP_MAX_BOOK_BYTES));
+  const busyMs = Number(envStr(env.CALIBRE_MCP_INDEX_BUSY_TIMEOUT_MS));
   return {
     serverUrl: envStr(env.CALIBRE_MCP_SERVER_URL) ?? "http://localhost:8080",
     defaultLibrary: envStr(env.CALIBRE_MCP_LIBRARY) ?? "",
@@ -100,6 +107,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     // Explicit env path wins even if it doesn't exist (the user said so); else discover.
     calibredbPath: envStr(env.CALIBRE_MCP_CALIBREDB_PATH) ?? discoverCalibredb(env),
     indexDir: dataDir(env),
+    indexBusyTimeoutMs: Number.isInteger(busyMs) && busyMs >= 0 ? busyMs : 5000,
     semanticFloor: Number.isFinite(floor) ? floor : 0.78,
     rerankEnabled: notOptedOut(env.CALIBRE_MCP_RERANK),
     maxBookBytes: Number.isFinite(maxBytes) && maxBytes > 0 ? maxBytes : 256 * 1024 * 1024,
