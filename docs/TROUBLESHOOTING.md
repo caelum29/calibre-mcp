@@ -77,6 +77,22 @@ Semantic search only sees books you've indexed. Run `calibre_build_index` with a
 `ids`, or a Calibre `query` selecting the books, then search again. Re-run it after adding
 books (unchanged books are skipped).
 
+### `calibre_build_index`: "database is locked"
+
+Two calibre-mcp servers share one index file — typically Claude Desktop's extension and a
+Claude Code session running side by side. The index runs in SQLite WAL mode (readers never
+block the writer) and a writer waits up to `CALIBRE_MCP_INDEX_BUSY_TIMEOUT_MS` (default 5 s)
+for the other process, then retries the book once. If books still fail, the other server was
+writing for longer than that (e.g. its own `calibre_build_index`): let it finish and re-run —
+already-indexed books are skipped — or raise the timeout.
+
+### Copying or backing up the index
+
+The index is `<index dir>/<library>.sqlite`. In WAL mode SQLite keeps recent writes in
+`<library>.sqlite-wal` (plus a `-shm` file) until a checkpoint, so while any calibre-mcp server
+is running, copy all three files together — or quit every client first: a cleanly closed
+server checkpoints the WAL back into the `.sqlite`, leaving a single self-contained file.
+
 ### First semantic search is extremely slow
 
 Two one-time downloads can land on the first use: the embedding model (~118 MB) and the

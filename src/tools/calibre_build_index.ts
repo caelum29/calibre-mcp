@@ -8,7 +8,14 @@
 import { z } from "zod";
 import { BookId, CoercedBool, jsonArray } from "./coerce.js";
 import { defineTool } from "./define.js";
-import { commitBook, describeError, prepareBook, type BookDetail, type PrepareResult } from "./index-book.js";
+import {
+  commitBook,
+  describeError,
+  prepareBook,
+  withBusyRetry,
+  type BookDetail,
+  type PrepareResult,
+} from "./index-book.js";
 import { resolveNumericId } from "./resolve-id.js";
 import { INSTALL_TRANSFORMERS } from "./remediation.js";
 import { toolError, toolOk } from "./result.js";
@@ -209,8 +216,8 @@ export const buildIndexTool = defineTool({
           signal,
         });
       },
-      commit: (_bookId, prepared) => {
-        if (prepared.kind === "ready") commitBook(deps, libraryId, prepared);
+      commit: async (_bookId, prepared) => {
+        if (prepared.kind === "ready") await withBusyRetry(() => commitBook(deps, libraryId, prepared));
       },
       onSettled: (o) => {
         settled++;
