@@ -1,0 +1,21 @@
+test/tools/index-book.test.ts
+  s_2a4dddbb84a690::t_6467cecc47fa92 14
+test/semantic/store-concurrency.test.ts
+  s_2a4dddbb84a690::t_6467cecc47fa92 26,53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f3bd30f4cbbf81679c2c456586f0f72da7bc7069",
+  "prompts": {},
+  "sessions": {
+    "s_2a4dddbb84a690": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "55a47eb7-212e-4b74-a299-15e8f3363f3f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
