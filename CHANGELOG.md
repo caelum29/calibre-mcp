@@ -9,6 +9,23 @@ inserts its generated section above the newest entry. Hand-written notes still g
 `[Unreleased]`; when merging a release PR, fold them into the generated section and leave
 `[Unreleased]` empty.
 
+## [0.10.0](https://github.com/caelum29/calibre-mcp/compare/v0.9.0...v0.10.0) (2026-10-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* **semantic:** transformers.js 4.3.1 + INDEX_VERSION 4 (re-index required) ([#194](https://github.com/caelum29/calibre-mcp/issues/194))
+
+### Added
+
+* **semantic:** transformers.js 4.3.1 + INDEX_VERSION 4 (re-index required) ([#194](https://github.com/caelum29/calibre-mcp/issues/194)) ([290c803](https://github.com/caelum29/calibre-mcp/commit/290c8034377c74c506078c1fab7226b82f8a09f0))
+
+
+### Fixed
+
+* **semantic:** atomic per-book index writes + vector-aware freshness ([#197](https://github.com/caelum29/calibre-mcp/issues/197)) ([#205](https://github.com/caelum29/calibre-mcp/issues/205)) ([30c1470](https://github.com/caelum29/calibre-mcp/commit/30c14709c825f505b0a559791902208b0163fe9b))
+* **semantic:** wait on a shared index lock instead of failing ([#196](https://github.com/caelum29/calibre-mcp/issues/196)) ([#206](https://github.com/caelum29/calibre-mcp/issues/206)) ([6caf501](https://github.com/caelum29/calibre-mcp/commit/6caf5015b086deb0a2b9c6b7d107d8007d94192a))
+
 ## [0.9.0](https://github.com/caelum29/calibre-mcp/compare/v0.8.0...v0.9.0) (2026-10-23)
 
 
