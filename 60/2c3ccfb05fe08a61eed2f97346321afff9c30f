@@ -1,0 +1,49 @@
+test/semantic/store.test.ts
+  s_31cd33f581c22a::t_cca8e812dd747a 1-3,9,472-522,544-557,561-587
+  s_31cd33f581c22a::t_a1fd4a01200a5a 4,523-543
+  s_31cd33f581c22a::t_0f8306626a4386 558-560
+  s_31cd33f581c22a::t_c44c001acd49c0 588
+src/tools/index-book.ts
+  s_31cd33f581c22a::t_567014eb8bc44f 87
+  s_31cd33f581c22a::t_636b614337c418 37-41,59-62,76-81,84-86,88-89,174-186
+src/tools/calibre_build_index.ts
+  s_31cd33f581c22a::t_adcf2f5d2cf94c 56-57,192-194,217-220,241-242,256-260,311
+  s_31cd33f581c22a::t_9b466982287420 253
+docs/tool-catalog.json
+  s_31cd33f581c22a::t_eaf19161797b55 259-261
+docs/TOOLS.md
+  s_31cd33f581c22a::t_083c5d21d1a543 256-259
+test/eval/retrieval/harness.test.ts
+  s_31cd33f581c22a::t_567014eb8bc44f 21-24
+src/semantic/status.ts
+  s_31cd33f581c22a::t_22161880422fb9 52-56,89,99,127,147-152
+src/semantic/store.ts
+  s_31cd33f581c22a::t_0f8306626a4386 161
+  s_31cd33f581c22a::t_567014eb8bc44f 175-176,417-421
+  s_31cd33f581c22a::t_fd2975d877a592 142-144,156-160,162-174,177-178,245-246,402-407,411-416,422-434,437-443,445-450,452-458,465,473,519,521,557,850-864,953-959,998-1007
+  s_31cd33f581c22a::t_ecea583e853aea 1008-1009
+test/tools/build-index.handler.test.ts
+  s_31cd33f581c22a::t_0f8306626a4386 366-368
+  s_31cd33f581c22a::t_16c618a2ffcb92 9,325-365,369-388
+  s_31cd33f581c22a::t_cd42c86d9e0088 389-390
+docs/SEMANTIC-SEARCH.md
+  s_31cd33f581c22a::t_083c5d21d1a543 63-66
+test/semantic/status.test.ts
+  s_31cd33f581c22a::t_cca8e812dd747a 161-168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "602c3ccfb05fe08a61eed2f97346321afff9c30f",
+  "prompts": {},
+  "sessions": {
+    "s_31cd33f581c22a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bf34eef1-86c7-44ac-ac83-13f5a66b908e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
