@@ -253,7 +253,10 @@ big library a broad query is a long job that can outlive the client's request ti
 re-run the same call to resume, since books already up to date are skipped. The first
 embedding build downloads the model (~118 MB, one-time), then runs offline. Set `keywordOnly: true` to build a model-free keyword index (zero ML
 dependencies); this also happens automatically if the embedding model isn't installed. Re-run
-after adding books; use `force: true` to re-index books that haven't changed. Each book's
+after adding books; use `force: true` to re-index books that haven't changed. An embedding
+build treats books indexed without embeddings (keyword-only) as out of date and re-indexes them
+without `force`; a keyword-only build never overwrites a book that already has embeddings (it
+reports them as `booksPreserved`). Each book's
 figure captions (see `calibre_get_figures`) are indexed alongside its text, powering
 `calibre_semantic_search` with `target: figures`.
 

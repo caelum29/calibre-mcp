@@ -49,6 +49,11 @@ export interface SemanticStatus {
   chunkCount?: number;
   /** Indexed figures (captions) — omitted alongside indexedBooks. */
   figureCount?: number;
+  /**
+   * Books whose chunks are not all embedded (keyword-only or partial entries, #197) — invisible
+   * to vector/hybrid search until a semantic build re-indexes them. Omitted alongside indexedBooks.
+   */
+  booksWithoutVectors?: number;
   /** True only when the dep is on disk but the process can't use it → server restart needed. */
   restartRequired?: boolean;
   /** Human-readable cause when unavailable. */
@@ -81,6 +86,7 @@ export function computeSemanticStatus(
   let vectorCount: number | undefined;
   let chunkCount: number | undefined;
   let figureCount: number | undefined;
+  let booksWithoutVectors: number | undefined;
   const meta = libraryId ? deps.index.indexMeta(libraryId) : undefined;
   const stale = meta !== undefined && staleness(meta) !== undefined;
   // A stale index is refused on open (INDEX_INCOMPATIBLE), so counting it would throw — skip.
@@ -90,6 +96,7 @@ export function computeSemanticStatus(
     chunkCount = stats.chunks;
     figureCount = stats.figures;
     vectorCount = deps.index.vectorCount(libraryId);
+    booksWithoutVectors = deps.index.booksMissingVectors(libraryId);
   }
 
   const available = dependencyInstalled && loaded !== "failed" && !stale;
@@ -117,7 +124,7 @@ export function computeSemanticStatus(
     dependencyInstalled,
     loaded,
     modelCached,
-    ...(indexedBooks !== undefined ? { indexedBooks, vectorCount, chunkCount, figureCount } : {}),
+    ...(indexedBooks !== undefined ? { indexedBooks, vectorCount, chunkCount, figureCount, booksWithoutVectors } : {}),
     ...(restartRequired ? { restartRequired: true } : {}),
     ...(reason ? { reason } : {}),
   };
@@ -137,7 +144,12 @@ export function formatSemanticStatusLine(s: SemanticStatus): string {
   const index = formatIndexCounts(s);
   if (s.available) {
     if (index === undefined) return `Semantic search: ready (${name}, ${s.dim}-dim).`;
-    const hint = s.vectorCount || s.indexPresent === false ? "" : " — no vectors indexed yet; run calibre_build_index";
+    let hint = s.vectorCount || s.indexPresent === false ? "" : " — no vectors indexed yet; run calibre_build_index";
+    // Some books embedded, others not (e.g. written by a model-less server sharing the db):
+    // vector/hybrid search silently misses the rest, so name the count and the fix.
+    if (s.vectorCount && s.booksWithoutVectors) {
+      hint = ` — ${s.booksWithoutVectors} book(s) indexed WITHOUT embeddings (vector/hybrid search misses them); re-run calibre_build_index on them (no force needed)`;
+    }
     return `Semantic search: ready (${name}, ${s.dim}-dim); ${index}${hint}.`;
   }
   const indexPart = index ? `; ${index}` : "";

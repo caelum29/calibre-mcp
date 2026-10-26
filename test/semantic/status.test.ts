@@ -158,6 +158,14 @@ describe("computeSemanticStatus", () => {
     expect(formatSemanticStatusLine(s)).toContain("run calibre_build_index");
   });
 
+  it("mixed index: names the books indexed without embeddings and the no-force fix (#197)", () => {
+    const store = memoryStore(3); // book 1: fully embedded
+    store.replaceBook(LIB, { bookId: 2, title: "Go", authors: [] }, [{ body: "kw", charStart: 0, charEnd: 2 }]);
+    const s = computeSemanticStatus({ config: memCfg, embedder: embedder("loaded"), index: store }, LIB, depDir(true));
+    expect(s.booksWithoutVectors).toBe(1);
+    expect(formatSemanticStatusLine(s)).toContain("1 book(s) indexed WITHOUT embeddings");
+  });
+
   it("no index at all → counts omitted (never creates a db file)", () => {
     const s = computeSemanticStatus(
       { config: memCfg, embedder: embedder("not-attempted"), index: memoryStore() },

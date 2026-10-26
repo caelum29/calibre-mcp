@@ -139,6 +139,9 @@ export interface IndexMeta {
   createdAt?: string;
 }
 
+/** What replaceBook did: wrote the rows, or kept an embedded book's rows untouched. */
+export type ReplaceOutcome = "written" | "preserved";
+
 export interface IndexStore {
   /** Cheap, side-effect-free check for an existing index (no db file is created). */
   hasIndex(libraryId: string): boolean;
@@ -150,10 +153,29 @@ export interface IndexStore {
   indexMeta(libraryId: string): IndexMeta | undefined;
   /** True if the index holds any embedding vectors (false = a keyword-only build). */
   hasVectors(libraryId: string): boolean;
-  /** True if the book is indexed; when `lastModified` is given, also that it's up to date. */
-  isBookIndexed(libraryId: string, bookId: number, lastModified?: string): boolean;
-  /** Replace all of a book's chunks/embeddings/figures atomically (idempotent re-index). */
-  replaceBook(libraryId: string, meta: BookMeta, chunks: IndexedChunk[], figures?: IndexedFigure[]): void;
+  /**
+   * True if the book is indexed; when `lastModified` is given, also that it's up to date.
+   * `requireVectors` (a semantic-capable build, #197) additionally demands that EVERY chunk
+   * has an embedding — a keyword-only or half-written entry is then not fresh.
+   */
+  isBookIndexed(libraryId: string, bookId: number, lastModified?: string, opts?: { requireVectors?: boolean }): boolean;
+  /**
+   * Replace all of a book's rows (books/chunks/embeddings/FTS/figures) in ONE transaction —
+   * a failure leaves the previous rows intact. Returns "preserved" (nothing written) when
+   * `preserveEmbedded` is set, the new rows carry no vectors, and the stored book has
+   * embeddings: a keyword-only writer never silently downgrades an embedded book (#197).
+   */
+  replaceBook(
+    libraryId: string,
+    meta: BookMeta,
+    chunks: IndexedChunk[],
+    figures?: IndexedFigure[],
+    opts?: { preserveEmbedded?: boolean },
+  ): ReplaceOutcome;
+  /** Embedded chunks of one book (0 when not indexed or for an absent index). */
+  bookVectorCount(libraryId: string, bookId: number): number;
+  /** Books whose chunks are not all embedded (keyword-only or partial entries); 0 for an absent index. */
+  booksMissingVectors(libraryId: string): number;
   /** Every book id currently in the index (empty for an absent index) — the prune diff input. */
   indexedBookIds(libraryId: string): number[];
   /** Drop all rows for these books (books/chunks/embeddings/figures + FTS shadows). */
@@ -220,7 +242,8 @@ CREATE TABLE IF NOT EXISTS books (
   authors TEXT NOT NULL,
   last_modified TEXT,
   chunk_count INTEGER NOT NULL DEFAULT 0,
-  indexed_at TEXT NOT NULL
+  indexed_at TEXT NOT NULL,
+  embedded_chunks INTEGER
 );
 CREATE TABLE IF NOT EXISTS chunks (
   id INTEGER PRIMARY KEY,
@@ -378,27 +401,70 @@ export class SqliteIndexStore implements IndexStore {
     return db.prepare("SELECT 1 FROM embeddings LIMIT 1").get() !== undefined;
   }
 
-  isBookIndexed(libraryId: string, bookId: number, lastModified?: string): boolean {
+  isBookIndexed(
+    libraryId: string,
+    bookId: number,
+    lastModified?: string,
+    opts: { requireVectors?: boolean } = {},
+  ): boolean {
     const db = this.#db(libraryId);
     const row = db.prepare("SELECT last_modified FROM books WHERE book_id = ?").get(bookId) as Row | undefined;
     if (!row) return false;
-    if (lastModified === undefined) return true;
-    return String(row.last_modified ?? "") === lastModified;
+    if (lastModified !== undefined && String(row.last_modified ?? "") !== lastModified) return false;
+    if (!opts.requireVectors) return true;
+    // A keyword-only writer (e.g. a model-less .mcpb sharing this db) leaves chunks without
+    // embeddings; a semantic build must re-index those instead of skipping them as fresh.
+    const v = this.#vectorCoverage(db, bookId);
+    return v !== undefined && v.chunks > 0 && v.embedded >= v.chunks;
   }
 
-  replaceBook(libraryId: string, meta: BookMeta, chunks: IndexedChunk[], figures: IndexedFigure[] = []): void {
+  bookVectorCount(libraryId: string, bookId: number): number {
+    if (!this.hasIndex(libraryId)) return 0;
+    return this.#vectorCoverage(this.#db(libraryId), bookId)?.embedded ?? 0;
+  }
+
+  booksMissingVectors(libraryId: string): number {
+    // A diagnostic read (calibre_ping) must never create a db file.
+    if (!this.hasIndex(libraryId)) return 0;
+    const row = this.#db(libraryId)
+      .prepare(
+        // Legacy rows (embedded_chunks NULL, pre-#197) fall back to counting their embeddings.
+        `SELECT COUNT(*) AS n FROM books b
+         WHERE COALESCE(b.embedded_chunks, (SELECT COUNT(*) FROM embeddings e WHERE e.book_id = b.book_id)) < b.chunk_count`,
+      )
+      .get() as Row;
+    return Number(row?.n ?? 0);
+  }
+
+  replaceBook(
+    libraryId: string,
+    meta: BookMeta,
+    chunks: IndexedChunk[],
+    figures: IndexedFigure[] = [],
+    opts: { preserveEmbedded?: boolean } = {},
+  ): ReplaceOutcome {
     const db = this.#db(libraryId);
-    // IMMEDIATE takes the write lock up front, where busy_timeout applies (#196); a deferred
-    // BEGIN that upgrades to a writer mid-transaction can fail with SQLITE_BUSY without waiting.
+    const embedded = chunks.reduce((n, c) => n + (c.vector ? 1 : 0), 0);
+    // IMMEDIATE takes the write lock up front, where busy_timeout applies (#196) — a deferred
+    // BEGIN that upgrades to a writer mid-transaction can fail with SQLITE_BUSY without waiting —
+    // and the preserve check below reads the state it then overwrites with no writer in between.
+    // Callers compute every embedding BEFORE this point, so the lock is never held over the model.
     db.exec("BEGIN IMMEDIATE");
     try {
+      if (opts.preserveEmbedded && embedded === 0) {
+        const v = this.#vectorCoverage(db, meta.bookId);
+        if (v !== undefined && v.embedded > 0) {
+          db.exec("ROLLBACK");
+          return "preserved";
+        }
+      }
       db.prepare("DELETE FROM embeddings WHERE book_id = ?").run(meta.bookId);
       db.prepare("DELETE FROM chunks WHERE book_id = ?").run(meta.bookId);
       db.prepare("DELETE FROM figures WHERE book_id = ?").run(meta.bookId);
       db.prepare("DELETE FROM books WHERE book_id = ?").run(meta.bookId);
 
       db.prepare(
-        "INSERT INTO books(book_id, title, authors, last_modified, chunk_count, indexed_at) VALUES(?,?,?,?,?,?)",
+        "INSERT INTO books(book_id, title, authors, last_modified, chunk_count, indexed_at, embedded_chunks) VALUES(?,?,?,?,?,?,?)",
       ).run(
         meta.bookId,
         meta.title,
@@ -406,6 +472,7 @@ export class SqliteIndexStore implements IndexStore {
         meta.lastModified ?? null,
         chunks.length,
         new Date().toISOString(),
+        embedded,
       );
 
       const insChunk = db.prepare(
@@ -451,8 +518,9 @@ export class SqliteIndexStore implements IndexStore {
         );
       }
       db.exec("COMMIT");
+      return "written";
     } catch (err) {
-      db.exec("ROLLBACK");
+      rollbackQuietly(db);
       throw err;
     } finally {
       // Any write (even a rolled-back one — a needless rebuild is harmless) drops the
@@ -490,7 +558,7 @@ export class SqliteIndexStore implements IndexStore {
       db.exec("COMMIT");
       return counts;
     } catch (err) {
-      db.exec("ROLLBACK");
+      rollbackQuietly(db);
       throw err;
     } finally {
       this.#candidateCaches.delete(libraryId);
@@ -792,6 +860,21 @@ export class SqliteIndexStore implements IndexStore {
     };
   }
 
+  /** A book's chunk count vs its embedded-chunk count, or undefined when it isn't indexed. */
+  #vectorCoverage(db: DatabaseSync, bookId: number): { chunks: number; embedded: number } | undefined {
+    const row = db.prepare("SELECT chunk_count, embedded_chunks FROM books WHERE book_id = ?").get(bookId) as
+      | Row
+      | undefined;
+    if (!row) return undefined;
+    let embedded = row.embedded_chunks;
+    if (embedded == null) {
+      // Legacy row (written before embedded_chunks existed) — count its embeddings instead.
+      const n = db.prepare("SELECT COUNT(*) AS n FROM embeddings WHERE book_id = ?").get(bookId) as Row;
+      embedded = n?.n;
+    }
+    return { chunks: Number(row.chunk_count ?? 0), embedded: Number(embedded ?? 0) };
+  }
+
   /** Figure-caption vectors — all of a library, or one book. Mirrors #candidates. */
   #figureCandidates(libraryId: string, bookId?: number): Candidate[] {
     let cache = this.#figureCaches.get(libraryId);
@@ -885,6 +968,13 @@ export class SqliteIndexStore implements IndexStore {
       db.exec("ALTER TABLE chunks ADD COLUMN front_matter INTEGER NOT NULL DEFAULT 0");
       this.log.info("index migrated: chunks.front_matter added");
     }
+    // #197: per-book embedded-chunk count, so freshness can tell keyword-only from embedded
+    // entries. NULL (legacy rows) = unknown → readers count the embeddings table instead.
+    const bookCols = db.prepare("PRAGMA table_info(books)").all() as Row[];
+    if (!bookCols.some((c) => c.name === "embedded_chunks")) {
+      db.exec("ALTER TABLE books ADD COLUMN embedded_chunks INTEGER");
+      this.log.info("index migrated: books.embedded_chunks added");
+    }
   }
 
   /** Write index metadata on a fresh db; refuse to use one built by a different model/version. */
@@ -920,6 +1010,18 @@ export class SqliteIndexStore implements IndexStore {
     // Sanitize the library id into a safe filename component.
     const safe = libraryId.replace(/[^A-Za-z0-9._-]/g, "_") || "default";
     return path.join(this.cfg.indexDir, `${safe}.sqlite`);
+  }
+}
+
+/**
+ * Roll back after a failed write without masking the original error: if BEGIN itself failed
+ * (e.g. SQLITE_BUSY) or SQLite already rolled back, ROLLBACK throws "no transaction is active".
+ */
+function rollbackQuietly(db: DatabaseSync): void {
+  try {
+    if (db.isTransaction) db.exec("ROLLBACK");
+  } catch {
+    // the caller rethrows the error that actually caused the failure
   }
 }
 

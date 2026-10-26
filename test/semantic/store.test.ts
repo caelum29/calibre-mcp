@@ -1,8 +1,12 @@
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it, vi } from "vitest";
 import { loadConfig } from "../../src/config.js";
 import { EMBED_DIM } from "../../src/semantic/model.js";
 import { stemText } from "../../src/semantic/stem.js";
-import { type IndexedChunk, SqliteIndexStore } from "../../src/semantic/store.js";
+import { type IndexedChunk, type IndexedFigure, SqliteIndexStore } from "../../src/semantic/store.js";
 import { l2normalize } from "../../src/semantic/vector.js";
 
 const LIB = "Test_Lib";
@@ -463,5 +467,122 @@ describe("figures (D-018 Phase B / #86)", () => {
     expect(s.searchFigures(LIB, axis(0), 5)).toHaveLength(0); // no vectors to rank
     expect(s.searchFiguresFts(LIB, stemText("keyword caption"), 5)).toHaveLength(1);
     s.close();
+  });
+});
+
+describe("SqliteIndexStore — atomic per-book writes + vector freshness (#197)", () => {
+  const kw = (body: string, start = 0): IndexedChunk => ({ body, charStart: start, charEnd: start + body.length });
+
+  it("a mid-write failure rolls back, leaving the book's previous rows intact", () => {
+    const s = store();
+    const meta = { bookId: 1, title: "Old", authors: ["A"], lastModified: "v1" };
+    s.replaceBook(LIB, meta, [chunk("old passage", 0)]);
+    // A NULL caption violates figures.caption NOT NULL — AFTER the book/chunk/embedding rows
+    // of the new version were already inserted in the same transaction.
+    const badFigure = { figIndex: 0, page: 1, caption: null, charOffset: 0, format: "pdf" } as unknown as IndexedFigure;
+    expect(() =>
+      s.replaceBook(LIB, { ...meta, title: "New", lastModified: "v2" }, [chunk("new passage", 1)], [badFigure]),
+    ).toThrow();
+    expect(s.searchLibrary(LIB, axis(0), 5).map((h) => [h.title, h.body])).toEqual([["Old", "old passage"]]);
+  });
+
+  it("a rolled-back write leaves the old version fresh at its old lastModified", () => {
+    const s = store();
+    const meta = { bookId: 1, title: "Old", authors: [], lastModified: "v1" };
+    s.replaceBook(LIB, meta, [chunk("old", 0)]);
+    const badFigure = { figIndex: 0, page: 1, caption: null, charOffset: 0, format: "pdf" } as unknown as IndexedFigure;
+    expect(() => s.replaceBook(LIB, { ...meta, lastModified: "v2" }, [chunk("new", 1)], [badFigure])).toThrow();
+    expect(s.isBookIndexed(LIB, 1, "v1", { requireVectors: true })).toBe(true);
+  });
+
+  it("a keyword-only entry is not fresh for a semantic build", () => {
+    const s = store();
+    s.replaceBook(LIB, { bookId: 1, title: "T", authors: [], lastModified: "v1" }, [kw("a"), kw("b", 1)]);
+    expect(s.isBookIndexed(LIB, 1, "v1", { requireVectors: true })).toBe(false);
+  });
+
+  it("a keyword-only entry stays fresh for a keyword-only build", () => {
+    const s = store();
+    s.replaceBook(LIB, { bookId: 1, title: "T", authors: [], lastModified: "v1" }, [kw("a")]);
+    expect(s.isBookIndexed(LIB, 1, "v1")).toBe(true);
+  });
+
+  it("a partially embedded entry is not fresh for a semantic build", () => {
+    const s = store();
+    s.replaceBook(LIB, { bookId: 1, title: "T", authors: [], lastModified: "v1" }, [chunk("a", 0), kw("b", 1)]);
+    expect(s.isBookIndexed(LIB, 1, "v1", { requireVectors: true })).toBe(false);
+  });
+
+  it("a fully embedded entry is fresh for a semantic build", () => {
+    const s = store();
+    s.replaceBook(LIB, { bookId: 1, title: "T", authors: [], lastModified: "v1" }, [chunk("a", 0), chunk("b", 1, 1)]);
+    expect(s.isBookIndexed(LIB, 1, "v1", { requireVectors: true })).toBe(true);
+  });
+
+  it("legacy rows without embedded_chunks fall back to counting embeddings", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "calibre-197-"));
+    try {
+      const cfg = loadConfig({ CALIBRE_MCP_INDEX_DIR: dir });
+      const writer = new SqliteIndexStore(cfg);
+      writer.replaceBook(LIB, { bookId: 1, title: "Emb", authors: [], lastModified: "v1" }, [chunk("a", 0)]);
+      writer.replaceBook(LIB, { bookId: 2, title: "Kw", authors: [], lastModified: "v1" }, [kw("b")]);
+      writer.close();
+      // Simulate rows written before the #197 migration: the marker column is NULL.
+      const raw = new DatabaseSync(path.join(dir, `${LIB}.sqlite`));
+      raw.exec("UPDATE books SET embedded_chunks = NULL");
+      raw.close();
+      const s = new SqliteIndexStore(cfg);
+      expect([
+        s.isBookIndexed(LIB, 1, "v1", { requireVectors: true }),
+        s.isBookIndexed(LIB, 2, "v1", { requireVectors: true }),
+        s.booksMissingVectors(LIB),
+      ]).toEqual([true, false, 1]);
+      s.close();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("booksMissingVectors counts keyword-only and partial books, not embedded ones", () => {
+    const s = store();
+    s.replaceBook(LIB, { bookId: 1, title: "Emb", authors: [] }, [chunk("a", 0)]);
+    s.replaceBook(LIB, { bookId: 2, title: "Kw", authors: [] }, [kw("b")]);
+    s.replaceBook(LIB, { bookId: 3, title: "Half", authors: [] }, [chunk("c", 0), kw("d", 1)]);
+    expect(s.booksMissingVectors(LIB)).toBe(2);
+  });
+
+  it("preserveEmbedded: a keyword-only write never replaces an embedded book", () => {
+    const s = store();
+    const meta = { bookId: 1, title: "T", authors: [], lastModified: "v1" };
+    s.replaceBook(LIB, meta, [chunk("embedded", 0)]);
+    const outcome = s.replaceBook(LIB, { ...meta, lastModified: "v2" }, [kw("keyword")], [], {
+      preserveEmbedded: true,
+    });
+    expect([outcome, s.vectorCount(LIB), s.isBookIndexed(LIB, 1, "v1")]).toEqual(["preserved", 1, true]);
+  });
+
+  it("preserveEmbedded still writes a book that has no embeddings yet", () => {
+    const s = store();
+    const outcome = s.replaceBook(LIB, { bookId: 1, title: "T", authors: [] }, [kw("x")], [], {
+      preserveEmbedded: true,
+    });
+    expect([outcome, s.stats(LIB).chunks]).toEqual(["written", 1]);
+  });
+
+  it("a keyword-only writer on another connection cannot downgrade an embedded book (shared file)", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "calibre-197-"));
+    try {
+      const cfg = loadConfig({ CALIBRE_MCP_INDEX_DIR: dir });
+      const semantic = new SqliteIndexStore(cfg);
+      const keywordOnly = new SqliteIndexStore(cfg); // a second server process on the same db
+      const meta = { bookId: 1, title: "T", authors: [], lastModified: "v1" };
+      semantic.replaceBook(LIB, meta, [chunk("embedded", 0)]);
+      const outcome = keywordOnly.replaceBook(LIB, meta, [kw("kw")], [], { preserveEmbedded: true });
+      expect([outcome, semantic.isBookIndexed(LIB, 1, "v1", { requireVectors: true })]).toEqual(["preserved", true]);
+      semantic.close();
+      keywordOnly.close();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

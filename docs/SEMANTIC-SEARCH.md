@@ -60,8 +60,10 @@ The embedding model comes from the optional `@huggingface/transformers` package
 (not included in the Claude Desktop `.mcpb` bundle). When it's absent,
 `calibre_build_index` automatically builds a **keyword-only** index — `mode: keyword`
 search works with zero ML dependencies; `hybrid` degrades to keyword and `vector`
-explains what's missing. Install the package and rebuild with `force: true` to
-upgrade to full semantic search.
+explains what's missing. Install the package and run `calibre_build_index` again
+to upgrade to full semantic search — books indexed without embeddings count as out of
+date, so no `force` is needed. A keyword-only build never replaces a book's existing
+embeddings, and `calibre_ping` reports how many books are indexed without them.
 
 ## Answering a query
 

@@ -34,7 +34,11 @@ export interface PreparedBook {
   phaseMs: { fetch: number; extract: number; chunk: number; embed: number };
 }
 
-export type PrepareResult = PreparedBook | { kind: "skipped" };
+/**
+ * "skipped" = already fresh for this build; "preserved" = a keyword-only build left a book
+ * that already has embeddings untouched rather than downgrading it (#197).
+ */
+export type PrepareResult = PreparedBook | { kind: "skipped" } | { kind: "preserved" };
 
 export interface PrepareOptions {
   libraryId: string;
@@ -52,8 +56,10 @@ export interface PrepareOptions {
 
 /**
  * Everything up to (not including) the index write. Returns "skipped" when the book is
- * already indexed at its current lastModified and `force` is off. Throws on a per-book
- * failure — the caller collects it; nothing has been written at that point.
+ * already indexed at its current lastModified and `force` is off — for a semantic build that
+ * also means every chunk has an embedding (#197). Returns "preserved" when a keyword-only
+ * build meets an embedded book. Throws on a per-book failure — the caller collects it;
+ * nothing has been written at that point.
  */
 export async function prepareBook(deps: ToolDeps, bookId: number, opts: PrepareOptions): Promise<PrepareResult> {
   const { libraryId, library, keywordOnly, tokenBudgeted } = opts;
@@ -67,8 +73,19 @@ export async function prepareBook(deps: ToolDeps, bookId: number, opts: PrepareO
   const book = await deps.content.getBook(bookId, library);
   const fetchMs = lap();
 
-  if (!opts.force && deps.index.isBookIndexed(libraryId, bookId, book.lastModified ?? "")) {
+  // A semantic build treats keyword-only / half-embedded entries as stale (#197): another
+  // writer on the same db (e.g. a model-less .mcpb) may have stored chunks without vectors.
+  if (
+    !opts.force &&
+    deps.index.isBookIndexed(libraryId, bookId, book.lastModified ?? "", { requireVectors: !keywordOnly })
+  ) {
     return { kind: "skipped" };
+  }
+  // Keyword-only never replaces embeddings (even with force): losing vectors is a silent
+  // vector/hybrid recall loss, while keeping them costs at most stale text until the next
+  // semantic build. Checked here to skip the extraction; replaceBook re-checks atomically.
+  if (keywordOnly && deps.index.bookVectorCount(libraryId, bookId) > 0) {
+    return { kind: "preserved" };
   }
 
   const fmt = chooseExtractFormat(book.formats);
@@ -154,9 +171,19 @@ export async function prepareBook(deps: ToolDeps, bookId: number, opts: PrepareO
   };
 }
 
-/** The single index write for a prepared book. Callers must serialize it (single writer). */
-export function commitBook(deps: ToolDeps, libraryId: string, book: PreparedBook): BookDetail {
-  deps.index.replaceBook(libraryId, book.meta, book.chunks, book.figures);
+/**
+ * The single index write for a prepared book — one transaction, so a throw here means the
+ * book's previous rows are intact. Callers must serialize it (single writer). Returns
+ * undefined when a keyword-only write was refused because the book already has embeddings.
+ */
+export function commitBook(deps: ToolDeps, libraryId: string, book: PreparedBook): BookDetail | undefined {
+  const outcome = deps.index.replaceBook(libraryId, book.meta, book.chunks, book.figures, {
+    preserveEmbedded: book.keywordOnly,
+  });
+  if (outcome === "preserved") {
+    deps.log.info("kept embedded book — keyword-only build does not downgrade", { bookId: book.meta.bookId });
+    return undefined;
+  }
   const d = book.detail;
   deps.log.info("indexed book", {
     bookId: d.bookId,

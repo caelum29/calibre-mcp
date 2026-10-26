@@ -256,6 +256,9 @@
           "booksIndexed": {
             "type": "number"
           },
+          "booksPreserved": {
+            "type": "number"
+          },
           "booksRequested": {
             "type": "number"
           },
