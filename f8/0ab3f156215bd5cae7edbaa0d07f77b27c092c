@@ -1,0 +1,39 @@
+test/config.test.ts
+  s_2a4dddbb84a690::t_beaf582e71a596 80-86
+src/tools/index-book.ts
+  s_2a4dddbb84a690::t_1bcf72f2ca9a20 209-230
+src/semantic/store.ts
+  s_2a4dddbb84a690::t_97bd2e3767715e 391-393,475-477
+  s_2a4dddbb84a690::t_d6d9c4f9630197 356-357,757-766,865-869
+src/tools/calibre_build_index.ts
+  s_2a4dddbb84a690::t_c65685c9003b8d 11-18
+  s_2a4dddbb84a690::t_1bcf72f2ca9a20 219-220
+docs/TROUBLESHOOTING.md
+  s_2a4dddbb84a690::t_ced3cd14834d89 80-95
+test/semantic/store-concurrency.test.ts
+  s_2a4dddbb84a690::t_1dd517fe5f3240 1-3,5-63,65-76,78-88,90-91
+  s_2a4dddbb84a690::t_beaf582e71a596 4,64,77,89,92-98
+README.md
+  s_2a4dddbb84a690::t_ced3cd14834d89 330
+test/tools/index-book.test.ts
+  s_2a4dddbb84a690::t_beaf582e71a596 14-20,116-156
+  s_2a4dddbb84a690::t_e176b4f57e283b 157
+src/config.ts
+  s_2a4dddbb84a690::t_d6d9c4f9630197 22-27,102,110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f80ab3f156215bd5cae7edbaa0d07f77b27c092c",
+  "prompts": {},
+  "sessions": {
+    "s_2a4dddbb84a690": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "55a47eb7-212e-4b74-a299-15e8f3363f3f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
