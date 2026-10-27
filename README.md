@@ -171,7 +171,7 @@ default** — including `calibre_manage_bundles`' read-only `list` action, since
 per tool, not per action. Two independent switches must be on:
 
 1. **The MCP-side gate** — set `CALIBRE_MCP_ENABLE_WRITE=1` (or tick *Enable writes* in
-   the Desktop bundle settings). Without it the write tools aren’t even registered.
+   the Desktop bundle settings). Without it the write tools are disabled — hidden from the tool list and uncallable.
 2. **The Calibre-side gate** — the Content Server must allow local writes. **By
    default the server embedded in the Calibre GUI is read-only**, so either enable
    the GUI option below or run a standalone server with `--enable-local-write`:

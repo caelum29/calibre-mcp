@@ -495,8 +495,8 @@ query-time only — bundle changes never require a semantic re-index.
 
 Write tools are off by default and protected by two independent switches:
 
-1. **The MCP-side gate.** Write tools aren't even registered unless
-   `CALIBRE_MCP_ENABLE_WRITE` is set (`1` / `true` / `yes`), or you tick *Enable writes* in the
+1. **The MCP-side gate.** Write tools are registered but disabled — hidden from the tool list
+   and uncallable — unless `CALIBRE_MCP_ENABLE_WRITE` is set (`1` / `true` / `yes`), or you tick *Enable writes* in the
    Claude Desktop bundle settings.
 2. **The Calibre-side gate.** The Content Server must permit local writes. The server embedded
    in the Calibre GUI is read-only by default — enable *Sharing over the net → Advanced → allow
@@ -509,7 +509,7 @@ they'll do and change nothing until you explicitly confirm:
 
 | Tool | How to actually execute |
 |---|---|
-| `calibre_bulk_update` | `preview: false` (and a required `ids`/`query` selection) |
+| `calibre_bulk_update` | `preview: false` (and a required `ids`/`query`/`filter` selection) |
 | `calibre_remove_book` | `confirm: true` |
 | `calibre_merge_books` | `confirm: true` |
 | `calibre_extract_isbn` | `apply: true` |
