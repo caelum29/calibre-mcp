@@ -1,0 +1,51 @@
+src/semantic/queue.ts
+  s_0b36ec168d5987::t_b93e38bdb4c26a 10
+src/enrich/openlibrary.ts
+  s_0b36ec168d5987::t_b93e38bdb4c26a 65
+src/semantic/store.ts
+  s_0b36ec168d5987::t_b93e38bdb4c26a 351
+src/calibre/client.ts
+  s_0b36ec168d5987::t_b93e38bdb4c26a 83
+src/server.ts
+  s_0b36ec168d5987::t_b93e38bdb4c26a 63
+src/tools/bundles.ts
+  s_0b36ec168d5987::t_b93e38bdb4c26a 42,91,229-231,236
+src/calibre/figure-fetch.ts
+  s_0b36ec168d5987::t_b93e38bdb4c26a 39,195,200
+src/semantic/thread-encoder.ts
+  s_0b36ec168d5987::t_b93e38bdb4c26a 15
+src/semantic/reranker.ts
+  s_0b36ec168d5987::t_b93e38bdb4c26a 70
+src/calibre/lib-id.ts
+  s_0b36ec168d5987::t_b93e38bdb4c26a 6
+src/enrich/googlebooks.ts
+  s_0b36ec168d5987::t_b93e38bdb4c26a 54
+src/domain/figures/band.ts
+  s_0b36ec168d5987::t_b93e38bdb4c26a 124
+src/calibre/content-server.ts
+  s_0b36ec168d5987::t_b93e38bdb4c26a 110
+src/semantic/embedder.ts
+  s_0b36ec168d5987::t_b93e38bdb4c26a 88
+src/tools/define.ts
+  s_0b36ec168d5987::t_b93e38bdb4c26a 10
+src/calibre/extract.ts
+  s_0b36ec168d5987::t_b93e38bdb4c26a 174
+src/config.ts
+  s_0b36ec168d5987::t_b93e38bdb4c26a 99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "283d945ccec48c4f3a080bb4a727cbcaa3204d5b",
+  "prompts": {},
+  "sessions": {
+    "s_0b36ec168d5987": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "805ea9a5-c98a-4c37-8c2e-93966a512593",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
