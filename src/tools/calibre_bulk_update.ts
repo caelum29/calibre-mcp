@@ -11,6 +11,7 @@ import { buildScopedQuery, honestyLines, resolveFilter } from "./bundles.js";
 import { BookId, CoercedBool, jsonArray, jsonRecord } from "./coerce.js";
 import { defineTool } from "./define.js";
 import { fence, toolError, toolOk } from "./result.js";
+import type { ToolResult } from "./types.js";
 import { selectBooks } from "./select-books.js";
 import { ChangeValueSchema } from "./calibre_update_book.js";
 import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "./write-refusal.js";
@@ -49,6 +50,7 @@ export const bulkUpdateTool = defineTool({
       .optional(),
     applied: z.array(z.number()).optional(),
     failed: z.array(z.object({ id: z.number(), error: z.string() })).optional(),
+    notAttempted: z.array(z.number()).optional(),
   },
   annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false },
   write: true,
@@ -140,12 +142,23 @@ export const bulkUpdateTool = defineTool({
       const libId = await deps.content.resolveLibraryId(args.library);
       const applied: number[] = [];
       const failed: { id: number; error: string }[] = [];
-      for (const b of perBook) {
+      for (const [i, b] of perBook.entries()) {
         try {
           await deps.calibre.calibredb(buildSetMetadataArgs(b.id, changes), { library: libId });
           applied.push(b.id);
         } catch (err) {
-          if (isWriteRefused(err)) return toolError(WRITE_REFUSED_MESSAGE);
+          // A refusal blocks every later write too, so stop — but once books have committed,
+          // they must stay visible or the model retries the whole set (#33, #213).
+          if (isWriteRefused(err)) {
+            if (applied.length === 0) return toolError(WRITE_REFUSED_MESSAGE);
+            failed.push({ id: b.id, error: WRITE_REFUSED_MESSAGE });
+            return refusedMidLoop(
+              perBook.length,
+              applied,
+              failed,
+              perBook.slice(i + 1).map((p) => p.id),
+            );
+          }
           // Timed-out routed writes may have committed server-side — re-read and count
           // the book as applied when every requested field landed (issue #33).
           if (err instanceof CalibreCliTimeoutError) {
@@ -185,3 +198,22 @@ export const bulkUpdateTool = defineTool({
     }
   },
 });
+
+/**
+ * Partial result for a write refused after ≥1 book committed: still `isError` (the run did
+ * not finish), but the committed ids lead the text so the model retries only the rest.
+ */
+function refusedMidLoop(
+  matched: number,
+  applied: number[],
+  failed: { id: number; error: string }[],
+  notAttempted: number[],
+): ToolResult {
+  const text =
+    `Calibre refused the write after ${applied.length}/${matched} book(s) were already updated. ` +
+    `Committed (do NOT retry these): ${applied.join(", ")}. ` +
+    `Failed: ${failed.map((f) => f.id).join(", ")}. ` +
+    (notAttempted.length > 0 ? `Not attempted: ${notAttempted.join(", ")}. ` : "") +
+    WRITE_REFUSED_MESSAGE;
+  return toolError(text, { preview: false, matched, applied, failed, notAttempted });
+}
