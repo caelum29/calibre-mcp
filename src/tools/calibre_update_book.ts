@@ -4,13 +4,7 @@
 // classifies a server write-refusal into an actionable message (CAPABILITIES §2).
 
 import { z } from "zod";
-import {
-  bookFieldValue,
-  buildSetMetadataArgs,
-  changesSatisfied,
-  isAllowedField,
-  sameFieldValue,
-} from "../calibre/metadata-fields.js";
+import { bookFieldValue, buildSetMetadataArgs, isAllowedField, sameFieldValue } from "../calibre/metadata-fields.js";
 import type { ChangeValue } from "../calibre/metadata-fields.js";
 import type { Book } from "../domain/book.js";
 import { CalibreCliTimeoutError } from "../domain/errors.js";
@@ -20,6 +14,8 @@ import type { ToolDeps, ToolResult } from "./types.js";
 import { bookIdArg, resolveNumericId } from "./resolve-id.js";
 import { toolError, toolOk } from "./result.js";
 import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "./write-refusal.js";
+import { verifyTimedOutWrite } from "./write-verify.js";
+import type { TimedOutWrite } from "./write-verify.js";
 
 // One field's new value: scalar, multi-value list, or identifiers map. -32602-hardened
 // via jsonRecord (the whole `changes` object may arrive as a JSON string).
@@ -82,7 +78,7 @@ export const updateBookTool = defineTool({
         // A routed write commits server-side BEFORE calibredb replies, so a timeout is
         // ambiguous — verify against a re-read instead of reporting failure (issue #33).
         if (err instanceof CalibreCliTimeoutError) {
-          return confirmTimedOutWrite(deps, numericId, before, changes, args.library);
+          return confirmTimedOutWrite(deps, { id: numericId, before, changes, library: args.library });
         }
         throw err;
       }
@@ -144,24 +140,17 @@ function appliedResult(id: number, before: Book, after: Book, fields: string[]):
  * if every requested field landed, report success (never fail a committed write — issue
  * #33); otherwise return an error that steers the model to check before retrying.
  */
-async function confirmTimedOutWrite(
-  deps: ToolDeps,
-  id: number,
-  before: Book,
-  changes: Record<string, ChangeValue>,
-  library?: string,
-): Promise<ToolResult> {
-  let after: Book;
-  try {
-    after = await deps.content.getBook(id, library);
-  } catch {
+async function confirmTimedOutWrite(deps: ToolDeps, write: TimedOutWrite): Promise<ToolResult> {
+  const { id, before, changes } = write;
+  const check = await verifyTimedOutWrite(deps, write);
+  if (check.status === "unverifiable") {
     return toolError(
       `calibredb timed out and the book could not be re-read to verify. The write MAY ` +
         `have been applied — check with calibre_get_book id=${id} before retrying.`,
     );
   }
-  if (changesSatisfied(before, after, changes)) {
-    return appliedResult(id, before, after, Object.keys(changes));
+  if (check.status === "landed") {
+    return appliedResult(id, before, check.after, Object.keys(changes));
   }
   return toolError(
     `calibredb timed out and a re-read does not show the changes applied. Retry, or check ` +

@@ -4,12 +4,7 @@
 // Applies by looping `calibredb set_metadata` per book (no bulk CLI form; HTTP batch is LATER).
 
 import { z } from "zod";
-import {
-  buildSetMetadataArgs,
-  changesSatisfied,
-  isAllowedField,
-  previewBookChanges,
-} from "../calibre/metadata-fields.js";
+import { buildSetMetadataArgs, isAllowedField, previewBookChanges } from "../calibre/metadata-fields.js";
 import type { ChangeValue } from "../calibre/metadata-fields.js";
 import { CalibreCliTimeoutError } from "../domain/errors.js";
 import { buildScopedQuery, honestyLines, resolveFilter } from "./bundles.js";
@@ -19,6 +14,7 @@ import { fence, toolError, toolOk } from "./result.js";
 import { selectBooks } from "./select-books.js";
 import { ChangeValueSchema } from "./calibre_update_book.js";
 import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "./write-refusal.js";
+import { verifyTimedOutWrite } from "./write-verify.js";
 
 /** Hard cap on books mutated in one call — a bulk write must be a deliberate, bounded set. */
 const MAX_BULK = 500;
@@ -153,11 +149,13 @@ export const bulkUpdateTool = defineTool({
           // Timed-out routed writes may have committed server-side — re-read and count
           // the book as applied when every requested field landed (issue #33).
           if (err instanceof CalibreCliTimeoutError) {
-            const landed = await deps.content
-              .getBook(b.id, args.library)
-              .then((after) => changesSatisfied(b.book, after, changes))
-              .catch(() => false);
-            if (landed) {
+            const check = await verifyTimedOutWrite(deps, {
+              id: b.id,
+              before: b.book,
+              changes,
+              library: args.library,
+            });
+            if (check.status === "landed") {
               applied.push(b.id);
               continue;
             }
