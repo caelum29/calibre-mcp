@@ -101,3 +101,18 @@ describe("extractIsbns — ad/catalog listings (#198)", () => {
     expect(extractIsbns(text)).toEqual(["9780306406157"]);
   });
 });
+
+describe("extractIsbns — ad/catalog edge cases (#198)", () => {
+  it("skips an ad entry that starts the scanned text", () => {
+    expect(extractIsbns("(218 pages) ISBN: 9781680502442 $45.95")).toEqual([]);
+  });
+
+  it("ignores a page count on the previous line (same-line ad entries only)", () => {
+    expect(extractIsbns("Hardcover (300 pages)\nISBN: 978-0-306-40615-7")).toEqual(["9780306406157"]);
+  });
+
+  it("keeps price-tagged ISBNs that are far apart (not one catalog page)", () => {
+    const text = `ISBN: 978-0-306-40615-7 $39.99\n${"x".repeat(3000)}\nISBN: 978-1-68050-635-8 $45.95`;
+    expect(extractIsbns(text)).toEqual(["9780306406157", "9781680506358"]);
+  });
+});

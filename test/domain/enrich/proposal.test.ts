@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Book } from "../../../src/domain/book.js";
-import { buildProposal, pickBestHit } from "../../../src/domain/enrich/proposal.js";
+import { buildProposal, pickBestHit, titlesAgree } from "../../../src/domain/enrich/proposal.js";
 import type { ProviderHit } from "../../../src/domain/enrich/types.js";
 
 function book(over: Partial<Book> = {}): Book {
@@ -171,5 +171,27 @@ describe("buildProposal — title cross-check (#198)", () => {
   it("skips the cross-check when the hit carries no title", () => {
     const p = buildProposal(PYTEST, [hit({ authors: ["Brian Okken"] })]);
     expect(p).toMatchObject({ confidence: 0.95, warnings: [] });
+  });
+});
+
+describe("titlesAgree (#198)", () => {
+  it("agrees when the provider title is a shorter form of the book's title", () => {
+    expect(titlesAgree("Clean Code: A Handbook of Agile Software Craftsmanship", "Clean Code")).toBe(true);
+  });
+
+  it("disagrees when only one word of several is shared", () => {
+    expect(titlesAgree("Python Testing with pytest", "Python Crash Course")).toBe(false);
+  });
+
+  it("does not count articles as shared words", () => {
+    expect(titlesAgree("The Hobbit", "The Lord of the Rings")).toBe(false);
+  });
+
+  it("ignores accents", () => {
+    expect(titlesAgree("Café", "Cafe")).toBe(true);
+  });
+
+  it("does not call a title without comparable words a mismatch", () => {
+    expect(titlesAgree("Python Testing with pytest", "…")).toBe(true);
   });
 });
