@@ -1,0 +1,30 @@
+test/domain/curation/quality.test.ts
+  s_0b36ec168d5987::t_0fd4466fad3412 82-118
+test/domain/enrich/proposal.test.ts
+  s_0b36ec168d5987::t_0c22983a807e2c 70-121
+test/tools/recover-metadata.handler.test.ts
+  s_0b36ec168d5987::t_3757a7c76fdcff 129-141
+  s_0b36ec168d5987::t_68630c1f097c7e 142-143
+test/domain/curation/authors.test.ts
+  s_0b36ec168d5987::t_ee35eb4e9c510b 1-76
+test/domain/curation/isbn.test.ts
+  s_0b36ec168d5987::t_8ec0334ef832c6 2
+  s_0b36ec168d5987::t_165939b83a1aa7 7,38-50
+  s_0b36ec168d5987::t_6d4ab76a527cdf 3-6,8,51-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a5b44f5be9b4f9d5e5fba550ba5bd3924535cdb0",
+  "prompts": {},
+  "sessions": {
+    "s_0b36ec168d5987": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "805ea9a5-c98a-4c37-8c2e-93966a512593",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
