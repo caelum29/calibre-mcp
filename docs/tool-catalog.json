@@ -69,6 +69,14 @@
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {
+          "filter": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "library": {
+            "type": "string"
+          },
           "query": {
             "type": "string"
           },
