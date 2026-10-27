@@ -315,3 +315,72 @@ describe("calibre_update_book diff in text (#216)", () => {
     expect(text(r)).toContain('tags: ["old"] → ["new"]');
   });
 });
+
+describe("calibre_update_book text details", () => {
+  const text = (r: { content: unknown[] }): string => (r.content[0] as { text: string }).text;
+  const failingReread = (first: Book) => {
+    let calls = 0;
+    return async (): Promise<Book> => {
+      calls += 1;
+      if (calls > 1) throw new CalibreHttpError(0, "u", "Content Server request timed out");
+      return first;
+    };
+  };
+
+  it("says the diff is unverified when the post-write re-read fails", async () => {
+    const r = await updateBookTool.handler(
+      { id: 658, changes: { publisher: "MIT Press" } },
+      deps({ getBook: failingReread(book()) }),
+    );
+    expect(text(r)).toContain("the verification re-read failed");
+  });
+
+  it("flags noop when the re-read fails and every requested value was already current", async () => {
+    const r = await updateBookTool.handler(
+      { id: 658, changes: { tags: ["old"] } },
+      deps({ getBook: failingReread(book()) }),
+    );
+    expect(r.isError).toBeFalsy();
+    expect(r.structuredContent?.noop).toBe(true);
+  });
+
+  it("does not flag noop when the re-read fails but a value was going to change", async () => {
+    const r = await updateBookTool.handler(
+      { id: 658, changes: { tags: ["new"] } },
+      deps({ getBook: failingReread(book()) }),
+    );
+    expect(r.structuredContent?.noop).toBe(false);
+  });
+
+  it("answers a no-op update with only the one-line summary", async () => {
+    const r = await updateBookTool.handler({ id: 658, changes: { tags: ["old"] } }, deps({ books: [book(), book()] }));
+    expect(text(r)).toBe("No changes applied to book 658 (values already current).");
+  });
+
+  it("puts each changed field on its own line", async () => {
+    const r = await updateBookTool.handler(
+      { id: 658, changes: { title: "New", tags: ["new"] } },
+      deps({ books: [book(), book({ title: "New", tags: ["new"] })] }),
+    );
+    expect(text(r)).toContain("Updated book 658: title, tags.\n");
+    expect(text(r)).toContain('title: "Old" → "New"\ntags: ["old"] → ["new"]');
+  });
+
+  it("shows a value of exactly 120 rendered chars in full", async () => {
+    const at = "x".repeat(118); // 120 chars once JSON-quoted
+    const r = await updateBookTool.handler(
+      { id: 658, changes: { publisher: at } },
+      deps({ books: [book(), book({ publisher: at })] }),
+    );
+    expect(text(r)).toContain(`publisher: null → "${at}"\n`);
+  });
+
+  it("cuts a longer value to 120 rendered chars ending in an ellipsis", async () => {
+    const over = "x".repeat(119); // 121 chars once JSON-quoted
+    const r = await updateBookTool.handler(
+      { id: 658, changes: { publisher: over } },
+      deps({ books: [book(), book({ publisher: over })] }),
+    );
+    expect(text(r)).toContain(`publisher: null → "${"x".repeat(118)}…\n`);
+  });
+});
