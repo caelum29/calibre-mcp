@@ -8,7 +8,7 @@
 
 import { z } from "zod";
 import { isValidIsbn } from "../domain/curation/isbn.js";
-import { isUsableTitle } from "../domain/enrich/filename-guess.js";
+import { isPlaceholderTitle, isUsableTitle } from "../domain/enrich/filename-guess.js";
 import { buildProposal } from "../domain/enrich/proposal.js";
 import type { ProviderHit } from "../domain/enrich/types.js";
 import { createGoogleBooks } from "../enrich/googlebooks.js";
@@ -77,7 +77,7 @@ export const recoverMetadataTool = defineTool({
       if (isbn) {
         lookupKey = `isbn:${isbn}`;
         byIsbn = true;
-      } else if (isUsableTitle(book.title)) {
+      } else if (isUsableTitle(book.title, book.authors)) {
         lookupKey = `title:${book.title}${author ? ` / ${author}` : ""}`;
         byIsbn = false;
       } else {
@@ -88,9 +88,12 @@ export const recoverMetadataTool = defineTool({
             : scan?.outcome === "no-format" || scan?.outcome === "error"
               ? " and the text scan found none (no extractable text)"
               : " (in metadata or text)";
+        // A placeholder carries no title information, so only an ISBN can identify the book.
+        const fix = isPlaceholderTitle(book.title)
+          ? `is an importer placeholder. Add an ISBN (e.g. from the book's copyright page), then retry.`
+          : `looks like a raw filename. Add an ISBN or a real title, then retry.`;
         return toolError(
-          `Nothing to look up for book ${numericId}: no ISBN${scanHint} and its title ` +
-            `"${book.title}" looks like a raw filename. Add an ISBN or a real title, then retry.`,
+          `Nothing to look up for book ${numericId}: no ISBN${scanHint} and its title "${book.title}" ${fix}`,
         );
       }
 

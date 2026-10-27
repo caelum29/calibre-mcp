@@ -13,8 +13,8 @@ import type { ProposedField, Proposal, ProviderHit } from "./types.js";
 const UNKNOWN_AUTHOR = new Set(["", "unknown", "unknown author"]);
 
 /** A title is weak if it's missing or a raw import filename. */
-function titleIsWeak(title: string): boolean {
-  return title.trim().length === 0 || looksLikeRawFilename(title);
+function titleIsWeak(title: string, authors: string[]): boolean {
+  return title.trim().length === 0 || looksLikeRawFilename(title, authors);
 }
 
 /** Authors are weak if empty or the "Unknown" placeholder Calibre assigns on import. */
@@ -46,7 +46,7 @@ export function buildProposal(current: Book, hits: ProviderHit[]): Proposal {
     changes[field] = proposed;
   };
 
-  if (hit.title && titleIsWeak(current.title)) {
+  if (hit.title && titleIsWeak(current.title, current.authors)) {
     add("title", current.title || undefined, hit.title, current.title.trim() ? "weak" : "missing");
   }
   if (hit.authors?.length && authorsAreWeak(current.authors)) {

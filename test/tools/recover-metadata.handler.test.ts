@@ -88,6 +88,11 @@ describe("calibre_recover_metadata handler", () => {
     expect((r.content[0] as { text: string }).text).toContain("Nothing to look up");
   });
 
+  it("asks for an ISBN when the title is a placeholder", async () => {
+    const r = await recoverMetadataTool.handler(args(), deps({ book: book({ title: "Cover", formats: [] }) }));
+    expect((r.content[0] as { text: string }).text).toContain("importer placeholder. Add an ISBN");
+  });
+
   it("falls back to a title/author search for a usable title", async () => {
     const fixture = {
       book: book({ title: "The Rust Programming Language", authors: ["Steve Klabnik"] }),

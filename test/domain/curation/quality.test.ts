@@ -44,6 +44,19 @@ describe("runQualityChecks", () => {
     expect(checksOf([book({ title: "top.dvi" })])).toContain("raw_filename_title");
   });
 
+  it("flags slugs, digit-pair ids, placeholders, and author-suffix titles (issue #200)", () => {
+    expect(checksOf([book({ title: "215479-01" })])).toContain("raw_filename_title");
+    expect(checksOf([book({ title: "pro-vim-2014" })])).toContain("raw_filename_title");
+    expect(checksOf([book({ title: "bdd-in-action" })])).toContain("raw_filename_title");
+    expect(checksOf([book({ title: "Cover" })])).toContain("raw_filename_title");
+    expect(checksOf([book({ title: "book (3)" })])).toContain("raw_filename_title");
+    expect(
+      checksOf([book({ title: "Go Design Patterns (Mario Castro Contreras)", authors: ["Mario Castro Contreras"] })]),
+    ).toContain("raw_filename_title");
+    // Ordinary titles are not flagged.
+    expect(checksOf([book({ title: "Head First Design Patterns" })])).not.toContain("raw_filename_title");
+  });
+
   it("flags an invalid ISBN but not a valid one", () => {
     expect(checksOf([book({ identifiers: { isbn: "9780306406158" } })])).toContain("isbn_invalid");
     expect(checksOf([book({ identifiers: { isbn: "9780306406157" } })])).not.toContain("isbn_invalid");

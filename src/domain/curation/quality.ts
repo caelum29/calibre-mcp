@@ -3,6 +3,7 @@
 // metadata-only rules that run library-wide; full-text checks (readability) are deferred.
 
 import type { Book } from "../book.js";
+import { looksLikeRawFilename } from "../enrich/filename-guess.js";
 import { isValidIsbn } from "./isbn.js";
 import { authorToAuthorSort } from "./normalize.js";
 
@@ -53,17 +54,9 @@ function checkMissingMetadata(book: Book): Issue | undefined {
   };
 }
 
-const ASIN_RE = /^B0[A-Z0-9]{8}$/;
-const EXT_RE = /\.(pdf|epub|mobi|azw3?|dvi|djvu|txt|doc|docx|fb2|cbz|cbr|rtf)$/i;
-
 /** Title looks like a leftover filename/identifier rather than a real title. */
 function checkRawFilenameTitle(book: Book): Issue | undefined {
-  const t = book.title.trim();
-  if (!t) return undefined;
-  const isDigits = /^\d+$/.test(t);
-  const isAsin = ASIN_RE.test(t);
-  const isFile = EXT_RE.test(t);
-  if (!isDigits && !isAsin && !isFile) return undefined;
+  if (!looksLikeRawFilename(book.title, book.authors)) return undefined;
   return {
     bookId: book.id,
     title: book.title,
