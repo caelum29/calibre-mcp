@@ -1,0 +1,24 @@
+src/calibre/metadata-fields.ts
+  s_0b36ec168d5987::t_f815e604826447 122-140
+src/tools/calibre_update_book.ts
+  s_0b36ec168d5987::t_4cf80542c20dfe 127-135
+  s_0b36ec168d5987::t_4c595c14e191a1 96-102
+  s_0b36ec168d5987::t_af74afed0a56ab 112
+  s_0b36ec168d5987::t_4891862b247a5b 7-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8693543d871af28f744d203da9eae6ecac9d5e78",
+  "prompts": {},
+  "sessions": {
+    "s_0b36ec168d5987": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "805ea9a5-c98a-4c37-8c2e-93966a512593",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
