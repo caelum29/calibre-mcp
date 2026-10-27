@@ -1,0 +1,39 @@
+docs/TOOLS.md
+  s_0b36ec168d5987::t_7bc187066154b1 318
+  s_0b36ec168d5987::t_515b2341dacc75 312
+docs/tool-catalog.json
+  s_0b36ec168d5987::t_04b37e28b26d7f 1458-1459
+src/domain/curation/quality.ts
+  s_0b36ec168d5987::t_9fc3a1b91f17f8 16-17,25,36,38-41,78-96,179
+  s_0b36ec168d5987::t_7bc187066154b1 7,75
+  s_0b36ec168d5987::t_d985606de0cbe4 76-77
+src/domain/curation/isbn.ts
+  s_0b36ec168d5987::t_978a8fcb187474 35-47
+src/tools/calibre_quality_report.ts
+  s_0b36ec168d5987::t_9fc3a1b91f17f8 21
+  s_0b36ec168d5987::t_7bc187066154b1 2
+src/domain/curation/authors.ts
+  s_0b36ec168d5987::t_c5e631f8967b14 1-22,24-56
+  s_0b36ec168d5987::t_d985606de0cbe4 23
+src/domain/enrich/proposal.ts
+  s_0b36ec168d5987::t_cf4076bed306cc 102
+  s_0b36ec168d5987::t_d985606de0cbe4 9-10,25-28,30,35-39,74,113-115,119,123,135-136
+  s_0b36ec168d5987::t_ba7560765fd978 40,75-90
+  s_0b36ec168d5987::t_488a57928ad17b 41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "541e9805f057604719e1035bf6c9ffde11a311df",
+  "prompts": {},
+  "sessions": {
+    "s_0b36ec168d5987": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "805ea9a5-c98a-4c37-8c2e-93966a512593",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
