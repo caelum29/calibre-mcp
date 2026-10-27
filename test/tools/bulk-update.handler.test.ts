@@ -4,7 +4,7 @@ import { bulkUpdateTool } from "../../src/tools/calibre_bulk_update.js";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
-import { CalibreCliTimeoutError } from "../../src/domain/errors.js";
+import { CalibreCliError, CalibreCliTimeoutError } from "../../src/domain/errors.js";
 import type { ToolDeps } from "../../src/tools/types.js";
 
 const book = (over: Partial<Book> = {}): Book => ({
@@ -150,5 +150,88 @@ describe("calibre_bulk_update handler", () => {
     const failed = r.structuredContent?.failed as { id: number; error: string }[];
     expect(failed[0]?.id).toBe(1);
     expect(failed[0]?.error).toContain("calibre_get_book id=1");
+  });
+});
+
+// issue #213 — a write refusal mid-loop must not hide books that already committed
+describe("calibre_bulk_update mid-loop write refusal (#213)", () => {
+  const refusal = (): never => {
+    throw new CalibreCliError(1, "boom", "HTTP Error 403: Forbidden");
+  };
+  /** calibredb fake: answers call N with outcomes[N-1] (default: success). */
+  const scripted = (outcomes: (null | (() => never))[]) => {
+    const spy = vi.fn(async () => {
+      const outcome = outcomes[spy.mock.calls.length - 1];
+      if (outcome) outcome();
+      return { stdout: "", stderr: "" };
+    });
+    return spy;
+  };
+  const three = [book({ id: 1 }), book({ id: 2 }), book({ id: 3 })];
+  const text = (r: { content: unknown[] }): string => (r.content[0] as { text: string }).text;
+
+  it("keeps the committed book visible when book 2 of 3 is refused, and stops writing", async () => {
+    const spy = scripted([null, refusal]);
+    const r = await bulkUpdateTool.handler(
+      { changes: { tags: ["new"] }, ids: [1, 2, 3], preview: false },
+      deps({ fixture: three, calibredb: spy }),
+    );
+    expect(r.isError).toBe(true);
+    expect(spy).toHaveBeenCalledTimes(2);
+    expect(r.structuredContent?.applied).toEqual([1]);
+    expect((r.structuredContent?.failed as { id: number }[] | undefined)?.map((f) => f.id)).toEqual([2]);
+    expect(r.structuredContent?.notAttempted).toEqual([3]);
+    expect(text(r)).toContain("Committed (do NOT retry these): 1.");
+    expect(text(r)).toContain("Not attempted: 3.");
+    expect(text(r)).toContain("--enable-local-write");
+  });
+
+  it("returns an outputSchema-valid partial result", async () => {
+    const r = await bulkUpdateTool.handler(
+      { changes: { tags: ["new"] }, ids: [1, 2, 3], preview: false },
+      deps({ fixture: three, calibredb: scripted([null, refusal]) }),
+    );
+    const schema = z.object(bulkUpdateTool.outputSchema!);
+    expect(schema.safeParse(JSON.parse(JSON.stringify(r.structuredContent))).success).toBe(true);
+  });
+
+  it("omits the not-attempted line when the refusal hits the last book", async () => {
+    const r = await bulkUpdateTool.handler(
+      { changes: { tags: ["new"] }, ids: [1, 2], preview: false },
+      deps({ fixture: [book({ id: 1 }), book({ id: 2 })], calibredb: scripted([null, refusal]) }),
+    );
+    expect(r.isError).toBe(true);
+    expect(r.structuredContent?.applied).toEqual([1]);
+    expect(r.structuredContent?.notAttempted).toEqual([]);
+    expect(text(r)).toContain("Committed (do NOT retry these): 1.");
+    expect(text(r)).not.toContain("Not attempted");
+  });
+
+  it("counts a timed-out-but-landed book as committed when the next book is refused", async () => {
+    const timeout = (): never => {
+      throw new CalibreCliTimeoutError("calibredb command timed out");
+    };
+    const r = await bulkUpdateTool.handler(
+      { changes: { tags: ["new"] }, ids: [1, 2], preview: false },
+      deps({
+        fixture: [book({ id: 1 }), book({ id: 2 })],
+        calibredb: scripted([timeout, refusal]),
+        getBook: async (id) => book({ id, tags: ["new"] }),
+      }),
+    );
+    expect(r.structuredContent?.applied).toEqual([1]);
+    expect(text(r)).toContain("Committed (do NOT retry these): 1.");
+  });
+
+  it("keeps the bare refusal error when the very first book is refused (nothing committed)", async () => {
+    const spy = scripted([refusal]);
+    const r = await bulkUpdateTool.handler(
+      { changes: { tags: ["new"] }, ids: [1, 2, 3], preview: false },
+      deps({ fixture: three, calibredb: spy }),
+    );
+    expect(r.isError).toBe(true);
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(text(r)).toContain("--enable-local-write");
+    expect(text(r)).not.toContain("Committed");
   });
 });
