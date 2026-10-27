@@ -369,6 +369,24 @@ describe("calibre_bulk_update result text details", () => {
     expect(text(r)).toContain("Failed: 3.");
   });
 
+  it("lists earlier failures with the refused id and every unattempted id", async () => {
+    let call = 0;
+    const r = await bulkUpdateTool.handler(
+      { changes: { tags: ["new"] }, ids: [1, 2, 3, 4, 5], preview: false },
+      deps({
+        fixture: [1, 2, 3, 4, 5].map((id) => book({ id })),
+        calibredb: async () => {
+          call += 1;
+          if (call === 2) throw new Error("boom-2");
+          if (call === 3) throw new CalibreCliError(1, "boom", "HTTP Error 403: Forbidden");
+          return { stdout: "", stderr: "" };
+        },
+      }),
+    );
+    expect(text(r)).toContain("Failed: 2, 3.");
+    expect(text(r)).toContain("Not attempted: 4, 5.");
+  });
+
   it("marks the partial refusal result as an applied run, not a preview", async () => {
     const r = await bulkUpdateTool.handler(
       { changes: { tags: ["new"] }, ids: [1, 2], preview: false },
