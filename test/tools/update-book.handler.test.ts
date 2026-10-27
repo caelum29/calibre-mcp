@@ -170,3 +170,69 @@ describe("calibre_update_book handler", () => {
     expect((r.content[0] as { text: string }).text).toContain("MAY have been applied");
   });
 });
+
+// issue #202 — `changed` lists only fields whose value actually differs
+describe("calibre_update_book phantom diffs (#202)", () => {
+  it("drops an unchanged authors field and keeps the real change", async () => {
+    const r = await updateBookTool.handler(
+      { id: 658, changes: { title: "New", authors: ["Jonathan Baier"] } },
+      deps({
+        books: [
+          book({ title: "Old", authors: ["Jonathan Baier"] }),
+          book({ title: "New", authors: ["Jonathan Baier"] }),
+        ],
+      }),
+    );
+    expect(r.isError).toBeFalsy();
+    expect(r.structuredContent?.changed).toEqual([{ field: "title", before: "Old", after: "New" }]);
+    expect(r.structuredContent?.noop).toBe(false);
+  });
+
+  it("treats identifiers with the same entries in a different key order as unchanged", async () => {
+    const r = await updateBookTool.handler(
+      { id: 658, changes: { identifiers: { isbn: "9781937538859", asin: "B0X" } } },
+      deps({
+        books: [
+          book({ identifiers: { isbn: "9781937538859", asin: "B0X" } }),
+          book({ identifiers: { asin: "B0X", isbn: "9781937538859" } }),
+        ],
+      }),
+    );
+    expect(r.structuredContent?.changed).toEqual([]);
+    expect(r.structuredContent?.noop).toBe(true);
+    expect((r.content[0] as { text: string }).text).toContain("No changes applied to book 658");
+  });
+
+  it("keeps a reordered authors list as a change (author order is significant)", async () => {
+    const r = await updateBookTool.handler(
+      { id: 658, changes: { authors: ["B", "A"] } },
+      deps({ books: [book({ authors: ["A", "B"] }), book({ authors: ["B", "A"] })] }),
+    );
+    expect(r.structuredContent?.changed).toEqual([{ field: "authors", before: ["A", "B"], after: ["B", "A"] }]);
+    expect(r.structuredContent?.noop).toBe(false);
+  });
+
+  it("reports changed: [] with noop when every requested field is already current", async () => {
+    const r = await updateBookTool.handler(
+      { id: 658, changes: { tags: ["old"], authors: ["A"] } },
+      deps({ books: [book(), book()] }),
+    );
+    expect(r.structuredContent?.changed).toEqual([]);
+    expect(r.structuredContent?.noop).toBe(true);
+  });
+
+  it("drops already-current fields from the intended-value diff when the re-read fails", async () => {
+    let calls = 0;
+    const getBook = async (): Promise<Book> => {
+      calls += 1;
+      if (calls > 1) throw new CalibreHttpError(0, "u", "Content Server request timed out");
+      return book({ authors: ["Jonathan Baier"] });
+    };
+    const r = await updateBookTool.handler(
+      { id: 658, changes: { publisher: "MIT Press", authors: ["Jonathan Baier"] } },
+      deps({ getBook }),
+    );
+    expect(r.isError).toBeFalsy();
+    expect(r.structuredContent?.changed).toEqual([{ field: "publisher", before: null, after: "MIT Press" }]);
+  });
+});
