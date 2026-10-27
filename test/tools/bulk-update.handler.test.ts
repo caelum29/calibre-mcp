@@ -235,3 +235,54 @@ describe("calibre_bulk_update mid-loop write refusal (#213)", () => {
     expect(text(r)).not.toContain("Committed");
   });
 });
+
+// issue #214 — ids + query must not silently drop the query
+describe("calibre_bulk_update selection conflicts (#214)", () => {
+  const text = (r: { content: unknown[] }): string => (r.content[0] as { text: string }).text;
+
+  it("rejects ids together with a query in preview mode", async () => {
+    const r = await bulkUpdateTool.handler(
+      { changes: { tags: ["new"] }, ids: [1], query: "tags:foo", preview: true },
+      deps(),
+    );
+    expect(r.isError).toBe(true);
+    expect(text(r)).toContain("Pass either ids or query/filter, not both");
+  });
+
+  it("rejects ids together with a query on apply without writing", async () => {
+    const spy = vi.fn(async () => ({ stdout: "", stderr: "" }));
+    const r = await bulkUpdateTool.handler(
+      { changes: { tags: ["new"] }, ids: [1, 2], query: "tags:foo", preview: false },
+      deps({ calibredb: spy }),
+    );
+    expect(r.isError).toBe(true);
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("rejects ids together with a filter with the same message", async () => {
+    const r = await bulkUpdateTool.handler(
+      { changes: { tags: ["new"] }, ids: [1], filter: "inbox", preview: true },
+      deps(),
+    );
+    expect(r.isError).toBe(true);
+    expect(text(r)).toContain("Pass either ids or query/filter, not both");
+  });
+
+  it("still accepts ids with a blank query (a blank query selects nothing)", async () => {
+    const r = await bulkUpdateTool.handler(
+      { changes: { tags: ["new"] }, ids: [1], query: "   ", preview: true },
+      deps(),
+    );
+    expect(r.isError).toBeFalsy();
+    expect(r.structuredContent?.matched).toBe(1);
+  });
+
+  it("still accepts a query with an empty ids list", async () => {
+    const r = await bulkUpdateTool.handler(
+      { changes: { tags: ["new"] }, ids: [], query: "tags:old", preview: true },
+      deps(),
+    );
+    expect(r.isError).toBeFalsy();
+    expect(r.structuredContent?.matched).toBe(2);
+  });
+});
