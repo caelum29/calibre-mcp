@@ -53,3 +53,57 @@ describe("BoardCache", () => {
     expect(cache.get("calibre_search", "q16")).toBeDefined();
   });
 });
+
+// #215 — the key is (tool, query, libraryId, filter): the same query run in another
+// library or under another bundle filter must neither overwrite nor leak into this board.
+describe("BoardCache — library/filter scoped keys (#215)", () => {
+  const titled = (title: string, over: Partial<BoardPayload> = {}): BoardPayload =>
+    payload({ books: [{ bookId: 7, title, authors: ["X"] }], ...over });
+
+  it("should_return_first_library_payload_after_same_query_ran_in_second_library", () => {
+    const cache = new BoardCache();
+    cache.set(titled("from-prog", { libraryId: "Programming_Books" }));
+    cache.set(titled("from-research", { libraryId: "Reaserch_Books" }));
+    expect(cache.get("calibre_search", "rust", "Programming_Books")?.books[0]?.title).toBe("from-prog");
+  });
+
+  it("should_return_second_library_payload_for_its_own_library", () => {
+    const cache = new BoardCache();
+    cache.set(titled("from-prog", { libraryId: "Programming_Books" }));
+    cache.set(titled("from-research", { libraryId: "Reaserch_Books" }));
+    expect(cache.get("calibre_search", "rust", "Reaserch_Books")?.books[0]?.title).toBe("from-research");
+  });
+
+  it("should_return_first_filter_payload_after_same_query_ran_under_another_filter", () => {
+    const cache = new BoardCache();
+    cache.set(titled("bundle-a", { filter: "Systems" }));
+    cache.set(titled("bundle-b", { filter: "Web" }));
+    expect(cache.get("calibre_search", "rust", "Programming_Books", "Systems")?.books[0]?.title).toBe("bundle-a");
+  });
+
+  it("should_return_unfiltered_payload_when_filter_missing_even_if_filtered_run_is_newer", () => {
+    const cache = new BoardCache();
+    cache.set(titled("unfiltered"));
+    cache.set(titled("filtered", { filter: "Systems" }));
+    expect(cache.get("calibre_search", "rust", "Programming_Books")?.books[0]?.title).toBe("unfiltered");
+  });
+
+  it("should_miss_instead_of_returning_a_filtered_board_for_an_unfiltered_lookup", () => {
+    const cache = new BoardCache();
+    cache.set(titled("filtered", { filter: "Systems" }));
+    expect(cache.get("calibre_search", "rust", "Programming_Books")).toBeUndefined();
+  });
+
+  it("should_miss_on_a_library_that_never_ran_the_query", () => {
+    const cache = new BoardCache();
+    cache.set(titled("from-prog", { libraryId: "Programming_Books" }));
+    expect(cache.get("calibre_search", "rust", "Reaserch_Books")).toBeUndefined();
+  });
+
+  it("should_overwrite_same_library_and_filter_with_the_newer_run", () => {
+    const cache = new BoardCache();
+    cache.set(titled("first", { filter: "Systems" }));
+    cache.set(titled("second", { filter: "Systems" }));
+    expect(cache.get("calibre_search", "rust", "Programming_Books", "Systems")?.books[0]?.title).toBe("second");
+  });
+});
