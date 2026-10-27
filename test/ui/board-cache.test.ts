@@ -107,3 +107,18 @@ describe("BoardCache — library/filter scoped keys (#215)", () => {
     expect(cache.get("calibre_search", "rust", "Programming_Books", "Systems")?.books[0]?.title).toBe("second");
   });
 });
+
+describe("BoardCache — key edge cases (#215 mutation follow-up)", () => {
+  it("should_not_let_query_and_library_text_shift_into_the_same_key", () => {
+    const cache = new BoardCache();
+    cache.set(payload({ query: "rust", libraryId: "X_Books" }));
+    expect(cache.get("calibre_search", "rustX", "_Books")).toBeUndefined();
+  });
+
+  it("should_scope_the_library_agnostic_lookup_to_the_requested_tool", () => {
+    const cache = new BoardCache();
+    cache.set(payload({ tool: "calibre_search", kind: "keyword" }));
+    cache.set(payload({ tool: "calibre_semantic_search", kind: "semantic" }));
+    expect(cache.get("calibre_search", "rust")?.kind).toBe("keyword");
+  });
+});

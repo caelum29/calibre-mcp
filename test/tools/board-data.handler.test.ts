@@ -157,3 +157,34 @@ describe("calibre_board_data handler — library/filter scoping (#215)", () => {
     expect(parsed).toEqual({ tool: "calibre_search", query: "rust", library: "Reaserch Books", filter: "Systems" });
   });
 });
+
+describe("calibre_board_data handler — lookups without a query (#215 mutation follow-up)", () => {
+  // Content Server down: library resolution throws for every input
+  const downDeps = (cache: BoardCache): ToolDeps => ({
+    ...deps(cache),
+    content: {
+      resolveLibraryId: async (): Promise<string> => {
+        throw new Error("ECONNREFUSED");
+      },
+    } as unknown as ToolDeps["content"],
+  });
+
+  it("should_serve_latest_for_tool_without_resolving_library_when_query_missing", async () => {
+    const cache = new BoardCache();
+    cache.set(payload);
+    const r = await boardDataTool.handler({ tool: "calibre_search" }, downDeps(cache));
+    expect(r.structuredContent).toMatchObject({ query: "rust" });
+  });
+
+  it("should_serve_latest_overall_without_resolving_library_when_tool_missing", async () => {
+    const cache = new BoardCache();
+    cache.set(payload);
+    const r = await boardDataTool.handler({ query: "rust" }, downDeps(cache));
+    expect(r.structuredContent).toMatchObject({ query: "rust" });
+  });
+
+  it("should_name_the_default_library_when_its_resolution_fails", async () => {
+    const r = await boardDataTool.handler({ tool: "calibre_search", query: "rust" }, downDeps(new BoardCache()));
+    expect(r.content[0]).toMatchObject({ type: "text", text: expect.stringContaining('"(default)"') });
+  });
+});
