@@ -66,3 +66,58 @@ describe("buildProposal", () => {
     expect(buildProposal(book(), [])).toEqual({ fields: [], changes: {} });
   });
 });
+
+// #198: an ISBN that belongs to another book (e.g. scraped from an ad page) yields a hit whose
+// title has nothing to do with the book's real title — the proposal must not look trustworthy.
+describe("buildProposal — title cross-check (#198)", () => {
+  const PYTEST = book({ title: "Python Testing with pytest", authors: ["Unknown"] });
+  const WENGROW = hit({
+    title: "A Common-Sense Guide to Data Structures and Algorithms",
+    authors: ["Jay Wengrow"],
+    confidence: 0.95,
+  });
+
+  it("lowers the confidence below 0.5 when the provider title does not match the book's title", () => {
+    expect(buildProposal(PYTEST, [WENGROW]).confidence).toBeLessThan(0.5);
+  });
+
+  it("applies the lowered confidence to every proposed field", () => {
+    const p = buildProposal(PYTEST, [WENGROW]);
+    expect(p.fields.map((f) => f.confidence)).toEqual([p.confidence]);
+  });
+
+  it("warns about the mismatch, naming both titles", () => {
+    const [warning] = buildProposal(PYTEST, [WENGROW]).warnings ?? [];
+    expect(warning).toContain("Python Testing with pytest");
+    expect(warning).toContain("A Common-Sense Guide to Data Structures and Algorithms");
+  });
+
+  it("keeps the provider confidence when the provider title only adds a subtitle", () => {
+    const p = buildProposal(PYTEST, [
+      hit({ title: "Python Testing with pytest: Simple, Rapid, Effective, and Scalable", confidence: 0.95 }),
+    ]);
+    expect(p).toMatchObject({ confidence: 0.95, warnings: [] });
+  });
+
+  it("ignores case, punctuation and a leading article when comparing titles", () => {
+    const p = buildProposal(book({ title: "The Pragmatic Programmer" }), [
+      hit({ title: "pragmatic programmer, the", confidence: 0.95 }),
+    ]);
+    expect(p).toMatchObject({ confidence: 0.95, warnings: [] });
+  });
+
+  it("skips the cross-check when the current title is a raw filename (nothing to compare)", () => {
+    const p = buildProposal(book({ title: "215479-01" }), [hit({ title: "Head First Design Patterns" })]);
+    expect(p).toMatchObject({ confidence: 0.95, warnings: [] });
+  });
+
+  it("skips the cross-check when the current title is empty", () => {
+    const p = buildProposal(book({ title: "" }), [hit({ title: "Head First Design Patterns" })]);
+    expect(p).toMatchObject({ confidence: 0.95, warnings: [] });
+  });
+
+  it("skips the cross-check when the hit carries no title", () => {
+    const p = buildProposal(PYTEST, [hit({ authors: ["Brian Okken"] })]);
+    expect(p).toMatchObject({ confidence: 0.95, warnings: [] });
+  });
+});

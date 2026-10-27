@@ -105,6 +105,24 @@ describe("calibre_extract_isbn handler", () => {
     expect((r.content[0] as { text: string }).text).toContain("No ISBN extracted");
   });
 
+  // #198: a Pragmatic PDF with no own ISBN ends with ad pages listing other titles' ISBNs.
+  it("does not stamp an ISBN from back-matter ad pages; says the whole text was scanned", async () => {
+    const ads =
+      "You May Be Interested In…\nA Common-Sense Guide to Data Structures and Algorithms\nJay Wengrow\n" +
+      "(218 pages) ISBN: 9781680502442 $45.95\n";
+    const { deps: d, calls } = deps({
+      book: book({ title: "Python Testing with pytest", formats: ["pdf"] }),
+      text: "a".repeat(30_000) + ads,
+    });
+    const r = await extractIsbnTool.handler(args({ apply: true }), d);
+    expect(r.isError).toBe(true);
+    expect(calls).toHaveLength(0);
+    const text = (r.content[0] as { text: string }).text;
+    expect(text).toContain("No ISBN extracted");
+    expect(text).toContain("ad/catalog");
+    expect(text).not.toContain("front matter");
+  });
+
   it("errors when the book has no extractable format", async () => {
     const { deps: d } = deps({ book: book({ title: "x", formats: [] }) });
     const r = await extractIsbnTool.handler(args(), d);

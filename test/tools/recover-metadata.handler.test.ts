@@ -104,6 +104,28 @@ describe("calibre_recover_metadata handler", () => {
     expect(r.structuredContent?.changes).toMatchObject({ publisher: "No Starch" });
   });
 
+  // #198: an ISBN belonging to another book must not yield a 0.95-confidence author swap.
+  it("lowers confidence and warns when the ISBN hit's title does not match the book", async () => {
+    const fixture = {
+      book: book({ title: "Python Testing with pytest", authors: ["Unknown"], identifiers: { isbn: "9781680502442" } }),
+      hits: [hit({ title: "A Common-Sense Guide to Data Structures and Algorithms", authors: ["Jay Wengrow"] })],
+    };
+    const r = await recoverMetadataTool.handler(args(), deps(fixture));
+    expect(r.isError).toBeFalsy();
+    expect(r.structuredContent?.confidence as number).toBeLessThan(0.5);
+    expect((r.content[0] as { text: string }).text).toContain("title mismatch");
+  });
+
+  it("ignores ad-page ISBNs in the text and falls back to a title lookup (#198)", async () => {
+    const fixture = {
+      book: book({ title: "Python Testing with pytest", authors: ["Unknown"], formats: ["pdf"] }),
+      text: "a".repeat(30_000) + "Jay Wengrow\n(218 pages) ISBN: 9781680502442 $45.95\n",
+      hits: [hit({ title: "Python Testing with pytest", authors: ["Brian Okken"], confidence: 0.6 })],
+    };
+    const r = await recoverMetadataTool.handler(args(), deps(fixture));
+    expect(r.structuredContent?.lookupKey).toBe("title:Python Testing with pytest");
+  });
+
   it("errors when no provider returns a hit", async () => {
     const r = await recoverMetadataTool.handler(
       args(),
