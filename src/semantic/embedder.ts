@@ -10,6 +10,7 @@
 import path from "node:path";
 import type { Config } from "../config.js";
 import { ACTIVE_MODEL, type EmbeddingModelSpec } from "./model.js";
+import { InferenceQueue } from "./queue.js";
 import { l2normalize } from "./vector.js";
 
 /**
@@ -66,10 +67,7 @@ type FeaturePipeline = ((
   opts: { pooling: "mean" | "cls"; normalize: boolean },
 ) => Promise<{ tolist(): number[][] }>) & { tokenizer: Tokenizer };
 // baked-in path (EmbeddingGemma): callable tokenizer → model → `sentence_embedding`.
-type BatchTokenizer = ((
-  texts: string[],
-  opts: { padding: boolean; truncation: boolean },
-) => Record<string, unknown>) &
+type BatchTokenizer = ((texts: string[], opts: { padding: boolean; truncation: boolean }) => Record<string, unknown>) &
   Tokenizer;
 type SentenceEmbeddingModel = (inputs: Record<string, unknown>) => Promise<{
   sentence_embedding: { tolist(): number[][] };
@@ -93,11 +91,13 @@ export class TransformersEmbedder implements Embedder {
   #tokenizer?: Tokenizer;
   // Sync snapshot of the load outcome for loadState() — updated as #loaded settles.
   #loadState: EmbedderLoadState = "not-attempted";
+  // FIFO, one forward at a time (#156); never refuses — a query embed is ~tens of ms, and a
+  // build's passages queue per BATCH, so a search waits at most one batch behind a build.
+  readonly #queue = new InferenceQueue();
 
   constructor(
     private readonly cfg: Config,
-    private readonly loadTransformers: TransformersLoader = () =>
-      import("@huggingface/transformers"),
+    private readonly loadTransformers: TransformersLoader = () => import("@huggingface/transformers"),
   ) {}
 
   async warmup(): Promise<void> {
@@ -131,7 +131,7 @@ export class TransformersEmbedder implements Embedder {
 
   async #embed(prefixed: string[]): Promise<Float32Array[]> {
     const { embed } = await this.#model();
-    const rows = await embed(prefixed);
+    const rows = await this.#queue.run(() => embed(prefixed));
     return rows.map((row) => toStoredVector(row));
   }
 

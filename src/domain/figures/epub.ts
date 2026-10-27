@@ -3,7 +3,7 @@
 // publishers vary; probe 2026-07-22: O'Reilly h6-in-figure, Packt p.IMG---Caption).
 // Pure logic — unzipping and OPF discovery IO lives in src/calibre/figure-inventory.ts.
 
-import { matchCaptionLine } from "./captions.js";
+import { matchCaptionElement, matchCaptionLine } from "./captions.js";
 import type { FigureEntry, FigureInventory } from "./inventory.js";
 
 /** One spine document, reading-order position implied by array index. */
@@ -18,7 +18,21 @@ export interface SpineDoc {
 const CAPTION_WINDOW = 2000;
 
 // Tags whose closing marks the end of a caption candidate once text was seen.
-const BLOCK_CLOSERS = new Set(["p", "h1", "h2", "h3", "h4", "h5", "h6", "figcaption", "div", "figure", "caption", "li", "td"]);
+const BLOCK_CLOSERS = new Set([
+  "p",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "figcaption",
+  "div",
+  "figure",
+  "caption",
+  "li",
+  "td",
+]);
 
 /** Resolve `META-INF/container.xml` to the OPF path. */
 export function parseContainerRootfile(xml: string): string | null {
@@ -143,14 +157,9 @@ function setDims(entry: FigureEntry, tag: string): void {
   if (h && /^\d+$/.test(h)) entry.height = Number(h);
 }
 
-// Caption-dedicated elements: headings and figcaption hold captions, never prose, so a
-// numbered "Figure 4.1 Standard RL loop" WITHOUT a separator is trustworthy there
-// (pandoc emits exactly that — RLHF Book probe). In <p>/<div> the separator stays
-// required, or in-text references ("Figure 4.1 and how it compares…") would false-pair.
+// Caption-dedicated elements: headings and figcaption hold captions, never prose, so the
+// separator-less form is trustworthy there (see matchCaptionElement).
 const CAPTION_ELEMENTS = new Set(["figcaption", "h1", "h2", "h3", "h4", "h5", "h6", "caption"]);
-// Greedy label first, so "Figure 4.1 Standard RL loop" keeps "4.1" whole (the strict
-// pattern would misread the label's own dot as the separator); optional separator eaten.
-const RELAXED_EN = /^(?:Figure|FIGURE|Fig\.)\s?(\d+(?:[-–.]\d+)?[a-z]?)(?:\s*[.:]|\s+[–—-])?(?:\s+|$)(.*)$/u;
 
 /**
  * The caption is the first text-bearing block after the image: collect text runs
@@ -180,10 +189,7 @@ export function adjacentCaption(html: string, from: number): { label: string; te
   if (!text) return null;
   // Caption-dedicated elements get the relaxed form FIRST — the strict pattern would
   // misparse a separator-less "Figure 4.1 Standard RL loop" (label dot read as separator).
-  if (closerTag && CAPTION_ELEMENTS.has(closerTag) && text.length <= 300) {
-    const relaxed = RELAXED_EN.exec(text);
-    if (relaxed) return { label: relaxed[1] ?? "", text: (relaxed[2] ?? "").trim() };
-  }
+  if (closerTag && CAPTION_ELEMENTS.has(closerTag)) return matchCaptionElement(text);
   return matchCaptionLine(text);
 }
 
@@ -191,11 +197,37 @@ export function adjacentCaption(html: string, from: number): { label: string; te
 // (probe #84: RLHF's `T&uuml;lu` broke marker placement — the extracted text has the
 // decoded character, so undecoded inventory captions never match).
 const NAMED_ENTITIES: Record<string, string> = {
-  nbsp: " ", amp: "&", lt: "<", gt: ">", quot: '"', apos: "'",
-  ndash: "–", mdash: "—", hellip: "…", ldquo: "“", rdquo: "”", lsquo: "‘", rsquo: "’",
-  auml: "ä", ouml: "ö", uuml: "ü", Auml: "Ä", Ouml: "Ö", Uuml: "Ü", szlig: "ß",
-  eacute: "é", egrave: "è", ecirc: "ê", agrave: "à", acirc: "â", ccedil: "ç",
-  ntilde: "ñ", aacute: "á", iacute: "í", oacute: "ó", uacute: "ú",
+  nbsp: " ",
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  quot: '"',
+  apos: "'",
+  ndash: "–",
+  mdash: "—",
+  hellip: "…",
+  ldquo: "“",
+  rdquo: "”",
+  lsquo: "‘",
+  rsquo: "’",
+  auml: "ä",
+  ouml: "ö",
+  uuml: "ü",
+  Auml: "Ä",
+  Ouml: "Ö",
+  Uuml: "Ü",
+  szlig: "ß",
+  eacute: "é",
+  egrave: "è",
+  ecirc: "ê",
+  agrave: "à",
+  acirc: "â",
+  ccedil: "ç",
+  ntilde: "ñ",
+  aacute: "á",
+  iacute: "í",
+  oacute: "ó",
+  uacute: "ú",
 };
 
 /** Minimal entity decode — captions only need the common named/numeric forms. */

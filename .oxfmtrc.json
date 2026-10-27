@@ -1,0 +1,16 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 120,
+  "sortImports": false,
+  "sortPackageJson": false,
+  "ignorePatterns": [
+    "manifest.json",
+    ".claude-plugin/plugin.json",
+    "docs/tool-catalog.json",
+    "**/*.md",
+    "pnpm-lock.yaml",
+    "test/eval/retrieval/*.json",
+    "test/eval/retrieval/corpus/**",
+    "test/eval/retrieval/reports/**"
+  ]
+}

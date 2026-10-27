@@ -35,10 +35,7 @@ export const getFiguresTool = defineTool({
   inputSchema: {
     id: BookId().optional(),
     bookId: BookId().optional(),
-    format: z
-      .string()
-      .optional()
-      .describe("Source format override (epub or pdf). Default: epub if present, else pdf."),
+    format: z.string().optional().describe("Source format override (epub or pdf). Default: epub if present, else pdf."),
     indexes: jsonArray(CoercedInt())
       .optional()
       .describe(
@@ -57,7 +54,7 @@ export const getFiguresTool = defineTool({
   // result, and clients drop the content array (images!) when structuredContent is
   // present (anthropics/claude-code#54737/#45575). Fetch results must be content-only.
   annotations: { readOnlyHint: true, openWorldHint: true },
-  handler: async (args, deps) => {
+  handler: async (args, deps, ctx) => {
     const idArg = bookIdArg(args);
     if (idArg === undefined) return toolError("Provide id (the book's db id or uuid).");
     try {
@@ -87,6 +84,7 @@ export const getFiguresTool = defineTool({
           format: fmt,
           downloadUrl,
           cacheKey,
+          signal: ctx?.signal,
         }));
       } catch (err) {
         return figuresError(err, numericId, fmt);
@@ -95,7 +93,8 @@ export const getFiguresTool = defineTool({
       if (args.indexes !== undefined && args.indexes.length > 0) {
         return fetchFigures(args, deps, { numericId, fmt, downloadUrl, inventory });
       }
-      return listFigures(args, { numericId, fmt, inventory });
+      const otherFormats = FIGURE_FORMATS.filter((f) => f !== fmt && book.formats.some((b) => b.toLowerCase() === f));
+      return listFigures(args, { numericId, fmt, inventory }, otherFormats);
     } catch (err) {
       if (err instanceof CalibreHttpError && err.status === 404) {
         return toolError(`No book with id ${idArg} in the requested library`);
@@ -117,9 +116,17 @@ interface BookCtx {
   inventory: FigureInventory;
 }
 
+/** Caption width in the list rows; longer captions end in `…` so a cut never reads as complete (#107). */
+const LIST_CAPTION_MAX = 100;
+
+function clip(s: string, max: number): string {
+  return s.length <= max ? s : `${s.slice(0, max - 1)}…`;
+}
+
 function listFigures(
   args: { include_uncaptioned: boolean },
   { numericId, fmt, inventory }: BookCtx,
+  otherFormats: readonly string[] = [],
 ) {
   const visible = inventory.entries.filter((e) => e.captioned || args.include_uncaptioned);
   const { counts } = inventory;
@@ -134,13 +141,26 @@ function listFigures(
     note = "No figures found in this book.";
   }
 
+  // Spell out the arithmetic when uncaptioned rows are shown — "61 figures" above 62 rows
+  // reads as a count mismatch (#108).
+  const countPart = args.include_uncaptioned
+    ? `${counts.figures} captioned figures + ${counts.uncaptioned} uncaptioned ${plural(counts.uncaptioned, "image")} = ${visible.length} rows in ${fmt} ` +
+      `(${counts.pageRender} vector/page-render)`
+    : `${counts.figures} figures in ${fmt} ` +
+      `(${counts.uncaptioned} uncaptioned images hidden, ${counts.pageRender} vector/page-render)`;
+  // Name the other figure-capable format so the model knows a re-list is possible (#106).
+  const alsoHas = otherFormats.length
+    ? ` Also has: ${otherFormats.join(", ")} — pass format:"${otherFormats[0]}" to re-list; indexes are per-format.`
+    : "";
   const head =
-    `Book ${numericId} — ${counts.figures} figures in ${fmt} ` +
-    `(${counts.uncaptioned} uncaptioned images hidden${args.include_uncaptioned ? " → shown" : ""}, ` +
-    `${counts.pageRender} vector/page-render). Indexes are valid for format=${fmt} only. ` +
+    `Book ${numericId} — ${countPart}. Indexes are valid for format=${fmt} only.${alsoHas} ` +
     `Fetch with indexes=[…] (≤${MAX_INDEXES_PER_CALL} per call).`;
   const rows = visible.map((e) => {
-    const cap = e.caption ? e.caption.slice(0, 100) : e.captioned ? "" : "(uncaptioned)";
+    const cap = e.caption
+      ? clip(e.caption, LIST_CAPTION_MAX)
+      : e.captioned
+        ? "(label only — no caption text)"
+        : "(uncaptioned)";
     const label = e.label ? ` ${e.label}` : "";
     return `${e.index} | p.${e.page} | ${e.source}${label} | ${cap}`;
   });
@@ -185,9 +205,7 @@ async function fetchFigures(
   }
   const hidden = indexes.filter((i) => !inventory.entries[i]?.captioned);
   if (hidden.length > 0 && !args.include_uncaptioned) {
-    return toolError(
-      `Index ${hidden.join(", ")} is an uncaptioned image — pass include_uncaptioned=true to fetch it.`,
-    );
+    return toolError(`Index ${hidden.join(", ")} is an uncaptioned image — pass include_uncaptioned=true to fetch it.`);
   }
 
   const outcome = await deps.figures.fetchFigures({
@@ -292,4 +310,8 @@ function figuresError(err: unknown, bookId: number, fmt: string) {
     default:
       return toolError(m);
   }
+}
+
+function plural(n: number, word: string): string {
+  return n === 1 ? word : `${word}s`;
 }

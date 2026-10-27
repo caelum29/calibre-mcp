@@ -85,6 +85,19 @@ export interface ToolDeps {
 }
 
 /**
+ * Per-call request context — platform types only, so handlers stay SDK-free. server.ts
+ * builds it from the SDK's request extra: `signal` fires when the client cancels the call
+ * (notifications/cancelled) or the connection closes; `progress` is present only when the
+ * client asked for progress (sent a progressToken). Handlers thread `signal` into
+ * subprocesses/fetches and may call `progress` freely — it is throttled and never throws.
+ */
+export interface ToolContext {
+  signal: AbortSignal;
+  /** Report progress: `progress` must increase between calls (e.g. books done). */
+  progress?: (progress: number, message: string, total?: number) => void;
+}
+
+/**
  * A plain, SDK-free tool definition. server.ts maps each onto registerTool and calls
  * `.disable()` on `write` tools when the write gate is off (DESIGN §4).
  */
@@ -105,7 +118,8 @@ export interface ToolDescriptor<Shape extends z.ZodRawShape = z.ZodRawShape> {
    * "every readOnlyHint:false tool must be write-gated" (currently just calibre_build_index).
    */
   localWrite?: boolean;
-  handler: (args: z.infer<z.ZodObject<Shape>>, deps: ToolDeps) => Promise<ToolResult>;
+  /** `ctx` is always supplied by server.ts; optional so direct (test) calls can omit it. */
+  handler: (args: z.infer<z.ZodObject<Shape>>, deps: ToolDeps, ctx?: ToolContext) => Promise<ToolResult>;
 }
 
 /**
@@ -123,5 +137,5 @@ export interface AnyToolDescriptor {
   write?: boolean;
   /** See ToolDescriptor.localWrite — index-dir write, not library write; not gate-controlled. */
   localWrite?: boolean;
-  handler: (args: unknown, deps: ToolDeps) => Promise<ToolResult>;
+  handler: (args: unknown, deps: ToolDeps, ctx?: ToolContext) => Promise<ToolResult>;
 }

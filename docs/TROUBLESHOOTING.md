@@ -77,6 +77,22 @@ Semantic search only sees books you've indexed. Run `calibre_build_index` with a
 `ids`, or a Calibre `query` selecting the books, then search again. Re-run it after adding
 books (unchanged books are skipped).
 
+### `calibre_build_index`: "database is locked"
+
+Two calibre-mcp servers share one index file — typically Claude Desktop's extension and a
+Claude Code session running side by side. The index runs in SQLite WAL mode (readers never
+block the writer) and a writer waits up to `CALIBRE_MCP_INDEX_BUSY_TIMEOUT_MS` (default 5 s)
+for the other process, then retries the book once. If books still fail, the other server was
+writing for longer than that (e.g. its own `calibre_build_index`): let it finish and re-run —
+already-indexed books are skipped — or raise the timeout.
+
+### Copying or backing up the index
+
+The index is `<index dir>/<library>.sqlite`. In WAL mode SQLite keeps recent writes in
+`<library>.sqlite-wal` (plus a `-shm` file) until a checkpoint, so while any calibre-mcp server
+is running, copy all three files together — or quit every client first: a cleanly closed
+server checkpoints the WAL back into the `.sqlite`, leaving a single self-contained file.
+
 ### First semantic search is extremely slow
 
 Two one-time downloads can land on the first use: the embedding model (~118 MB) and the
@@ -84,6 +100,14 @@ cross-encoder reranker (~576 MB). `calibre_build_index` pre-downloads both — s
 skipped straight to searching on a fresh machine, the first hybrid/vector query pays for it.
 After that everything runs offline. Reranking itself also costs seconds of CPU per query;
 `CALIBRE_MCP_RERANK=off` disables it (faster, noticeably less precise ranking).
+
+### Parallel semantic searches come back unreranked ("Reranker busy")
+
+Model inference runs one request at a time, so concurrent `calibre_semantic_search` calls
+queue in arrival order. To keep every call inside the client's request timeout, a search
+that finds more than two rerank calls already waiting skips the rerank and returns the fused
+order with a "Reranker busy" note. Issue library-scope semantic searches one at a time when
+you want every result reranked.
 
 ### A search hit points at a book that no longer exists
 

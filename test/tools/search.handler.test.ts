@@ -42,6 +42,9 @@ function deps(opts: FakeOpts = {}): ToolDeps {
     content: content as unknown as ToolDeps["content"],
     calibre: calibre as unknown as ToolDeps["calibre"],
     extractor: {} as unknown as ToolDeps["extractor"],
+    figures: {} as ToolDeps["figures"],
+    embedder: {} as ToolDeps["embedder"],
+    index: { hasIndex: () => false } as unknown as ToolDeps["index"], // no semantic index → no tip
     log,
   };
 }
@@ -125,7 +128,12 @@ describe("calibre_search handler — countOnly (issue #67)", () => {
   it("counts_in_book_matches_for_book_scope", async () => {
     const r = await searchTool.handler(
       { query: "x", mode: "fts", scope: "book", bookId: 1, limit: 20, countOnly: true },
-      deps({ ftsHits: [{ bookId: 1, snippet: "a" }, { bookId: 1, snippet: "b" }] }),
+      deps({
+        ftsHits: [
+          { bookId: 1, snippet: "a" },
+          { bookId: 1, snippet: "b" },
+        ],
+      }),
     );
     expect(r.structuredContent).toMatchObject({ total: 2, scope: "book", bookId: 1 });
   });

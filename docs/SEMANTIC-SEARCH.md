@@ -35,7 +35,7 @@ Semantic search needs a local index, built once per book with `calibre_build_ind
    extractor available on your machine (`pdftotext` from poppler, then PyMuPDF, then
    Calibre's `ebook-convert` as the last resort). Scanned/image-only PDFs yield no
    text — there is no OCR. Markdown (`MD`/`MARKDOWN`), `TXT`/`TXTZ`, AZW3, MOBI,
-   DOCX, HTMLZ, FB2 and RTF are extracted too; when a book has several formats the
+   DOCX, ODT, HTMLZ, FB2 and RTF are extracted too; when a book has several formats the
    best-structured one wins (EPUB → Markdown → PDF → the rest).
 2. **Chunk** the text into ~460-token passages with overlap, split along headings
    where possible. Each chunk keeps its location (page / chapter position) and is
@@ -60,8 +60,10 @@ The embedding model comes from the optional `@huggingface/transformers` package
 (not included in the Claude Desktop `.mcpb` bundle). When it's absent,
 `calibre_build_index` automatically builds a **keyword-only** index — `mode: keyword`
 search works with zero ML dependencies; `hybrid` degrades to keyword and `vector`
-explains what's missing. Install the package and rebuild with `force: true` to
-upgrade to full semantic search.
+explains what's missing. Install the package and run `calibre_build_index` again
+to upgrade to full semantic search — books indexed without embeddings count as out of
+date, so no `force` is needed. A keyword-only build never replaces a book's existing
+embeddings, and `calibre_ping` reports how many books are indexed without them.
 
 ## Answering a query
 
@@ -80,7 +82,10 @@ Two refinements worth knowing about:
   ~576 MB, downloaded on first index build), the top ~30 fused candidates are
   re-scored by a cross-encoder that reads the query and passage *together* — a
   noticeably sharper final ordering. Without the model, results keep the fused
-  order. Disable with `CALIBRE_MCP_RERANK=off`.
+  order. Disable with `CALIBRE_MCP_RERANK=off`. Reranking takes seconds of CPU, so
+  rerank calls run one at a time in arrival order; when more than two are already
+  waiting, a new search skips the rerank (fused order + a "reranker busy" note) rather
+  than waiting past the client's request timeout.
 - **Front-matter demotion.** In book scope, chunks from front matter (table of
   contents, praise quotes, forewords) are keyword-dense but rarely what you want, so
   they are demoted below body-text matches and labeled `[front matter]` — never
@@ -96,6 +101,26 @@ caption, page, the surrounding passage (via the caption's position), and a ready
 `calibre_get_figures` call — the image itself is fetched only when you ask for it.
 The text-search confidence floor doesn't apply to captions (short strings score on a
 different scale); a caption-specific floor will be enabled once calibrated.
+
+## Citation provenance (`indexVersion`)
+
+Every location a search returns — `charStart`/`charEnd` on passages and book hits,
+`charOffset` and `page` on figure hits — is relative to the **extraction + chunking
+generation** that built the index. That generation is the index's `indexVersion`, and
+each successful `calibre_semantic_search` response carries it once: as `indexVersion`
+in `structuredContent` and as one line under the header in the text.
+
+`indexVersion` changes **exactly when stored offsets can move** — a pipeline change that
+shifts chunk boundaries or extracted text bumps it and forces a full rebuild. Additive
+changes (a new column, a new flag) don't bump it, and stored offsets stay valid.
+
+If you persist citations (a study tool, a tutor app, notes that say "book 412,
+chars 84210–85030"), store the `indexVersion` alongside them. When a later response
+reports a different `indexVersion`, treat old offsets as stale and re-locate the
+passage (e.g. search for it again). `calibre_ping` shows the current generation too,
+and flags an index **stale** when it was built by a different model or generation than
+the running server — search refuses such an index until `calibre_build_index force=true`
+rebuilds it. Cross-generation stable anchors are out of scope for now.
 
 ## Multilingual
 
@@ -114,10 +139,16 @@ Russian book and vice versa. The keyword half stems both languages, so
   reproduce the caption line, that figure is left out of the figure corpus — it is never
   linked to the *wrong* passage, just absent. Measured at ~97% of captioned figures on a
   790-book library, with the gaps confined to EPUBs (PDFs linked fully).
-- **Front-matter demotion depends on chapter detection.** Books whose front matter is
-  itself heading-structured — a title page, copyright, and praise pages that all look like
-  headings, common in EPUBs — report no front matter at all and get no demotion. It applies
-  to roughly half a mixed library.
+- **Front-matter demotion depends on chapter detection.** The boundary is the first
+  chapter heading. For EPUBs, where the title page, copyright, praise and contents are
+  themselves headings, it is the first `Chapter 1` / `1 Title` / `Part I` heading. Failing
+  that, it is the end of the leading run of short and named front-matter sections (preface,
+  acknowledgments, about the author…). Measured on a 773-book library, it covers ~95% of
+  EPUBs and ~58% of PDFs. Books with no headings, or whose first chapter sits past 20% of
+  the text, get no demotion. An `Introduction` that precedes `Chapter 1` counts as front
+  matter. PDFs with publisher bookmarks use the outline's first
+  non-front-matter entry as the boundary (the same chapter map `calibre_get_content`
+  `structure: true` shows); books indexed before that change pick it up on re-index.
 - **Extraction improves between releases, but only for books indexed afterwards.** Text
   extraction, figure linkage, and front-matter detection all run at index time, so upgrading
   the server does not retroactively improve an existing index. Rebuild with `force: true`

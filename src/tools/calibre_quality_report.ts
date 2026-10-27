@@ -45,7 +45,7 @@ export const qualityReportTool = defineTool({
     nextCursor: z.string().optional(),
   },
   annotations: { readOnlyHint: true, openWorldHint: true },
-  handler: async (args, deps) => {
+  handler: async (args, deps, ctx) => {
     try {
       const checks: QualityCheck[] = args.checks?.length ? args.checks : ALL_CHECKS;
 
@@ -57,12 +57,19 @@ export const qualityReportTool = defineTool({
       const fr = await resolveFilter(deps, { filter: args.filter, autoExclude: false, library: args.library });
       if (!fr.ok) return toolError(fr.error);
 
-      const { books, total: matched, capped } = await selectBooks(deps, {
+      ctx?.progress?.(0, "Selecting books…", 2);
+      const {
+        books,
+        total: matched,
+        capped,
+      } = await selectBooks(deps, {
         ids: args.ids,
         query: buildScopedQuery(args.query ?? "", fr.res) || undefined,
         library: args.library,
       });
+      ctx?.progress?.(1, `Checking ${books.length} book(s)…`, 2);
       const issues = runQualityChecks(books, checks);
+      ctx?.progress?.(2, `Checked ${books.length} book(s)`, 2);
 
       // Counts by check over ALL issues (not just the page).
       const byCheck: Record<string, number> = {};
@@ -73,9 +80,7 @@ export const qualityReportTool = defineTool({
       const offset = cur && cur.query === cursorKey ? cur.offset : 0;
       const page = issues.slice(offset, offset + args.limit);
       const more = offset + page.length < issues.length;
-      const nextCursor = more
-        ? encodeCursor({ offset: offset + page.length, query: cursorKey })
-        : undefined;
+      const nextCursor = more ? encodeCursor({ offset: offset + page.length, query: cursorKey }) : undefined;
 
       // The count is only the bundle's size when the bundle alone selected the set.
       const honesty = honestyLines(fr.res, args.filter !== undefined && !args.query ? matched : undefined);
@@ -84,12 +89,14 @@ export const qualityReportTool = defineTool({
         `${issues.length} issue(s) across ${books.length} books scanned` +
         `${capped ? ` (capped — ${matched} matched)` : ""}. ` +
         `Showing ${page.length ? offset + 1 : 0}–${offset + page.length}. ` +
-        `By check: ${Object.entries(byCheck).map(([k, v]) => `${k}=${v}`).join(", ") || "none"}.` +
+        `By check: ${
+          Object.entries(byCheck)
+            .map(([k, v]) => `${k}=${v}`)
+            .join(", ") || "none"
+        }.` +
         (args.readability ? "\nreadability check is deferred in v1 (needs full-text extraction)." : "");
 
-      const lines = page.map(
-        (i) => `[${i.severity}] #${i.bookId} "${i.title}" — ${i.check}: ${i.message}`,
-      );
+      const lines = page.map((i) => `[${i.severity}] #${i.bookId} "${i.title}" — ${i.check}: ${i.message}`);
       const text = `${summary}\n${lines.join("\n")}`;
 
       return toolOk([{ type: "text", text: fence("QUALITY REPORT", text) }], {

@@ -12,17 +12,29 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Config } from "../config.js";
 import type { Embedder, EmbedderLoadState } from "./embedder.js";
-import type { IndexStore } from "./store.js";
-import { EMBED_DIM, MODEL_ID } from "./model.js";
+import type { IndexMeta, IndexStore } from "./store.js";
+import { EMBED_DIM, INDEX_VERSION, MODEL_ID } from "./model.js";
 
 /** The semantic block mirrored onto calibre_ping's structuredContent. */
 export interface SemanticStatus {
   /** Can vector/hybrid search run right now? (dep on disk AND not a failed in-process load). */
   available: boolean;
-  /** transformers.js repo id of the locked embedding model. */
+  /** Embedding model id — read from the index's meta when one exists, else the server's locked model. */
   model: string;
-  /** Stored vector dimensionality. */
+  /** Vector dimensionality — from the index's meta when one exists, else the server's. */
   dim: number;
+  /**
+   * Generation (extraction + chunker) of the resolved library's index, from its meta (#136).
+   * Stored charStart/charEnd and figure pages are valid only within one generation — clients
+   * persisting citations pin them to it. Omitted when there is no index (or no library).
+   */
+  indexVersion?: number;
+  /** The generation this server builds and can read (code constant). */
+  serverIndexVersion: number;
+  /** True when the index was built by a different model/dim/generation → rebuild needed. */
+  indexStale?: boolean;
+  /** Does the resolved library have an index? Omitted when no library was resolved. */
+  indexPresent?: boolean;
   /** Is @huggingface/transformers resolvable on disk from the server install? (never imported) */
   dependencyInstalled: boolean;
   /** In-process load outcome — "failed" means installed-but-unusable until a restart. */
@@ -33,6 +45,15 @@ export interface SemanticStatus {
   indexedBooks?: number;
   /** Embedding vectors in the resolved library's index — omitted alongside indexedBooks. */
   vectorCount?: number;
+  /** Text chunks in the index (keyword-searchable even without the model) — omitted alongside indexedBooks. */
+  chunkCount?: number;
+  /** Indexed figures (captions) — omitted alongside indexedBooks. */
+  figureCount?: number;
+  /**
+   * Books whose chunks are not all embedded (keyword-only or partial entries, #197) — invisible
+   * to vector/hybrid search until a semantic build re-indexes them. Omitted alongside indexedBooks.
+   */
+  booksWithoutVectors?: number;
   /** True only when the dep is on disk but the process can't use it → server restart needed. */
   restartRequired?: boolean;
   /** Human-readable cause when unavailable. */
@@ -63,12 +84,22 @@ export function computeSemanticStatus(
 
   let indexedBooks: number | undefined;
   let vectorCount: number | undefined;
-  if (libraryId && deps.index.hasIndex(libraryId)) {
-    indexedBooks = deps.index.stats(libraryId).books;
+  let chunkCount: number | undefined;
+  let figureCount: number | undefined;
+  let booksWithoutVectors: number | undefined;
+  const meta = libraryId ? deps.index.indexMeta(libraryId) : undefined;
+  const stale = meta !== undefined && staleness(meta) !== undefined;
+  // A stale index is refused on open (INDEX_INCOMPATIBLE), so counting it would throw — skip.
+  if (libraryId && !stale && deps.index.hasIndex(libraryId)) {
+    const stats = deps.index.stats(libraryId);
+    indexedBooks = stats.books;
+    chunkCount = stats.chunks;
+    figureCount = stats.figures;
     vectorCount = deps.index.vectorCount(libraryId);
+    booksWithoutVectors = deps.index.booksMissingVectors(libraryId);
   }
 
-  const available = dependencyInstalled && loaded !== "failed";
+  const available = dependencyInstalled && loaded !== "failed" && !stale;
   const restartRequired = dependencyInstalled && loaded === "failed";
 
   let reason: string | undefined;
@@ -78,16 +109,22 @@ export function computeSemanticStatus(
   } else if (loaded === "failed") {
     reason =
       "the embedding model failed to load in this process, though @huggingface/transformers is installed on disk — restart the server to recover.";
+  } else if (stale) {
+    reason = `the index was built with ${staleness(meta!)} — rebuild it with calibre_build_index force=true (search refuses it until then).`;
   }
 
   return {
     available,
-    model: MODEL_ID,
-    dim: EMBED_DIM,
+    model: meta?.modelId ?? MODEL_ID,
+    dim: meta?.dim ?? EMBED_DIM,
+    ...(meta ? { indexVersion: meta.indexVersion } : {}),
+    serverIndexVersion: INDEX_VERSION,
+    ...(stale ? { indexStale: true } : {}),
+    ...(libraryId ? { indexPresent: deps.index.hasIndex(libraryId) } : {}),
     dependencyInstalled,
     loaded,
     modelCached,
-    ...(indexedBooks !== undefined ? { indexedBooks, vectorCount } : {}),
+    ...(indexedBooks !== undefined ? { indexedBooks, vectorCount, chunkCount, figureCount, booksWithoutVectors } : {}),
     ...(restartRequired ? { restartRequired: true } : {}),
     ...(reason ? { reason } : {}),
   };
@@ -95,24 +132,54 @@ export function computeSemanticStatus(
 
 /**
  * One or two lines summarizing the block, for the TEXT content (clients strip
- * structuredContent — the diagnosis must survive as prose).
+ * structuredContent — the diagnosis must survive as prose). The locked model name and the
+ * index counts are always reported, even when the model can't load (#108): they're known
+ * without it, and the index still serves keyword search.
  */
 export function formatSemanticStatusLine(s: SemanticStatus): string {
-  const name = s.model.includes("/") ? s.model.slice(s.model.lastIndexOf("/") + 1) : s.model;
-  if (s.available) {
-    if (s.vectorCount && s.vectorCount > 0) {
-      return `Semantic search: ready (${name}, ${s.dim}-dim, ${s.indexedBooks} books / ${s.vectorCount} vectors indexed).`;
-    }
-    if (s.indexedBooks !== undefined) {
-      return `Semantic search: ready (${name}, ${s.dim}-dim) — no vectors indexed yet; run calibre_build_index.`;
-    }
-    return `Semantic search: ready (${name}, ${s.dim}-dim).`;
+  const name = shortModel(s.model);
+  if (s.indexStale) {
+    return `Semantic search: index STALE — built with ${name} ${s.dim}-dim, index v${s.indexVersion}; this server builds ${shortModel(MODEL_ID)} ${EMBED_DIM}-dim, index v${s.serverIndexVersion}. Rebuild with calibre_build_index force=true (search refuses this index until then; stored citations from v${s.indexVersion} may point at different text after the rebuild).`;
   }
+  const index = formatIndexCounts(s);
+  if (s.available) {
+    if (index === undefined) return `Semantic search: ready (${name}, ${s.dim}-dim).`;
+    let hint = s.vectorCount || s.indexPresent === false ? "" : " — no vectors indexed yet; run calibre_build_index";
+    // Some books embedded, others not (e.g. written by a model-less server sharing the db):
+    // vector/hybrid search silently misses the rest, so name the count and the fix.
+    if (s.vectorCount && s.booksWithoutVectors) {
+      hint = ` — ${s.booksWithoutVectors} book(s) indexed WITHOUT embeddings (vector/hybrid search misses them); re-run calibre_build_index on them (no force needed)`;
+    }
+    return `Semantic search: ready (${name}, ${s.dim}-dim); ${index}${hint}.`;
+  }
+  const indexPart = index ? `; ${index}` : "";
   if (!s.dependencyInstalled) {
-    return `Semantic search: UNAVAILABLE — @huggingface/transformers not installed (keyword search still works). Install it, then restart the server.`;
+    return `Semantic search: UNAVAILABLE — model ${name} NOT LOADED (@huggingface/transformers not installed — install it, then restart the server)${indexPart} (keyword search still works).`;
   }
   // Installed on disk but this process can't use it → a restart is the only recovery.
-  return `Semantic search: UNAVAILABLE — model failed to load in this process though @huggingface/transformers is installed on disk. Restart the server (Claude Desktop: toggle the extension off/on, or restart the app); keyword search still works.`;
+  return `Semantic search: UNAVAILABLE — model ${name} failed to load in this process though @huggingface/transformers is installed on disk. Restart the server (Claude Desktop: toggle the extension off/on, or restart the app)${indexPart} (keyword search still works).`;
+}
+
+/** `index vN: B books / C chunks / F figures, V vectors`, a no-index hint, or undefined when no library was resolved. */
+function formatIndexCounts(s: SemanticStatus): string | undefined {
+  if (s.indexPresent === false) return "no index yet — run calibre_build_index";
+  if (s.indexedBooks === undefined) return undefined;
+  const gen = s.indexVersion !== undefined ? ` v${s.indexVersion}` : "";
+  return `index${gen}: ${s.indexedBooks} books / ${s.chunkCount ?? 0} chunks / ${s.figureCount ?? 0} figures, ${s.vectorCount ?? 0} vectors`;
+}
+
+/** `owner/name` → `name` for display. */
+function shortModel(model: string): string {
+  return model.includes("/") ? model.slice(model.lastIndexOf("/") + 1) : model;
+}
+
+/** What differs between an index's meta and this server's pipeline, or undefined if it matches. */
+function staleness(m: IndexMeta): string | undefined {
+  const diffs: string[] = [];
+  if (m.modelId !== MODEL_ID) diffs.push(`model ${m.modelId} (server: ${MODEL_ID})`);
+  if (m.dim !== EMBED_DIM) diffs.push(`dim ${m.dim} (server: ${EMBED_DIM})`);
+  if (m.indexVersion !== INDEX_VERSION) diffs.push(`indexVersion ${m.indexVersion} (server: ${INDEX_VERSION})`);
+  return diffs.length ? diffs.join(", ") : undefined;
 }
 
 /**

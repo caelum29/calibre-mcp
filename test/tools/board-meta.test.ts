@@ -43,6 +43,7 @@ function metaSearchDeps(cache: BoardCache): ToolDeps {
     } as unknown as ToolDeps["content"],
     calibre: {} as ToolDeps["calibre"],
     extractor: {} as ToolDeps["extractor"],
+    figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],
     index: {} as ToolDeps["index"],
     boardCache: cache,
@@ -69,11 +70,13 @@ function semanticDeps(cache: BoardCache): ToolDeps {
     } as unknown as ToolDeps["content"],
     calibre: {} as ToolDeps["calibre"],
     extractor: {} as ToolDeps["extractor"],
+    figures: {} as ToolDeps["figures"],
     embedder: {
       embedQuery: async () => new Float32Array(4),
     } as unknown as ToolDeps["embedder"],
     index: {
       hasIndex: () => true,
+      indexMeta: () => undefined,
       hasVectors: () => true,
       searchLibrary: () => [libHit(1), libHit(2)],
       searchLibraryFts: () => [],
@@ -92,7 +95,7 @@ describe("calibre_search board wiring", () => {
     );
     const attached = (r._meta as { calibreBoard: BoardPayload }).calibreBoard;
     expect(attached.books.map((b) => b.bookId)).toEqual([1, 2]);
-    expect(attached.books[0].title).toBe("Book 1");
+    expect(attached.books[0]?.title).toBe("Book 1");
     expect(cache.get("calibre_search", "rust")).toEqual(attached);
   });
 
@@ -144,7 +147,7 @@ describe("calibre_semantic_search board wiring", () => {
     );
     const attached = (r._meta as { calibreBoard: BoardPayload }).calibreBoard;
     expect(attached.kind).toBe("semantic");
-    expect(attached.books[0].score).toBeCloseTo(0.9);
+    expect(attached.books[0]?.score).toBeCloseTo(0.9);
     expect(cache.get("calibre_semantic_search", "distributed systems")).toEqual(attached);
   });
 
@@ -152,10 +155,7 @@ describe("calibre_semantic_search board wiring", () => {
     const cache = new BoardCache();
     const deps = semanticDeps(cache);
     (deps.index as unknown as Record<string, unknown>).searchLibrary = () => [];
-    const r = await semanticSearchTool.handler(
-      { query: "zzz", scope: "library", mode: "vector", topK: 10 },
-      deps,
-    );
+    const r = await semanticSearchTool.handler({ query: "zzz", scope: "library", mode: "vector", topK: 10 }, deps);
     expect(r._meta).toBeUndefined();
     expect(cache.get("calibre_semantic_search", "zzz")).toBeUndefined();
   });

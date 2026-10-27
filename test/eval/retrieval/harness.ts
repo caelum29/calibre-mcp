@@ -85,6 +85,8 @@ export interface CorpusBook {
   authors: string[];
   language: string;
   codeHeavy?: boolean;
+  /** EPUB→Markdown-shaped (`#` headings): exercises the heading front-matter rule (#102). */
+  headingStructured?: boolean;
   /** Synthetic figure inventory (relative to corpus/) — fed through the REAL marker-injection path. */
   figures?: string;
 }
@@ -125,9 +127,7 @@ export function loadCorpus(): LoadedCorpus {
   for (const b of raw.books) {
     const text = readFileSync(path.join(HERE, "corpus", b.file), "utf8");
     if (b.figures) {
-      const inventory = JSON.parse(
-        readFileSync(path.join(HERE, "corpus", b.figures), "utf8"),
-      ) as FigureInventory;
+      const inventory = JSON.parse(readFileSync(path.join(HERE, "corpus", b.figures), "utf8")) as FigureInventory;
       // Fixture texts carry no caption lines, so the real injector places every marker via
       // the PDF page-boundary fallback (page 1 → offset 0) — hence format "pdf" here.
       // Caveat (#90): that stacks ALL markers at offset 0, front-loading the book's first
@@ -136,7 +136,9 @@ export function loadCorpus(): LoadedCorpus {
       // spreading markers would mean touching fixture .txt files and re-baselining).
       const marked = injectFigureMarkers(text, inventory, "pdf");
       if (marked.unplaced > 0) {
-        throw new Error(`fixture book ${b.bookId}: ${marked.unplaced} figure marker(s) unplaced — keep inventory pages at 1`);
+        throw new Error(
+          `fixture book ${b.bookId}: ${marked.unplaced} figure marker(s) unplaced — keep inventory pages at 1`,
+        );
       }
       texts.set(b.bookId, marked.text);
       markers.set(b.bookId, marked.markers);
@@ -222,6 +224,8 @@ export interface PerQueryRow {
   /** Negatives: whether the tool signalled "nothing here" (zero results or low confidence). */
   flagged?: boolean;
   maxScore?: number;
+  /** Top cross-encoder sigmoid score when the rerank stage ran (RERANK_FLOOR calibration). */
+  maxRerank?: number;
   /** Whether the cross-encoder rerank stage actually ran for this query (hybrid/vector only). */
   reranked?: boolean;
   retrieved: string[];
@@ -354,6 +358,7 @@ async function runQuery(
   count: number;
   lowConfidence?: boolean;
   maxScore?: number;
+  maxRerank?: number;
   reranked?: boolean;
 }> {
   const r = await semanticSearchTool.handler(
@@ -365,6 +370,7 @@ async function runQuery(
   const count = Number(sc.count ?? 0);
   const lowConfidence = sc.lowConfidence as boolean | undefined;
   const maxScore = sc.maxScore as number | undefined;
+  const maxRerank = sc.maxRerank as number | undefined;
   const reranked = sc.reranked as boolean | undefined;
 
   if (q.target === "figures") {
@@ -382,6 +388,7 @@ async function runQuery(
       count,
       lowConfidence,
       maxScore,
+      maxRerank,
       reranked,
     };
   }
@@ -398,6 +405,7 @@ async function runQuery(
       count,
       lowConfidence,
       maxScore,
+      maxRerank,
       reranked,
     };
   }
@@ -423,6 +431,7 @@ async function runQuery(
     count,
     lowConfidence,
     maxScore,
+    maxRerank,
     reranked,
   };
 }
@@ -501,6 +510,9 @@ export async function runRetrievalEval(opts: HarnessOptions): Promise<EvalReport
         retrieved: out.retrieved,
       };
       if (out.maxScore !== undefined) row.maxScore = round4(out.maxScore);
+      // Rerank confidence per query — RERANK_FLOOR calibration input (#140). 4 significant
+      // digits, not 4 decimals: candidate floors go down to 1e-3 and positives sit near 1e-4.
+      if (out.maxRerank !== undefined) row.maxRerank = Number(out.maxRerank.toPrecision(4));
       if (out.reranked !== undefined) row.reranked = out.reranked;
       if (q.kind === "negative" || q.kind === "figure-negative") {
         row.flagged = out.count === 0 || out.lowConfidence === true;

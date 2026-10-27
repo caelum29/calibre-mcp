@@ -9,9 +9,7 @@ import type { EvalReport, Mode, PerQueryRow } from "./harness.js";
 /** Shape of thresholds.json (extra $comment keys tolerated). */
 export interface Thresholds {
   baselineReport: string;
-  nonRegression: Partial<
-    Record<Mode, { maxBrokenHit1Queries: number; negativesFlagged?: number }>
-  >;
+  nonRegression: Partial<Record<Mode, { maxBrokenHit1Queries: number; negativesFlagged?: number }>>;
   figureCaption: {
     queryCount: { min: number; max: number };
     gatedModes: Mode[];
@@ -23,6 +21,11 @@ export interface Thresholds {
     queryCount: { min: number; max: number };
     flaggedRate: number;
     positivesZeroedByFloor: number;
+  };
+  /** #102 heading front-matter trap queries (fixture 117): per-mode min Hit@1 count. */
+  headingFrontMatter?: {
+    queryIds: string[];
+    minHit1Queries: Partial<Record<Mode, number>>;
   };
 }
 
@@ -130,9 +133,7 @@ export function evaluateGate(current: EvalReport, baseline: EvalReport, t: Thres
   checks.push({
     name: "figure-negative: query count",
     active: true,
-    pass:
-      figNegs.length >= t.figureNegative.queryCount.min &&
-      figNegs.length <= t.figureNegative.queryCount.max,
+    pass: figNegs.length >= t.figureNegative.queryCount.min && figNegs.length <= t.figureNegative.queryCount.max,
     detail: `${figNegs.length} queries (want ${t.figureNegative.queryCount.min}-${t.figureNegative.queryCount.max})`,
   });
   const negActive = t.figureNegative.active === true;
@@ -143,6 +144,25 @@ export function evaluateGate(current: EvalReport, baseline: EvalReport, t: Thres
     pass: flaggedRate >= t.figureNegative.flaggedRate,
     detail: `flagged ${flaggedRate.toFixed(2)} (need ${t.figureNegative.flaggedRate})`,
   });
+
+  // 4. heading front-matter trap (#102): new queries the baseline predates, so the
+  //    non-regression diff above can't see them. Missing rows count as misses.
+  const hfm = t.headingFrontMatter;
+  if (hfm) {
+    for (const mode of MODES) {
+      const min = hfm.minHit1Queries[mode];
+      if (min === undefined) continue;
+      const byId = new Map(rowsOf(current, mode).map((r) => [r.id, r]));
+      const missed = hfm.queryIds.filter((id) => byId.get(id)?.metrics?.hit1 !== 1);
+      const hits = hfm.queryIds.length - missed.length;
+      checks.push({
+        name: `heading front-matter ${mode}: Hit@1 queries`,
+        active: true,
+        pass: hits >= min,
+        detail: `${hits}/${hfm.queryIds.length} (need ${min})${missed.length ? `; missed: ${missed.join(", ")}` : ""}`,
+      });
+    }
+  }
 
   return { pass: checks.every((c) => !c.active || c.pass), checks, drops };
 }

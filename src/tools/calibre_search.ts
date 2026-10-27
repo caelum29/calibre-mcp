@@ -49,10 +49,7 @@ const FTS_END = "<<";
  * spec hosts that forward it. Library-scope results only — scope=book renders passages
  * in chat and the widget collapses itself.
  */
-function boardMeta(
-  deps: ToolDeps,
-  payload: Omit<BoardPayload, "tool" | "serverUrl">,
-): Record<string, unknown> {
+function boardMeta(deps: ToolDeps, payload: Omit<BoardPayload, "tool" | "serverUrl">): Record<string, unknown> {
   const full: BoardPayload = { tool: "calibre_search", serverUrl: deps.config.serverUrl, ...payload };
   deps.boardCache?.set(full);
   return { calibreBoard: full };
@@ -124,9 +121,7 @@ async function metaLibraryScope(args: SearchArgs, deps: ToolDeps, fRes: FilterRe
 
   const fetched = page.bookIds.length;
   const more = offset + fetched < page.total;
-  const nextCursor = more
-    ? encodeCursor({ offset: offset + fetched, query: effQuery, sort: args.sort })
-    : undefined;
+  const nextCursor = more ? encodeCursor({ offset: offset + fetched, query: effQuery, sort: args.sort }) : undefined;
   const text = `Found ${page.total} books, showing ${offset + 1}–${offset + fetched}.${honesty}`;
 
   const _meta = boardMeta(deps, {
@@ -169,7 +164,12 @@ function structuredFilterFields(fRes: FilterResolution): Record<string, unknown>
 }
 
 /** scope=library, mode=fts — group FTS hits by book → resource_links + fenced snippets. */
-async function ftsLibraryScope(args: SearchArgs, deps: ToolDeps, fRes: FilterResolution): Promise<ToolResult> {
+async function ftsLibraryScope(
+  args: SearchArgs,
+  deps: ToolDeps,
+  fRes: FilterResolution,
+  signal?: AbortSignal,
+): Promise<ToolResult> {
   // calibredb's --with-library fragment needs the library ID, not the display name
   // (the display form 404s) — resolve first, same as the write path (commit 71531d2).
   const libId = await deps.content.resolveLibraryId(args.library);
@@ -181,6 +181,7 @@ async function ftsLibraryScope(args: SearchArgs, deps: ToolDeps, fRes: FilterRes
     matchStartMarker: FTS_START,
     matchEndMarker: FTS_END,
     library: libId,
+    signal,
   });
   const hits = allow === undefined ? rawHits : rawHits.filter((h) => allow.has(h.bookId));
   const honesty = await filterSuffix(deps, fRes, args.library, allow?.size);
@@ -236,9 +237,7 @@ async function ftsLibraryScope(args: SearchArgs, deps: ToolDeps, fRes: FilterRes
   }
 
   const more = offset + pageIds.length < bookIds.length;
-  const nextCursor = more
-    ? encodeCursor({ offset: offset + pageIds.length, query: cursorKey })
-    : undefined;
+  const nextCursor = more ? encodeCursor({ offset: offset + pageIds.length, query: cursorKey }) : undefined;
   const _meta = boardMeta(deps, {
     query: args.query,
     kind: "keyword",
@@ -265,7 +264,12 @@ async function ftsLibraryScope(args: SearchArgs, deps: ToolDeps, fRes: FilterRes
 }
 
 /** scope=book — full-text search within one book; returns fenced in-book snippets. */
-async function ftsBookScope(args: SearchArgs, deps: ToolDeps, bookId: number): Promise<ToolResult> {
+async function ftsBookScope(
+  args: SearchArgs,
+  deps: ToolDeps,
+  bookId: number,
+  signal?: AbortSignal,
+): Promise<ToolResult> {
   const libId = await deps.content.resolveLibraryId(args.library);
   const hits = await deps.calibre.ftsSearch(args.query, {
     restrictToIds: [bookId],
@@ -273,6 +277,7 @@ async function ftsBookScope(args: SearchArgs, deps: ToolDeps, bookId: number): P
     matchStartMarker: FTS_START,
     matchEndMarker: FTS_END,
     library: libId,
+    signal,
   });
   const snippets = hits.map((h) => h.snippet).filter((s): s is string => Boolean(s));
 
@@ -332,7 +337,7 @@ export const searchTool = defineTool({
   name: "calibre_search",
   title: "Search books",
   description:
-    "Find books by exact title, author, ISBN, tag, or Calibre query syntax (mode=meta), or by full text (mode=fts). scope=book returns short keyword snippets from inside one book; first hits often land in TOC/front matter — for definitional or topic questions within a book prefer calibre_semantic_search scope=book (ranked passages with char offsets). Use calibre_semantic_search for meaning/topic queries. For \"how many\" questions use countOnly=true (returns only the count). filter accepts a bundle name to scope the search (list bundles via calibre_manage_bundles).",
+    'Find books by exact title, author, ISBN, tag, or Calibre query syntax (mode=meta), or by full text (mode=fts). scope=book returns short keyword snippets from inside one book; first hits often land in TOC/front matter — for definitional or topic questions within a book prefer calibre_semantic_search scope=book (ranked passages with char offsets). Use calibre_semantic_search for meaning/topic queries. For "how many" questions use countOnly=true (returns only the count). filter accepts a bundle name to scope the search (list bundles via calibre_manage_bundles).',
   inputSchema: {
     query: z.string().min(1).max(512),
     mode: z.enum(["meta", "fts"]).optional().default("meta"),
@@ -361,7 +366,7 @@ export const searchTool = defineTool({
     exclusionsApplied: z.array(z.string()).optional(),
   },
   annotations: { readOnlyHint: true, openWorldHint: true },
-  handler: async (args, deps) => {
+  handler: async (args, deps, ctx) => {
     try {
       // scope=book → full-text within one book (metadata search on a single record is moot).
       // Bundles scope LIBRARY discovery; a named book is already the narrowest scope.
@@ -372,7 +377,7 @@ export const searchTool = defineTool({
         if (args.bookId === undefined) return toolError("scope=book requires bookId");
         const bookId = await resolveNumericId(deps, args.bookId, args.library);
         if (bookId === undefined) return toolError(`No book with id/uuid ${args.bookId}`);
-        return await ftsBookScope(args, deps, bookId);
+        return await ftsBookScope(args, deps, bookId, ctx?.signal);
       }
       const fr = await resolveFilter(deps, {
         filter: args.filter,
@@ -381,7 +386,7 @@ export const searchTool = defineTool({
         library: args.library,
       });
       if (!fr.ok) return toolError(fr.error);
-      if (args.mode === "fts") return await ftsLibraryScope(args, deps, fr.res);
+      if (args.mode === "fts") return await ftsLibraryScope(args, deps, fr.res, ctx?.signal);
       return await metaLibraryScope(args, deps, fr.res);
     } catch (err) {
       // A missing calibredb binary carries its own install hint — don't blame the index.

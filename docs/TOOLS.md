@@ -1,6 +1,6 @@
 # Tool reference
 
-The calibre-mcp server exposes 19 tools your AI assistant can call to work with your
+The calibre-mcp server exposes <!-- tool-count:modelFacing -->19<!-- /tool-count:modelFacing --> tools your AI assistant can call to work with your
 [Calibre](https://calibre-ebook.com) library. They fall into two scopes:
 
 - **Catalog / library** — search across the whole library, browse categories, curate
@@ -26,8 +26,9 @@ tools expect.
 
 Confirms the server can reach your running Calibre Content Server (end to end, via
 `calibredb`) and reports semantic-search status — whether the embedding model and its
-dependency are present, and how many vectors the index holds. On success it also returns your
-library's categories. Use it first when something isn't working, or to answer "why is semantic
+dependency are present, how many vectors the index holds, and the index generation
+(`indexVersion`, read from the index itself — flagged **stale** with a rebuild hint when it
+doesn't match the running server). On success it also returns your library's categories. Use it first when something isn't working, or to answer "why is semantic
 search off?".
 
 No parameters.
@@ -99,10 +100,19 @@ character ranges, approximate token counts, and a per-chapter `cursor` you can f
 start reading at that chapter. Works on English and Russian/Ukrainian books. Scanned/image PDFs
 yield no text (Calibre has no OCR).
 
+The map reports which `detector` built it, in this order of precedence:
+
+| `detector` | Source |
+|---|---|
+| `pdf-outline` | The PDF's own bookmarks (needs poppler's `pdftohtml`). Used when the outline yields at least two plausible chapters; leading front matter (cover, copyright, contents, preface…) is left out, `Part` entries are opened up into their chapters, and each chapter starts at its heading line on the bookmarked page. Flat "bookmark every section/page" outlines are rejected. `n` is a running number, not the printed chapter number. |
+| `numeric` | Headings in the text: `Chapter 5`, `Глава 5`, `Розділ 3`, Roman numerals, `第5章` |
+| `structural` | Markdown/AsciiDoc headings (`#`, `##`, setext) — mostly EPUB/Markdown books |
+| `none` | Nothing found — walk the book with plain cursors |
+
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
 | `id` (or `bookId`) | number \| uuid | *(required)* | The book to read |
-| `format` | string | *(auto)* | Which format to extract (e.g. `epub`, `pdf`); auto-picks the best |
+| `format` | string | *(auto)* | Which format to extract (e.g. `epub`, `pdf`); auto-picks the best (EPUB → Markdown → PDF → TXT/AZW3/MOBI/DOCX/ODT/HTMLZ/FB2/RTF) |
 | `maxChars` | number | `8000` | Max characters per excerpt (max 40000) |
 | `sentenceAware` | boolean | `true` | Trim excerpt edges to sentence boundaries |
 | `structure` | boolean | `false` | Return a chapter map instead of book text |
@@ -118,7 +128,11 @@ See a book's **figures** — the images its text refers to, identified by an adj
 (`Figure 1-2. …`, `Рис. 3.1. …`). Call it without `indexes` to **list** figures (page, caption,
 source) so you can judge relevance before spending image tokens; then pass `indexes` to fetch
 up to 3 of them as actual images in the chat. Raw uncaptioned images (covers, decorations,
-inline equation art) are hidden unless `include_uncaptioned: true`.
+inline equation art) are hidden unless `include_uncaptioned: true`. Captions that wrap
+across lines are read whole, and in PDFs a caption set apart from its number (beside it, or
+in a side column below it) is read from the page layout; a figure printed with just its
+number (`Рис. 7.2` under a diagram) is listed as *label only*, and a caption cut for length ends in `…`. Indexes count
+hidden uncaptioned images too, so the default list can skip numbers.
 
 In MCP Apps hosts (Claude Desktop), a fetch also renders the figures **for you** in an in-chat
 viewer — a large reading pane with a margin rail when several figures come back, click (or
@@ -223,16 +237,26 @@ Like `calibre_search`, library-scope calls subtract exclusion-marker bundles by 
 report it (`exclusions applied: […]`). The filter never touches the index — it restricts
 candidates at query time, so creating or changing bundles needs no re-index.
 
+Every successful response carries the index generation once — `indexVersion` in
+`structuredContent` plus one line in the text. Character offsets and figure pages are valid
+only within that generation; store it with any citation you persist (see
+[Citation provenance](SEMANTIC-SEARCH.md#citation-provenance-indexversion)).
+
 > Ask: *"which of my books explain consumer-group rebalancing?"* · *"find passages in book 187 about idempotent producers"* (`scope: book`) · *"find a diagram of the JWT signature flow"* (`target: figures`) · *"what do my databases books say about LSM trees?"* (`filter: databases`)
 
 ### `calibre_build_index`
 
 Build (or refresh) the local semantic index for a chosen set of books. A selector is
 **required** — pick books by `bookId`, a list of `ids`, or a Calibre `query` (there's no
-index-everything default). The first embedding build downloads the model (~118 MB, one-time),
-then runs offline. Set `keywordOnly: true` to build a model-free keyword index (zero ML
+index-everything default). A `query` selects **every** matching book (paged, no cap) — on a
+big library a broad query is a long job that can outlive the client's request timeout; just
+re-run the same call to resume, since books already up to date are skipped. The first
+embedding build downloads the model (~118 MB, one-time), then runs offline. Set `keywordOnly: true` to build a model-free keyword index (zero ML
 dependencies); this also happens automatically if the embedding model isn't installed. Re-run
-after adding books; use `force: true` to re-index books that haven't changed. Each book's
+after adding books; use `force: true` to re-index books that haven't changed. An embedding
+build treats books indexed without embeddings (keyword-only) as out of date and re-indexes them
+without `force`; a keyword-only build never overwrites a book that already has embeddings (it
+reports them as `booksPreserved`). Each book's
 figure captions (see `calibre_get_figures`) are indexed alongside its text, powering
 `calibre_semantic_search` with `target: figures`.
 
@@ -247,7 +271,7 @@ it's safe to run without enabling library writes.
 |---|---|---|---|
 | `bookId` | number \| uuid | — | A single book to index |
 | `ids` | array of ids | — | Several books to index |
-| `query` | string | — | Index all books matching a Calibre query (capped at 100) |
+| `query` | string | — | Index every book matching a Calibre query (no cap) |
 | `library` | string | *(default)* | Library name or id |
 | `force` | boolean | `false` | Re-index books even if unchanged |
 | `keywordOnly` | boolean | `false` | Build a keyword-only index (no embedding model needed) |
@@ -499,7 +523,7 @@ Content Server, so they never race an open Calibre GUI.
 
 ## A note on the widget-internal tools
 
-Two extra tools exist that aren't meant for the assistant to call; MCP-Apps hosts (like
+<!-- tool-count:appOnly -->2<!-- /tool-count:appOnly --> extra tools exist that aren't meant for the assistant to call; MCP-Apps hosts (like
 Claude Desktop) hide them from the model:
 
 - `calibre_board_data` — the in-chat cover board re-fetches its own search data through it.

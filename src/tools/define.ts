@@ -7,9 +7,7 @@
 import type { z } from "zod";
 import type { AnyToolDescriptor, ToolDescriptor } from "./types.js";
 
-export function defineTool<Shape extends z.ZodRawShape>(
-  d: ToolDescriptor<Shape>,
-): AnyToolDescriptor {
+export function defineTool<Shape extends z.ZodRawShape>(d: ToolDescriptor<Shape>): AnyToolDescriptor {
   return {
     name: d.name,
     title: d.title,
@@ -19,6 +17,6 @@ export function defineTool<Shape extends z.ZodRawShape>(
     annotations: d.annotations,
     write: d.write,
     localWrite: d.localWrite,
-    handler: (args, deps) => d.handler(args as z.infer<z.ZodObject<Shape>>, deps),
+    handler: (args, deps, ctx) => d.handler(args as z.infer<z.ZodObject<Shape>>, deps, ctx),
   };
 }

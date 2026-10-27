@@ -2,13 +2,7 @@
 // `/ajax/search` contract but expose only what handlers need.
 
 /** Sortable fields exposed to callers (a safe subset of Calibre's sort keys). */
-export type SearchSort =
-  | "title"
-  | "authors"
-  | "pubdate"
-  | "timestamp"
-  | "rating"
-  | "last_modified";
+export type SearchSort = "title" | "authors" | "pubdate" | "timestamp" | "rating" | "last_modified";
 
 export type SortOrder = "asc" | "desc";
 

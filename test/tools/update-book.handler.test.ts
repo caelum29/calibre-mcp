@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
+import { z } from "zod";
 import { updateBookTool } from "../../src/tools/calibre_update_book.js";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
@@ -39,6 +40,9 @@ function deps(opts: FakeOpts = {}): ToolDeps {
     content: content as unknown as ToolDeps["content"],
     calibre: calibre as unknown as ToolDeps["calibre"],
     extractor: {} as unknown as ToolDeps["extractor"],
+    figures: {} as ToolDeps["figures"],
+    embedder: {} as ToolDeps["embedder"],
+    index: {} as ToolDeps["index"],
     log,
   };
 }
@@ -60,11 +64,20 @@ describe("calibre_update_book handler", () => {
     expect(r.structuredContent?.noop).toBe(false);
   });
 
-  it("detects a no-op when before equals after", async () => {
+  it("sets a previously-empty field without failing the outputSchema", async () => {
     const r = await updateBookTool.handler(
-      { id: 658, changes: { tags: ["old"] } },
-      deps({ books: [book(), book()] }),
+      { id: 658, changes: { publisher: "Acme" } },
+      deps({ books: [book(), book({ publisher: "Acme" })] }),
     );
+    expect(r.isError).toBeFalsy();
+    expect(r.structuredContent?.changed).toEqual([{ field: "publisher", before: null, after: "Acme" }]);
+    // the committed write must survive the SDK's outputSchema validation
+    const schema = z.object(updateBookTool.outputSchema!);
+    expect(schema.safeParse(JSON.parse(JSON.stringify(r.structuredContent))).success).toBe(true);
+  });
+
+  it("detects a no-op when before equals after", async () => {
+    const r = await updateBookTool.handler({ id: 658, changes: { tags: ["old"] } }, deps({ books: [book(), book()] }));
     expect(r.structuredContent?.noop).toBe(true);
   });
 
@@ -102,16 +115,11 @@ describe("calibre_update_book handler", () => {
       if (calls > 1) throw new CalibreHttpError(0, "u", "Content Server request timed out");
       return book();
     };
-    const r = await updateBookTool.handler(
-      { id: 658, changes: { publisher: "MIT Press" } },
-      deps({ getBook }),
-    );
+    const r = await updateBookTool.handler({ id: 658, changes: { publisher: "MIT Press" } }, deps({ getBook }));
     expect(r.isError).toBeFalsy();
     expect((r.content[0] as { text: string }).text).toContain("Updated book 658");
     // diff falls back to the intended value when the re-read is unavailable
-    expect(r.structuredContent?.changed).toEqual([
-      { field: "publisher", before: undefined, after: "MIT Press" },
-    ]);
+    expect(r.structuredContent?.changed).toEqual([{ field: "publisher", before: null, after: "MIT Press" }]);
   });
 
   it("verifies a timed-out write via re-read and reports success when it landed", async () => {

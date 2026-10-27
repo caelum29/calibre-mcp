@@ -96,7 +96,13 @@ describe("buildEpubInventory", () => {
 <svg viewBox="0 0 600 800"><image xlink:href="images/cover.jpg" width="600" height="800"/></svg>`,
     };
     const inv = buildEpubInventory([doc]);
-    expect(inv.entries[0]).toMatchObject({ source: "svg-render", captioned: true, label: "2-1", width: 400, height: 200 });
+    expect(inv.entries[0]).toMatchObject({
+      source: "svg-render",
+      captioned: true,
+      label: "2-1",
+      width: 400,
+      height: 200,
+    });
     expect(inv.entries[0]?.imageHref).toBeUndefined();
     expect(inv.entries[1]).toMatchObject({ source: "raster", imageHref: "images/cover.jpg", captioned: false });
   });

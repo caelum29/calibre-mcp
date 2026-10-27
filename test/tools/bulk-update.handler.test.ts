@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
+import { z } from "zod";
 import { bulkUpdateTool } from "../../src/tools/calibre_bulk_update.js";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
@@ -7,8 +8,15 @@ import { CalibreCliTimeoutError } from "../../src/domain/errors.js";
 import type { ToolDeps } from "../../src/tools/types.js";
 
 const book = (over: Partial<Book> = {}): Book => ({
-  id: 1, uuid: "u", title: "T", authors: ["A"], identifiers: {}, formats: ["pdf"],
-  tags: ["old"], languages: ["en"], ...over,
+  id: 1,
+  uuid: "u",
+  title: "T",
+  authors: ["A"],
+  identifiers: {},
+  formats: ["pdf"],
+  tags: ["old"],
+  languages: ["en"],
+  ...over,
 });
 
 interface FakeOpts {
@@ -25,16 +33,25 @@ function deps(opts: FakeOpts = {}): ToolDeps {
     resolveLibraryId: async (name?: string): Promise<string> => name ?? "Programming_Books",
     getBook: opts.getBook ?? (async (id: number): Promise<Book> => byId.get(id) ?? book({ id })),
     search: async () => ({
-      bookIds: fixture.map((b) => b.id), total: fixture.length,
-      num: fixture.length, offset: 0, sort: "title", libraryId: "Lib",
+      bookIds: fixture.map((b) => b.id),
+      total: fixture.length,
+      num: fixture.length,
+      offset: 0,
+      sort: "title",
+      libraryId: "Lib",
     }),
     booksByIds: async (ids: number[]) => new Map(ids.map((id) => [id, byId.get(id) ?? null] as const)),
   };
   return {
     config: loadConfig({}),
     content: content as unknown as ToolDeps["content"],
-    calibre: { calibredb: opts.calibredb ?? (async () => ({ stdout: "", stderr: "" })) } as unknown as ToolDeps["calibre"],
+    calibre: {
+      calibredb: opts.calibredb ?? (async () => ({ stdout: "", stderr: "" })),
+    } as unknown as ToolDeps["calibre"],
     extractor: {} as unknown as ToolDeps["extractor"],
+    figures: {} as ToolDeps["figures"],
+    embedder: {} as ToolDeps["embedder"],
+    index: {} as ToolDeps["index"],
     log,
   };
 }
@@ -52,12 +69,17 @@ describe("calibre_bulk_update handler", () => {
     expect(r.structuredContent?.matched).toBe(2);
   });
 
+  it("previews a previously-empty field with before: null (outputSchema-valid)", async () => {
+    const r = await bulkUpdateTool.handler({ changes: { publisher: "Acme" }, ids: [1], preview: true }, deps());
+    const books = r.structuredContent?.books as { changed: unknown[] }[];
+    expect(books[0]!.changed).toEqual([{ field: "publisher", before: null, after: "Acme" }]);
+    const schema = z.object(bulkUpdateTool.outputSchema!);
+    expect(schema.safeParse(JSON.parse(JSON.stringify(r.structuredContent))).success).toBe(true);
+  });
+
   it("requires a book set (no ids and no query)", async () => {
     const spy = vi.fn(async () => ({ stdout: "", stderr: "" }));
-    const r = await bulkUpdateTool.handler(
-      { changes: { tags: ["new"] }, preview: false },
-      deps({ calibredb: spy }),
-    );
+    const r = await bulkUpdateTool.handler({ changes: { tags: ["new"] }, preview: false }, deps({ calibredb: spy }));
     expect(r.isError).toBe(true);
     expect(spy).not.toHaveBeenCalled();
   });
@@ -70,9 +92,11 @@ describe("calibre_bulk_update handler", () => {
     );
     expect(r.isError).toBeFalsy();
     expect(spy).toHaveBeenCalledTimes(2);
-    expect(spy).toHaveBeenNthCalledWith(1,
+    expect(spy).toHaveBeenNthCalledWith(
+      1,
       ["set_metadata", "1", "--field", "tags:new"],
-      expect.objectContaining({ library: "Programming_Books" }));
+      expect.objectContaining({ library: "Programming_Books" }),
+    );
     expect(r.structuredContent?.applied).toEqual([1, 2]);
   });
 
@@ -124,7 +148,7 @@ describe("calibre_bulk_update handler", () => {
     );
     expect(r.structuredContent?.applied).toEqual([]);
     const failed = r.structuredContent?.failed as { id: number; error: string }[];
-    expect(failed[0].id).toBe(1);
-    expect(failed[0].error).toContain("calibre_get_book id=1");
+    expect(failed[0]?.id).toBe(1);
+    expect(failed[0]?.error).toContain("calibre_get_book id=1");
   });
 });

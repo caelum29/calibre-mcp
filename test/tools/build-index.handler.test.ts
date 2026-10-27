@@ -6,7 +6,7 @@ import type { Book } from "../../src/domain/book.js";
 import type { ExtractedText } from "../../src/calibre/extract.js";
 import type { Embedder } from "../../src/semantic/embedder.js";
 import type { Reranker } from "../../src/semantic/reranker.js";
-import { SqliteIndexStore } from "../../src/semantic/store.js";
+import { type IndexedFigure, SqliteIndexStore } from "../../src/semantic/store.js";
 import { EMBED_DIM, MAX_TOKENS, PASSAGE_PREFIX } from "../../src/semantic/model.js";
 import { l2normalize } from "../../src/semantic/vector.js";
 import type { ToolDeps } from "../../src/tools/types.js";
@@ -103,14 +103,12 @@ function deps(opts: FakeOpts = {}): ToolDeps {
   const content = {
     getBook: async (): Promise<Book> => ({ ...baseBook, ...opts.book }),
     resolveLibraryId: async () => "Programming_Books",
-    search: async () => ({
-      bookIds: ids,
-      total: ids.length,
-      num: ids.length,
-      offset: 0,
-      sort: "",
-      libraryId: "Programming_Books",
-    }),
+    // Honors num/offset like /ajax/search, so paging loops are exercised for real.
+    search: async (p: { num?: number; offset?: number }) => {
+      const offset = p.offset ?? 0;
+      const page = ids.slice(offset, offset + (p.num ?? 100));
+      return { bookIds: page, total: ids.length, num: page.length, offset, sort: "", libraryId: "Programming_Books" };
+    },
   };
   const extractor = {
     getText:
@@ -121,6 +119,8 @@ function deps(opts: FakeOpts = {}): ToolDeps {
         chars: 5000,
         cached: false,
         markers: [],
+        unplaced: 0,
+        outline: [],
       })),
   };
   return {
@@ -128,6 +128,7 @@ function deps(opts: FakeOpts = {}): ToolDeps {
     content: content as unknown as ToolDeps["content"],
     calibre: {} as unknown as ToolDeps["calibre"],
     extractor: extractor as unknown as ToolDeps["extractor"],
+    figures: {} as ToolDeps["figures"],
     embedder: opts.embedder ?? makeFakeEmbedder(),
     ...(opts.reranker ? { reranker: opts.reranker } : {}),
     index: opts.store ?? new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" })),
@@ -182,12 +183,55 @@ describe("calibre_build_index handler", () => {
     const r = await buildIndexTool.handler(
       args({ bookId: 1 }),
       deps({
-        getText: async () => ({ text: "   ", backend: "pdftotext", chars: 3, cached: false, markers: [] }),
+        getText: async () => ({
+          text: "   ",
+          backend: "pdftotext",
+          chars: 3,
+          cached: false,
+          markers: [],
+          unplaced: 0,
+          outline: [],
+        }),
       }),
     );
     expect(r.isError).toBeFalsy();
     expect(r.structuredContent).toMatchObject({ booksIndexed: 0 });
-    expect((r.structuredContent?.failures as string[])[0]).toContain("book 1");
+    expect((r.structuredContent?.failures as string[] | undefined)?.[0]).toContain("book 1");
+  });
+
+  it("a query selects EVERY match across pages, not just the first 100 (#138)", async () => {
+    const libraryIds = Array.from({ length: 1150 }, (_, i) => i + 1);
+    // Empty text fails each book instantly — this test is about SELECTION, not indexing cost.
+    const r = await buildIndexTool.handler(
+      args({ query: "id:>=0", keywordOnly: true }),
+      deps({
+        libraryIds,
+        getText: async () => ({
+          text: " ",
+          backend: "pdftotext",
+          chars: 1,
+          cached: false,
+          markers: [],
+          unplaced: 0,
+          outline: [],
+        }),
+      }),
+    );
+    expect(r.isError).toBeFalsy();
+    expect(r.structuredContent).toMatchObject({ booksRequested: 1150 });
+    expect(r.structuredContent?.failures as string[]).toHaveLength(1150);
+    expect((r.structuredContent?.failures as string[] | undefined)?.at(-1)).toContain("book 1150");
+    // Large selections tell the model a re-run resumes an interrupted build.
+    expect((r.content[0] as { text: string }).text).toContain("re-run the same call to resume");
+  });
+
+  it("a small query selection carries no large-build note", async () => {
+    const r = await buildIndexTool.handler(
+      args({ query: "tag:rust", keywordOnly: true }),
+      deps({ libraryIds: [1, 2, 3] }),
+    );
+    expect(r.structuredContent).toMatchObject({ booksRequested: 3, booksIndexed: 3 });
+    expect((r.content[0] as { text: string }).text).not.toContain("resume");
   });
 
   it("notes that enableFts is not yet implemented", async () => {
@@ -241,20 +285,14 @@ describe("calibre_build_index handler", () => {
 
   it("CALIBRE_MCP_RERANK=off skips the reranker pre-warm", async () => {
     const reranker = fakeReranker();
-    const r = await buildIndexTool.handler(
-      args({ bookId: 1 }),
-      deps({ reranker, env: { CALIBRE_MCP_RERANK: "off" } }),
-    );
+    const r = await buildIndexTool.handler(args({ bookId: 1 }), deps({ reranker, env: { CALIBRE_MCP_RERANK: "off" } }));
     expect(r.isError).toBeFalsy();
     expect(reranker.warmups).toBe(0);
   });
 
   it("a failed reranker pre-download never fails the build — it degrades to a note", async () => {
     const store = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
-    const r = await buildIndexTool.handler(
-      args({ bookId: 1 }),
-      deps({ store, reranker: fakeReranker(true) }),
-    );
+    const r = await buildIndexTool.handler(args({ bookId: 1 }), deps({ store, reranker: fakeReranker(true) }));
     expect(r.isError).toBeFalsy();
     expect(r.structuredContent).toMatchObject({ booksIndexed: 1 });
     expect((r.content[0] as { text: string }).text).toContain("Reranker model could not be pre-downloaded");
@@ -281,6 +319,72 @@ describe("calibre_build_index handler", () => {
     const r = await buildIndexTool.handler(args({ bookId: 1, keywordOnly: true }), deps());
     expect(r.isError).toBeFalsy();
     expectUniversalRemediation((r.content[0] as { text: string }).text);
+  });
+});
+
+describe("atomic writes + mixed-capability writers (issue #197)", () => {
+  const LIBID = "Programming_Books";
+  const newStore = () => new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
+
+  it("a semantic build re-indexes a keyword-only entry without force", async () => {
+    const store = newStore();
+    // e.g. written by a model-less .mcpb sharing the db — same lastModified, no vectors
+    await buildIndexTool.handler(args({ bookId: 1 }), deps({ store, embedder: unavailableEmbedder }));
+    const r = await buildIndexTool.handler(args({ bookId: 1 }), deps({ store }));
+    expect([r.structuredContent?.booksIndexed, store.booksMissingVectors(LIBID)]).toEqual([1, 0]);
+  });
+
+  it("a semantic build still skips a fully embedded, up-to-date book", async () => {
+    const store = newStore();
+    await buildIndexTool.handler(args({ bookId: 1 }), deps({ store }));
+    const again = await buildIndexTool.handler(args({ bookId: 1 }), deps({ store }));
+    expect(again.structuredContent).toMatchObject({ booksIndexed: 0, booksSkipped: 1 });
+  });
+
+  it("a keyword-only build leaves an embedded book's vectors in place, even with force", async () => {
+    const store = newStore();
+    await buildIndexTool.handler(args({ bookId: 1 }), deps({ store }));
+    const vectors = store.vectorCount(LIBID);
+    const r = await buildIndexTool.handler(args({ bookId: 1, force: true, keywordOnly: true }), deps({ store }));
+    expect([r.structuredContent?.booksPreserved, r.structuredContent?.booksIndexed, store.vectorCount(LIBID)]).toEqual([
+      1,
+      0,
+      vectors,
+    ]);
+  });
+
+  it("names preserved books in the text block, not just structuredContent", async () => {
+    const store = newStore();
+    await buildIndexTool.handler(args({ bookId: 1 }), deps({ store }));
+    const r = await buildIndexTool.handler(args({ bookId: 1, force: true, keywordOnly: true }), deps({ store }));
+    expect((r.content[0] as { text: string }).text).toContain("never downgrades");
+  });
+
+  /** A store whose next write fails mid-transaction (after the book + chunk rows are in). */
+  class FailingWriteStore extends SqliteIndexStore {
+    failNext = false;
+    override replaceBook(
+      ...a: Parameters<SqliteIndexStore["replaceBook"]>
+    ): ReturnType<SqliteIndexStore["replaceBook"]> {
+      if (!this.failNext) return super.replaceBook(...a);
+      const [lib, meta, chunks, , opts] = a;
+      const bad = { figIndex: 0, page: 1, caption: null, charOffset: 0, format: "pdf" } as unknown as IndexedFigure;
+      return super.replaceBook(lib, meta, chunks, [bad], opts);
+    }
+  }
+
+  it("a failed commit is reported as a failure and keeps the book's previous rows", async () => {
+    const store = new FailingWriteStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
+    await buildIndexTool.handler(args({ bookId: 1 }), deps({ store }));
+    const before = store.stats(LIBID);
+    store.failNext = true;
+    const r = await buildIndexTool.handler(args({ bookId: 1, force: true }), deps({ store }));
+    expect([r.structuredContent?.failures, store.stats(LIBID)]).toEqual([[expect.stringContaining("book 1")], before]);
+  });
+
+  it("a committed book is never listed under failures", async () => {
+    const r = await buildIndexTool.handler(args({ bookId: 1 }), deps({ store: newStore() }));
+    expect([r.structuredContent?.booksIndexed, r.structuredContent?.failures]).toEqual([1, []]);
   });
 });
 
@@ -335,10 +439,18 @@ describe("empty-extraction message (issue #100 nit)", () => {
       args({ bookId: 1 }),
       deps({
         book: { formats: ["epub"] },
-        getText: async () => ({ text: "   ", backend: "ebook-convert", chars: 3, cached: false, markers: [] }),
+        getText: async () => ({
+          text: "   ",
+          backend: "ebook-convert",
+          chars: 3,
+          cached: false,
+          markers: [],
+          unplaced: 0,
+          outline: [],
+        }),
       }),
     );
-    const failure = (r.structuredContent?.failures as string[])[0]!;
+    const failure = (r.structuredContent?.failures as string[] | undefined)?.[0] ?? "";
     expect(failure).toContain("EPUB has no extractable text layer");
     expect(failure).not.toContain("PDF");
   });
@@ -346,28 +458,32 @@ describe("empty-extraction message (issue #100 nit)", () => {
   it("still diagnoses a scanned PDF for PDFs", async () => {
     const r = await buildIndexTool.handler(
       args({ bookId: 1 }),
-      deps({ getText: async () => ({ text: "   ", backend: "pdftotext", chars: 3, cached: false, markers: [] }) }),
+      deps({
+        getText: async () => ({
+          text: "   ",
+          backend: "pdftotext",
+          chars: 3,
+          cached: false,
+          markers: [],
+          unplaced: 0,
+          outline: [],
+        }),
+      }),
     );
-    expect((r.structuredContent?.failures as string[])[0]).toContain("scanned/image PDF");
+    expect((r.structuredContent?.failures as string[] | undefined)?.[0]).toContain("scanned/image PDF");
   });
 });
 
 describe("semantic degradation surfacing (issue #41 / #46)", () => {
   it("auto-degrade carries semanticAvailable:false + a reason in structuredContent", async () => {
-    const r = await buildIndexTool.handler(
-      args({ bookId: 1 }),
-      deps({ embedder: unavailableEmbedder }),
-    );
+    const r = await buildIndexTool.handler(args({ bookId: 1 }), deps({ embedder: unavailableEmbedder }));
     expect(r.isError).toBeFalsy();
     expect(r.structuredContent?.semanticAvailable).toBe(false);
     expect(r.structuredContent?.semanticReason as string).toContain("unavailable");
   });
 
   it("auto-degrade leads the text block with the degrade warning, before the count summary", async () => {
-    const r = await buildIndexTool.handler(
-      args({ bookId: 1 }),
-      deps({ embedder: unavailableEmbedder }),
-    );
+    const r = await buildIndexTool.handler(args({ bookId: 1 }), deps({ embedder: unavailableEmbedder }));
     const text = (r.content[0] as { text: string }).text;
     // The warning must come first — a client skimming line 1 must not read unqualified success.
     expect(text.indexOf("Embedding model unavailable")).toBe(0);
@@ -403,7 +519,15 @@ describe("front-matter flagging at build time (issue #18)", () => {
     const store = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
     const d = deps({
       store,
-      getText: async () => ({ text: front + body, backend: "pdftotext", chars: front.length + body.length, cached: false, markers: [] }),
+      getText: async () => ({
+        text: front + body,
+        backend: "pdftotext",
+        chars: front.length + body.length,
+        cached: false,
+        markers: [],
+        unplaced: 0,
+        outline: [],
+      }),
     });
     const r = await buildIndexTool.handler(args({ bookId: 1 }), d);
     expect(r.isError).toBeUndefined();
@@ -439,9 +563,11 @@ describe("figure caption indexing (D-018 Phase B / #86)", () => {
     chars: 5000,
     cached: false,
     markers: [
-      { index: 0, charOffset: 0, page: 3, caption: 'Figure 1-1. The ownership tree' },
+      { index: 0, charOffset: 0, page: 3, caption: "Figure 1-1. The ownership tree" },
       { index: 1, charOffset: 120, page: 7, caption: "Figure 2-4. Borrow checker flow" },
     ],
+    unplaced: 0,
+    outline: [],
   });
   /** Inventory matching the markers by entry index — the source/dims join input. */
   const inventory = {
@@ -459,8 +585,10 @@ describe("figure caption indexing (D-018 Phase B / #86)", () => {
       return { inventory, cached: true };
     },
   });
-  const withFigures = (d: ToolDeps, fail = false): ToolDeps =>
-    ({ ...d, figures: figuresService(fail) as unknown as ToolDeps["figures"] });
+  const withFigures = (d: ToolDeps, fail = false): ToolDeps => ({
+    ...d,
+    figures: figuresService(fail) as unknown as ToolDeps["figures"],
+  });
 
   it("indexes every placed marker as a figure row, joined with inventory source/dims", async () => {
     const store = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
@@ -479,7 +607,9 @@ describe("figure caption indexing (D-018 Phase B / #86)", () => {
     expect(hits[0]!.charOffset).toBe(120);
     expect(hits[0]!.format).toBe("pdf");
     // captions were embedded with the same "[title › authors]" context prefix as chunks
-    expect(embedder.embedded.some((t) => t.includes("[Rust in Action › Tim]") && t.includes("ownership tree"))).toBe(true);
+    expect(embedder.embedded.some((t) => t.includes("[Rust in Action › Tim]") && t.includes("ownership tree"))).toBe(
+      true,
+    );
     // caption vectors exist → vector figure search ranks them
     const q = new Float32Array(EMBED_DIM);
     q[0] = 1;

@@ -33,7 +33,5 @@ export function rrfFuse(rankings: number[][], k: number = RRF_K, weights?: numbe
       scores.set(id, (scores.get(id) ?? 0) + w / (k + rank + 1));
     }
   }
-  return [...scores.entries()]
-    .map(([id, score]) => ({ id, score }))
-    .sort((a, b) => b.score - a.score);
+  return [...scores.entries()].map(([id, score]) => ({ id, score })).sort((a, b) => b.score - a.score);
 }

@@ -1,0 +1,39 @@
+# Weekly, grouped update PRs. Dependencies are exact-pinned, so nothing moves without one.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: ci
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    ignore:
+      # ext-apps 2.x targets SDK-v2 callbacks (ServerContext); we stay on SDK 1.x until the v2 migration
+      - dependency-name: "@modelcontextprotocol/ext-apps"
+        update-types: ["version-update:semver-major"]
+      # TS 7 (native compiler) is a toolchain migration, not a routine bump
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
+      # typings must match the supported Node runtimes (engines >=22.16), not the latest Node
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+    groups:
+      dev-dependencies:
+        dependency-type: development
+        update-types: [minor, patch]
+      production-dependencies:
+        dependency-type: production
+        update-types: [patch]
+    commit-message:
+      prefix: chore
+      prefix-development: chore
+      include: scope

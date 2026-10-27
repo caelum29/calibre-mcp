@@ -2,6 +2,7 @@
 // `pdfimages -list` with caption lines from extracted text, per page, in order.
 // Pure logic — IO (downloading, spawning poppler) lives in src/calibre/figure-inventory.ts.
 
+import { type LayoutPage, recoverLabelOnlyCaptions } from "./caption-layout.js";
 import { type Caption, scanCaptions, splitPages } from "./captions.js";
 
 /** A raster image object as reported by `pdfimages -list`. */
@@ -71,18 +72,22 @@ export function parsePdfImagesList(output: string): RasterImage[] {
  * Build the inventory: per page, pair captions with raster `image` objects in order.
  * Leftover rasters on a page become uncaptioned entries; leftover captions become
  * page-render entries — the vector-figure case pdfimages cannot see (D-018 probe:
- * JWT Handbook has 29 captions and 2 rasters).
+ * JWT Handbook has 29 captions and 2 rasters). `layout` (from `pdftotext -bbox-layout`,
+ * label-only pages only) recovers caption text the line scan couldn't reach.
  */
-export function buildInventory(extractedText: string, rasters: RasterImage[]): FigureInventory {
+export function buildInventory(
+  extractedText: string,
+  rasters: RasterImage[],
+  layout?: ReadonlyMap<number, LayoutPage>,
+): FigureInventory {
   const pages = splitPages(extractedText);
-  const captions = scanCaptions(extractedText);
+  const scanned = scanCaptions(extractedText);
+  const captions = layout ? recoverLabelOnlyCaptions(scanned, layout) : scanned;
   const images = rasters.filter((r) => r.type === "image");
 
   const byPageCaptions = groupBy(captions, (c) => c.page);
   const byPageImages = groupBy(images, (r) => r.page);
-  const pagesWithContent = [...new Set([...byPageCaptions.keys(), ...byPageImages.keys()])].sort(
-    (a, b) => a - b,
-  );
+  const pagesWithContent = [...new Set([...byPageCaptions.keys(), ...byPageImages.keys()])].sort((a, b) => a - b);
 
   const entries: FigureEntry[] = [];
   for (const page of pagesWithContent) {
@@ -100,7 +105,15 @@ export function buildInventory(extractedText: string, rasters: RasterImage[]): F
     }
     // decorations/covers/openers: raster present, caption missing
     for (const r of imgs.slice(paired)) {
-      entries.push({ index: 0, page, captioned: false, source: "raster", width: r.width, height: r.height, pdfImageNum: r.num });
+      entries.push({
+        index: 0,
+        page,
+        captioned: false,
+        source: "raster",
+        width: r.width,
+        height: r.height,
+        pdfImageNum: r.num,
+      });
     }
   }
   entries.forEach((e, i) => (e.index = i));

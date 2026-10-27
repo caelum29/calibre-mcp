@@ -67,7 +67,11 @@ describe("injectFigureMarkers — placement", () => {
   });
 
   it("reports unplaced instead of guessing when nothing matches (epub has no pages)", () => {
-    const out = injectFigureMarkers("plain text, no captions", inv([{ label: "1.1", caption: "Ghost figure" }]), "epub");
+    const out = injectFigureMarkers(
+      "plain text, no captions",
+      inv([{ label: "1.1", caption: "Ghost figure" }]),
+      "epub",
+    );
     expect(out.unplaced).toBe(1);
     expect(out.text).toBe("plain text, no captions");
   });
@@ -80,7 +84,11 @@ describe("injectFigureMarkers — placement", () => {
 
   it("matches an emphasis-wrapped markdown caption (ebook-convert epub output)", () => {
     const text = "chapter text\n*Figure 12.1 – Logical architecture of the system*\nmore\n";
-    const out = injectFigureMarkers(text, inv([{ label: "12.1", caption: "Logical architecture of the system" }]), "epub");
+    const out = injectFigureMarkers(
+      text,
+      inv([{ label: "12.1", caption: "Logical architecture of the system" }]),
+      "epub",
+    );
     expect(out.markers).toHaveLength(1);
     expect(out.text).toContain('[image #0: "Figure 12.1 – Logical architecture of the system"]\n*Figure 12.1');
   });
@@ -150,8 +158,156 @@ describe("injectFigureMarkers — escaped caption text (book 929)", () => {
   // HTML text. A paren inside the first 30 chars used to break the head containment check.
   it("matches a caption whose parens are backslash-escaped in the extracted text", () => {
     const text = "Intro\n###### *Figure 7-6. *HNSW index structure \\(conceptual\\)\nbody\n";
-    const out = injectFigureMarkers(text, inv([{ label: "7-6", caption: "HNSW index structure (conceptual)" }]), "epub");
+    const out = injectFigureMarkers(
+      text,
+      inv([{ label: "7-6", caption: "HNSW index structure (conceptual)" }]),
+      "epub",
+    );
     expect(out.unplaced).toBe(0);
     expect(out.text).toContain("[image #0:");
+  });
+});
+
+describe("injectFigureMarkers — italic caption with a bold label (BPB epubs, #101)", () => {
+  // ebook-convert renders BPB's <p class="caption"><i><b>Figure 1.1:</b> Text</i></p> as
+  // `***Figure 1.1:** Text*` — the outer italic `*` left at line start hid every caption.
+  const text = "prose\n***Figure 1.1:** Features of virtual reality*\nmore prose\n";
+
+  it("should place the marker above the caption line", () => {
+    const out = injectFigureMarkers(text, inv([{ label: "1.1", caption: "Features of virtual reality" }]), "epub");
+    expect(out.text).toContain('[image #0: "Figure 1.1: Features of virtual reality"]\n***Figure 1.1:**');
+  });
+
+  it("should still ignore an italic in-text reference (`\\(*Figure 1.2*\\)`)", () => {
+    const ref = "Medical imaging technologies \\(*Figure 1.2*\\), such as MRI\n";
+    const out = injectFigureMarkers(ref, inv([{ label: "1.2", caption: "Medical imaging technologies" }]), "epub");
+    expect(out.unplaced).toBe(1);
+  });
+});
+
+describe("injectFigureMarkers — separator-less heading caption (newer Manning epubs, #101)", () => {
+  // <h5>Figure 1.1 Text</h5> → `##### Figure 1.1 Text`: no `.`/`:`, a single space.
+  it("should place a plain heading caption", () => {
+    const text = "prose\n##### Figure 1.1 DB-Engines ranking showing Postgres trending up in popularity\nmore\n";
+    const out = injectFigureMarkers(
+      text,
+      inv([{ label: "1.1", caption: "DB-Engines ranking showing Postgres trending up in popularity" }]),
+      "epub",
+    );
+    expect(out.markers).toHaveLength(1);
+  });
+
+  it("should place a fully bold heading caption", () => {
+    const text = "prose\n##### **Figure 1.1 A hierarchy of classes and subclasses.**\nmore\n";
+    const out = injectFigureMarkers(
+      text,
+      inv([{ label: "1.1", caption: "A hierarchy of classes and subclasses." }]),
+      "epub",
+    );
+    expect(out.markers[0]?.caption).toBe("Figure 1.1 A hierarchy of classes and subclasses.");
+  });
+
+  it("should not relax the separator for a non-heading prose line", () => {
+    const text = "Figure 1.1 shows a chart comparing the ranks of databases\n";
+    const out = injectFigureMarkers(text, inv([{ label: "1.1", caption: "shows a chart comparing" }]), "epub");
+    expect(out.unplaced).toBe(1);
+  });
+});
+
+describe("injectFigureMarkers — markdown debris inside captions (#101)", () => {
+  it("should treat an escaped underscore as literal text, not an emphasis edge", () => {
+    const text = "*Figure 14-1: The HTML documentation for the add\\_one function*\n";
+    const out = injectFigureMarkers(
+      text,
+      inv([{ label: "14-1", caption: "The HTML documentation for the add_one function" }]),
+      "epub",
+    );
+    expect(out.markers).toHaveLength(1);
+  });
+
+  it("should strip inline-code debris that pushed a long heading caption past the length guard", () => {
+    // verbatim book-777 line: <h5><b>Figure 4.5 … class <code>Catalogue</code>, …</b></h5>
+    const text =
+      "##### **Figure 4.5 A UML diagram that shows \\(left to right\\) class ****`Catalogue`****, a relationship, and class ****`Book`****. The dependency relationship arrow going from class ****`Catalogue`**** to class ****`Book`**** indicates that class ****`Catalogue`**** depends on class ****`Book`****. But class ****`Book`**** does not depend on class ****`Catalogue`****.**\n";
+    const caption =
+      "A UML diagram that shows (left to right) class Catalogue, a relationship, and class Book. The dependency relationship arrow going from class Catalogue to class Book indicates that class Catalogue depends on class Book. But class Book does not depend on class Catalogue.";
+    const out = injectFigureMarkers(text, inv([{ label: "4.5", caption }]), "epub");
+    expect(out.markers).toHaveLength(1);
+  });
+
+  it("should match a caption whose <br/>-joined credit sits on the next txt line", () => {
+    const text = "***Figure 7.3:** Postman screenshot  \nSource: www.postman.com*\n";
+    const out = injectFigureMarkers(
+      text,
+      inv([{ label: "7.3", caption: "Postman screenshotSource: www.postman.com" }]),
+      "epub",
+    );
+    expect(out.markers).toHaveLength(1);
+  });
+
+  it("should not prefix-match a too-short line caption", () => {
+    const text = "Figure 7.3: Postman\n";
+    const out = injectFigureMarkers(
+      text,
+      inv([{ label: "7.3", caption: "Postman screenshotSource: www.postman.com" }]),
+      "epub",
+    );
+    expect(out.unplaced).toBe(1);
+  });
+});
+
+describe("injectFigureMarkers — inline code and bold-paragraph captions (#101)", () => {
+  it("should not read underscores inside inline code as emphasis", () => {
+    const text = "###### Figure 3-15. Metadata of the `managed_new_default` table\n";
+    const out = injectFigureMarkers(
+      text,
+      inv([{ label: "3-15", caption: "Metadata of the managed_new_default table" }]),
+      "epub",
+    );
+    expect(out.markers).toHaveLength(1);
+  });
+
+  it("should place a separator-less caption styled as a wholly bold paragraph", () => {
+    const text = "Figure 2.1 shows the high-level architecture.\n**Figure 2.1 Docker client and engine.**  \n";
+    const out = injectFigureMarkers(text, inv([{ label: "2.1", caption: "Docker client and engine." }]), "epub");
+    expect(out.markers[0]?.caption).toBe("Figure 2.1 Docker client and engine.");
+  });
+});
+
+describe("PDF caption lines (#107)", () => {
+  it("should_anchor_an_identifier_caption_without_reading_underscores_as_emphasis", () => {
+    const text = "\fprose\nFigure 2-9: Relationship between task_struct, thread_info, and the\nkernel stack.\n";
+    const caption = "Relationship between task_struct, thread_info, and the kernel stack.";
+    const out = injectFigureMarkers(text, inv([{ label: "2-9", caption }]), "pdf");
+    expect(out.markers[0]?.charOffset).toBe(text.indexOf("Figure 2-9"));
+  });
+
+  it("should_anchor_a_wrapped_caption_whose_first_line_is_short", () => {
+    const text = "\fprose\nРис. 3.1 \uf076 Отношение,\nсоответствующее представлению SYSAN\n";
+    const caption = "Отношение, соответствующее представлению SYSAN";
+    const out = injectFigureMarkers(text, inv([{ label: "3.1", caption }]), "pdf");
+    expect(out.markers[0]?.charOffset).toBe(text.indexOf("Рис. 3.1"));
+  });
+});
+
+describe("bare-label captions (#107)", () => {
+  it("should_anchor_the_marker_on_a_label_only_line_whose_next_line_is_the_caption", () => {
+    const text = "prose\nFigure 2.10\nUnifying of ALU, Load, Store, and Branch Instruction Types\nmore\n";
+    const out = injectFigureMarkers(
+      text,
+      inv([{ label: "2.10", caption: "Unifying of ALU, Load, Store, and Branch Instruction Types into a Pipeline." }]),
+      "epub",
+    );
+    expect(out.text.indexOf("[image #0")).toBe("prose\n".length);
+  });
+
+  it("should_not_anchor_on_a_label_only_line_followed_by_unrelated_text", () => {
+    const text = "prose\nFigure 12-32.\nsys_socket\nlater\nFigure 12-32: Code flow diagram for sys_socket.\n";
+    const out = injectFigureMarkers(
+      text,
+      inv([{ label: "12-32", caption: "Code flow diagram for sys_socket." }]),
+      "epub",
+    );
+    expect(out.markers[0]?.charOffset).toBe(text.indexOf("Figure 12-32:"));
   });
 });

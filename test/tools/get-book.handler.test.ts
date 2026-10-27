@@ -29,14 +29,14 @@ function deps(thumb: { data: string; mimeType: string } | null): ToolDeps {
     } as unknown as ToolDeps["content"],
     calibre: {} as ToolDeps["calibre"],
     extractor: {} as ToolDeps["extractor"],
+    figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],
     index: {} as ToolDeps["index"],
     log,
   };
 }
 
-const args = (over: Record<string, unknown> = {}) =>
-  z.object(getBookTool.inputSchema).parse({ id: 7, ...over });
+const args = (over: Record<string, unknown> = {}) => z.object(getBookTool.inputSchema).parse({ id: 7, ...over });
 
 describe("calibre_get_book include_cover", () => {
   it("should_coerce_string_false_to_false", () => {
@@ -53,10 +53,7 @@ describe("calibre_get_book include_cover", () => {
   });
 
   it("should_attach_image_block_when_opted_in", async () => {
-    const r = await getBookTool.handler(
-      args({ include_cover: true }),
-      deps({ data: "QUJD", mimeType: "image/jpeg" }),
-    );
+    const r = await getBookTool.handler(args({ include_cover: true }), deps({ data: "QUJD", mimeType: "image/jpeg" }));
     const img = r.content.find((c) => c.type === "image");
     expect(img).toMatchObject({ data: "QUJD", mimeType: "image/jpeg" });
   });
@@ -75,5 +72,41 @@ describe("calibre_get_book include_cover", () => {
       serverUrl: "http://localhost:8080",
       libraryId: "Programming_Books",
     });
+  });
+});
+
+describe("calibre_get_book text summary (#104)", () => {
+  it("should_mirror_formats_ids_and_catalog_fields_before_comments", async () => {
+    const full: Book = {
+      ...book,
+      identifiers: { isbn: "9781098184579", google: "abc" },
+      formats: ["epub", "pdf"],
+      tags: ["databases", "ai"],
+      series: "Data",
+      seriesIndex: 2,
+      publisher: "O'Reilly",
+      pubdate: "2026-01-15T00:00:00+00:00",
+      pages: 312,
+      comments: "<p>About vectors</p>",
+      lastModified: "2026-02-01T10:00:00+00:00",
+    };
+    const d = deps(null);
+    d.content.getBook = async () => full;
+    const r = await getBookTool.handler(args(), d);
+    const text = (r.content[0] as { text: string }).text;
+    expect(text).toContain("formats: EPUB, PDF | pages: 312 | lang: eng");
+    expect(text).toContain("isbn: 9781098184579 | ids: google:abc");
+    expect(text).toContain("series: Data [2] | tags: databases, ai | publisher: O'Reilly | pubdate: 2026-01-15");
+    expect(text).toContain("id: 7 | uuid: u-7 | last modified: 2026-02-01T10:00:00+00:00");
+    expect(text.indexOf("formats:")).toBeLessThan(text.indexOf("About vectors"));
+  });
+
+  it("should_show_dashes_for_empty_fields_and_hide_the_date_sentinel", async () => {
+    const d = deps(null);
+    d.content.getBook = async () => ({ ...book, pubdate: "0101-01-01T00:00:00+00:00" });
+    const r = await getBookTool.handler(args(), d);
+    const text = (r.content[0] as { text: string }).text;
+    expect(text).toContain("isbn: — | ids: —");
+    expect(text).toContain("series: — | tags: — | publisher: — | pubdate: —");
   });
 });

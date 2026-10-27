@@ -26,14 +26,14 @@ import { bookResourceLink } from "./resource-link.js";
 import { resolveNumericId } from "./resolve-id.js";
 import { INSTALL_TRANSFORMERS } from "./remediation.js";
 import { fence, toolError, toolOk } from "./result.js";
-import type { ContentBlock, ToolDeps } from "./types.js";
+import type { ContentBlock, ToolDeps, ToolResult } from "./types.js";
 
 /** Per-half candidate pool the fuser draws from (design: vector top-50 + keyword top-50). */
 const POOL = 50;
 
-// Weighted-RRF per-source weights for hybrid fusion (fusion literature: per-source weight is
-// the impactful knob, more than k). Both 1.0 = plain RRF; no config/env surface — change them
-// ONLY on retrieval-eval evidence (test/eval/retrieval), never by feel.
+// Weighted-RRF per-source weights for hybrid fusion. Both 1.0 = plain RRF; no config/env
+// surface — change them ONLY on retrieval-eval evidence (test/eval/retrieval), never by feel.
+// #142 sweep (1.0–2.0, D-021): RU flat at k=60, EN exact-identifier regresses → 1.0 stays.
 const VECTOR_RRF_WEIGHT = 1.0;
 const KEYWORD_RRF_WEIGHT = 1.0;
 const RRF_WEIGHTS = [VECTOR_RRF_WEIGHT, KEYWORD_RRF_WEIGHT];
@@ -46,8 +46,7 @@ type Mode = "hybrid" | "vector" | "keyword";
 // positive; live tier decides enabling). Until then only the reranker floor signals confidence.
 const FIGURES_SEMANTIC_FLOOR: number | null = null;
 
-const FIGURES_FLOOR_NOTE =
-  "Figure-caption cosine floor not yet calibrated — lowConfidence reflects the reranker only.";
+const FIGURES_FLOOR_NOTE = "Figure-caption cosine floor not yet calibrated — lowConfidence reflects the reranker only.";
 
 /** Chars of the linked context chunk shown per figure hit (mirrors the store's snippet cap). */
 const CONTEXT_SNIPPET_CHARS = 320;
@@ -56,7 +55,7 @@ export const semanticSearchTool = defineTool({
   name: "calibre_semantic_search",
   title: "Semantic search",
   description:
-    "Meaning-based search over the local index. scope=library ranks books; scope=book (needs bookId) ranks passages within one book. target=figures searches figure captions instead of text — use when the user asks for a diagram/chart/schema; hits point at calibre_get_figures for the pixels. mode=hybrid (default) fuses semantic + keyword matches; mode=vector is semantic-only; mode=keyword is exact keyword/FTS (no model at query time). All modes need an index built by calibre_build_index. filter accepts a bundle name to scope library searches (list bundles via calibre_manage_bundles).",
+    "Meaning-based search over the local index. scope=library ranks books; scope=book (needs bookId) ranks passages within one book. target=figures searches figure captions instead of text — use when the user asks for a diagram/chart/schema; hits point at calibre_get_figures for the pixels. mode=hybrid (default) fuses semantic + keyword matches; mode=vector is semantic-only; mode=keyword is exact keyword/FTS (no model at query time). All modes need an index built by calibre_build_index. filter accepts a bundle name to scope library searches (list bundles via calibre_manage_bundles). Model inference is serialized: prefer one call at a time — parallel calls queue, and past a few the extras skip the rerank.",
   inputSchema: {
     query: z.string().min(1).max(512),
     scope: z.enum(["library", "book"]).default("library"),
@@ -88,6 +87,9 @@ export const semanticSearchTool = defineTool({
     filter: z.string().optional(),
     exclusionsApplied: z.array(z.string()).optional(),
     bookIds: z.array(z.number()).optional(),
+    // Index generation that produced every location in this response (#136) — charStart/
+    // charEnd/charOffset/page are valid only within it; clients persisting citations pin to it.
+    indexVersion: z.number().optional(),
     // Ranked hits mirrored into structuredContent so structured-only clients (that render
     // structuredContent but drop text content blocks) still surface the snippets/passages.
     // scope=library → results (one per book); scope=book → passages (one per chunk). Free
@@ -151,6 +153,9 @@ export const semanticSearchTool = defineTool({
         );
       }
 
+      // Provenance for every location below (#136); read from the index's own meta.
+      const indexVersion = deps.index.indexMeta(libraryId)?.indexVersion;
+
       // A keyword-only index (built without the embedding model) has no vectors: vector mode
       // can't run, and hybrid degrades to keyword (degrading beats erroring for the default).
       // Every success carries semanticAvailable (+ reason when false) so an automatic
@@ -186,14 +191,12 @@ export const semanticSearchTool = defineTool({
         const numericId = await resolveNumericId(deps, effArgs.bookId, effArgs.library);
         if (numericId === undefined) return toolError(`No book with id/uuid ${effArgs.bookId}`);
         if (!deps.index.isBookIndexed(libraryId, numericId)) {
-          return toolError(
-            `Book ${numericId} is not indexed. Run calibre_build_index { bookId: ${numericId} } first.`,
-          );
+          return toolError(`Book ${numericId} is not indexed. Run calibre_build_index { bookId: ${numericId} } first.`);
         }
         if (effArgs.target === "figures") {
-          return await figuresTarget(effArgs, deps, libraryId, numericId, sem, note);
+          return withIndexVersion(await figuresTarget(effArgs, deps, libraryId, numericId, sem, note), indexVersion);
         }
-        return await bookScope(effArgs, deps, libraryId, numericId, sem, note);
+        return withIndexVersion(await bookScope(effArgs, deps, libraryId, numericId, sem, note), indexVersion);
       }
 
       // Library scope = discovery: resolve the bundle filter + auto exclusion markers (#93).
@@ -211,9 +214,12 @@ export const semanticSearchTool = defineTool({
       note = joinNotes(note, ...honestyLines(fr.res, allow?.size));
 
       if (effArgs.target === "figures") {
-        return await figuresTarget(effArgs, deps, libraryId, undefined, sem, note, scope);
+        return withIndexVersion(
+          await figuresTarget(effArgs, deps, libraryId, undefined, sem, note, scope),
+          indexVersion,
+        );
       }
-      return await libraryScope(effArgs, deps, libraryId, sem, note, scope);
+      return withIndexVersion(await libraryScope(effArgs, deps, libraryId, sem, note, scope), indexVersion);
     } catch (err) {
       return mapError(err);
     }
@@ -246,9 +252,7 @@ const UNSCOPED: FilterCtx = { fRes: { markers: [] } };
 function filterFields(scope: FilterCtx): { filter?: string; exclusionsApplied?: string[] } {
   return {
     ...(scope.fRes.bundle ? { filter: scope.fRes.bundle.name } : {}),
-    ...(scope.fRes.markers.length > 0
-      ? { exclusionsApplied: scope.fRes.markers.map((m) => m.name) }
-      : {}),
+    ...(scope.fRes.markers.length > 0 ? { exclusionsApplied: scope.fRes.markers.map((m) => m.name) } : {}),
   };
 }
 
@@ -300,9 +304,7 @@ function boardMeta(
       bookId: r.hit.bookId,
       title: r.hit.title,
       authors: r.hit.authors,
-      ...(r.cosine !== undefined || r.rerankScore !== undefined
-        ? { score: r.cosine ?? r.rerankScore }
-        : {}),
+      ...(r.cosine !== undefined || r.rerankScore !== undefined ? { score: r.cosine ?? r.rerankScore } : {}),
     })),
   };
   deps.boardCache?.set(payload);
@@ -380,7 +382,14 @@ async function libraryScope(
 }
 
 /** scope=book — rank passages within one book; emit fenced excerpts with char spans. */
-async function bookScope(args: Args, deps: ToolDeps, libraryId: string, bookId: number, sem: SemStatus, degradeNote?: string) {
+async function bookScope(
+  args: Args,
+  deps: ToolDeps,
+  libraryId: string,
+  bookId: number,
+  sem: SemStatus,
+  degradeNote?: string,
+) {
   const pool = await rankPassages(args, deps, libraryId, bookId);
   const rr = await applyRerank(pool, (r) => r.hit.body, args, deps);
   // Front-matter demotion (issue #18): TOC/praise/foreword chunks are keyword-dense but
@@ -388,28 +397,24 @@ async function bookScope(args: Args, deps: ToolDeps, libraryId: string, bookId: 
   // wanted. Stable-partition AFTER the rerank — body passages first, front matter after,
   // internal order preserved; nothing is dropped ("what does the foreword say" still works).
   const demoted = rr.hits.filter((r) => r.hit.frontMatter).length;
-  const ranked = demoted > 0 ? [...rr.hits.filter((r) => !r.hit.frontMatter), ...rr.hits.filter((r) => r.hit.frontMatter)] : rr.hits;
+  const ranked =
+    demoted > 0 ? [...rr.hits.filter((r) => !r.hit.frontMatter), ...rr.hits.filter((r) => r.hit.frontMatter)] : rr.hits;
   const note = joinNotes(
     degradeNote,
     rr.note,
-    demoted > 0
-      ? `${demoted} front-matter passage(s) (TOC/praise/foreword) demoted below body matches.`
-      : undefined,
+    demoted > 0 ? `${demoted} front-matter passage(s) (TOC/praise/foreword) demoted below body matches.` : undefined,
   );
   if (ranked.length === 0) {
-    return toolOk(
-      [{ type: "text", text: withNote(`No passages in book ${bookId} matched "${args.query}".`, note) }],
-      {
-        scope: "book",
-        target: "text",
-        mode: args.mode,
-        bookId,
-        count: 0,
-        ...rerankFields(args, rr),
-        ...sem,
-        note,
-      },
-    );
+    return toolOk([{ type: "text", text: withNote(`No passages in book ${bookId} matched "${args.query}".`, note) }], {
+      scope: "book",
+      target: "text",
+      mode: args.mode,
+      bookId,
+      count: 0,
+      ...rerankFields(args, rr),
+      ...sem,
+      note,
+    });
   }
 
   const { maxScore, lowConfidence } = confidence(ranked, deps, rr);
@@ -487,14 +492,23 @@ async function figuresTarget(
           ),
         },
       ],
-      { scope: args.scope, target: "figures", mode: args.mode, count: 0, ...sem, note: degradeNote, ...filterFields(scope) },
+      {
+        scope: args.scope,
+        target: "figures",
+        mode: args.mode,
+        count: 0,
+        ...sem,
+        note: degradeNote,
+        ...filterFields(scope),
+      },
     );
   }
 
   const pool = await rankFigures(args, deps, libraryId, bookId, scope.allow);
   const rr = await applyRerank(pool, (r) => r.hit.caption, args, deps);
   const ranked = rr.hits;
-  const floorNote = args.mode !== "keyword" && ranked.length > 0 && FIGURES_SEMANTIC_FLOOR === null ? FIGURES_FLOOR_NOTE : undefined;
+  const floorNote =
+    args.mode !== "keyword" && ranked.length > 0 && FIGURES_SEMANTIC_FLOOR === null ? FIGURES_FLOOR_NOTE : undefined;
   const note = joinNotes(degradeNote, rr.note, floorNote);
   if (ranked.length === 0) {
     return toolOk(
@@ -517,7 +531,10 @@ async function figuresTarget(
   const { maxScore, lowConfidence } = figuresConfidence(ranked, rr);
   const head = withNote(
     header("figure", ranked.length, args, maxScore, lowConfidence, rr) +
-      ` Fetch pixels via calibre_get_figures { bookId, indexes: [figIndex] }.`,
+      ` Fetch pixels via calibre_get_figures { bookId, indexes: [figIndex] }.` +
+      (ranked.some((r) => r.hit.format !== "pdf")
+        ? ` ~p.N on EPUB hits = approximate page (spine-document ordinal, as in the calibre_get_figures listing).`
+        : ""),
     note,
   );
   const blocks: ContentBlock[] = [{ type: "text", text: head }];
@@ -526,7 +543,9 @@ async function figuresTarget(
     const h = r.hit;
     const ctx = deps.index.chunkAt(libraryId, h.bookId, h.charOffset);
     const snippet = ctx ? ctx.body.slice(0, CONTEXT_SNIPPET_CHARS) : undefined;
-    const pagePart = h.format === "pdf" ? ` page ${h.page},` : "";
+    // EPUB "page" is the spine-document ordinal — same number the get_figures listing shows,
+    // flagged approximate (#105).
+    const pagePart = h.format === "pdf" ? `p.${h.page},` : `~p.${h.page},`;
     const srcPart = h.source ? ` ${h.source},` : "";
     const fenced = fence(
       `FIGURE book ${h.bookId} #${h.figIndex} (${pagePart}${srcPart} @${h.charOffset}) ${scoreLabel(r)}`,
@@ -607,10 +626,25 @@ async function rankFigures(
 function figuresConfidence(ranked: Array<{ cosine?: number }>, rr?: RerankOutcome<unknown>) {
   const cosines = ranked.map((r) => r.cosine).filter((c): c is number => c !== undefined);
   const maxScore = cosines.length ? Math.max(...cosines) : undefined;
-  const cosineLow =
-    FIGURES_SEMANTIC_FLOOR !== null && maxScore !== undefined && maxScore < FIGURES_SEMANTIC_FLOOR;
+  const cosineLow = FIGURES_SEMANTIC_FLOOR !== null && maxScore !== undefined && maxScore < FIGURES_SEMANTIC_FLOOR;
   const rerankLow = rr?.reranked === true && rr.maxRerank !== undefined && rr.maxRerank < RERANK_FLOOR;
   return { maxScore, lowConfidence: cosineLow || rerankLow };
+}
+
+/**
+ * Stamp a success with its index generation (#136): once on the envelope, never per hit (it's
+ * constant across the response), and as one compact line after the header — the text must
+ * carry it too because clients strip structuredContent.
+ */
+function withIndexVersion(res: ToolResult, indexVersion: number | undefined): ToolResult {
+  if (res.isError || indexVersion === undefined) return res;
+  const [first, ...rest] = res.content;
+  const line = `indexVersion ${indexVersion} — char offsets/pages here are valid within this index generation only.`;
+  const content: ContentBlock[] =
+    first?.type === "text"
+      ? [{ ...first, text: `${first.text}\n${line}` }, ...rest]
+      : [{ type: "text", text: line }, ...res.content];
+  return { ...res, content, structuredContent: { ...res.structuredContent, indexVersion } };
 }
 
 /** Prepend a degrade/advisory note to a header block (kept in the text so all clients see it). */
@@ -649,8 +683,13 @@ const RERANK_NOTE =
   "@huggingface/transformers (see calibre_build_index for install steps) and downloads on first use; " +
   "if you just installed it, restart the MCP server, and ensure the machine is online.";
 
-const RERANK_DISABLED_NOTE =
-  "Reranking disabled via CALIBRE_MCP_RERANK — results keep the fused (pre-rerank) order.";
+// #156: concurrent searches past the reranker's queue cap skip the rerank instead of waiting
+// past the client timeout — the results are still useful, just in fused order.
+const RERANK_BUSY_NOTE =
+  "Reranker busy with other concurrent searches — results keep the fused (pre-rerank) order. " +
+  "For reranked results, issue library-scope semantic searches one at a time.";
+
+const RERANK_DISABLED_NOTE = "Reranking disabled via CALIBRE_MCP_RERANK — results keep the fused (pre-rerank) order.";
 
 /**
  * Cross-encoder rerank (D-011): score (query, chunk body) pairs over the top-RERANK_POOL fused
@@ -687,8 +726,9 @@ async function applyRerank<T extends { rerankScore?: number }>(
     const hits = [...scored, ...pool.slice(RERANK_POOL)].slice(0, args.topK);
     return { hits, reranked: true, maxRerank: scored[0]?.rerankScore };
   } catch (err) {
-    deps.log.warn("rerank skipped", { reason: err instanceof Error ? err.message : String(err) });
-    return { hits: fused(), reranked: false, note: RERANK_NOTE };
+    const reason = err instanceof Error ? err.message : String(err);
+    deps.log.warn("rerank skipped", { reason });
+    return { hits: fused(), reranked: false, note: reason === "RERANKER_BUSY" ? RERANK_BUSY_NOTE : RERANK_NOTE };
   }
 }
 
@@ -706,9 +746,7 @@ async function rankBooks(
   allow?: ReadonlySet<number>,
 ): Promise<RankedBook[]> {
   if (args.mode === "keyword") {
-    return deps.index
-      .searchLibraryFts(libraryId, stemText(args.query), args.topK, allow)
-      .map((hit) => ({ hit }));
+    return deps.index.searchLibraryFts(libraryId, stemText(args.query), args.topK, allow).map((hit) => ({ hit }));
   }
   const k = poolK(args, deps);
   const q = await deps.embedder.embedQuery(args.query);
@@ -729,16 +767,9 @@ async function rankBooks(
 }
 
 /** Rank passages within one book per mode, mirroring rankBooks but fusing on chunkId. */
-async function rankPassages(
-  args: Args,
-  deps: ToolDeps,
-  libraryId: string,
-  bookId: number,
-): Promise<RankedPassage[]> {
+async function rankPassages(args: Args, deps: ToolDeps, libraryId: string, bookId: number): Promise<RankedPassage[]> {
   if (args.mode === "keyword") {
-    return deps.index
-      .searchBookFts(libraryId, bookId, stemText(args.query), args.topK)
-      .map((hit) => ({ hit }));
+    return deps.index.searchBookFts(libraryId, bookId, stemText(args.query), args.topK).map((hit) => ({ hit }));
   }
   const k = poolK(args, deps);
   const q = await deps.embedder.embedQuery(args.query);

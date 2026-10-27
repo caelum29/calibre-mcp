@@ -11,10 +11,7 @@ const MAC_BUNDLE = ["calibre.app", "Contents", "MacOS", "calibredb"];
 /** Well-known install paths for the platform (env-var roots on Windows may be unset). */
 function candidates(env: NodeJS.ProcessEnv, platform: NodeJS.Platform): string[] {
   if (platform === "darwin") {
-    return [
-      path.join("/Applications", ...MAC_BUNDLE),
-      path.join(homedir(), "Applications", ...MAC_BUNDLE),
-    ];
+    return [path.join("/Applications", ...MAC_BUNDLE), path.join(homedir(), "Applications", ...MAC_BUNDLE)];
   }
   if (platform === "win32") {
     return [

@@ -6,6 +6,7 @@
 import type { Book } from "../book.js";
 import type { ChangeValue } from "../../calibre/metadata-fields.js";
 import { isAllowedField } from "../../calibre/metadata-fields.js";
+import { isEmptyDate } from "../merge.js";
 import { looksLikeRawFilename } from "./filename-guess.js";
 import type { ProposedField, Proposal, ProviderHit } from "./types.js";
 
@@ -49,13 +50,18 @@ export function buildProposal(current: Book, hits: ProviderHit[]): Proposal {
     add("title", current.title || undefined, hit.title, current.title.trim() ? "weak" : "missing");
   }
   if (hit.authors?.length && authorsAreWeak(current.authors)) {
-    add("authors", current.authors.length ? current.authors : undefined, hit.authors,
-      current.authors.length ? "weak" : "missing");
+    add(
+      "authors",
+      current.authors.length ? current.authors : undefined,
+      hit.authors,
+      current.authors.length ? "weak" : "missing",
+    );
   }
   if (hit.publisher && !current.publisher) {
     add("publisher", undefined, hit.publisher, "missing");
   }
-  if (hit.pubdate && !current.pubdate) {
+  // Calibre stores "no date" as the 0101-01-01 sentinel, a non-empty string
+  if (hit.pubdate && isEmptyDate(current.pubdate)) {
     add("pubdate", undefined, hit.pubdate, "missing");
   }
   if (hit.series && !current.series) {

@@ -1,4 +1,5 @@
-// SQLite-backed vector index for semantic search. Uses node:sqlite (built into Node 22.5+),
+// SQLite-backed vector index for semantic search. Uses node:sqlite (built in; unflagged and
+// shipping FTS5 from Node 22.16 — 22.5–22.12 need --experimental-sqlite, 22.13–22.15 lack FTS5),
 // so the npx/MCPB bundle ships with ZERO native addons — no node-gyp, no ABI lock, no macOS
 // quarantine on a prebuilt .node (the exact install failure the project avoids). Vectors are
 // L2-normalized Float32 BLOBs; retrieval is in-memory brute-force cosine (== dot product) over
@@ -126,15 +127,55 @@ export interface PruneCounts {
   figures: number;
 }
 
+/**
+ * What built an index, as persisted in its `meta` table (#136) — the citation provenance:
+ * stored char offsets / figure pages are valid only within one `indexVersion`.
+ */
+export interface IndexMeta {
+  modelId: string;
+  dim: number;
+  indexVersion: number;
+  /** ISO timestamp the index db was first created; absent on hand-built/legacy metas. */
+  createdAt?: string;
+}
+
+/** What replaceBook did: wrote the rows, or kept an embedded book's rows untouched. */
+export type ReplaceOutcome = "written" | "preserved";
+
 export interface IndexStore {
   /** Cheap, side-effect-free check for an existing index (no db file is created). */
   hasIndex(libraryId: string): boolean;
+  /**
+   * The index's persisted meta, read WITHOUT the compatibility guard — so a stale index
+   * (built by another model/INDEX_VERSION) can still be described. Undefined when there is
+   * no index or its meta is unreadable. Never creates a db file.
+   */
+  indexMeta(libraryId: string): IndexMeta | undefined;
   /** True if the index holds any embedding vectors (false = a keyword-only build). */
   hasVectors(libraryId: string): boolean;
-  /** True if the book is indexed; when `lastModified` is given, also that it's up to date. */
-  isBookIndexed(libraryId: string, bookId: number, lastModified?: string): boolean;
-  /** Replace all of a book's chunks/embeddings/figures atomically (idempotent re-index). */
-  replaceBook(libraryId: string, meta: BookMeta, chunks: IndexedChunk[], figures?: IndexedFigure[]): void;
+  /**
+   * True if the book is indexed; when `lastModified` is given, also that it's up to date.
+   * `requireVectors` (a semantic-capable build, #197) additionally demands that EVERY chunk
+   * has an embedding — a keyword-only or half-written entry is then not fresh.
+   */
+  isBookIndexed(libraryId: string, bookId: number, lastModified?: string, opts?: { requireVectors?: boolean }): boolean;
+  /**
+   * Replace all of a book's rows (books/chunks/embeddings/FTS/figures) in ONE transaction —
+   * a failure leaves the previous rows intact. Returns "preserved" (nothing written) when
+   * `preserveEmbedded` is set, the new rows carry no vectors, and the stored book has
+   * embeddings: a keyword-only writer never silently downgrades an embedded book (#197).
+   */
+  replaceBook(
+    libraryId: string,
+    meta: BookMeta,
+    chunks: IndexedChunk[],
+    figures?: IndexedFigure[],
+    opts?: { preserveEmbedded?: boolean },
+  ): ReplaceOutcome;
+  /** Embedded chunks of one book (0 when not indexed or for an absent index). */
+  bookVectorCount(libraryId: string, bookId: number): number;
+  /** Books whose chunks are not all embedded (keyword-only or partial entries); 0 for an absent index. */
+  booksMissingVectors(libraryId: string): number;
   /** Every book id currently in the index (empty for an absent index) — the prune diff input. */
   indexedBookIds(libraryId: string): number[];
   /** Drop all rows for these books (books/chunks/embeddings/figures + FTS shadows). */
@@ -152,9 +193,21 @@ export interface IndexStore {
   /** Keyword half: rank passages within one book by weighted-bm25 FTS5 match. */
   searchBookFts(libraryId: string, bookId: number, stemmedQuery: string, k: number): BookHit[];
   /** Rank figure captions by vector cosine — the whole library, or one book. */
-  searchFigures(libraryId: string, query: Float32Array, k: number, bookId?: number, allow?: ReadonlySet<number>): FigureHit[];
+  searchFigures(
+    libraryId: string,
+    query: Float32Array,
+    k: number,
+    bookId?: number,
+    allow?: ReadonlySet<number>,
+  ): FigureHit[];
   /** Keyword half over figure captions (weighted-bm25 FTS5). */
-  searchFiguresFts(libraryId: string, stemmedQuery: string, k: number, bookId?: number, allow?: ReadonlySet<number>): FigureHit[];
+  searchFiguresFts(
+    libraryId: string,
+    stemmedQuery: string,
+    k: number,
+    bookId?: number,
+    allow?: ReadonlySet<number>,
+  ): FigureHit[];
   /** Indexed-figure count (library or one book); 0 for an absent index. Cheap COUNT. */
   figureCount(libraryId: string, bookId?: number): number;
   /** The chunk containing a figure marker offset (figure → context direction). */
@@ -189,7 +242,8 @@ CREATE TABLE IF NOT EXISTS books (
   authors TEXT NOT NULL,
   last_modified TEXT,
   chunk_count INTEGER NOT NULL DEFAULT 0,
-  indexed_at TEXT NOT NULL
+  indexed_at TEXT NOT NULL,
+  embedded_chunks INTEGER
 );
 CREATE TABLE IF NOT EXISTS chunks (
   id INTEGER PRIMARY KEY,
@@ -314,33 +368,103 @@ export class SqliteIndexStore implements IndexStore {
     return existsSync(this.#file(libraryId));
   }
 
+  indexMeta(libraryId: string): IndexMeta | undefined {
+    if (!this.hasIndex(libraryId)) return undefined;
+    // An already-open db passed #ensureMeta; otherwise peek read-only so a stale index is
+    // described instead of refused (and nothing is migrated or written).
+    const open = this.#dbs.get(libraryId);
+    let db: DatabaseSync | undefined;
+    try {
+      db = open ?? new DatabaseSync(this.#file(libraryId), { readOnly: true });
+      // Read-only can't switch journal mode, but must still wait out a concurrent writer (#196).
+      if (!open) db.exec(`PRAGMA busy_timeout = ${this.cfg.indexBusyTimeoutMs}`);
+      const kv = new Map<string, string>();
+      for (const r of db.prepare("SELECT key, value FROM meta").all() as Row[]) {
+        kv.set(String(r.key), String(r.value));
+      }
+      const indexVersion = Number(kv.get("index_version"));
+      const dim = Number(kv.get("dim"));
+      const modelId = kv.get("model_id");
+      if (!modelId || !Number.isInteger(indexVersion) || !Number.isInteger(dim)) return undefined;
+      const createdAt = kv.get("created_at");
+      return { modelId, dim, indexVersion, ...(createdAt ? { createdAt } : {}) };
+    } catch {
+      return undefined; // no meta table / not a sqlite file — "no index" for provenance purposes
+    } finally {
+      if (!open) db?.close();
+    }
+  }
+
   hasVectors(libraryId: string): boolean {
     if (!this.hasIndex(libraryId)) return false;
     const db = this.#db(libraryId);
     return db.prepare("SELECT 1 FROM embeddings LIMIT 1").get() !== undefined;
   }
 
-  isBookIndexed(libraryId: string, bookId: number, lastModified?: string): boolean {
+  isBookIndexed(
+    libraryId: string,
+    bookId: number,
+    lastModified?: string,
+    opts: { requireVectors?: boolean } = {},
+  ): boolean {
     const db = this.#db(libraryId);
-    const row = db.prepare("SELECT last_modified FROM books WHERE book_id = ?").get(bookId) as
-      | Row
-      | undefined;
+    const row = db.prepare("SELECT last_modified FROM books WHERE book_id = ?").get(bookId) as Row | undefined;
     if (!row) return false;
-    if (lastModified === undefined) return true;
-    return String(row.last_modified ?? "") === lastModified;
+    if (lastModified !== undefined && String(row.last_modified ?? "") !== lastModified) return false;
+    if (!opts.requireVectors) return true;
+    // A keyword-only writer (e.g. a model-less .mcpb sharing this db) leaves chunks without
+    // embeddings; a semantic build must re-index those instead of skipping them as fresh.
+    const v = this.#vectorCoverage(db, bookId);
+    return v !== undefined && v.chunks > 0 && v.embedded >= v.chunks;
   }
 
-  replaceBook(libraryId: string, meta: BookMeta, chunks: IndexedChunk[], figures: IndexedFigure[] = []): void {
+  bookVectorCount(libraryId: string, bookId: number): number {
+    if (!this.hasIndex(libraryId)) return 0;
+    return this.#vectorCoverage(this.#db(libraryId), bookId)?.embedded ?? 0;
+  }
+
+  booksMissingVectors(libraryId: string): number {
+    // A diagnostic read (calibre_ping) must never create a db file.
+    if (!this.hasIndex(libraryId)) return 0;
+    const row = this.#db(libraryId)
+      .prepare(
+        // Legacy rows (embedded_chunks NULL, pre-#197) fall back to counting their embeddings.
+        `SELECT COUNT(*) AS n FROM books b
+         WHERE COALESCE(b.embedded_chunks, (SELECT COUNT(*) FROM embeddings e WHERE e.book_id = b.book_id)) < b.chunk_count`,
+      )
+      .get() as Row;
+    return Number(row?.n ?? 0);
+  }
+
+  replaceBook(
+    libraryId: string,
+    meta: BookMeta,
+    chunks: IndexedChunk[],
+    figures: IndexedFigure[] = [],
+    opts: { preserveEmbedded?: boolean } = {},
+  ): ReplaceOutcome {
     const db = this.#db(libraryId);
-    db.exec("BEGIN");
+    const embedded = chunks.reduce((n, c) => n + (c.vector ? 1 : 0), 0);
+    // IMMEDIATE takes the write lock up front, where busy_timeout applies (#196) — a deferred
+    // BEGIN that upgrades to a writer mid-transaction can fail with SQLITE_BUSY without waiting —
+    // and the preserve check below reads the state it then overwrites with no writer in between.
+    // Callers compute every embedding BEFORE this point, so the lock is never held over the model.
+    db.exec("BEGIN IMMEDIATE");
     try {
+      if (opts.preserveEmbedded && embedded === 0) {
+        const v = this.#vectorCoverage(db, meta.bookId);
+        if (v !== undefined && v.embedded > 0) {
+          db.exec("ROLLBACK");
+          return "preserved";
+        }
+      }
       db.prepare("DELETE FROM embeddings WHERE book_id = ?").run(meta.bookId);
       db.prepare("DELETE FROM chunks WHERE book_id = ?").run(meta.bookId);
       db.prepare("DELETE FROM figures WHERE book_id = ?").run(meta.bookId);
       db.prepare("DELETE FROM books WHERE book_id = ?").run(meta.bookId);
 
       db.prepare(
-        "INSERT INTO books(book_id, title, authors, last_modified, chunk_count, indexed_at) VALUES(?,?,?,?,?,?)",
+        "INSERT INTO books(book_id, title, authors, last_modified, chunk_count, indexed_at, embedded_chunks) VALUES(?,?,?,?,?,?,?)",
       ).run(
         meta.bookId,
         meta.title,
@@ -348,6 +472,7 @@ export class SqliteIndexStore implements IndexStore {
         meta.lastModified ?? null,
         chunks.length,
         new Date().toISOString(),
+        embedded,
       );
 
       const insChunk = db.prepare(
@@ -393,8 +518,9 @@ export class SqliteIndexStore implements IndexStore {
         );
       }
       db.exec("COMMIT");
+      return "written";
     } catch (err) {
-      db.exec("ROLLBACK");
+      rollbackQuietly(db);
       throw err;
     } finally {
       // Any write (even a rolled-back one — a needless rebuild is harmless) drops the
@@ -414,7 +540,9 @@ export class SqliteIndexStore implements IndexStore {
     const counts: PruneCounts = { books: 0, chunks: 0, figures: 0 };
     if (bookIds.length === 0 || !this.hasIndex(libraryId)) return counts;
     const db = this.#db(libraryId);
-    db.exec("BEGIN");
+    // IMMEDIATE takes the write lock up front, where busy_timeout applies (#196); a deferred
+    // BEGIN that upgrades to a writer mid-transaction can fail with SQLITE_BUSY without waiting.
+    db.exec("BEGIN IMMEDIATE");
     try {
       const delEmb = db.prepare("DELETE FROM embeddings WHERE book_id = ?");
       const delChunks = db.prepare("DELETE FROM chunks WHERE book_id = ?");
@@ -430,7 +558,7 @@ export class SqliteIndexStore implements IndexStore {
       db.exec("COMMIT");
       return counts;
     } catch (err) {
-      db.exec("ROLLBACK");
+      rollbackQuietly(db);
       throw err;
     } finally {
       this.#candidateCaches.delete(libraryId);
@@ -453,9 +581,7 @@ export class SqliteIndexStore implements IndexStore {
     const out: LibraryHit[] = [];
     for (const [bookId, best] of bestPerBook) {
       const book = db.prepare("SELECT title, authors FROM books WHERE book_id = ?").get(bookId) as Row;
-      const chunk = db
-        .prepare("SELECT char_start, char_end, body FROM chunks WHERE id = ?")
-        .get(best.chunkId) as Row;
+      const chunk = db.prepare("SELECT char_start, char_end, body FROM chunks WHERE id = ?").get(best.chunkId) as Row;
       const body = String(chunk?.body ?? "");
       out.push({
         bookId,
@@ -496,7 +622,9 @@ export class SqliteIndexStore implements IndexStore {
     // Pull a generous pool of chunk hits, then keep the best (first, since bm25-ranked) per book.
     const pool = Math.max(k * 20, 200);
     // The allow filter lives in SQL (json_each keeps it to one variable) so a small bundle
-    // can't be starved by the pool cap eating unfiltered hits first.
+    // can't be starved by the pool cap eating unfiltered hits first. It uses the same FTS-first
+    // CTE as searchBookFts: ~9 s → <0.8 s on stop-word-heavy queries, neutral otherwise. The
+    // unfiltered branch keeps the plain JOIN — the CTE measured no gain there.
     const rows = (
       allow === undefined
         ? db
@@ -508,10 +636,13 @@ export class SqliteIndexStore implements IndexStore {
             .all(match, pool)
         : db
             .prepare(
-              `SELECT c.id AS chunk_id, c.book_id, c.char_start, c.char_end, c.body, ${WEIGHTED_BM25} AS score
-               FROM chunk_fts JOIN chunks c ON c.id = chunk_fts.rowid
-               WHERE chunk_fts MATCH ? AND c.book_id IN (SELECT value FROM json_each(?))
-               ORDER BY score LIMIT ?`,
+              `WITH m AS MATERIALIZED (
+                 SELECT rowid AS id, ${WEIGHTED_BM25} AS s FROM chunk_fts WHERE chunk_fts MATCH ?
+               )
+               SELECT c.id AS chunk_id, c.book_id, c.char_start, c.char_end, c.body, m.s AS score
+               FROM m JOIN chunks c ON c.id = m.id
+               WHERE c.book_id IN (SELECT value FROM json_each(?))
+               ORDER BY m.s LIMIT ?`,
             )
             .all(match, JSON.stringify([...allow]), pool)
     ) as Row[];
@@ -543,11 +674,17 @@ export class SqliteIndexStore implements IndexStore {
     const db = this.#db(libraryId);
     const match = ftsMatch(stemmedQuery);
     if (!match) return [];
+    // FTS-first: with a plain JOIN the planner drives from idx_chunks_book and re-runs the
+    // OR-ed MATCH per chunk (1.7–250 s on a 313k-chunk index); a MATERIALIZED CTE evaluates
+    // MATCH once, then filters by book. Same rows, same bm25 scores.
     const rows = db
       .prepare(
-        `SELECT c.id AS chunk_id, c.char_start, c.char_end, c.body, c.front_matter, ${WEIGHTED_BM25} AS score
-         FROM chunk_fts JOIN chunks c ON c.id = chunk_fts.rowid
-         WHERE chunk_fts MATCH ? AND c.book_id = ? ORDER BY score LIMIT ?`,
+        `WITH m AS MATERIALIZED (
+           SELECT rowid AS id, ${WEIGHTED_BM25} AS s FROM chunk_fts WHERE chunk_fts MATCH ?
+         )
+         SELECT c.id AS chunk_id, c.char_start, c.char_end, c.body, c.front_matter, m.s AS score
+         FROM m JOIN chunks c ON c.id = m.id
+         WHERE c.book_id = ? ORDER BY m.s LIMIT ?`,
       )
       .all(match, bookId, k) as Row[];
     return rows.map((r) => ({
@@ -560,15 +697,25 @@ export class SqliteIndexStore implements IndexStore {
     }));
   }
 
-  searchFigures(libraryId: string, query: Float32Array, k: number, bookId?: number, allow?: ReadonlySet<number>): FigureHit[] {
+  searchFigures(
+    libraryId: string,
+    query: Float32Array,
+    k: number,
+    bookId?: number,
+    allow?: ReadonlySet<number>,
+  ): FigureHit[] {
     const db = this.#db(libraryId);
     const hits = topK(query, restrict(this.#figureCandidates(libraryId, bookId), allow), k);
-    return hits
-      .map((h) => this.#figureHit(db, h.chunkId, h.score))
-      .filter((h): h is FigureHit => h !== undefined);
+    return hits.map((h) => this.#figureHit(db, h.chunkId, h.score)).filter((h): h is FigureHit => h !== undefined);
   }
 
-  searchFiguresFts(libraryId: string, stemmedQuery: string, k: number, bookId?: number, allow?: ReadonlySet<number>): FigureHit[] {
+  searchFiguresFts(
+    libraryId: string,
+    stemmedQuery: string,
+    k: number,
+    bookId?: number,
+    allow?: ReadonlySet<number>,
+  ): FigureHit[] {
     const db = this.#db(libraryId);
     const match = ftsMatch(stemmedQuery);
     if (!match) return [];
@@ -675,7 +822,16 @@ export class SqliteIndexStore implements IndexStore {
   }
 
   close(): void {
-    for (const db of this.#dbs.values()) db.close();
+    for (const db of this.#dbs.values()) {
+      // Fold the -wal side file back into the .sqlite so it is a self-contained file to copy/move.
+      // Best-effort: another process reading the index can keep the checkpoint from completing.
+      try {
+        db.exec("PRAGMA wal_checkpoint(TRUNCATE)");
+      } catch {
+        /* checkpoint is an optimization; closing still succeeds */
+      }
+      db.close();
+    }
     this.#dbs.clear();
     this.#candidateCaches.clear();
     this.#figureCaches.clear();
@@ -684,9 +840,7 @@ export class SqliteIndexStore implements IndexStore {
   /** Materialize one figures row (+ its book identity) into a FigureHit. */
   #figureHit(db: DatabaseSync, figRowId: number, score: number): FigureHit | undefined {
     const r = db
-      .prepare(
-        "SELECT book_id, fig_index, page, caption, char_offset, format, source FROM figures WHERE id = ?",
-      )
+      .prepare("SELECT book_id, fig_index, page, caption, char_offset, format, source FROM figures WHERE id = ?")
       .get(figRowId) as Row | undefined;
     if (!r) return undefined;
     const bookId = Number(r.book_id);
@@ -704,6 +858,21 @@ export class SqliteIndexStore implements IndexStore {
       ...(r.source != null ? { source: String(r.source) } : {}),
       score,
     };
+  }
+
+  /** A book's chunk count vs its embedded-chunk count, or undefined when it isn't indexed. */
+  #vectorCoverage(db: DatabaseSync, bookId: number): { chunks: number; embedded: number } | undefined {
+    const row = db.prepare("SELECT chunk_count, embedded_chunks FROM books WHERE book_id = ?").get(bookId) as
+      | Row
+      | undefined;
+    if (!row) return undefined;
+    let embedded = row.embedded_chunks;
+    if (embedded == null) {
+      // Legacy row (written before embedded_chunks existed) — count its embeddings instead.
+      const n = db.prepare("SELECT COUNT(*) AS n FROM embeddings WHERE book_id = ?").get(bookId) as Row;
+      embedded = n?.n;
+    }
+    return { chunks: Number(row.chunk_count ?? 0), embedded: Number(embedded ?? 0) };
   }
 
   /** Figure-caption vectors — all of a library, or one book. Mirrors #candidates. */
@@ -737,9 +906,7 @@ export class SqliteIndexStore implements IndexStore {
    * @internal public only as a spy seam for the cache tests; not part of `IndexStore`.
    */
   loadCandidates(libraryId: string): Candidate[] {
-    const rows = this.#db(libraryId)
-      .prepare("SELECT chunk_id, book_id, vector FROM embeddings")
-      .all() as Row[];
+    const rows = this.#db(libraryId).prepare("SELECT chunk_id, book_id, vector FROM embeddings").all() as Row[];
     return rows.map((r) => ({
       chunkId: Number(r.chunk_id),
       bookId: Number(r.book_id),
@@ -778,6 +945,11 @@ export class SqliteIndexStore implements IndexStore {
     const file = this.#file(libraryId);
     if (file !== ":memory:") mkdirSync(this.cfg.indexDir, { recursive: true });
     db = new DatabaseSync(file);
+    // Another server process (Desktop + Claude Code) may hold the same file (#196): wait on its
+    // lock instead of failing at once, and use WAL so readers never block the writer. WAL is
+    // persistent in the file; ":memory:" silently stays in "memory" mode.
+    db.exec(`PRAGMA busy_timeout = ${this.cfg.indexBusyTimeoutMs}`);
+    db.exec("PRAGMA journal_mode = WAL");
     db.exec(SCHEMA);
     this.#migrate(db);
     this.#ensureMeta(db);
@@ -795,6 +967,13 @@ export class SqliteIndexStore implements IndexStore {
     if (!cols.some((c) => c.name === "front_matter")) {
       db.exec("ALTER TABLE chunks ADD COLUMN front_matter INTEGER NOT NULL DEFAULT 0");
       this.log.info("index migrated: chunks.front_matter added");
+    }
+    // #197: per-book embedded-chunk count, so freshness can tell keyword-only from embedded
+    // entries. NULL (legacy rows) = unknown → readers count the embeddings table instead.
+    const bookCols = db.prepare("PRAGMA table_info(books)").all() as Row[];
+    if (!bookCols.some((c) => c.name === "embedded_chunks")) {
+      db.exec("ALTER TABLE books ADD COLUMN embedded_chunks INTEGER");
+      this.log.info("index migrated: books.embedded_chunks added");
     }
   }
 
@@ -831,6 +1010,18 @@ export class SqliteIndexStore implements IndexStore {
     // Sanitize the library id into a safe filename component.
     const safe = libraryId.replace(/[^A-Za-z0-9._-]/g, "_") || "default";
     return path.join(this.cfg.indexDir, `${safe}.sqlite`);
+  }
+}
+
+/**
+ * Roll back after a failed write without masking the original error: if BEGIN itself failed
+ * (e.g. SQLITE_BUSY) or SQLite already rolled back, ROLLBACK throws "no transaction is active".
+ */
+function rollbackQuietly(db: DatabaseSync): void {
+  try {
+    if (db.isTransaction) db.exec("ROLLBACK");
+  } catch {
+    // the caller rethrows the error that actually caused the failure
   }
 }
 

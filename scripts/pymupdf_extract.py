@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # PyMuPDF (fitz) text extractor. Invoked as: python3 pymupdf_extract.py <src> <dest>.
 # Both paths are server-controlled temp files (never model input) — no shell, no eval.
-# Writes UTF-8 plain text; preserves Cyrillic. Exits non-zero on any failure.
+# Writes UTF-8 plain text; preserves Cyrillic. Pages are separated by \f, matching
+# pdftotext, so page<->offset mapping works whichever backend ran (#133). Exits non-zero on any failure.
 import sys
 
 
@@ -20,7 +21,7 @@ def main() -> int:
         parts = [page.get_text("text") for page in doc]
         doc.close()
         with open(dest, "w", encoding="utf-8") as fh:
-            fh.write("\n".join(parts))
+            fh.write("\f".join(parts))
     except Exception as exc:  # noqa: BLE001 — surface any extraction failure as non-zero
         sys.stderr.write(f"extraction failed: {exc}\n")
         return 1

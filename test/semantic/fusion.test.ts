@@ -44,7 +44,16 @@ describe("rrfFuse", () => {
     });
 
     it("weight 0 behaves exactly as if the list were absent", () => {
-      expect(rrfFuse([[1, 2], [3, 4]], RRF_K, [1, 0])).toEqual(rrfFuse([[1, 2]]));
+      expect(
+        rrfFuse(
+          [
+            [1, 2],
+            [3, 4],
+          ],
+          RRF_K,
+          [1, 0],
+        ),
+      ).toEqual(rrfFuse([[1, 2]]));
     });
 
     it("a heavier list overrules the lighter one on rank-1 disagreement", () => {

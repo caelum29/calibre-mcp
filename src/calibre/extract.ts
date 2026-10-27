@@ -17,10 +17,13 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import type { Config } from "../config.js";
 import { type FigureMarker, injectFigureMarkers } from "../domain/figures/markers.js";
+import type { OutlineEntry } from "../domain/structure/pdf-outline.js";
 import { log } from "../logging.js";
 import type { GetInventoryArgs, InventoryResult } from "./figure-inventory.js";
 import { downloadToFile } from "./http.js";
-import { spawnCollect, SpawnMaxBufferError, SpawnTimeoutError } from "./spawn.js";
+import { OperationCancelledError } from "../domain/errors.js";
+import { pdftohtmlBinary, readPdfOutline } from "./pdf-outline.js";
+import { SpawnAbortedError, spawnCollect, SpawnMaxBufferError, SpawnTimeoutError } from "./spawn.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -32,6 +35,8 @@ export interface BackendReport {
   /** EPUB/other extractor (Calibre's ebook-convert), or null if missing. */
   epub: "ebook-convert" | null;
   pdftotextPath?: string;
+  /** poppler's pdftohtml — reads the PDF outline (bookmarks) for chapter maps (#134). */
+  pdftohtmlPath?: string;
   python3Path?: string;
   ebookConvertPath?: string;
   detectedAt: string;
@@ -46,6 +51,8 @@ export interface ExtractedText {
   markers: FigureMarker[];
   /** Inventory figures whose caption line was not found in the text (silent linkage gap signal). */
   unplaced: number;
+  /** PDF outline (bookmarks) — a chapter-map source (#134); [] for non-PDFs or no outline. */
+  outline: OutlineEntry[];
 }
 
 /** Structural seam for the figure-inventory service — keeps the extractor testable. */
@@ -61,15 +68,26 @@ export interface GetTextArgs {
   cacheKey: string;
   maxBytes?: number;
   timeoutMs?: number;
+  /** Cancellation: aborts the download and kills the converter's process group. */
+  signal?: AbortSignal;
 }
 
 const CACHE_DIR = path.join(tmpdir(), "calibre-mcp-cache");
 /**
  * Bump when the extracted-text layout changes — v2: inline image markers (#84) shifted
  * every char offset, so pre-marker `.txt` cache entries must never be served again
- * (they become LRU-evicted orphans). Rides in the cache filename AND the JSON envelope.
+ * (they become LRU-evicted orphans). v3: the PyMuPDF backend now separates pages with
+ * `\f` like pdftotext (#133) — cached `\n`-joined PyMuPDF text would hide page breaks.
+ * v4: envelope carries the PDF outline (#134) — v3 entries would never gain a chapter map
+ * from bookmarks until LRU-evicted.
+ * v5: EPUB caption matching (#101) places markers in books that had none and cleans
+ * marker captions — cached EPUB text would keep the old markers and offsets.
+ * v6: PDF caption scan rework (#107) renumbers figure indexes — cached markers would point
+ * at the wrong figures.
+ * v7: label-only PDF captions read from page layout — cached markers carry no caption text.
+ * Rides in the cache filename AND the JSON envelope.
  */
-const TEXT_CACHE_VERSION = 2;
+const TEXT_CACHE_VERSION = 7;
 const MAX_CACHE_ENTRIES = 50;
 const MAX_CACHE_BYTES = 200 * 1024 * 1024;
 const CONVERT_TIMEOUT_MS = 120_000;
@@ -95,6 +113,7 @@ const FORMAT_PREFERENCE = [
   "azw3",
   "mobi",
   "docx",
+  "odt",
   "htmlz",
   "fb2",
   "rtf",
@@ -173,11 +192,17 @@ export class Extractor {
     const dbDir = path.dirname(this.cfg.calibredbPath);
     const convertName = process.platform === "win32" ? "ebook-convert.exe" : "ebook-convert";
     const ebookConvertPath = dbDir === "." ? "ebook-convert" : path.join(dbDir, convertName);
-    const hasEbookConvert =
-      dbDir === "." ? await binaryExists(ebookConvertPath) : existsSync(ebookConvertPath);
+    const hasEbookConvert = dbDir === "." ? await binaryExists(ebookConvertPath) : existsSync(ebookConvertPath);
 
     const pdftotextPath = resolveBinary(PDFTOTEXT_CANDIDATES, "pdftotext");
     const hasPdftotext = PDFTOTEXT_CANDIDATES.some(existsSync) || (await binaryExists(pdftotextPath));
+
+    // pdftohtml ships beside pdftotext in every poppler build; probe the sibling for a PATH install.
+    const pdftohtmlPath =
+      pdftohtmlBinary() ??
+      (hasPdftotext && path.isAbsolute(pdftotextPath) && existsSync(path.join(path.dirname(pdftotextPath), "pdftohtml"))
+        ? path.join(path.dirname(pdftotextPath), "pdftohtml")
+        : undefined);
 
     const python3Path = resolveBinary(PYTHON_CANDIDATES, "python3");
     const hasFitz = await python3HasFitz(python3Path);
@@ -191,6 +216,7 @@ export class Extractor {
       pdf,
       epub: hasEbookConvert ? "ebook-convert" : null,
       pdftotextPath: hasPdftotext ? pdftotextPath : undefined,
+      pdftohtmlPath,
       python3Path: hasFitz ? python3Path : undefined,
       ebookConvertPath: hasEbookConvert ? ebookConvertPath : undefined,
       detectedAt: new Date().toISOString(),
@@ -214,7 +240,15 @@ export class Extractor {
         const now = new Date();
         await utimes(cacheFile, now, now).catch(() => {}); // LRU touch
         // Pre-diagnostics cache entries lack the count — 0 keeps the field honest-optimistic.
-        return { text: hit.text, backend: "cache", chars: hit.text.length, cached: true, markers: hit.markers, unplaced: hit.unplaced ?? 0 };
+        return {
+          text: hit.text,
+          backend: "cache",
+          chars: hit.text.length,
+          cached: true,
+          markers: hit.markers,
+          unplaced: hit.unplaced ?? 0,
+          outline: hit.outline ?? [],
+        };
       }
       // unreadable/corrupt envelope: fall through and re-extract
     }
@@ -227,13 +261,23 @@ export class Extractor {
         // Per-call override wins; otherwise the configured cap (callers like indexBook pass none).
         maxBytes: args.maxBytes ?? this.cfg.maxBookBytes,
         timeoutMs: args.timeoutMs,
+        signal: args.signal,
       });
-      const converted = await this.#convert(fmt, tmpSrc, tmpOut, report, args.timeoutMs);
+      const converted = await this.#convert(fmt, tmpSrc, tmpOut, report, args.timeoutMs, args.signal);
       const { text, markers, unplaced } = await this.#injectMarkers(converted.text, fmt, args);
-      const envelope: TextCacheEnvelope = { v: TEXT_CACHE_VERSION, backend: converted.backend, text, markers, unplaced };
+      // Read while the downloaded PDF still exists; best-effort, [] on any failure.
+      const outline = fmt === "pdf" && report.pdftohtmlPath ? await readPdfOutline(report.pdftohtmlPath, tmpSrc) : [];
+      const envelope: TextCacheEnvelope = {
+        v: TEXT_CACHE_VERSION,
+        backend: converted.backend,
+        text,
+        markers,
+        unplaced,
+        outline,
+      };
       await writeFile(cacheFile, JSON.stringify(envelope), "utf8");
       await evictCache().catch(() => {});
-      return { text, backend: converted.backend, chars: text.length, cached: false, markers, unplaced };
+      return { text, backend: converted.backend, chars: text.length, cached: false, markers, unplaced, outline };
     } finally {
       await unlink(tmpSrc).catch(() => {});
       await unlink(tmpOut).catch(() => {});
@@ -260,6 +304,7 @@ export class Extractor {
         downloadUrl: args.downloadUrl,
         cacheKey: args.cacheKey,
         timeoutMs: args.timeoutMs,
+        signal: args.signal,
       });
       const marked = injectFigureMarkers(text, inventory, fmt);
       if (marked.unplaced > 0) {
@@ -267,6 +312,8 @@ export class Extractor {
       }
       return { text: marked.text, markers: marked.markers, unplaced: marked.unplaced };
     } catch (err) {
+      // Cancellation is not a figure problem — propagate it instead of degrading to plain text.
+      if (args.signal?.aborted) throw new OperationCancelledError();
       log.warn("figure marker injection skipped", {
         bookId: args.bookId,
         format: fmt,
@@ -282,6 +329,7 @@ export class Extractor {
     out: string,
     report: BackendReport,
     timeoutMs?: number,
+    signal?: AbortSignal,
   ): Promise<{ text: string; backend: string }> {
     const timeout = timeoutMs ?? CONVERT_TIMEOUT_MS;
 
@@ -292,22 +340,22 @@ export class Extractor {
 
     if (fmt === "pdf") {
       if (report.pdf === "pdftotext" && report.pdftotextPath) {
-        await this.#run(report.pdftotextPath, pdftotextArgs(src, out), timeout);
+        await this.#run(report.pdftotextPath, pdftotextArgs(src, out), timeout, signal);
         return { text: await readFile(out, "utf8"), backend: "pdftotext" };
       }
       if (report.pdf === "pymupdf" && report.python3Path) {
-        await this.#run(report.python3Path, [pymupdfScriptPath(), src, out], timeout);
+        await this.#run(report.python3Path, [pymupdfScriptPath(), src, out], timeout, signal);
         return { text: await readFile(out, "utf8"), backend: "pymupdf" };
       }
       if (report.pdf === "ebook-convert" && report.ebookConvertPath) {
-        return await this.#ebookConvert(report.ebookConvertPath, src, out, timeout);
+        return await this.#ebookConvert(report.ebookConvertPath, src, out, timeout, signal);
       }
       throw new Error("NO_PDF_BACKEND");
     }
 
     // EPUB and other ebook formats → Calibre.
     if (report.epub === "ebook-convert" && report.ebookConvertPath) {
-      return await this.#ebookConvert(report.ebookConvertPath, src, out, timeout);
+      return await this.#ebookConvert(report.ebookConvertPath, src, out, timeout, signal);
     }
     throw new Error("NO_EPUB_BACKEND");
   }
@@ -318,14 +366,20 @@ export class Extractor {
    * a float (e.g. `calc(1em / 2)`), which would otherwise drop the whole book from the index for
    * a purely cosmetic reason. A timeout is NOT retried — that would double the time budget.
    */
-  async #ebookConvert(bin: string, src: string, out: string, timeout: number): Promise<{ text: string; backend: string }> {
+  async #ebookConvert(
+    bin: string,
+    src: string,
+    out: string,
+    timeout: number,
+    signal?: AbortSignal,
+  ): Promise<{ text: string; backend: string }> {
     try {
-      await this.#run(bin, ebookConvertArgs(src, out, "markdown"), timeout);
+      await this.#run(bin, ebookConvertArgs(src, out, "markdown"), timeout, signal);
       return { text: await readFile(out, "utf8"), backend: "ebook-convert" };
     } catch (err) {
       if ((err as Error).message !== "EXTRACT_FAILED") throw err;
       log.warn("markdown conversion failed, retrying as plain text", { src: path.basename(src) });
-      await this.#run(bin, ebookConvertArgs(src, out, "plain"), timeout);
+      await this.#run(bin, ebookConvertArgs(src, out, "plain"), timeout, signal);
       return { text: await readFile(out, "utf8"), backend: "ebook-convert:plain" };
     }
   }
@@ -336,17 +390,23 @@ export class Extractor {
    * whose timeout leaks the worker and never settles. Raw errors leak temp paths, so
    * re-throw a coded error.
    */
-  async #run(bin: string, args: string[], timeout: number): Promise<void> {
+  async #run(bin: string, args: string[], timeout: number, signal?: AbortSignal): Promise<void> {
     try {
-      const { code } = await spawnCollect(bin, args, { timeoutMs: timeout, maxBuffer: 8 * 1024 * 1024 });
+      const { code } = await spawnCollect(bin, args, { timeoutMs: timeout, maxBuffer: 8 * 1024 * 1024, signal });
       if (code !== 0) throw new Error(`exit ${code}`);
     } catch (err) {
+      if (err instanceof SpawnAbortedError) throw new OperationCancelledError();
       const timedOut = err instanceof SpawnTimeoutError;
       log.error("extract convert failed", {
         bin: path.basename(bin),
         killed: timedOut,
         code: (err as NodeJS.ErrnoException).code,
-        msg: err instanceof SpawnMaxBufferError ? "maxBuffer" : err instanceof Error ? err.message.slice(0, 300) : String(err),
+        msg:
+          err instanceof SpawnMaxBufferError
+            ? "maxBuffer"
+            : err instanceof Error
+              ? err.message.slice(0, 300)
+              : String(err),
       });
       throw new Error(timedOut ? "EXTRACT_TIMEOUT" : "EXTRACT_FAILED");
     }
@@ -375,6 +435,8 @@ interface TextCacheEnvelope {
   markers: FigureMarker[];
   /** Optional (added post-#87 pre-flight): absent in older v2 entries — read as 0. */
   unplaced?: number;
+  /** PDF outline entries (v4, #134); absent for non-PDF entries — read as []. */
+  outline?: OutlineEntry[];
 }
 
 /** Parse + validate a text-cache envelope; null on corruption or version mismatch. */
@@ -383,7 +445,14 @@ export function parseTextCacheEnvelope(raw: string): TextCacheEnvelope | null {
     const parsed = JSON.parse(raw) as Partial<TextCacheEnvelope>;
     if (parsed.v !== TEXT_CACHE_VERSION) return null;
     if (typeof parsed.text !== "string" || !Array.isArray(parsed.markers)) return null;
-    return { v: parsed.v, backend: typeof parsed.backend === "string" ? parsed.backend : "cache", text: parsed.text, markers: parsed.markers };
+    return {
+      v: parsed.v,
+      backend: typeof parsed.backend === "string" ? parsed.backend : "cache",
+      text: parsed.text,
+      markers: parsed.markers,
+      ...(typeof parsed.unplaced === "number" ? { unplaced: parsed.unplaced } : {}),
+      ...(Array.isArray(parsed.outline) ? { outline: parsed.outline } : {}),
+    };
   } catch {
     return null;
   }
@@ -393,11 +462,22 @@ function hashKey(key: string): string {
   return createHash("sha256").update(key).digest("hex").slice(0, 32);
 }
 
+/**
+ * Cache entries the LRU sweep may delete: .txt = legacy extracted text, .json = text
+ * envelopes + fg-*.json figure inventories (same LRU pool, D-018). Per-call temp files
+ * (`tx-`/`dl-`/`fx-`/`ep-` and `fg-<uuid>.txt`) are excluded — under a concurrent build
+ * (#99) they belong to ANOTHER book still converting, and deleting one fails that book.
+ */
+export function isEvictableCacheFile(name: string): boolean {
+  if (/^(tx|dl|fx|ep)-/.test(name)) return false;
+  if (name.startsWith("fg-") && name.endsWith(".txt")) return false;
+  return name.endsWith(".txt") || name.endsWith(".json");
+}
+
 /** LRU sweep: drop oldest cache files when over the entry/byte caps. Best-effort. */
 async function evictCache(): Promise<void> {
   const names = await readdir(CACHE_DIR).catch(() => [] as string[]);
-  // .txt = extracted text; fg-*.json = figure inventories (same LRU pool, D-018).
-  const files = names.filter((n) => n.endsWith(".txt") || n.endsWith(".json"));
+  const files = names.filter(isEvictableCacheFile);
   const entries = await Promise.all(
     files.map(async (n) => {
       const p = path.join(CACHE_DIR, n);

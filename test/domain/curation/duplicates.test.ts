@@ -58,10 +58,7 @@ describe("mergeSafety", () => {
   });
 
   it("caps a differing-language pair below the safe-merge range", () => {
-    const books = [
-      book({ languages: ["eng"], formats: ["pdf"] }),
-      book({ languages: ["rus"], formats: ["epub"] }),
-    ];
+    const books = [book({ languages: ["eng"], formats: ["pdf"] }), book({ languages: ["rus"], formats: ["epub"] })];
     expect(mergeSafety(books)).toBeLessThanOrEqual(0.3);
   });
 
@@ -78,7 +75,14 @@ describe("compareBooks", () => {
   it("diffs fields and recommends the most complete record", () => {
     const books = [
       book({ id: 1, title: "T", authors: ["A"], formats: ["pdf"] }),
-      book({ id: 2, title: "T", authors: ["A"], formats: ["pdf", "epub"], identifiers: { isbn: "9780306406157" }, publisher: "P" }),
+      book({
+        id: 2,
+        title: "T",
+        authors: ["A"],
+        formats: ["pdf", "epub"],
+        identifiers: { isbn: "9780306406157" },
+        publisher: "P",
+      }),
     ];
     const r = compareBooks(books);
     expect(r.keep).toBe(2);

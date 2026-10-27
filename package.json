@@ -1,6 +1,6 @@
 {
   "name": "calibre-mcp",
-  "version": "0.7.4",
+  "version": "0.10.0",
   "description": "The most capable Calibre MCP server — full read/write tool surface plus library- and book-scoped semantic search.",
   "type": "module",
   "license": "MIT",
@@ -30,37 +30,62 @@
     "scripts/pymupdf_extract.py"
   ],
   "engines": {
-    "node": ">=22.5"
+    "node": ">=22.16"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsx watch src/run-stdio.ts",
     "start": "node dist/run-stdio.js",
     "inspect": "tsc -p tsconfig.json && mcp-inspector node dist/run-stdio.js",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p test/tsconfig.json",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "knip": "knip",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "test:model": "RUN_MODEL_TESTS=1 vitest run test/semantic/embedder.integration.test.ts",
     "test:calibre": "RUN_CALIBRE_TESTS=1 vitest run test/integration/merge.live.test.ts",
     "eval": "node --import tsx test/eval/retrieval/run.ts",
-    "prepublishOnly": "pnpm run build && pnpm run test",
+    "reindex": "node --import tsx scripts/reindex.ts",
+    "versions:check": "node scripts/check-versions.mjs",
+    "catalog": "pnpm build && node scripts/gen-tool-catalog.mjs",
+    "catalog:check": "node scripts/gen-tool-catalog.mjs --check",
+    "prepublishOnly": "pnpm run versions:check && pnpm run build && pnpm run test",
     "pack:mcpb": "node scripts/pack-mcpb.mjs",
-    "pack:mcpb:dev": "node scripts/pack-mcpb.mjs --dev"
+    "pack:mcpb:dev": "node scripts/pack-mcpb.mjs --dev",
+    "prepare": "husky || true"
+  },
+  "lint-staged": {
+    "*.{ts,mjs,js}": [
+      "oxfmt --no-error-on-unmatched-pattern",
+      "oxlint --fix"
+    ],
+    "*.{json,yml,yaml}": "oxfmt --no-error-on-unmatched-pattern"
   },
   "dependencies": {
-    "@modelcontextprotocol/ext-apps": "1.7.4",
-    "@modelcontextprotocol/sdk": "1.29.0",
+    "@modelcontextprotocol/ext-apps": "1.7.5",
+    "@modelcontextprotocol/sdk": "1.32.1",
     "open": "^11.0.1",
     "snowball-stemmers": "^0.6.0",
-    "zod": "4.4.3"
+    "zod": "4.6.7"
   },
   "optionalDependencies": {
     "@huggingface/transformers": "4.3.1"
   },
   "devDependencies": {
-    "@modelcontextprotocol/inspector": "2.2.0",
-    "@types/node": "24.13.2",
-    "tsx": "4.22.4",
+    "@modelcontextprotocol/inspector": "2.11.0",
+    "@types/node": "24.19.2",
+    "@vitest/coverage-v8": "4.1.9",
+    "ajv": "8.20.0",
+    "husky": "9.1.7",
+    "knip": "6.42.1",
+    "lint-staged": "17.6.0",
+    "oxfmt": "0.74.0",
+    "oxlint": "1.89.0",
+    "tsx": "4.23.15",
     "typescript": "5.9.3",
     "vitest": "4.1.9"
   }

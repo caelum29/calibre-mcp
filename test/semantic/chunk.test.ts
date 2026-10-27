@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chunkForEmbedding } from "../../src/semantic/chunk.js";
+import { chunkForEmbedding, chunkForEmbeddingAsync } from "../../src/semantic/chunk.js";
 
 describe("chunkForEmbedding", () => {
   it("returns [] for empty text", () => {
@@ -103,5 +103,28 @@ describe("chunkForEmbedding", () => {
     // …NOT in chars: every full (non-tail) chunk is far longer than 30 chars.
     for (const c of chunks.slice(0, -1)) expect(c.body.length).toBeGreaterThan(budget);
     expect(chunks.at(-1)!.charEnd).toBe(text.length);
+  });
+});
+
+describe("chunkForEmbeddingAsync (#99)", () => {
+  it("returns exactly the sync chunks", async () => {
+    const text = "Ownership and borrowing in Rust.\n\nLifetimes tie references to scopes. ".repeat(400);
+    const opts = { budget: 300, lengthFn: (s: string) => Math.ceil(s.length / 4) };
+    expect(await chunkForEmbeddingAsync(text, opts)).toEqual(chunkForEmbedding(text, opts));
+  });
+
+  it("yields to the event loop during a slow chunking run", async () => {
+    const text = "word ".repeat(20_000);
+    // A deliberately slow lengthFn (~1 ms per call) stands in for a real tokenizer.
+    const slowLen = (s: string) => {
+      const until = Date.now() + 1;
+      while (Date.now() < until);
+      return s.length;
+    };
+    let ticks = 0;
+    const timer = setInterval(() => ticks++, 1);
+    await chunkForEmbeddingAsync(text, { budget: 200, lengthFn: slowLen });
+    clearInterval(timer);
+    expect(ticks).toBeGreaterThan(0);
   });
 });

@@ -1,0 +1,223 @@
+# Observability in Practice
+
+# Observability in Practice
+
+*Events, Traces, and Service Level Objectives for Production Systems*
+
+An Eval Fixture
+
+# Copyright
+
+Copyright © 2026 Eval Fixture. All rights reserved.
+
+Printed nowhere; written for a retrieval test suite. No part of this fixture describes a real
+product. While the author has used good faith efforts to ensure that the information in this
+work is accurate, the author disclaims all responsibility for errors or omissions.
+
+# Revision History for the First Edition
+
+- 2026-03-02: First Release
+- 2026-06-18: Second Release
+- 2026-09-30: Third Release
+
+# Preface
+
+Every on-call engineer has stared at a dashboard full of green lights while customers report
+that the product is broken. This book is about closing that gap: asking new questions of a
+running system without shipping new code first.
+
+## What's in This Book
+
+Chapter 1, "Observability Versus Monitoring", defines observability and contrasts
+observability with monitoring. You will learn what observability is, why observability is a
+property of a system rather than a tool, and why monitoring known failure modes is not
+observability.
+
+Chapter 2, "Structured Events and Cardinality", defines the structured event and explains
+high cardinality. It covers what cardinality is, why high-cardinality fields such as user IDs
+matter, and why high cardinality breaks metrics but not structured events.
+
+Chapter 3, "Distributed Tracing", defines the trace and the span. You will learn what a span
+in distributed tracing is, how a span records one unit of work, how spans form a trace, and
+how trace context propagation links spans across services in distributed tracing.
+
+Chapter 4, "Service Level Objectives and Error Budgets", defines the service level objective
+and the error budget. It explains what an error budget is, how an error budget is computed
+from an SLO, how teams spend the error budget, and how error budget burn rate alerts work.
+
+## Conventions Used in This Book
+
+*Italic* marks new terms. `Constant width` marks field names, attribute keys, and code.
+
+## Acknowledgments
+
+Thanks to the reviewers whose questions about dashboards, pagers, and late-night incidents
+shaped every chapter, and to the teams who let their outages become examples.
+
+# **Chapter 1. **Observability Versus Monitoring
+
+Production systems used to fail in a handful of familiar ways. A disk filled, a process
+crashed, a queue backed up. Operators learned those failure modes, wrote a check for each,
+and drew a dashboard that turned red when a check tripped. That practice is monitoring, and
+for a monolith running on a few servers it worked well enough.
+
+Modern systems fail differently. A request crosses a dozen services, three caches, two
+queues, and a third-party payment API. The failure that wakes you tonight is one nobody has
+seen before: slow responses only for customers on one mobile app version, in one region,
+whose carts contain a discounted item. No pre-written check exists for that combination,
+because nobody could have predicted it.
+
+## Defining Observability
+
+Observability is the ability to understand any internal state of a system by asking
+arbitrary questions of its external outputs — without deploying new code to answer each new
+question. The term comes from control theory, where a system is observable if its internal
+state can be reconstructed from its outputs. For software, the outputs are the telemetry the
+system emits, and the test is practical: when a novel failure appears, can an engineer slice
+the data by any combination of attributes until the cause stands out, or must they guess,
+add logging, redeploy, and wait?
+
+Observability is therefore a property of the system and its telemetry, not a product you
+install. A team can buy every tool on the market and still have a system that is not
+observable, because the data it emits is pre-aggregated, stripped of context, or missing the
+attributes that would distinguish the failing requests from the healthy ones.
+
+## Why Monitoring Is Not Enough
+
+Monitoring answers questions you knew to ask in advance; observability answers the ones you
+did not. The two are complementary. Monitoring remains the right tool for known-knowns —
+disk space, certificate expiry, a dead process — and its alerts should stay simple and
+reliable. But monitoring is built from predictions, and the interesting failures of a
+distributed system are precisely the ones nobody predicted.
+
+The practical difference shows up during an incident. With monitoring alone, the engineer
+looks at fixed graphs and tries to infer which pre-built view might hide the problem. With
+an observable system, the engineer starts from a symptom — "p99 latency doubled" — and
+follows the data: break latency down by service, then by endpoint, then by app version, then
+by region, narrowing the population until only the guilty requests remain. Each step is a
+new question, answered in seconds from the telemetry that already exists.
+
+## The Core Analysis Loop
+
+That narrowing motion is the core analysis loop. Start from the widest view of a symptom,
+compare the requests that show it against those that do not, find the attribute whose values
+differ most between the two groups, filter on it, and repeat. The loop needs no intuition
+about the architecture; it needs only telemetry rich enough that every question has an
+answer. The rest of this book is about producing that telemetry.
+
+# **Chapter 2. **Structured Events and Cardinality
+
+If observability depends on asking arbitrary questions, the raw material has to preserve
+enough detail to answer them. Most traditional telemetry throws that detail away at the
+moment it is written.
+
+## The Structured Event
+
+A structured event is a single record, emitted once per unit of work, that captures
+everything known about that unit of work as a set of key–value fields. For a web service the
+unit is usually one request: the event carries the endpoint, the status code, the duration,
+the user ID, the build number, the feature flags in effect, the database query count, the
+cache hit or miss, and any other attribute the code knows at the time. Fields are named and
+typed, so a query engine can filter and group on any of them without parsing free text.
+
+Contrast this with a classic log line, which a developer writes as a sentence for humans and
+an operator later reverse-engineers with regular expressions. The structured event is written
+for machines first: wide, explicit, one per request, and queryable on every field.
+
+## Cardinality
+
+Cardinality is the number of distinct values a field can take. A field such as HTTP method
+has low cardinality — a handful of values. A field such as user ID, request ID, or shopping
+cart ID has high cardinality — millions of distinct values, most of them seen only a few
+times. High-cardinality fields are the most valuable fields in debugging, because they are
+the ones that identify exactly who and what is affected: one user, one tenant, one build.
+
+## Why High Cardinality Breaks Metrics
+
+Metrics systems store a separate time series for every unique combination of label values.
+Add a user ID label to a request-latency metric and the number of series becomes the number
+of users times every other label combination — a cardinality explosion that overwhelms
+storage and makes the metric useless. So metrics systems force teams to drop exactly the
+fields that would pinpoint a problem. Structured events have no such limit: each event is
+stored whole, and high-cardinality fields cost no more than any other field. Aggregation
+happens at query time, over whatever grouping the current question needs.
+
+# **Chapter 3. **Distributed Tracing
+
+A structured event describes one unit of work in one service. A user request, though, fans
+out across many services, and a slow response is often slow because of one hop deep in that
+fan-out. Distributed tracing connects the events of a single request so its whole path can
+be seen at once.
+
+## Spans and Traces
+
+A span is the record of one timed unit of work within a request: one service handling one
+call, one database query, one outbound HTTP request. Each span carries a name, a start time,
+a duration, a span ID, the ID of its parent span, and the trace ID shared by every span in
+the request, plus whatever attributes the code adds. A trace is the tree of spans that share
+one trace ID. The root span covers the whole request; its children cover the calls it made;
+their children cover the calls those made, and so on down the call graph.
+
+Rendered as a waterfall, a trace shows at a glance where time went: the root span lasts 900
+milliseconds, but one child span — a call to the inventory service — accounts for 700 of
+them, and inside it a single database query span accounts for 650. A span is, in effect, a
+structured event with timing and a parent pointer, which is why tracing and structured
+events fit together so naturally.
+
+## Context Propagation
+
+Spans in different services can only join one trace if every service knows the trace ID and
+its parent span ID. Trace context propagation is the mechanism that carries them: when a
+service makes an outbound call, it injects the current trace ID and span ID into the request
+headers, and the receiving service extracts them and starts its own spans as children. A
+standard header format lets services written in different languages, by different teams,
+participate in the same trace. One service that drops the headers breaks the trace in two,
+which is why propagation belongs in shared libraries rather than in each team's code.
+
+## Sampling
+
+Tracing every request in a high-traffic system is expensive, so most systems sample. Head
+sampling decides at the root whether to keep a trace; tail sampling waits until the trace is
+complete and keeps the interesting ones — errors, slow requests — while discarding most of
+the boring successes. Whatever the strategy, each kept trace should record its sample rate
+so that counts computed from sampled data can be scaled back to the true totals.
+
+# **Chapter 4. **Service Level Objectives and Error Budgets
+
+Telemetry tells you what the system is doing. It does not tell you whether that is good
+enough. Service level objectives turn "good enough" into a number the whole organization can
+agree on.
+
+## Service Level Indicators and Objectives
+
+A service level indicator is a measurement of user-visible behaviour, usually expressed as a
+ratio of good events to valid events: the fraction of requests that succeed, or the fraction
+served faster than 300 milliseconds. A service level objective is a target for that
+indicator over a time window — for example, 99.9 percent of checkout requests succeed over a
+rolling 30 days. The objective is deliberately below 100 percent, because perfect
+reliability is neither achievable nor worth what it would cost.
+
+## The Error Budget
+
+The error budget is the amount of unreliability the service level objective permits: one
+minus the objective, applied to the window. A 99.9 percent objective over 30 days allows 0.1
+percent of requests to fail; at ten million requests a month, the error budget is ten
+thousand failed requests. The budget turns reliability from an argument into an accounting
+problem. While budget remains, the team may spend it — on risky deploys, experiments,
+planned maintenance. When the budget is exhausted, the agreed policy applies: feature work
+pauses and the team spends its time on reliability until the budget recovers.
+
+The error budget also aligns incentives that usually conflict. Product teams want to ship
+fast; operations teams want stability. With a shared budget, both sides argue about the
+same number, and the decision to slow down is made by policy written in calm times rather
+than by whoever shouts loudest during an outage.
+
+## Burn Rate Alerts
+
+Alerting on every failed request is noise; alerting only when the budget is gone is too late.
+Burn rate measures how fast the budget is being consumed relative to the rate that would use
+exactly all of it by the end of the window. A burn rate of one spends the budget precisely on
+schedule; a burn rate of fourteen would exhaust a 30-day budget in about two days. Good
+alerts page a human only when the burn rate is high over both a long and a short window —
+proof that the problem is significant and still happening — and send slow, sustained burns
+to a ticket queue instead of a pager.

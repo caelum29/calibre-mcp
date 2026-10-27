@@ -41,13 +41,10 @@ export const boardDataTool = defineTool({
   handler: async (args, deps) => {
     const payload = deps.boardCache?.get(args.tool, args.query);
     if (!payload) {
-      return toolError(
-        "No cached board data for this search — run calibre_search or calibre_semantic_search first.",
-      );
+      return toolError("No cached board data for this search — run calibre_search or calibre_semantic_search first.");
     }
-    return toolOk(
-      [{ type: "text", text: `Board payload: ${payload.books.length} book(s) for "${payload.query}".` }],
-      { ...payload },
-    );
+    return toolOk([{ type: "text", text: `Board payload: ${payload.books.length} book(s) for "${payload.query}".` }], {
+      ...payload,
+    });
   },
 });

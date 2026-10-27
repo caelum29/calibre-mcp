@@ -46,3 +46,6 @@ assets/
 
 # stray dir from a mis-expanded "~/Library/Application Support/Claude" path
 Support/
+
+# test coverage reports
+coverage/

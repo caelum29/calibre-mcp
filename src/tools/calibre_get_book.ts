@@ -5,7 +5,9 @@
 // include_cover opts into a real ImageContent block only when the model must SEE the cover.
 
 import { z } from "zod";
+import type { Book } from "../domain/book.js";
 import { CalibreHttpError } from "../domain/errors.js";
+import { isEmptyDate } from "../domain/merge.js";
 import { BookId, CoercedBool } from "./coerce.js";
 import { bookIdArg } from "./resolve-id.js";
 import { defineTool } from "./define.js";
@@ -74,8 +76,7 @@ export const getBookTool = defineTool({
 
       const book = await deps.content.getBook(numericId, args.library);
       const libraryId = await deps.content.resolveLibraryId(args.library);
-      const authors = book.authors.join(", ") || "unknown";
-      let summary = `${book.title}\nby ${authors}` + (book.comments ? `\n\n${book.comments}` : "");
+      let summary = formatBookSummary(book);
 
       const blocks: ContentBlock[] = [];
       if (args.include_cover) {
@@ -101,3 +102,36 @@ export const getBookTool = defineTool({
     }
   },
 });
+
+/**
+ * Text mirror of the full record — Desktop strips structuredContent, so formats/ISBN/tags
+ * must live here too (#104). Fields go BEFORE comments: comments can be huge HTML and
+ * clients may truncate the tail.
+ */
+export function formatBookSummary(book: Book): string {
+  const dash = (v: string | undefined) => (v ? v : "—");
+  const list = (v: string[]) => (v.length ? v.join(", ") : "—");
+  const { isbn, ...otherIds } = book.identifiers;
+  const ids = Object.entries(otherIds)
+    .filter(([, v]) => v)
+    .map(([k, v]) => `${k}:${v}`);
+  const series = book.series
+    ? `${book.series}${book.seriesIndex !== undefined ? ` [${book.seriesIndex}]` : ""}`
+    : undefined;
+  const pubdate = isEmptyDate(book.pubdate) ? undefined : book.pubdate!.slice(0, 10);
+
+  const lines = [
+    book.title,
+    `by ${book.authors.join(", ") || "unknown"}`,
+    [
+      `formats: ${list(book.formats.map((f) => f.toUpperCase()))}`,
+      ...(book.pages !== undefined ? [`pages: ${book.pages}`] : []),
+      `lang: ${list(book.languages)}`,
+      ...(book.rating ? [`rating: ${book.rating}`] : []),
+    ].join(" | "),
+    `isbn: ${dash(isbn)} | ids: ${list(ids)}`,
+    `series: ${dash(series)} | tags: ${list(book.tags)} | publisher: ${dash(book.publisher)} | pubdate: ${dash(pubdate)}`,
+    `id: ${book.id} | uuid: ${book.uuid}` + (book.lastModified ? ` | last modified: ${book.lastModified}` : ""),
+  ];
+  return lines.join("\n") + (book.comments ? `\n\n${book.comments}` : "");
+}

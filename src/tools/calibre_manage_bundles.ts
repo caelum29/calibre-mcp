@@ -15,7 +15,7 @@ import { toolError, toolOk } from "./result.js";
 import type { ToolDeps } from "./types.js";
 import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "./write-refusal.js";
 
-export { type BundleEntry, isExclusionMarker, mergeBundles, parseSavedSearches } from "./bundles.js";
+export { mergeBundles, parseSavedSearches } from "./bundles.js";
 
 /**
  * argv for a saved-search write. The `--` separator MUST come after every option (the client
@@ -24,11 +24,7 @@ export { type BundleEntry, isExclusionMarker, mergeBundles, parseSavedSearches }
  * DB and dies on the GUI lock. `--` before the name is also what lets exclusion markers
  * (`-outdated`) through instead of being parsed as a flag.
  */
-export function buildSavedSearchArgs(
-  action: "add" | "remove",
-  name: string,
-  expression?: string,
-): string[] {
+export function buildSavedSearchArgs(action: "add" | "remove", name: string, expression?: string): string[] {
   const args = ["saved_searches", action, "--", name];
   if (action === "add") args.push(expression ?? "");
   return args;
@@ -103,11 +99,7 @@ function previewText(
  * a returned reason (rather than a throw) is what lets the update path roll back and still
  * report WHY the write failed.
  */
-async function tryWrite(
-  deps: ToolDeps,
-  args: readonly string[],
-  libId: string,
-): Promise<string | undefined> {
+async function tryWrite(deps: ToolDeps, args: readonly string[], libId: string): Promise<string | undefined> {
   try {
     await deps.calibre.calibredb(args, { library: libId });
     // The discovery tools read bundles through a TTL cache — a committed write must be
@@ -161,10 +153,10 @@ export const manageBundlesTool = defineTool({
 
       if (args.action === "list") {
         const bundles = await loadBundles(deps, args.library);
-        return toolOk(
-          [{ type: "text", text: `Bundles (${bundles.length}):\n${bundleList(bundles)}` }],
-          { action: "list", bundles },
-        );
+        return toolOk([{ type: "text", text: `Bundles (${bundles.length}):\n${bundleList(bundles)}` }], {
+          action: "list",
+          bundles,
+        });
       }
 
       if (!name) return toolError(`action=${args.action} requires a bundle name.`);
@@ -187,9 +179,7 @@ export const manageBundlesTool = defineTool({
 
       if (args.action === "delete") {
         if (!existing) {
-          return toolError(
-            `No bundle named "${name}". Existing bundles: ${writableNames.join(", ") || "(none)"}.`,
-          );
+          return toolError(`No bundle named "${name}". Existing bundles: ${writableNames.join(", ") || "(none)"}.`);
         }
         if (!args.confirm) {
           return toolOk(
@@ -207,22 +197,19 @@ export const manageBundlesTool = defineTool({
         }
         const failure = await tryWrite(deps, buildSavedSearchArgs("remove", name), libId);
         if (failure) return toolError(failure);
-        return toolOk(
-          [{ type: "text", text: `Deleted the saved search "${name}". No books were touched.` }],
-          { action: "delete", applied: true },
-        );
+        return toolOk([{ type: "text", text: `Deleted the saved search "${name}". No books were touched.` }], {
+          action: "delete",
+          applied: true,
+        });
       }
 
       // create / update
       if (!expression) {
-        return toolError(
-          `action=${args.action} requires an expression (Calibre search grammar, e.g. \`tag:rust\`).`,
-        );
+        return toolError(`action=${args.action} requires an expression (Calibre search grammar, e.g. \`tag:rust\`).`);
       }
       if (args.action === "create" && existing) {
         return toolError(
-          `A bundle named "${name}" already exists (\`${existing.expression}\`). ` +
-            "Use action=update to change it.",
+          `A bundle named "${name}" already exists (\`${existing.expression}\`). ` + "Use action=update to change it.",
         );
       }
       if (args.action === "update" && !existing) {
@@ -236,10 +223,12 @@ export const manageBundlesTool = defineTool({
       if ("error" in count) return toolError(count.error);
 
       if (!args.confirm) {
-        return toolOk(
-          [{ type: "text", text: previewText(args.action, name, expression, count.total, existing) }],
-          { action: args.action, applied: false, matches: count.total, created_as: "saved_search" },
-        );
+        return toolOk([{ type: "text", text: previewText(args.action, name, expression, count.total, existing) }], {
+          action: args.action,
+          applied: false,
+          matches: count.total,
+          created_as: "saved_search",
+        });
       }
 
       // update = remove + add: calibredb has no in-place edit for a saved search. That leaves a
@@ -254,11 +243,7 @@ export const manageBundlesTool = defineTool({
       const addFailure = await tryWrite(deps, buildSavedSearchArgs("add", name, expression), libId);
       if (addFailure) {
         if (oldExpression === undefined) return toolError(addFailure);
-        const rollbackFailure = await tryWrite(
-          deps,
-          buildSavedSearchArgs("add", name, oldExpression),
-          libId,
-        );
+        const rollbackFailure = await tryWrite(deps, buildSavedSearchArgs("add", name, oldExpression), libId);
         if (rollbackFailure) {
           deps.log.error("bundle update rollback failed", { name, addFailure, rollbackFailure });
           return toolError(

@@ -1,0 +1,22 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "import", "unicorn", "oxc"],
+  "categories": {
+    "correctness": "error"
+  },
+  "rules": {
+    "no-console": "error",
+    "complexity": ["warn", 20],
+    "max-depth": ["warn", 4],
+    "max-lines": ["warn", { "max": 500, "skipBlankLines": true, "skipComments": true }],
+    "max-params": ["warn", 4],
+    "typescript/no-import-type-side-effects": "error"
+  },
+  "overrides": [
+    {
+      "files": ["test/**/*.ts", "scripts/**/*.mjs", "vitest.config.ts"],
+      "rules": { "no-console": "off", "max-lines": "off" }
+    }
+  ],
+  "ignorePatterns": ["dist/**", "dist-mcpb/**", "build/**", "coverage/**", "test/eval/retrieval/reports/**"]
+}

@@ -165,7 +165,8 @@ calibre_get_content(id=<BOOK_ID>, structure=true)
 Returns `structuredContent`:
 - `chapters`: `[{ n, heading, startChar, endChar, approxTokens, cursor }]` — each `cursor`
   seeks straight to that chapter's start in a follow-up `calibre_get_content` call.
-- `hasToc`, `detector` (`numeric` | `structural` | `none`), `totalChars`, `format`, `backend`.
+- `hasToc`, `detector` (`pdf-outline` | `numeric` | `structural` | `none`), `totalChars`, `format`, `backend`.
+  `pdf-outline` = the PDF's own bookmarks; its `n` is a running number, not the printed chapter number.
 
 If `detector = none` / `chapters = []`, the book has no machine-detectable headings — walk
 it with plain `calibre_get_content` cursor pages (no `structure`) and infer sections from

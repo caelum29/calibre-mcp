@@ -1,6 +1,7 @@
 {
   "$comment": "Phase B eval gates, declared BEFORE the atomic re-index build (D-012 protocol). Human record: issue #85 verdict comment (2026-07-22). Consumed by `pnpm eval --gate`.",
-  "baselineReport": "reports/2026-07-15-9725d1e-issue18-after.json",
+  "baselineReport": "reports/2026-10-24-f8bb617-v4-t431-fixture.json",
+  "$baselineComment": "Re-baselined 2026-10-24 (#139, INDEX_VERSION 4): transformers.js 4.3.1 / onnxruntime-node 1.30 reranker drift flips fixture sp-11 (101 vs 116, both maxRerank ~0.015 — cross-encoder noise on short fixture passages). Live eval on the v4 index shows no real regression (drops are post-July books absent from live labels). Rationale: reports/2026-10-24-v4-reindex-gate.md. Previous baseline: reports/2026-07-15-9725d1e-issue18-after.json.",
   "nonRegression": {
     "$comment": "Existing kinds with markers now inside chunk text. Gate compares per-query Hit@1 vs the baseline report; every dropped query must be explained in the report regardless of gate color.",
     "hybrid": { "maxBrokenHit1Queries": 0, "negativesFlagged": 6 },
@@ -26,8 +27,87 @@
     "unfilteredSuite": { "reusesGate": "nonRegression" },
     "propertyTests": { "required": true, "location": "test/semantic/store-restrict.test.ts" }
   },
+  "headingFrontMatter": {
+    "$comment": "#102 heading-structured front-matter rule (leadingFrontMatter), declared BEFORE the rule-on fixture run (D-012; Artem chose a dedicated block, 2026-10-23). Fixture 117 is EPUB->Markdown-shaped (keyword-dense '# Preface / What's in This Book' before '# **Chapter 1. **'); D-016's chapter detector claims 0 on it, so only the #102 rule demotes its front matter. nonRegression cannot see these queries (absent from baselineReport), hence this block. Counts are queries with Hit@1=1 out of queryIds; a missing query counts as a miss. The rule-off run is a committed comparison artifact, not a gate.",
+    "queryIds": ["fmt-04", "fmt-05", "fmt-06"],
+    "minHit1Queries": { "keyword": 2, "hybrid": 3, "vector": 3 }
+  },
   "liveEval": {
     "$comment": "Before/after diff on the real library is a mandatory triage artifact, NOT a gate — live-relevance.json labels are unverified and the re-index mixes markers + figures + D-016 demotion.",
     "gate": false
+  },
+  "rrfWeightSweep": {
+    "$comment": "#142 weighted-RRF sweep gates, declared + committed BEFORE the sweep (D-012 protocol). Sweep: VECTOR_RRF_WEIGHT in {1.0,1.25,1.5,2.0}, KEYWORD_RRF_WEIGHT fixed 1.0, same weights at all three fusion sites (chunk/book/figure), e5-small, hybrid mode. Three measurements per weight: fixtureOn (fixture, reranker ON = shipped default), fixtureOff (fixture, --rerank off = the fused order users get when the reranker is unavailable/busy/disabled, #156; isolates fusion), liveOn (real library index copy, reranker ON, UNVERIFIED live labels). Every delta is vs the SAME measurement at weight 1.0 (the re-measured baseline, not the pre-#97 D-012 numbers). Consumed by test/eval/retrieval/rrf-sweep.ts.",
+    "candidates": [1.0, 1.25, 1.5, 2.0],
+    "baselineWeight": 1.0,
+    "ruUp": {
+      "$comment": "RU must go UP where fusion has headroom. fixtureOn is expected to be weight-invariant (rerank pool >= whole fixture), so it only must not drop.",
+      "liveOn": {
+        "ruInvolvedNdcg10MinDelta": 0.01,
+        "crossLingualNdcg10MinDelta": 0.01
+      },
+      "fixtureOff": {
+        "ruInvolvedNdcg10MinDelta": 0.02,
+        "crossLingualNdcg10MinDelta": 0.02
+      },
+      "fixtureOn": {
+        "ruInvolvedNdcg10MinDelta": 0.0,
+        "crossLingualNdcg10MinDelta": 0.0
+      }
+    },
+    "enNonRegression": {
+      "$comment": "EN must not regress on the two keyword-favoured kinds. Fixture: per-kind hybrid nDCG@10 drop <= maxNdcg10Drop AND zero queries of these kinds losing Hit@1 vs weight 1.0. Live has no book-scope (front-matter-trap) rows; only exact-identifier is checked there, looser (7 queries, unverified labels).",
+      "kinds": ["exact-identifier", "front-matter-trap"],
+      "fixtureOn": {
+        "maxNdcg10Drop": 0.01,
+        "maxBrokenHit1Queries": 0
+      },
+      "fixtureOff": {
+        "maxNdcg10Drop": 0.01,
+        "maxBrokenHit1Queries": 0
+      },
+      "liveOn": {
+        "kinds": ["exact-identifier"],
+        "maxNdcg10Drop": 0.02,
+        "maxBrokenHit1Queries": 0
+      }
+    },
+    "zeroBroken": {
+      "$comment": "The existing nonRegression gate (thresholds.nonRegression vs baselineReport) must stay green on fixtureOn, hybrid rows — vector/keyword do not depend on the RRF weights.",
+      "reusesGate": "nonRegression",
+      "modes": ["hybrid"]
+    },
+    "selection": "Among weights passing ALL gates pick the max liveOn RU-involved nDCG@10; ties -> the smaller weight (least departure from plain RRF). No passing weight != 1.0 -> '1.0 stays'. If RU gates pass only at weights that fail EN gates -> report the need for query-adaptive weighting and STOP (non-goal to build it)."
+  },
+  "rerankFloor": {
+    "$comment": "RERANK_FLOOR recalibration gates, declared + committed BEFORE any measurement (D-012 protocol). Known at declaration time (only the #140 headline, PR #168): with the reranker ON, ~18/38 positive library-scope e5 queries hit@1 with maxRerank < 0.3 (as low as 0.0003) and fixture negatives scored <= 0.001. Floors are scored OFFLINE from one fixture run + one live run at the shipped code (per-row maxRerank + maxScore recorded by the harness), so every candidate sees identical rankings. Consumed by test/eval/retrieval/rerank-floor.ts.",
+    "candidates": [0.3, 0.1, 0.03, 0.01, 0.005, 0.003],
+    "currentFloor": 0.3,
+    "flagRule": "flagged(F) = maxScore < semanticFloor (0.78; library/book rows only — figures have no cosine floor) OR maxRerank < F. Mirrors confidence()/figuresConfidence() in calibre_semantic_search.ts. Rows without maxRerank (reranker did not run) are excluded.",
+    "population": {
+      "fixture": {
+        "modes": ["hybrid", "vector"],
+        "rerank": "on"
+      },
+      "live": {
+        "modes": ["hybrid", "vector"],
+        "rerank": "on",
+        "gate": false
+      }
+    },
+    "negativeSeparation": {
+      "$comment": "HARD, fixture. Every negative + figure-negative row must be flagged by the RERANK signal alone (not leaning on the cosine floor, which figures do not have) with a log-scale margin: maxRerank <= F * marginFactor.",
+      "kinds": ["negative", "figure-negative"],
+      "marginFactor": 0.5
+    },
+    "zeroBroken": {
+      "$comment": "HARD. `pnpm eval --gate` (thresholds.nonRegression vs baselineReport, incl. negativesFlagged 6/6 hybrid+vector) must stay green on a confirmatory fixture run with the chosen floor in reranker.ts.",
+      "reusesGate": "nonRegression"
+    },
+    "objective": {
+      "$comment": "falseFlagRate(F) = flagged positive rows with Hit@1 = 1 / all positive rows with Hit@1 = 1 (fixture population; every non-negative kind, all scopes). Lower is better.",
+      "metric": "falseFlagRate"
+    },
+    "selection": "Among candidates passing negativeSeparation pick the min fixture falseFlagRate; ties -> the larger F (more conservative). Adopt only if it lowers falseFlagRate by >= 0.15 absolute vs currentFloor AND zeroBroken passes; otherwise '0.3 stays'. Live is triage only (unverified labels): report live negatives with maxRerank >= the chosen F and the live falseFlagRate, never block on them. Also report whether ANY floor separates cleanly (min Hit@1-positive maxRerank > max negative maxRerank)."
   }
 }

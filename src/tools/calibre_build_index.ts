@@ -6,36 +6,46 @@
 // Per-book failures are collected, not fatal. The write gate disables this tool by default.
 
 import { z } from "zod";
-import { chooseExtractFormat, noTextReason } from "../calibre/extract.js";
-import { frontMatterEnd } from "../domain/structure/chapters.js";
 import { BookId, CoercedBool, jsonArray } from "./coerce.js";
 import { defineTool } from "./define.js";
+import {
+  commitBook,
+  describeError,
+  prepareBook,
+  withBusyRetry,
+  type BookDetail,
+  type PrepareResult,
+} from "./index-book.js";
 import { resolveNumericId } from "./resolve-id.js";
 import { INSTALL_TRANSFORMERS } from "./remediation.js";
 import { toolError, toolOk } from "./result.js";
-import type { IndexedChunk, IndexedFigure, PruneCounts } from "../semantic/store.js";
-import type { FigureMarker } from "../domain/figures/markers.js";
-import type { ToolDeps } from "./types.js";
-import type { EmbedChunk } from "../semantic/chunk.js";
-import { chunkForEmbedding } from "../semantic/chunk.js";
-import { MAX_TOKENS, PASSAGE_PREFIX } from "../semantic/model.js";
+import type { PruneCounts } from "../semantic/store.js";
+import type { ToolDeps, ToolResult } from "./types.js";
+import { runBookPipeline } from "../semantic/book-pipeline.js";
 
-/** Cap on books selected by a query, so a broad query can't kick off a huge build. */
-const MAX_QUERY_BOOKS = 100;
+/** Page size when listing query matches / the whole library (ids only — the response is tiny). */
+const ID_PAGE = 1000;
+/** Runaway guard on the id paging loop (1000 × 1000 ids ≫ any real library). */
+const ID_MAX_PAGES = 1000;
+/** Above this many query-selected books, the result carries a long-build/resume note (#138). */
+const LARGE_SELECTION = 100;
+/** Progress line to stderr every N books, so a long build is observable in the server log. */
+const PROGRESS_EVERY = 25;
 
-/** Page size when listing the whole library for a prune (ids only — the response is tiny). */
-const PRUNE_PAGE = 1000;
-/** Runaway guard on the prune paging loop (1000 × 1000 ids ≫ any real library). */
-const PRUNE_MAX_PAGES = 1000;
-
-/** Floor on the token budget — a pathologically long title/authors prefix can't starve chunks. */
-const MIN_TOKEN_BUDGET = 64;
+/**
+ * Books in flight per build call. 1 on purpose (#99 bench): chunking + tokenizing are
+ * main-thread JS, so in-thread book concurrency bought 0-6%, while each extra in-flight book
+ * makes a concurrent search's query embed wait behind one more passage batch. The real win is
+ * worker threads (scripts/reindex.ts --encoder threads) — not wired into the server yet,
+ * since each thread loads its own model copy (~0.9 GB) inside the long-lived server process.
+ */
+const BUILD_CONCURRENCY = 1;
 
 export const buildIndexTool = defineTool({
   name: "calibre_build_index",
   title: "Build semantic index",
   description:
-    "Build the semantic index for specific books (required: bookId, ids, or query — full-library indexing is deferred). Extracts, chunks, and embeds each book. Set keywordOnly=true (or when the embedding model is absent, it happens automatically) to build a keyword-only index that powers mode:\"keyword\" search with zero ML dependencies. Re-run after adding books; use force to re-index unchanged ones. Set prune=true to also drop index entries for books that no longer exist in the library (removals/merges leave searchable orphans behind).",
+    'Build the semantic index for specific books (required: bookId, ids, or query — full-library indexing is deferred). A query selects ALL matching books (no 100-book cap); large selections run long and may outlive the client timeout — re-run the same call to resume, since up-to-date books are skipped. Extracts, chunks, and embeds each book. Set keywordOnly=true (or when the embedding model is absent, it happens automatically) to build a keyword-only index that powers mode:"keyword" search with zero ML dependencies. Re-run after adding books; use force to re-index unchanged ones. Set prune=true to also drop index entries for books that no longer exist in the library (removals/merges leave searchable orphans behind).',
   inputSchema: {
     bookId: BookId().optional(),
     ids: jsonArray(BookId()).optional(),
@@ -50,6 +60,8 @@ export const buildIndexTool = defineTool({
     booksRequested: z.number().optional(),
     booksIndexed: z.number().optional(),
     booksSkipped: z.number().optional(),
+    // Keyword-only build kept these books' existing embeddings instead of downgrading them (#197).
+    booksPreserved: z.number().optional(),
     chunks: z.number().optional(),
     figures: z.number().optional(),
     // Orphan prune (#100) — only present when prune=true ran; 0s mean "checked, nothing stale".
@@ -85,7 +97,8 @@ export const buildIndexTool = defineTool({
   // readOnlyHint:false but NOT write-gated: this writes to the server's own index dir, not the
   // user's library, so the library write gate doesn't apply. localWrite marks that carve-out.
   localWrite: true,
-  handler: async (args, deps) => {
+  handler: async (args, deps, ctx) => {
+    const signal = ctx?.signal;
     if (args.bookId === undefined && !args.ids?.length && !args.query) {
       return toolError("Specify bookId, ids, or query — full-library indexing is deferred.");
     }
@@ -113,10 +126,15 @@ export const buildIndexTool = defineTool({
       else targets.add(n);
     }
     if (args.query) {
-      const page = await deps.content.search({ query: args.query, library: args.library, num: MAX_QUERY_BOOKS });
-      for (const id of page.bookIds) targets.add(id);
-      if (page.total > page.bookIds.length) {
-        notes.push(`query matched ${page.total} books; indexing the first ${page.bookIds.length} (cap ${MAX_QUERY_BOOKS}).`);
+      // Page through EVERY match (#138): a single capped page silently dropped the rest.
+      const matched = await allMatchingIds(deps, args.query, args.library);
+      for (const id of matched) targets.add(id);
+      if (matched.size > LARGE_SELECTION) {
+        // Long builds can outlive the client's request timeout; up-to-date books are skipped,
+        // so re-running the same call resumes where an interrupted build stopped.
+        notes.push(
+          `query matched ${matched.size} books — a large build; if it is interrupted, re-run the same call to resume (already-indexed books are skipped).`,
+        );
       }
     }
 
@@ -153,8 +171,7 @@ export const buildIndexTool = defineTool({
           semanticReason =
             "embedding model (@huggingface/transformers) unavailable — automatically degraded to a keyword-only index (no vectors).";
           // Must LEAD the text block (test-asserted at index 0) and carry the universal fix (#47).
-          degradeWarning =
-            `Embedding model unavailable — built a KEYWORD-ONLY index instead (mode:"keyword" search works now). ${INSTALL_TRANSFORMERS} After restarting, rebuild with force=true for vector & hybrid semantic search.`;
+          degradeWarning = `Embedding model unavailable — built a KEYWORD-ONLY index instead (mode:"keyword" search works now). ${INSTALL_TRANSFORMERS} After restarting, rebuild with force=true for vector & hybrid semantic search.`;
         }
         // Other warmup errors (e.g. a download hiccup) fall through — the per-book embed
         // attempt below surfaces them as collected failures (char-budget chunking applies).
@@ -179,24 +196,75 @@ export const buildIndexTool = defineTool({
 
     let booksIndexed = 0;
     let booksSkipped = 0;
+    let booksPreserved = 0;
+    // Books whose keyword-only write replaceBook refused at commit time (embedded meanwhile).
+    const preservedAtCommit = new Set<number>();
     let totalChunks = 0;
     let totalFigures = 0;
     let totalUnplaced = 0;
     const bookDetails: BookDetail[] = [];
-    for (const bookId of targets) {
-      try {
-        const n = await indexBook(deps, libraryId, bookId, args.force, args.library, keywordOnly, tokenBudgeted);
-        if (n === "skipped") booksSkipped++;
-        else {
-          booksIndexed++;
-          totalChunks += n.chunks;
-          totalFigures += n.figures;
-          totalUnplaced += n.unplaced;
-          bookDetails.push(n);
+    let settled = 0;
+    ctx?.progress?.(0, `Indexing ${booksRequested} book(s)…`, booksRequested);
+    // Book-level pipeline (#99): write-free prepare per book, one serialized writer commits —
+    // the same path the threaded bulk re-index uses, so both keep the single-writer invariant.
+    const outcomes = await runBookPipeline<PrepareResult>([...targets], BUILD_CONCURRENCY, {
+      prepare: async (bookId) => {
+        // Cancelled (client sent notifications/cancelled or went away): queued books never start.
+        // Books already committed stay indexed; the in-flight subprocess is killed by its signal.
+        signal?.throwIfAborted();
+        return prepareBook(deps, bookId, {
+          libraryId,
+          library: args.library,
+          force: args.force,
+          keywordOnly,
+          tokenBudgeted,
+          signal,
+        });
+      },
+      commit: async (bookId, prepared) => {
+        if (prepared.kind !== "ready") return;
+        if ((await withBusyRetry(() => commitBook(deps, libraryId, prepared))) === undefined) {
+          preservedAtCommit.add(bookId);
         }
-      } catch (err) {
-        failures.push(`book ${bookId}: ${describeError(err)}`);
+      },
+      onSettled: (o) => {
+        settled++;
+        if (settled % PROGRESS_EVERY === 0) {
+          deps.log.info("build progress", { done: settled, of: booksRequested });
+        }
+        if (signal?.aborted) return;
+        if (!o.ok) {
+          deps.log.warn("book failed", { bookId: o.bookId, stage: o.stage, reason: describeError(o.error) });
+        }
+        ctx?.progress?.(settled, `Indexed ${settled}/${booksRequested} book(s)`, booksRequested);
+      },
+    });
+    // Tally in selection order, so the result reads the same whatever order books finished in.
+    for (const o of outcomes) {
+      if (!o.ok) {
+        // A book cut short by the cancel did not fail — it just never finished.
+        if (!signal?.aborted) failures.push(`book ${o.bookId}: ${describeError(o.error)}`);
+      } else if (o.prepared.kind === "skipped") {
+        booksSkipped++;
+      } else if (o.prepared.kind === "preserved" || preservedAtCommit.has(o.bookId)) {
+        booksPreserved++;
+      } else {
+        const d = o.prepared.detail;
+        booksIndexed++;
+        totalChunks += d.chunks;
+        totalFigures += d.figures;
+        totalUnplaced += d.unplaced;
+        bookDetails.push(d);
       }
+    }
+    if (signal?.aborted) {
+      const done = booksIndexed + booksSkipped + booksPreserved;
+      return cancelledResult({ done, booksRequested, booksIndexed, booksSkipped, chunks: totalChunks });
+    }
+    if (booksPreserved > 0) {
+      notes.push(
+        `${booksPreserved} book(s) already have embeddings and were left as-is — a keyword-only build never downgrades them (run an embedding build to refresh them).`,
+      );
     }
     if (totalUnplaced > 0) {
       // Unplaced markers are silent figure-linkage gaps — say so instead of a clean-looking count.
@@ -211,7 +279,8 @@ export const buildIndexTool = defineTool({
     let pruned: PruneCounts | undefined;
     if (args.prune) {
       try {
-        const live = await liveBookIds(deps, args.library);
+        // Empty query = every book: the keep-set must be complete, or live rows get deleted.
+        const live = await allMatchingIds(deps, "", args.library);
         // An empty live set means the library listing failed or the server lied — pruning then
         // would wipe the whole index. Refuse instead.
         if (live.size === 0) throw new Error("the library reported 0 books");
@@ -247,11 +316,10 @@ export const buildIndexTool = defineTool({
       booksRequested,
       booksIndexed,
       booksSkipped,
+      ...(booksPreserved > 0 ? { booksPreserved } : {}),
       chunks: totalChunks,
       figures: totalFigures,
-      ...(pruned
-        ? { prunedBooks: pruned.books, prunedChunks: pruned.chunks, prunedFigures: pruned.figures }
-        : {}),
+      ...(pruned ? { prunedBooks: pruned.books, prunedChunks: pruned.chunks, prunedFigures: pruned.figures } : {}),
       elapsedMs,
       keywordOnly,
       semanticAvailable: !keywordOnly,
@@ -262,16 +330,38 @@ export const buildIndexTool = defineTool({
   },
 });
 
+/** isError result for a build the client cancelled — partial counts, and how to resume. */
+function cancelledResult(c: {
+  done: number;
+  booksRequested: number;
+  booksIndexed: number;
+  booksSkipped: number;
+  chunks: number;
+}): ToolResult {
+  return toolError(
+    `Index build cancelled after ${c.done}/${c.booksRequested} book(s) (${c.booksIndexed} indexed, ` +
+      `${c.booksSkipped} up-to-date). Books finished before the cancel stay indexed — re-run the same ` +
+      "call to continue (finished books are skipped).",
+    {
+      booksRequested: c.booksRequested,
+      booksIndexed: c.booksIndexed,
+      booksSkipped: c.booksSkipped,
+      chunks: c.chunks,
+      cancelled: true,
+    },
+  );
+}
+
 /**
- * Every book id currently in the library, paged through the search endpoint (empty query =
- * everything). Used as the keep-set for the orphan prune, so it must be complete — a partial
- * page walk would look like "these books are gone" and delete live rows.
+ * Every book id matching `query` (empty = the whole library), paged through the search
+ * endpoint by offset. Feeds both the query selector and the orphan-prune keep-set, so it must
+ * be complete — a partial walk would under-index (#138) or delete live rows (prune).
  */
-async function liveBookIds(deps: ToolDeps, library: string | undefined): Promise<Set<number>> {
+async function allMatchingIds(deps: ToolDeps, query: string, library: string | undefined): Promise<Set<number>> {
   const ids = new Set<number>();
   let offset = 0;
-  for (let page = 0; page < PRUNE_MAX_PAGES; page++) {
-    const res = await deps.content.search({ query: "", library, num: PRUNE_PAGE, offset });
+  for (let page = 0; page < ID_MAX_PAGES; page++) {
+    const res = await deps.content.search({ query, library, num: ID_PAGE, offset });
     for (const id of res.bookIds) ids.add(id);
     if (res.bookIds.length === 0) break;
     offset += res.bookIds.length;
@@ -280,188 +370,7 @@ async function liveBookIds(deps: ToolDeps, library: string | undefined): Promise
   return ids;
 }
 
-/** Per-book diagnostics surfaced to structuredContent — the re-index triage record (#87). */
-interface BookDetail {
-  bookId: number;
-  format: string;
-  backend: string;
-  cached: boolean;
-  chars: number;
-  chunks: number;
-  frontMatterChunks: number;
-  figures: number;
-  unplaced: number;
-}
-
-/** Index one book. Returns chunk/figure counts, or "skipped" when already up to date. */
-async function indexBook(
-  deps: ToolDeps,
-  libraryId: string,
-  bookId: number,
-  force: boolean,
-  library: string | undefined,
-  keywordOnly: boolean,
-  tokenBudgeted: boolean,
-): Promise<BookDetail | "skipped"> {
-  const book = await deps.content.getBook(bookId, library);
-
-  if (!force && deps.index.isBookIndexed(libraryId, bookId, book.lastModified ?? "")) {
-    return "skipped";
-  }
-
-  const fmt = chooseExtractFormat(book.formats);
-  if (!fmt) {
-    const avail = book.formats.length ? book.formats.join(", ") : "none";
-    throw new Error(`no extractable text format (available: ${avail})`);
-  }
-
-  const base = deps.config.serverUrl.replace(/\/+$/, "");
-  const downloadUrl = `${base}/get/${fmt.toUpperCase()}/${bookId}/${encodeURIComponent(libraryId)}`;
-  const cacheKey = `${bookId}:${fmt}:${book.lastModified ?? ""}`;
-  const extracted = await deps.extractor.getText({ bookId, format: fmt, downloadUrl, cacheKey });
-
-  if (extracted.text.trim().length === 0) {
-    throw new Error(`no extractable text (${fmt}) — ${noTextReason(fmt)}`);
-  }
-
-  // Deterministic context prefix — captures most of contextual-retrieval's benefit at zero
-  // LLM cost. It goes into the EMBEDDED text only; the stored body stays the raw chunk so
-  // char offsets still line up with calibre_get_content.
-  const ctx = `[${book.title} › ${book.authors.join(", ")}]\n`;
-
-  let chunks: EmbedChunk[];
-  if (!keywordOnly && tokenBudgeted) {
-    // Budget in REAL model tokens: the e5 window minus what the "passage: " + context
-    // prefixes consume, so RU chunks stop being over-conservative and EN chunks stop
-    // silently wasting window. countTokens is safe here — warmup succeeded (tokenBudgeted).
-    const budget = Math.max(MIN_TOKEN_BUDGET, MAX_TOKENS - deps.embedder.countTokens(PASSAGE_PREFIX + ctx));
-    chunks = chunkForEmbedding(extracted.text, { budget, lengthFn: (s) => deps.embedder.countTokens(s) });
-  } else {
-    // No loaded model (keyword-only or a failed warmup) — no token window to respect;
-    // the conservative char-based default applies.
-    chunks = chunkForEmbedding(extracted.text);
-  }
-  if (chunks.length === 0) throw new Error("produced no chunks");
-
-  // Chunks that are MOSTLY before the first detected chapter are front matter (TOC/praise/
-  // foreword) — search demotes them below body matches (issue #18). Majority overlap, not
-  // full containment: chunks run ~2k chars, so the whole front matter usually lands inside
-  // one boundary-straddling chunk that a containment rule would never flag.
-  const fmEnd = frontMatterEnd(extracted.text);
-  const isFrontMatter = (c: EmbedChunk): boolean =>
-    fmEnd > 0 && Math.min(c.charEnd, fmEnd) - c.charStart >= 0.5 * (c.charEnd - c.charStart);
-
-  let indexed: IndexedChunk[];
-  if (keywordOnly) {
-    // No embeddings — chunks are stored raw + pre-stemmed (in the store) for FTS keyword search.
-    indexed = chunks.map((c) => ({
-      charStart: c.charStart,
-      charEnd: c.charEnd,
-      body: c.body,
-      frontMatter: isFrontMatter(c),
-    }));
-  } else {
-    const vectors = await deps.embedder.embedPassages(chunks.map((c) => ctx + c.body));
-    indexed = chunks.map((c, i) => ({
-      charStart: c.charStart,
-      charEnd: c.charEnd,
-      body: c.body,
-      frontMatter: isFrontMatter(c),
-      vector: vectors[i]!,
-    }));
-  }
-  // Figure captions (D-018 Phase B / #86): every placed marker becomes a figures row —
-  // caption + char_offset come from the marker (same text coordinates as the chunks above),
-  // source/dims from the figure inventory (already cached by marker injection). Captions get
-  // their own embeddings so target:"figures" search ranks them directly.
-  let figures: IndexedFigure[] = [];
-  if (extracted.markers.length > 0) {
-    figures = await figureRows(deps, { bookId, format: fmt, downloadUrl, cacheKey }, extracted.markers);
-    if (!keywordOnly && figures.length > 0) {
-      const vectors = await deps.embedder.embedPassages(figures.map((f) => ctx + f.caption));
-      figures = figures.map((f, i) => ({ ...f, vector: vectors[i]! }));
-    }
-  }
-
-  deps.index.replaceBook(
-    libraryId,
-    { bookId, title: book.title, authors: book.authors, lastModified: book.lastModified },
-    indexed,
-    figures,
-  );
-  const frontMatterChunks = indexed.filter((c) => c.frontMatter).length;
-  deps.log.info("indexed book", {
-    bookId,
-    chunks: indexed.length,
-    figures: figures.length,
-    unplaced: extracted.unplaced,
-    frontMatterChunks,
-    format: fmt,
-    backend: extracted.backend,
-    keywordOnly,
-  });
-  return {
-    bookId,
-    format: fmt,
-    backend: extracted.backend,
-    cached: extracted.cached,
-    chars: extracted.chars,
-    chunks: indexed.length,
-    frontMatterChunks,
-    figures: figures.length,
-    unplaced: extracted.unplaced,
-  };
-}
-
-/**
- * Marker → IndexedFigure rows. The inventory is best-effort: it should be a cache hit
- * (marker injection just built it), but if it is unavailable the captions still index —
- * only source/dims are omitted (never guessed) — and figure indexing never fails the book.
- */
-async function figureRows(
-  deps: ToolDeps,
-  invArgs: { bookId: number; format: string; downloadUrl: string; cacheKey: string },
-  markers: FigureMarker[],
-): Promise<IndexedFigure[]> {
-  let entries: Array<{ source?: "raster" | "page-render" | "svg-render"; width?: number; height?: number }> = [];
-  try {
-    const { inventory } = await deps.figures.getInventory(invArgs);
-    entries = inventory.entries;
-  } catch (err) {
-    deps.log.warn("figure inventory unavailable at index time — captions indexed without source/dims", {
-      bookId: invArgs.bookId,
-      msg: err instanceof Error ? err.message.slice(0, 200) : String(err),
-    });
-  }
-  return markers.map((m) => {
-    const e = entries[m.index];
-    return {
-      figIndex: m.index,
-      page: m.page,
-      caption: m.caption,
-      charOffset: m.charOffset,
-      format: invArgs.format,
-      ...(e?.source !== undefined ? { source: e.source } : {}),
-      ...(e?.width !== undefined ? { width: e.width } : {}),
-      ...(e?.height !== undefined ? { height: e.height } : {}),
-    };
-  });
-}
-
 /** True when an error is the coded "embedding model not installed" signal. */
 function isEmbedderUnavailable(err: unknown): boolean {
   return (err instanceof Error ? err.message : String(err)) === "EMBEDDER_UNAVAILABLE";
-}
-
-/** Concise, LLM-actionable reason for a per-book failure (coded errors → plain English). */
-function describeError(err: unknown): string {
-  const m = err instanceof Error ? err.message : String(err);
-  if (m === "EMBEDDER_UNAVAILABLE") {
-    return "embedding model unavailable — install @huggingface/transformers";
-  }
-  if (m === "NO_PDF_BACKEND") return "no PDF text extractor (install poppler or PyMuPDF)";
-  if (m === "NO_EPUB_BACKEND") return "no ebook extractor (needs Calibre ebook-convert)";
-  if (m === "EXTRACT_TIMEOUT") return "extraction timed out (file too large)";
-  if (m === "EXTRACT_FAILED") return "extraction failed";
-  return m;
 }

@@ -50,6 +50,9 @@
   { "id": "fmt-01", "kind": "front-matter-trap", "scope": "book", "bookId": 116, "query": "what is a bounded context", "relevant": [{ "bookId": 116, "charStart": 3677, "charEnd": 4367, "marker": "explicit boundary within which a particular domain" }] },
   { "id": "fmt-02", "kind": "front-matter-trap", "scope": "book", "bookId": 116, "query": "define the ubiquitous language of a project", "relevant": [{ "bookId": 116, "charStart": 1906, "charEnd": 2603, "marker": "used everywhere and by everyone" }] },
   { "id": "fmt-03", "kind": "front-matter-trap", "scope": "book", "bookId": 116, "query": "what is an aggregate and what invariants does it protect", "relevant": [{ "bookId": 116, "charStart": 6869, "charEnd": 7521, "marker": "cluster of associated objects" }] },
+  { "id": "fmt-04", "kind": "front-matter-trap", "scope": "book", "bookId": 117, "query": "what is observability", "relevant": [{ "bookId": 117, "charStart": 3083, "charEnd": 3658, "marker": "arbitrary questions of its external outputs" }] },
+  { "id": "fmt-05", "kind": "front-matter-trap", "scope": "book", "bookId": 117, "query": "what is a span in distributed tracing", "relevant": [{ "bookId": 117, "charStart": 7995, "charEnd": 8527, "marker": "one timed unit of work within a request" }] },
+  { "id": "fmt-06", "kind": "front-matter-trap", "scope": "book", "bookId": 117, "query": "what is an error budget", "relevant": [{ "bookId": 117, "charStart": 10865, "charEnd": 11478, "marker": "amount of unreliability the service level objective permits" }] },
 
   { "id": "neg-01", "kind": "negative", "scope": "library", "query": "medieval castle siege engines and trebuchet design", "relevant": [] },
   { "id": "neg-02", "kind": "negative", "scope": "library", "query": "training a golden retriever puppy not to bite", "relevant": [] },

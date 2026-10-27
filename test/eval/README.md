@@ -34,8 +34,10 @@ pnpm eval --rerank off         # disable the shipped D-011 rerank stage (on by d
   and is first-class here, not an afterthought. `scope: "book"` queries label relevant
   passages as char spans + a `marker` substring (the harness fails loudly if a fixture
   edit invalidates a span).
-- `corpus/` + `corpus.json` — 15 self-authored fixture "books" (10 EN incl. 2 code-heavy,
-  5 RU), committed as text; **embeddings are built at eval time** (decision: committing a
+- `corpus/` + `corpus.json` — 17 self-authored fixture "books" (12 EN incl. 2 code-heavy,
+  5 RU), committed as text. Two are front-matter traps: 116 (plain-text praise/TOC,
+  D-016's chapter detector) and 117 (`headingStructured`, EPUB→Markdown-shaped — only the
+  #102 `leadingFrontMatter` rule finds its boundary; a smoke test pins that); **embeddings are built at eval time** (decision: committing a
   prebuilt index would rot on every INDEX_VERSION bump; the model is cached after the
   first run so CI/offline cost is seconds). Don't casually edit fixtures — span labels
   point into them.

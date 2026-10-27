@@ -46,7 +46,7 @@ async function fetchBooks(deps: ToolDeps, ids: number[], library?: string): Prom
   const batches: number[][] = [];
   for (let i = 0; i < ids.length; i += BATCH) batches.push(ids.slice(i, i + BATCH));
 
-  const maps = new Array<Map<number, Book | null>>(batches.length);
+  const maps: Array<Map<number, Book | null> | undefined> = Array.from({ length: batches.length });
   const started = Date.now();
   let next = 0;
 
@@ -60,9 +60,7 @@ async function fetchBooks(deps: ToolDeps, ids: number[], library?: string): Prom
       maps[idx] = await deps.content.booksByIds(batch, library);
     }
   }
-  await Promise.all(
-    Array.from({ length: Math.min(BATCH_CONCURRENCY, batches.length) }, () => worker()),
-  );
+  await Promise.all(Array.from({ length: Math.min(BATCH_CONCURRENCY, batches.length) }, () => worker()));
 
   const books: Book[] = [];
   for (let b = 0; b < batches.length; b++) {

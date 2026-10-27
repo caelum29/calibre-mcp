@@ -129,7 +129,12 @@ export const bulkUpdateTool = defineTool({
           books: perBook.map((b) => ({
             id: b.id,
             title: b.title,
-            changed: b.diff.map(({ field, before, after }) => ({ field, before, after })),
+            // null, not undefined: a previously-empty field must keep its required `before` key
+            changed: b.diff.map(({ field, before, after }) => ({
+              field,
+              before: before ?? null,
+              after: after ?? null,
+            })),
           })),
         });
       }

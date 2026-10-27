@@ -6,10 +6,14 @@
 // extensions — their detector has no RU/UK support (глава/часть/раздел, оглавление/
 // содержание) and returns only counts; we add those languages and return char offsets so
 // callers can seek to a chapter start via a content cursor.
+//
+// A PDF's own outline (bookmarks) outranks all text heuristics when it is usable (#134).
+
+import { type OutlineEntry, outlineChapters } from "./pdf-outline.js";
 
 /** One detected chapter as a span over the extracted text. */
 export interface ChapterSpan {
-  /** Chapter number (explicit "Chapter N"), or a 1-based ordinal for structural headings. */
+  /** Chapter number (explicit "Chapter N"), or a 1-based ordinal for structural/outline headings. */
   n: number;
   /** The heading line, trimmed. */
   heading: string;
@@ -22,8 +26,16 @@ export interface ChapterSpan {
 export interface StructureResult {
   chapters: ChapterSpan[];
   hasToc: boolean;
-  /** Which strategy produced `chapters`: numeric headings, structural (Markdown), or none. */
-  detector: "numeric" | "structural" | "none";
+  /**
+   * Which strategy produced `chapters`: the PDF outline (bookmarks), numeric headings,
+   * structural (Markdown) headings, or none.
+   */
+  detector: "pdf-outline" | "numeric" | "structural" | "none";
+}
+
+export interface DetectOptions {
+  /** PDF outline entries (from the extractor); used when they yield a plausible chapter list. */
+  outline?: OutlineEntry[];
 }
 
 // Explicit chapter heading: "Chapter 5", "Capítulo 5: ...", "Глава 5.", "Розділ 3".
@@ -46,10 +58,20 @@ const ROMAN_VALUES: Record<string, number> = { I: 1, V: 5, X: 10, L: 50, C: 100,
 
 // CJK chapter headings: explicit "第N章" and Markdown "## 一 · …" / "## 第一讲".
 const CN_NUM_VALUES: Record<string, number> = {
-  "〇": 0, "零": 0, "一": 1, "二": 2, "两": 2, "三": 3, "四": 4, "五": 5,
-  "六": 6, "七": 7, "八": 8, "九": 9,
+  〇: 0,
+  零: 0,
+  一: 1,
+  二: 2,
+  两: 2,
+  三: 3,
+  四: 4,
+  五: 5,
+  六: 6,
+  七: 7,
+  八: 8,
+  九: 9,
 };
-const CN_NUM_UNITS: Record<string, number> = { "十": 10, "百": 100, "千": 1000 };
+const CN_NUM_UNITS: Record<string, number> = { 十: 10, 百: 100, 千: 1000 };
 const CN_NUM_CLASS = "〇零一二两三四五六七八九十百千";
 const FW_DIGITS = "０-９"; // full-width Arabic digits (Japanese typesetting: "第１章")
 const CN_CHAPTER = new RegExp(`^\\s*第\\s*([0-9${FW_DIGITS}${CN_NUM_CLASS}]+)\\s*[章回卷节篇讲]`);
@@ -59,13 +81,21 @@ const MD_CN_HEADING = new RegExp(`^#{1,6}\\s+第?\\s*([${FW_DIGITS}${CN_NUM_CLAS
 // chapter" never matches. EN/ES/PT/CJK/FR/DE/IT/NL + Cyrillic (ru: оглавление/содержание,
 // uk: зміст).
 const TOC_HEADERS = [
-  "table of contents", "contents", "índice", "sumário",
-  "目录", "目錄", "目次",
+  "table of contents",
+  "contents",
+  "índice",
+  "sumário",
+  "目录",
+  "目錄",
+  "目次",
   "table des matières",
   "inhaltsverzeichnis",
-  "indice", "sommario",
+  "indice",
+  "sommario",
   "inhoudsopgave",
-  "оглавление", "содержание", "зміст",
+  "оглавление",
+  "содержание",
+  "зміст",
 ];
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const TOC_PATTERN = new RegExp(`^\\s*(?:${TOC_HEADERS.map(escapeRe).join("|")})\\s*$`, "im");
@@ -78,8 +108,19 @@ const SETEXT_UNDERLINE = /^(={2,}|-{2,})$/;
 
 function intToRoman(n: number): string {
   const table: [number, string][] = [
-    [1000, "M"], [900, "CM"], [500, "D"], [400, "CD"], [100, "C"],
-    [90, "XC"], [50, "L"], [40, "XL"], [10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"],
+    [1000, "M"],
+    [900, "CM"],
+    [500, "D"],
+    [400, "CD"],
+    [100, "C"],
+    [90, "XC"],
+    [50, "L"],
+    [40, "XL"],
+    [10, "X"],
+    [9, "IX"],
+    [5, "V"],
+    [4, "IV"],
+    [1, "I"],
   ];
   let out = "";
   for (const [val, sym] of table) {
@@ -172,8 +213,19 @@ function structuralChapters(lineStarts: LineInfo[]): StructHeading[] {
       continue;
     }
     // Setext underline directly under a title line at least as long as the underline.
-    if (SETEXT_UNDERLINE.test(s) && prev && prev.text && !SETEXT_UNDERLINE.test(prev.text) && s.length >= prev.text.length) {
-      found.push({ depth: s[0] === "=" ? 1 : 2, title: prev.text.toLowerCase(), heading: prev.text, startChar: prev.start });
+    if (
+      SETEXT_UNDERLINE.test(s) &&
+      prev &&
+      prev.text &&
+      !SETEXT_UNDERLINE.test(prev.text) &&
+      s.length >= prev.text.length
+    ) {
+      found.push({
+        depth: s[0] === "=" ? 1 : 2,
+        title: prev.text.toLowerCase(),
+        heading: prev.text,
+        startChar: prev.start,
+      });
       prev = null;
       continue;
     }
@@ -252,8 +304,7 @@ function enrichHeading(heading: string, lines: LineInfo[], lineIdx: number): str
     const t = lines[i]!.text.trim();
     if (!t) continue; // skip blanks between number and title
     // Title-like: short, has letters, not itself a heading, not a ToC dot-leader/page number.
-    const titleLike =
-      t.length <= 80 && /\p{L}/u.test(t) && chapterNumber(t) === null && !/^[\d.\s·…]+$/.test(t);
+    const titleLike = t.length <= 80 && /\p{L}/u.test(t) && chapterNumber(t) === null && !/^[\d.\s·…]+$/.test(t);
     return titleLike ? `${heading.replace(/[.:\-—–\s]+$/, "")} — ${t}` : heading;
   }
   return heading;
@@ -275,14 +326,23 @@ function lineOffsets(text: string): LineInfo[] {
 /**
  * Detect chapter spans and ToC presence in extracted book text.
  *
+ * A usable PDF outline (`opts.outline`, ≥ 2 plausible entries) wins over every text
+ * heuristic — detector "pdf-outline" (#134, D-020).
  * Numeric headings ("Chapter N" / "Глава N") are preferred; a chapter number can recur
  * (a ToC entry and the body heading), so for each distinct number we keep the occurrence
  * with the largest body — the real chapter, not the ToC line. Text before the first kept
  * chapter is front matter (excluded from spans, but its ToC flag is kept). When no numeric
  * headings exist, fall back to structural Markdown/AsciiDoc headings.
  */
-export function detectChapters(text: string): StructureResult {
+export function detectChapters(text: string, opts: DetectOptions = {}): StructureResult {
   const hasToc = TOC_PATTERN.test(text.slice(0, 30_000));
+
+  // 0. Publisher outline first: exact pages, real titles, and it works for books whose body
+  // never says "Chapter N". Falls through when absent or implausible (see outlineChapters).
+  if (opts.outline && opts.outline.length > 0) {
+    const fromOutline = outlineChapters(text, opts.outline);
+    if (fromOutline) return { chapters: fromOutline, hasToc, detector: "pdf-outline" };
+  }
   const lines = lineOffsets(text);
 
   // 1. Every numeric heading occurrence, in text order.
@@ -296,7 +356,8 @@ export function detectChapters(text: string): StructureResult {
   if (occ.length > 0) {
     // Body of occurrence i = distance to the next heading occurrence (ToC lines cluster
     // → tiny bodies; real chapters → large bodies).
-    const bodyLen = (i: number): number => (i + 1 < occ.length ? occ[i + 1]!.startChar : text.length) - occ[i]!.startChar;
+    const bodyLen = (i: number): number =>
+      (i + 1 < occ.length ? occ[i + 1]!.startChar : text.length) - occ[i]!.startChar;
 
     // For each distinct number, keep the largest-body occurrence.
     const best = new Map<number, { heading: string; startChar: number }>();
@@ -325,9 +386,7 @@ export function detectChapters(text: string): StructureResult {
       }
     }
 
-    const picked = [...best.entries()]
-      .map(([n, v]) => ({ n, ...v }))
-      .sort((a, b) => a.startChar - b.startChar);
+    const picked = [...best.entries()].map(([n, v]) => ({ n, ...v })).sort((a, b) => a.startChar - b.startChar);
 
     const chapters: ChapterSpan[] = picked.map((c, i) => ({
       n: c.n,
@@ -351,23 +410,4 @@ export function detectChapters(text: string): StructureResult {
   }
 
   return { chapters: [], hasToc, detector: "none" };
-}
-
-// A "first chapter" deeper than this is more likely a detector miss than real front matter;
-// claiming 20%+ of a book as front matter would demote genuine body content in search.
-const FRONT_MATTER_MAX_FRACTION = 0.2;
-const FRONT_MATTER_MAX_CHARS = 60_000;
-
-/**
- * Char offset where the book's body starts: everything before the first detected chapter
- * (TOC, praise pages, foreword) is front matter. Returns 0 — "no front matter claimed" —
- * when no chapters are detected or the boundary is implausibly deep (see the guard above).
- * Powers the front-matter demotion in semantic search (issue #18).
- */
-export function frontMatterEnd(text: string): number {
-  const { chapters } = detectChapters(text);
-  if (chapters.length === 0) return 0;
-  const boundary = chapters[0]!.startChar;
-  const cap = Math.min(FRONT_MATTER_MAX_FRACTION * text.length, FRONT_MATTER_MAX_CHARS);
-  return boundary > cap ? 0 : boundary;
 }

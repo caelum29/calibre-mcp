@@ -9,8 +9,15 @@ import {
 import type { Book } from "../../src/domain/book.js";
 
 const book = (over: Partial<Book> = {}): Book => ({
-  id: 1, uuid: "u", title: "T", authors: ["A"], identifiers: {}, formats: ["pdf"],
-  tags: ["old"], languages: ["en"], ...over,
+  id: 1,
+  uuid: "u",
+  title: "T",
+  authors: ["A"],
+  identifiers: {},
+  formats: ["pdf"],
+  tags: ["old"],
+  languages: ["en"],
+  ...over,
 });
 
 describe("formatFieldValue", () => {

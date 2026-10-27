@@ -43,6 +43,17 @@ describe("buildProposal", () => {
     expect(present.changes).not.toHaveProperty("identifiers");
   });
 
+  it("treats Calibre's 0101-01-01 undefined-date sentinel as a missing pubdate", () => {
+    const sentinel = buildProposal(book({ title: "x", pubdate: "0101-01-01T00:00:00+00:00" }), [
+      hit({ pubdate: "2020" }),
+    ]);
+    expect(sentinel.changes.pubdate).toBe("2020");
+    expect(sentinel.fields.find((f) => f.field === "pubdate")?.reason).toBe("missing");
+
+    const real = buildProposal(book({ title: "x", pubdate: "2018-05-01T00:00:00+00:00" }), [hit({ pubdate: "2020" })]);
+    expect(real.changes).not.toHaveProperty("pubdate");
+  });
+
   it("only emits update_book-allowlisted fields", () => {
     const p = buildProposal(book({ title: "12345" }), [
       hit({ title: "T", authors: ["A"], publisher: "P", pubdate: "2020", series: "S", isbn: "9780306406157" }),

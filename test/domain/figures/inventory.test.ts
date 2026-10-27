@@ -26,7 +26,7 @@ describe("buildInventory", () => {
   // page 1: uncaptioned cover; page 2: one caption + one raster; page 3: two rasters, one caption
   const text = [
     "cover page",
-    "prose\nFigure 1-1. The fundamental mental model\nmore prose",
+    "prose\nFigure 1-1. The fundamental mental model\nMore prose.",
     "Figure 1-2: Second figure\ntext",
   ].join("\f");
 
@@ -34,7 +34,12 @@ describe("buildInventory", () => {
     const inv = buildInventory(text, parsePdfImagesList(LIST_FIXTURE));
     const figures = inv.entries.filter((e) => e.captioned);
     expect(figures).toHaveLength(2);
-    expect(figures[0]).toMatchObject({ page: 2, caption: "The fundamental mental model", source: "raster", pdfImageNum: 2 });
+    expect(figures[0]).toMatchObject({
+      page: 2,
+      caption: "The fundamental mental model",
+      source: "raster",
+      pdfImageNum: 2,
+    });
     expect(figures[1]).toMatchObject({ page: 3, label: "1-2", source: "raster", pdfImageNum: 3 });
   });
 
@@ -72,6 +77,12 @@ describe("detectScanned", () => {
   it("does not flag normal books with text or captions", () => {
     const pages = Array.from({ length: 10 }, () => "long prose ".repeat(40));
     expect(detectScanned(pages, [], imagePerPage(10))).toBe(false);
-    expect(detectScanned(Array.from({ length: 10 }, () => ""), [{ page: 1, label: "1", text: "x" }], imagePerPage(10))).toBe(false);
+    expect(
+      detectScanned(
+        Array.from({ length: 10 }, () => ""),
+        [{ page: 1, label: "1", text: "x" }],
+        imagePerPage(10),
+      ),
+    ).toBe(false);
   });
 });

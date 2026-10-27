@@ -4,7 +4,135 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+Releases are cut by release-please from Conventional Commit messages: each release PR
+inserts its generated section above the newest entry. Hand-written notes still go under
+`[Unreleased]`; when merging a release PR, fold them into the generated section and leave
+`[Unreleased]` empty.
+
+## [0.10.0](https://github.com/caelum29/calibre-mcp/compare/v0.9.0...v0.10.0) (2026-10-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* **semantic:** transformers.js 4.3.1 + INDEX_VERSION 4 (re-index required) ([#194](https://github.com/caelum29/calibre-mcp/issues/194))
+
+### Added
+
+* **semantic:** transformers.js 4.3.1 + INDEX_VERSION 4 (re-index required) ([#194](https://github.com/caelum29/calibre-mcp/issues/194)) ([290c803](https://github.com/caelum29/calibre-mcp/commit/290c8034377c74c506078c1fab7226b82f8a09f0))
+
+
+### Fixed
+
+* **semantic:** atomic per-book index writes + vector-aware freshness ([#197](https://github.com/caelum29/calibre-mcp/issues/197)) ([#205](https://github.com/caelum29/calibre-mcp/issues/205)) ([30c1470](https://github.com/caelum29/calibre-mcp/commit/30c14709c825f505b0a559791902208b0163fe9b))
+* **semantic:** wait on a shared index lock instead of failing ([#196](https://github.com/caelum29/calibre-mcp/issues/196)) ([#206](https://github.com/caelum29/calibre-mcp/issues/206)) ([6caf501](https://github.com/caelum29/calibre-mcp/commit/6caf5015b086deb0a2b9c6b7d107d8007d94192a))
+
+## [0.9.0](https://github.com/caelum29/calibre-mcp/compare/v0.8.0...v0.9.0) (2026-10-23)
+
+
+### Added
+
+* cancel long tool calls and report progress ([#150](https://github.com/caelum29/calibre-mcp/issues/150)) ([d39c263](https://github.com/caelum29/calibre-mcp/commit/d39c2630387b71c8e69bad73f0138ca9da60d7a6))
+* generate the tool catalog and keep tool counts in sync ([#148](https://github.com/caelum29/calibre-mcp/issues/148)) ([bda73ca](https://github.com/caelum29/calibre-mcp/commit/bda73ca2a06a9ab3b8e772648f7fcd728e79e741))
+
+
+### Fixed
+
+* address verifier findings on the hygiene stack ([#154](https://github.com/caelum29/calibre-mcp/issues/154)) ([9e8c106](https://github.com/caelum29/calibre-mcp/commit/9e8c106fdf6a1989bdd6c4d4d9a621ef58f5ba02))
+* kill child process groups and exit when the client goes away ([#145](https://github.com/caelum29/calibre-mcp/issues/145)) ([47cc35d](https://github.com/caelum29/calibre-mcp/commit/47cc35de0cecc779d414ecd8c01fbbc7894c0e04))
+
 ## [Unreleased]
+
+### Added
+
+- **`docs/tool-catalog.json`** — the generated, exact `tools/list` the server advertises
+  (writes enabled; client-compat rewrites applied), so schema changes show up as a reviewable
+  diff. `pnpm catalog` regenerates it; `pnpm catalog:check` fails on drift.
+- **Cancellation.** Cancelling a tool call from the client (MCP `notifications/cancelled`)
+  now stops the work: running `calibredb` / `ebook-convert` / `pdftotext` / figure-scan
+  process groups are killed and downloads are aborted. `calibre_build_index` stops between
+  books and reports what was already indexed (re-running the same call resumes).
+- **Progress notifications.** `calibre_build_index` (per book) and `calibre_quality_report`
+  send MCP progress notifications when the client asks for them (throttled, monotonic).
+
+### Changed
+
+- **Minimum Node.js is now 22.16 (was 22.5).** The semantic index needs `node:sqlite` with
+  FTS5: on 22.5–22.12 `node:sqlite` exists only behind `--experimental-sqlite` (the server
+  failed to start with `ERR_UNKNOWN_BUILTIN_MODULE`), and 22.13–22.15 ship SQLite without
+  FTS5 (index builds failed with `no such module: fts5`). `engines` and the MCPB manifest now
+  say `>=22.16`; Node 22 is tested in CI alongside Node 24.
+- **Releases are automated with release-please.** Merging the release PR tags `vX.Y.Z`,
+  creates the GitHub release and publishes to npm, the GitHub release (`.mcpb`) and the MCP
+  Registry from one workflow.
+- **Tool counts in the docs and manifests are now generated and correct.** The plugin and
+  marketplace descriptions said 17 tools, the skill and `CLAUDE.md` 18; the server advertises
+  19 model-facing tools (18 task tools + `calibre_ping`) plus 2 widget-internal ones. Every
+  stated count is now maintained from the catalog.
+
+### Fixed
+
+- **No orphaned `calibredb` / `ebook-convert` processes after the client disconnects.**
+  Subprocesses run in their own (detached) process group so a timeout can kill the
+  conversion worker too — but that also let them outlive the server when the client
+  closed stdin or sent SIGTERM mid-call, keeping the library write lock. The server now
+  shuts down on stdin EOF/close, SIGINT and SIGTERM, kills every still-running process
+  group first, closes the MCP server and exits 0.
+
+## [0.8.0] — 2026-10-23
+
+### Added
+
+- **PDF outline (bookmarks) as a chapter-map source (#134).** `calibre_get_content` structure output can now report `detector: "pdf-outline"`; about 78% of sampled PDFs get an outline map, including books whose text never says "Chapter N".
+- **`indexVersion` as citation provenance (#136).** Exposed in `calibre_semantic_search` results and `calibre_ping` (read from the opened index's meta), with a stale-index hint.
+- **`pnpm reindex` (#99).** Book-level parallel re-index with worker threads and a single serialized SQLite writer; about 2.35x faster at N=3 (full library roughly 6-7 h vs 15 h), resumable, and refuses the production index without `--production`. `calibre_build_index` itself stays at N=1.
+- **Label-only PDF figure captions recovered from page layout** (`pdftotext -bbox-layout`): label-only figures drop from 4,196 to 900 library-wide.
+
+### Changed
+
+- **EPUB front matter is demoted in search (#102).** Heading-structured front matter (title page, copyright, praise, TOC as headings) now ranks lower; the eval gate covers it with a new fixture.
+- **RRF fusion weights evaluated (#142).** `VECTOR_RRF_WEIGHT` stays 1.0 (D-021).
+
+### Fixed
+
+- **EPUB figure markers for BPB/Manning caption shapes (#101).** The 14 books that placed 0 figures now place all of them.
+- **Figure captions (#107).** No more empty captions, wrapped captions are joined (with an ellipsis when cut), body-text false positives are rejected, two-line bare labels are recognized; page-boundary fallback markers on book 175 go from 57 to 0.
+- **Concurrency fixes found during #99.** Chunking is async so other workers' Content Server timers no longer fire spuriously; the extract-cache LRU no longer evicts another book's in-flight temp file.
+
+> **Upgrade note:** figure indexes, front-matter flags and chapter maps changed, so cache versions were bumped. Run a re-index (`pnpm reindex` or `calibre_build_index`) to pick up the figure and front-matter fixes in the semantic index.
+
+## [0.7.6] — 2026-10-21
+
+### Changed
+
+- **Release pipeline is re-runnable (#161).** The release workflow now waits (up to 5 min) for the
+  new version to be visible on npm before publishing to the MCP Registry, retries the Registry
+  publish up to 3x, and skips `npm publish` when the version already exists, so a failed release
+  run can be re-run safely. No server behavior changes.
+
+## [0.7.5] — 2026-10-21
+
+### Added
+
+- **ODT books are now extractable (#132).** OpenDocument-text books no longer get reported
+  as having no extractable text format.
+
+### Fixed
+
+- **`calibre_build_index` no longer stops at 100 books (#138).** It now pages through all
+  query matches (reported on a 155k-book library) instead of silently truncating.
+- **Concurrent semantic searches no longer all time out (#156).** They are serialized
+  through a FIFO inference queue.
+- **Faster book-scope and bundle keyword search (#155).** An FTS-first CTE stops SQLite
+  from re-running `MATCH` per row on book-filtered queries.
+- **`calibre_update_book` / `calibre_bulk_update` emit `null` before/after for empty
+  fields**, and pubdate proposals are sentinel-aware (#157).
+- **Richer text output.** `calibre_get_book` now lists formats, ISBN/identifiers, tags,
+  series, publisher, pubdate and languages (#104); EPUB figure search hits show the page
+  (#105); `calibre_get_figures` names the other available format (#106);
+  `calibre_ping` always reports the semantic model and index counts, and the uncaptioned
+  figure-count wording is explicit (#108).
+- **PyMuPDF extraction emits `\f` page breaks like pdftotext (#133)**, so page-to-offset
+  mapping no longer depends on which backend ran.
 
 ## [0.7.4] — 2026-08-21
 

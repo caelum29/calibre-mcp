@@ -4,12 +4,9 @@
 
 import { z } from "zod";
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import {
-  registerAppTool,
-  registerAppResource,
-  RESOURCE_MIME_TYPE,
-} from "@modelcontextprotocol/ext-apps/server";
+import type { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
+import type { CallToolResult, ServerNotification, ServerRequest } from "@modelcontextprotocol/sdk/types.js";
+import { registerAppTool, registerAppResource, RESOURCE_MIME_TYPE } from "@modelcontextprotocol/ext-apps/server";
 import { loadConfig, type Config } from "./config.js";
 import { CalibreClient } from "./calibre/client.js";
 import { ContentServerClient } from "./calibre/content-server.js";
@@ -22,7 +19,9 @@ import { computeSemanticStatus, formatSemanticStatusLine } from "./semantic/stat
 import { readBookResource } from "./resources/book.js";
 import { allTools, assertWriteClassification } from "./tools/registry.js";
 import { toolError } from "./tools/result.js";
-import type { ToolDeps } from "./tools/types.js";
+import type { ToolContext, ToolDeps } from "./tools/types.js";
+import { OperationCancelledError } from "./domain/errors.js";
+import { createProgressReporter } from "./progress.js";
 import { BoardCache } from "./ui/board-cache.js";
 import { boardHtml, BOARD_KEYWORD_URI, BOARD_SEMANTIC_URI } from "./ui/board-html.js";
 import { cardHtml, CARD_URI } from "./ui/card-html.js";
@@ -49,8 +48,20 @@ const UI_TOOL_META: Record<string, UiToolMeta> = {
   calibre_open_book: { visibility: ["app"] },
 };
 
-export function buildServer(): McpServer {
-  const config = loadConfig();
+export interface BuildServerOptions {
+  /** Environment to read config from (default: process.env). */
+  env?: NodeJS.ProcessEnv;
+  /**
+   * Run the boot-time background probes — extraction-backend detection (spawns
+   * ebook-convert / pdftotext / python3) and the Content Server reachability check (HTTP).
+   * Default true; the tool-catalog generator turns them off so building the server for a
+   * tools/list touches no subprocess, network or library.
+   */
+  probes?: boolean;
+}
+
+export function buildServer(options: BuildServerOptions = {}): McpServer {
+  const config = loadConfig(options.env);
   const figures = new FigureInventoryService(config);
   const deps: ToolDeps = {
     config,
@@ -65,30 +76,7 @@ export function buildServer(): McpServer {
     log,
   };
 
-  // Detect extraction backends in the background and log the chosen path to stderr;
-  // the first calibre_get_content call awaits the same memoized promise (DESIGN open item).
-  void deps.extractor
-    .detectBackends()
-    .then((r) => log.info("extractor backends", r))
-    .catch((e) => log.warn("extractor detection failed", { msg: String(e) }));
-
-  // Onboarding probe (stderr only): tell a first-time user whether the Content Server
-  // is up before the first tool call fails. Also warms the library-map cache.
-  void deps.content
-    .libraryInfo()
-    .then((info) =>
-      log.info("content server reachable", {
-        url: config.serverUrl,
-        libraries: Object.keys(info.libraryMap).length,
-        default: info.defaultLibrary,
-      }),
-    )
-    .catch(() =>
-      log.warn(
-        `Calibre Content Server not reachable at ${config.serverUrl} — start it in ` +
-          "Calibre (Connect/share → Start Content server) or set CALIBRE_MCP_SERVER_URL",
-      ),
-    );
+  if (options.probes !== false) startBootProbes(deps);
 
   const server = new McpServer(
     { name: "calibre-mcp", version: VERSION },
@@ -110,10 +98,17 @@ export function buildServer(): McpServer {
     };
     // ToolResult is structurally a CallToolResult minus the SDK's loose index signature;
     // cast once here (the seam) rather than weaken the shared ToolResult type.
-    const handler = async (args: unknown): Promise<CallToolResult> => {
+    const handler = async (
+      args: unknown,
+      extra: RequestHandlerExtra<ServerRequest, ServerNotification>,
+    ): Promise<CallToolResult> => {
       try {
-        return (await t.handler(args, deps)) as CallToolResult;
+        return (await t.handler(args, deps, toolContext(extra))) as CallToolResult;
       } catch (err) {
+        if (err instanceof OperationCancelledError) {
+          // The client cancelled; the SDK drops this response anyway. Keep it a result.
+          return toolError(`${t.name} was cancelled.`, { errorCode: err.name }) as CallToolResult;
+        }
         const name = err instanceof Error ? err.name : "Error";
         const msg = err instanceof Error ? err.message : String(err);
         log.error("tool threw", {
@@ -234,6 +229,54 @@ export function buildServer(): McpServer {
 }
 
 /**
+ * Adapt the SDK's per-request extra into the SDK-free ToolContext handlers receive: the
+ * cancellation signal as-is, and a throttled monotonic progress callback only when the
+ * client sent a progressToken (otherwise there is nobody to notify).
+ */
+function toolContext(extra: RequestHandlerExtra<ServerRequest, ServerNotification>): ToolContext {
+  const progressToken = extra._meta?.progressToken;
+  if (progressToken === undefined) return { signal: extra.signal };
+  return {
+    signal: extra.signal,
+    progress: createProgressReporter({
+      progressToken,
+      send: (params) => extra.sendNotification({ method: "notifications/progress", params }),
+      onError: (err) => log.debug("progress notification failed", { msg: String(err) }),
+    }),
+  };
+}
+
+/**
+ * Background boot probes (stderr only). Detect extraction backends and log the chosen path;
+ * the first calibre_get_content call awaits the same memoized promise (DESIGN open item).
+ * Then tell a first-time user whether the Content Server is up before the first tool call
+ * fails — which also warms the library-map cache.
+ */
+function startBootProbes(deps: ToolDeps): void {
+  const { config } = deps;
+  void deps.extractor
+    .detectBackends()
+    .then((r) => log.info("extractor backends", r))
+    .catch((e) => log.warn("extractor detection failed", { msg: String(e) }));
+
+  void deps.content
+    .libraryInfo()
+    .then((info) =>
+      log.info("content server reachable", {
+        url: config.serverUrl,
+        libraries: Object.keys(info.libraryMap).length,
+        default: info.defaultLibrary,
+      }),
+    )
+    .catch(() =>
+      log.warn(
+        `Calibre Content Server not reachable at ${config.serverUrl} — start it in ` +
+          "Calibre (Connect/share → Start Content server) or set CALIBRE_MCP_SERVER_URL",
+      ),
+    );
+}
+
+/**
  * Register the three ui:// widget resources (issue #22). Covers load straight from the
  * Content Server, so the CSP must whitelist its origin (hosts default img-src to
  * 'self' data: otherwise); the widget's onerror → generated-placeholder path absorbs a
@@ -276,15 +319,9 @@ function registerUiResources(server: McpServer, config: Config): void {
     },
   ];
   for (const wdg of widgets) {
-    registerAppResource(
-      server,
-      wdg.name,
-      wdg.uri,
-      { description: wdg.description, _meta: cspMeta },
-      async () => ({
-        contents: [{ uri: wdg.uri, mimeType: RESOURCE_MIME_TYPE, text: wdg.html, _meta: cspMeta }],
-        _meta: cspMeta,
-      }),
-    );
+    registerAppResource(server, wdg.name, wdg.uri, { description: wdg.description, _meta: cspMeta }, async () => ({
+      contents: [{ uri: wdg.uri, mimeType: RESOURCE_MIME_TYPE, text: wdg.html, _meta: cspMeta }],
+      _meta: cspMeta,
+    }));
   }
 }

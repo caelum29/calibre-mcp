@@ -44,6 +44,7 @@ function deps(f: Fixture): ToolDeps {
     content: content as unknown as ToolDeps["content"],
     calibre: {} as unknown as ToolDeps["calibre"],
     extractor: extractor as unknown as ToolDeps["extractor"],
+    figures: {} as ToolDeps["figures"],
     embedder: {} as unknown as ToolDeps["embedder"],
     index: {} as unknown as ToolDeps["index"],
     providers: { openlibrary: provider("openlibrary"), googlebooks: provider("googlebooks") },
@@ -58,8 +59,10 @@ describe("calibre_recover_metadata handler", () => {
     vi.useRealTimers();
   });
   it("proposes changes from an existing ISBN and emits a resource_link", async () => {
-    const fixture = { book: book({ title: "795731065", authors: ["Unknown"], identifiers: { isbn: "9780306406157" } }),
-      hits: [hit({ title: "Real Title", authors: ["A. Author"], publisher: "Plenum" })] };
+    const fixture = {
+      book: book({ title: "795731065", authors: ["Unknown"], identifiers: { isbn: "9780306406157" } }),
+      hits: [hit({ title: "Real Title", authors: ["A. Author"], publisher: "Plenum" })],
+    };
     const r = await recoverMetadataTool.handler(args(), deps(fixture));
     expect(r.isError).toBeFalsy();
     expect(r.structuredContent).toMatchObject({ bookId: 1, source: "openlibrary", lookupKey: "isbn:9780306406157" });
@@ -69,8 +72,11 @@ describe("calibre_recover_metadata handler", () => {
   });
 
   it("scrapes an ISBN from the book text when metadata has none", async () => {
-    const fixture = { book: book({ title: "B0CZS7H23N", formats: ["pdf"] }),
-      text: "front matter\nISBN: 978-0-306-40615-7\n", hits: [hit({ title: "Found By Text" })] };
+    const fixture = {
+      book: book({ title: "B0CZS7H23N", formats: ["pdf"] }),
+      text: "front matter\nISBN: 978-0-306-40615-7\n",
+      hits: [hit({ title: "Found By Text" })],
+    };
     const r = await recoverMetadataTool.handler(args(), deps(fixture));
     expect(r.isError).toBeFalsy();
     expect(r.structuredContent?.lookupKey).toBe("isbn:9780306406157");
@@ -83,8 +89,10 @@ describe("calibre_recover_metadata handler", () => {
   });
 
   it("falls back to a title/author search for a usable title", async () => {
-    const fixture = { book: book({ title: "The Rust Programming Language", authors: ["Steve Klabnik"] }),
-      hits: [hit({ source: "googlebooks", confidence: 0.6, publisher: "No Starch" })] };
+    const fixture = {
+      book: book({ title: "The Rust Programming Language", authors: ["Steve Klabnik"] }),
+      hits: [hit({ source: "googlebooks", confidence: 0.6, publisher: "No Starch" })],
+    };
     const r = await recoverMetadataTool.handler(args(), deps(fixture));
     expect(r.isError).toBeFalsy();
     expect(r.structuredContent?.lookupKey).toContain("title:The Rust Programming Language / Steve Klabnik");
@@ -92,14 +100,25 @@ describe("calibre_recover_metadata handler", () => {
   });
 
   it("errors when no provider returns a hit", async () => {
-    const r = await recoverMetadataTool.handler(args(), deps({ book: book({ title: "x", identifiers: { isbn: "9780306406157" } }), hits: [] }));
+    const r = await recoverMetadataTool.handler(
+      args(),
+      deps({ book: book({ title: "x", identifiers: { isbn: "9780306406157" } }), hits: [] }),
+    );
     expect(r.isError).toBe(true);
     expect((r.content[0] as { text: string }).text).toContain("No metadata found");
   });
 
   it("reports a complete book when the hit fills nothing new", async () => {
-    const fixture = { book: book({ title: "Good", authors: ["Jane Doe"], identifiers: { isbn: "9780306406157" }, publisher: "P", pubdate: "2020" }),
-      hits: [hit({ title: "Good", authors: ["Jane Doe"], publisher: "P" })] };
+    const fixture = {
+      book: book({
+        title: "Good",
+        authors: ["Jane Doe"],
+        identifiers: { isbn: "9780306406157" },
+        publisher: "P",
+        pubdate: "2020",
+      }),
+      hits: [hit({ title: "Good", authors: ["Jane Doe"], publisher: "P" })],
+    };
     const r = await recoverMetadataTool.handler(args(), deps(fixture));
     expect(r.isError).toBeFalsy();
     expect(r.structuredContent).toMatchObject({ fieldCount: 0 });

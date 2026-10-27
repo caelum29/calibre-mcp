@@ -55,6 +55,7 @@ function deps(count: number, rec: Recorder): ToolDeps {
     content: content as unknown as ToolDeps["content"],
     calibre: {} as unknown as ToolDeps["calibre"],
     extractor: {} as unknown as ToolDeps["extractor"],
+    figures: {} as ToolDeps["figures"],
     embedder: {} as unknown as ToolDeps["embedder"],
     index: {} as unknown as ToolDeps["index"],
     log,
@@ -65,9 +66,7 @@ describe("selectBooks batching", () => {
   it("splits a large sweep into 200-id batches and returns every book in order", async () => {
     const rec: Recorder = { batchSizes: [], maxConcurrent: 0 };
     const sel = await selectBooks(deps(801, rec), { query: "" });
-    expect(sel.books.map((b) => b.id)).toEqual(
-      Array.from({ length: 801 }, (_, i) => i + 1),
-    );
+    expect(sel.books.map((b) => b.id)).toEqual(Array.from({ length: 801 }, (_, i) => i + 1));
     expect(rec.batchSizes).toEqual([200, 200, 200, 200, 1]);
     expect(sel.total).toBe(801);
     expect(sel.capped).toBe(false);

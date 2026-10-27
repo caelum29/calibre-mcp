@@ -1,0 +1,6 @@
+# Mechanical reformats — skip in `git blame` with:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+# (GitHub applies this file automatically.)
+
+# chore: add oxlint, oxfmt, husky and lint-staged (#146) — squash of the oxfmt reformat
+56d6a5e902885018a07997ff1509b463e63f6642
