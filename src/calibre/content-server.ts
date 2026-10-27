@@ -107,6 +107,7 @@ export function matchCategory(categories: Category[], field: string): Category |
   );
 }
 
+/** HTTP client for the Content Server `/ajax/*` read API; maps raw JSON to domain objects. */
 export class ContentServerClient {
   // Process-lifetime cache of libId → display name. Libraries rarely change; a
   // rename/add mid-session goes stale until restart (acceptable for local stdio use).

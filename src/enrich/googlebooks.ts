@@ -51,6 +51,7 @@ async function query(fj: FetchJson, q: string): Promise<Volumes> {
   return fj<Volumes>(url.toString());
 }
 
+/** Google Books metadata provider (ISBN + title/author lookups) for metadata recovery. */
 export function createGoogleBooks(fj: FetchJson = fetchJson): Provider {
   return {
     name: "googlebooks",

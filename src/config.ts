@@ -96,6 +96,7 @@ function dataDir(env: NodeJS.ProcessEnv): string {
   return path.join(xdg, "calibre-mcp", "index");
 }
 
+/** Read the server config from environment variables, applying defaults. */
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const floor = Number(envStr(env.CALIBRE_MCP_SEMANTIC_FLOOR));
   const maxBytes = Number(envStr(env.CALIBRE_MCP_MAX_BOOK_BYTES));

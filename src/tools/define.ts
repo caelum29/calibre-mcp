@@ -7,6 +7,7 @@
 import type { z } from "zod";
 import type { AnyToolDescriptor, ToolDescriptor } from "./types.js";
 
+/** Declare a tool with its precise Zod-inferred arg type, erased to AnyToolDescriptor for the registry. */
 export function defineTool<Shape extends z.ZodRawShape>(d: ToolDescriptor<Shape>): AnyToolDescriptor {
   return {
     name: d.name,

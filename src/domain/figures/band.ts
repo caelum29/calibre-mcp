@@ -121,6 +121,7 @@ function normalizeLabel(s: string): string {
   return s.replace(/[.:,]+$/, "");
 }
 
+/** Decode the XML entities `pdftotext -bbox` emits (numeric + the five named ones). */
 export function decodeXml(text: string): string {
   return text
     .replace(/&#(\d+);/g, (_, n: string) => String.fromCodePoint(Number(n)))

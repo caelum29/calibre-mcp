@@ -171,6 +171,7 @@ async function python3HasFitz(python3: string): Promise<boolean> {
   }
 }
 
+/** Downloads a book format, converts it to text via the best detected backend, and caches the result. */
 export class Extractor {
   #report?: Promise<BackendReport>;
 

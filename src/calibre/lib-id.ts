@@ -3,6 +3,7 @@
 // → "Programming_Books"). This is a FALLBACK ONLY — prefer the authoritative
 // library_map from /ajax/library-info (a real underscore in a name breaks this).
 
+/** Fallback display-name to libId mapping (spaces to underscores); prefer the server's library_map. */
 export function toLibId(displayName: string): string {
   return displayName.replace(/ /g, "_");
 }

@@ -348,6 +348,7 @@ interface CandidateCache {
   byBook: Map<number, Candidate[]>;
 }
 
+/** node:sqlite-backed vector + FTS5 index store with a per-library in-memory candidate cache. */
 export class SqliteIndexStore implements IndexStore {
   #dbs = new Map<string, DatabaseSync>();
   // Per-library candidate cache; invalidated wholesale on any write (correctness > cleverness).

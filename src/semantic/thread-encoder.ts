@@ -12,6 +12,7 @@ interface Pending {
   reject: (e: Error) => void;
 }
 
+/** BookEncoder running its own embedder in one worker thread (parallel bulk re-index). */
 export class ThreadEncoder implements BookEncoder {
   readonly #worker: Worker;
   readonly #pending = new Map<number, Pending>();

@@ -7,6 +7,7 @@
 /** Coded rejection when the queue is at its waiting cap — callers map it to a degrade path. */
 export const QUEUE_BUSY = "INFERENCE_BUSY";
 
+/** FIFO single-flight queue serializing CPU-bound inference, with an optional waiting cap. */
 export class InferenceQueue {
   // Tail of the FIFO chain; each task starts only after the previous one settles.
   #tail: Promise<unknown> = Promise.resolve();

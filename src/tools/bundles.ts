@@ -39,6 +39,7 @@ export function parseSavedSearches(stdout: string): Array<{ name: string; expres
   return out;
 }
 
+/** True when a bundle name starts with `-` — an exclusion marker subtracted from default scope (D-019). */
 export function isExclusionMarker(name: string): boolean {
   return name.startsWith("-");
 }
@@ -87,6 +88,7 @@ export async function loadBundles(deps: ToolDeps, library?: string): Promise<Bun
 const CACHE_TTL_MS = 30_000;
 const cache = new Map<string, { at: number; bundles: BundleEntry[] }>();
 
+/** Drop cached bundle listings for one libId, or all libraries when omitted (called after bundle writes). */
 export function invalidateBundleCache(libId?: string): void {
   if (libId === undefined) cache.clear();
   else cache.delete(libId);
@@ -224,13 +226,15 @@ export function isScoped(res: FilterResolution): boolean {
   return res.bundle !== undefined || res.markers.length > 0;
 }
 
+// Upper bound on ids fetched for a scope restriction — larger than any real library.
+const RESTRICT_MAX = 100_000;
+
 /**
  * Resolve the allowed book-id set for paths that can't expand a server-side expression
  * (semantic index, FTS grouping): one /ajax/search call on the scope expression.
  * Query-time only — the semantic index never bakes bundles in (D-019).
+ * Returns undefined when the resolution is unscoped (no restriction needed).
  */
-const RESTRICT_MAX = 100_000;
-
 export async function restrictSet(
   deps: ToolDeps,
   res: FilterResolution,
