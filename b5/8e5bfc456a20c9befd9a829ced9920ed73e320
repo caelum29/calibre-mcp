@@ -1,0 +1,35 @@
+docs/tool-catalog.json
+  s_0b36ec168d5987::t_27c95d96b9cc43 1621-1626
+src/tools/calibre_recover_metadata.ts
+  s_0b36ec168d5987::t_8d35a8d67415d2 54,126,131-132,140,150,167
+  s_0b36ec168d5987::t_6ea7496bcd706a 123-125
+src/domain/enrich/types.ts
+  s_0b36ec168d5987::t_b4c0f63a8bd940 42-45
+src/domain/enrich/extract-isbn.ts
+  s_0b36ec168d5987::t_8f5a9dc12ff34b 10
+  s_0b36ec168d5987::t_fd36d74b65842a 22-28
+  s_0b36ec168d5987::t_82459c9e2a821b 62-77,82,92,96-99,102-109
+  s_0b36ec168d5987::t_d54a3b6728de64 61
+src/domain/enrich/proposal.ts
+  s_0b36ec168d5987::t_245bcaff68307d 14-16
+  s_0b36ec168d5987::t_fda7a863cdb256 36-60,64,72-83,86
+  s_0b36ec168d5987::t_1e6de5c33d36fd 116
+src/tools/isbn-scan.ts
+  s_0b36ec168d5987::t_aaa4624cc93b83 106-107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b58e5bfc456a20c9befd9a829ced9920ed73e320",
+  "prompts": {},
+  "sessions": {
+    "s_0b36ec168d5987": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "805ea9a5-c98a-4c37-8c2e-93966a512593",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
