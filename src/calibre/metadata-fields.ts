@@ -119,6 +119,25 @@ export function changesSatisfied(before: Book, after: Book, changes: Record<stri
   });
 }
 
+/**
+ * Value equality for one field's before/after (#202). Arrays compare element-wise in order
+ * (author order is meaningful); plain objects (identifiers) ignore key order, since the
+ * server may return the same map in a different order; empty (null/undefined) equals empty.
+ */
+export function sameFieldValue(a: unknown, b: unknown): boolean {
+  if (a === b || (a == null && b == null)) return true;
+  if (Array.isArray(a) || Array.isArray(b)) {
+    return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((v, i) => sameFieldValue(v, b[i]));
+  }
+  if (typeof a === "object" && typeof b === "object" && a !== null && b !== null) {
+    const ka = Object.keys(a);
+    const ra = a as Record<string, unknown>;
+    const rb = b as Record<string, unknown>;
+    return ka.length === Object.keys(b).length && ka.every((k) => k in rb && sameFieldValue(ra[k], rb[k]));
+  }
+  return false;
+}
+
 /** One field's before/after for a proposed change, with a computed `changed` flag. */
 export interface FieldDiff {
   field: string;

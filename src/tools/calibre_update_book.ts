@@ -4,7 +4,13 @@
 // classifies a server write-refusal into an actionable message (CAPABILITIES §2).
 
 import { z } from "zod";
-import { bookFieldValue, buildSetMetadataArgs, changesSatisfied, isAllowedField } from "../calibre/metadata-fields.js";
+import {
+  bookFieldValue,
+  buildSetMetadataArgs,
+  changesSatisfied,
+  isAllowedField,
+  sameFieldValue,
+} from "../calibre/metadata-fields.js";
 import type { ChangeValue } from "../calibre/metadata-fields.js";
 import type { Book } from "../domain/book.js";
 import { CalibreCliTimeoutError } from "../domain/errors.js";
@@ -87,11 +93,13 @@ export const updateBookTool = defineTool({
       try {
         after = await deps.content.getBook(numericId, args.library);
       } catch {
-        const changed = fields.map((field) => ({
-          field,
-          before: bookFieldValue(before, field) ?? null,
-          after: changes[field] ?? null,
-        }));
+        const changed = fields
+          .map((field) => ({
+            field,
+            before: bookFieldValue(before, field) ?? null,
+            after: changes[field] ?? null,
+          }))
+          .filter((c) => !sameFieldValue(c.before, c.after)); // already-current fields aren't changes (#202)
         return toolOk(
           [
             {
@@ -101,7 +109,7 @@ export const updateBookTool = defineTool({
                 `(diff shows intended values — the verification re-read failed)`,
             },
           ],
-          { id: numericId, changed, noop: false },
+          { id: numericId, changed, noop: changed.length === 0 },
         );
       }
       return appliedResult(numericId, before, after, fields);
@@ -116,12 +124,15 @@ export const updateBookTool = defineTool({
 function appliedResult(id: number, before: Book, after: Book, fields: string[]): ToolResult {
   // empty fields read back as undefined, which JSON drops — emit null so the required
   // `before`/`after` keys survive and the committed write isn't rejected by outputSchema
-  const changed = fields.map((field) => ({
-    field,
-    before: bookFieldValue(before, field) ?? null,
-    after: bookFieldValue(after, field) ?? null,
-  }));
-  const noop = changed.every((c) => JSON.stringify(c.before) === JSON.stringify(c.after));
+  const changed = fields
+    .map((field) => ({
+      field,
+      before: bookFieldValue(before, field) ?? null,
+      after: bookFieldValue(after, field) ?? null,
+    }))
+    // compare by value, not serialization — identical values are phantom diffs (#202)
+    .filter((c) => !sameFieldValue(c.before, c.after));
+  const noop = changed.length === 0;
   const summary = noop
     ? `No changes applied to book ${id} (values already current).`
     : `Updated book ${id}: ${fields.join(", ")}.`;
