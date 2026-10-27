@@ -55,7 +55,7 @@
     "zod": "4.4.3"
   },
   "optionalDependencies": {
-    "@huggingface/transformers": "4.2.0"
+    "@huggingface/transformers": "4.3.1"
   },
   "devDependencies": {
     "@modelcontextprotocol/inspector": "2.2.0",
