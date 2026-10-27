@@ -1,0 +1,27 @@
+package.json
+  s_83e27d3045c83d::t_eb61bd992f4601 58
+test/semantic/embedder-gemma2.integration.test.ts
+  s_83e27d3045c83d::t_05d08e10e389e2 1-68
+src/semantic/embedder.ts
+  s_83e27d3045c83d::t_01e233ac24da1d 179,186-193,196
+src/semantic/model.ts
+  s_83e27d3045c83d::t_01e233ac24da1d 37-41,55,100-132
+pnpm-lock.yaml
+  s_83e27d3045c83d::t_fb16c057e41f2b 48-49,228-229,232-233,235-236,1019-1020,1214-1215,1285-1286,1288-1289,1291-1292,1295-1296,1452-1453,1590-1591,1864,1867,1870,1872-1875,2606,2608-2609,2611,2782,2830,2833,2836,2839-2840,2843,2848,3043,3045,3207
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6bc0958e758c2fe5bad6a0e67c38c630b93d32b2",
+  "prompts": {},
+  "sessions": {
+    "s_83e27d3045c83d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e0613628-132a-4280-bbaf-32c1659eea65",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
