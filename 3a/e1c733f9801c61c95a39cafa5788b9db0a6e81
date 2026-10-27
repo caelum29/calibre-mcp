@@ -1,0 +1,24 @@
+README.md
+  s_0b36ec168d5987::t_3c2352b9223c96 174
+CLAUDE.md
+  s_0b36ec168d5987::t_1fd016c03295ac 51-54
+docs/TOOLS.md
+  s_0b36ec168d5987::t_381ffb3a4bd862 512
+  s_0b36ec168d5987::t_7caee927a253b7 498-499
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3ae1c733f9801c61c95a39cafa5788b9db0a6e81",
+  "prompts": {},
+  "sessions": {
+    "s_0b36ec168d5987": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "805ea9a5-c98a-4c37-8c2e-93966a512593",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
