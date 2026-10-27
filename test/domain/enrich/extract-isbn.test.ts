@@ -111,6 +111,13 @@ describe("extractIsbns — ad/catalog edge cases (#198)", () => {
     expect(extractIsbns("Hardcover (300 pages)\nISBN: 978-0-306-40615-7")).toEqual(["9780306406157"]);
   });
 
+  it("detects a catalog page deep inside a long text (ads sit at the end of a book)", () => {
+    const text =
+      `${"x".repeat(5000)}\nSome Book\nISBN: 978-1-68050-635-8 $39.95\n` +
+      "Another Book\nISBN: 978-1-61729-454-9 $49.99\n";
+    expect(extractIsbns(text)).toEqual([]);
+  });
+
   it("keeps price-tagged ISBNs that are far apart (not one catalog page)", () => {
     const text = `ISBN: 978-0-306-40615-7 $39.99\n${"x".repeat(3000)}\nISBN: 978-1-68050-635-8 $45.95`;
     expect(extractIsbns(text)).toEqual(["9780306406157", "9781680506358"]);
