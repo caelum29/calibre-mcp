@@ -67,6 +67,58 @@ describe("buildProposal", () => {
   });
 });
 
+// #201: provider names, junk current authors, author-as-publisher and ISBN form.
+describe("buildProposal — author/publisher/ISBN normalization (#201)", () => {
+  it("proposes provider 'Last, First' authors as 'First Last'", () => {
+    const p = buildProposal(book({ title: "x" }), [hit({ authors: ["Graham, Paul"] })]);
+    expect(p.changes.authors).toEqual(["Paul Graham"]);
+  });
+
+  it("splits a glued provider author string into separate people", () => {
+    const p = buildProposal(book({ title: "x" }), [hit({ authors: ["Jez Humble, Joanne Molesky"] })]);
+    expect(p.changes.authors).toEqual(["Jez Humble", "Joanne Molesky"]);
+  });
+
+  it("treats a year-only current author as weak and proposes the provider's", () => {
+    const p = buildProposal(book({ title: "x", authors: ["2007"] }), [hit({ authors: ["Paul Graham"] })]);
+    expect(p.fields.find((f) => f.field === "authors")).toMatchObject({ proposed: ["Paul Graham"], reason: "weak" });
+  });
+
+  it("treats a glued current author string as weak and proposes the provider's", () => {
+    const p = buildProposal(book({ title: "x", authors: ["Ian Miell, Aidan Hobson Sayers"] }), [
+      hit({ authors: ["Ian Miell", "Aidan Hobson Sayers"] }),
+    ]);
+    expect(p.changes.authors).toEqual(["Ian Miell", "Aidan Hobson Sayers"]);
+  });
+
+  it("still never replaces a good current author", () => {
+    const p = buildProposal(book({ title: "x", authors: ["Paul Graham"] }), [hit({ authors: ["Someone Else"] })]);
+    expect(p.changes).not.toHaveProperty("authors");
+  });
+
+  it("drops a provider publisher that is really the authors string", () => {
+    const p = buildProposal(book({ title: "x" }), [
+      hit({ authors: ["Matt Stephens", "Doug Rosenberg"], publisher: "Matt Stephens, Doug Rosenberg" }),
+    ]);
+    expect(p.changes).not.toHaveProperty("publisher");
+  });
+
+  it("drops a provider publisher that names the book's current author", () => {
+    const p = buildProposal(book({ title: "x", authors: ["Paul Graham"] }), [hit({ publisher: "Graham, Paul" })]);
+    expect(p.changes).not.toHaveProperty("publisher");
+  });
+
+  it("keeps a real publisher even when it shares a word with an author", () => {
+    const p = buildProposal(book({ title: "x" }), [hit({ authors: ["Tim O'Reilly"], publisher: "O'Reilly Media" })]);
+    expect(p.changes.publisher).toBe("O'Reilly Media");
+  });
+
+  it("emits the proposed isbn identifier as ISBN-13", () => {
+    const p = buildProposal(book({ title: "x" }), [hit({ isbn: "0596006624" })]);
+    expect(p.changes.identifiers).toEqual({ isbn: "9780596006624" });
+  });
+});
+
 // #198: an ISBN that belongs to another book (e.g. scraped from an ad page) yields a hit whose
 // title has nothing to do with the book's real title — the proposal must not look trustworthy.
 describe("buildProposal — title cross-check (#198)", () => {

@@ -126,6 +126,21 @@ describe("calibre_recover_metadata handler", () => {
     expect(r.structuredContent?.lookupKey).toBe("title:Python Testing with pytest");
   });
 
+  // #201: book 1300 had author "2007"; the provider answers "Last, First", puts the authors in
+  // the publisher field, and reports ISBN-10.
+  it("proposes First-Last authors over a junk author, drops an author-as-publisher, emits ISBN-13", async () => {
+    const fixture = {
+      book: book({ title: "Hackers & Painters", authors: ["2007"], formats: ["pdf"] }),
+      text: "Copyright\nISBN: 0-596-00662-4\n",
+      hits: [
+        hit({ title: "Hackers & Painters", authors: ["Graham, Paul"], publisher: "Paul Graham", isbn: "0596006624" }),
+      ],
+    };
+    const r = await recoverMetadataTool.handler(args(), deps(fixture));
+    expect(r.isError).toBeFalsy();
+    expect(r.structuredContent?.changes).toEqual({ authors: ["Paul Graham"], identifiers: { isbn: "9780596006624" } });
+  });
+
   it("errors when no provider returns a hit", async () => {
     const r = await recoverMetadataTool.handler(
       args(),

@@ -79,3 +79,40 @@ describe("runQualityChecks", () => {
     expect(issues.every((i) => i.check === "raw_filename_title")).toBe(true);
   });
 });
+
+// #201: imported records carry glued multi-person strings, years and "NAME;" as authors.
+describe("runQualityChecks — suspect authors (#201)", () => {
+  const suspect = (authors: string[]) =>
+    runQualityChecks([book({ authors, authorSort: undefined })], ["authors_suspect"]);
+
+  it("flags a glued multi-person author string, naming the value", () => {
+    const [issue] = suspect(["Petre, Marian,Hoek, André van der,Quach, Yen"]);
+    expect(issue).toMatchObject({ check: "authors_suspect", severity: "warn", bookId: 1 });
+    expect(issue!.message).toContain("Petre, Marian,Hoek, André van der,Quach, Yen");
+  });
+
+  it("flags a year-only author", () => {
+    expect(suspect(["2007"]).map((i) => i.check)).toEqual(["authors_suspect"]);
+  });
+
+  it("flags a semicolon-suffixed author", () => {
+    expect(suspect(["PRESSMAN;"]).map((i) => i.check)).toEqual(["authors_suspect"]);
+  });
+
+  it("raises one issue per book even with several suspect authors", () => {
+    expect(suspect(["2007", "Jez Humble, Joanne Molesky"])).toHaveLength(1);
+  });
+
+  it("does not flag ordinary names or the Unknown placeholder", () => {
+    expect(suspect(["Paul Graham", "André van der Hoek", "Unknown"])).toEqual([]);
+  });
+
+  it("runs as part of the default check set", () => {
+    expect(checksOf([book({ authors: ["2007"], authorSort: undefined })])).toContain("authors_suspect");
+  });
+
+  it("counts a year-only author as missing authors in missing_metadata", () => {
+    const [missing] = runQualityChecks([book({ authors: ["2007"], authorSort: undefined })], ["missing_metadata"]);
+    expect(missing!.message).toBe("Missing metadata: authors.");
+  });
+});
