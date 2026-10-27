@@ -187,7 +187,9 @@ export const bulkUpdateTool = defineTool({
 
       const summary =
         `Applied ${fields.join(", ")} to ${applied.length}/${perBook.length} book(s).` +
-        (failed.length > 0 ? ` ${failed.length} failed: ${failed.map((f) => f.id).join(", ")}.` : "");
+        (failed.length > 0 ? ` ${failed.length} failed: ${failed.map((f) => f.id).join(", ")}.` : "") +
+        // one line per failure, so text-only clients still see each reason and #33 steer (#216)
+        failed.map((f) => `\n#${f.id}: ${f.error}`).join("");
       return toolOk([{ type: "text", text: summary }], {
         preview: false,
         matched: perBook.length,

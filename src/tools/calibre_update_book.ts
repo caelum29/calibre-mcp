@@ -12,7 +12,7 @@ import { BookId, jsonRecord } from "./coerce.js";
 import { defineTool } from "./define.js";
 import type { ToolDeps, ToolResult } from "./types.js";
 import { bookIdArg, resolveNumericId } from "./resolve-id.js";
-import { toolError, toolOk } from "./result.js";
+import { fence, toolError, toolOk } from "./result.js";
 import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "./write-refusal.js";
 import { verifyTimedOutWrite } from "./write-verify.js";
 import type { TimedOutWrite } from "./write-verify.js";
@@ -102,7 +102,8 @@ export const updateBookTool = defineTool({
               type: "text",
               text:
                 `Updated book ${numericId}: ${fields.join(", ")}. ` +
-                `(diff shows intended values — the verification re-read failed)`,
+                `(diff shows intended values — the verification re-read failed)` +
+                diffText(changed),
             },
           ],
           { id: numericId, changed, noop: changed.length === 0 },
@@ -132,7 +133,24 @@ function appliedResult(id: number, before: Book, after: Book, fields: string[]):
   const summary = noop
     ? `No changes applied to book ${id} (values already current).`
     : `Updated book ${id}: ${fields.join(", ")}.`;
-  return toolOk([{ type: "text", text: summary }], { id, changed, noop });
+  return toolOk([{ type: "text", text: summary + diffText(changed) }], { id, changed, noop });
+}
+
+/** Longest rendered value per side; a full `comments` blob would flood the text. */
+const MAX_DIFF_VALUE = 120;
+
+/**
+ * Render the diff into the TEXT content too — Desktop strips structuredContent, so without
+ * this the model can't confirm what changed (#216). Fenced: titles/comments are book data.
+ */
+function diffText(changed: { field: string; before: unknown; after: unknown }[]): string {
+  if (changed.length === 0) return "";
+  const show = (v: unknown): string => {
+    const s = JSON.stringify(v) ?? "null";
+    return s.length > MAX_DIFF_VALUE ? `${s.slice(0, MAX_DIFF_VALUE - 1)}…` : s;
+  };
+  const lines = changed.map((c) => `${c.field}: ${show(c.before)} → ${show(c.after)}`);
+  return `\n${fence("UPDATE DIFF", lines.join("\n"))}`;
 }
 
 /**
