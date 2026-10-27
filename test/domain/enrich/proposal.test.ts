@@ -119,6 +119,27 @@ describe("buildProposal — author/publisher/ISBN normalization (#201)", () => {
   });
 });
 
+describe("buildProposal — author/publisher edge cases (#201)", () => {
+  it("treats a list with one junk entry beside a real name as weak", () => {
+    const p = buildProposal(book({ title: "x", authors: ["Paul Graham", "2007"] }), [
+      hit({ authors: ["Paul Graham"] }),
+    ]);
+    expect(p.changes.authors).toEqual(["Paul Graham"]);
+  });
+
+  it("keeps a publisher that names a press alongside an author", () => {
+    const p = buildProposal(book({ title: "x" }), [
+      hit({ authors: ["Paul Graham"], publisher: "Paul Graham, Bay Area Press" }),
+    ]);
+    expect(p.changes.publisher).toBe("Paul Graham, Bay Area Press");
+  });
+
+  it("proposes no authors when the hit carries none, even over weak current authors", () => {
+    const p = buildProposal(book({ title: "x", authors: ["Unknown"] }), [hit({ publisher: "P" })]);
+    expect(p.changes).not.toHaveProperty("authors");
+  });
+});
+
 // #198: an ISBN that belongs to another book (e.g. scraped from an ad page) yields a hit whose
 // title has nothing to do with the book's real title — the proposal must not look trustworthy.
 describe("buildProposal — title cross-check (#198)", () => {

@@ -115,4 +115,9 @@ describe("runQualityChecks — suspect authors (#201)", () => {
     const [missing] = runQualityChecks([book({ authors: ["2007"], authorSort: undefined })], ["missing_metadata"]);
     expect(missing!.message).toBe("Missing metadata: authors.");
   });
+
+  it("does not run when another check is requested explicitly", () => {
+    const issues = runQualityChecks([book({ authors: ["2007"], authorSort: undefined })], ["isbn_invalid"]);
+    expect(issues).toEqual([]);
+  });
 });

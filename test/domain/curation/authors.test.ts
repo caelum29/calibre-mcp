@@ -35,6 +35,10 @@ describe("splitAuthorString (#201)", () => {
     expect(splitAuthorString("   ")).toEqual([]);
   });
 
+  it("ignores a trailing comma", () => {
+    expect(splitAuthorString("Graham, Paul,")).toEqual(["Paul Graham"]);
+  });
+
   it("leaves an ambiguous odd mix of forms as-is rather than guessing", () => {
     expect(splitAuthorString("Doe, John, Jane Roe")).toEqual(["Doe, John, Jane Roe"]);
   });
