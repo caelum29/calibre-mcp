@@ -176,15 +176,24 @@ export class TransformersEmbedder implements Embedder {
     mod.env.cacheDir = path.join(this.cfg.indexDir, "models");
     mod.env.allowRemoteModels = true;
 
-    const { id, dtype, pooling } = ACTIVE_MODEL;
+    const { id, dtype, pooling, textOnly } = ACTIVE_MODEL;
     let loaded: Loaded;
     if (pooling === "baked-in") {
       // Graph emits `sentence_embedding` (card usage: AutoTokenizer + AutoModel) —
       // running this through the feature-extraction pipeline would re-pool token states
       // and silently skip the model's own projection layers.
       const tokenizer = (await mod.AutoTokenizer.from_pretrained(id)) as unknown as BatchTokenizer;
+      let config: Awaited<ReturnType<typeof mod.AutoConfig.from_pretrained>> | undefined;
+      if (textOnly) {
+        // Multimodal checkpoint (EmbeddingGemma 2): encoders load only when their sub-config
+        // is present — dropping them skips ~536 MB of unused vision/audio weights.
+        config = await mod.AutoConfig.from_pretrained(id);
+        const c = config as unknown as Record<string, unknown>;
+        c.vision_config = c.audio_config = null;
+      }
       const model = (await mod.AutoModel.from_pretrained(id, {
         dtype,
+        ...(config && { config }),
       })) as unknown as SentenceEmbeddingModel;
       loaded = {
         embed: async (texts) => {
