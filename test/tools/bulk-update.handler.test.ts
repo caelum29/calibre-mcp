@@ -347,3 +347,50 @@ describe("calibre_bulk_update per-id errors in text (#216)", () => {
     expect(text(r)).not.toContain("#2:");
   });
 });
+
+describe("calibre_bulk_update result text details", () => {
+  const text = (r: { content: unknown[] }): string => (r.content[0] as { text: string }).text;
+  const refuseOnCall = (n: number) => {
+    let call = 0;
+    return async () => {
+      call += 1;
+      if (call === n) throw new CalibreCliError(1, "boom", "HTTP Error 403: Forbidden");
+      return { stdout: "", stderr: "" };
+    };
+  };
+
+  it("names the progress, every committed id and the refused id after a mid-loop refusal", async () => {
+    const r = await bulkUpdateTool.handler(
+      { changes: { tags: ["new"] }, ids: [1, 2, 3], preview: false },
+      deps({ fixture: [book({ id: 1 }), book({ id: 2 }), book({ id: 3 })], calibredb: refuseOnCall(3) }),
+    );
+    expect(text(r)).toContain("after 2/3 book(s) were already updated");
+    expect(text(r)).toContain("Committed (do NOT retry these): 1, 2.");
+    expect(text(r)).toContain("Failed: 3.");
+  });
+
+  it("marks the partial refusal result as an applied run, not a preview", async () => {
+    const r = await bulkUpdateTool.handler(
+      { changes: { tags: ["new"] }, ids: [1, 2], preview: false },
+      deps({ calibredb: refuseOnCall(2) }),
+    );
+    expect(r.structuredContent?.preview).toBe(false);
+  });
+
+  it("reports a fully successful run with just the summary line", async () => {
+    const r = await bulkUpdateTool.handler({ changes: { tags: ["new"] }, ids: [1, 2], preview: false }, deps());
+    expect(text(r)).toBe("Applied tags to 2/2 book(s).");
+  });
+
+  it("summarizes the failure count and ids before the per-id lines", async () => {
+    const r = await bulkUpdateTool.handler(
+      { changes: { tags: ["new"] }, ids: [1, 2], preview: false },
+      deps({
+        calibredb: async (args) => {
+          throw new Error(`bad-${args[1]}`);
+        },
+      }),
+    );
+    expect(text(r)).toBe("Applied tags to 0/2 book(s). 2 failed: 1, 2.\n#1: bad-1\n#2: bad-2");
+  });
+});
