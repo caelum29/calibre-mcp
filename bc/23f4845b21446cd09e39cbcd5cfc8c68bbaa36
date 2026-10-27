@@ -1,0 +1,22 @@
+test/domain/enrich/extract-isbn.test.ts
+  s_0b36ec168d5987::t_9ff58f1cfa8576 104-118
+test/domain/enrich/proposal.test.ts
+  s_0b36ec168d5987::t_92dbe3a1b40d44 3,191
+  s_0b36ec168d5987::t_f9f07b7b91c625 176-190,192-197
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bc23f4845b21446cd09e39cbcd5cfc8c68bbaa36",
+  "prompts": {},
+  "sessions": {
+    "s_0b36ec168d5987": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "805ea9a5-c98a-4c37-8c2e-93966a512593",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
