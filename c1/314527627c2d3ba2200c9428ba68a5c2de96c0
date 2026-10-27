@@ -1,0 +1,21 @@
+test/tools/board-data.handler.test.ts
+  s_0b36ec168d5987::t_ad6709d989979d 160-190
+test/ui/board-cache.test.ts
+  s_0b36ec168d5987::t_7a19dd8c3c44b5 110-124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c1314527627c2d3ba2200c9428ba68a5c2de96c0",
+  "prompts": {},
+  "sessions": {
+    "s_0b36ec168d5987": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "805ea9a5-c98a-4c37-8c2e-93966a512593",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
