@@ -147,6 +147,7 @@ describe("sameFieldValue", () => {
     ["a map with an extra key", { isbn: "1" }, { isbn: "1", doi: "d" }],
     ["maps with different keys of the same count", { isbn: undefined }, { doi: undefined }],
     ["a map and empty", { isbn: "1" }, null],
+    ["empty and a map", null, { isbn: "1" }],
     ["a map and a string with the same indexed content", { 0: "x" }, "x"],
     ["a string and a map with the same indexed content", "x", { 0: "x" }],
     ["a number and its string form", 4, "4"],
