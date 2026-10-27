@@ -103,6 +103,7 @@ export function scanOutcomeHint(outcome: IsbnScanOutcome): string {
     case "error":
       return "the text scan found none (no extractable text)";
     default:
-      return "no valid ISBN was found in the book's front matter";
+      // front + back pages + labeled-only middle sweep are all scanned, so don't say "front matter"
+      return "no valid ISBN was found in the book's text (ISBNs in ad/catalog listings of other books are ignored)";
   }
 }
