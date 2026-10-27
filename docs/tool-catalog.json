@@ -1455,7 +1455,8 @@
                 "raw_filename_title",
                 "isbn_invalid",
                 "author_sort_mismatch",
-                "series_gaps"
+                "series_gaps",
+                "authors_suspect"
               ],
               "type": "string"
             },

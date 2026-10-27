@@ -6,6 +6,8 @@
 import type { Book } from "../book.js";
 import type { ChangeValue } from "../../calibre/metadata-fields.js";
 import { isAllowedField } from "../../calibre/metadata-fields.js";
+import { authorSuspectReason, normalizeAuthors } from "../curation/authors.js";
+import { toIsbn13 } from "../curation/isbn.js";
 import { isEmptyDate } from "../merge.js";
 import { looksLikeRawFilename } from "./filename-guess.js";
 import type { ProposedField, Proposal, ProviderHit } from "./types.js";
@@ -20,10 +22,21 @@ function titleIsWeak(title: string, authors: string[]): boolean {
   return title.trim().length === 0 || looksLikeRawFilename(title, authors);
 }
 
-/** Authors are weak if empty or the "Unknown" placeholder Calibre assigns on import. */
+/**
+ * Authors are weak if empty, the "Unknown" placeholder Calibre assigns on import, or any entry
+ * is suspect — a glued list, an unflipped "Last, First", or filename junk like "2007" (#201).
+ */
 function authorsAreWeak(authors: string[]): boolean {
+  if (authors.some((a) => authorSuspectReason(a) !== undefined)) return true;
   const real = authors.filter((a) => !UNKNOWN_AUTHOR.has(a.trim().toLowerCase()));
   return real.length === 0;
+}
+
+/** True if the publisher value is just author name(s) — a provider field mix-up (#201). */
+function publisherIsAuthors(publisher: string, authors: string[]): boolean {
+  const known = new Set(normalizeAuthors(authors).map((a) => a.toLowerCase()));
+  const names = normalizeAuthors([publisher]);
+  return names.length > 0 && names.every((n) => known.has(n.toLowerCase()));
 }
 
 /** Pick the highest-confidence hit (stable — first wins on ties). */
@@ -59,6 +72,23 @@ export function titlesAgree(a: string, b: string): boolean {
 }
 
 /**
+ * An ISBN can belong to another book (ad pages, #198); a real current title that disagrees with
+ * the provider's is the tell, so cap the confidence and warn.
+ */
+function crossCheckTitle(current: Book, hit: ProviderHit): { confidence: number; warnings: string[] } {
+  if (!hit.title || titleIsWeak(current.title, current.authors) || titlesAgree(current.title, hit.title)) {
+    return { confidence: hit.confidence, warnings: [] };
+  }
+  return {
+    confidence: Math.min(hit.confidence, MISMATCH_CONFIDENCE),
+    warnings: [
+      `title mismatch: the book is "${current.title}" but ${hit.source} returned "${hit.title}" — ` +
+        `the ISBN may belong to another book; verify before applying.`,
+    ],
+  };
+}
+
+/**
  * Diff the best hit against `current` and produce a proposal. Fields are proposed only when
  * the current value is missing/weak; identifiers add a new isbn only when the book has none.
  * A hit whose title contradicts a real current title gets its confidence capped + a warning.
@@ -69,17 +99,7 @@ export function buildProposal(current: Book, hits: ProviderHit[]): Proposal {
   const changes: Record<string, ChangeValue> = {};
   if (!hit) return { fields, changes };
 
-  // An ISBN can belong to another book (ad pages, #198); a real title that disagrees with the
-  // provider's is the tell, so the proposal must not look trustworthy.
-  const warnings: string[] = [];
-  let confidence = hit.confidence;
-  if (hit.title && !titleIsWeak(current.title, current.authors) && !titlesAgree(current.title, hit.title)) {
-    confidence = Math.min(confidence, MISMATCH_CONFIDENCE);
-    warnings.push(
-      `title mismatch: the book is "${current.title}" but ${hit.source} returned "${hit.title}" — ` +
-        `the ISBN may belong to another book; verify before applying.`,
-    );
-  }
+  const { confidence, warnings } = crossCheckTitle(current, hit);
 
   const add = (field: string, current: unknown, proposed: ChangeValue, reason: ProposedField["reason"]) => {
     if (!isAllowedField(field)) return; // safety net — only writable fields reach `changes`
@@ -90,15 +110,17 @@ export function buildProposal(current: Book, hits: ProviderHit[]): Proposal {
   if (hit.title && titleIsWeak(current.title, current.authors)) {
     add("title", current.title || undefined, hit.title, current.title.trim() ? "weak" : "missing");
   }
-  if (hit.authors?.length && authorsAreWeak(current.authors)) {
+  // Providers return "Last, First" or glued strings; Calibre wants one "First Last" per entry.
+  const hitAuthors = normalizeAuthors(hit.authors ?? []);
+  if (hitAuthors.length && authorsAreWeak(current.authors)) {
     add(
       "authors",
       current.authors.length ? current.authors : undefined,
-      hit.authors,
+      hitAuthors,
       current.authors.length ? "weak" : "missing",
     );
   }
-  if (hit.publisher && !current.publisher) {
+  if (hit.publisher && !current.publisher && !publisherIsAuthors(hit.publisher, [...hitAuthors, ...current.authors])) {
     add("publisher", undefined, hit.publisher, "missing");
   }
   // Calibre stores "no date" as the 0101-01-01 sentinel, a non-empty string
@@ -110,7 +132,8 @@ export function buildProposal(current: Book, hits: ProviderHit[]): Proposal {
   }
   // Only ADD an isbn when the book carries none — never overwrite an existing identifier.
   if (hit.isbn && !current.identifiers.isbn) {
-    add("identifiers", undefined, { isbn: hit.isbn }, "missing");
+    // Always ISBN-13 so the stored identifier matches the lookup key's form (#201).
+    add("identifiers", undefined, { isbn: toIsbn13(hit.isbn) }, "missing");
   }
 
   return { fields, changes, confidence, warnings };

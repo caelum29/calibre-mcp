@@ -1,5 +1,5 @@
 // calibre_quality_report — scan the library (or an ids/query subset) for metadata problems:
-// missing fields, raw-filename titles, invalid ISBNs, author-sort mismatches, series gaps.
+// missing fields, raw-filename titles, invalid ISBNs, author-sort mismatches, series gaps, suspect (glued/junk) authors.
 // Read-only; the raw-filename findings feed calibre_recover_metadata. readability (Flesch/Fog
 // over full text) is deferred — it needs text extraction, not just metadata.
 
@@ -18,6 +18,7 @@ const CHECK_ENUM = z.enum([
   "isbn_invalid",
   "author_sort_mismatch",
   "series_gaps",
+  "authors_suspect",
 ]);
 
 export const qualityReportTool = defineTool({

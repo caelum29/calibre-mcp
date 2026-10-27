@@ -309,13 +309,13 @@ score with a review warning.
 ### `calibre_quality_report`
 
 Audit books for metadata problems: missing fields, raw-filename titles (e.g. `795731065.pdf`),
-invalid ISBNs, author-sort mismatches, and series gaps. Defaults to the whole library; narrow
+invalid ISBNs, author-sort mismatches, series gaps, and suspect (glued/junk) authors. Defaults to the whole library; narrow
 with `ids`, a `query`, or a specific list of `checks`. The raw-filename findings feed straight
 into `calibre_recover_metadata`.
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `checks` | array of `missing_metadata` \| `raw_filename_title` \| `isbn_invalid` \| `author_sort_mismatch` \| `series_gaps` | *(all)* | Which checks to run |
+| `checks` | array of `missing_metadata` \| `raw_filename_title` \| `isbn_invalid` \| `author_sort_mismatch` \| `series_gaps` \| `authors_suspect` | *(all)* | Which checks to run |
 | `ids` | array of ids | — | Restrict to these books |
 | `query` | string | — | Restrict to books matching a Calibre query |
 | `filter` | string | — | Restrict to a bundle (no auto-exclusion: maintenance sees everything) |
