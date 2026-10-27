@@ -392,7 +392,7 @@ books per call.
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
 | `changes` | object | *(required)* | Field → new value applied to every selected book |
-| `ids` | array of ids | — | Books to change (one of `ids`/`query`/`filter` required) |
+| `ids` | array of ids | — | Books to change (one of `ids`/`query`/`filter` required; `ids` cannot be combined with `query` or `filter`) |
 | `query` | string | — | Select books by a Calibre query |
 | `filter` | string | — | Select a bundle's books (no auto-exclusion on writes) |
 | `preview` | boolean | `true` | Preview the diff; set `false` to write |

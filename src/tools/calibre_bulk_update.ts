@@ -78,8 +78,9 @@ export const bulkUpdateTool = defineTool({
           "Select a book set: pass ids, a non-empty query, or filter (a bundle name) — all-books is not allowed.",
         );
       }
-      if (hasFilter && hasIds) {
-        return toolError("Pass either ids or filter (a bundle name), not both.");
+      // ids are an exact set; combining them with a query/filter would silently drop one side (#214)
+      if (hasIds && (hasQuery || hasFilter)) {
+        return toolError("Pass either ids or query/filter, not both.");
       }
       const fr = await resolveFilter(deps, { filter: args.filter, autoExclude: false, library: args.library });
       if (!fr.ok) return toolError(fr.error);
