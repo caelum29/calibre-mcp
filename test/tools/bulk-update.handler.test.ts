@@ -286,3 +286,64 @@ describe("calibre_bulk_update selection conflicts (#214)", () => {
     expect(r.structuredContent?.matched).toBe(2);
   });
 });
+
+// issue #216 — per-id failure reasons must reach clients that only show text content
+describe("calibre_bulk_update per-id errors in text (#216)", () => {
+  const text = (r: { content: unknown[] }): string => (r.content[0] as { text: string }).text;
+  const three = [book({ id: 1 }), book({ id: 2 }), book({ id: 3 })];
+
+  it("lists each failed id with its error when a book fails mid-way", async () => {
+    let call = 0;
+    const r = await bulkUpdateTool.handler(
+      { changes: { tags: ["new"] }, ids: [1, 2, 3], preview: false },
+      deps({
+        fixture: three,
+        calibredb: async () => {
+          call += 1;
+          if (call === 2) throw new Error("boom-2");
+          return { stdout: "", stderr: "" };
+        },
+      }),
+    );
+    expect(r.isError).toBeFalsy();
+    expect(r.structuredContent?.applied).toEqual([1, 3]);
+    expect(text(r)).toContain("#2: boom-2");
+    expect(text(r)).not.toContain("#1:");
+    expect(text(r)).not.toContain("#3:");
+  });
+
+  it("carries the #33 verify steer for an unconfirmed timeout into the text", async () => {
+    const r = await bulkUpdateTool.handler(
+      { changes: { tags: ["new"] }, ids: [1], preview: false },
+      deps({
+        fixture: [book({ id: 1 })],
+        calibredb: async () => {
+          throw new CalibreCliTimeoutError("calibredb command timed out");
+        },
+      }),
+    );
+    expect(text(r)).toContain("#1: calibredb timed out");
+    expect(text(r)).toContain("verify with calibre_get_book id=1 before retrying");
+  });
+
+  it("lists one line per failed id when several books fail", async () => {
+    const r = await bulkUpdateTool.handler(
+      { changes: { tags: ["new"] }, ids: [1, 2], preview: false },
+      deps({
+        calibredb: async (args) => {
+          throw new Error(`bad-${args[1]}`);
+        },
+      }),
+    );
+    expect(r.structuredContent?.applied).toEqual([]);
+    expect(text(r)).toContain("#1: bad-1");
+    expect(text(r)).toContain("#2: bad-2");
+  });
+
+  it("adds no failure lines when every book applied", async () => {
+    const r = await bulkUpdateTool.handler({ changes: { tags: ["new"] }, ids: [1, 2], preview: false }, deps());
+    expect(text(r)).toContain("Applied tags to 2/2 book(s).");
+    expect(text(r)).not.toContain("#1:");
+    expect(text(r)).not.toContain("#2:");
+  });
+});

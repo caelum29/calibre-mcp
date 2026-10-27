@@ -236,3 +236,82 @@ describe("calibre_update_book phantom diffs (#202)", () => {
     expect(r.structuredContent?.changed).toEqual([{ field: "publisher", before: null, after: "MIT Press" }]);
   });
 });
+
+// issue #216 — the before/after diff must reach clients that only show text content
+describe("calibre_update_book diff in text (#216)", () => {
+  const text = (r: { content: unknown[] }): string => (r.content[0] as { text: string }).text;
+
+  it("renders the changed title as before → after in the text", async () => {
+    const r = await updateBookTool.handler(
+      { id: 658, changes: { title: "New Title" } },
+      deps({ books: [book({ title: "Old Title" }), book({ title: "New Title" })] }),
+    );
+    expect(text(r)).toContain('title: "Old Title" → "New Title"');
+  });
+
+  it("renders a previously-empty field as null → value", async () => {
+    const r = await updateBookTool.handler(
+      { id: 658, changes: { publisher: "Acme" } },
+      deps({ books: [book(), book({ publisher: "Acme" })] }),
+    );
+    expect(text(r)).toContain('publisher: null → "Acme"');
+  });
+
+  it("renders list fields as JSON arrays", async () => {
+    const r = await updateBookTool.handler({ id: 658, changes: { tags: ["new"] } }, deps());
+    expect(text(r)).toContain('tags: ["old"] → ["new"]');
+  });
+
+  it("does not render fields that did not change", async () => {
+    const r = await updateBookTool.handler(
+      { id: 658, changes: { title: "New", authors: ["A"] } },
+      deps({ books: [book(), book({ title: "New" })] }),
+    );
+    expect(text(r)).toContain('title: "Old" → "New"');
+    expect(text(r)).not.toContain("authors:");
+  });
+
+  it("truncates long values so a big comments field cannot flood the text", async () => {
+    const longBefore = "a".repeat(5000);
+    const longAfter = "b".repeat(5000);
+    const r = await updateBookTool.handler(
+      { id: 658, changes: { comments: longAfter } },
+      deps({ books: [book({ comments: longBefore }), book({ comments: longAfter })] }),
+    );
+    expect(text(r)).toContain("comments: ");
+    expect(text(r)).toContain("…");
+    expect(text(r).length).toBeLessThan(1000);
+  });
+
+  it("renders no diff lines for a no-op update", async () => {
+    const r = await updateBookTool.handler({ id: 658, changes: { tags: ["old"] } }, deps({ books: [book(), book()] }));
+    expect(text(r)).toContain("No changes applied to book 658");
+    expect(text(r)).not.toContain("→");
+  });
+
+  it("renders the intended-value diff when the verification re-read fails", async () => {
+    let calls = 0;
+    const getBook = async (): Promise<Book> => {
+      calls += 1;
+      if (calls > 1) throw new CalibreHttpError(0, "u", "Content Server request timed out");
+      return book();
+    };
+    const r = await updateBookTool.handler({ id: 658, changes: { publisher: "MIT Press" } }, deps({ getBook }));
+    expect(r.isError).toBeFalsy();
+    expect(text(r)).toContain('publisher: null → "MIT Press"');
+  });
+
+  it("renders the diff when a timed-out write is confirmed by the re-read", async () => {
+    const r = await updateBookTool.handler(
+      { id: 658, changes: { tags: ["new"] } },
+      deps({
+        calibredb: async () => {
+          throw new CalibreCliTimeoutError("calibredb command timed out");
+        },
+        books: [book(), book({ tags: ["new"] })],
+      }),
+    );
+    expect(r.isError).toBeFalsy();
+    expect(text(r)).toContain('tags: ["old"] → ["new"]');
+  });
+});
