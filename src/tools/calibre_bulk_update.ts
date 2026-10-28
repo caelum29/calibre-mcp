@@ -15,6 +15,7 @@ import type { ToolResult } from "./types.js";
 import { selectBooks } from "./select-books.js";
 import { ChangeValueSchema } from "./calibre_update_book.js";
 import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "./write-refusal.js";
+import { classifyTransient, describeTransient, withTransientRetry } from "./write-retry.js";
 import { verifyTimedOutWrite } from "./write-verify.js";
 
 /** Hard cap on books mutated in one call — a bulk write must be a deliberate, bounded set. */
@@ -146,7 +147,11 @@ export const bulkUpdateTool = defineTool({
       const failed: { id: number; error: string }[] = [];
       for (const [i, b] of perBook.entries()) {
         try {
-          await deps.calibre.calibredb(buildSetMetadataArgs(b.id, changes), { library: libId });
+          // set_metadata is idempotent, so transient failures are retried in place (#233)
+          await withTransientRetry(
+            () => deps.calibre.calibredb(buildSetMetadataArgs(b.id, changes), { library: libId }),
+            deps.sleep,
+          );
           applied.push(b.id);
         } catch (err) {
           // A refusal blocks every later write too, so stop — but once books have committed,
@@ -154,12 +159,30 @@ export const bulkUpdateTool = defineTool({
           if (isWriteRefused(err)) {
             if (applied.length === 0) return toolError(WRITE_REFUSED_MESSAGE);
             failed.push({ id: b.id, error: WRITE_REFUSED_MESSAGE });
-            return refusedMidLoop(
-              perBook.length,
-              applied,
-              failed,
-              perBook.slice(i + 1).map((p) => p.id),
+            return stoppedMidLoop(
+              { matched: perBook.length, applied, failed, notAttempted: perBook.slice(i + 1).map((p) => p.id) },
+              {
+                headline: "Calibre refused the write",
+                steer: `${WRITE_REFUSED_MESSAGE} After fixing the server`,
+              },
             );
+          }
+          // Retries exhausted. A down server fails every later book the same way, so this is a
+          // circuit breaker (stop like a refusal); a gateway 5xx fails only this book (#233).
+          const transient = classifyTransient(err);
+          if (transient === "connection") {
+            failed.push({ id: b.id, error: describeTransient(err, b.id) });
+            return stoppedMidLoop(
+              { matched: perBook.length, applied, failed, notAttempted: perBook.slice(i + 1).map((p) => p.id) },
+              {
+                headline: "Stopped: the Calibre Content Server is unreachable",
+                steer: `${describeTransient(err, b.id)} Once it is back`,
+              },
+            );
+          }
+          if (transient === "server") {
+            failed.push({ id: b.id, error: describeTransient(err, b.id) });
+            continue;
           }
           // Timed-out routed writes may have committed server-side — re-read and count
           // the book as applied when every requested field landed (issue #33).
@@ -217,27 +240,32 @@ function oneLine(error: string): string {
   return s.length > MAX_ERROR_TEXT ? `${s.slice(0, MAX_ERROR_TEXT - 1)}…` : s;
 }
 
+/** Why the loop stopped: the lead-in sentence and the fix-it steer before the re-run hint. */
+interface StopCause {
+  headline: string;
+  steer: string;
+}
+
 /**
- * Partial result for a write refused after ≥1 book committed: still `isError` (the run did
- * not finish), but the committed ids lead the text so the model retries only the rest.
+ * Partial result for a loop stopped by the server (a refusal after ≥1 commit, or the #233
+ * circuit breaker): still `isError` (the run did not finish), but the committed ids lead the
+ * text so the model retries only the rest.
  */
-function refusedMidLoop(
-  matched: number,
-  applied: number[],
-  failed: { id: number; error: string }[],
-  notAttempted: number[],
+function stoppedMidLoop(
+  run: { matched: number; applied: number[]; failed: { id: number; error: string }[]; notAttempted: number[] },
+  cause: StopCause,
 ): ToolResult {
+  const { matched, applied, failed, notAttempted } = run;
   // The refused book (last in `failed`) and the unattempted ones are blocked only by the server;
   // earlier per-book failures had their own reasons, so they aren't part of the re-run.
   const refusedId = failed.at(-1)?.id;
   const retryIds = refusedId === undefined ? notAttempted : [refusedId, ...notAttempted];
   const text =
-    `Calibre refused the write after ${applied.length}/${matched} book(s) were already updated. ` +
-    `Already committed: ${applied.join(", ")}. ` +
+    `${cause.headline} after ${applied.length}/${matched} book(s) were already updated. ` +
+    (applied.length > 0 ? `Already committed: ${applied.join(", ")}. ` : "") +
     `Failed: ${failed.map((f) => f.id).join(", ")}. ` +
     (notAttempted.length > 0 ? `Not attempted: ${notAttempted.join(", ")}. ` : "") +
-    WRITE_REFUSED_MESSAGE +
     // writes are idempotent sets, so re-running is safe; naming the ids saves the model the set math
-    ` After fixing the server, re-run with ids=[${retryIds.join(",")}].`;
+    `${cause.steer}, re-run with ids=[${retryIds.join(",")}].`;
   return toolError(text, { preview: false, matched, applied, failed, notAttempted, retryIds });
 }

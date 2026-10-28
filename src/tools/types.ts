@@ -81,6 +81,8 @@ export interface ToolDeps {
   boardCache?: BoardCache;
   /** External metadata providers for recovery. Defaulted in-handler; injectable for tests. */
   providers?: Record<Provider["name"], Provider>;
+  /** Pause between transient-write retries (#233). Defaulted to setTimeout; injectable for tests. */
+  sleep?: (ms: number) => Promise<void>;
   log: typeof log;
 }
 

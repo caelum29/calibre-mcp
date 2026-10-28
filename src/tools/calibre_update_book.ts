@@ -14,6 +14,7 @@ import type { ToolDeps, ToolResult } from "./types.js";
 import { bookIdArg, resolveNumericId } from "./resolve-id.js";
 import { fence, toolError, toolOk } from "./result.js";
 import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "./write-refusal.js";
+import { classifyTransient, describeTransient, withTransientRetry } from "./write-retry.js";
 import { verifyTimedOutWrite } from "./write-verify.js";
 import type { TimedOutWrite } from "./write-verify.js";
 
@@ -70,11 +71,14 @@ export const updateBookTool = defineTool({
       const libId = await deps.content.resolveLibraryId(args.library);
 
       try {
-        await deps.calibre.calibredb(buildSetMetadataArgs(numericId, changes), {
-          library: libId,
-        });
+        // set_metadata is idempotent, so a transient failure (server restarting) is retried (#233)
+        await withTransientRetry(
+          () => deps.calibre.calibredb(buildSetMetadataArgs(numericId, changes), { library: libId }),
+          deps.sleep,
+        );
       } catch (err) {
         if (isWriteRefused(err)) return toolError(WRITE_REFUSED_MESSAGE);
+        if (classifyTransient(err)) return toolError(describeTransient(err, numericId));
         // A routed write commits server-side BEFORE calibredb replies, so a timeout is
         // ambiguous — verify against a re-read instead of reporting failure (issue #33).
         if (err instanceof CalibreCliTimeoutError) {
