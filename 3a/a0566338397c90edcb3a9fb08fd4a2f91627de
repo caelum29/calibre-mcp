@@ -1,0 +1,21 @@
+test/tools/update-book.handler.test.ts
+  s_0b36ec168d5987::t_b7023f84addd56 387-425
+test/calibre/metadata-fields.test.ts
+  s_0b36ec168d5987::t_12aa2f729c0304 130-136
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3aa0566338397c90edcb3a9fb08fd4a2f91627de",
+  "prompts": {},
+  "sessions": {
+    "s_0b36ec168d5987": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "805ea9a5-c98a-4c37-8c2e-93966a512593",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
