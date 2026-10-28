@@ -96,18 +96,14 @@ export const updateBookTool = defineTool({
             after: changes[field] ?? null,
           }))
           .filter((c) => !sameFieldValue(c.before, c.after)); // already-current fields aren't changes (#202)
-        return toolOk(
-          [
-            {
-              type: "text",
-              text:
-                `Updated book ${numericId}: ${fields.join(", ")}. ` +
-                `(diff shows intended values — the verification re-read failed)` +
-                diffText(changed),
-            },
-          ],
-          { id: numericId, changed, noop: changed.length === 0 },
-        );
+        const noop = changed.length === 0;
+        // text must agree with `noop` — text-only clients never see structuredContent (#216)
+        const text = noop
+          ? `No changes applied to book ${numericId} (values already current). ` + `(the verification re-read failed)`
+          : `Updated book ${numericId}: ${fields.join(", ")}. ` +
+            `(diff shows intended values — the verification re-read failed)` +
+            diffText(changed);
+        return toolOk([{ type: "text", text }], { id: numericId, changed, noop });
       }
       return appliedResult(numericId, before, after, fields);
     } catch (err) {
