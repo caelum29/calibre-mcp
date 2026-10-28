@@ -7,11 +7,11 @@ import { z } from "zod";
 import { compareBooks, findDuplicateGroups } from "../domain/curation/duplicates.js";
 import { buildScopedQuery, honestyLines, resolveFilter } from "./bundles.js";
 import { BookId, CursorParam, jsonArray, limitParam } from "./coerce.js";
-import { decodeCursor, encodeCursor } from "./cursor.js";
+import { decodeCursor, pageCursor } from "./cursor.js";
 import { defineTool } from "./define.js";
 import { bookResourceLink } from "./resource-link.js";
 import { selectBooks } from "./select-books.js";
-import { fence, toolError, toolOk } from "./result.js";
+import { fence, renderResult, toolError, toolOk } from "./result.js";
 import type { ContentBlock } from "./types.js";
 
 export const findDuplicatesTool = defineTool({
@@ -94,8 +94,7 @@ export const findDuplicatesTool = defineTool({
       const cur = decodeCursor(args.cursor);
       const offset = cur && cur.query === cursorKey ? cur.offset : 0;
       const pageGroups = groups.slice(offset, offset + args.limit);
-      const more = offset + pageGroups.length < groups.length;
-      const nextCursor = more ? encodeCursor({ offset: offset + pageGroups.length, query: cursorKey }) : undefined;
+      const pg = pageCursor({ offset, fetched: pageGroups.length, total: groups.length, query: cursorKey });
 
       const content: ContentBlock[] = [];
       // The count is only the bundle's size when the bundle alone selected the set.
@@ -128,14 +127,17 @@ export const findDuplicatesTool = defineTool({
         }
       }
 
-      return toolOk(content, {
-        mode: args.mode,
-        groupCount: groups.length,
-        offset,
-        count: pageGroups.length,
-        booksScanned: books.length,
-        capped,
-        nextCursor,
+      return renderResult({
+        blocks: content,
+        structured: {
+          mode: args.mode,
+          groupCount: groups.length,
+          offset,
+          count: pageGroups.length,
+          booksScanned: books.length,
+          capped,
+        },
+        page: pg,
       });
     } catch (err) {
       return toolError(err instanceof Error ? err.message : String(err));
