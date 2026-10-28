@@ -127,6 +127,13 @@ describe("sameFieldValue", () => {
     ["empty lists", [], []],
     ["maps with keys in a different order", { isbn: "1", doi: "d" }, { doi: "d", isbn: "1" }],
     ["empty maps", {}, {}],
+    ["an empty list and absent", [], null],
+    ["absent and an empty list", undefined, []],
+    ["an empty string and absent", "", null],
+    ["absent and an empty string", undefined, ""],
+    ["an empty map and absent", {}, undefined],
+    ["an empty list and an empty string", [], ""],
+    ["an empty map and an empty list", {}, []],
   ])("treats %s as the same value", (_label, a, b) => {
     expect(sameFieldValue(a, b)).toBe(true);
   });

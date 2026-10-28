@@ -191,7 +191,7 @@ export const bulkUpdateTool = defineTool({
         (failed.length > 0 && applied.length > 0 ? ` Committed: ${applied.join(", ")}.` : "") +
         (failed.length > 0 ? ` ${failed.length} failed: ${failed.map((f) => f.id).join(", ")}.` : "") +
         // one line per failure, so text-only clients still see each reason and #33 steer (#216)
-        failed.map((f) => `\n#${f.id}: ${f.error}`).join("");
+        failed.map((f) => `\n#${f.id}: ${oneLine(f.error)}`).join("");
       return toolOk([{ type: "text", text: summary }], {
         preview: false,
         matched: perBook.length,
@@ -203,6 +203,18 @@ export const bulkUpdateTool = defineTool({
     }
   },
 });
+
+/** Longest per-id error shown in text; the full message stays in structuredContent. */
+const MAX_ERROR_TEXT = 200;
+
+/**
+ * Collapse raw calibredb stderr (tracebacks, multi-line) to one bounded line, so each
+ * failed id keeps exactly one `#id:` line in the text (#216).
+ */
+function oneLine(error: string): string {
+  const s = error.replace(/\s+/g, " ").trim();
+  return s.length > MAX_ERROR_TEXT ? `${s.slice(0, MAX_ERROR_TEXT - 1)}…` : s;
+}
 
 /**
  * Partial result for a write refused after ≥1 book committed: still `isError` (the run did

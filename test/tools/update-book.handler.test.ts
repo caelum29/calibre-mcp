@@ -384,3 +384,81 @@ describe("calibre_update_book text details", () => {
     expect(text(r)).toContain(`publisher: null → "${"x".repeat(118)}…\n`);
   });
 });
+
+// review round 1 — empty and absent values are the same "nothing" (#202)
+describe("calibre_update_book empty vs absent (#202)", () => {
+  it("reports no change when clearing comments on a book that has none", async () => {
+    const r = await updateBookTool.handler(
+      { id: 658, changes: { comments: "" } },
+      deps({ books: [book(), book({ comments: "" })] }),
+    );
+    expect(r.structuredContent?.changed).toEqual([]);
+    expect(r.structuredContent?.noop).toBe(true);
+  });
+
+  it("reports no change when clearing identifiers that read back absent", async () => {
+    const r = await updateBookTool.handler(
+      { id: 658, changes: { identifiers: {} } },
+      deps({ books: [book({ identifiers: undefined as unknown as Book["identifiers"] }), book()] }),
+    );
+    expect(r.structuredContent?.changed).toEqual([]);
+  });
+
+  it("drops a clear-to-empty of an absent field from the intended diff when the re-read fails", async () => {
+    let calls = 0;
+    const getBook = async (): Promise<Book> => {
+      calls += 1;
+      if (calls > 1) throw new CalibreHttpError(0, "u", "Content Server request timed out");
+      return book();
+    };
+    const r = await updateBookTool.handler({ id: 658, changes: { publisher: "", tags: ["new"] } }, deps({ getBook }));
+    expect(r.structuredContent?.changed).toEqual([{ field: "tags", before: ["old"], after: ["new"] }]);
+  });
+
+  it("still reports clearing a non-empty field as a change", async () => {
+    const r = await updateBookTool.handler(
+      { id: 658, changes: { tags: [] } },
+      deps({ books: [book({ tags: ["old"] }), book({ tags: [] })] }),
+    );
+    expect(r.structuredContent?.changed).toEqual([{ field: "tags", before: ["old"], after: [] }]);
+  });
+});
+
+// review round 1 — the unverified-noop text must agree with structuredContent (#216)
+describe("calibre_update_book unverified no-op text (#216)", () => {
+  const text = (r: { content: unknown[] }): string => (r.content[0] as { text: string }).text;
+  const failingReread = async (): Promise<Book> => {
+    throw new CalibreHttpError(0, "u", "Content Server request timed out");
+  };
+
+  it("says nothing changed, not 'Updated', when every value was already current", async () => {
+    let first = true;
+    const getBook = async (): Promise<Book> => {
+      if (first) {
+        first = false;
+        return book();
+      }
+      return failingReread();
+    };
+    const r = await updateBookTool.handler({ id: 658, changes: { tags: ["old"] } }, deps({ getBook }));
+    expect(r.isError).toBeFalsy();
+    expect(r.structuredContent?.noop).toBe(true);
+    expect(text(r)).toContain("No changes applied to book 658");
+    expect(text(r)).not.toContain("Updated book");
+    expect(text(r)).toContain("the verification re-read failed");
+  });
+
+  it("keeps 'Updated' when the unverified write was going to change a value", async () => {
+    let first = true;
+    const getBook = async (): Promise<Book> => {
+      if (first) {
+        first = false;
+        return book();
+      }
+      return failingReread();
+    };
+    const r = await updateBookTool.handler({ id: 658, changes: { tags: ["new"] } }, deps({ getBook }));
+    expect(text(r)).toContain("Updated book 658");
+    expect(text(r)).not.toContain("No changes applied");
+  });
+});
