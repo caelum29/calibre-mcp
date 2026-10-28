@@ -216,3 +216,26 @@ describe("titlesAgree (#198)", () => {
     expect(titlesAgree("Python Testing with pytest", "…")).toBe(true);
   });
 });
+
+// Artem's review: a mixed author list (real names + one suspect entry) is NOT weak; only an
+// all-suspect list may be replaced by the provider's.
+describe("buildProposal — weak authors require every entry to be suspect (#201)", () => {
+  it("does not replace a mixed list of a real name plus one glued entry", () => {
+    const p = buildProposal(book({ title: "x", authors: ["Paul Graham", "Graham, Paul"] }), [
+      hit({ authors: ["Someone Else"] }),
+    ]);
+    expect(p.changes).not.toHaveProperty("authors");
+  });
+
+  it("replaces a list where every entry is suspect", () => {
+    const p = buildProposal(book({ title: "x", authors: ["2007", "Graham, Paul"] }), [
+      hit({ authors: ["Paul Graham"] }),
+    ]);
+    expect(p.changes.authors).toEqual(["Paul Graham"]);
+  });
+
+  it("treats Unknown beside a suspect entry as weak", () => {
+    const p = buildProposal(book({ title: "x", authors: ["Unknown", "2007"] }), [hit({ authors: ["Paul Graham"] })]);
+    expect(p.changes.authors).toEqual(["Paul Graham"]);
+  });
+});
