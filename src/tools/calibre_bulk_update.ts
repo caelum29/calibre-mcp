@@ -51,6 +51,7 @@ export const bulkUpdateTool = defineTool({
     applied: z.array(z.number()).optional(),
     failed: z.array(z.object({ id: z.number(), error: z.string() })).optional(),
     notAttempted: z.array(z.number()).optional(),
+    retryIds: z.array(z.number()).optional(),
   },
   annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false },
   write: true,
@@ -226,11 +227,17 @@ function refusedMidLoop(
   failed: { id: number; error: string }[],
   notAttempted: number[],
 ): ToolResult {
+  // The refused book (last in `failed`) and the unattempted ones are blocked only by the server;
+  // earlier per-book failures had their own reasons, so they aren't part of the re-run.
+  const refusedId = failed.at(-1)?.id;
+  const retryIds = refusedId === undefined ? notAttempted : [refusedId, ...notAttempted];
   const text =
     `Calibre refused the write after ${applied.length}/${matched} book(s) were already updated. ` +
-    `Committed (do NOT retry these): ${applied.join(", ")}. ` +
+    `Already committed: ${applied.join(", ")}. ` +
     `Failed: ${failed.map((f) => f.id).join(", ")}. ` +
     (notAttempted.length > 0 ? `Not attempted: ${notAttempted.join(", ")}. ` : "") +
-    WRITE_REFUSED_MESSAGE;
-  return toolError(text, { preview: false, matched, applied, failed, notAttempted });
+    WRITE_REFUSED_MESSAGE +
+    // writes are idempotent sets, so re-running is safe; naming the ids saves the model the set math
+    ` After fixing the server, re-run with ids=[${retryIds.join(",")}].`;
+  return toolError(text, { preview: false, matched, applied, failed, notAttempted, retryIds });
 }

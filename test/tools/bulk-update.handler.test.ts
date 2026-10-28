@@ -181,9 +181,28 @@ describe("calibre_bulk_update mid-loop write refusal (#213)", () => {
     expect(r.structuredContent?.applied).toEqual([1]);
     expect((r.structuredContent?.failed as { id: number }[] | undefined)?.map((f) => f.id)).toEqual([2]);
     expect(r.structuredContent?.notAttempted).toEqual([3]);
-    expect(text(r)).toContain("Committed (do NOT retry these): 1.");
+    expect(text(r)).toContain("Already committed: 1.");
     expect(text(r)).toContain("Not attempted: 3.");
     expect(text(r)).toContain("--enable-local-write");
+  });
+
+  // writes are idempotent sets, so the steer is a ready re-run of what didn't land, not a ban
+  it("should_hand_back_the_refused_and_unattempted_ids_as_retryIds_in_both_channels", async () => {
+    const r = await bulkUpdateTool.handler(
+      { changes: { tags: ["new"] }, ids: [1, 2, 3], preview: false },
+      deps({ fixture: three, calibredb: scripted([null, refusal]) }),
+    );
+    expect(r.structuredContent?.retryIds).toEqual([2, 3]);
+    expect(text(r)).toContain("After fixing the server, re-run with ids=[2,3].");
+  });
+
+  it("should_retry_only_the_refused_book_when_it_was_the_last_one", async () => {
+    const r = await bulkUpdateTool.handler(
+      { changes: { tags: ["new"] }, ids: [1, 2], preview: false },
+      deps({ fixture: [book({ id: 1 }), book({ id: 2 })], calibredb: scripted([null, refusal]) }),
+    );
+    expect(r.structuredContent?.retryIds).toEqual([2]);
+    expect(text(r)).toContain("re-run with ids=[2].");
   });
 
   it("returns an outputSchema-valid partial result", async () => {
@@ -203,7 +222,7 @@ describe("calibre_bulk_update mid-loop write refusal (#213)", () => {
     expect(r.isError).toBe(true);
     expect(r.structuredContent?.applied).toEqual([1]);
     expect(r.structuredContent?.notAttempted).toEqual([]);
-    expect(text(r)).toContain("Committed (do NOT retry these): 1.");
+    expect(text(r)).toContain("Already committed: 1.");
     expect(text(r)).not.toContain("Not attempted");
   });
 
@@ -220,7 +239,7 @@ describe("calibre_bulk_update mid-loop write refusal (#213)", () => {
       }),
     );
     expect(r.structuredContent?.applied).toEqual([1]);
-    expect(text(r)).toContain("Committed (do NOT retry these): 1.");
+    expect(text(r)).toContain("Already committed: 1.");
   });
 
   it("keeps the bare refusal error when the very first book is refused (nothing committed)", async () => {
@@ -365,7 +384,7 @@ describe("calibre_bulk_update result text details", () => {
       deps({ fixture: [book({ id: 1 }), book({ id: 2 }), book({ id: 3 })], calibredb: refuseOnCall(3) }),
     );
     expect(text(r)).toContain("after 2/3 book(s) were already updated");
-    expect(text(r)).toContain("Committed (do NOT retry these): 1, 2.");
+    expect(text(r)).toContain("Already committed: 1, 2.");
     expect(text(r)).toContain("Failed: 3.");
   });
 

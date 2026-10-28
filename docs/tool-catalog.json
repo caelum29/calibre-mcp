@@ -461,6 +461,12 @@
           },
           "preview": {
             "type": "boolean"
+          },
+          "retryIds": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
           }
         },
         "type": "object"
