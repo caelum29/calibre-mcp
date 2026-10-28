@@ -200,8 +200,8 @@ describe("titlesAgree (#198)", () => {
     expect(titlesAgree("Clean Code: A Handbook of Agile Software Craftsmanship", "Clean Code")).toBe(true);
   });
 
-  it("agrees when one of three significant words is shared", () => {
-    expect(titlesAgree("Python Testing with pytest", "Python Crash Course")).toBe(true);
+  it("disagrees when only one word of several is shared", () => {
+    expect(titlesAgree("Python Testing with pytest", "Python Crash Course")).toBe(false);
   });
 
   it("does not count articles as shared words", () => {
@@ -217,8 +217,8 @@ describe("titlesAgree (#198)", () => {
   });
 });
 
-// Artem's review: titles agree on a significant-word subset OR >= 1/3 of the shorter title's
-// significant words shared; EN/RU stop-words don't count.
+// Artem's review: titles agree on a significant-word subset (subtitles, edition suffixes);
+// EN/RU stop-words don't count.
 describe("titlesAgree — relaxed rules (#198)", () => {
   it("agrees when the provider adds a subtitle", () => {
     expect(titlesAgree("Refactoring", "Refactoring: Improving the Design of Existing Code")).toBe(true);
@@ -226,24 +226,6 @@ describe("titlesAgree — relaxed rules (#198)", () => {
 
   it("agrees when the provider adds an edition suffix", () => {
     expect(titlesAgree("Effective Java", "Effective Java, Third Edition")).toBe(true);
-  });
-
-  it("agrees when exactly 1/3 of the shorter title's significant words are shared", () => {
-    expect(titlesAgree("Python Testing Fixtures", "Python Crash Course Guide")).toBe(true);
-  });
-
-  it("disagrees when under 1/3 of the shorter title's significant words are shared", () => {
-    expect(titlesAgree("Python Testing pytest Fixtures", "Python Crash Course Guide")).toBe(false);
-  });
-
-  it("does not count EN stop-words toward the ratio", () => {
-    // without stop-words: {python, examples} vs {python, beginners, professionals} → 1/2
-    expect(titlesAgree("Python in Examples", "Python for the Beginners and the Professionals")).toBe(true);
-  });
-
-  it("does not count RU stop-words toward the ratio", () => {
-    // without stop-words: {python, примерах} vs {python, чайников, профессионалов} → 1/2
-    expect(titlesAgree("Python в примерах", "Python для чайников и профессионалов")).toBe(true);
   });
 
   it("agrees on a RU title plus subtitle", () => {
