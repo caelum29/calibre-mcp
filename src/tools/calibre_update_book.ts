@@ -78,7 +78,7 @@ export const updateBookTool = defineTool({
         );
       } catch (err) {
         if (isWriteRefused(err)) return toolError(WRITE_REFUSED_MESSAGE);
-        if (classifyTransient(err)) return toolError(describeTransient(err));
+        if (classifyTransient(err)) return toolError(describeTransient(err, numericId));
         // A routed write commits server-side BEFORE calibredb replies, so a timeout is
         // ambiguous — verify against a re-read instead of reporting failure (issue #33).
         if (err instanceof CalibreCliTimeoutError) {

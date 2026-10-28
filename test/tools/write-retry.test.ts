@@ -59,20 +59,20 @@ describe("withTransientRetry", () => {
 
 describe("describeTransient", () => {
   it("should_tell_the_model_to_check_the_server_on_a_connection_error", () => {
-    expect(describeTransient(cli(REFUSED))).toBe(
+    expect(describeTransient(cli(REFUSED), 1)).toBe(
       "Could not reach the Calibre Content Server (connection refused or dropped) after 2 retries. " +
         "Check that Calibre / its Content Server is running, then retry.",
     );
   });
 
   it("should_name_the_gateway_status", () => {
-    expect(describeTransient(cli("HTTP Error 504: Gateway Timeout"))).toBe(
+    expect(describeTransient(cli("HTTP Error 504: Gateway Timeout"), 1)).toBe(
       "The Calibre Content Server answered HTTP 504 after 2 retries; it may be restarting — retry shortly.",
     );
   });
 
   it("should_fall_back_to_5xx_when_no_status_is_present", () => {
-    expect(describeTransient(cli("garbage"))).toContain("HTTP 5xx after 2 retries");
+    expect(describeTransient(cli("garbage"), 1)).toContain("HTTP 5xx after 2 retries");
   });
 });
 

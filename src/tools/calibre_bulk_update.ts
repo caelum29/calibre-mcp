@@ -171,17 +171,17 @@ export const bulkUpdateTool = defineTool({
           // circuit breaker (stop like a refusal); a gateway 5xx fails only this book (#233).
           const transient = classifyTransient(err);
           if (transient === "connection") {
-            failed.push({ id: b.id, error: describeTransient(err) });
+            failed.push({ id: b.id, error: describeTransient(err, b.id) });
             return stoppedMidLoop(
               { matched: perBook.length, applied, failed, notAttempted: perBook.slice(i + 1).map((p) => p.id) },
               {
                 headline: "Stopped: the Calibre Content Server is unreachable",
-                steer: `${describeTransient(err)} Once it is back`,
+                steer: `${describeTransient(err, b.id)} Once it is back`,
               },
             );
           }
           if (transient === "server") {
-            failed.push({ id: b.id, error: describeTransient(err) });
+            failed.push({ id: b.id, error: describeTransient(err, b.id) });
             continue;
           }
           // Timed-out routed writes may have committed server-side — re-read and count
