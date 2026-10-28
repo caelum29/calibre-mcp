@@ -13,6 +13,8 @@ import { looksLikeRawFilename } from "./filename-guess.js";
 import type { ProposedField, Proposal, ProviderHit } from "./types.js";
 
 const UNKNOWN_AUTHOR = new Set(["", "unknown", "unknown author"]);
+// Two shared significant words = same book unless one title is a subset of the other.
+const MIN_SHARED_WORDS = 2;
 // Function words carry no title identity; counting them would inflate or dilute the overlap.
 const STOP_WORDS = new Set(
   // EN, then RU
@@ -68,9 +70,8 @@ function isSubset(small: Set<string>, big: Set<string>): boolean {
 
 /**
  * True if two titles plausibly name the same book: one title's significant words are a subset
- * of the other's (subtitle / edition suffix), or at least 1/3 of the shorter title's significant
- * words appear in the longer one. Deliberately loose: it only has to catch a wholly different
- * book (an ad-page ISBN, #198), not police wording.
+ * of the other's (subtitle / edition suffix), or they share at least 2 significant words. A
+ * single shared word is often generic ("Python") and two different books can share it (#198).
  */
 export function titlesAgree(a: string, b: string): boolean {
   const wa = titleWords(a);
@@ -80,7 +81,7 @@ export function titlesAgree(a: string, b: string): boolean {
   if (isSubset(small, big)) return true;
   let shared = 0;
   for (const w of small) if (big.has(w)) shared++;
-  return shared * 3 >= small.size; // integer form of shared/size >= 1/3
+  return shared >= MIN_SHARED_WORDS;
 }
 
 /**
