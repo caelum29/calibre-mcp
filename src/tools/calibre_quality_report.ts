@@ -42,6 +42,18 @@ export const qualityReportTool = defineTool({
     booksScanned: z.number().optional(),
     capped: z.boolean().optional(),
     byCheck: z.record(z.string(), z.number()).optional(),
+    // The page's issues, mirroring the text lines for structured-only clients (#199).
+    issues: z
+      .array(
+        z.object({
+          bookId: z.number(),
+          title: z.string(),
+          check: z.string(),
+          severity: z.string(),
+          message: z.string(),
+        }),
+      )
+      .optional(),
     nextCursor: z.string().optional(),
   },
   annotations: { readOnlyHint: true, openWorldHint: true },
@@ -99,7 +111,21 @@ export const qualityReportTool = defineTool({
 
       return renderResult({
         blocks: [{ type: "text", text: fence("QUALITY REPORT", text) }],
-        structured: { total: issues.length, offset, count: page.length, booksScanned: books.length, capped, byCheck },
+        structured: {
+          total: issues.length,
+          offset,
+          count: page.length,
+          booksScanned: books.length,
+          capped,
+          byCheck,
+          issues: page.map(({ bookId, title, check, severity, message }) => ({
+            bookId,
+            title,
+            check,
+            severity,
+            message,
+          })),
+        },
         page: pageCursor({ offset, fetched: page.length, total: issues.length, query: cursorKey }),
       });
     } catch (err) {

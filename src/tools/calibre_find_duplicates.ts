@@ -40,6 +40,13 @@ export const findDuplicatesTool = defineTool({
     keep: z.number().optional(),
     mergeSafety: z.number().optional(),
     languagesDiffer: z.boolean().optional(),
+    // Mirrors of the text payload for structured-only clients (#199): the page's group
+    // boundaries (identical/similar) and the field-by-field diff + compared ids (compare).
+    groups: z
+      .array(z.object({ bookIds: z.array(z.number()), mergeSafety: z.number(), mixedLanguages: z.boolean() }))
+      .optional(),
+    bookIds: z.array(z.number()).optional(),
+    diff: z.array(z.object({ field: z.string(), agree: z.boolean(), values: z.array(z.string()) })).optional(),
   },
   annotations: { readOnlyHint: true, openWorldHint: true },
   handler: async (args, deps) => {
@@ -65,6 +72,8 @@ export const findDuplicatesTool = defineTool({
         const text =
           `Comparing books ${report.bookIds.join(", ")} — ` +
           `mergeSafety ${report.mergeSafety.toFixed(2)}, recommend keeping book ${report.keep}\n` +
+          // legend ties the =/≠ marks to diff[].agree, so both channels read the same way (#199)
+          "Legend: = values agree, ≠ values differ\n" +
           lines.join("\n") +
           warning;
         return toolOk([{ type: "text", text: fence("COMPARISON", text) }], {
@@ -73,6 +82,8 @@ export const findDuplicatesTool = defineTool({
           mergeSafety: report.mergeSafety,
           count: report.bookIds.length,
           languagesDiffer: langDiff !== undefined,
+          bookIds: report.bookIds,
+          diff: report.diffs.map(({ field, agree, values }) => ({ field, agree, values })),
         });
       }
 
@@ -107,6 +118,7 @@ export const findDuplicatesTool = defineTool({
         "binary mode (byte-level dedupe) is deferred in v1.";
       content.push({ type: "text", text: header });
 
+      const groupModels: { bookIds: number[]; mergeSafety: number; mixedLanguages: boolean }[] = [];
       for (const g of pageGroups) {
         // Show each book's language: a mixed-language group is a translation pair, not a
         // duplicate, and that must be visible before anyone merges (#51).
@@ -118,6 +130,11 @@ export const findDuplicatesTool = defineTool({
           .join("\n");
         const mixedLangs = new Set(g.books.flatMap((b) => b.languages.map((l) => l.toLowerCase())));
         const note = mixedLangs.size > 1 ? "\n⚠ REVIEW — mixed languages: likely translations, not duplicates." : "";
+        groupModels.push({
+          bookIds: g.books.map((b) => b.id),
+          mergeSafety: g.mergeSafety,
+          mixedLanguages: mixedLangs.size > 1,
+        });
         content.push({
           type: "text",
           text: fence("DUP GROUP", `mergeSafety ${g.mergeSafety.toFixed(2)}\n${summary}${note}`),
@@ -136,6 +153,7 @@ export const findDuplicatesTool = defineTool({
           count: pageGroups.length,
           booksScanned: books.length,
           capped,
+          groups: groupModels,
         },
         page: pg,
       });
