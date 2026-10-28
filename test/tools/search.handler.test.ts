@@ -326,3 +326,24 @@ describe("calibre_search snippets in structuredContent (#199)", () => {
     expect(r.structuredContent?.hits).toEqual([]);
   });
 });
+
+// #199 — every result shape keeps its mode and an explicit hits[] for structured-only clients
+describe("calibre_search structured mode + empty hits (#199)", () => {
+  it("fts/library: zero matches carry an empty hits[] and mode fts", async () => {
+    const r = await searchTool.handler({ query: "zzz", mode: "fts", scope: "library", limit: 20 }, deps());
+    expect(r.structuredContent).toMatchObject({ total: 0, mode: "fts", hits: [] });
+  });
+
+  it("meta: a page reports mode meta", async () => {
+    const r = await searchTool.handler({ query: "rust", mode: "meta", scope: "library", limit: 20 }, deps());
+    expect(r.structuredContent?.mode).toBe("meta");
+  });
+
+  it("scope=book: a page reports mode fts and scope book", async () => {
+    const r = await searchTool.handler(
+      { query: "rust", mode: "fts", scope: "book", bookId: 1, limit: 20 },
+      deps({ ftsHits: [{ bookId: 1, snippet: "x >>rust<< y" }] }),
+    );
+    expect(r.structuredContent).toMatchObject({ mode: "fts", scope: "book" });
+  });
+});
