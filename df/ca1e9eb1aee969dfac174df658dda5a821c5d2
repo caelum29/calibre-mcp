@@ -1,0 +1,25 @@
+test/tools/channel-parity.test.ts
+  s_0b36ec168d5987::t_601a4c788e85fc 167-168
+  s_0b36ec168d5987::t_8dbb03e6c8e1d8 166
+  s_0b36ec168d5987::t_fe9c1d478522d4 1-21,23-140,142-165,169-243,245-258,260-264,266-274,276-325,327-335,337-447
+  s_0b36ec168d5987::t_67d22a73d67166 22,141,244,259,265,275,326,336
+  s_0b36ec168d5987::t_6eee017a7418f4 448-461
+test/tools/bulk-update.handler.test.ts
+  s_0b36ec168d5987::t_d534879a3da441 415-434
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dfca1e9eb1aee969dfac174df658dda5a821c5d2",
+  "prompts": {},
+  "sessions": {
+    "s_0b36ec168d5987": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "805ea9a5-c98a-4c37-8c2e-93966a512593",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
