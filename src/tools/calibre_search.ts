@@ -18,11 +18,11 @@ import {
   scopeExpression,
 } from "./bundles.js";
 import { BookId, CoercedBool, CursorParam, limitParam } from "./coerce.js";
-import { decodeCursor, encodeCursor } from "./cursor.js";
+import { decodeCursor, pageCursor } from "./cursor.js";
 import { defineTool } from "./define.js";
 import { bookResourceLink } from "./resource-link.js";
 import { resolveNumericId } from "./resolve-id.js";
-import { fence, toolError, toolOk } from "./result.js";
+import { fence, renderResult, toolError, toolOk } from "./result.js";
 import type { ContentBlock, ToolDeps, ToolResult } from "./types.js";
 
 type SearchArgs = {
@@ -120,8 +120,7 @@ async function metaLibraryScope(args: SearchArgs, deps: ToolDeps, fRes: FilterRe
   });
 
   const fetched = page.bookIds.length;
-  const more = offset + fetched < page.total;
-  const nextCursor = more ? encodeCursor({ offset: offset + fetched, query: effQuery, sort: args.sort }) : undefined;
+  const pg = pageCursor({ offset, fetched, total: page.total, query: effQuery, sort: args.sort });
   const text = `Found ${page.total} books, showing ${offset + 1}–${offset + fetched}.${honesty}`;
 
   const _meta = boardMeta(deps, {
@@ -137,14 +136,17 @@ async function metaLibraryScope(args: SearchArgs, deps: ToolDeps, fRes: FilterRe
   });
 
   return {
-    ...toolOk([{ type: "text", text }, ...links], {
-      total: page.total,
-      offset,
-      count: fetched,
-      nextCursor,
-      bookIds: page.bookIds,
-      mode: "meta",
-      ...structuredFilterFields(fRes),
+    ...renderResult({
+      blocks: [{ type: "text", text }, ...links],
+      structured: {
+        total: page.total,
+        offset,
+        count: fetched,
+        bookIds: page.bookIds,
+        mode: "meta",
+        ...structuredFilterFields(fRes),
+      },
+      page: pg,
     }),
     _meta,
   };
@@ -195,7 +197,7 @@ async function ftsLibraryScope(
           text: `0 full-text matches for "${args.query}". If you expected matches, the FTS index may not be built (calibredb fts_index --enable).${honesty}`,
         },
       ],
-      { total: 0, offset: 0, count: 0, mode: "fts" },
+      { total: 0, offset: 0, count: 0, mode: "fts", hits: [] },
     );
   }
 
@@ -229,15 +231,19 @@ async function ftsLibraryScope(
       text: `Found ${bookIds.length} books with full-text matches for "${args.query}", showing ${offset + 1}–${offset + pageIds.length}.${honesty}`,
     },
   ];
+  const ftsHits: { bookId: number; snippet: string }[] = [];
   for (const id of pageIds) {
     const b = books.get(id);
     blocks.push(bookResourceLink({ id, title: b?.title ?? `book ${id}`, authors: b?.authors ?? [] }));
     const snips = (byBook.get(id) ?? []).slice(0, 3).join("\n…\n");
-    if (snips) blocks.push({ type: "text", text: fence("FTS SNIPPET", snips) });
+    if (snips) {
+      const snippet = fence("FTS SNIPPET", snips);
+      blocks.push({ type: "text", text: snippet });
+      ftsHits.push({ bookId: id, snippet });
+    }
   }
 
-  const more = offset + pageIds.length < bookIds.length;
-  const nextCursor = more ? encodeCursor({ offset: offset + pageIds.length, query: cursorKey }) : undefined;
+  const pg = pageCursor({ offset, fetched: pageIds.length, total: bookIds.length, query: cursorKey });
   const _meta = boardMeta(deps, {
     query: args.query,
     kind: "keyword",
@@ -250,14 +256,18 @@ async function ftsLibraryScope(
     }),
   });
   return {
-    ...toolOk(blocks, {
-      total: bookIds.length,
-      offset,
-      count: pageIds.length,
-      nextCursor,
-      bookIds: pageIds,
-      mode: "fts",
-      ...structuredFilterFields(fRes),
+    ...renderResult({
+      blocks,
+      structured: {
+        total: bookIds.length,
+        offset,
+        count: pageIds.length,
+        bookIds: pageIds,
+        mode: "fts",
+        hits: ftsHits,
+        ...structuredFilterFields(fRes),
+      },
+      page: pg,
     }),
     _meta,
   };
@@ -297,6 +307,7 @@ async function ftsBookScope(
       bookId,
       scope: "book",
       mode: "fts",
+      hits: [],
     });
   }
 
@@ -312,24 +323,27 @@ async function ftsBookScope(
       ? ` Tip: for definitional/topic queries, calibre_semantic_search { scope: "book", bookId: ${bookId} } returns ranked passages with char offsets and demotes front matter.`
       : "";
 
+  const snippetHits = pageSnips.map((s) => ({ snippet: fence("FTS SNIPPET", s) }));
   const blocks: ContentBlock[] = [
     {
       type: "text",
       text: `${snippets.length} in-book matches for "${args.query}" in book ${bookId}, showing ${offset + 1}–${offset + pageSnips.length}.${tip}`,
     },
-    ...pageSnips.map((s): ContentBlock => ({ type: "text", text: fence("FTS SNIPPET", s) })),
+    ...snippetHits.map((h): ContentBlock => ({ type: "text", text: h.snippet })),
   ];
 
-  const more = offset + pageSnips.length < snippets.length;
-  const nextCursor = more ? encodeCursor({ offset: offset + pageSnips.length, query: cursorKey }) : undefined;
-  return toolOk(blocks, {
-    total: snippets.length,
-    offset,
-    count: pageSnips.length,
-    nextCursor,
-    bookId,
-    scope: "book",
-    mode: "fts",
+  return renderResult({
+    blocks,
+    structured: {
+      total: snippets.length,
+      offset,
+      count: pageSnips.length,
+      bookId,
+      scope: "book",
+      mode: "fts",
+      hits: snippetHits,
+    },
+    page: pageCursor({ offset, fetched: pageSnips.length, total: snippets.length, query: cursorKey }),
   });
 }
 
@@ -364,6 +378,9 @@ export const searchTool = defineTool({
     bookId: z.number().optional(),
     filter: z.string().optional(),
     exclusionsApplied: z.array(z.string()).optional(),
+    // FTS snippets mirrored for structured-only clients (#199), fenced exactly like the text
+    // blocks; bookId is set on library-scope hits (one entry per book with snippets).
+    hits: z.array(z.object({ bookId: z.number().optional(), snippet: z.string() })).optional(),
   },
   annotations: { readOnlyHint: true, openWorldHint: true },
   handler: async (args, deps, ctx) => {

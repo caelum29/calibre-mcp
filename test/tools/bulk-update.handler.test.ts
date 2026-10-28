@@ -432,6 +432,26 @@ describe("calibre_bulk_update result text details", () => {
   });
 });
 
+// issue #227 — on a partial run the committed ids must reach text-only clients too,
+// or the model can't tell which books to leave alone when it retries the failures
+describe("calibre_bulk_update committed ids in text (#227)", () => {
+  const text = (r: { content: unknown[] }): string => (r.content[0] as { text: string }).text;
+
+  it("names the committed ids before the failures on a partial run", async () => {
+    const r = await bulkUpdateTool.handler(
+      { changes: { tags: ["new"] }, ids: [1, 2, 3], preview: false },
+      deps({
+        fixture: [book({ id: 1 }), book({ id: 2 }), book({ id: 3 })],
+        calibredb: async (args) => {
+          if (args[1] === "2") throw new Error("boom-2");
+          return { stdout: "", stderr: "" };
+        },
+      }),
+    );
+    expect(text(r)).toBe("Applied tags to 2/3 book(s). Committed: 1, 3. 1 failed: 2.\n#2: boom-2");
+  });
+});
+
 // review round 1 — raw calibredb stderr must not break the one-line-per-id layout (#216)
 describe("calibre_bulk_update per-id error lines stay one line (#216)", () => {
   const text = (r: { content: unknown[] }): string => (r.content[0] as { text: string }).text;

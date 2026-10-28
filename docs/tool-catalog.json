@@ -617,6 +617,12 @@
       "outputSchema": {
         "additionalProperties": false,
         "properties": {
+          "bookIds": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          },
           "booksScanned": {
             "type": "number"
           },
@@ -626,8 +632,60 @@
           "count": {
             "type": "number"
           },
+          "diff": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "agree": {
+                  "type": "boolean"
+                },
+                "field": {
+                  "type": "string"
+                },
+                "values": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "field",
+                "agree",
+                "values"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
           "groupCount": {
             "type": "number"
+          },
+          "groups": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "bookIds": {
+                  "items": {
+                    "type": "number"
+                  },
+                  "type": "array"
+                },
+                "mergeSafety": {
+                  "type": "number"
+                },
+                "mixedLanguages": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "bookIds",
+                "mergeSafety",
+                "mixedLanguages"
+              ],
+              "type": "object"
+            },
+            "type": "array"
           },
           "keep": {
             "type": "number"
@@ -1545,6 +1603,37 @@
           "count": {
             "type": "number"
           },
+          "issues": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "bookId": {
+                  "type": "number"
+                },
+                "check": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "severity": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "bookId",
+                "title",
+                "check",
+                "severity",
+                "message"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
           "nextCursor": {
             "type": "string"
           },
@@ -1843,6 +1932,24 @@
           },
           "filter": {
             "type": "string"
+          },
+          "hits": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "bookId": {
+                  "type": "number"
+                },
+                "snippet": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "snippet"
+              ],
+              "type": "object"
+            },
+            "type": "array"
           },
           "mode": {
             "type": "string"
