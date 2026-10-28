@@ -412,3 +412,52 @@ describe("calibre_bulk_update result text details", () => {
     expect(text(r)).toBe("Applied tags to 0/2 book(s). 2 failed: 1, 2.\n#1: bad-1\n#2: bad-2");
   });
 });
+
+// review round 1 — raw calibredb stderr must not break the one-line-per-id layout (#216)
+describe("calibre_bulk_update per-id error lines stay one line (#216)", () => {
+  const text = (r: { content: unknown[] }): string => (r.content[0] as { text: string }).text;
+  const failing = (message: (id: string) => string) => async (args: readonly string[]) => {
+    throw new Error(message(args[1]!));
+  };
+
+  it("collapses a multi-line error onto its #id line", async () => {
+    const r = await bulkUpdateTool.handler(
+      { changes: { tags: ["new"] }, ids: [1, 2], preview: false },
+      deps({ calibredb: failing((id) => `Traceback for ${id}:\n  File "x.py"\n\tValueError: bad\n`) }),
+    );
+    expect(text(r)).toContain('#1: Traceback for 1: File "x.py" ValueError: bad\n#2: ');
+    expect(text(r)).toMatch(/#2: Traceback for 2: File "x\.py" ValueError: bad$/);
+  });
+
+  it("emits exactly one line per failed id", async () => {
+    const r = await bulkUpdateTool.handler(
+      { changes: { tags: ["new"] }, ids: [1, 2], preview: false },
+      deps({ calibredb: failing(() => "a\nb\nc\nd") }),
+    );
+    expect(text(r).split("\n")).toEqual(["Applied tags to 0/2 book(s). 2 failed: 1, 2.", "#1: a b c d", "#2: a b c d"]);
+  });
+
+  it("truncates a long error to 200 chars ending in an ellipsis", async () => {
+    const r = await bulkUpdateTool.handler(
+      { changes: { tags: ["new"] }, ids: [1], preview: false },
+      deps({ fixture: [book({ id: 1 })], calibredb: failing(() => "e".repeat(5000)) }),
+    );
+    expect(text(r).split("\n")[1]).toBe(`#1: ${"e".repeat(199)}…`);
+  });
+
+  it("keeps an error of exactly 200 chars whole", async () => {
+    const r = await bulkUpdateTool.handler(
+      { changes: { tags: ["new"] }, ids: [1], preview: false },
+      deps({ fixture: [book({ id: 1 })], calibredb: failing(() => "e".repeat(200)) }),
+    );
+    expect(text(r).split("\n")[1]).toBe(`#1: ${"e".repeat(200)}`);
+  });
+
+  it("keeps the full structured error for clients that read structuredContent", async () => {
+    const r = await bulkUpdateTool.handler(
+      { changes: { tags: ["new"] }, ids: [1], preview: false },
+      deps({ fixture: [book({ id: 1 })], calibredb: failing(() => "a\nb") }),
+    );
+    expect(r.structuredContent?.failed).toEqual([{ id: 1, error: "a\nb" }]);
+  });
+});
