@@ -518,10 +518,19 @@ __DEBUG__
     return /^0 books matched|^0 full-text matches|^No matches for/.test(t);
   }
 
+  // The cache keys on (tool, query, library, filter) — echo the search's own library and
+  // bundle filter so a same-query search elsewhere can't take over this board (#215).
+  function boardDataArgs() {
+    var args = { tool: TOOL };
+    if (toolArgs && typeof toolArgs.query === "string") args.query = toolArgs.query;
+    if (toolArgs && typeof toolArgs.library === "string") args.library = toolArgs.library;
+    if (toolArgs && typeof toolArgs.filter === "string") args.filter = toolArgs.filter;
+    return args;
+  }
+
   function pullData(isRetryAfterRerun) {
     whenReady(function () {
-      var args = { tool: TOOL };
-      if (toolArgs && typeof toolArgs.query === "string") args.query = toolArgs.query;
+      var args = boardDataArgs();
       rpcRequest("tools/call", { name: "calibre_board_data", arguments: args })
         .then(function (r) {
           var sc = r && r.structuredContent;
@@ -552,8 +561,7 @@ __DEBUG__
   // re-run the search, which may still be in flight (a re-run would double the work).
   function pollData(triesLeft) {
     whenReady(function () {
-      var args = { tool: TOOL };
-      if (toolArgs && typeof toolArgs.query === "string") args.query = toolArgs.query;
+      var args = boardDataArgs();
       rpcRequest("tools/call", { name: "calibre_board_data", arguments: args })
         .then(function (r) {
           if (sawResult) return; // the real path took over meanwhile

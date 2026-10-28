@@ -96,7 +96,7 @@ describe("calibre_search board wiring", () => {
     const attached = (r._meta as { calibreBoard: BoardPayload }).calibreBoard;
     expect(attached.books.map((b) => b.bookId)).toEqual([1, 2]);
     expect(attached.books[0]?.title).toBe("Book 1");
-    expect(cache.get("calibre_search", "rust")).toEqual(attached);
+    expect(cache.get("calibre_search", "rust", "Programming_Books")).toEqual(attached);
   });
 
   it("should_keep_structured_content_unchanged_for_non_apps_hosts", async () => {
@@ -114,7 +114,7 @@ describe("calibre_search board wiring", () => {
     (deps.content as { search: unknown }).search = async () => ({ ...page, bookIds: [], total: 0 });
     const r = await searchTool.handler({ query: "zzz", mode: "meta", scope: "library", limit: 20 }, deps);
     expect(r._meta).toBeUndefined();
-    expect(cache.get("calibre_search", "zzz")).toBeUndefined();
+    expect(cache.get("calibre_search", "zzz", "Programming_Books")).toBeUndefined();
   });
 
   // Issue #67 ratchet: count answers are aggregates — never entity-level UI.
@@ -125,7 +125,7 @@ describe("calibre_search board wiring", () => {
       metaSearchDeps(cache),
     );
     expect(r._meta).toBeUndefined();
-    expect(cache.get("calibre_search", "rust")).toBeUndefined();
+    expect(cache.get("calibre_search", "rust", "Programming_Books")).toBeUndefined();
   });
 
   it("should_not_cache_or_attach_board_payload_on_zero_fts_results", async () => {
@@ -134,7 +134,7 @@ describe("calibre_search board wiring", () => {
     (deps.calibre as unknown as Record<string, unknown>).ftsSearch = async () => [];
     const r = await searchTool.handler({ query: "zzz", mode: "fts", scope: "library", limit: 20 }, deps);
     expect(r._meta).toBeUndefined();
-    expect(cache.get("calibre_search", "zzz")).toBeUndefined();
+    expect(cache.get("calibre_search", "zzz", "Programming_Books")).toBeUndefined();
   });
 });
 
@@ -148,7 +148,7 @@ describe("calibre_semantic_search board wiring", () => {
     const attached = (r._meta as { calibreBoard: BoardPayload }).calibreBoard;
     expect(attached.kind).toBe("semantic");
     expect(attached.books[0]?.score).toBeCloseTo(0.9);
-    expect(cache.get("calibre_semantic_search", "distributed systems")).toEqual(attached);
+    expect(cache.get("calibre_semantic_search", "distributed systems", "Programming_Books")).toEqual(attached);
   });
 
   it("should_not_cache_or_attach_board_payload_on_zero_semantic_results", async () => {
@@ -157,7 +157,7 @@ describe("calibre_semantic_search board wiring", () => {
     (deps.index as unknown as Record<string, unknown>).searchLibrary = () => [];
     const r = await semanticSearchTool.handler({ query: "zzz", scope: "library", mode: "vector", topK: 10 }, deps);
     expect(r._meta).toBeUndefined();
-    expect(cache.get("calibre_semantic_search", "zzz")).toBeUndefined();
+    expect(cache.get("calibre_semantic_search", "zzz", "Programming_Books")).toBeUndefined();
   });
 
   it("should_not_attach_board_payload_on_book_scope", async () => {
@@ -170,6 +170,6 @@ describe("calibre_semantic_search board wiring", () => {
       deps,
     );
     expect(r._meta).toBeUndefined();
-    expect(cache.get("calibre_semantic_search", "q")).toBeUndefined();
+    expect(cache.get("calibre_semantic_search", "q", "Programming_Books")).toBeUndefined();
   });
 });
