@@ -51,6 +51,7 @@ export const recoverMetadataTool = defineTool({
     confidence: z.number().optional(),
     fieldCount: z.number().optional(),
     changes: z.record(z.string(), z.unknown()).optional(),
+    warnings: z.array(z.string()).optional(),
   },
   annotations: { readOnlyHint: true, openWorldHint: true },
   handler: async (args, deps) => {
@@ -119,12 +120,16 @@ export const recoverMetadataTool = defineTool({
       }
 
       const proposal = buildProposal(book, hits);
-      const confidence = hits[0]!.confidence;
+      // The proposal's confidence, not the raw hit's: a title mismatch lowers it (#198).
+      const confidence = proposal.confidence ?? hits[0]!.confidence;
+      const warnings = proposal.warnings ?? [];
+      const warningLines = warnings.map((w) => `WARNING ${w}\n`).join("");
 
       if (proposal.fields.length === 0) {
         const text =
           `Book ${numericId} matched ${lookupKey} on ${usedSource} (confidence ${confidence.toFixed(2)}), ` +
-          `but its metadata is already complete — nothing to propose.`;
+          `but its metadata is already complete — nothing to propose.\n` +
+          warningLines;
         return toolOk([{ type: "text", text }], {
           bookId: numericId,
           lookupKey,
@@ -132,6 +137,7 @@ export const recoverMetadataTool = defineTool({
           confidence,
           fieldCount: 0,
           changes: {},
+          warnings,
         });
       }
 
@@ -141,6 +147,7 @@ export const recoverMetadataTool = defineTool({
       });
       const body =
         `Book #${numericId} — matched ${lookupKey} on ${usedSource} (confidence ${confidence.toFixed(2)}).\n` +
+        warningLines +
         `Proposed metadata (apply with calibre_update_book id=${numericId}):\n` +
         lines.join("\n") +
         `\n\nchanges = ${JSON.stringify(proposal.changes)}`;
@@ -157,6 +164,7 @@ export const recoverMetadataTool = defineTool({
           confidence,
           fieldCount: proposal.fields.length,
           changes: proposal.changes,
+          warnings,
         },
       );
     } catch (err) {

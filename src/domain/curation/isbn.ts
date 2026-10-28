@@ -32,6 +32,19 @@ export function isValidIsbn13(raw: string): boolean {
   return sum % 10 === 0;
 }
 
+/**
+ * Normalize to ISBN-13: a valid ISBN-10 becomes "978" + its first 9 digits + a recomputed EAN-13
+ * check digit (the published conversion). Anything else is returned normalized, unconverted.
+ */
+export function toIsbn13(raw: string): string {
+  const s = normalizeIsbn(raw);
+  if (s.length !== 10 || !isValidIsbn10(s)) return s;
+  const body = `978${s.slice(0, 9)}`;
+  let sum = 0;
+  for (let i = 0; i < 12; i++) sum += (body.charCodeAt(i) - 48) * (i % 2 === 0 ? 1 : 3);
+  return `${body}${(10 - (sum % 10)) % 10}`;
+}
+
 /** True if the value is a checksum-valid ISBN-10 or ISBN-13. */
 export function isValidIsbn(raw: string): boolean {
   const s = normalizeIsbn(raw);
