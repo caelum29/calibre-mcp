@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
@@ -97,5 +98,21 @@ describe("calibre_quality_report handler", () => {
   it("notes readability is deferred when requested", async () => {
     const r = await qualityReportTool.handler(args({ readability: true }), deps([book()]));
     expect((r.content[0] as { text: string }).text).toContain("readability");
+  });
+
+  // #212: the Cowork serialization bug stringifies booleans — "true" must still opt in.
+  it('accepts readability as the string "true" and notes the deferral', async () => {
+    const parsed = z.object(qualityReportTool.inputSchema).safeParse({ readability: "true" });
+    expect(parsed.success).toBe(true);
+    const r = await qualityReportTool.handler(parsed.data!, deps([book()]));
+    expect((r.content[0] as { text: string }).text).toContain("readability check is deferred");
+  });
+
+  it('reads readability "false" as false (no deferral note)', async () => {
+    const parsed = z.object(qualityReportTool.inputSchema).safeParse({ readability: "false" });
+    expect(parsed.success).toBe(true);
+    expect(parsed.data!.readability).toBe(false);
+    const r = await qualityReportTool.handler(parsed.data!, deps([book()]));
+    expect((r.content[0] as { text: string }).text).not.toContain("readability");
   });
 });

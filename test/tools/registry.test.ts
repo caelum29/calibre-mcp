@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { z } from "zod";
 import { allTools, assertWriteClassification } from "../../src/tools/registry.js";
 import type { AnyToolDescriptor } from "../../src/tools/types.js";
 
@@ -59,5 +60,38 @@ describe("tool registry", () => {
       } as unknown as AnyToolDescriptor;
       expect(() => assertWriteClassification([indexer])).not.toThrow();
     });
+  });
+});
+
+// #212: Cowork/Desktop send booleans as strings, so every boolean input must go through
+// CoercedBool — a bare z.boolean() rejects "true" with -32602, z.coerce.boolean() reads
+// "false" as true. Checked behaviourally per top-level input field, over the whole registry.
+describe("boolean inputs accept stringified booleans (#212)", () => {
+  /** A field is boolean-typed when it takes `true` but rejects a plain object. */
+  const booleanFields = allTools.flatMap((t) =>
+    Object.entries(t.inputSchema)
+      .filter(([, field]) => {
+        const s = z.object({ f: field });
+        const accepted = s.safeParse({ f: true });
+        return accepted.success && accepted.data.f === true && !s.safeParse({ f: { x: 1 } }).success;
+      })
+      .map(([key, field]) => ({ where: `${t.name}.${key}`, schema: z.object({ f: field }) })),
+  );
+
+  it("finds boolean inputs to check (the walk is not vacuous)", () => {
+    expect(allTools.length).toBeGreaterThan(0);
+    expect(booleanFields.length).toBeGreaterThan(5);
+    expect(booleanFields.map((b) => b.where)).toContain("calibre_search.countOnly");
+  });
+
+  it('every boolean input parses "true" → true and "false" → false', () => {
+    const broken = booleanFields
+      .filter(({ schema }) => {
+        const t = schema.safeParse({ f: "true" });
+        const f = schema.safeParse({ f: "false" });
+        return !(t.success && t.data.f === true && f.success && f.data.f === false);
+      })
+      .map((b) => b.where);
+    expect(broken).toEqual([]);
   });
 });
