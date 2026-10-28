@@ -554,3 +554,71 @@ describe("dual-channel parity: text payloads (#199)", () => {
     expect(parityGaps(r)).toEqual([]);
   });
 });
+
+// Review round 1: parityGaps returns [] for a result with no structuredContent, so an
+// errored or structure-less scenario would pass vacuously. Non-error scenarios must
+// succeed and, when the tool declares an outputSchema, actually emit structuredContent.
+describe("dual-channel parity: scenarios are not vacuous", () => {
+  const nonError = [...SCENARIOS, ...PAGINATED_SCENARIOS, ...PAYLOAD_SCENARIOS].filter(
+    (s) => !s.label.includes("(error)"),
+  );
+
+  it("has non-error scenarios to check", () => {
+    expect(nonError.length).toBeGreaterThan(20);
+  });
+
+  it.each(nonError.map((s) => [`${s.tool}: ${s.label}`, s] as const))("%s", async (_name, s) => {
+    const tool = byName.get(s.tool as AnyToolDescriptor["name"]);
+    const r = await runScenario(s);
+    expect(r.isError).toBeFalsy();
+    expect(r.structuredContent !== undefined).toBe(tool?.outputSchema !== undefined);
+  });
+
+  it.each(SCENARIOS.filter((s) => s.label.includes("(error)")).map((s) => [`${s.tool}: ${s.label}`, s] as const))(
+    "%s is an error result",
+    async (_name, s) => {
+      expect((await runScenario(s)).isError).toBe(true);
+    },
+  );
+});
+
+describe("dual-channel parity: get_content cursors", () => {
+  const prose = (s: string): string => `${s} `.repeat(20).trim();
+  const chapterText = ["Chapter 1", "", "Intro", prose("aaa"), "Chapter 2", "", "Setup", prose("bbb")].join("\n");
+  const withChapters = (): ToolDeps => {
+    const d = fakeDeps();
+    d.extractor = {
+      getText: async () => ({
+        text: chapterText,
+        backend: "pdftotext",
+        chars: chapterText.length,
+        cached: false,
+        markers: [],
+        unplaced: 0,
+        outline: [],
+      }),
+    } as unknown as ToolDeps["extractor"];
+    return d;
+  };
+
+  it("emits a nextCursor on a partial excerpt and renders it in the text", async () => {
+    const r = await runScenario({ tool: "calibre_get_content", label: "partial", args: { id: 101, maxChars: 500 } });
+    const cursor = r.structuredContent?.nextCursor;
+    expect(cursor).toBeTypeOf("string");
+    expect(textChannel(r)).toContain(cursor as string);
+    expect(parityGaps(r)).toEqual([]);
+  });
+
+  it("structure=true: every chapter cursor is in both channels", async () => {
+    const r = await runScenario({
+      tool: "calibre_get_content",
+      label: "chapter map",
+      args: { id: 101, structure: "true" },
+      deps: withChapters,
+    });
+    const chapters = r.structuredContent?.chapters as { cursor: string }[] | undefined;
+    expect(chapters?.length).toBe(2);
+    for (const c of chapters ?? []) expect(textChannel(r)).toContain(c.cursor);
+    expect(parityGaps(r)).toEqual([]);
+  });
+});
