@@ -15,13 +15,13 @@ describe("BoardCache", () => {
   it("should_return_exact_payload_for_tool_and_query", () => {
     const cache = new BoardCache();
     cache.set(payload());
-    expect(cache.get("calibre_search", "rust")?.books).toHaveLength(1);
+    expect(cache.get("calibre_search", "rust", "Programming_Books")?.books).toHaveLength(1);
   });
 
   it("should_miss_on_unknown_query_instead_of_returning_another_search", () => {
     const cache = new BoardCache();
     cache.set(payload());
-    expect(cache.get("calibre_search", "kafka")).toBeUndefined();
+    expect(cache.get("calibre_search", "kafka", "Programming_Books")).toBeUndefined();
   });
 
   it("should_return_latest_for_tool_when_query_missing", () => {
@@ -43,14 +43,14 @@ describe("BoardCache", () => {
     const cache = new BoardCache();
     cache.set(payload({ books: [] }));
     cache.set(payload());
-    expect(cache.get("calibre_search", "rust")?.books).toHaveLength(1);
+    expect(cache.get("calibre_search", "rust", "Programming_Books")?.books).toHaveLength(1);
   });
 
   it("should_evict_oldest_entry_past_capacity", () => {
     const cache = new BoardCache();
     for (let i = 0; i < 17; i++) cache.set(payload({ query: `q${i}` }));
-    expect(cache.get("calibre_search", "q0")).toBeUndefined();
-    expect(cache.get("calibre_search", "q16")).toBeDefined();
+    expect(cache.get("calibre_search", "q0", "Programming_Books")).toBeUndefined();
+    expect(cache.get("calibre_search", "q16", "Programming_Books")).toBeDefined();
   });
 });
 
@@ -115,10 +115,17 @@ describe("BoardCache — key edge cases (#215 mutation follow-up)", () => {
     expect(cache.get("calibre_search", "rustX", "_Books")).toBeUndefined();
   });
 
-  it("should_scope_the_library_agnostic_lookup_to_the_requested_tool", () => {
+  it("should_miss_when_a_query_lookup_has_no_library", () => {
+    const cache = new BoardCache();
+    cache.set(payload({ libraryId: "Reaserch_Books" }));
+    // @ts-expect-error a query lookup must name its library (#215)
+    expect(cache.get("calibre_search", "rust")).toBeUndefined();
+  });
+
+  it("should_scope_the_lookup_to_the_requested_tool", () => {
     const cache = new BoardCache();
     cache.set(payload({ tool: "calibre_search", kind: "keyword" }));
     cache.set(payload({ tool: "calibre_semantic_search", kind: "semantic" }));
-    expect(cache.get("calibre_search", "rust")?.kind).toBe("keyword");
+    expect(cache.get("calibre_search", "rust", "Programming_Books")?.kind).toBe("keyword");
   });
 });

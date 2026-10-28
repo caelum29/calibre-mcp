@@ -62,19 +62,18 @@ export class BoardCache {
   }
 
   /**
-   * Exact (tool, query, libraryId, filter) hit when a libraryId is given — a stale-widget
-   * re-render must not show another search's books; an absent filter means the unfiltered
-   * run. (tool, query) alone: latest run of that query in any library/filter. Without a
-   * query: latest for the tool, else latest overall.
+   * Exact (tool, query, libraryId, filter) hit — a stale-widget re-render must not show
+   * another search's books; an absent filter means the unfiltered run. A query always needs
+   * its libraryId: a library-agnostic (tool, query) lookup would bring back #215.
    */
+  get(tool: string, query: string, libraryId: string, filter?: string): BoardPayload | undefined;
+  /** Widgets that never received their tool-input args: latest for the tool, else latest overall. */
+  get(tool?: string): BoardPayload | undefined;
   get(tool?: string, query?: string, libraryId?: string, filter?: string): BoardPayload | undefined {
-    if (tool !== undefined && query !== undefined && libraryId !== undefined) {
+    if (query !== undefined) {
+      // untyped callers that skip the libraryId miss rather than get another library's board
+      if (tool === undefined || libraryId === undefined) return undefined;
       return this.#entries.get(this.#key(tool, query, libraryId, filter));
-    }
-    if (tool !== undefined && query !== undefined) {
-      let hit: BoardPayload | undefined;
-      for (const p of this.#entries.values()) if (p.tool === tool && p.query === query) hit = p;
-      return hit;
     }
     if (tool !== undefined) return this.#latest.get(tool);
     let last: BoardPayload | undefined;
