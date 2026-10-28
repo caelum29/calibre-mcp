@@ -36,6 +36,7 @@ export interface EncodedImage {
 /** Subprocess runner injected by the service (shares timeout/logging discipline). */
 export type Runner = (bin: string, args: string[], okCodes?: number[]) => Promise<string>;
 
+/** First existing path among the candidates, or null when none is installed. */
 export function findBin(candidates: string[]): string | null {
   return candidates.find(existsSync) ?? null;
 }
@@ -191,10 +192,12 @@ export async function encodeSmallest(run: Runner, imageFile: string, maxSide: nu
     : { data: jpg.toString("base64"), mimeType: "image/jpeg", bytes: jpg.length };
 }
 
+/** Resolved `pdftoppm` path (poppler), or null when not installed. */
 export function pdftoppmBinary(): string | null {
   return findBin(PDFTOPPM_CANDIDATES);
 }
 
+/** Resolved macOS `qlmanage` path (SVG rasterizing), or null when not available. */
 export function qlmanageBinary(): string | null {
   return findBin(QLMANAGE_CANDIDATES);
 }

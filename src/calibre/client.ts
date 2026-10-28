@@ -80,6 +80,7 @@ export function parseFtsResults(stdout: string): FtsHit[] {
   }));
 }
 
+/** Shells out to `calibredb` (routed through the Content Server URL) and Calibre CLI tools. */
 export class CalibreClient {
   constructor(private readonly cfg: Config) {}
 

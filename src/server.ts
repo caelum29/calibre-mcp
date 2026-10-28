@@ -60,6 +60,7 @@ export interface BuildServerOptions {
   probes?: boolean;
 }
 
+/** Build the MCP server: load config, wire deps, register every tool/resource, and disable write tools when the write gate is off. */
 export function buildServer(options: BuildServerOptions = {}): McpServer {
   const config = loadConfig(options.env);
   const figures = new FigureInventoryService(config);

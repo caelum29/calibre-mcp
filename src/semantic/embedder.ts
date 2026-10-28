@@ -85,6 +85,7 @@ const BATCH = 10;
 /** The optional-dep boundary, injectable so tests can simulate load failures. */
 export type TransformersLoader = () => Promise<typeof import("@huggingface/transformers")>;
 
+/** Embedder backed by transformers.js; lazily loads the optional model on first use. */
 export class TransformersEmbedder implements Embedder {
   #loaded?: Promise<Loaded>;
   // Captured on load so countTokens can stay sync (chunking calls it in a tight loop).

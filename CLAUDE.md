@@ -48,8 +48,10 @@ It must:
 
 - **Write gate is two-key.** The master gate is `CALIBRE_MCP_ENABLE_WRITE` (truthy) in `config.ts`;
   `server.ts` `.disable()`s every `write:true` tool when it's off. On top, each write tool carries
-  per-tool `annotations` and is **preview-first** (`preview`/`confirm`/`apply` in-band params, not MCP
-  elicitation — see `docs/dev/DECISIONS.md` D-003). Path-taking writes (`calibre_add_book`) enforce a
+  per-tool `annotations`, and the destructive/bulk ones (`calibre_bulk_update`, `calibre_remove_book`,
+  `calibre_merge_books`, `calibre_extract_isbn`, `calibre_manage_bundles`) are **preview-first**
+  (`preview`/`confirm`/`apply` in-band params, not MCP elicitation — see `docs/dev/DECISIONS.md` D-003);
+  single-book `calibre_update_book` and `calibre_add_book` write directly. Path-taking writes (`calibre_add_book`) enforce a
   **path whitelist** (`CALIBRE_MCP_ADD_ROOTS`, `realpathSync` boundary check).
 - **libId-resolve pattern for ALL `calibredb` calls.** `calibredb --with-library` needs the library
   **ID** (`Programming_Books`), **not** the display name (`Programming Books`, which 404s). Resolve
