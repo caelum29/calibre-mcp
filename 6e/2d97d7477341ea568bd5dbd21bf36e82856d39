@@ -1,0 +1,25 @@
+src/tools/calibre_bulk_update.ts
+  s_0b36ec168d5987::t_3aee6b1eb40187 174,179,184
+src/tools/write-retry.ts
+  s_0b36ec168d5987::t_3aee6b1eb40187 23-28,31-35,70-79,81-86
+test/tools/write-retry.test.ts
+  s_0b36ec168d5987::t_597772aee48d8f 62,69,75
+src/tools/calibre_update_book.ts
+  s_0b36ec168d5987::t_3aee6b1eb40187 81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6e2d97d7477341ea568bd5dbd21bf36e82856d39",
+  "prompts": {},
+  "sessions": {
+    "s_0b36ec168d5987": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "805ea9a5-c98a-4c37-8c2e-93966a512593",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
