@@ -493,3 +493,64 @@ describe("dual-channel parity: pagination (#211)", () => {
     expect(parityGaps(r)).toEqual([]);
   });
 });
+
+// #199: text payloads (issue lines, snippets, dup groups, compare diff) must have a
+// structured counterpart — Claude Code drops the text channel.
+const RAW = LIBRARY.map((b, i) => ({ ...b, title: `${795731065 + i}` }));
+const DUPES: Book[] = [
+  ...LIBRARY,
+  book({ id: 104, uuid: "u-104", title: "rust in action", formats: ["pdf"] }),
+  book({ id: 105, uuid: "u-105", title: "programming rust", authors: ["Jim Blandy"], languages: ["rus"] }),
+];
+const SNIPPETS = [
+  { bookId: 101, snippet: "the >>borrow<< checker" },
+  { bookId: 101, snippet: "a >>borrow<< ends" },
+  { bookId: 102, snippet: "shared >>borrow<< rules" },
+];
+
+const PAYLOAD_SCENARIOS: Scenario[] = [
+  {
+    tool: "calibre_quality_report",
+    label: "issue lines, first of two pages",
+    args: { checks: ["raw_filename_title"], limit: 2 },
+    deps: () => fakeDeps({ books: RAW }),
+  },
+  {
+    tool: "calibre_search",
+    label: "fts/library snippets",
+    args: { query: "borrow", mode: "fts" },
+    deps: () => fakeDeps({ ftsHits: SNIPPETS }),
+  },
+  {
+    tool: "calibre_search",
+    label: "scope=book snippets, first of two pages",
+    args: { query: "borrow", scope: "book", bookId: 101, limit: 2 },
+    deps: () => fakeDeps({ ftsHits: SNIPPETS }),
+  },
+  {
+    tool: "calibre_find_duplicates",
+    label: "identical groups (one mixed-language), first of two pages",
+    args: { mode: "identical", limit: 1 },
+    deps: () => fakeDeps({ books: DUPES }),
+  },
+  {
+    tool: "calibre_find_duplicates",
+    label: "similar groups",
+    args: { mode: "similar" },
+    deps: () => fakeDeps({ books: DUPES }),
+  },
+  {
+    tool: "calibre_find_duplicates",
+    label: "compare diff",
+    args: { mode: "compare", ids: [101, 104] },
+    deps: () => fakeDeps({ books: DUPES }),
+  },
+];
+
+describe("dual-channel parity: text payloads (#199)", () => {
+  it.each(PAYLOAD_SCENARIOS.map((s) => [`${s.tool}: ${s.label}`, s] as const))("%s", async (_name, s) => {
+    const r = await runScenario(s);
+    expect(r.isError).toBeFalsy();
+    expect(parityGaps(r)).toEqual([]);
+  });
+});

@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { z } from "zod";
 import { searchTool } from "../../src/tools/calibre_search.js";
+import { fence } from "../../src/tools/result.js";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
@@ -270,5 +271,58 @@ describe("calibre_search cursor in text (#211)", () => {
       deps({ ftsHits: hits }),
     );
     expect(allText(r)).not.toContain("continue with cursor");
+  });
+});
+
+// issue #199 — Claude Code shows only structuredContent, so FTS snippets must be mirrored
+// there as hits[] — fenced exactly like the text blocks (untrusted book text)
+describe("calibre_search snippets in structuredContent (#199)", () => {
+  const textBlocks = (r: { content: { type: string }[] }): string[] =>
+    r.content.filter((b): b is { type: "text"; text: string } => b.type === "text").map((b) => b.text);
+  const hits: FtsHit[] = [
+    { bookId: 1, snippet: "a >>borrow<< b" },
+    { bookId: 1, snippet: "c >>borrow<< d" },
+    { bookId: 2, snippet: "e >>borrow<< f" },
+  ];
+
+  it("scope=book: hits[] carries each page snippet, fenced like the text block", async () => {
+    const r = await searchTool.handler(
+      { query: "borrow", mode: "fts", scope: "book", bookId: 1, limit: 2 },
+      deps({ ftsHits: hits }),
+    );
+    expect(r.structuredContent?.hits).toEqual([
+      { snippet: fence("FTS SNIPPET", "a >>borrow<< b") },
+      { snippet: fence("FTS SNIPPET", "c >>borrow<< d") },
+    ]);
+    expect(textBlocks(r)).toContain(fence("FTS SNIPPET", "a >>borrow<< b"));
+  });
+
+  it("scope=book: hits[] is empty when nothing matches", async () => {
+    const r = await searchTool.handler(
+      { query: "borrow", mode: "fts", scope: "book", bookId: 1, limit: 2 },
+      deps({ ftsHits: [] }),
+    );
+    expect(r.structuredContent?.hits).toEqual([]);
+  });
+
+  it("fts/library: hits[] groups the fenced snippets per book, like the text", async () => {
+    const r = await searchTool.handler(
+      { query: "borrow", mode: "fts", scope: "library", limit: 20 },
+      deps({ ftsHits: hits }),
+    );
+    expect(r.structuredContent?.hits).toEqual([
+      { bookId: 1, snippet: fence("FTS SNIPPET", "a >>borrow<< b\n…\nc >>borrow<< d") },
+      { bookId: 2, snippet: fence("FTS SNIPPET", "e >>borrow<< f") },
+    ]);
+    expect(textBlocks(r)).toContain(fence("FTS SNIPPET", "a >>borrow<< b\n…\nc >>borrow<< d"));
+  });
+
+  it("fts/library: a book matched without a snippet gets no hits[] entry", async () => {
+    const r = await searchTool.handler(
+      { query: "borrow", mode: "fts", scope: "library", limit: 20 },
+      deps({ ftsHits: [{ bookId: 3 }] }),
+    );
+    expect(r.structuredContent?.bookIds).toEqual([3]);
+    expect(r.structuredContent?.hits).toEqual([]);
   });
 });

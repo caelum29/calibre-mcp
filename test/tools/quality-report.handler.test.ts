@@ -136,3 +136,45 @@ describe("calibre_quality_report cursor in text (#211)", () => {
     expect(JSON.stringify(r.content)).not.toContain("continue with cursor");
   });
 });
+
+// issue #199 — Claude Code shows only structuredContent, so the per-issue lines must be
+// mirrored there as issues[] (the page, same order as the text)
+describe("calibre_quality_report issues[] in structuredContent (#199)", () => {
+  interface Issue {
+    bookId: number;
+    title: string;
+    check: string;
+    severity: string;
+    message: string;
+  }
+  const text = (r: { content: unknown[] }): string => (r.content[0] as { text: string }).text;
+  const raw = Array.from({ length: 3 }, (_, i) => book({ id: i + 1, title: `${1000 + i}` }));
+
+  it("mirrors each issue line of the page", async () => {
+    const r = await qualityReportTool.handler(args({ checks: ["raw_filename_title"] }), deps(raw));
+    const issues = r.structuredContent?.issues as Issue[];
+    expect(issues.map((i) => [i.bookId, i.title, i.check])).toEqual([
+      [1, "1000", "raw_filename_title"],
+      [2, "1001", "raw_filename_title"],
+      [3, "1002", "raw_filename_title"],
+    ]);
+    for (const i of issues) {
+      expect(text(r)).toContain(`[${i.severity}] #${i.bookId} "${i.title}" — ${i.check}: ${i.message}`);
+    }
+  });
+
+  it("carries only the current page's issues", async () => {
+    const first = await qualityReportTool.handler(args({ limit: 2, checks: ["raw_filename_title"] }), deps(raw));
+    const second = await qualityReportTool.handler(
+      args({ limit: 2, checks: ["raw_filename_title"], cursor: first.structuredContent?.nextCursor }),
+      deps(raw),
+    );
+    const issues = second.structuredContent?.issues as Issue[] | undefined;
+    expect(issues?.map((i) => i.bookId)).toEqual([3]);
+  });
+
+  it("returns an empty issues[] on a clean library", async () => {
+    const r = await qualityReportTool.handler(args(), deps([book()]));
+    expect(r.structuredContent?.issues).toEqual([]);
+  });
+});
