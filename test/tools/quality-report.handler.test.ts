@@ -178,3 +178,14 @@ describe("calibre_quality_report issues[] in structuredContent (#199)", () => {
     expect(r.structuredContent?.issues).toEqual([]);
   });
 });
+
+// #227 — the report stays one fenced text block (titles are untrusted book data)
+describe("calibre_quality_report report block", () => {
+  it("renders the report as a fenced QUALITY REPORT text block", async () => {
+    const r = await qualityReportTool.handler(args(), deps([book()]));
+    expect(r.content[0]).toEqual({
+      type: "text",
+      text: expect.stringContaining("--- BEGIN UNTRUSTED QUALITY REPORT"),
+    });
+  });
+});

@@ -118,3 +118,14 @@ describe("calibre_list_categories cursor in text (#211)", () => {
     expect(r.content.at(-1)).toEqual({ type: "text", text: `More results — continue with cursor: ${cursor}` });
   });
 });
+
+// #227 — the values page stays one fenced text block (untrusted book data) ahead of the cursor
+describe("calibre_list_categories values block", () => {
+  it("renders the values as a fenced CATEGORY VALUES text block", async () => {
+    const r = await listCategoriesTool.handler(args({ field: "authors" }), deps());
+    expect(r.content[0]).toEqual({
+      type: "text",
+      text: expect.stringContaining("--- BEGIN UNTRUSTED CATEGORY VALUES"),
+    });
+  });
+});
