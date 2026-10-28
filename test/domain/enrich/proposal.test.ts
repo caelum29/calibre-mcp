@@ -263,6 +263,30 @@ describe("titlesAgree — relaxed rules (#198)", () => {
   });
 });
 
+// Artem's second review: one shared generic word ("python") is not agreement. Titles agree on a
+// significant-word subset OR at least 2 shared significant words; the ratio is gone.
+describe("titlesAgree — subset or 2 shared significant words (#198)", () => {
+  it("disagrees when the only shared word is a generic one", () => {
+    expect(titlesAgree("Python Testing with pytest", "Python Crash Course")).toBe(false);
+  });
+
+  it("agrees on 2+ shared words without either title being a subset", () => {
+    expect(titlesAgree("Designing Data-Intensive Applications", "Data-Intensive Applications in Practice")).toBe(true);
+  });
+
+  it("agrees when a 1-word title is a subset of the other", () => {
+    expect(titlesAgree("Refactoring", "Refactoring Databases")).toBe(true);
+  });
+
+  it("does not count shared EN stop-words toward the 2 words", () => {
+    expect(titlesAgree("Python for the Web", "Python for the Data Scientist")).toBe(false);
+  });
+
+  it("does not count shared RU stop-words toward the 2 words", () => {
+    expect(titlesAgree("Python в науке", "Python в бизнесе")).toBe(false);
+  });
+});
+
 // Artem's review: a mixed author list (real names + one suspect entry) is NOT weak; only an
 // all-suspect list may be replaced by the provider's.
 describe("buildProposal — weak authors require every entry to be suspect (#201)", () => {
