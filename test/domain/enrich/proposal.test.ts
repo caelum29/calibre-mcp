@@ -120,11 +120,11 @@ describe("buildProposal — author/publisher/ISBN normalization (#201)", () => {
 });
 
 describe("buildProposal — author/publisher edge cases (#201)", () => {
-  it("treats a list with one junk entry beside a real name as weak", () => {
+  it("does not treat a list with one junk entry beside a real name as weak", () => {
     const p = buildProposal(book({ title: "x", authors: ["Paul Graham", "2007"] }), [
       hit({ authors: ["Paul Graham"] }),
     ]);
-    expect(p.changes.authors).toEqual(["Paul Graham"]);
+    expect(p.changes).not.toHaveProperty("authors");
   });
 
   it("keeps a publisher that names a press alongside an author", () => {
