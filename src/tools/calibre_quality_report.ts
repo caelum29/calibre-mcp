@@ -6,7 +6,7 @@
 import { z } from "zod";
 import { ALL_CHECKS, type QualityCheck, runQualityChecks } from "../domain/curation/quality.js";
 import { buildScopedQuery, honestyLines, resolveFilter } from "./bundles.js";
-import { BookId, CursorParam, jsonArray, limitParam } from "./coerce.js";
+import { BookId, CoercedBool, CursorParam, jsonArray, limitParam } from "./coerce.js";
 import { decodeCursor, encodeCursor } from "./cursor.js";
 import { defineTool } from "./define.js";
 import { selectBooks } from "./select-books.js";
@@ -31,7 +31,7 @@ export const qualityReportTool = defineTool({
     query: z.string().max(512).optional(),
     filter: z.string().trim().min(1).max(256).optional(),
     library: z.string().optional(),
-    readability: z.boolean().optional(),
+    readability: CoercedBool().optional(),
     limit: limitParam(500, 100),
     cursor: CursorParam,
   },
