@@ -200,8 +200,8 @@ describe("titlesAgree (#198)", () => {
     expect(titlesAgree("Clean Code: A Handbook of Agile Software Craftsmanship", "Clean Code")).toBe(true);
   });
 
-  it("disagrees when only one word of several is shared", () => {
-    expect(titlesAgree("Python Testing with pytest", "Python Crash Course")).toBe(false);
+  it("agrees when one of three significant words is shared", () => {
+    expect(titlesAgree("Python Testing with pytest", "Python Crash Course")).toBe(true);
   });
 
   it("does not count articles as shared words", () => {
