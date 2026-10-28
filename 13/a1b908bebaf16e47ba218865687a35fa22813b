@@ -1,0 +1,20 @@
+test/domain/enrich/proposal.test.ts
+  s_0b36ec168d5987::t_bf517659795ce6 220-244,246-265
+  s_0b36ec168d5987::t_3516fdb84dbed1 245
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "13a1b908bebaf16e47ba218865687a35fa22813b",
+  "prompts": {},
+  "sessions": {
+    "s_0b36ec168d5987": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "805ea9a5-c98a-4c37-8c2e-93966a512593",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
