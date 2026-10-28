@@ -4,21 +4,18 @@
 // Applies by looping `calibredb set_metadata` per book (no bulk CLI form; HTTP batch is LATER).
 
 import { z } from "zod";
-import {
-  buildSetMetadataArgs,
-  changesSatisfied,
-  isAllowedField,
-  previewBookChanges,
-} from "../calibre/metadata-fields.js";
+import { buildSetMetadataArgs, isAllowedField, previewBookChanges } from "../calibre/metadata-fields.js";
 import type { ChangeValue } from "../calibre/metadata-fields.js";
 import { CalibreCliTimeoutError } from "../domain/errors.js";
 import { buildScopedQuery, honestyLines, resolveFilter } from "./bundles.js";
 import { BookId, CoercedBool, jsonArray, jsonRecord } from "./coerce.js";
 import { defineTool } from "./define.js";
 import { fence, toolError, toolOk } from "./result.js";
+import type { ToolResult } from "./types.js";
 import { selectBooks } from "./select-books.js";
 import { ChangeValueSchema } from "./calibre_update_book.js";
 import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "./write-refusal.js";
+import { verifyTimedOutWrite } from "./write-verify.js";
 
 /** Hard cap on books mutated in one call — a bulk write must be a deliberate, bounded set. */
 const MAX_BULK = 500;
@@ -53,6 +50,8 @@ export const bulkUpdateTool = defineTool({
       .optional(),
     applied: z.array(z.number()).optional(),
     failed: z.array(z.object({ id: z.number(), error: z.string() })).optional(),
+    notAttempted: z.array(z.number()).optional(),
+    retryIds: z.array(z.number()).optional(),
   },
   annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false },
   write: true,
@@ -80,8 +79,9 @@ export const bulkUpdateTool = defineTool({
           "Select a book set: pass ids, a non-empty query, or filter (a bundle name) — all-books is not allowed.",
         );
       }
-      if (hasFilter && hasIds) {
-        return toolError("Pass either ids or filter (a bundle name), not both.");
+      // ids are an exact set; combining them with a query/filter would silently drop one side (#214)
+      if (hasIds && (hasQuery || hasFilter)) {
+        return toolError("Pass either ids or query/filter, not both.");
       }
       const fr = await resolveFilter(deps, { filter: args.filter, autoExclude: false, library: args.library });
       if (!fr.ok) return toolError(fr.error);
@@ -144,20 +144,33 @@ export const bulkUpdateTool = defineTool({
       const libId = await deps.content.resolveLibraryId(args.library);
       const applied: number[] = [];
       const failed: { id: number; error: string }[] = [];
-      for (const b of perBook) {
+      for (const [i, b] of perBook.entries()) {
         try {
           await deps.calibre.calibredb(buildSetMetadataArgs(b.id, changes), { library: libId });
           applied.push(b.id);
         } catch (err) {
-          if (isWriteRefused(err)) return toolError(WRITE_REFUSED_MESSAGE);
+          // A refusal blocks every later write too, so stop — but once books have committed,
+          // they must stay visible or the model retries the whole set (#33, #213).
+          if (isWriteRefused(err)) {
+            if (applied.length === 0) return toolError(WRITE_REFUSED_MESSAGE);
+            failed.push({ id: b.id, error: WRITE_REFUSED_MESSAGE });
+            return refusedMidLoop(
+              perBook.length,
+              applied,
+              failed,
+              perBook.slice(i + 1).map((p) => p.id),
+            );
+          }
           // Timed-out routed writes may have committed server-side — re-read and count
           // the book as applied when every requested field landed (issue #33).
           if (err instanceof CalibreCliTimeoutError) {
-            const landed = await deps.content
-              .getBook(b.id, args.library)
-              .then((after) => changesSatisfied(b.book, after, changes))
-              .catch(() => false);
-            if (landed) {
+            const check = await verifyTimedOutWrite(deps, {
+              id: b.id,
+              before: b.book,
+              changes,
+              library: args.library,
+            });
+            if (check.status === "landed") {
               applied.push(b.id);
               continue;
             }
@@ -175,7 +188,9 @@ export const bulkUpdateTool = defineTool({
 
       const summary =
         `Applied ${fields.join(", ")} to ${applied.length}/${perBook.length} book(s).` +
-        (failed.length > 0 ? ` ${failed.length} failed: ${failed.map((f) => f.id).join(", ")}.` : "");
+        (failed.length > 0 ? ` ${failed.length} failed: ${failed.map((f) => f.id).join(", ")}.` : "") +
+        // one line per failure, so text-only clients still see each reason and #33 steer (#216)
+        failed.map((f) => `\n#${f.id}: ${oneLine(f.error)}`).join("");
       return toolOk([{ type: "text", text: summary }], {
         preview: false,
         matched: perBook.length,
@@ -187,3 +202,40 @@ export const bulkUpdateTool = defineTool({
     }
   },
 });
+
+/** Longest per-id error shown in text; the full message stays in structuredContent. */
+const MAX_ERROR_TEXT = 200;
+
+/**
+ * Collapse raw calibredb stderr (tracebacks, multi-line) to one bounded line, so each
+ * failed id keeps exactly one `#id:` line in the text (#216).
+ */
+function oneLine(error: string): string {
+  const s = error.replace(/\s+/g, " ").trim();
+  return s.length > MAX_ERROR_TEXT ? `${s.slice(0, MAX_ERROR_TEXT - 1)}…` : s;
+}
+
+/**
+ * Partial result for a write refused after ≥1 book committed: still `isError` (the run did
+ * not finish), but the committed ids lead the text so the model retries only the rest.
+ */
+function refusedMidLoop(
+  matched: number,
+  applied: number[],
+  failed: { id: number; error: string }[],
+  notAttempted: number[],
+): ToolResult {
+  // The refused book (last in `failed`) and the unattempted ones are blocked only by the server;
+  // earlier per-book failures had their own reasons, so they aren't part of the re-run.
+  const refusedId = failed.at(-1)?.id;
+  const retryIds = refusedId === undefined ? notAttempted : [refusedId, ...notAttempted];
+  const text =
+    `Calibre refused the write after ${applied.length}/${matched} book(s) were already updated. ` +
+    `Already committed: ${applied.join(", ")}. ` +
+    `Failed: ${failed.map((f) => f.id).join(", ")}. ` +
+    (notAttempted.length > 0 ? `Not attempted: ${notAttempted.join(", ")}. ` : "") +
+    WRITE_REFUSED_MESSAGE +
+    // writes are idempotent sets, so re-running is safe; naming the ids saves the model the set math
+    ` After fixing the server, re-run with ids=[${retryIds.join(",")}].`;
+  return toolError(text, { preview: false, matched, applied, failed, notAttempted, retryIds });
+}

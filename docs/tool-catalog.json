@@ -461,8 +461,20 @@
           "matched": {
             "type": "number"
           },
+          "notAttempted": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          },
           "preview": {
             "type": "boolean"
+          },
+          "retryIds": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
           }
         },
         "type": "object"

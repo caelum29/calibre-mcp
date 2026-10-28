@@ -7,7 +7,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
-import { buildSetMetadataArgs, changesSatisfied } from "../calibre/metadata-fields.js";
+import { buildSetMetadataArgs } from "../calibre/metadata-fields.js";
 import type { ChangeValue } from "../calibre/metadata-fields.js";
 import { downloadToFile } from "../calibre/http.js";
 import type { Book } from "../domain/book.js";
@@ -20,6 +20,7 @@ import { defineTool } from "./define.js";
 import { fence, toolError, toolOk } from "./result.js";
 import type { ToolDeps } from "./types.js";
 import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "./write-refusal.js";
+import { verifyTimedOutWrite } from "./write-verify.js";
 
 /** One executed (or planned) write step in the merge ledger. */
 interface Step {
@@ -318,11 +319,13 @@ async function executeMerge(deps: ToolDeps, job: MergeJob) {
           // Verify on the built-in subset (custom #columns aren't carried on Book).
           const builtin = Object.fromEntries(Object.entries(job.metadataChanges).filter(([k]) => !k.startsWith("#")));
           if (Object.keys(builtin).length > 0) {
-            const landed = await deps.content
-              .getBook(target.id, job.library)
-              .then((after) => changesSatisfied(target, after, builtin))
-              .catch(() => false);
-            if (landed) {
+            const check = await verifyTimedOutWrite(deps, {
+              id: target.id,
+              before: target,
+              changes: builtin,
+              library: job.library,
+            });
+            if (check.status === "landed") {
               metaStep.status = "done";
               handled = true;
             }
