@@ -459,3 +459,37 @@ describe("dual-channel parity over the registry (#227)", () => {
     expect(parityGaps(r)).toEqual([]);
   });
 });
+
+// #211: multi-page results — the cursor must be in both channels. (find_duplicates and
+// quality_report multi-page paths also carry #199's text-only payload; they live below.)
+const PAGINATED_SCENARIOS: Scenario[] = [
+  { tool: "calibre_search", label: "meta, first of two pages", args: { query: "rust", limit: 2 } },
+  {
+    tool: "calibre_search",
+    label: "fts/library, first of three pages (no snippets)",
+    args: { query: "rust", mode: "fts", limit: 1 },
+    deps: () => fakeDeps({ ftsHits: [{ bookId: 101 }, { bookId: 102 }, { bookId: 103 }] }),
+  },
+  { tool: "calibre_list_categories", label: "values, first of two pages", args: { field: "Tags", limit: 1 } },
+  {
+    tool: "calibre_list_categories",
+    label: "filtered values, first of two pages",
+    args: { field: "Tags", limit: 1, valueFilter: "o" },
+    deps: () =>
+      fakeDeps({
+        categoryValues: [
+          { name: "go", count: 1 },
+          { name: "ocaml", count: 2 },
+          { name: "rust", count: 3 },
+        ],
+      }),
+  },
+];
+
+describe("dual-channel parity: pagination (#211)", () => {
+  it.each(PAGINATED_SCENARIOS.map((s) => [`${s.tool}: ${s.label}`, s] as const))("%s", async (_name, s) => {
+    const r = await runScenario(s);
+    expect(r.structuredContent?.nextCursor).toBeTypeOf("string");
+    expect(parityGaps(r)).toEqual([]);
+  });
+});

@@ -210,3 +210,65 @@ describe("calibre_search scope=book — semantic-search tip (issue #18)", () => 
     expect(head.text).not.toContain("calibre_semantic_search");
   });
 });
+
+// issue #211 — Desktop strips structuredContent, so the next-page cursor must also be in
+// the text, as its own block (outside any untrusted-data fence), in every search mode
+describe("calibre_search cursor in text (#211)", () => {
+  const blockText = (r: { content: { type: string }[] }, i: number): string => {
+    const b = r.content.at(i) as { type: string; text?: string };
+    return b.type === "text" ? (b.text ?? "") : "";
+  };
+  const allText = (r: { content: { type: string }[] }): string => r.content.map((_, i) => blockText(r, i)).join("\n");
+  const hits: FtsHit[] = [1, 2, 3].map((id) => ({ bookId: id, snippet: `s${id} >>rust<<` }));
+
+  it("meta: ends with the continue-with-cursor line carrying nextCursor", async () => {
+    const r = await searchTool.handler(
+      { query: "rust", mode: "meta", scope: "library", limit: 2 },
+      deps({ page: page({ bookIds: [1, 2], total: 5 }) }),
+    );
+    const cursor = r.structuredContent?.nextCursor as string;
+    expect(cursor).toBeTypeOf("string");
+    expect(blockText(r, -1)).toBe(`More results — continue with cursor: ${cursor}`);
+  });
+
+  it("meta: no cursor line on the last page", async () => {
+    const r = await searchTool.handler(
+      { query: "rust", mode: "meta", scope: "library", limit: 2 },
+      deps({ page: page({ bookIds: [1, 2], total: 2 }) }),
+    );
+    expect(allText(r)).not.toContain("continue with cursor");
+  });
+
+  it("fts/library: ends with the cursor line, and the cursor serves page 2", async () => {
+    const first = await searchTool.handler(
+      { query: "rust", mode: "fts", scope: "library", limit: 2 },
+      deps({ ftsHits: hits }),
+    );
+    const cursor = first.structuredContent?.nextCursor as string;
+    expect(blockText(first, -1)).toBe(`More results — continue with cursor: ${cursor}`);
+    const second = await searchTool.handler(
+      { query: "rust", mode: "fts", scope: "library", limit: 2, cursor },
+      deps({ ftsHits: hits }),
+    );
+    expect(second.structuredContent).toMatchObject({ offset: 2, count: 1, bookIds: [3] });
+    expect(allText(second)).not.toContain("continue with cursor");
+  });
+
+  it("scope=book: ends with the cursor line carrying nextCursor", async () => {
+    const r = await searchTool.handler(
+      { query: "rust", mode: "fts", scope: "book", bookId: 1, limit: 2 },
+      deps({ ftsHits: hits }),
+    );
+    const cursor = r.structuredContent?.nextCursor as string;
+    expect(cursor).toBeTypeOf("string");
+    expect(blockText(r, -1)).toBe(`More results — continue with cursor: ${cursor}`);
+  });
+
+  it("scope=book: no cursor line when every snippet fits", async () => {
+    const r = await searchTool.handler(
+      { query: "rust", mode: "fts", scope: "book", bookId: 1, limit: 5 },
+      deps({ ftsHits: hits }),
+    );
+    expect(allText(r)).not.toContain("continue with cursor");
+  });
+});

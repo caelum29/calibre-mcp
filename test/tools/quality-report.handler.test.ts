@@ -116,3 +116,23 @@ describe("calibre_quality_report handler", () => {
     expect((r.content[0] as { text: string }).text).not.toContain("readability");
   });
 });
+
+// issue #211 — the issue-page cursor must reach text-only clients (Desktop), outside the fence
+describe("calibre_quality_report cursor in text (#211)", () => {
+  const raw = Array.from({ length: 5 }, (_, i) =>
+    book({ id: i + 1, title: `${1000 + i}`, identifiers: {}, tags: [], publisher: undefined, pubdate: undefined }),
+  );
+
+  it("ends with the continue-with-cursor line carrying nextCursor", async () => {
+    const r = await qualityReportTool.handler(args({ limit: 3, checks: ["raw_filename_title"] }), deps(raw));
+    const cursor = r.structuredContent?.nextCursor as string;
+    expect(cursor).toBeTypeOf("string");
+    expect(r.content.at(-1)).toEqual({ type: "text", text: `More results — continue with cursor: ${cursor}` });
+  });
+
+  it("has no cursor line on the last page", async () => {
+    const r = await qualityReportTool.handler(args({ limit: 5, checks: ["raw_filename_title"] }), deps(raw));
+    expect(r.structuredContent?.count).toBe(5);
+    expect(JSON.stringify(r.content)).not.toContain("continue with cursor");
+  });
+});

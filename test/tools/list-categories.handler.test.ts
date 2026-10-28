@@ -80,3 +80,41 @@ describe("calibre_list_categories handler", () => {
     expect((r.content[0] as { text: string }).text).toContain("Invalid valueFilter");
   });
 });
+
+// issue #211 — the value-page cursor must reach text-only clients (Desktop), outside the fence
+describe("calibre_list_categories cursor in text (#211)", () => {
+  const names = ["Alice", "Bob", "Carol", "Dave", "Eve"];
+  function pagedDeps(): ToolDeps {
+    const d = deps();
+    (d.content as unknown as Record<string, unknown>).categoryItemsByUrl = async (
+      _url: string,
+      p: { num: number; offset: number },
+    ): Promise<CategoryItemsPage> => ({
+      items: names.slice(p.offset, p.offset + p.num).map((name) => ({ name, count: 1 })),
+      total: names.length,
+      offset: p.offset,
+      num: p.num,
+    });
+    return d;
+  }
+
+  it("ends with the continue-with-cursor line carrying nextCursor", async () => {
+    const r = await listCategoriesTool.handler(args({ field: "tags", limit: 2 }), pagedDeps());
+    const cursor = r.structuredContent?.nextCursor as string;
+    expect(cursor).toBeTypeOf("string");
+    expect(r.content.at(-1)).toEqual({ type: "text", text: `More results — continue with cursor: ${cursor}` });
+  });
+
+  it("has no cursor line on the last page", async () => {
+    const r = await listCategoriesTool.handler(args({ field: "tags", limit: 5 }), pagedDeps());
+    expect(r.structuredContent?.count).toBe(5);
+    expect(JSON.stringify(r.content)).not.toContain("continue with cursor");
+  });
+
+  it("puts the cursor line on a filtered page too", async () => {
+    const r = await listCategoriesTool.handler(args({ field: "tags", limit: 1, valueFilter: "a" }), pagedDeps());
+    const cursor = r.structuredContent?.nextCursor as string;
+    expect(cursor).toBeTypeOf("string");
+    expect(r.content.at(-1)).toEqual({ type: "text", text: `More results — continue with cursor: ${cursor}` });
+  });
+});

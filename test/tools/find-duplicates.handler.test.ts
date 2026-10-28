@@ -87,3 +87,37 @@ describe("calibre_find_duplicates handler", () => {
     expect((r.content[0] as { text: string }).text).toContain("binary mode");
   });
 });
+
+// issue #211 — the group cursor must reach text-only clients (Desktop) too
+describe("calibre_find_duplicates cursor in text (#211)", () => {
+  const fixture: Book[] = [0, 1, 2].flatMap((g) => [
+    book({ id: g * 2 + 1, title: `T${g}`, authors: ["X"] }),
+    book({ id: g * 2 + 2, title: `t${g}`, authors: ["x"] }),
+  ]);
+  const last = (r: { content: { type: string }[] }): string => {
+    const b = r.content.at(-1) as { type: string; text?: string };
+    return b.type === "text" ? (b.text ?? "") : "";
+  };
+
+  it("ends with the continue-with-cursor line carrying nextCursor", async () => {
+    const r = await findDuplicatesTool.handler(args({ limit: 2 }), deps(fixture));
+    const cursor = r.structuredContent?.nextCursor as string;
+    expect(cursor).toBeTypeOf("string");
+    expect(last(r)).toBe(`More results — continue with cursor: ${cursor}`);
+  });
+
+  it("has no cursor line on the last page", async () => {
+    const first = await findDuplicatesTool.handler(args({ limit: 2 }), deps(fixture));
+    const r = await findDuplicatesTool.handler(
+      args({ limit: 2, cursor: first.structuredContent?.nextCursor }),
+      deps(fixture),
+    );
+    expect(r.structuredContent).toMatchObject({ offset: 2, count: 1 });
+    expect(JSON.stringify(r.content)).not.toContain("continue with cursor");
+  });
+
+  it("has no cursor line when there are no groups", async () => {
+    const r = await findDuplicatesTool.handler(args(), deps([book({ id: 1, title: "Solo" })]));
+    expect(JSON.stringify(r.content)).not.toContain("continue with cursor");
+  });
+});
