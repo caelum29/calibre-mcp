@@ -23,13 +23,13 @@ function titleIsWeak(title: string, authors: string[]): boolean {
 }
 
 /**
- * Authors are weak if empty, the "Unknown" placeholder Calibre assigns on import, or any entry
- * is suspect — a glued list, an unflipped "Last, First", or filename junk like "2007" (#201).
+ * Authors are weak if empty, only the "Unknown" placeholder Calibre assigns on import, or EVERY
+ * remaining entry is suspect — a glued list, an unflipped "Last, First", or junk like "2007" (#201).
+ * A mixed list keeps its real names, so it is never replaced wholesale.
  */
 function authorsAreWeak(authors: string[]): boolean {
-  if (authors.some((a) => authorSuspectReason(a) !== undefined)) return true;
   const real = authors.filter((a) => !UNKNOWN_AUTHOR.has(a.trim().toLowerCase()));
-  return real.length === 0;
+  return real.every((a) => authorSuspectReason(a) !== undefined);
 }
 
 /** True if the publisher value is just author name(s) — a provider field mix-up (#201). */
