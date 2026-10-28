@@ -13,7 +13,11 @@ import { looksLikeRawFilename } from "./filename-guess.js";
 import type { ProposedField, Proposal, ProviderHit } from "./types.js";
 
 const UNKNOWN_AUTHOR = new Set(["", "unknown", "unknown author"]);
-const ARTICLES = new Set(["the", "a", "an"]);
+// Function words carry no title identity; counting them would inflate or dilute the overlap.
+const STOP_WORDS = new Set(
+  // EN, then RU
+  ["the", "a", "an", "of", "and", "for", "in", "on", "to", "with", "и", "в", "на", "для", "с", "по"],
+);
 // Below any provider's fuzzy-search score (0.6): a contradicted ISBN hit is the least trustworthy.
 const MISMATCH_CONFIDENCE = 0.3;
 
@@ -46,29 +50,37 @@ export function pickBestHit(hits: ProviderHit[]): ProviderHit | undefined {
   return best;
 }
 
-/** Title words for comparison: accent/case/punctuation-insensitive, articles dropped. */
+/** Significant title words: accent/case/punctuation-insensitive, EN/RU stop-words dropped. */
 function titleWords(title: string): Set<string> {
   const words = title
     .normalize("NFKD")
     .replace(/\p{M}/gu, "")
     .toLowerCase()
     .split(/[^\p{L}\p{N}]+/u)
-    .filter((w) => w && !ARTICLES.has(w));
+    .filter((w) => w && !STOP_WORDS.has(w));
   return new Set(words);
 }
 
+function isSubset(small: Set<string>, big: Set<string>): boolean {
+  for (const w of small) if (!big.has(w)) return false;
+  return true;
+}
+
 /**
- * True if two titles plausibly name the same book: at least half the words of the shorter
- * title appear in the other. Tolerates an added subtitle ("X" vs "X: Simple, Rapid…").
+ * True if two titles plausibly name the same book: one title's significant words are a subset
+ * of the other's (subtitle / edition suffix), or at least 1/3 of the shorter title's significant
+ * words appear in the longer one. Deliberately loose: it only has to catch a wholly different
+ * book (an ad-page ISBN, #198), not police wording.
  */
 export function titlesAgree(a: string, b: string): boolean {
   const wa = titleWords(a);
   const wb = titleWords(b);
   const [small, big] = wa.size <= wb.size ? [wa, wb] : [wb, wa];
   if (small.size === 0) return true; // nothing to compare → no evidence of a mismatch
+  if (isSubset(small, big)) return true;
   let shared = 0;
   for (const w of small) if (big.has(w)) shared++;
-  return shared / small.size >= 0.5;
+  return shared * 3 >= small.size; // integer form of shared/size >= 1/3
 }
 
 /**
