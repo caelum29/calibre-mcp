@@ -34,6 +34,28 @@ function summarizeValue(v: unknown): unknown {
   return { keys: Object.keys(v) };
 }
 
+/**
+ * calibredb argv for a log line: flags and short tokens verbatim, long tokens (a free-text
+ * query, a metadata value) as their length only — same rule as the tool-args summary, so an
+ * inner `calibredb failed` line can't leak what the closing `tool call` record redacted.
+ */
+export function summarizeArgv(argv: readonly string[]): unknown[] {
+  return argv.map((a) => summarizeValue(a));
+}
+
+/**
+ * Scrub a subprocess's output of the argv values `summarizeArgv` redacted — calibredb echoes
+ * the query in its errors ("Failed to parse search query: <query>"), which would otherwise
+ * put the redacted text right back into the same log line.
+ */
+export function redactArgvEchoes(text: string, argv: readonly string[]): string {
+  let out = text;
+  for (const a of argv) {
+    if (a.length > ARG_STRING_MAX) out = out.split(a).join(`[text, ${a.length} chars]`);
+  }
+  return out;
+}
+
 /** Short random id; unique enough to correlate one call's lines within a day's file. */
 export function newCallId(): string {
   return randomBytes(4).toString("hex");
