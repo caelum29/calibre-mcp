@@ -76,7 +76,9 @@ export function findDuplicateGroups(books: Book[], mode: DuplicateMode): DupGrou
   const keyOf = mode === "identical" ? identicalKey : similarKey;
   const buckets = new Map<string, Book[]>();
   for (const b of books) {
-    const key = keyOf(b);
+    const key: string | undefined = keyOf(b);
+    // Not comparable (e.g. a title with no letters) — never group it (#241).
+    if (key === undefined) continue;
     const bucket = buckets.get(key);
     if (bucket) bucket.push(b);
     else buckets.set(key, [b]);

@@ -121,7 +121,9 @@ export const mergeBooksTool = defineTool({
       const warnings: string[] = [];
       const targetKey = similarKey(target);
       for (const s of sources) {
-        if (similarKey(s) !== targetKey) {
+        // An undefined key (no letters in the title) can't confirm a match, so it warns too.
+        const sourceKey = similarKey(s);
+        if (targetKey === undefined || sourceKey !== targetKey) {
           warnings.push(
             `Source #${s.id} "${s.title}" does not look like the same work as the target ` +
               `(title/author mismatch). Advisory only — confirm proceeds regardless.`,

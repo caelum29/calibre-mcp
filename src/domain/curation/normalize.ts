@@ -28,27 +28,45 @@ export function identicalKey(book: Book): string {
 /** Trailing author-name suffixes kept after the surname in author-sort form. */
 const SUFFIXES = new Set(["jr", "sr", "ii", "iii", "iv", "phd", "md"]);
 
-/** Strip diacritics via NFKD + drop combining marks. */
-function stripAccents(s: string): string {
-  return s.normalize("NFKD").replace(/\p{M}/gu, "");
+/**
+ * Fold accents for fuzzy matching. Only Latin/Greek diacritics are dropped (café → cafe);
+ * marks in other scripts are letters in their own right (Cyrillic й/ї, Japanese が, Indic
+ * vowel signs), so they are recomposed via NFC instead. ё → е because Russian print treats
+ * them as interchangeable.
+ */
+function foldAccents(s: string): string {
+  return s
+    .normalize("NFKD")
+    .replace(/([\p{Script=Latin}\p{Script=Greek}])\p{M}+/gu, "$1")
+    .normalize("NFC")
+    .replace(/ё/g, "е");
+}
+
+/** Replace everything except letters, digits and (non-Latin) combining marks with a space. */
+function keepWordChars(s: string): string {
+  return s.replace(/[^\p{L}\p{N}\p{M}\s]/gu, " ");
 }
 
 /**
- * Aggressive fuzzy grouping key: accent-stripped, subtitle-dropped, article-stripped,
- * alphanumeric-only title + a normalized author token set. Deliberately lossy — catches
- * "The Rust Programming Language" vs "Rust Programming Language: 2nd Ed".
+ * Aggressive fuzzy grouping key: accent-folded, subtitle-dropped, article-stripped,
+ * letters/digits-only title + a normalized author token set. Deliberately lossy — catches
+ * "The Rust Programming Language" vs "Rust Programming Language: 2nd Ed". Any script's
+ * letters survive (#241).
+ *
+ * Returns `undefined` when the title has no letters or digits left: such a book can't be
+ * fuzzily compared, and keying it on authors alone groups unrelated books (#241).
  */
-export function similarKey(book: Book): string {
-  let t = stripAccents(book.title.toLowerCase());
+export function similarKey(book: Book): string | undefined {
+  let t = foldAccents(book.title.toLowerCase());
   // Drop subtitle after a colon or an opening paren.
   const cut = t.search(/[:(]/);
   if (cut > 0) t = t.slice(0, cut);
-  t = t.replace(/[^a-z0-9\s]/g, " ");
-  t = collapseWs(t).replace(/^(the|a|an)\s+/, "");
+  t = collapseWs(keepWordChars(t)).replace(/^(the|a|an)\s+/, "");
   t = t.replace(/\s+/g, "");
+  if (!t) return undefined;
 
   const authors = book.authors
-    .map((a) => collapseWs(stripAccents(a.toLowerCase()).replace(/[^a-z0-9\s]/g, " ")))
+    .map((a) => collapseWs(keepWordChars(foldAccents(a.toLowerCase()))))
     .filter(Boolean)
     .sort()
     .join(",");
