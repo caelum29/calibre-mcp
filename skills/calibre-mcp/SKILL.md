@@ -214,9 +214,17 @@ GUI preference); if a write is refused, that's the first thing to check.
 | "Export a book" | shell: `calibredb export --with-library "$LIB"` |
 | "Send book to NotebookLM" | ensure TXT (ebook-convert), read file, `source_add` |
 
+## When a tool fails
+
+An `isError` result already says what to do next — follow it. When the cause stays unclear
+or the same failure repeats, call `calibre_ping`: its `recent errors` list the server's own
+failures with tool and `call` id, plus today's log file path. With file access, read the
+`README.md` beside that log file and trace the failing `call` id; report the logged cause
+rather than a guess.
+
 ## Reference Documentation
 
 - `calibredb --help` / `calibredb <subcommand> --help` — the authoritative CLI reference for the installed version
 - **`docs/TOOLS.md`** (repo) — full tool reference: parameters, defaults, preview/confirm flows
 - **`docs/SEMANTIC-SEARCH.md`** (repo) — how the semantic index and hybrid retrieval work
-- **`docs/TROUBLESHOOTING.md`** (repo) — symptom-first fixes: connection, model install, write gates, cursors
+- **`docs/TROUBLESHOOTING.md`** (repo) — symptom-first fixes: connection, model install, write gates, cursors, logs
