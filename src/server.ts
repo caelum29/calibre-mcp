@@ -252,8 +252,11 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
       }),
   );
 
+  const toolNames = [...allTools.map((t) => t.name), "calibre_ping"];
   log.info("server built", {
-    tools: [...allTools.map((t) => t.name), "calibre_ping"],
+    // One string, not an array: the logger caps arrays at 20 items and we have more tools.
+    toolCount: toolNames.length,
+    tools: toolNames.join(","),
     writeEnabled: config.writeEnabled,
     serverUrl: config.serverUrl,
   });
@@ -304,6 +307,10 @@ function toolContext(extra: RequestHandlerExtra<ServerRequest, ServerNotificatio
  */
 function startBootProbes(deps: ToolDeps): void {
   const { config } = deps;
+  // Semantic availability at boot — otherwise only ping reveals a missing optional dep.
+  const sem = computeSemanticStatus(deps);
+  if (sem.available) log.info("semantic search available", { model: sem.model });
+  else log.warn("semantic search unavailable", { reason: sem.reason });
   void deps.extractor
     .detectBackends()
     .then((r) => log.info("extractor backends", r))
