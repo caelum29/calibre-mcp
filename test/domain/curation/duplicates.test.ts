@@ -41,6 +41,54 @@ describe("findDuplicateGroups", () => {
   });
 });
 
+// #241 repro (live library, 2026-10-30): non-Latin keys used to collapse to "|" / "|unknown".
+describe("findDuplicateGroups similar mode with non-Latin metadata (#241)", () => {
+  it("should_not_group_unrelated_russian_books", () => {
+    const books = [
+      book({ id: 1116, title: "Векторные базы данных: разработка и применение", authors: ["Ло Юнь"] }),
+      book({ id: 1001, title: "Врата Европы. История Украины", authors: ["Сергей Николаевич Плохий"] }),
+      book({ id: 1115, title: "Грокаем алгоритмы", authors: ["Адитья Бхаргава"] }),
+      book({ id: 1176, title: "Чистый код", authors: ["Роберт Мартин"] }),
+      book({ id: 1177, title: "Совершенный код", authors: ["Стив Макконнелл"] }),
+      book({ id: 1053, title: "Паттерны проектирования", authors: ["Эрих Гамма"] }),
+    ];
+    expect(findDuplicateGroups(books, "similar")).toEqual([]);
+  });
+
+  it("should_not_group_different_cyrillic_titles_on_an_unknown_author", () => {
+    const books = [
+      book({ id: 1163, title: "Искусственный интеллект для чайников", authors: ["Unknown"] }),
+      book({ id: 37, title: "Максимальная производительность архитектурные подходы", authors: ["Unknown"] }),
+      book({ id: 1120, title: "Высоконагруженные приложения", authors: ["Unknown"] }),
+      book({ id: 1060, title: "Изучаем Rust", authors: ["Unknown"] }),
+    ];
+    expect(findDuplicateGroups(books, "similar")).toEqual([]);
+  });
+
+  it("should_group_only_the_true_duplicate_volume_of_you_dont_know_js", () => {
+    const books = [
+      book({ id: 1152, title: "Вы не знаете JS: Асинхронная обработка и оптимизация", authors: ["Kyle Simpson"] }),
+      book({ id: 682, title: "Вы не знаете JS Замыкания и объекты", authors: ["Kyle Simpson"] }),
+      book({ id: 1154, title: "Вы не знаете JS. Замыкания и объекты", authors: ["Kyle Simpson"] }),
+      book({ id: 1153, title: "Вы не знаете JS: Типы и грамматические конструкции", authors: ["Kyle Simpson"] }),
+    ];
+    const groups = findDuplicateGroups(books, "similar");
+    const withClosures = groups.find((g) => g.books.some((b) => b.id === 682));
+    expect(withClosures?.books.map((b) => b.id).sort()).toEqual([1154, 682]);
+  });
+
+  it("should_never_group_books_whose_title_normalizes_to_empty_on_author_alone", () => {
+    const books = [
+      book({ id: 1, title: "", authors: ["Unknown"] }),
+      book({ id: 2, title: "???", authors: ["Unknown"] }),
+      book({ id: 3, title: "«…»", authors: ["Unknown"] }),
+      book({ id: 4, title: "", authors: [] }),
+      book({ id: 5, title: "—", authors: [] }),
+    ];
+    expect(findDuplicateGroups(books, "similar")).toEqual([]);
+  });
+});
+
 describe("mergeSafety", () => {
   it("is 1 for consistent records with distinct formats", () => {
     const books = [book({ formats: ["pdf"] }), book({ formats: ["epub"] })];
