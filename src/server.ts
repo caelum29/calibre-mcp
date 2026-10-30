@@ -26,7 +26,8 @@ import { BoardCache } from "./ui/board-cache.js";
 import { boardHtml, BOARD_KEYWORD_URI, BOARD_SEMANTIC_URI } from "./ui/board-html.js";
 import { cardHtml, CARD_URI } from "./ui/card-html.js";
 import { figuresHtml, FIGURES_URI } from "./ui/figures-html.js";
-import { log } from "./logging.js";
+import { capString, log } from "./logging.js";
+import { withCallLog } from "./call-log.js";
 import { VERSION } from "./version.js";
 
 // Structural stand-in for ext-apps' McpUiToolMeta — the root package entry's types break
@@ -58,11 +59,13 @@ export interface BuildServerOptions {
    * tools/list touches no subprocess, network or library.
    */
   probes?: boolean;
+  /** Pre-loaded config (run-stdio loads it once for the log sink); overrides `env`. */
+  config?: Config;
 }
 
 /** Build the MCP server: load config, wire deps, register every tool/resource, and disable write tools when the write gate is off. */
 export function buildServer(options: BuildServerOptions = {}): McpServer {
-  const config = loadConfig(options.env);
+  const config = options.config ?? loadConfig(options.env);
   const figures = new FigureInventoryService(config);
   const deps: ToolDeps = {
     config,
@@ -84,6 +87,26 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
     { capabilities: { tools: {}, resources: {} } },
   );
 
+  // Tag later log lines with the client (Desktop vs Code vs …) — the same file is shared.
+  // Also re-checked per call: a client that pipelines `initialized` before the initialize
+  // reply lands would otherwise leave it unset.
+  let clientTagged = false;
+  const tagClient = (): void => {
+    if (clientTagged) return;
+    const c = server.server.getClientVersion();
+    if (!c) return;
+    clientTagged = true;
+    log.setClient(c.name);
+    log.info("client initialized", { client: c.name, clientVersion: c.version, serverVersion: VERSION });
+  };
+  server.server.oninitialized = tagClient;
+  type Extra = RequestHandlerExtra<ServerRequest, ServerNotification>;
+  // Every tool call (registry tools and ping alike) runs inside one logged call context.
+  const logged = (tool: string, args: unknown, extra: Extra, run: () => Promise<CallToolResult>) => {
+    tagClient();
+    return withCallLog(log, { tool, args, rpcId: extra.requestId }, run);
+  };
+
   // Fail loud at boot if any non-read-only tool is unclassified (no write / localWrite).
   assertWriteClassification();
 
@@ -99,33 +122,30 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
     };
     // ToolResult is structurally a CallToolResult minus the SDK's loose index signature;
     // cast once here (the seam) rather than weaken the shared ToolResult type.
-    const handler = async (
-      args: unknown,
-      extra: RequestHandlerExtra<ServerRequest, ServerNotification>,
-    ): Promise<CallToolResult> => {
-      try {
-        return (await t.handler(args, deps, toolContext(extra))) as CallToolResult;
-      } catch (err) {
-        if (err instanceof OperationCancelledError) {
-          // The client cancelled; the SDK drops this response anyway. Keep it a result.
-          return toolError(`${t.name} was cancelled.`, { errorCode: err.name }) as CallToolResult;
+    const handler = async (args: unknown, extra: Extra): Promise<CallToolResult> =>
+      logged(t.name, args, extra, async () => {
+        try {
+          return (await t.handler(args, deps, toolContext(extra))) as CallToolResult;
+        } catch (err) {
+          if (err instanceof OperationCancelledError) {
+            // The client cancelled; the SDK drops this response anyway. Keep it a result.
+            return toolError(`${t.name} was cancelled.`, { errorCode: err.name }) as CallToolResult;
+          }
+          const name = err instanceof Error ? err.name : "Error";
+          const msg = err instanceof Error ? err.message : String(err);
+          log.error("tool threw", {
+            name,
+            msg,
+            stack: err instanceof Error ? err.stack : undefined,
+          });
+          // Surface the error NAME + message to the model (issue #73): domain errors keep
+          // their messages host-path-free by contract (domain/errors.ts), so this is safe
+          // to show and gives the agent something actionable instead of a blind retry.
+          return toolError(`internal error in ${t.name} — ${name}: ${msg}`, {
+            errorCode: name,
+          }) as CallToolResult;
         }
-        const name = err instanceof Error ? err.name : "Error";
-        const msg = err instanceof Error ? err.message : String(err);
-        log.error("tool threw", {
-          tool: t.name,
-          name,
-          msg,
-          stack: err instanceof Error ? err.stack : undefined,
-        });
-        // Surface the error NAME + message to the model (issue #73): domain errors keep
-        // their messages host-path-free by contract (domain/errors.ts), so this is safe
-        // to show and gives the agent something actionable instead of a blind retry.
-        return toolError(`internal error in ${t.name} — ${name}: ${msg}`, {
-          errorCode: name,
-        }) as CallToolResult;
-      }
-    };
+      });
     // UI-bearing tools go through registerAppTool (normalizes _meta.ui for older hosts);
     // everything else registers exactly as before.
     const ui = UI_TOOL_META[t.name];
@@ -185,40 +205,51 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
       description:
         "Health check: confirms the MCP server can reach the running Calibre " +
         "Content Server via calibredb, and reports semantic-search status " +
-        "(embedding model, dependency, index vector count). Returns library categories on success.",
+        "(embedding model, dependency, index vector count). Returns library categories on success, " +
+        "plus the server's recent errors and its log file path for self-diagnosis.",
       inputSchema: {},
       annotations: { readOnlyHint: true, openWorldHint: true },
     },
-    async () => {
-      // Resolve the libId (needed for both calibredb and the index vector count) first —
-      // --with-library needs the ID, not the display name. A failure here is non-fatal to the
-      // semantic diagnosis (it reads local disk/state), so keep it and still report semantics.
-      let libId: string | undefined;
-      let listOut: string | undefined;
-      let pingError: string | undefined;
-      try {
-        libId = await deps.content.resolveLibraryId();
-        listOut = await deps.calibre.listLibraries(libId);
-      } catch (err) {
-        pingError = err instanceof Error ? err.message : String(err);
-        log.error("ping failed", pingError);
-      }
+    async (args: unknown, extra: Extra) =>
+      logged("calibre_ping", args, extra, async () => {
+        // Resolve the libId (needed for both calibredb and the index vector count) first —
+        // --with-library needs the ID, not the display name. A failure here is non-fatal to the
+        // semantic diagnosis (it reads local disk/state), so keep it and still report semantics.
+        let libId: string | undefined;
+        let listOut: string | undefined;
+        let pingError: string | undefined;
+        try {
+          libId = await deps.content.resolveLibraryId();
+          listOut = await deps.calibre.listLibraries(libId);
+        } catch (err) {
+          pingError = err instanceof Error ? err.message : String(err);
+          log.error("ping failed", { error: pingError });
+        }
 
-      const semantic = computeSemanticStatus(deps, libId);
-      const semLine = formatSemanticStatusLine(semantic);
+        const semantic = computeSemanticStatus(deps, libId);
+        const semLine = formatSemanticStatusLine(semantic);
+        // Self-diagnosis without file access (#247): the server's own recent errors + where
+        // the full log is. Text too — Desktop strips structuredContent.
+        const diag = diagnostics();
 
-      if (pingError !== undefined) {
+        if (pingError !== undefined) {
+          return {
+            isError: true,
+            content: [{ type: "text", text: `Calibre unreachable: ${pingError}\n${semLine}\n${diag.text}` }],
+            structuredContent: {
+              ok: false,
+              error: pingError,
+              serverUrl: config.serverUrl,
+              semantic,
+              ...diag.structured,
+            },
+          };
+        }
         return {
-          isError: true,
-          content: [{ type: "text", text: `Calibre unreachable: ${pingError}\n${semLine}` }],
-          structuredContent: { ok: false, error: pingError, serverUrl: config.serverUrl, semantic },
+          content: [{ type: "text", text: `ok\n${(listOut ?? "").slice(0, 500)}\n${semLine}\n${diag.text}` }],
+          structuredContent: { ok: true, serverUrl: config.serverUrl, semantic, ...diag.structured },
         };
-      }
-      return {
-        content: [{ type: "text", text: `ok\n${(listOut ?? "").slice(0, 500)}\n${semLine}` }],
-        structuredContent: { ok: true, serverUrl: config.serverUrl, semantic },
-      };
-    },
+      }),
   );
 
   log.info("server built", {
@@ -227,6 +258,24 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
     serverUrl: config.serverUrl,
   });
   return server;
+}
+
+/** ping's logging block: recent server-side errors (oldest first) + today's log file. */
+function diagnostics(): { text: string; structured: Record<string, unknown> } {
+  const recentErrors = log.recentErrors().map((r) => ({
+    ts: r.ts,
+    msg: r.msg,
+    ...(r.tool ? { tool: r.tool, call: r.call } : {}),
+    ...(r.meta === undefined ? {} : { meta: r.meta }),
+  }));
+  const logFile = log.currentFile();
+  const lines = [`log file: ${logFile ?? "off (stderr only)"}`, `recent errors: ${recentErrors.length}`];
+  // All of them, newest first — Desktop reads only this text, so it must match structuredContent.
+  for (const e of [...recentErrors].reverse()) {
+    const meta = e.meta === undefined ? "" : ` ${capString(JSON.stringify(e.meta), 200)}`;
+    lines.push(`- ${e.ts}${e.tool ? ` [${e.tool} call=${e.call}]` : ""} ${e.msg}${meta}`);
+  }
+  return { text: lines.join("\n"), structured: { logFile, recentErrors } };
 }
 
 /**
@@ -269,11 +318,12 @@ function startBootProbes(deps: ToolDeps): void {
         default: info.defaultLibrary,
       }),
     )
-    .catch(() =>
-      log.warn(
-        `Calibre Content Server not reachable at ${config.serverUrl} — start it in ` +
-          "Calibre (Connect/share → Start Content server) or set CALIBRE_MCP_SERVER_URL",
-      ),
+    .catch((err) =>
+      log.warn("content server unreachable at boot", {
+        url: config.serverUrl,
+        hint: "start it in Calibre (Connect/share → Start Content server) or set CALIBRE_MCP_SERVER_URL",
+        err,
+      }),
     );
 }
 

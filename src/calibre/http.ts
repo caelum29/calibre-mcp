@@ -31,7 +31,7 @@ export async function getJson<T>(url: string, opts: HttpOptions = {}): Promise<T
   try {
     const res = await fetch(url, { signal: controller.signal });
     if (!res.ok) {
-      log.error("content-server non-2xx", { url, status: res.status });
+      logNon2xx("content-server non-2xx", url, res.status);
       throw new CalibreHttpError(res.status, url, `Content Server returned HTTP ${res.status}`);
     }
     return (await res.json()) as T;
@@ -103,7 +103,7 @@ export async function downloadToFile(
   try {
     const res = await fetch(url, { signal: controller.signal });
     if (!res.ok) {
-      log.error("download non-2xx", { url, status: res.status });
+      logNon2xx("download non-2xx", url, res.status);
       throw new CalibreHttpError(res.status, url, `Content Server returned HTTP ${res.status}`);
     }
     const declared = Number(res.headers.get("content-length"));
@@ -153,4 +153,11 @@ export async function downloadToFile(
     clearTimeout(hardTimer);
     opts.signal?.removeEventListener("abort", onAbort);
   }
+}
+
+// 4xx is usually an expected miss (a stale or wrong book id) the caller turns into a steer —
+// warn, so it stays out of calibre_ping's recentErrors; 5xx is the server's fault.
+function logNon2xx(msg: string, url: string, status: number): void {
+  if (status >= 500) log.error(msg, { url, status });
+  else log.warn(msg, { url, status });
 }

@@ -28,8 +28,10 @@ Confirms the server can reach your running Calibre Content Server (end to end, v
 `calibredb`) and reports semantic-search status — whether the embedding model and its
 dependency are present, how many vectors the index holds, and the index generation
 (`indexVersion`, read from the index itself — flagged **stale** with a rebuild hint when it
-doesn't match the running server). On success it also returns your library's categories. Use it first when something isn't working, or to answer "why is semantic
-search off?".
+doesn't match the running server). On success it also returns your library's categories.
+It also lists the server's recent errors (the last 20, newest first, each with its tool and
+`call` id) and the path of today's log file — see [Troubleshooting → Logs](TROUBLESHOOTING.md#logs).
+Use it first when something isn't working, or to answer "why is semantic search off?".
 
 No parameters.
 

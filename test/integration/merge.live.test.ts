@@ -16,7 +16,10 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { loadConfig } from "../../src/config.js";
 import { CalibreClient } from "../../src/calibre/client.js";
 import { ContentServerClient } from "../../src/calibre/content-server.js";
-import { log } from "../../src/logging.js";
+import { log, type LogSink } from "../../src/logging.js";
+
+// Typed as the narrow sink ToolDeps expects (an annotation, not a cast).
+const sink: LogSink = log;
 import { mergeBooksTool } from "../../src/tools/calibre_merge_books.js";
 import type { ToolDeps } from "../../src/tools/types.js";
 
@@ -50,7 +53,7 @@ describe.skipIf(!RUN || !serverUp)("calibre_merge_books (live Content Server)", 
     content,
     calibre,
     extractor: {} as ToolDeps["extractor"],
-    log,
+    log: sink,
   } as ToolDeps;
 
   const createdIds: number[] = [];

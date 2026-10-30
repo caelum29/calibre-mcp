@@ -14,7 +14,7 @@ import { DatabaseSync } from "node:sqlite";
 import { existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import type { Config } from "../config.js";
-import { log as defaultLog } from "../logging.js";
+import { log as defaultLog, type LogSink } from "../logging.js";
 import { EMBED_DIM, INDEX_VERSION, MODEL_ID } from "./model.js";
 import { stemText } from "./stem.js";
 import { type Candidate, decodeVector, encodeVector, topK } from "./vector.js";
@@ -360,7 +360,7 @@ export class SqliteIndexStore implements IndexStore {
   constructor(
     private readonly cfg: Config,
     /** Injected stderr logger seam (tests/callers may substitute); defaults to the module logger. */
-    private readonly log: typeof defaultLog = defaultLog,
+    private readonly log: LogSink = defaultLog,
   ) {}
 
   hasIndex(libraryId: string): boolean {
