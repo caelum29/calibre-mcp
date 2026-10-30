@@ -1,0 +1,19 @@
+test/integration/tools-list-order.test.ts
+  s_e5cff204422c39::t_95fa45b802a289 37-48,78-83,88-90,93-95,98-99,101-102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c3e1082f6a7db978f5ba110543c9099ae586e7ca",
+  "prompts": {},
+  "sessions": {
+    "s_e5cff204422c39": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cc7cb7a9-9eae-4a22-8105-b2211a5a7c67",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
