@@ -14,6 +14,7 @@ import {
   prepareBook,
   withBusyRetry,
   type BookDetail,
+  type BookPhase,
   type PrepareResult,
 } from "./index-book.js";
 import { resolveNumericId } from "./resolve-id.js";
@@ -212,7 +213,19 @@ export const buildIndexTool = defineTool({
         // Cancelled (client sent notifications/cancelled or went away): queued books never start.
         // Books already committed stay indexed; the in-flight subprocess is killed by its signal.
         signal?.throwIfAborted();
+        // One book at a time (BUILD_CONCURRENCY), so `settled` is this book's base step.
+        const base = settled;
+        const progress = ctx?.progress;
         return prepareBook(deps, bookId, {
+          ...(progress
+            ? {
+                onPhase: (p: BookPhase) => {
+                  if (signal?.aborted) return;
+                  const label = `Book ${base + 1}/${booksRequested} (id ${bookId})`;
+                  progress(base + phaseFraction(p), `${label}: ${phaseLabel(p)}`, booksRequested);
+                },
+              }
+            : {}),
           libraryId,
           library: args.library,
           force: args.force,
@@ -370,6 +383,22 @@ async function allMatchingIds(deps: ToolDeps, query: string, library: string | u
     if (offset >= res.total) break;
   }
   return ids;
+}
+
+/**
+ * Share of one book's step a phase has reached — stays below 1 so the per-book "Indexed k/N"
+ * step is still the one that lands on the integer. Embedding dominates a big book's time.
+ */
+function phaseFraction(p: BookPhase): number {
+  if (p.phase === "extract") return 0.05;
+  if (p.phase === "chunk") return 0.1;
+  return 0.1 + 0.85 * (p.done / p.total);
+}
+
+function phaseLabel(p: BookPhase): string {
+  if (p.phase === "extract") return "extracting text";
+  if (p.phase === "chunk") return "chunking";
+  return `embedding ${p.done}/${p.total} chunks`;
 }
 
 /** True when an error is the coded "embedding model not installed" signal. */

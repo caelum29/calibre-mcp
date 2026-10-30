@@ -81,7 +81,8 @@ interface Loaded {
 }
 
 /** Passages per model call — bounded so a large book doesn't build one giant batch. */
-const BATCH = 10;
+export const PASSAGE_BATCH = 10;
+const BATCH = PASSAGE_BATCH;
 
 /** The optional-dep boundary, injectable so tests can simulate load failures. */
 export type TransformersLoader = () => Promise<typeof import("@huggingface/transformers")>;
