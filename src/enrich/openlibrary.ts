@@ -62,6 +62,7 @@ function mapDoc(doc: OlSearchDoc): ProviderHit {
   };
 }
 
+/** OpenLibrary metadata provider (ISBN + title/author lookups) for metadata recovery. */
 export function createOpenLibrary(fj: FetchJson = fetchJson): Provider {
   return {
     name: "openlibrary",

@@ -88,6 +88,11 @@ describe("calibre_recover_metadata handler", () => {
     expect((r.content[0] as { text: string }).text).toContain("Nothing to look up");
   });
 
+  it("asks for an ISBN when the title is a placeholder", async () => {
+    const r = await recoverMetadataTool.handler(args(), deps({ book: book({ title: "Cover", formats: [] }) }));
+    expect((r.content[0] as { text: string }).text).toContain("importer placeholder. Add an ISBN");
+  });
+
   it("falls back to a title/author search for a usable title", async () => {
     const fixture = {
       book: book({ title: "The Rust Programming Language", authors: ["Steve Klabnik"] }),
@@ -97,6 +102,43 @@ describe("calibre_recover_metadata handler", () => {
     expect(r.isError).toBeFalsy();
     expect(r.structuredContent?.lookupKey).toContain("title:The Rust Programming Language / Steve Klabnik");
     expect(r.structuredContent?.changes).toMatchObject({ publisher: "No Starch" });
+  });
+
+  // #198: an ISBN belonging to another book must not yield a 0.95-confidence author swap.
+  it("lowers confidence and warns when the ISBN hit's title does not match the book", async () => {
+    const fixture = {
+      book: book({ title: "Python Testing with pytest", authors: ["Unknown"], identifiers: { isbn: "9781680502442" } }),
+      hits: [hit({ title: "A Common-Sense Guide to Data Structures and Algorithms", authors: ["Jay Wengrow"] })],
+    };
+    const r = await recoverMetadataTool.handler(args(), deps(fixture));
+    expect(r.isError).toBeFalsy();
+    expect(r.structuredContent?.confidence as number).toBeLessThan(0.5);
+    expect((r.content[0] as { text: string }).text).toContain("title mismatch");
+  });
+
+  it("ignores ad-page ISBNs in the text and falls back to a title lookup (#198)", async () => {
+    const fixture = {
+      book: book({ title: "Python Testing with pytest", authors: ["Unknown"], formats: ["pdf"] }),
+      text: "a".repeat(30_000) + "Jay Wengrow\n(218 pages) ISBN: 9781680502442 $45.95\n",
+      hits: [hit({ title: "Python Testing with pytest", authors: ["Brian Okken"], confidence: 0.6 })],
+    };
+    const r = await recoverMetadataTool.handler(args(), deps(fixture));
+    expect(r.structuredContent?.lookupKey).toBe("title:Python Testing with pytest");
+  });
+
+  // #201: book 1300 had author "2007"; the provider answers "Last, First", puts the authors in
+  // the publisher field, and reports ISBN-10.
+  it("proposes First-Last authors over a junk author, drops an author-as-publisher, emits ISBN-13", async () => {
+    const fixture = {
+      book: book({ title: "Hackers & Painters", authors: ["2007"], formats: ["pdf"] }),
+      text: "Copyright\nISBN: 0-596-00662-4\n",
+      hits: [
+        hit({ title: "Hackers & Painters", authors: ["Graham, Paul"], publisher: "Paul Graham", isbn: "0596006624" }),
+      ],
+    };
+    const r = await recoverMetadataTool.handler(args(), deps(fixture));
+    expect(r.isError).toBeFalsy();
+    expect(r.structuredContent?.changes).toEqual({ authors: ["Paul Graham"], identifiers: { isbn: "9780596006624" } });
   });
 
   it("errors when no provider returns a hit", async () => {

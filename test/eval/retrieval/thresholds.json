@@ -1,6 +1,7 @@
 {
   "$comment": "Phase B eval gates, declared BEFORE the atomic re-index build (D-012 protocol). Human record: issue #85 verdict comment (2026-07-22). Consumed by `pnpm eval --gate`.",
-  "baselineReport": "reports/2026-07-15-9725d1e-issue18-after.json",
+  "baselineReport": "reports/2026-10-24-f8bb617-v4-t431-fixture.json",
+  "$baselineComment": "Re-baselined 2026-10-24 (#139, INDEX_VERSION 4): transformers.js 4.3.1 / onnxruntime-node 1.30 reranker drift flips fixture sp-11 (101 vs 116, both maxRerank ~0.015 — cross-encoder noise on short fixture passages). Live eval on the v4 index shows no real regression (drops are post-July books absent from live labels). Rationale: reports/2026-10-24-v4-reindex-gate.md. Previous baseline: reports/2026-07-15-9725d1e-issue18-after.json.",
   "nonRegression": {
     "$comment": "Existing kinds with markers now inside chunk text. Gate compares per-query Hit@1 vs the baseline report; every dropped query must be explained in the report regardless of gate color.",
     "hybrid": { "maxBrokenHit1Queries": 0, "negativesFlagged": 6 },

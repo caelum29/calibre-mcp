@@ -5,9 +5,9 @@
 import { z } from "zod";
 import { matchCategory } from "../calibre/content-server.js";
 import { CursorParam, limitParam } from "./coerce.js";
-import { decodeCursor, encodeCursor } from "./cursor.js";
+import { decodeCursor, pageCursor } from "./cursor.js";
 import { defineTool } from "./define.js";
-import { fence, toolError, toolOk } from "./result.js";
+import { fence, renderResult, toolError, toolOk } from "./result.js";
 import { compileUserRegex } from "./user-regex.js";
 
 // Pull a generous page when filtering client-side; categories above this are truncated.
@@ -89,19 +89,13 @@ export const listCategoriesTool = defineTool({
       }
 
       const fetched = items.length;
-      const more = offset + fetched < total;
-      const nextCursor = more ? encodeCursor({ offset: offset + fetched, query: cursorKey }) : undefined;
       const lines = items.map((it) => `${it.name}${it.count !== undefined ? ` (${it.count})` : ""}`).join("\n");
       const text = `${node.name}: ${total} values, showing ${offset + 1}–${offset + fetched}\n${lines}`;
 
-      return toolOk([{ type: "text", text: fence("CATEGORY VALUES", text) }], {
-        mode: "values",
-        field: node.name,
-        values: items,
-        total,
-        offset,
-        count: fetched,
-        nextCursor,
+      return renderResult({
+        blocks: [{ type: "text", text: fence("CATEGORY VALUES", text) }],
+        structured: { mode: "values", field: node.name, values: items, total, offset, count: fetched },
+        page: pageCursor({ offset, fetched, total, query: cursorKey }),
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);

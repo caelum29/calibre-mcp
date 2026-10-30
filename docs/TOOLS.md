@@ -28,8 +28,10 @@ Confirms the server can reach your running Calibre Content Server (end to end, v
 `calibredb`) and reports semantic-search status — whether the embedding model and its
 dependency are present, how many vectors the index holds, and the index generation
 (`indexVersion`, read from the index itself — flagged **stale** with a rebuild hint when it
-doesn't match the running server). On success it also returns your library's categories. Use it first when something isn't working, or to answer "why is semantic
-search off?".
+doesn't match the running server). On success it also returns your library's categories.
+It also lists the server's recent errors (the last 20, newest first, each with its tool and
+`call` id) and the path of today's log file — see [Troubleshooting → Logs](TROUBLESHOOTING.md#logs).
+Use it first when something isn't working, or to answer "why is semantic search off?".
 
 No parameters.
 
@@ -254,7 +256,10 @@ big library a broad query is a long job that can outlive the client's request ti
 re-run the same call to resume, since books already up to date are skipped. The first
 embedding build downloads the model (~118 MB, one-time), then runs offline. Set `keywordOnly: true` to build a model-free keyword index (zero ML
 dependencies); this also happens automatically if the embedding model isn't installed. Re-run
-after adding books; use `force: true` to re-index books that haven't changed. Each book's
+after adding books; use `force: true` to re-index books that haven't changed. An embedding
+build treats books indexed without embeddings (keyword-only) as out of date and re-indexes them
+without `force`; a keyword-only build never overwrites a book that already has embeddings (it
+reports them as `booksPreserved`). Each book's
 figure captions (see `calibre_get_figures`) are indexed alongside its text, powering
 `calibre_semantic_search` with `target: figures`.
 
@@ -307,13 +312,13 @@ score with a review warning.
 ### `calibre_quality_report`
 
 Audit books for metadata problems: missing fields, raw-filename titles (e.g. `795731065.pdf`),
-invalid ISBNs, author-sort mismatches, and series gaps. Defaults to the whole library; narrow
+invalid ISBNs, author-sort mismatches, series gaps, and suspect (glued/junk) authors. Defaults to the whole library; narrow
 with `ids`, a `query`, or a specific list of `checks`. The raw-filename findings feed straight
 into `calibre_recover_metadata`.
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `checks` | array of `missing_metadata` \| `raw_filename_title` \| `isbn_invalid` \| `author_sort_mismatch` \| `series_gaps` | *(all)* | Which checks to run |
+| `checks` | array of `missing_metadata` \| `raw_filename_title` \| `isbn_invalid` \| `author_sort_mismatch` \| `series_gaps` \| `authors_suspect` | *(all)* | Which checks to run |
 | `ids` | array of ids | — | Restrict to these books |
 | `query` | string | — | Restrict to books matching a Calibre query |
 | `filter` | string | — | Restrict to a bundle (no auto-exclusion: maintenance sees everything) |
@@ -390,7 +395,7 @@ books per call.
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
 | `changes` | object | *(required)* | Field → new value applied to every selected book |
-| `ids` | array of ids | — | Books to change (one of `ids`/`query`/`filter` required) |
+| `ids` | array of ids | — | Books to change (one of `ids`/`query`/`filter` required; `ids` cannot be combined with `query` or `filter`) |
 | `query` | string | — | Select books by a Calibre query |
 | `filter` | string | — | Select a bundle's books (no auto-exclusion on writes) |
 | `preview` | boolean | `true` | Preview the diff; set `false` to write |
@@ -493,8 +498,8 @@ query-time only — bundle changes never require a semantic re-index.
 
 Write tools are off by default and protected by two independent switches:
 
-1. **The MCP-side gate.** Write tools aren't even registered unless
-   `CALIBRE_MCP_ENABLE_WRITE` is set (`1` / `true` / `yes`), or you tick *Enable writes* in the
+1. **The MCP-side gate.** Write tools are registered but disabled — hidden from the tool list
+   and uncallable — unless `CALIBRE_MCP_ENABLE_WRITE` is set (`1` / `true` / `yes`), or you tick *Enable writes* in the
    Claude Desktop bundle settings.
 2. **The Calibre-side gate.** The Content Server must permit local writes. The server embedded
    in the Calibre GUI is read-only by default — enable *Sharing over the net → Advanced → allow
@@ -507,7 +512,7 @@ they'll do and change nothing until you explicitly confirm:
 
 | Tool | How to actually execute |
 |---|---|
-| `calibre_bulk_update` | `preview: false` (and a required `ids`/`query` selection) |
+| `calibre_bulk_update` | `preview: false` (and a required `ids`/`query`/`filter` selection) |
 | `calibre_remove_book` | `confirm: true` |
 | `calibre_merge_books` | `confirm: true` |
 | `calibre_extract_isbn` | `apply: true` |

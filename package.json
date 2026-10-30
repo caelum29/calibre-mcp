@@ -1,6 +1,6 @@
 {
   "name": "calibre-mcp",
-  "version": "0.9.0",
+  "version": "0.11.0",
   "description": "The most capable Calibre MCP server — full read/write tool surface plus library- and book-scoped semantic search.",
   "type": "module",
   "license": "MIT",
@@ -67,24 +67,24 @@
   },
   "dependencies": {
     "@modelcontextprotocol/ext-apps": "1.7.5",
-    "@modelcontextprotocol/sdk": "1.32.1",
+    "@modelcontextprotocol/sdk": "1.32.2",
     "open": "^11.0.1",
     "snowball-stemmers": "^0.6.0",
     "zod": "4.6.7"
   },
   "optionalDependencies": {
-    "@huggingface/transformers": "4.2.0"
+    "@huggingface/transformers": "4.3.1"
   },
   "devDependencies": {
-    "@modelcontextprotocol/inspector": "2.11.0",
+    "@modelcontextprotocol/inspector": "2.12.0",
     "@types/node": "24.19.2",
     "@vitest/coverage-v8": "4.1.9",
     "ajv": "8.20.0",
     "husky": "9.1.7",
-    "knip": "6.42.1",
+    "knip": "6.43.0",
     "lint-staged": "17.6.0",
-    "oxfmt": "0.74.0",
-    "oxlint": "1.89.0",
+    "oxfmt": "0.75.0",
+    "oxlint": "1.90.0",
     "tsx": "4.23.15",
     "typescript": "5.9.3",
     "vitest": "4.1.9"

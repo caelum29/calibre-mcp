@@ -4,7 +4,8 @@
 
 import { CalibreCliError } from "../domain/errors.js";
 
-const WRITE_REFUSED = /forbidden|unauthorized|\b401\b|\b403\b/i;
+// calibredb never prints "401" for an auth-enabled server, only the credentials prompt (#237)
+const WRITE_REFUSED = /forbidden|unauthorized|\b401\b|\b403\b|username and password is required/i;
 
 /** True when a calibredb failure looks like the server refusing an anonymous write. */
 export function isWriteRefused(err: unknown): boolean {

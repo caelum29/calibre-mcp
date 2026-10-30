@@ -39,4 +39,8 @@ export interface Proposal {
   fields: ProposedField[];
   /** Subset shaped for calibre_update_book's `changes` input (allowlisted fields only). */
   changes: Record<string, ChangeValue>;
+  /** Effective confidence of the proposal (the hit's, lowered on a title mismatch). Unset without a hit. */
+  confidence?: number;
+  /** Reasons to distrust the proposal (e.g. the hit's title doesn't match the book). Unset without a hit. */
+  warnings?: string[];
 }

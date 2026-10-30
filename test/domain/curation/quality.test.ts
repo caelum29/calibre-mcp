@@ -44,6 +44,19 @@ describe("runQualityChecks", () => {
     expect(checksOf([book({ title: "top.dvi" })])).toContain("raw_filename_title");
   });
 
+  it("flags slugs, digit-pair ids, placeholders, and author-suffix titles (issue #200)", () => {
+    expect(checksOf([book({ title: "215479-01" })])).toContain("raw_filename_title");
+    expect(checksOf([book({ title: "pro-vim-2014" })])).toContain("raw_filename_title");
+    expect(checksOf([book({ title: "bdd-in-action" })])).toContain("raw_filename_title");
+    expect(checksOf([book({ title: "Cover" })])).toContain("raw_filename_title");
+    expect(checksOf([book({ title: "book (3)" })])).toContain("raw_filename_title");
+    expect(
+      checksOf([book({ title: "Go Design Patterns (Mario Castro Contreras)", authors: ["Mario Castro Contreras"] })]),
+    ).toContain("raw_filename_title");
+    // Ordinary titles are not flagged.
+    expect(checksOf([book({ title: "Head First Design Patterns" })])).not.toContain("raw_filename_title");
+  });
+
   it("flags an invalid ISBN but not a valid one", () => {
     expect(checksOf([book({ identifiers: { isbn: "9780306406158" } })])).toContain("isbn_invalid");
     expect(checksOf([book({ identifiers: { isbn: "9780306406157" } })])).not.toContain("isbn_invalid");
@@ -64,5 +77,47 @@ describe("runQualityChecks", () => {
   it("honors the checks filter", () => {
     const issues = runQualityChecks([book({ title: "12345", identifiers: {} })], ["raw_filename_title"]);
     expect(issues.every((i) => i.check === "raw_filename_title")).toBe(true);
+  });
+});
+
+// #201: imported records carry glued multi-person strings, years and "NAME;" as authors.
+describe("runQualityChecks — suspect authors (#201)", () => {
+  const suspect = (authors: string[]) =>
+    runQualityChecks([book({ authors, authorSort: undefined })], ["authors_suspect"]);
+
+  it("flags a glued multi-person author string, naming the value", () => {
+    const [issue] = suspect(["Petre, Marian,Hoek, André van der,Quach, Yen"]);
+    expect(issue).toMatchObject({ check: "authors_suspect", severity: "warn", bookId: 1 });
+    expect(issue!.message).toContain("Petre, Marian,Hoek, André van der,Quach, Yen");
+  });
+
+  it("flags a year-only author", () => {
+    expect(suspect(["2007"]).map((i) => i.check)).toEqual(["authors_suspect"]);
+  });
+
+  it("flags a semicolon-suffixed author", () => {
+    expect(suspect(["PRESSMAN;"]).map((i) => i.check)).toEqual(["authors_suspect"]);
+  });
+
+  it("raises one issue per book even with several suspect authors", () => {
+    expect(suspect(["2007", "Jez Humble, Joanne Molesky"])).toHaveLength(1);
+  });
+
+  it("does not flag ordinary names or the Unknown placeholder", () => {
+    expect(suspect(["Paul Graham", "André van der Hoek", "Unknown"])).toEqual([]);
+  });
+
+  it("runs as part of the default check set", () => {
+    expect(checksOf([book({ authors: ["2007"], authorSort: undefined })])).toContain("authors_suspect");
+  });
+
+  it("counts a year-only author as missing authors in missing_metadata", () => {
+    const [missing] = runQualityChecks([book({ authors: ["2007"], authorSort: undefined })], ["missing_metadata"]);
+    expect(missing!.message).toBe("Missing metadata: authors.");
+  });
+
+  it("does not run when another check is requested explicitly", () => {
+    const issues = runQualityChecks([book({ authors: ["2007"], authorSort: undefined })], ["isbn_invalid"]);
+    expect(issues).toEqual([]);
   });
 });

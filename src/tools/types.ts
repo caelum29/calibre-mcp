@@ -13,7 +13,7 @@ import type { Reranker } from "../semantic/reranker.js";
 import type { IndexStore } from "../semantic/store.js";
 import type { Provider } from "../enrich/provider.js";
 import type { BoardCache } from "../ui/board-cache.js";
-import type { log } from "../logging.js";
+import type { LogSink } from "../logging.js";
 
 export interface TextBlock {
   type: "text";
@@ -81,7 +81,9 @@ export interface ToolDeps {
   boardCache?: BoardCache;
   /** External metadata providers for recovery. Defaulted in-handler; injectable for tests. */
   providers?: Record<Provider["name"], Provider>;
-  log: typeof log;
+  /** Pause between transient-write retries (#233). Defaulted to setTimeout; injectable for tests. */
+  sleep?: (ms: number) => Promise<void>;
+  log: LogSink;
 }
 
 /**

@@ -67,6 +67,7 @@ type SeqClassifier = (inputs: Record<string, unknown>) => Promise<{
   logits: { sigmoid(): { tolist(): number[][] } };
 }>;
 
+/** Cross-encoder reranker backed by transformers.js; lazily loads the optional model on first use. */
 export class TransformersReranker implements Reranker {
   #loaded?: Promise<{ tokenizer: PairTokenizer; model: SeqClassifier }>;
   // One rerank call at a time, FIFO: concurrent calls would interleave forwards and all finish late.

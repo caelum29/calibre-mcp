@@ -3,6 +3,8 @@
 // metadata-only rules that run library-wide; full-text checks (readability) are deferred.
 
 import type { Book } from "../book.js";
+import { looksLikeRawFilename } from "../enrich/filename-guess.js";
+import { authorSuspectReason, type AuthorSuspectReason } from "./authors.js";
 import { isValidIsbn } from "./isbn.js";
 import { authorToAuthorSort } from "./normalize.js";
 
@@ -11,7 +13,8 @@ export type QualityCheck =
   | "raw_filename_title"
   | "isbn_invalid"
   | "author_sort_mismatch"
-  | "series_gaps";
+  | "series_gaps"
+  | "authors_suspect";
 
 export const ALL_CHECKS: QualityCheck[] = [
   "missing_metadata",
@@ -19,6 +22,7 @@ export const ALL_CHECKS: QualityCheck[] = [
   "isbn_invalid",
   "author_sort_mismatch",
   "series_gaps",
+  "authors_suspect",
 ];
 
 export interface Issue {
@@ -29,9 +33,12 @@ export interface Issue {
   message: string;
 }
 
-/** Author list is effectively empty (unset or the Calibre "Unknown" placeholder). */
+/** Author list is effectively empty (unset, the Calibre "Unknown" placeholder, or letter-less junk). */
 function authorsMissing(book: Book): boolean {
-  const real = book.authors.filter((a) => a && a.trim().toLowerCase() !== "unknown");
+  // a year/number author ("2007") comes from the filename, not a person (#201)
+  const real = book.authors.filter(
+    (a) => a && a.trim().toLowerCase() !== "unknown" && authorSuspectReason(a) !== "no-letters",
+  );
   return real.length === 0;
 }
 
@@ -53,23 +60,37 @@ function checkMissingMetadata(book: Book): Issue | undefined {
   };
 }
 
-const ASIN_RE = /^B0[A-Z0-9]{8}$/;
-const EXT_RE = /\.(pdf|epub|mobi|azw3?|dvi|djvu|txt|doc|docx|fb2|cbz|cbr|rtf)$/i;
-
 /** Title looks like a leftover filename/identifier rather than a real title. */
 function checkRawFilenameTitle(book: Book): Issue | undefined {
-  const t = book.title.trim();
-  if (!t) return undefined;
-  const isDigits = /^\d+$/.test(t);
-  const isAsin = ASIN_RE.test(t);
-  const isFile = EXT_RE.test(t);
-  if (!isDigits && !isAsin && !isFile) return undefined;
+  if (!looksLikeRawFilename(book.title, book.authors)) return undefined;
   return {
     bookId: book.id,
     title: book.title,
     check: "raw_filename_title",
     severity: "warn",
     message: "Title looks like a raw filename/identifier; run calibre_recover_metadata.",
+  };
+}
+
+const SUSPECT_HINT: Record<AuthorSuspectReason, string> = {
+  comma: 'several people glued together or an unflipped "Last, First"',
+  semicolon: 'importer residue (";")',
+  "no-letters": "no letters (a year or number from the filename)",
+};
+
+/** One or more author values look glued, flipped or junk (#201). One issue per book. */
+function checkAuthorsSuspect(book: Book): Issue | undefined {
+  const bad = book.authors.flatMap((a) => {
+    const reason = authorSuspectReason(a);
+    return reason ? [`"${a}" (${SUSPECT_HINT[reason]})`] : [];
+  });
+  if (bad.length === 0) return undefined;
+  return {
+    bookId: book.id,
+    title: book.title,
+    check: "authors_suspect",
+    severity: "warn",
+    message: `Suspect author value(s): ${bad.join("; ")}. Fix with calibre_update_book (one person per author, "First Last").`,
   };
 }
 
@@ -155,6 +176,7 @@ export function runQualityChecks(books: Book[], checks: QualityCheck[] = ALL_CHE
   if (enabled.has("raw_filename_title")) perBook.push(checkRawFilenameTitle);
   if (enabled.has("isbn_invalid")) perBook.push(checkIsbnInvalid);
   if (enabled.has("author_sort_mismatch")) perBook.push(checkAuthorSortMismatch);
+  if (enabled.has("authors_suspect")) perBook.push(checkAuthorsSuspect);
 
   const issues: Issue[] = [];
   for (const b of books) {

@@ -7,7 +7,10 @@ import { describe, it, expect, vi } from "vitest";
 import { z } from "zod";
 import { mergeBooksTool } from "../../src/tools/calibre_merge_books.js";
 import { loadConfig } from "../../src/config.js";
-import { log } from "../../src/logging.js";
+import { log, type LogSink } from "../../src/logging.js";
+
+// Typed as the narrow sink ToolDeps expects (an annotation, not a cast).
+const sink: LogSink = log;
 import type { Book } from "../../src/domain/book.js";
 import type { CustomFieldValue } from "../../src/domain/merge.js";
 import { CalibreCliError, CalibreCliTimeoutError, CalibreHttpError } from "../../src/domain/errors.js";
@@ -85,7 +88,7 @@ function fakeDeps(opts: FakeOpts = {}) {
     content: content as unknown as ToolDeps["content"],
     calibre: { calibredb: spy } as unknown as ToolDeps["calibre"],
     extractor: {} as unknown as ToolDeps["extractor"],
-    log,
+    log: sink,
   } as ToolDeps;
   return { deps, spy, calls };
 }
@@ -263,6 +266,43 @@ describe("calibre_merge_books failure semantics (#33)", () => {
     });
     const r = await run({ targetId: 10, sourceIds: [12], confirm: true }, d);
     expect(r.structuredContent?.status).toBe("merged");
+  });
+
+  it("verifies a timed-out metadata merge against a re-read and proceeds to remove when landed", async () => {
+    const d = fakeDeps({
+      calibredb: async (args) => {
+        if (args[0] === "set_metadata") throw new CalibreCliTimeoutError("timeout");
+        return { stdout: "", stderr: "" };
+      },
+      // re-read shows the merged tags/identifiers on the target → the write committed
+      getBook: async (id) =>
+        book({
+          id,
+          formats: ["epub", "pdf"],
+          tags: ["t1", "t2"],
+          identifiers: { isbn: "111", doi: "d1" },
+          comments: "dest c\n\nsrc c",
+        }),
+    });
+    const r = await run({ targetId: 10, sourceIds: [12], confirm: true }, d);
+    expect(r.structuredContent?.status).toBe("merged");
+    expect(d.calls.map((c) => c[0])).toEqual(["add_format", "set_metadata", "remove"]);
+  });
+
+  it("keeps sources when a timed-out metadata merge is not confirmed by the re-read", async () => {
+    const d = fakeDeps({
+      calibredb: async (args) => {
+        if (args[0] === "set_metadata") throw new CalibreCliTimeoutError("timeout");
+        return { stdout: "", stderr: "" };
+      },
+      // formats landed, but tags/identifiers still show the pre-merge target values
+      getBook: async (id) => book({ id, formats: ["epub", "pdf"], tags: ["t1"], identifiers: { isbn: "111" } }),
+    });
+    const r = await run({ targetId: 10, sourceIds: [12], confirm: true }, d);
+    expect(r.isError).toBeFalsy(); // the format move already committed (#33)
+    expect(r.structuredContent?.status).toBe("incomplete");
+    expect(d.calls.map((c) => c[0])).toEqual(["add_format", "set_metadata"]);
+    expect((r.content[0] as { text: string }).text).toContain("calibre_get_book id=10");
   });
 
   it("returns the write-refused steer when the server blocks writes", async () => {

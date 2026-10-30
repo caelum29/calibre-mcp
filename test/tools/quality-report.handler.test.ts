@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
@@ -97,5 +98,94 @@ describe("calibre_quality_report handler", () => {
   it("notes readability is deferred when requested", async () => {
     const r = await qualityReportTool.handler(args({ readability: true }), deps([book()]));
     expect((r.content[0] as { text: string }).text).toContain("readability");
+  });
+
+  // #212: the Cowork serialization bug stringifies booleans — "true" must still opt in.
+  it('accepts readability as the string "true" and notes the deferral', async () => {
+    const parsed = z.object(qualityReportTool.inputSchema).safeParse({ readability: "true" });
+    expect(parsed.success).toBe(true);
+    const r = await qualityReportTool.handler(parsed.data!, deps([book()]));
+    expect((r.content[0] as { text: string }).text).toContain("readability check is deferred");
+  });
+
+  it('reads readability "false" as false (no deferral note)', async () => {
+    const parsed = z.object(qualityReportTool.inputSchema).safeParse({ readability: "false" });
+    expect(parsed.success).toBe(true);
+    expect(parsed.data!.readability).toBe(false);
+    const r = await qualityReportTool.handler(parsed.data!, deps([book()]));
+    expect((r.content[0] as { text: string }).text).not.toContain("readability");
+  });
+});
+
+// issue #211 — the issue-page cursor must reach text-only clients (Desktop), outside the fence
+describe("calibre_quality_report cursor in text (#211)", () => {
+  const raw = Array.from({ length: 5 }, (_, i) =>
+    book({ id: i + 1, title: `${1000 + i}`, identifiers: {}, tags: [], publisher: undefined, pubdate: undefined }),
+  );
+
+  it("ends with the continue-with-cursor line carrying nextCursor", async () => {
+    const r = await qualityReportTool.handler(args({ limit: 3, checks: ["raw_filename_title"] }), deps(raw));
+    const cursor = r.structuredContent?.nextCursor as string;
+    expect(cursor).toBeTypeOf("string");
+    expect(r.content.at(-1)).toEqual({ type: "text", text: `More results — continue with cursor: ${cursor}` });
+  });
+
+  it("has no cursor line on the last page", async () => {
+    const r = await qualityReportTool.handler(args({ limit: 5, checks: ["raw_filename_title"] }), deps(raw));
+    expect(r.structuredContent?.count).toBe(5);
+    expect(JSON.stringify(r.content)).not.toContain("continue with cursor");
+  });
+});
+
+// issue #199 — Claude Code shows only structuredContent, so the per-issue lines must be
+// mirrored there as issues[] (the page, same order as the text)
+describe("calibre_quality_report issues[] in structuredContent (#199)", () => {
+  interface Issue {
+    bookId: number;
+    title: string;
+    check: string;
+    severity: string;
+    message: string;
+  }
+  const text = (r: { content: unknown[] }): string => (r.content[0] as { text: string }).text;
+  const raw = Array.from({ length: 3 }, (_, i) => book({ id: i + 1, title: `${1000 + i}` }));
+
+  it("mirrors each issue line of the page", async () => {
+    const r = await qualityReportTool.handler(args({ checks: ["raw_filename_title"] }), deps(raw));
+    const issues = r.structuredContent?.issues as Issue[];
+    expect(issues.map((i) => [i.bookId, i.title, i.check])).toEqual([
+      [1, "1000", "raw_filename_title"],
+      [2, "1001", "raw_filename_title"],
+      [3, "1002", "raw_filename_title"],
+    ]);
+    for (const i of issues) {
+      expect(text(r)).toContain(`[${i.severity}] #${i.bookId} "${i.title}" — ${i.check}: ${i.message}`);
+    }
+  });
+
+  it("carries only the current page's issues", async () => {
+    const first = await qualityReportTool.handler(args({ limit: 2, checks: ["raw_filename_title"] }), deps(raw));
+    const second = await qualityReportTool.handler(
+      args({ limit: 2, checks: ["raw_filename_title"], cursor: first.structuredContent?.nextCursor }),
+      deps(raw),
+    );
+    const issues = second.structuredContent?.issues as Issue[] | undefined;
+    expect(issues?.map((i) => i.bookId)).toEqual([3]);
+  });
+
+  it("returns an empty issues[] on a clean library", async () => {
+    const r = await qualityReportTool.handler(args(), deps([book()]));
+    expect(r.structuredContent?.issues).toEqual([]);
+  });
+});
+
+// #227 — the report stays one fenced text block (titles are untrusted book data)
+describe("calibre_quality_report report block", () => {
+  it("renders the report as a fenced QUALITY REPORT text block", async () => {
+    const r = await qualityReportTool.handler(args(), deps([book()]));
+    expect(r.content[0]).toEqual({
+      type: "text",
+      text: expect.stringContaining("--- BEGIN UNTRUSTED QUALITY REPORT"),
+    });
   });
 });

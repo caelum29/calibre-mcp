@@ -62,7 +62,8 @@ describe("stdio server lifetime", () => {
     const tsx = createRequire(import.meta.url).resolve("tsx");
     const entry = fileURLToPath(new URL("../src/run-stdio.ts", import.meta.url));
     const child = spawn(process.execPath, ["--import", tsx, entry], {
-      env: { ...process.env, CALIBRE_MCP_SERVER_URL: "http://127.0.0.1:9" },
+      // :memory: index → no file sink, so this test never writes into the real logs dir.
+      env: { ...process.env, CALIBRE_MCP_SERVER_URL: "http://127.0.0.1:9", CALIBRE_MCP_INDEX_DIR: ":memory:" },
       stdio: ["pipe", "pipe", "pipe"],
     });
     let stderr = "";

@@ -9,6 +9,7 @@
 
 import path from "node:path";
 import type { Config } from "../config.js";
+import { log } from "../logging.js";
 import { ACTIVE_MODEL, type EmbeddingModelSpec } from "./model.js";
 import { InferenceQueue } from "./queue.js";
 import { l2normalize } from "./vector.js";
@@ -85,6 +86,7 @@ const BATCH = 10;
 /** The optional-dep boundary, injectable so tests can simulate load failures. */
 export type TransformersLoader = () => Promise<typeof import("@huggingface/transformers")>;
 
+/** Embedder backed by transformers.js; lazily loads the optional model on first use. */
 export class TransformersEmbedder implements Embedder {
   #loaded?: Promise<Loaded>;
   // Captured on load so countTokens can stay sync (chunking calls it in a tight loop).
@@ -142,16 +144,23 @@ export class TransformersEmbedder implements Embedder {
       // recover and only surfaces a mutated, misleading error — installing the package
       // requires a server restart. Any other failure (e.g. a flaky model download) may be
       // transient, so forget it and let the next call retry.
+      const t0 = performance.now();
       this.#loaded = this.#load()
         .then((loaded) => {
           this.#loadState = "loaded";
+          log.info("embedding model loaded", { model: ACTIVE_MODEL.id, ms: Math.round(performance.now() - t0) });
           return loaded;
         })
         .catch((err: unknown) => {
           if (err instanceof Error && err.message === "EMBEDDER_UNAVAILABLE") {
             // Dep missing → process-permanent (negative cache); a restart is the only fix.
             this.#loadState = "failed";
+            log.warn("embedding model unavailable", {
+              reason: "@huggingface/transformers not installed",
+              hint: "install it into the server dir, then restart the server",
+            });
           } else {
+            log.warn("embedding model load failed — will retry on next use", { err });
             // Transient (e.g. flaky download) — forget so the next call can retry.
             this.#loaded = undefined;
           }
@@ -176,15 +185,24 @@ export class TransformersEmbedder implements Embedder {
     mod.env.cacheDir = path.join(this.cfg.indexDir, "models");
     mod.env.allowRemoteModels = true;
 
-    const { id, dtype, pooling } = ACTIVE_MODEL;
+    const { id, dtype, pooling, textOnly } = ACTIVE_MODEL;
     let loaded: Loaded;
     if (pooling === "baked-in") {
       // Graph emits `sentence_embedding` (card usage: AutoTokenizer + AutoModel) —
       // running this through the feature-extraction pipeline would re-pool token states
       // and silently skip the model's own projection layers.
       const tokenizer = (await mod.AutoTokenizer.from_pretrained(id)) as unknown as BatchTokenizer;
+      let config: Awaited<ReturnType<typeof mod.AutoConfig.from_pretrained>> | undefined;
+      if (textOnly) {
+        // Multimodal checkpoint (EmbeddingGemma 2): encoders load only when their sub-config
+        // is present — dropping them skips ~536 MB of unused vision/audio weights.
+        config = await mod.AutoConfig.from_pretrained(id);
+        const c = config as unknown as Record<string, unknown>;
+        c.vision_config = c.audio_config = null;
+      }
       const model = (await mod.AutoModel.from_pretrained(id, {
         dtype,
+        ...(config && { config }),
       })) as unknown as SentenceEmbeddingModel;
       loaded = {
         embed: async (texts) => {

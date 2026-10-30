@@ -14,6 +14,7 @@ import {
 } from "../domain/errors.js";
 import type { FtsHit } from "../domain/search.js";
 import { log } from "../logging.js";
+import { redactArgvEchoes, summarizeArgv } from "../call-log.js";
 import { SpawnAbortedError, spawnCollect, SpawnTimeoutError } from "./spawn.js";
 
 export interface CalibreClientOptions {
@@ -80,6 +81,7 @@ export function parseFtsResults(stdout: string): FtsHit[] {
   }));
 }
 
+/** Shells out to `calibredb` (routed through the Content Server URL) and Calibre CLI tools. */
 export class CalibreClient {
   constructor(private readonly cfg: Config) {}
 
@@ -117,24 +119,28 @@ export class CalibreClient {
         );
       }
       if (err instanceof SpawnAbortedError) {
-        log.info("calibredb cancelled", { args });
+        log.info("calibredb cancelled", { argv: summarizeArgv(args) });
         throw new OperationCancelledError();
       }
       // A hung child (worker grandchild) is now force-killed as a group and surfaced
       // as a settled error instead of an infinite hang (spawn.ts).
       if (err instanceof SpawnTimeoutError) {
-        log.error("calibredb timed out", { args, timeoutMs: opts.timeoutMs ?? 30_000 });
+        log.error("calibredb timed out", { argv: summarizeArgv(args), timeoutMs: opts.timeoutMs ?? 30_000 });
         // Timeout subclass: for routed writes the server may have committed already,
         // so write tools must verify rather than assume failure (issue #33).
         throw new CalibreCliTimeoutError("calibredb command timed out");
       }
-      log.error("calibredb spawn failed", { args, msg: (err as Error).message });
+      log.error("calibredb spawn failed", { argv: summarizeArgv(args), msg: (err as Error).message });
       throw new CalibreCliError(null, "calibredb command failed");
     }
     if (result.code !== 0) {
       // Forbidden/write-refused text can land on either stream; keep both for the classifier.
       const diag = [result.stdout, result.stderr].filter(Boolean).join("\n");
-      log.error("calibredb failed", { args, code: result.code, diag: diag.slice(0, 500) });
+      log.error("calibredb failed", {
+        argv: summarizeArgv(args),
+        code: result.code,
+        diag: redactArgvEchoes(diag, args).slice(0, 500),
+      });
       throw new CalibreCliError(result.code, "calibredb command failed", diag);
     }
     return { stdout: result.stdout, stderr: result.stderr };

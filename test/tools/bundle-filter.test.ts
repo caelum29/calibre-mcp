@@ -5,7 +5,10 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { loadConfig } from "../../src/config.js";
 import type { Book } from "../../src/domain/book.js";
 import type { FtsHit, SearchPage } from "../../src/domain/search.js";
-import { log } from "../../src/logging.js";
+import { log, type LogSink } from "../../src/logging.js";
+
+// Typed as the narrow sink ToolDeps expects (an annotation, not a cast).
+const sink: LogSink = log;
 import { buildScopedQuery, invalidateBundleCache, resolveFilter, scopeExpression } from "../../src/tools/bundles.js";
 import { searchTool } from "../../src/tools/calibre_search.js";
 import type { ToolDeps } from "../../src/tools/types.js";
@@ -59,7 +62,7 @@ function fake(opts: FakeOpts = {}) {
     content: content as unknown as ToolDeps["content"],
     calibre: calibre as unknown as ToolDeps["calibre"],
     extractor: {} as unknown as ToolDeps["extractor"],
-    log,
+    log: sink,
   } as ToolDeps;
   return { deps, queries };
 }

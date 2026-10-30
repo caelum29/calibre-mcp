@@ -110,7 +110,7 @@ describe("computeSemanticStatus", () => {
     expect(s.chunkCount).toBe(3);
     expect(s.figureCount).toBe(0);
     expect(formatSemanticStatusLine(s)).toBe(
-      "Semantic search: UNAVAILABLE — model multilingual-e5-small NOT LOADED (@huggingface/transformers not installed — install it, then restart the server); index v3: 1 books / 3 chunks / 0 figures, 3 vectors (keyword search still works).",
+      `Semantic search: UNAVAILABLE — model multilingual-e5-small NOT LOADED (@huggingface/transformers not installed — install it, then restart the server); index v${INDEX_VERSION}: 1 books / 3 chunks / 0 figures, 3 vectors (keyword search still works).`,
     );
   });
 
@@ -127,7 +127,7 @@ describe("computeSemanticStatus", () => {
     expect(s.vectorCount).toBe(3);
     expect(s.reason).toBeUndefined();
     expect(formatSemanticStatusLine(s)).toBe(
-      "Semantic search: ready (multilingual-e5-small, 384-dim); index v3: 1 books / 3 chunks / 0 figures, 3 vectors.",
+      `Semantic search: ready (multilingual-e5-small, 384-dim); index v${INDEX_VERSION}: 1 books / 3 chunks / 0 figures, 3 vectors.`,
     );
   });
 
@@ -156,6 +156,14 @@ describe("computeSemanticStatus", () => {
     expect(s.indexedBooks).toBe(1);
     expect(s.vectorCount).toBe(0);
     expect(formatSemanticStatusLine(s)).toContain("run calibre_build_index");
+  });
+
+  it("mixed index: names the books indexed without embeddings and the no-force fix (#197)", () => {
+    const store = memoryStore(3); // book 1: fully embedded
+    store.replaceBook(LIB, { bookId: 2, title: "Go", authors: [] }, [{ body: "kw", charStart: 0, charEnd: 2 }]);
+    const s = computeSemanticStatus({ config: memCfg, embedder: embedder("loaded"), index: store }, LIB, depDir(true));
+    expect(s.booksWithoutVectors).toBe(1);
+    expect(formatSemanticStatusLine(s)).toContain("1 book(s) indexed WITHOUT embeddings");
   });
 
   it("no index at all → counts omitted (never creates a db file)", () => {

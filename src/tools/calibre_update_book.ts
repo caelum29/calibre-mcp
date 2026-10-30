@@ -4,7 +4,7 @@
 // classifies a server write-refusal into an actionable message (CAPABILITIES §2).
 
 import { z } from "zod";
-import { bookFieldValue, buildSetMetadataArgs, changesSatisfied, isAllowedField } from "../calibre/metadata-fields.js";
+import { bookFieldValue, buildSetMetadataArgs, isAllowedField, sameFieldValue } from "../calibre/metadata-fields.js";
 import type { ChangeValue } from "../calibre/metadata-fields.js";
 import type { Book } from "../domain/book.js";
 import { CalibreCliTimeoutError } from "../domain/errors.js";
@@ -12,8 +12,11 @@ import { BookId, jsonRecord } from "./coerce.js";
 import { defineTool } from "./define.js";
 import type { ToolDeps, ToolResult } from "./types.js";
 import { bookIdArg, resolveNumericId } from "./resolve-id.js";
-import { toolError, toolOk } from "./result.js";
+import { fence, toolError, toolOk } from "./result.js";
 import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "./write-refusal.js";
+import { classifyTransient, describeTransient, withTransientRetry } from "./write-retry.js";
+import { verifyTimedOutWrite } from "./write-verify.js";
+import type { TimedOutWrite } from "./write-verify.js";
 
 // One field's new value: scalar, multi-value list, or identifiers map. -32602-hardened
 // via jsonRecord (the whole `changes` object may arrive as a JSON string).
@@ -68,15 +71,18 @@ export const updateBookTool = defineTool({
       const libId = await deps.content.resolveLibraryId(args.library);
 
       try {
-        await deps.calibre.calibredb(buildSetMetadataArgs(numericId, changes), {
-          library: libId,
-        });
+        // set_metadata is idempotent, so a transient failure (server restarting) is retried (#233)
+        await withTransientRetry(
+          () => deps.calibre.calibredb(buildSetMetadataArgs(numericId, changes), { library: libId }),
+          deps.sleep,
+        );
       } catch (err) {
         if (isWriteRefused(err)) return toolError(WRITE_REFUSED_MESSAGE);
+        if (classifyTransient(err)) return toolError(describeTransient(err, numericId));
         // A routed write commits server-side BEFORE calibredb replies, so a timeout is
         // ambiguous — verify against a re-read instead of reporting failure (issue #33).
         if (err instanceof CalibreCliTimeoutError) {
-          return confirmTimedOutWrite(deps, numericId, before, changes, args.library);
+          return confirmTimedOutWrite(deps, { id: numericId, before, changes, library: args.library });
         }
         throw err;
       }
@@ -87,22 +93,21 @@ export const updateBookTool = defineTool({
       try {
         after = await deps.content.getBook(numericId, args.library);
       } catch {
-        const changed = fields.map((field) => ({
-          field,
-          before: bookFieldValue(before, field) ?? null,
-          after: changes[field] ?? null,
-        }));
-        return toolOk(
-          [
-            {
-              type: "text",
-              text:
-                `Updated book ${numericId}: ${fields.join(", ")}. ` +
-                `(diff shows intended values — the verification re-read failed)`,
-            },
-          ],
-          { id: numericId, changed, noop: false },
-        );
+        const changed = fields
+          .map((field) => ({
+            field,
+            before: bookFieldValue(before, field) ?? null,
+            after: changes[field] ?? null,
+          }))
+          .filter((c) => !sameFieldValue(c.before, c.after)); // already-current fields aren't changes (#202)
+        const noop = changed.length === 0;
+        // text must agree with `noop` — text-only clients never see structuredContent (#216)
+        const text = noop
+          ? `No changes applied to book ${numericId} (values already current). ` + `(the verification re-read failed)`
+          : `Updated book ${numericId}: ${changedNames(changed)}. ` +
+            `(diff shows intended values — the verification re-read failed)` +
+            diffText(changed);
+        return toolOk([{ type: "text", text }], { id: numericId, changed, noop });
       }
       return appliedResult(numericId, before, after, fields);
     } catch (err) {
@@ -116,16 +121,41 @@ export const updateBookTool = defineTool({
 function appliedResult(id: number, before: Book, after: Book, fields: string[]): ToolResult {
   // empty fields read back as undefined, which JSON drops — emit null so the required
   // `before`/`after` keys survive and the committed write isn't rejected by outputSchema
-  const changed = fields.map((field) => ({
-    field,
-    before: bookFieldValue(before, field) ?? null,
-    after: bookFieldValue(after, field) ?? null,
-  }));
-  const noop = changed.every((c) => JSON.stringify(c.before) === JSON.stringify(c.after));
+  const changed = fields
+    .map((field) => ({
+      field,
+      before: bookFieldValue(before, field) ?? null,
+      after: bookFieldValue(after, field) ?? null,
+    }))
+    // compare by value, not serialization — identical values are phantom diffs (#202)
+    .filter((c) => !sameFieldValue(c.before, c.after));
+  const noop = changed.length === 0;
   const summary = noop
     ? `No changes applied to book ${id} (values already current).`
-    : `Updated book ${id}: ${fields.join(", ")}.`;
-  return toolOk([{ type: "text", text: summary }], { id, changed, noop });
+    : `Updated book ${id}: ${changedNames(changed)}.`;
+  return toolOk([{ type: "text", text: summary + diffText(changed) }], { id, changed, noop });
+}
+
+// already-current fields are dropped from the diff, so the summary must not name them either (#235)
+function changedNames(changed: { field: string }[]): string {
+  return changed.map((c) => c.field).join(", ");
+}
+
+/** Longest rendered value per side; a full `comments` blob would flood the text. */
+const MAX_DIFF_VALUE = 120;
+
+/**
+ * Render the diff into the TEXT content too — Desktop strips structuredContent, so without
+ * this the model can't confirm what changed (#216). Fenced: titles/comments are book data.
+ */
+function diffText(changed: { field: string; before: unknown; after: unknown }[]): string {
+  if (changed.length === 0) return "";
+  const show = (v: unknown): string => {
+    const s = JSON.stringify(v) ?? "null";
+    return s.length > MAX_DIFF_VALUE ? `${s.slice(0, MAX_DIFF_VALUE - 1)}…` : s;
+  };
+  const lines = changed.map((c) => `${c.field}: ${show(c.before)} → ${show(c.after)}`);
+  return `\n${fence("UPDATE DIFF", lines.join("\n"))}`;
 }
 
 /**
@@ -133,24 +163,17 @@ function appliedResult(id: number, before: Book, after: Book, fields: string[]):
  * if every requested field landed, report success (never fail a committed write — issue
  * #33); otherwise return an error that steers the model to check before retrying.
  */
-async function confirmTimedOutWrite(
-  deps: ToolDeps,
-  id: number,
-  before: Book,
-  changes: Record<string, ChangeValue>,
-  library?: string,
-): Promise<ToolResult> {
-  let after: Book;
-  try {
-    after = await deps.content.getBook(id, library);
-  } catch {
+async function confirmTimedOutWrite(deps: ToolDeps, write: TimedOutWrite): Promise<ToolResult> {
+  const { id, before, changes } = write;
+  const check = await verifyTimedOutWrite(deps, write);
+  if (check.status === "unverifiable") {
     return toolError(
       `calibredb timed out and the book could not be re-read to verify. The write MAY ` +
         `have been applied — check with calibre_get_book id=${id} before retrying.`,
     );
   }
-  if (changesSatisfied(before, after, changes)) {
-    return appliedResult(id, before, after, Object.keys(changes));
+  if (check.status === "landed") {
+    return appliedResult(id, before, check.after, Object.keys(changes));
   }
   return toolError(
     `calibredb timed out and a re-read does not show the changes applied. Retry, or check ` +

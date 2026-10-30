@@ -34,3 +34,28 @@ export function decodeCursor(s: string | undefined): SearchCursor | undefined {
     return undefined;
   }
 }
+
+/** A page's continuation in both channels: the token and the text line that carries it. */
+export interface PageCursor {
+  nextCursor?: string;
+  /** "" on the last page — nothing to append. */
+  textLine: string;
+}
+
+/**
+ * The one pagination helper (#211/#227). Clients see a single channel each — Desktop text
+ * only, Code structuredContent only — so the cursor must ride in both or paging dies in one.
+ * `fetched` is the size of the page just served; `total` the full result count.
+ */
+export function pageCursor(p: {
+  offset: number;
+  fetched: number;
+  total: number;
+  query: string;
+  sort?: string;
+}): PageCursor {
+  const next = p.offset + p.fetched;
+  if (p.fetched === 0 || next >= p.total) return { nextCursor: undefined, textLine: "" };
+  const nextCursor = encodeCursor({ offset: next, query: p.query, sort: p.sort });
+  return { nextCursor, textLine: `More results — continue with cursor: ${nextCursor}` };
+}

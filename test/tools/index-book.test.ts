@@ -11,7 +11,7 @@ import type { Embedder } from "../../src/semantic/embedder.js";
 import { EMBED_DIM } from "../../src/semantic/model.js";
 import { SqliteIndexStore } from "../../src/semantic/store.js";
 import { l2normalize } from "../../src/semantic/vector.js";
-import { commitBook, prepareBook, type PreparedBook } from "../../src/tools/index-book.js";
+import { commitBook, isDbBusy, prepareBook, withBusyRetry, type PreparedBook } from "../../src/tools/index-book.js";
 import type { ToolDeps } from "../../src/tools/types.js";
 
 const LIB = "Programming_Books";
@@ -106,5 +106,47 @@ describe("prepareBook / commitBook", () => {
       },
     };
     await expect(prepareBook(d, 7, { ...opts, encoder: broken })).rejects.toThrow("EMBEDDER_UNAVAILABLE");
+  });
+});
+
+describe("withBusyRetry (#196)", () => {
+  // node:sqlite surfaces SQLITE_BUSY as an Error carrying errcode 5.
+  const busy = () => Object.assign(new Error("database is locked"), { code: "ERR_SQLITE_ERROR", errcode: 5 });
+
+  it("recognizes busy/locked sqlite errors only", () => {
+    expect(isDbBusy(busy())).toBe(true);
+    expect(isDbBusy(Object.assign(new Error("x"), { errcode: 517 }))).toBe(true); // SQLITE_BUSY_SNAPSHOT
+    expect(isDbBusy(new Error("database table is locked"))).toBe(true);
+    expect(isDbBusy(new Error("EXTRACT_FAILED"))).toBe(false);
+    expect(isDbBusy(Object.assign(new Error("constraint"), { errcode: 19 }))).toBe(false);
+  });
+
+  it("retries a busy commit once, then succeeds", async () => {
+    let calls = 0;
+    const out = await withBusyRetry(() => {
+      if (++calls === 1) throw busy();
+      return "ok";
+    }, 1);
+    expect(out).toBe("ok");
+    expect(calls).toBe(2);
+  });
+
+  it("gives up after the second busy, and never retries other errors", async () => {
+    let calls = 0;
+    await expect(
+      withBusyRetry(() => {
+        calls++;
+        throw busy();
+      }, 1),
+    ).rejects.toThrow(/locked/);
+    expect(calls).toBe(2);
+    calls = 0;
+    await expect(
+      withBusyRetry(() => {
+        calls++;
+        throw new Error("EXTRACT_FAILED");
+      }, 1),
+    ).rejects.toThrow("EXTRACT_FAILED");
+    expect(calls).toBe(1);
   });
 });

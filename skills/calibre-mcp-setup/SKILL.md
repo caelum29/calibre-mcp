@@ -175,6 +175,13 @@ Triage the `semantic` block (don't just echo it):
 | `dependencyInstalled: true, loaded: "failed"` / `restartRequired: true` | Dep is on disk but this process can't use it — **restart the server**; nothing else fixes it |
 | `modelCached: false` | First embedding build will download the ~118 MB model — set expectations |
 | `vectorCount` 0 / missing with dep OK | No semantic index yet — offer `calibre_build_index` (Phase 4) |
+| `recent errors: N` with N > 0 | Server-side failures this process logged — read each line (tool, `call` id, cause) before guessing; the cause is usually named there |
+
+**Logs** — when ping's errors don't explain the failure and you can read files: ping's
+`log file:` line names today's JSONL (one JSON object per line, under `<data dir>/logs/`,
+Phase 4 locations). Read the `README.md` in that folder first — it is the schema and `jq`
+recipes for the installed version; follow one failing call end to end by its `call` id.
+For more detail the user sets `CALIBRE_MCP_LOG_LEVEL=debug` and restarts the server.
 
 A client can't see a server registered mid-session: if `calibre_ping` isn't available
 here, say so, and give the user the exact post-restart check ("restart, then ask: *ping
@@ -220,6 +227,7 @@ shared data dir, restart, rebuild the index. Never delete the Calibre library it
 phase 0: node <ver> | calibredb <ver> @ <path> | content-server OK/FAIL | pdftotext yes/no
 phase 2: <client(s)> → <command results>
 phase 3: <calibre_ping block, or the post-restart instruction>
+recent errors: <N | top msg + tool, or none>
 write gates: MCP ON/OFF | calibre-side local-write ON/OFF/unknown (user's decision)
 offered, not run: <list>
 stops hit: <list or none>

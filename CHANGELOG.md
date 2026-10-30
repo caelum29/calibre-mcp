@@ -9,6 +9,50 @@ inserts its generated section above the newest entry. Hand-written notes still g
 `[Unreleased]`; when merging a release PR, fold them into the generated section and leave
 `[Unreleased]` empty.
 
+## [0.11.0](https://github.com/caelum29/calibre-mcp/compare/v0.10.0...v0.11.0) (2026-10-30)
+
+
+### Added
+
+* **observability:** agent-readable JSONL logs in `<index dir>/logs/calibre-mcp-YYYY-MM-DD.jsonl` — one record per tool call with timing and outcome, daily rotation with retention, calibredb argv/diag redacted; `calibre_ping` now reports `recentErrors`. Level via `CALIBRE_MCP_LOG_LEVEL` ([#247](https://github.com/caelum29/calibre-mcp/issues/247))
+* **semantic:** EmbeddingGemma 2 (768/256) available as evaluation candidates; the default model stays `multilingual-e5-small` ([#139](https://github.com/caelum29/calibre-mcp/issues/139), [#209](https://github.com/caelum29/calibre-mcp/pull/209))
+
+
+### Changed
+
+* **logging:** stderr lines are now the same JSON objects as the log files, prefixed `[calibre-mcp] ` (was `[calibre-mcp] LEVEL msg {json}`). If you grep the host log (e.g. Claude Desktop's `main.log`) for `ERROR`, match `"lvl":"error"` instead ([#247](https://github.com/caelum29/calibre-mcp/issues/247), [#250](https://github.com/caelum29/calibre-mcp/pull/250))
+
+
+### Fixed
+
+* **writes:** transient calibredb errors are retried on idempotent writes; a connection dropped mid-request is reported as "may have committed" instead of failed ([#233](https://github.com/caelum29/calibre-mcp/issues/233))
+* **writes:** the #33 timeout-verify path is shared by every write tool, so a timed-out write is checked against a re-read everywhere ([#221](https://github.com/caelum29/calibre-mcp/issues/221)); that re-read now compares fields the same way the diff does, so a committed clear or a reordered identifiers map is no longer reported as not landed ([#254](https://github.com/caelum29/calibre-mcp/pull/254))
+* **writes:** calibredb's 401 credentials prompt is classified as a write refusal with a fix-it steer ([#237](https://github.com/caelum29/calibre-mcp/issues/237))
+* **update-book:** no-op fields are dropped from the diff, empty and absent values compare equal, the summary names only fields that changed, and an empty unverified diff says "no-op" ([#202](https://github.com/caelum29/calibre-mcp/issues/202), [#216](https://github.com/caelum29/calibre-mcp/issues/216), [#235](https://github.com/caelum29/calibre-mcp/issues/235))
+* **bulk-update:** a mid-loop refusal keeps already-committed books visible and hands back `retryIds` with a re-run steer; `ids` combined with `query` is rejected; per-id errors collapse to one bounded line ([#213](https://github.com/caelum29/calibre-mcp/issues/213), [#214](https://github.com/caelum29/calibre-mcp/issues/214), [#216](https://github.com/caelum29/calibre-mcp/issues/216))
+* **tools:** one result model for text and `structuredContent` — `nextCursor`, update diffs, quality issues, FTS snippets, duplicate groups and compare diffs now appear in both channels, and book-scope search / `build_index` text names the book ids ([#199](https://github.com/caelum29/calibre-mcp/issues/199), [#211](https://github.com/caelum29/calibre-mcp/issues/211), [#227](https://github.com/caelum29/calibre-mcp/issues/227), [#234](https://github.com/caelum29/calibre-mcp/issues/234))
+* **quality-report:** a stringified `readability` boolean is coerced instead of rejected ([#212](https://github.com/caelum29/calibre-mcp/issues/212))
+* **metadata:** ISBN recovery skips ad/catalog ISBNs and flags hits whose title disagrees (titles agree on a subset or 2+ shared significant words, EN/RU stop-words ignored); provider authors are normalized, an author list is weak only when every entry is suspect, author-as-publisher is dropped, and ISBN-13 is emitted ([#198](https://github.com/caelum29/calibre-mcp/issues/198), [#201](https://github.com/caelum29/calibre-mcp/issues/201))
+* **curation:** more raw-filename title patterns are detected ([#207](https://github.com/caelum29/calibre-mcp/issues/207))
+* **ui:** the cover-board cache is keyed by library and filter, so boards from different libraries no longer collide ([#215](https://github.com/caelum29/calibre-mcp/issues/215))
+
+## [0.10.0](https://github.com/caelum29/calibre-mcp/compare/v0.9.0...v0.10.0) (2026-10-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* **semantic:** transformers.js 4.3.1 + INDEX_VERSION 4 (re-index required) ([#194](https://github.com/caelum29/calibre-mcp/issues/194))
+
+### Added
+
+* **semantic:** transformers.js 4.3.1 + INDEX_VERSION 4 (re-index required) ([#194](https://github.com/caelum29/calibre-mcp/issues/194)) ([290c803](https://github.com/caelum29/calibre-mcp/commit/290c8034377c74c506078c1fab7226b82f8a09f0))
+
+
+### Fixed
+
+* **semantic:** atomic per-book index writes + vector-aware freshness ([#197](https://github.com/caelum29/calibre-mcp/issues/197)) ([#205](https://github.com/caelum29/calibre-mcp/issues/205)) ([30c1470](https://github.com/caelum29/calibre-mcp/commit/30c14709c825f505b0a559791902208b0163fe9b))
+* **semantic:** wait on a shared index lock instead of failing ([#196](https://github.com/caelum29/calibre-mcp/issues/196)) ([#206](https://github.com/caelum29/calibre-mcp/issues/206)) ([6caf501](https://github.com/caelum29/calibre-mcp/commit/6caf5015b086deb0a2b9c6b7d107d8007d94192a))
+
 ## [0.9.0](https://github.com/caelum29/calibre-mcp/compare/v0.8.0...v0.9.0) (2026-10-23)
 
 

@@ -8,7 +8,7 @@
 
 import { z } from "zod";
 import { isValidIsbn } from "../domain/curation/isbn.js";
-import { isUsableTitle } from "../domain/enrich/filename-guess.js";
+import { isPlaceholderTitle, isUsableTitle } from "../domain/enrich/filename-guess.js";
 import { buildProposal } from "../domain/enrich/proposal.js";
 import type { ProviderHit } from "../domain/enrich/types.js";
 import { createGoogleBooks } from "../enrich/googlebooks.js";
@@ -51,6 +51,7 @@ export const recoverMetadataTool = defineTool({
     confidence: z.number().optional(),
     fieldCount: z.number().optional(),
     changes: z.record(z.string(), z.unknown()).optional(),
+    warnings: z.array(z.string()).optional(),
   },
   annotations: { readOnlyHint: true, openWorldHint: true },
   handler: async (args, deps) => {
@@ -77,7 +78,7 @@ export const recoverMetadataTool = defineTool({
       if (isbn) {
         lookupKey = `isbn:${isbn}`;
         byIsbn = true;
-      } else if (isUsableTitle(book.title)) {
+      } else if (isUsableTitle(book.title, book.authors)) {
         lookupKey = `title:${book.title}${author ? ` / ${author}` : ""}`;
         byIsbn = false;
       } else {
@@ -88,9 +89,12 @@ export const recoverMetadataTool = defineTool({
             : scan?.outcome === "no-format" || scan?.outcome === "error"
               ? " and the text scan found none (no extractable text)"
               : " (in metadata or text)";
+        // A placeholder carries no title information, so only an ISBN can identify the book.
+        const fix = isPlaceholderTitle(book.title)
+          ? `is an importer placeholder. Add an ISBN (e.g. from the book's copyright page), then retry.`
+          : `looks like a raw filename. Add an ISBN or a real title, then retry.`;
         return toolError(
-          `Nothing to look up for book ${numericId}: no ISBN${scanHint} and its title ` +
-            `"${book.title}" looks like a raw filename. Add an ISBN or a real title, then retry.`,
+          `Nothing to look up for book ${numericId}: no ISBN${scanHint} and its title "${book.title}" ${fix}`,
         );
       }
 
@@ -116,12 +120,16 @@ export const recoverMetadataTool = defineTool({
       }
 
       const proposal = buildProposal(book, hits);
-      const confidence = hits[0]!.confidence;
+      // The proposal's confidence, not the raw hit's: a title mismatch lowers it (#198).
+      const confidence = proposal.confidence ?? hits[0]!.confidence;
+      const warnings = proposal.warnings ?? [];
+      const warningLines = warnings.map((w) => `WARNING ${w}\n`).join("");
 
       if (proposal.fields.length === 0) {
         const text =
           `Book ${numericId} matched ${lookupKey} on ${usedSource} (confidence ${confidence.toFixed(2)}), ` +
-          `but its metadata is already complete — nothing to propose.`;
+          `but its metadata is already complete — nothing to propose.\n` +
+          warningLines;
         return toolOk([{ type: "text", text }], {
           bookId: numericId,
           lookupKey,
@@ -129,6 +137,7 @@ export const recoverMetadataTool = defineTool({
           confidence,
           fieldCount: 0,
           changes: {},
+          warnings,
         });
       }
 
@@ -138,6 +147,7 @@ export const recoverMetadataTool = defineTool({
       });
       const body =
         `Book #${numericId} — matched ${lookupKey} on ${usedSource} (confidence ${confidence.toFixed(2)}).\n` +
+        warningLines +
         `Proposed metadata (apply with calibre_update_book id=${numericId}):\n` +
         lines.join("\n") +
         `\n\nchanges = ${JSON.stringify(proposal.changes)}`;
@@ -154,6 +164,7 @@ export const recoverMetadataTool = defineTool({
           confidence,
           fieldCount: proposal.fields.length,
           changes: proposal.changes,
+          warnings,
         },
       );
     } catch (err) {

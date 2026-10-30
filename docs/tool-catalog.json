@@ -69,6 +69,14 @@
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {
+          "filter": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "library": {
+            "type": "string"
+          },
           "query": {
             "type": "string"
           },
@@ -254,6 +262,9 @@
             "type": "array"
           },
           "booksIndexed": {
+            "type": "number"
+          },
+          "booksPreserved": {
             "type": "number"
           },
           "booksRequested": {
@@ -450,8 +461,20 @@
           "matched": {
             "type": "number"
           },
+          "notAttempted": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          },
           "preview": {
             "type": "boolean"
+          },
+          "retryIds": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
           }
         },
         "type": "object"
@@ -594,6 +617,12 @@
       "outputSchema": {
         "additionalProperties": false,
         "properties": {
+          "bookIds": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          },
           "booksScanned": {
             "type": "number"
           },
@@ -603,8 +632,60 @@
           "count": {
             "type": "number"
           },
+          "diff": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "agree": {
+                  "type": "boolean"
+                },
+                "field": {
+                  "type": "string"
+                },
+                "values": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "field",
+                "agree",
+                "values"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
           "groupCount": {
             "type": "number"
+          },
+          "groups": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "bookIds": {
+                  "items": {
+                    "type": "number"
+                  },
+                  "type": "array"
+                },
+                "mergeSafety": {
+                  "type": "number"
+                },
+                "mixedLanguages": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "bookIds",
+                "mergeSafety",
+                "mixedLanguages"
+              ],
+              "type": "object"
+            },
+            "type": "array"
           },
           "keep": {
             "type": "number"
@@ -1421,7 +1502,7 @@
         "openWorldHint": true,
         "readOnlyHint": true
       },
-      "description": "Health check: confirms the MCP server can reach the running Calibre Content Server via calibredb, and reports semantic-search status (embedding model, dependency, index vector count). Returns library categories on success.",
+      "description": "Health check: confirms the MCP server can reach the running Calibre Content Server via calibredb, and reports semantic-search status (embedding model, dependency, index vector count). Returns library categories on success, plus the server's recent errors and its log file path for self-diagnosis.",
       "execution": {
         "taskSupport": "forbidden"
       },
@@ -1452,7 +1533,8 @@
                 "raw_filename_title",
                 "isbn_invalid",
                 "author_sort_mismatch",
-                "series_gaps"
+                "series_gaps",
+                "authors_suspect"
               ],
               "type": "string"
             },
@@ -1521,6 +1603,37 @@
           },
           "count": {
             "type": "number"
+          },
+          "issues": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "bookId": {
+                  "type": "number"
+                },
+                "check": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "severity": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "bookId",
+                "title",
+                "check",
+                "severity",
+                "message"
+              ],
+              "type": "object"
+            },
+            "type": "array"
           },
           "nextCursor": {
             "type": "string"
@@ -1615,6 +1728,12 @@
           },
           "source": {
             "type": "string"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
           }
         },
         "type": "object"
@@ -1820,6 +1939,24 @@
           },
           "filter": {
             "type": "string"
+          },
+          "hits": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "bookId": {
+                  "type": "number"
+                },
+                "snippet": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "snippet"
+              ],
+              "type": "object"
+            },
+            "type": "array"
           },
           "mode": {
             "type": "string"

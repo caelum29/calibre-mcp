@@ -8,7 +8,14 @@
 import { z } from "zod";
 import { BookId, CoercedBool, jsonArray } from "./coerce.js";
 import { defineTool } from "./define.js";
-import { commitBook, describeError, prepareBook, type BookDetail, type PrepareResult } from "./index-book.js";
+import {
+  commitBook,
+  describeError,
+  prepareBook,
+  withBusyRetry,
+  type BookDetail,
+  type PrepareResult,
+} from "./index-book.js";
 import { resolveNumericId } from "./resolve-id.js";
 import { INSTALL_TRANSFORMERS } from "./remediation.js";
 import { toolError, toolOk } from "./result.js";
@@ -53,6 +60,8 @@ export const buildIndexTool = defineTool({
     booksRequested: z.number().optional(),
     booksIndexed: z.number().optional(),
     booksSkipped: z.number().optional(),
+    // Keyword-only build kept these books' existing embeddings instead of downgrading them (#197).
+    booksPreserved: z.number().optional(),
     chunks: z.number().optional(),
     figures: z.number().optional(),
     // Orphan prune (#100) — only present when prune=true ran; 0s mean "checked, nothing stale".
@@ -187,6 +196,9 @@ export const buildIndexTool = defineTool({
 
     let booksIndexed = 0;
     let booksSkipped = 0;
+    let booksPreserved = 0;
+    // Books whose keyword-only write replaceBook refused at commit time (embedded meanwhile).
+    const preservedAtCommit = new Set<number>();
     let totalChunks = 0;
     let totalFigures = 0;
     let totalUnplaced = 0;
@@ -209,8 +221,11 @@ export const buildIndexTool = defineTool({
           signal,
         });
       },
-      commit: (_bookId, prepared) => {
-        if (prepared.kind === "ready") commitBook(deps, libraryId, prepared);
+      commit: async (bookId, prepared) => {
+        if (prepared.kind !== "ready") return;
+        if ((await withBusyRetry(() => commitBook(deps, libraryId, prepared))) === undefined) {
+          preservedAtCommit.add(bookId);
+        }
       },
       onSettled: (o) => {
         settled++;
@@ -231,6 +246,8 @@ export const buildIndexTool = defineTool({
         if (!signal?.aborted) failures.push(`book ${o.bookId}: ${describeError(o.error)}`);
       } else if (o.prepared.kind === "skipped") {
         booksSkipped++;
+      } else if (o.prepared.kind === "preserved" || preservedAtCommit.has(o.bookId)) {
+        booksPreserved++;
       } else {
         const d = o.prepared.detail;
         booksIndexed++;
@@ -241,8 +258,13 @@ export const buildIndexTool = defineTool({
       }
     }
     if (signal?.aborted) {
-      const done = booksIndexed + booksSkipped;
+      const done = booksIndexed + booksSkipped + booksPreserved;
       return cancelledResult({ done, booksRequested, booksIndexed, booksSkipped, chunks: totalChunks });
+    }
+    if (booksPreserved > 0) {
+      notes.push(
+        `${booksPreserved} book(s) already have embeddings and were left as-is — a keyword-only build never downgrades them (run an embedding build to refresh them).`,
+      );
     }
     if (totalUnplaced > 0) {
       // Unplaced markers are silent figure-linkage gaps — say so instead of a clean-looking count.
@@ -288,12 +310,15 @@ export const buildIndexTool = defineTool({
       (degradeWarning ? `${degradeWarning}\n` : "") +
       `${keywordOnly ? "Keyword-only indexed" : "Indexed"} ${booksIndexed}/${booksRequested} book(s) (${booksSkipped} up-to-date, ${totalChunks} chunks${totalFigures > 0 ? `, ${totalFigures} figure captions` : ""}) in ${elapsedMs} ms.` +
       (failures.length ? ` ${failures.length} failed:${failureLines.join("")}` : "") +
-      notes.map((n) => `\n- ${n}`).join("");
+      notes.map((n) => `\n- ${n}`).join("") +
+      // which books are now searchable — Desktop never sees bookDetails (#234)
+      (bookDetails.length ? `\nIndexed ids: ${bookDetails.map((d) => d.bookId).join(", ")}.` : "");
 
     return toolOk([{ type: "text", text: summary }], {
       booksRequested,
       booksIndexed,
       booksSkipped,
+      ...(booksPreserved > 0 ? { booksPreserved } : {}),
       chunks: totalChunks,
       figures: totalFigures,
       ...(pruned ? { prunedBooks: pruned.books, prunedChunks: pruned.chunks, prunedFigures: pruned.figures } : {}),

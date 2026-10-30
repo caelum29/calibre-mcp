@@ -77,4 +77,11 @@ describe("loadConfig", () => {
     expect(cfg.defaultLibrary).toBe("");
     expect(cfg.indexDir).toContain("calibre-mcp");
   });
+
+  it("index busy_timeout defaults to 5 s and accepts a non-negative integer override (#196)", () => {
+    expect(loadConfig({}).indexBusyTimeoutMs).toBe(5000);
+    expect(loadConfig({ CALIBRE_MCP_INDEX_BUSY_TIMEOUT_MS: "250" }).indexBusyTimeoutMs).toBe(250);
+    expect(loadConfig({ CALIBRE_MCP_INDEX_BUSY_TIMEOUT_MS: "-1" }).indexBusyTimeoutMs).toBe(5000);
+    expect(loadConfig({ CALIBRE_MCP_INDEX_BUSY_TIMEOUT_MS: "soon" }).indexBusyTimeoutMs).toBe(5000);
+  });
 });

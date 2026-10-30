@@ -6,7 +6,7 @@ import type { Book } from "../../src/domain/book.js";
 import type { ExtractedText } from "../../src/calibre/extract.js";
 import type { Embedder } from "../../src/semantic/embedder.js";
 import type { Reranker } from "../../src/semantic/reranker.js";
-import { SqliteIndexStore } from "../../src/semantic/store.js";
+import { type IndexedFigure, SqliteIndexStore } from "../../src/semantic/store.js";
 import { EMBED_DIM, MAX_TOKENS, PASSAGE_PREFIX } from "../../src/semantic/model.js";
 import { l2normalize } from "../../src/semantic/vector.js";
 import type { ToolDeps } from "../../src/tools/types.js";
@@ -322,6 +322,72 @@ describe("calibre_build_index handler", () => {
     const r = await buildIndexTool.handler(args({ bookId: 1, keywordOnly: true }), deps());
     expect(r.isError).toBeFalsy();
     expectUniversalRemediation((r.content[0] as { text: string }).text);
+  });
+});
+
+describe("atomic writes + mixed-capability writers (issue #197)", () => {
+  const LIBID = "Programming_Books";
+  const newStore = () => new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
+
+  it("a semantic build re-indexes a keyword-only entry without force", async () => {
+    const store = newStore();
+    // e.g. written by a model-less .mcpb sharing the db — same lastModified, no vectors
+    await buildIndexTool.handler(args({ bookId: 1 }), deps({ store, embedder: unavailableEmbedder }));
+    const r = await buildIndexTool.handler(args({ bookId: 1 }), deps({ store }));
+    expect([r.structuredContent?.booksIndexed, store.booksMissingVectors(LIBID)]).toEqual([1, 0]);
+  });
+
+  it("a semantic build still skips a fully embedded, up-to-date book", async () => {
+    const store = newStore();
+    await buildIndexTool.handler(args({ bookId: 1 }), deps({ store }));
+    const again = await buildIndexTool.handler(args({ bookId: 1 }), deps({ store }));
+    expect(again.structuredContent).toMatchObject({ booksIndexed: 0, booksSkipped: 1 });
+  });
+
+  it("a keyword-only build leaves an embedded book's vectors in place, even with force", async () => {
+    const store = newStore();
+    await buildIndexTool.handler(args({ bookId: 1 }), deps({ store }));
+    const vectors = store.vectorCount(LIBID);
+    const r = await buildIndexTool.handler(args({ bookId: 1, force: true, keywordOnly: true }), deps({ store }));
+    expect([r.structuredContent?.booksPreserved, r.structuredContent?.booksIndexed, store.vectorCount(LIBID)]).toEqual([
+      1,
+      0,
+      vectors,
+    ]);
+  });
+
+  it("names preserved books in the text block, not just structuredContent", async () => {
+    const store = newStore();
+    await buildIndexTool.handler(args({ bookId: 1 }), deps({ store }));
+    const r = await buildIndexTool.handler(args({ bookId: 1, force: true, keywordOnly: true }), deps({ store }));
+    expect((r.content[0] as { text: string }).text).toContain("never downgrades");
+  });
+
+  /** A store whose next write fails mid-transaction (after the book + chunk rows are in). */
+  class FailingWriteStore extends SqliteIndexStore {
+    failNext = false;
+    override replaceBook(
+      ...a: Parameters<SqliteIndexStore["replaceBook"]>
+    ): ReturnType<SqliteIndexStore["replaceBook"]> {
+      if (!this.failNext) return super.replaceBook(...a);
+      const [lib, meta, chunks, , opts] = a;
+      const bad = { figIndex: 0, page: 1, caption: null, charOffset: 0, format: "pdf" } as unknown as IndexedFigure;
+      return super.replaceBook(lib, meta, chunks, [bad], opts);
+    }
+  }
+
+  it("a failed commit is reported as a failure and keeps the book's previous rows", async () => {
+    const store = new FailingWriteStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
+    await buildIndexTool.handler(args({ bookId: 1 }), deps({ store }));
+    const before = store.stats(LIBID);
+    store.failNext = true;
+    const r = await buildIndexTool.handler(args({ bookId: 1, force: true }), deps({ store }));
+    expect([r.structuredContent?.failures, store.stats(LIBID)]).toEqual([[expect.stringContaining("book 1")], before]);
+  });
+
+  it("a committed book is never listed under failures", async () => {
+    const r = await buildIndexTool.handler(args({ bookId: 1 }), deps({ store: newStore() }));
+    expect([r.structuredContent?.booksIndexed, r.structuredContent?.failures]).toEqual([1, []]);
   });
 });
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Book } from "../../../src/domain/book.js";
-import { buildProposal, pickBestHit } from "../../../src/domain/enrich/proposal.js";
+import { buildProposal, pickBestHit, titlesAgree } from "../../../src/domain/enrich/proposal.js";
 import type { ProviderHit } from "../../../src/domain/enrich/types.js";
 
 function book(over: Partial<Book> = {}): Book {
@@ -64,5 +64,230 @@ describe("buildProposal", () => {
 
   it("returns an empty proposal when there are no hits", () => {
     expect(buildProposal(book(), [])).toEqual({ fields: [], changes: {} });
+  });
+});
+
+// #201: provider names, junk current authors, author-as-publisher and ISBN form.
+describe("buildProposal — author/publisher/ISBN normalization (#201)", () => {
+  it("proposes provider 'Last, First' authors as 'First Last'", () => {
+    const p = buildProposal(book({ title: "x" }), [hit({ authors: ["Graham, Paul"] })]);
+    expect(p.changes.authors).toEqual(["Paul Graham"]);
+  });
+
+  it("splits a glued provider author string into separate people", () => {
+    const p = buildProposal(book({ title: "x" }), [hit({ authors: ["Jez Humble, Joanne Molesky"] })]);
+    expect(p.changes.authors).toEqual(["Jez Humble", "Joanne Molesky"]);
+  });
+
+  it("treats a year-only current author as weak and proposes the provider's", () => {
+    const p = buildProposal(book({ title: "x", authors: ["2007"] }), [hit({ authors: ["Paul Graham"] })]);
+    expect(p.fields.find((f) => f.field === "authors")).toMatchObject({ proposed: ["Paul Graham"], reason: "weak" });
+  });
+
+  it("treats a glued current author string as weak and proposes the provider's", () => {
+    const p = buildProposal(book({ title: "x", authors: ["Ian Miell, Aidan Hobson Sayers"] }), [
+      hit({ authors: ["Ian Miell", "Aidan Hobson Sayers"] }),
+    ]);
+    expect(p.changes.authors).toEqual(["Ian Miell", "Aidan Hobson Sayers"]);
+  });
+
+  it("still never replaces a good current author", () => {
+    const p = buildProposal(book({ title: "x", authors: ["Paul Graham"] }), [hit({ authors: ["Someone Else"] })]);
+    expect(p.changes).not.toHaveProperty("authors");
+  });
+
+  it("drops a provider publisher that is really the authors string", () => {
+    const p = buildProposal(book({ title: "x" }), [
+      hit({ authors: ["Matt Stephens", "Doug Rosenberg"], publisher: "Matt Stephens, Doug Rosenberg" }),
+    ]);
+    expect(p.changes).not.toHaveProperty("publisher");
+  });
+
+  it("drops a provider publisher that names the book's current author", () => {
+    const p = buildProposal(book({ title: "x", authors: ["Paul Graham"] }), [hit({ publisher: "Graham, Paul" })]);
+    expect(p.changes).not.toHaveProperty("publisher");
+  });
+
+  it("keeps a real publisher even when it shares a word with an author", () => {
+    const p = buildProposal(book({ title: "x" }), [hit({ authors: ["Tim O'Reilly"], publisher: "O'Reilly Media" })]);
+    expect(p.changes.publisher).toBe("O'Reilly Media");
+  });
+
+  it("emits the proposed isbn identifier as ISBN-13", () => {
+    const p = buildProposal(book({ title: "x" }), [hit({ isbn: "0596006624" })]);
+    expect(p.changes.identifiers).toEqual({ isbn: "9780596006624" });
+  });
+});
+
+describe("buildProposal — author/publisher edge cases (#201)", () => {
+  it("does not treat a list with one junk entry beside a real name as weak", () => {
+    const p = buildProposal(book({ title: "x", authors: ["Paul Graham", "2007"] }), [
+      hit({ authors: ["Paul Graham"] }),
+    ]);
+    expect(p.changes).not.toHaveProperty("authors");
+  });
+
+  it("keeps a publisher that names a press alongside an author", () => {
+    const p = buildProposal(book({ title: "x" }), [
+      hit({ authors: ["Paul Graham"], publisher: "Paul Graham, Bay Area Press" }),
+    ]);
+    expect(p.changes.publisher).toBe("Paul Graham, Bay Area Press");
+  });
+
+  it("proposes no authors when the hit carries none, even over weak current authors", () => {
+    const p = buildProposal(book({ title: "x", authors: ["Unknown"] }), [hit({ publisher: "P" })]);
+    expect(p.changes).not.toHaveProperty("authors");
+  });
+});
+
+// #198: an ISBN that belongs to another book (e.g. scraped from an ad page) yields a hit whose
+// title has nothing to do with the book's real title — the proposal must not look trustworthy.
+describe("buildProposal — title cross-check (#198)", () => {
+  const PYTEST = book({ title: "Python Testing with pytest", authors: ["Unknown"] });
+  const WENGROW = hit({
+    title: "A Common-Sense Guide to Data Structures and Algorithms",
+    authors: ["Jay Wengrow"],
+    confidence: 0.95,
+  });
+
+  it("lowers the confidence below 0.5 when the provider title does not match the book's title", () => {
+    expect(buildProposal(PYTEST, [WENGROW]).confidence).toBeLessThan(0.5);
+  });
+
+  it("applies the lowered confidence to every proposed field", () => {
+    const p = buildProposal(PYTEST, [WENGROW]);
+    expect(p.fields.map((f) => f.confidence)).toEqual([p.confidence]);
+  });
+
+  it("warns about the mismatch, naming both titles", () => {
+    const [warning] = buildProposal(PYTEST, [WENGROW]).warnings ?? [];
+    expect(warning).toContain("Python Testing with pytest");
+    expect(warning).toContain("A Common-Sense Guide to Data Structures and Algorithms");
+  });
+
+  it("keeps the provider confidence when the provider title only adds a subtitle", () => {
+    const p = buildProposal(PYTEST, [
+      hit({ title: "Python Testing with pytest: Simple, Rapid, Effective, and Scalable", confidence: 0.95 }),
+    ]);
+    expect(p).toMatchObject({ confidence: 0.95, warnings: [] });
+  });
+
+  it("ignores case, punctuation and a leading article when comparing titles", () => {
+    const p = buildProposal(book({ title: "The Pragmatic Programmer" }), [
+      hit({ title: "pragmatic programmer, the", confidence: 0.95 }),
+    ]);
+    expect(p).toMatchObject({ confidence: 0.95, warnings: [] });
+  });
+
+  it("skips the cross-check when the current title is a raw filename (nothing to compare)", () => {
+    const p = buildProposal(book({ title: "215479-01" }), [hit({ title: "Head First Design Patterns" })]);
+    expect(p).toMatchObject({ confidence: 0.95, warnings: [] });
+  });
+
+  it("skips the cross-check when the current title is empty", () => {
+    const p = buildProposal(book({ title: "" }), [hit({ title: "Head First Design Patterns" })]);
+    expect(p).toMatchObject({ confidence: 0.95, warnings: [] });
+  });
+
+  it("skips the cross-check when the hit carries no title", () => {
+    const p = buildProposal(PYTEST, [hit({ authors: ["Brian Okken"] })]);
+    expect(p).toMatchObject({ confidence: 0.95, warnings: [] });
+  });
+});
+
+describe("titlesAgree (#198)", () => {
+  it("agrees when the provider title is a shorter form of the book's title", () => {
+    expect(titlesAgree("Clean Code: A Handbook of Agile Software Craftsmanship", "Clean Code")).toBe(true);
+  });
+
+  it("disagrees when only one word of several is shared", () => {
+    expect(titlesAgree("Python Testing with pytest", "Python Crash Course")).toBe(false);
+  });
+
+  it("does not count articles as shared words", () => {
+    expect(titlesAgree("The Hobbit", "The Lord of the Rings")).toBe(false);
+  });
+
+  it("ignores accents", () => {
+    expect(titlesAgree("Café", "Cafe")).toBe(true);
+  });
+
+  it("does not call a title without comparable words a mismatch", () => {
+    expect(titlesAgree("Python Testing with pytest", "…")).toBe(true);
+  });
+});
+
+// Artem's review: titles agree on a significant-word subset (subtitles, edition suffixes);
+// EN/RU stop-words don't count.
+describe("titlesAgree — relaxed rules (#198)", () => {
+  it("agrees when the provider adds a subtitle", () => {
+    expect(titlesAgree("Refactoring", "Refactoring: Improving the Design of Existing Code")).toBe(true);
+  });
+
+  it("agrees when the provider adds an edition suffix", () => {
+    expect(titlesAgree("Effective Java", "Effective Java, Third Edition")).toBe(true);
+  });
+
+  it("agrees on a RU title plus subtitle", () => {
+    expect(titlesAgree("Совершенный код", "Совершенный код. Мастер-класс")).toBe(true);
+  });
+
+  it("disagrees on unrelated RU titles", () => {
+    expect(titlesAgree("Война и мир", "Анна Каренина")).toBe(false);
+  });
+
+  it("never reports a mismatch for a stop-word-only title", () => {
+    expect(titlesAgree("Of and For", "Anything Else Entirely")).toBe(true);
+  });
+
+  it("never reports a mismatch for a RU stop-word-only title", () => {
+    expect(titlesAgree("И в на", "Совершенный код")).toBe(true);
+  });
+});
+
+// Artem's second review: one shared generic word ("python") is not agreement. Titles agree on a
+// significant-word subset OR at least 2 shared significant words; the ratio is gone.
+describe("titlesAgree — subset or 2 shared significant words (#198)", () => {
+  it("disagrees when the only shared word is a generic one", () => {
+    expect(titlesAgree("Python Testing with pytest", "Python Crash Course")).toBe(false);
+  });
+
+  it("agrees on 2+ shared words without either title being a subset", () => {
+    expect(titlesAgree("Designing Data-Intensive Applications", "Data-Intensive Applications in Practice")).toBe(true);
+  });
+
+  it("agrees when a 1-word title is a subset of the other", () => {
+    expect(titlesAgree("Refactoring", "Refactoring Databases")).toBe(true);
+  });
+
+  it("does not count shared EN stop-words toward the 2 words", () => {
+    expect(titlesAgree("Python for the Web", "Python for the Data Scientist")).toBe(false);
+  });
+
+  it("does not count shared RU stop-words toward the 2 words", () => {
+    expect(titlesAgree("Python в науке", "Python в бизнесе")).toBe(false);
+  });
+});
+
+// Artem's review: a mixed author list (real names + one suspect entry) is NOT weak; only an
+// all-suspect list may be replaced by the provider's.
+describe("buildProposal — weak authors require every entry to be suspect (#201)", () => {
+  it("does not replace a mixed list of a real name plus one glued entry", () => {
+    const p = buildProposal(book({ title: "x", authors: ["Paul Graham", "Graham, Paul"] }), [
+      hit({ authors: ["Someone Else"] }),
+    ]);
+    expect(p.changes).not.toHaveProperty("authors");
+  });
+
+  it("replaces a list where every entry is suspect", () => {
+    const p = buildProposal(book({ title: "x", authors: ["2007", "Graham, Paul"] }), [
+      hit({ authors: ["Paul Graham"] }),
+    ]);
+    expect(p.changes.authors).toEqual(["Paul Graham"]);
+  });
+
+  it("treats Unknown beside a suspect entry as weak", () => {
+    const p = buildProposal(book({ title: "x", authors: ["Unknown", "2007"] }), [hit({ authors: ["Paul Graham"] })]);
+    expect(p.changes.authors).toEqual(["Paul Graham"]);
   });
 });

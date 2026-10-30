@@ -77,6 +77,22 @@ Semantic search only sees books you've indexed. Run `calibre_build_index` with a
 `ids`, or a Calibre `query` selecting the books, then search again. Re-run it after adding
 books (unchanged books are skipped).
 
+### `calibre_build_index`: "database is locked"
+
+Two calibre-mcp servers share one index file — typically Claude Desktop's extension and a
+Claude Code session running side by side. The index runs in SQLite WAL mode (readers never
+block the writer) and a writer waits up to `CALIBRE_MCP_INDEX_BUSY_TIMEOUT_MS` (default 5 s)
+for the other process, then retries the book once. If books still fail, the other server was
+writing for longer than that (e.g. its own `calibre_build_index`): let it finish and re-run —
+already-indexed books are skipped — or raise the timeout.
+
+### Copying or backing up the index
+
+The index is `<index dir>/<library>.sqlite`. In WAL mode SQLite keeps recent writes in
+`<library>.sqlite-wal` (plus a `-shm` file) until a checkpoint, so while any calibre-mcp server
+is running, copy all three files together — or quit every client first: a cleanly closed
+server checkpoints the WAL back into the `.sqlite`, leaving a single self-contained file.
+
 ### First semantic search is extremely slow
 
 Two one-time downloads can land on the first use: the embedding model (~118 MB) and the
@@ -215,6 +231,27 @@ the remaining steps.
   yours to refresh: run `calibre_build_index` for the new books.
 - **Changes made in the GUI don't show in an open cover-board widget** — the widget shows
   the results as of the search; re-run the search for fresh data.
+
+## Logs
+
+The server writes one JSON object per line — meant to be read by an agent (Claude Code
+can open them for you: *"check the calibre-mcp logs for errors today"*):
+
+- **Where:** `<index dir>/logs/calibre-mcp-YYYY-MM-DD.jsonl` (macOS:
+  `~/Library/Application Support/calibre-mcp/index/logs/`), one file per UTC day, kept 7
+  days. Claude Desktop, Claude Code and `pnpm reindex` all append to the same files; the
+  `client` and `pid` keys tell them apart. A `README.md` in that folder lists the schema
+  and ready `jq` recipes.
+- **Every tool call** ends with a `"msg":"tool call"` line: duration, `isError`, the error
+  text the model saw, and a short args summary (long free text such as a description edit is
+  logged as its length only). Every line logged during that call carries
+  the same `call` id, so `jq -c 'select(.call=="<id>")'` replays one call end to end.
+- **No file access?** `calibre_ping` lists the last server errors and the log path.
+- **More detail:** `CALIBRE_MCP_LOG_LEVEL=debug`. The same lines also go to stderr
+  (prefixed `[calibre-mcp]`), which the client keeps in its own MCP log.
+
+Logs contain book ids, titles and search queries — never book text; your home folder
+is written as `~`.
 
 Still stuck? Open an issue with the `calibre_ping` output:
 <https://github.com/caelum29/calibre-mcp/issues>

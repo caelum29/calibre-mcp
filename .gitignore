@@ -17,6 +17,7 @@ data/
 # local dev only — personal Claude Code config/skills and packaging helpers,
 # not part of the public repo
 .claude/
+CLAUDE.local.md
 Makefile
 
 # editor / OS

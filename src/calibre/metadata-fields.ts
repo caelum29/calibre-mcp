@@ -108,15 +108,44 @@ export function bookFieldValue(book: Book, field: string): unknown {
  * After an AMBIGUOUS write (calibredb timed out — the routed server may have committed),
  * decide from a re-read whether every requested change landed. A field counts as applied
  * when the re-read equals the intended value OR moved away from the before-snapshot (covers
- * fields Calibre normalizes on write, e.g. pubdate). Custom #columns aren't carried on Book
- * → unverifiable → false, so callers stay cautious rather than claim success (issue #33).
+ * fields Calibre normalizes on write, e.g. pubdate). Values compare via {@link sameFieldValue},
+ * so a landed clear read back as absent and a reordered identifiers map both count as applied.
+ * Custom #columns aren't carried on Book → unverifiable → false, so callers stay cautious
+ * rather than claim success (issue #33).
  */
 export function changesSatisfied(before: Book, after: Book, changes: Record<string, ChangeValue>): boolean {
   return Object.entries(changes).every(([field, intended]) => {
-    const b = JSON.stringify(bookFieldValue(before, field));
-    const a = JSON.stringify(bookFieldValue(after, field));
-    return a !== undefined && (a === JSON.stringify(intended) || a !== b);
+    if (field.startsWith("#")) return false;
+    const a = bookFieldValue(after, field);
+    return sameFieldValue(a, intended) || !sameFieldValue(a, bookFieldValue(before, field));
   });
+}
+
+// Calibre reads a cleared field back as absent, "", [] or {} depending on the field, so
+// clearing an already-empty field must not show up as a change (#202).
+function isEmptyValue(v: unknown): boolean {
+  if (v == null || v === "") return true;
+  if (Array.isArray(v)) return v.length === 0;
+  return typeof v === "object" && Object.keys(v).length === 0;
+}
+
+/**
+ * Value equality for one field's before/after (#202). Arrays compare element-wise in order
+ * (author order is meaningful); plain objects (identifiers) ignore key order, since the
+ * server may return the same map in a different order; every "empty" shape equals every other.
+ */
+export function sameFieldValue(a: unknown, b: unknown): boolean {
+  if (a === b || (isEmptyValue(a) && isEmptyValue(b))) return true;
+  if (Array.isArray(a) || Array.isArray(b)) {
+    return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((v, i) => sameFieldValue(v, b[i]));
+  }
+  if (typeof a === "object" && typeof b === "object" && a !== null && b !== null) {
+    const ka = Object.keys(a);
+    const ra = a as Record<string, unknown>;
+    const rb = b as Record<string, unknown>;
+    return ka.length === Object.keys(b).length && ka.every((k) => k in rb && sameFieldValue(ra[k], rb[k]));
+  }
+  return false;
 }
 
 /** One field's before/after for a proposed change, with a computed `changed` flag. */

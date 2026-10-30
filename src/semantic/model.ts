@@ -34,6 +34,11 @@ export interface EmbeddingModelSpec {
   /** Prefix prepended to indexed passages. */
   passagePrefix: string;
   pooling: PoolingMode;
+  /**
+   * Multimodal checkpoint: null the vision/audio sub-configs before loading so only the
+   * text encoder's weights are fetched/instantiated (baked-in path only).
+   */
+  textOnly?: boolean;
   /** ONNX weight variant to load. */
   dtype: "q8" | "fp32" | "q4";
   /** Weights license — the optional-download posture cares (docs/dev/PRODUCT-DECISIONS.md). */
@@ -47,7 +52,7 @@ export interface EmbeddingModelSpec {
  * NOT in the table: `nomic-embed-text-v2-moe` (Apache-2.0, the strongest cross-lingual
  * candidate on paper) is UNRUNNABLE in this stack — no ONNX export exists on the Hub
  * (nomic-ai repo is sentence-transformers custom code; the only "onnx" port is an empty
- * README repo) and transformers.js 4.2.0 registers `nomic_bert` but not the MoE variant.
+ * README repo) and transformers.js 4.2.0 registered `nomic_bert` but not the MoE variant.
  * `jina-v3` excluded on license (CC BY-NC vs our MIT posture).
  */
 export const CANDIDATES = {
@@ -91,6 +96,39 @@ export const CANDIDATES = {
     pooling: "baked-in",
     dtype: "q8",
     license: "Gemma (use-restricted)",
+  },
+  // onnx-community/embeddinggemma-2-ONNX card (2026-10-06, transformers.js >= 4.3.1):
+  // prefixes from config_sentence_transformers.json — "SearchQuery"/"Retrieval-query" =
+  // "task: search result | query: ", "Document" = "title: none | text: "; EmbeddingGemma2Model
+  // returns a mean-pooled, L2-normalized `sentence_embedding` (512→768 projection inside the
+  // graph) → baked-in. Multimodal checkpoint: the card's "Selective Encoder Loading" nulls
+  // vision_config/audio_config for a 270M text-only model (the feature-extraction pipeline
+  // would load every encoder: 850 MB q8 vs 314 MB). q8 = worst-case cosine 0.9997 to fp32
+  // (q4: 0.988 text). 768-dim, 8192-token window (chunk budget held at 512). License Apache-2.0.
+  "gemma2-768": {
+    id: "onnx-community/embeddinggemma-2-ONNX",
+    dim: 768,
+    maxTokens: 512,
+    queryPrefix: "task: search result | query: ",
+    passagePrefix: "title: none | text: ",
+    pooling: "baked-in",
+    textOnly: true,
+    dtype: "q8",
+    license: "Apache-2.0",
+  },
+  // Same card: MRL 768/512/256/128 — "re-normalize after truncating"; 256 is "close to
+  // lossless" (MTEB multilingual 61.36 → 60.41), the 3x index-size probe.
+  "gemma2-256": {
+    id: "onnx-community/embeddinggemma-2-ONNX",
+    dim: 256,
+    rawDim: 768,
+    maxTokens: 512,
+    queryPrefix: "task: search result | query: ",
+    passagePrefix: "title: none | text: ",
+    pooling: "baked-in",
+    textOnly: true,
+    dtype: "q8",
+    license: "Apache-2.0",
   },
   // Xenova/bge-m3 card: `{ pooling: 'cls', normalize: true }`, and the BAAI/bge-m3 FAQ:
   // "no longer requires adding instructions to the queries" → no prefixes. 1024-dim,
@@ -144,5 +182,8 @@ export const PASSAGE_PREFIX = ACTIVE_MODEL.passagePrefix;
  * every chunk boundary moves, so v2 vectors/offsets must be rebuilt. Folded into the same
  * (unshipped) bump: a `book_meta` FTS column (stemmed title+authors on chunks/chunk_fts,
  * bm25-weighted 0.5) so the keyword half sees book identity, not just prose.
+ *
+ * v4 (#139): transformers.js 4.2.0 → 4.3.1 pins onnxruntime-node 1.30, which shifts e5
+ * vectors (cos ~0.997) and reranker logits — v3 vectors must not mix with v4 query vectors.
  */
-export const INDEX_VERSION = 3;
+export const INDEX_VERSION = 4;
