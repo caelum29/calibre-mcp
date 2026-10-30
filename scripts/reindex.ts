@@ -53,6 +53,8 @@ const progressFile = opt.progress ?? path.join(indexDir, "progress.jsonl");
 const minFreeGb = Number(opt["min-free-gb"]);
 
 const config = loadConfig({ ...process.env, CALIBRE_MCP_INDEX_DIR: indexDir });
+// Same JSONL sink as the server (#247), so a long rebuild leaves an agent-readable trail.
+log.configure({ level: config.logLevel, dir: config.logDir });
 const figures = new FigureInventoryService(config);
 const deps = {
   config,

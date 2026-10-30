@@ -5,9 +5,11 @@
 
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { buildServer } from "./server.js";
+import { loadConfig } from "./config.js";
 import { log } from "./logging.js";
 import { createShutdown, installShutdownHandlers } from "./shutdown.js";
 import { stripDollarSchema } from "./wire-compat.js";
+import { VERSION } from "./version.js";
 
 // Process-level safety net (issue #73). On Node >=15 a single unhandled rejection kills
 // the process — the client then sees only a generic "Tool execution failed" with zero
@@ -32,6 +34,9 @@ process.on("uncaughtException", (err) => {
 });
 
 async function main(): Promise<void> {
+  // File sink is configured here, not in buildServer, so in-process test servers never write logs.
+  const { logLevel, logDir } = loadConfig();
+  log.configure({ level: logLevel, dir: logDir });
   const server = buildServer();
   const transport = new StdioServerTransport();
   const send = transport.send.bind(transport);
@@ -43,7 +48,7 @@ async function main(): Promise<void> {
   // ebook-convert process groups, closes the server and exits 0 (idempotent).
   installShutdownHandlers(createShutdown({ close: () => server.close(), exit: (code) => process.exit(code) }));
   // Banner to stderr only — stdout carries the JSON-RPC stream.
-  log.info("calibre-mcp listening on stdio");
+  log.info("calibre-mcp listening on stdio", { version: VERSION, node: process.version, logFile: log.currentFile() });
 }
 
 main().catch((err) => {

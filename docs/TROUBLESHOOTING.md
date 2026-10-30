@@ -232,5 +232,25 @@ the remaining steps.
 - **Changes made in the GUI don't show in an open cover-board widget** — the widget shows
   the results as of the search; re-run the search for fresh data.
 
+## Logs
+
+The server writes one JSON object per line — meant to be read by an agent (Claude Code
+can open them for you: *"check the calibre-mcp logs for errors today"*):
+
+- **Where:** `<index dir>/logs/calibre-mcp-YYYY-MM-DD.jsonl` (macOS:
+  `~/Library/Application Support/calibre-mcp/index/logs/`), one file per UTC day, kept 7
+  days. Claude Desktop, Claude Code and `pnpm reindex` all append to the same files; the
+  `client` and `pid` keys tell them apart. A `README.md` in that folder lists the schema
+  and ready `jq` recipes.
+- **Every tool call** ends with a `"msg":"tool call"` line: duration, `isError`, the error
+  text the model saw, and a short args summary. Every line logged during that call carries
+  the same `call` id, so `jq -c 'select(.call=="<id>")'` replays one call end to end.
+- **No file access?** `calibre_ping` lists the last server errors and the log path.
+- **More detail:** `CALIBRE_MCP_LOG_LEVEL=debug`. The same lines also go to stderr
+  (prefixed `[calibre-mcp]`), which the client keeps in its own MCP log.
+
+Logs contain book ids, titles and search queries — never book text; your home folder
+is written as `~`.
+
 Still stuck? Open an issue with the `calibre_ping` output:
 <https://github.com/caelum29/calibre-mcp/issues>

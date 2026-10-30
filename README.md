@@ -328,6 +328,7 @@ works. Environment variables (the Desktop bundle exposes the same settings as UI
 | `CALIBRE_MCP_RERANK` | on | Cross-encoder rerank stage on semantic search (~576 MB model, seconds of CPU per query); set `off`/`false`/`0` to disable |
 | `CALIBRE_MCP_MAX_BOOK_BYTES` | `268435456` (256 MB) | Largest book download `calibre_build_index` / `calibre_get_content` will extract; bigger books are skipped² |
 | `CALIBRE_MCP_INDEX_BUSY_TIMEOUT_MS` | `5000` | How long an index write waits on another server process holding the index (e.g. Claude Desktop + Claude Code side by side) before failing |
+| `CALIBRE_MCP_LOG_LEVEL` | `info` | `debug`/`info`/`warn`/`error` — for stderr and the JSONL log files in `<index dir>/logs/` (see [Troubleshooting → Logs](docs/TROUBLESHOOTING.md#logs)) |
 | `CALIBRE_MCP_ADD_ROOTS` | `~/Documents`, `~/Downloads` | Folders `calibre_add_book` may import from (path-delimiter separated) |
 | `CALIBRE_MCP_BOARD_STYLE` | `shelf` | Search-results widget style in MCP Apps hosts: `shelf` (scrolling cover shelf) or `coverflow` (3D cover flow; the Desktop bundle exposes this as a *Coverflow search results* toggle) |
 

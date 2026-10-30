@@ -7,7 +7,7 @@ import { describe, it, expect, vi } from "vitest";
 import { z } from "zod";
 import { mergeBooksTool } from "../../src/tools/calibre_merge_books.js";
 import { loadConfig } from "../../src/config.js";
-import { log } from "../../src/logging.js";
+import { log, type LogSink } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
 import type { CustomFieldValue } from "../../src/domain/merge.js";
 import { CalibreCliError, CalibreCliTimeoutError, CalibreHttpError } from "../../src/domain/errors.js";
@@ -85,7 +85,7 @@ function fakeDeps(opts: FakeOpts = {}) {
     content: content as unknown as ToolDeps["content"],
     calibre: { calibredb: spy } as unknown as ToolDeps["calibre"],
     extractor: {} as unknown as ToolDeps["extractor"],
-    log,
+    log: log as LogSink,
   } as ToolDeps;
   return { deps, spy, calls };
 }
