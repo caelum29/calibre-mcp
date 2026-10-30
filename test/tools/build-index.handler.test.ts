@@ -121,6 +121,7 @@ function deps(opts: FakeOpts = {}): ToolDeps {
         markers: [],
         unplaced: 0,
         outline: [],
+        epubToc: null,
       })),
   };
   return {
@@ -191,6 +192,7 @@ describe("calibre_build_index handler", () => {
           markers: [],
           unplaced: 0,
           outline: [],
+          epubToc: null,
         }),
       }),
     );
@@ -214,6 +216,7 @@ describe("calibre_build_index handler", () => {
           markers: [],
           unplaced: 0,
           outline: [],
+          epubToc: null,
         }),
       }),
     );
@@ -447,6 +450,7 @@ describe("empty-extraction message (issue #100 nit)", () => {
           markers: [],
           unplaced: 0,
           outline: [],
+          epubToc: null,
         }),
       }),
     );
@@ -467,6 +471,7 @@ describe("empty-extraction message (issue #100 nit)", () => {
           markers: [],
           unplaced: 0,
           outline: [],
+          epubToc: null,
         }),
       }),
     );
@@ -527,6 +532,7 @@ describe("front-matter flagging at build time (issue #18)", () => {
         markers: [],
         unplaced: 0,
         outline: [],
+        epubToc: null,
       }),
     });
     const r = await buildIndexTool.handler(args({ bookId: 1 }), d);
@@ -568,6 +574,7 @@ describe("figure caption indexing (D-018 Phase B / #86)", () => {
     ],
     unplaced: 0,
     outline: [],
+    epubToc: null,
   });
   /** Inventory matching the markers by entry index — the source/dims join input. */
   const inventory = {

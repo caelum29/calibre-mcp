@@ -134,7 +134,10 @@ export const getContentTool = defineTool({
       // structure mode: return a chapter map (with per-chapter cursors), not book text.
       // Ignores `cursor` — the map spans the whole book. 0 chapters is not an error.
       if (args.structure) {
-        const struct = detectChapters(extracted.text, { outline: extracted.outline });
+        const struct = detectChapters(extracted.text, {
+          outline: extracted.outline,
+          ...(extracted.epubToc ? { epubToc: extracted.epubToc } : {}),
+        });
         const totalChars = extracted.text.length;
         const chapters = struct.chapters.map((c) => ({
           n: c.n,

@@ -17,7 +17,8 @@ export interface OutlineEntry {
 
 const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
 
-function decodeEntities(s: string): string {
+/** Decode the XML/HTML entities that show up in outline and TOC titles. */
+export function decodeEntities(s: string): string {
   return s.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e: string) => {
     if (e[0] === "#") {
       const cp = e[1] === "x" || e[1] === "X" ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10);
@@ -136,7 +137,7 @@ export function isFrontMatterTitle(title: string): boolean {
 // A chapter list denser than this is not a chapter list: flat outlines that bookmark every
 // section (#134 measured 447 and 238 top-level entries) or one entry per page (a scanner's
 // "000, 002, 003…" page bookmarks).
-const MAX_CHAPTERS = 150;
+export const MAX_CHAPTERS = 150;
 const MAX_ENTRIES_PER_PAGE = 0.5;
 // Fewer top-level body entries than this means the top level is a wrapper, not chapters: a
 // single "Book Title" root, or 2–3 unlabeled parts ("Setup" / "Fundamentals" / "Advanced").
@@ -145,19 +146,25 @@ const MIN_TOP_LEVEL = 4;
 const MAX_LEVEL = 3;
 
 // "Part I", "Part 2: …", "Часть 1.", "Частина II".
-const PART_TITLE = /^\s*(?:part|часть|частина)\s+(?:[IVXLC]+|\d+)\b/i;
+export const PART_TITLE = /^\s*(?:part|часть|частина)\s+(?:[IVXLC]+|\d+)\b/i;
 
-interface OutlineNode {
-  entry: OutlineEntry;
-  children: OutlineNode[];
+/** The fields chapter-level selection reads — shared by PDF outlines and EPUB TOCs (#135). */
+interface LeveledTitle {
+  title: string;
+  level: number;
+}
+
+interface OutlineNode<T extends LeveledTitle> {
+  entry: T;
+  children: OutlineNode<T>[];
 }
 
 /** Rebuild the bookmark tree from flat document-order entries (level jumps tolerated). */
-function buildTree(entries: OutlineEntry[]): OutlineNode[] {
-  const roots: OutlineNode[] = [];
-  const stack: OutlineNode[] = [];
+function buildTree<T extends LeveledTitle>(entries: T[]): OutlineNode<T>[] {
+  const roots: OutlineNode<T>[] = [];
+  const stack: OutlineNode<T>[] = [];
   for (const entry of entries) {
-    const node: OutlineNode = { entry, children: [] };
+    const node: OutlineNode<T> = { entry, children: [] };
     while (stack.length > 0 && stack[stack.length - 1]!.entry.level >= entry.level) stack.pop();
     (stack.length > 0 ? stack[stack.length - 1]!.children : roots).push(node);
     stack.push(node);
@@ -172,8 +179,34 @@ function dropLeadingFrontMatter<T>(items: T[], title: (t: T) => string): T[] {
 }
 
 /** Replace each node with its children when `expand` says so (childless nodes stay). */
-function expandWhere(nodes: OutlineNode[], expand: (n: OutlineNode) => boolean): OutlineNode[] {
+function expandWhere<T extends LeveledTitle>(
+  nodes: OutlineNode<T>[],
+  expand: (n: OutlineNode<T>) => boolean,
+): OutlineNode<T>[] {
   return nodes.flatMap((n) => (n.children.length > 0 && expand(n) ? n.children : [n]));
+}
+
+/**
+ * Steps 1–3 of the chapter-level rule (see {@link selectChapterEntries}): the entries at the
+ * level that holds the book's chapters, in document order. Format-agnostic — EPUB TOCs use it too.
+ */
+export function pickChapterLevel<T extends LeveledTitle>(
+  entries: T[],
+  isPart: (entry: T, children: T[]) => boolean = (e) => PART_TITLE.test(e.title),
+): T[] {
+  const dropFm = (ns: OutlineNode<T>[]) => dropLeadingFrontMatter(ns, (n) => n.entry.title);
+  const parts = (n: OutlineNode<T>) =>
+    isPart(
+      n.entry,
+      n.children.map((c) => c.entry),
+    );
+  let nodes = dropFm(expandWhere(dropFm(buildTree(entries)), parts));
+  while (nodes.length < MIN_TOP_LEVEL) {
+    const next = expandWhere(nodes, (n) => n.entry.level < MAX_LEVEL);
+    if (next.length === nodes.length) break; // nothing (left) to expand into
+    nodes = dropFm(next);
+  }
+  return nodes.map((n) => n.entry);
 }
 
 /**
@@ -189,15 +222,7 @@ function expandWhere(nodes: OutlineNode[], expand: (n: OutlineNode) => boolean):
  *    (> 150 entries, or more than one per two pages — flat "every section" outlines).
  */
 export function selectChapterEntries(entries: OutlineEntry[], pageCount: number): OutlineEntry[] | null {
-  const dropFm = (ns: OutlineNode[]) => dropLeadingFrontMatter(ns, (n) => n.entry.title);
-  let nodes = dropFm(expandWhere(dropFm(buildTree(entries)), (n) => PART_TITLE.test(n.entry.title)));
-  while (nodes.length < MIN_TOP_LEVEL) {
-    const next = expandWhere(nodes, (n) => n.entry.level < MAX_LEVEL);
-    if (next.length === nodes.length) break; // nothing (left) to expand into
-    nodes = dropFm(next);
-  }
-
-  const picked = nodes.map((n) => n.entry).filter((e) => e.page !== null);
+  const picked = pickChapterLevel(entries).filter((e) => e.page !== null);
   const maxCount = Math.min(MAX_CHAPTERS, pageCount > 0 ? Math.max(2, pageCount * MAX_ENTRIES_PER_PAGE) : MAX_CHAPTERS);
   if (picked.length < 2 || picked.length > maxCount) return null;
   return picked;
@@ -205,17 +230,24 @@ export function selectChapterEntries(entries: OutlineEntry[], pageCount: number)
 
 /**
  * Snap a page-start offset to the heading line on that page: a page start is up to a page
- * of running header/footer away from the real heading. Looks for the first line on the page
- * whose letters-and-digits form is a prefix of the title (a wrapped "Chapter 1" line above
- * its title counts) or contains the whole title; falls back to the page start.
+ * of running header/footer away from the real heading. Falls back to the page start.
  */
 function snapToTitle(text: string, pageStart: number, pageEnd: number, title: string): number {
+  return findTitleLine(text, pageStart, pageEnd, title) ?? pageStart;
+}
+
+/**
+ * Offset of the first line in [start, end) whose letters-and-digits form is a prefix of the
+ * title (a wrapped "Chapter 1" line above its title counts) or contains the whole title;
+ * null when no line does.
+ */
+export function findTitleLine(text: string, start: number, end: number, title: string): number | null {
   const want = norm(title);
-  if (!want) return pageStart;
-  let lineStart = pageStart;
-  while (lineStart < pageEnd) {
+  if (!want) return null;
+  let lineStart = start;
+  while (lineStart < end) {
     let nl = text.indexOf("\n", lineStart);
-    if (nl === -1 || nl > pageEnd) nl = pageEnd;
+    if (nl === -1 || nl > end) nl = end;
     const line = norm(text.slice(lineStart, nl));
     // Prefix match needs some substance so a stray "1" or "a" line doesn't snap.
     if (line && ((line.length >= Math.min(6, want.length) && want.startsWith(line)) || line.startsWith(want))) {
@@ -223,7 +255,7 @@ function snapToTitle(text: string, pageStart: number, pageEnd: number, title: st
     }
     lineStart = nl + 1;
   }
-  return pageStart;
+  return null;
 }
 
 /**

@@ -7,8 +7,10 @@
 // содержание) and returns only counts; we add those languages and return char offsets so
 // callers can seek to a chapter start via a content cursor.
 //
-// A PDF's own outline (bookmarks) outranks all text heuristics when it is usable (#134).
+// A PDF's own outline (bookmarks) or an EPUB's authored TOC outranks all text heuristics
+// when it is usable (#134, #135).
 
+import { type EpubToc, epubTocChapters } from "./epub-toc.js";
 import { type OutlineEntry, outlineChapters } from "./pdf-outline.js";
 
 /** One detected chapter as a span over the extracted text. */
@@ -27,15 +29,17 @@ export interface StructureResult {
   chapters: ChapterSpan[];
   hasToc: boolean;
   /**
-   * Which strategy produced `chapters`: the PDF outline (bookmarks), numeric headings,
-   * structural (Markdown) headings, or none.
+   * Which strategy produced `chapters`: the PDF outline (bookmarks), the EPUB TOC
+   * (nav.xhtml / NCX), numeric headings, structural (Markdown) headings, or none.
    */
-  detector: "pdf-outline" | "numeric" | "structural" | "none";
+  detector: "pdf-outline" | "epub-toc" | "numeric" | "structural" | "none";
 }
 
 export interface DetectOptions {
   /** PDF outline entries (from the extractor); used when they yield a plausible chapter list. */
   outline?: OutlineEntry[];
+  /** EPUB TOC + spine anchors (from the extractor); used when they yield a plausible chapter list. */
+  epubToc?: EpubToc;
 }
 
 // Explicit chapter heading: "Chapter 5", "Capítulo 5: ...", "Глава 5.", "Розділ 3".
@@ -324,10 +328,28 @@ function lineOffsets(text: string): LineInfo[] {
 }
 
 /**
+ * 0. Publisher structure first — the PDF outline or the EPUB TOC: real titles, and it works
+ * for books whose body never says "Chapter N". Null when absent or implausible (see
+ * outlineChapters / epubTocChapters), so the text heuristics run.
+ */
+function authoredChapters(text: string, opts: DetectOptions): Pick<StructureResult, "chapters" | "detector"> | null {
+  if (opts.outline && opts.outline.length > 0) {
+    const chapters = outlineChapters(text, opts.outline);
+    if (chapters) return { chapters, detector: "pdf-outline" };
+  }
+  if (opts.epubToc && opts.epubToc.entries.length > 0) {
+    const chapters = epubTocChapters(text, opts.epubToc, (t) => chapterNumber(t) !== null);
+    if (chapters) return { chapters, detector: "epub-toc" };
+  }
+  return null;
+}
+
+/**
  * Detect chapter spans and ToC presence in extracted book text.
  *
  * A usable PDF outline (`opts.outline`, ≥ 2 plausible entries) wins over every text
- * heuristic — detector "pdf-outline" (#134, D-020).
+ * heuristic — detector "pdf-outline" (#134, D-020); so does a usable EPUB TOC
+ * (`opts.epubToc`) — detector "epub-toc" (#135).
  * Numeric headings ("Chapter N" / "Глава N") are preferred; a chapter number can recur
  * (a ToC entry and the body heading), so for each distinct number we keep the occurrence
  * with the largest body — the real chapter, not the ToC line. Text before the first kept
@@ -337,12 +359,8 @@ function lineOffsets(text: string): LineInfo[] {
 export function detectChapters(text: string, opts: DetectOptions = {}): StructureResult {
   const hasToc = TOC_PATTERN.test(text.slice(0, 30_000));
 
-  // 0. Publisher outline first: exact pages, real titles, and it works for books whose body
-  // never says "Chapter N". Falls through when absent or implausible (see outlineChapters).
-  if (opts.outline && opts.outline.length > 0) {
-    const fromOutline = outlineChapters(text, opts.outline);
-    if (fromOutline) return { chapters: fromOutline, hasToc, detector: "pdf-outline" };
-  }
+  const authored = authoredChapters(text, opts);
+  if (authored) return { ...authored, hasToc };
   const lines = lineOffsets(text);
 
   // 1. Every numeric heading occurrence, in text order.

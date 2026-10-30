@@ -58,6 +58,7 @@ function deps(store: SqliteIndexStore): ToolDeps {
         markers: [],
         unplaced: 0,
         outline: [],
+        epubToc: null,
       }),
     } as unknown as ToolDeps["extractor"],
     embedder,

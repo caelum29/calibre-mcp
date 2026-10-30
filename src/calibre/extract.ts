@@ -17,9 +17,11 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import type { Config } from "../config.js";
 import { type FigureMarker, injectFigureMarkers } from "../domain/figures/markers.js";
+import type { EpubToc } from "../domain/structure/epub-toc.js";
 import type { OutlineEntry } from "../domain/structure/pdf-outline.js";
 import { log } from "../logging.js";
 import type { GetInventoryArgs, InventoryResult } from "./figure-inventory.js";
+import { readEpubToc, unzipBinary } from "./epub-toc.js";
 import { downloadToFile } from "./http.js";
 import { OperationCancelledError } from "../domain/errors.js";
 import { pdftohtmlBinary, readPdfOutline } from "./pdf-outline.js";
@@ -53,6 +55,8 @@ export interface ExtractedText {
   unplaced: number;
   /** PDF outline (bookmarks) — a chapter-map source (#134); [] for non-PDFs or no outline. */
   outline: OutlineEntry[];
+  /** EPUB TOC + spine anchors — a chapter-map source (#135); null for non-EPUBs or no usable TOC. */
+  epubToc: EpubToc | null;
 }
 
 /** Structural seam for the figure-inventory service — keeps the extractor testable. */
@@ -85,9 +89,11 @@ const CACHE_DIR = path.join(tmpdir(), "calibre-mcp-cache");
  * v6: PDF caption scan rework (#107) renumbers figure indexes — cached markers would point
  * at the wrong figures.
  * v7: label-only PDF captions read from page layout — cached markers carry no caption text.
+ * v8: envelope carries the EPUB TOC + spine anchors (#135) — text bytes unchanged, but v7
+ * EPUB entries would never gain a TOC chapter map until LRU-evicted.
  * Rides in the cache filename AND the JSON envelope.
  */
-const TEXT_CACHE_VERSION = 7;
+const TEXT_CACHE_VERSION = 8;
 const MAX_CACHE_ENTRIES = 50;
 const MAX_CACHE_BYTES = 200 * 1024 * 1024;
 const CONVERT_TIMEOUT_MS = 120_000;
@@ -249,6 +255,7 @@ export class Extractor {
           markers: hit.markers,
           unplaced: hit.unplaced ?? 0,
           outline: hit.outline ?? [],
+          epubToc: hit.epubToc ?? null,
         };
       }
       // unreadable/corrupt envelope: fall through and re-extract
@@ -268,6 +275,8 @@ export class Extractor {
       const { text, markers, unplaced } = await this.#injectMarkers(converted.text, fmt, args);
       // Read while the downloaded PDF still exists; best-effort, [] on any failure.
       const outline = fmt === "pdf" && report.pdftohtmlPath ? await readPdfOutline(report.pdftohtmlPath, tmpSrc) : [];
+      // Anchored against the final (marker-injected) text so TOC offsets share its coordinates.
+      const epubToc = fmt === "epub" ? await this.#readToc(tmpSrc, text, args.signal) : null;
       const envelope: TextCacheEnvelope = {
         v: TEXT_CACHE_VERSION,
         backend: converted.backend,
@@ -275,14 +284,34 @@ export class Extractor {
         markers,
         unplaced,
         outline,
+        ...(epubToc ? { epubToc } : {}),
       };
       await writeFile(cacheFile, JSON.stringify(envelope), "utf8");
       await evictCache().catch(() => {});
-      return { text, backend: converted.backend, chars: text.length, cached: false, markers, unplaced, outline };
+      return {
+        text,
+        backend: converted.backend,
+        chars: text.length,
+        cached: false,
+        markers,
+        unplaced,
+        outline,
+        epubToc,
+      };
     } finally {
       await unlink(tmpSrc).catch(() => {});
       await unlink(tmpOut).catch(() => {});
     }
+  }
+
+  /** EPUB TOC chapter source (#135), best-effort: no unzip or an empty text → null. */
+  async #readToc(src: string, text: string, signal?: AbortSignal): Promise<EpubToc | null> {
+    const unzip = unzipBinary();
+    if (!unzip || text.trim().length === 0) return null;
+    const toc = await readEpubToc(unzip, src, text, { scratchRoot: CACHE_DIR, signal });
+    // readEpubToc swallows every failure — cancellation must still stop the extraction.
+    if (signal?.aborted) throw new OperationCancelledError();
+    return toc;
   }
 
   /**
@@ -438,6 +467,8 @@ interface TextCacheEnvelope {
   unplaced?: number;
   /** PDF outline entries (v4, #134); absent for non-PDF entries — read as []. */
   outline?: OutlineEntry[];
+  /** EPUB TOC + spine anchors (v8, #135); absent for non-EPUBs or no usable TOC — read as null. */
+  epubToc?: EpubToc;
 }
 
 /** Parse + validate a text-cache envelope; null on corruption or version mismatch. */
@@ -453,10 +484,17 @@ export function parseTextCacheEnvelope(raw: string): TextCacheEnvelope | null {
       markers: parsed.markers,
       ...(typeof parsed.unplaced === "number" ? { unplaced: parsed.unplaced } : {}),
       ...(Array.isArray(parsed.outline) ? { outline: parsed.outline } : {}),
+      ...(isEpubToc(parsed.epubToc) ? { epubToc: parsed.epubToc } : {}),
     };
   } catch {
     return null;
   }
+}
+
+/** Shape check for a cached EPUB TOC — a malformed one is dropped, not served. */
+function isEpubToc(v: unknown): v is EpubToc {
+  const t = v as Partial<EpubToc> | null;
+  return typeof t === "object" && t !== null && Array.isArray(t.entries) && Array.isArray(t.anchors);
 }
 
 function hashKey(key: string): string {

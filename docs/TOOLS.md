@@ -107,6 +107,7 @@ The map reports which `detector` built it, in this order of precedence:
 | `detector` | Source |
 |---|---|
 | `pdf-outline` | The PDF's own bookmarks (needs poppler's `pdftohtml`). Used when the outline yields at least two plausible chapters; leading front matter (cover, copyright, contents, preface…) is left out, `Part` entries are opened up into their chapters, and each chapter starts at its heading line on the bookmarked page. Flat "bookmark every section/page" outlines are rejected. `n` is a running number, not the printed chapter number. |
+| `epub-toc` | The EPUB's own table of contents (`nav.xhtml` or NCX). Same chapter-level rule as `pdf-outline`; additionally any TOC entry whose children are numbered chapters (`Раздел I` → `Глава 1`, `Глава 2`) is opened up. Each chapter starts where its spine document begins in the extracted text; a `#section` link inside a document starts at its title line. Needs the system `unzip`. `n` is a running number. |
 | `numeric` | Headings in the text: `Chapter 5`, `Глава 5`, `Розділ 3`, Roman numerals, `第5章` |
 | `structural` | Markdown/AsciiDoc headings (`#`, `##`, setext) — mostly EPUB/Markdown books |
 | `none` | Nothing found — walk the book with plain cursors |
