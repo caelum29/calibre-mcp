@@ -100,7 +100,7 @@ export const updateBookTool = defineTool({
         // text must agree with `noop` — text-only clients never see structuredContent (#216)
         const text = noop
           ? `No changes applied to book ${numericId} (values already current). ` + `(the verification re-read failed)`
-          : `Updated book ${numericId}: ${fields.join(", ")}. ` +
+          : `Updated book ${numericId}: ${changedNames(changed)}. ` +
             `(diff shows intended values — the verification re-read failed)` +
             diffText(changed);
         return toolOk([{ type: "text", text }], { id: numericId, changed, noop });
@@ -128,8 +128,13 @@ function appliedResult(id: number, before: Book, after: Book, fields: string[]):
   const noop = changed.length === 0;
   const summary = noop
     ? `No changes applied to book ${id} (values already current).`
-    : `Updated book ${id}: ${fields.join(", ")}.`;
+    : `Updated book ${id}: ${changedNames(changed)}.`;
   return toolOk([{ type: "text", text: summary + diffText(changed) }], { id, changed, noop });
+}
+
+// already-current fields are dropped from the diff, so the summary must not name them either (#235)
+function changedNames(changed: { field: string }[]): string {
+  return changed.map((c) => c.field).join(", ");
 }
 
 /** Longest rendered value per side; a full `comments` blob would flood the text. */
