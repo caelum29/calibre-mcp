@@ -297,6 +297,9 @@
           "booksPreserved": {
             "type": "number"
           },
+          "booksRefreshed": {
+            "type": "number"
+          },
           "booksRequested": {
             "type": "number"
           },

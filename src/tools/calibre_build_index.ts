@@ -10,6 +10,7 @@ import { BookId, CoercedBool, jsonArray } from "./coerce.js";
 import { defineTool } from "./define.js";
 import {
   commitBook,
+  commitRefresh,
   describeError,
   prepareBook,
   withBusyRetry,
@@ -61,6 +62,8 @@ export const buildIndexTool = defineTool({
     booksRequested: z.number().optional(),
     booksIndexed: z.number().optional(),
     booksSkipped: z.number().optional(),
+    // Metadata-only edits (#244): title/authors refreshed in place, text unchanged, no re-embed.
+    booksRefreshed: z.number().optional(),
     // Keyword-only build kept these books' existing embeddings instead of downgrading them (#197).
     booksPreserved: z.number().optional(),
     chunks: z.number().optional(),
@@ -197,6 +200,7 @@ export const buildIndexTool = defineTool({
 
     let booksIndexed = 0;
     let booksSkipped = 0;
+    let booksRefreshed = 0;
     let booksPreserved = 0;
     // Books whose keyword-only write replaceBook refused at commit time (embedded meanwhile).
     const preservedAtCommit = new Set<number>();
@@ -239,6 +243,10 @@ export const buildIndexTool = defineTool({
         }
       },
       commit: async (bookId, prepared) => {
+        if (prepared.kind === "refreshed") {
+          await withBusyRetry(() => commitRefresh(deps, libraryId, prepared.meta));
+          return;
+        }
         if (prepared.kind !== "ready") return;
         if ((await withBusyRetry(() => commitBook(deps, libraryId, prepared))) === undefined) {
           preservedAtCommit.add(bookId);
@@ -263,6 +271,8 @@ export const buildIndexTool = defineTool({
         if (!signal?.aborted) failures.push(`book ${o.bookId}: ${describeError(o.error)}`);
       } else if (o.prepared.kind === "skipped") {
         booksSkipped++;
+      } else if (o.prepared.kind === "refreshed") {
+        booksRefreshed++;
       } else if (o.prepared.kind === "preserved" || preservedAtCommit.has(o.bookId)) {
         booksPreserved++;
       } else {
@@ -325,7 +335,7 @@ export const buildIndexTool = defineTool({
     if (failures.length > 3) failureLines.push(`\n- …and ${failures.length - 3} more`);
     const summary =
       (degradeWarning ? `${degradeWarning}\n` : "") +
-      `${keywordOnly ? "Keyword-only indexed" : "Indexed"} ${booksIndexed}/${booksRequested} book(s) (${booksSkipped} up-to-date, ${totalChunks} chunks${totalFigures > 0 ? `, ${totalFigures} figure captions` : ""}) in ${elapsedMs} ms.` +
+      `${keywordOnly ? "Keyword-only indexed" : "Indexed"} ${booksIndexed}/${booksRequested} book(s) (${booksSkipped} up-to-date, ${booksRefreshed > 0 ? `${booksRefreshed} metadata-only refreshed without re-embedding, ` : ""}${totalChunks} chunks${totalFigures > 0 ? `, ${totalFigures} figure captions` : ""}) in ${elapsedMs} ms.` +
       (failures.length ? ` ${failures.length} failed:${failureLines.join("")}` : "") +
       notes.map((n) => `\n- ${n}`).join("") +
       // which books are now searchable — Desktop never sees bookDetails (#234)
@@ -335,6 +345,7 @@ export const buildIndexTool = defineTool({
       booksRequested,
       booksIndexed,
       booksSkipped,
+      booksRefreshed,
       ...(booksPreserved > 0 ? { booksPreserved } : {}),
       chunks: totalChunks,
       figures: totalFigures,

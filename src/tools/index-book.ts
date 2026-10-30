@@ -6,6 +6,7 @@ import { chooseExtractFormat, noTextReason } from "../calibre/extract.js";
 import type { FigureMarker } from "../domain/figures/markers.js";
 import type { EmbedChunk } from "../semantic/chunk.js";
 import { inThreadEncoder, type BookEncoder } from "../semantic/book-encoder.js";
+import { textMatchesChunks } from "../semantic/content-match.js";
 import type { BookMeta, IndexedChunk, IndexedFigure } from "../semantic/store.js";
 import type { ToolDeps } from "./types.js";
 
@@ -38,7 +39,12 @@ export interface PreparedBook {
  * "skipped" = already fresh for this build; "preserved" = a keyword-only build left a book
  * that already has embeddings untouched rather than downgrading it (#197).
  */
-export type PrepareResult = PreparedBook | { kind: "skipped" } | { kind: "preserved" };
+export type PrepareResult =
+  | PreparedBook
+  | { kind: "skipped" }
+  | { kind: "preserved" }
+  // Metadata-only edit (#244): text unchanged, so only title/authors are refreshed in place.
+  | { kind: "refreshed"; meta: BookMeta };
 
 export interface PrepareOptions {
   libraryId: string;
@@ -110,6 +116,14 @@ export async function prepareBook(deps: ToolDeps, bookId: number, opts: PrepareO
     throw new Error(`no extractable text (${fmt}) — ${noTextReason(fmt)}`);
   }
 
+  const meta: BookMeta = { bookId, title: book.title, authors: book.authors, lastModified: book.lastModified };
+  // Calibre bumps last_modified on ANY metadata edit (#244): when the stored chunks still match
+  // the fresh text, refresh title/authors in place and keep the vectors instead of re-embedding.
+  // The vectors keep the old "[title › authors]" prefix — accepted; force re-embeds.
+  if (!opts.force && isMetadataOnlyEdit(deps, { libraryId, bookId, text: extracted.text, keywordOnly })) {
+    return { kind: "refreshed", meta };
+  }
+
   // Deterministic context prefix — captures most of contextual-retrieval's benefit at zero
   // LLM cost. It goes into the EMBEDDED text only; the stored body stays the raw chunk so
   // char offsets still line up with calibre_get_content.
@@ -162,7 +176,7 @@ export async function prepareBook(deps: ToolDeps, bookId: number, opts: PrepareO
 
   return {
     kind: "ready",
-    meta: { bookId, title: book.title, authors: book.authors, lastModified: book.lastModified },
+    meta,
     chunks: indexed,
     figures,
     keywordOnly,
@@ -207,6 +221,26 @@ export function commitBook(deps: ToolDeps, libraryId: string, book: PreparedBook
     keywordOnly: book.keywordOnly,
   });
   return d;
+}
+
+/**
+ * True when the indexed entry is complete for this build (every chunk embedded, unless
+ * keyword-only) and its chunks still match the freshly extracted text (#244).
+ */
+function isMetadataOnlyEdit(
+  deps: ToolDeps,
+  { libraryId, bookId, text, keywordOnly }: { libraryId: string; bookId: number; text: string; keywordOnly: boolean },
+): boolean {
+  return (
+    deps.index.isBookIndexed(libraryId, bookId, undefined, { requireVectors: !keywordOnly }) &&
+    textMatchesChunks(text, deps.index.bookChunkSpans(libraryId, bookId))
+  );
+}
+
+/** The write for a metadata-only edit (#244): title/authors in place, chunks and vectors kept. */
+export function commitRefresh(deps: ToolDeps, libraryId: string, meta: BookMeta): void {
+  deps.index.refreshBookMeta(libraryId, meta);
+  deps.log.info("refreshed book metadata — text unchanged, no re-embed", { bookId: meta.bookId });
 }
 
 /**
