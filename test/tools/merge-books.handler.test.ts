@@ -120,6 +120,29 @@ describe("calibre_merge_books dry run", () => {
     expect((r.content[0] as { text: string }).text).toContain("does not look like the same work");
   });
 
+  // #241: Cyrillic metadata used to collapse to the same "|" key, hiding the mismatch.
+  it("warns when a cyrillic source title differs from a cyrillic target by the same author", async () => {
+    const d = fakeDeps({
+      books: [
+        book({ id: 10, title: "Врата Европы", authors: ["Сергей Плохий"] }),
+        book({ id: 12, title: "Чернобыль. История катастрофы", authors: ["Сергей Плохий"] }),
+      ],
+    });
+    const r = await run({ targetId: 10, sourceIds: [12] }, d);
+    expect((r.content[0] as { text: string }).text).toContain("does not look like the same work");
+  });
+
+  it("does not warn when a cyrillic source differs from the target only by punctuation", async () => {
+    const d = fakeDeps({
+      books: [
+        book({ id: 10, title: "Врата Европы", authors: ["Сергей Плохий"] }),
+        book({ id: 12, title: "врата  Европы!", authors: ["Сергей Плохий"] }),
+      ],
+    });
+    const r = await run({ targetId: 10, sourceIds: [12] }, d);
+    expect((r.content[0] as { text: string }).text).not.toContain("does not look like the same work");
+  });
+
   it("omits the metadata diff in formatsOnly mode", async () => {
     const d = fakeDeps();
     const r = await run({ targetId: 10, sourceIds: [12], mode: "formatsOnly" }, d);
