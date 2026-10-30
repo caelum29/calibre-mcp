@@ -11,7 +11,7 @@ import { buildSetMetadataArgs } from "../calibre/metadata-fields.js";
 import type { ChangeValue } from "../calibre/metadata-fields.js";
 import { downloadToFile } from "../calibre/http.js";
 import type { Book } from "../domain/book.js";
-import { similarKey } from "../domain/curation/normalize.js";
+import { isSimilarMatch } from "../domain/curation/normalize.js";
 import { CalibreCliError, CalibreCliTimeoutError, CalibreHttpError } from "../domain/errors.js";
 import { mergeBuiltinMetadata, mergeCustomMetadata, planFormatMoves } from "../domain/merge.js";
 import type { FormatMove } from "../domain/merge.js";
@@ -119,14 +119,12 @@ export const mergeBooksTool = defineTool({
 
       // Advisory only — merge never refuses on dissimilarity (#38 Q5).
       const warnings: string[] = [];
-      const targetKey = similarKey(target);
       for (const s of sources) {
-        // An undefined key (no letters in the title) can't confirm a match, so it warns too.
-        const sourceKey = similarKey(s);
-        if (targetKey === undefined || sourceKey !== targetKey) {
+        // Different key, different edition/volume, or a title with no letters (#241, #242).
+        if (!isSimilarMatch(target, s)) {
           warnings.push(
             `Source #${s.id} "${s.title}" does not look like the same work as the target ` +
-              `(title/author mismatch). Advisory only — confirm proceeds regardless.`,
+              `(title, author or edition mismatch). Advisory only — confirm proceeds regardless.`,
           );
         }
       }

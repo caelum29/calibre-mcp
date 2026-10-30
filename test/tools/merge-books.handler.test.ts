@@ -143,6 +143,40 @@ describe("calibre_merge_books dry run", () => {
     expect((r.content[0] as { text: string }).text).not.toContain("does not look like the same work");
   });
 
+  // #242: a different edition or a different volume subtitle is not the same record.
+  it("warns when the source is a different edition of the target", async () => {
+    const d = fakeDeps({
+      books: [
+        book({ id: 10, title: "Clean Architecture 2nd Edition", authors: ["Robert Martin"] }),
+        book({ id: 12, title: "Clean Architecture 3rd Edition", authors: ["Robert Martin"] }),
+      ],
+    });
+    const r = await run({ targetId: 10, sourceIds: [12] }, d);
+    expect((r.content[0] as { text: string }).text).toContain("does not look like the same work");
+  });
+
+  it("warns when the source is a different volume subtitle of the target", async () => {
+    const d = fakeDeps({
+      books: [
+        book({ id: 10, title: "Вы не знаете JS: Типы и грамматические конструкции", authors: ["Kyle Simpson"] }),
+        book({ id: 12, title: "Вы не знаете JS: Асинхронная обработка и оптимизация", authors: ["Kyle Simpson"] }),
+      ],
+    });
+    const r = await run({ targetId: 10, sourceIds: [12] }, d);
+    expect((r.content[0] as { text: string }).text).toContain("does not look like the same work");
+  });
+
+  it("does not warn when the source only adds an edition suffix to the target", async () => {
+    const d = fakeDeps({
+      books: [
+        book({ id: 10, title: "Node.js Design Patterns", authors: ["Mario Casciaro"] }),
+        book({ id: 12, title: "NodeJS Design Patterns 3rd Edition 2020", authors: ["Mario Casciaro"] }),
+      ],
+    });
+    const r = await run({ targetId: 10, sourceIds: [12] }, d);
+    expect((r.content[0] as { text: string }).text).not.toContain("does not look like the same work");
+  });
+
   it("omits the metadata diff in formatsOnly mode", async () => {
     const d = fakeDeps();
     const r = await run({ targetId: 10, sourceIds: [12], mode: "formatsOnly" }, d);

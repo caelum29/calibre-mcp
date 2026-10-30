@@ -4,7 +4,7 @@
 // it only scores how safe a human/agent merge would be so conflicts surface first.
 
 import type { Book } from "../book.js";
-import { identicalKey, similarKey } from "./normalize.js";
+import { editionsCompatible, identicalKey, similarParts, type SimilarParts } from "./normalize.js";
 
 export type DuplicateMode = "identical" | "similar";
 
@@ -68,22 +68,63 @@ export function mergeSafety(books: Book[]): number {
   return Math.max(0, Math.min(1, score));
 }
 
+/** Number of edition signals a book carries — the most specific books seed clusters. */
+function specificity(p: SimilarParts): number {
+  return [p.subtitle, p.edition, p.titleYear, p.pubYear].filter((v) => v !== undefined).length;
+}
+
 /**
- * Group books that share a normalized key (identical = exact-ish, similar = fuzzy). Only
- * groups of >1 are returned, sorted least-safe-first so risky merges surface at the top.
+ * Split one similar-key bucket into clusters with no conflicting edition signal (#242).
+ * Greedy: most specific books seed clusters first, so a signal-less book (wildcard) joins
+ * the first cluster it fits instead of bridging two different editions.
  */
-export function findDuplicateGroups(books: Book[], mode: DuplicateMode): DupGroup[] {
-  const keyOf = mode === "identical" ? identicalKey : similarKey;
+function splitByEdition(members: { book: Book; parts: SimilarParts }[]): Book[][] {
+  const ordered = [...members].sort((a, b) => specificity(b.parts) - specificity(a.parts));
+  const clusters: { book: Book; parts: SimilarParts }[][] = [];
+  for (const m of ordered) {
+    const home = clusters.find((c) => c.every((o) => editionsCompatible(o.parts, m.parts)));
+    if (home) home.push(m);
+    else clusters.push([m]);
+  }
+  // Restore input order inside each cluster.
+  return clusters.map((c) => members.filter((m) => c.includes(m)).map((m) => m.book));
+}
+
+/** identical mode: one bucket per exact-ish key. */
+function identicalBuckets(books: Book[]): [string, Book[]][] {
   const buckets = new Map<string, Book[]>();
   for (const b of books) {
-    const key: string | undefined = keyOf(b);
-    // Not comparable (e.g. a title with no letters) — never group it (#241).
-    if (key === undefined) continue;
+    const key = identicalKey(b);
     const bucket = buckets.get(key);
     if (bucket) bucket.push(b);
     else buckets.set(key, [b]);
   }
+  return [...buckets];
+}
 
+/** similar mode: fuzzy-key buckets, each split by edition signals. */
+function similarBuckets(books: Book[]): [string, Book[]][] {
+  const buckets = new Map<string, { book: Book; parts: SimilarParts }[]>();
+  for (const book of books) {
+    const parts = similarParts(book);
+    // Not comparable (e.g. a title with no letters) — never group it (#241).
+    if (parts === undefined) continue;
+    const bucket = buckets.get(parts.key);
+    if (bucket) bucket.push({ book, parts });
+    else buckets.set(parts.key, [{ book, parts }]);
+  }
+  const out: [string, Book[]][] = [];
+  for (const [key, members] of buckets) for (const c of splitByEdition(members)) out.push([key, c]);
+  return out;
+}
+
+/**
+ * Group books that share a normalized key (identical = exact-ish, similar = fuzzy and
+ * edition-aware). Only groups of >1 are returned, sorted least-safe-first so risky merges
+ * surface at the top.
+ */
+export function findDuplicateGroups(books: Book[], mode: DuplicateMode): DupGroup[] {
+  const buckets = mode === "identical" ? identicalBuckets(books) : similarBuckets(books);
   const groups: DupGroup[] = [];
   for (const [key, members] of buckets) {
     if (members.length < 2) continue;

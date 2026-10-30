@@ -4,6 +4,7 @@
 // from Calibre's GPL author_to_author_sort).
 
 import type { Book } from "../book.js";
+import { pubYear, splitEdition, splitTrailingYear } from "./edition.js";
 
 /** Collapse runs of whitespace and trim. */
 function collapseWs(s: string): string {
@@ -47,30 +48,91 @@ function keepWordChars(s: string): string {
   return s.replace(/[^\p{L}\p{N}\p{M}\s]/gu, " ");
 }
 
+/** Lowercase → word chars only → collapse → drop a leading English article → no spaces. */
+function squash(s: string): string {
+  return collapseWs(keepWordChars(s))
+    .replace(/^(the|a|an)\s+/, "")
+    .replace(/\s+/g, "");
+}
+
 /**
- * Aggressive fuzzy grouping key: accent-folded, subtitle-dropped, article-stripped,
- * letters/digits-only title + a normalized author token set. Deliberately lossy — catches
- * "The Rust Programming Language" vs "Rust Programming Language: 2nd Ed". Any script's
- * letters survive (#241).
+ * Fuzzy grouping key plus the edition signals that may still tell two same-key books
+ * apart (#242). Every signal is optional: absent means "unknown", not "different".
+ */
+export interface SimilarParts {
+  /** Main title (no subtitle/edition/year) + sorted normalized authors. */
+  key: string;
+  /** Normalized text after the first colon, e.g. the volume name of a series. */
+  subtitle?: string;
+  /** Edition number parsed from the title ("3rd Edition", "2-е издание"). */
+  edition?: number;
+  /** Trailing year in the title ("Excel 2019"). */
+  titleYear?: number;
+  /** Year of the Calibre pubdate. */
+  pubYear?: number;
+}
+
+/**
+ * Split a book into its fuzzy key and edition signals. Accent-folded, letters/digits of
+ * any script (#241); parentheticals dropped; edition phrases and a trailing year moved to
+ * side fields so "NodeJS Design Patterns 3rd Edition 2020" keys like "Node.js Design Patterns".
  *
  * Returns `undefined` when the title has no letters or digits left: such a book can't be
  * fuzzily compared, and keying it on authors alone groups unrelated books (#241).
  */
-export function similarKey(book: Book): string | undefined {
-  let t = foldAccents(book.title.toLowerCase());
-  // Drop subtitle after a colon or an opening paren.
-  const cut = t.search(/[:(]/);
-  if (cut > 0) t = t.slice(0, cut);
-  t = collapseWs(keepWordChars(t)).replace(/^(the|a|an)\s+/, "");
-  t = t.replace(/\s+/g, "");
-  if (!t) return undefined;
+export function similarParts(book: Book): SimilarParts | undefined {
+  const folded = foldAccents(book.title.toLowerCase());
+  const { rest: noEdition, edition } = splitEdition(folded);
+  // Parenthetical/bracketed asides ("(Special Edition)", "[print PDF]") never discriminate.
+  const paren = noEdition.search(/[([]/);
+  const noParen = paren > 0 ? noEdition.slice(0, paren) : noEdition;
+  const { rest: noYear, year: titleYear } = splitTrailingYear(noParen);
+
+  const colon = noYear.indexOf(":");
+  const main = squash(colon > 0 ? noYear.slice(0, colon) : noYear);
+  if (!main) return undefined;
+  const subtitle = colon > 0 ? squash(noYear.slice(colon + 1)) : "";
 
   const authors = book.authors
     .map((a) => collapseWs(keepWordChars(foldAccents(a.toLowerCase()))))
     .filter(Boolean)
     .sort()
     .join(",");
-  return `${t}|${authors}`;
+  return {
+    key: `${main}|${authors}`,
+    subtitle: subtitle || undefined,
+    edition,
+    titleYear,
+    pubYear: pubYear(book.pubdate),
+  };
+}
+
+/**
+ * Aggressive fuzzy grouping key: the {@link similarParts} key (main title + authors).
+ * Deliberately lossy — "The Rust Programming Language" and "Rust Programming Language:
+ * 2nd Edition" share it. Use {@link isSimilarMatch} to also respect edition signals.
+ */
+export function similarKey(book: Book): string | undefined {
+  return similarParts(book)?.key;
+}
+
+/** Pubdates this many years apart (or more) read as different editions (#242). */
+const EDITION_YEAR_GAP = 2;
+
+/** True when two same-key parts carry no conflicting edition signal. */
+export function editionsCompatible(a: SimilarParts, b: SimilarParts): boolean {
+  const differ = <T>(x: T | undefined, y: T | undefined) => x !== undefined && y !== undefined && x !== y;
+  if (differ(a.subtitle, b.subtitle) || differ(a.edition, b.edition) || differ(a.titleYear, b.titleYear)) {
+    return false;
+  }
+  return a.pubYear === undefined || b.pubYear === undefined || Math.abs(a.pubYear - b.pubYear) < EDITION_YEAR_GAP;
+}
+
+/** Same work AND no conflicting edition signal — the `similar`-mode notion of a duplicate. */
+export function isSimilarMatch(a: Book, b: Book): boolean {
+  const pa = similarParts(a);
+  const pb = similarParts(b);
+  return pa !== undefined && pb !== undefined && pa.key === pb.key && editionsCompatible(pa, pb);
 }
 
 /**
