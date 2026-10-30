@@ -2,7 +2,7 @@
 
 import { describe, it, expect } from "vitest";
 import { createLogger, type LogRecord } from "../src/logging.js";
-import { summarizeArgs, summarizeArgv, withCallLog } from "../src/call-log.js";
+import { redactArgvEchoes, summarizeArgs, summarizeArgv, withCallLog } from "../src/call-log.js";
 
 function setup() {
   const lines: string[] = [];
@@ -100,5 +100,19 @@ describe("summarizeArgv", () => {
       "json",
       "[text, 163 chars]",
     ]);
+  });
+});
+
+describe("redactArgvEchoes", () => {
+  it("should_replace_an_echoed_long_argv_value_with_its_marker", () => {
+    const query = `LOGTEST-LONG ${"event sourcing ".repeat(10)}`;
+    const diag = `Integration status: False\n\nFailed to parse search query: ${query}`;
+    expect(redactArgvEchoes(diag, ["fts_search", "--output-format=json", query])).toBe(
+      `Integration status: False\n\nFailed to parse search query: [text, ${query.length} chars]`,
+    );
+  });
+
+  it("should_leave_short_argv_values_untouched", () => {
+    expect(redactArgvEchoes("bad id 42", ["show_metadata", "42"])).toBe("bad id 42");
   });
 });

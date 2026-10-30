@@ -14,7 +14,7 @@ import {
 } from "../domain/errors.js";
 import type { FtsHit } from "../domain/search.js";
 import { log } from "../logging.js";
-import { summarizeArgv } from "../call-log.js";
+import { redactArgvEchoes, summarizeArgv } from "../call-log.js";
 import { SpawnAbortedError, spawnCollect, SpawnTimeoutError } from "./spawn.js";
 
 export interface CalibreClientOptions {
@@ -136,7 +136,11 @@ export class CalibreClient {
     if (result.code !== 0) {
       // Forbidden/write-refused text can land on either stream; keep both for the classifier.
       const diag = [result.stdout, result.stderr].filter(Boolean).join("\n");
-      log.error("calibredb failed", { argv: summarizeArgv(args), code: result.code, diag: diag.slice(0, 500) });
+      log.error("calibredb failed", {
+        argv: summarizeArgv(args),
+        code: result.code,
+        diag: redactArgvEchoes(diag, args).slice(0, 500),
+      });
       throw new CalibreCliError(result.code, "calibredb command failed", diag);
     }
     return { stdout: result.stdout, stderr: result.stderr };
