@@ -12,7 +12,7 @@
         "idempotentHint": false,
         "readOnlyHint": false
       },
-      "description": "Import a local ebook file (EPUB/PDF/MOBI/…) into the library. The file must live under an allowed import root and be reachable by the Calibre server process. Requires writes to be enabled.",
+      "description": "Import a local ebook file (EPUB/PDF/MOBI/…) into the library. The file must live under an allowed import root and be reachable by the Calibre server process. Flags possible duplicates (advisory). Requires writes to be enabled.",
       "execution": {
         "taskSupport": "forbidden"
       },
@@ -44,6 +44,36 @@
           },
           "path": {
             "type": "string"
+          },
+          "possibleDuplicates": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "number"
+                },
+                "of": {
+                  "items": {
+                    "type": "number"
+                  },
+                  "type": "array"
+                },
+                "reason": {
+                  "enum": [
+                    "isbn",
+                    "title"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "of",
+                "reason"
+              ],
+              "type": "object"
+            },
+            "type": "array"
           }
         },
         "type": "object"
