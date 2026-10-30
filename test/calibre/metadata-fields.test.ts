@@ -111,6 +111,27 @@ describe("changesSatisfied", () => {
     expect(changesSatisfied(book(), book(), { "#shelf": "to-read" })).toBe(false);
   });
 
+  it("is satisfied when a clear landed and Calibre reads the field back as absent", () => {
+    const before = book({ publisher: "Old" });
+    const after = book({ publisher: undefined });
+    expect(changesSatisfied(before, after, { publisher: "" })).toBe(true);
+  });
+
+  it("is satisfied when a cleared list reads back empty", () => {
+    const before = book({ tags: ["old"] });
+    const after = book({ tags: [] });
+    expect(changesSatisfied(before, after, { tags: [] })).toBe(true);
+  });
+
+  it("is satisfied when identifiers read back in a different key order", () => {
+    const same = book({ identifiers: { isbn: "1", amazon: "2" } });
+    expect(changesSatisfied(same, same, { identifiers: { amazon: "2", isbn: "1" } })).toBe(true);
+  });
+
+  it("is not satisfied when clearing an unverifiable custom #column", () => {
+    expect(changesSatisfied(book(), book(), { "#shelf": "" })).toBe(false);
+  });
+
   it("requires EVERY requested field to have landed", () => {
     const before = book({ publisher: "Old", tags: ["old"] });
     const after = book({ publisher: "New", tags: ["old"] });
