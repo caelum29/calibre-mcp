@@ -2,7 +2,7 @@
 
 import { describe, it, expect } from "vitest";
 import { createLogger, type LogRecord } from "../src/logging.js";
-import { summarizeArgs, withCallLog } from "../src/call-log.js";
+import { summarizeArgs, summarizeArgv, withCallLog } from "../src/call-log.js";
 
 function setup() {
   const lines: string[] = [];
@@ -87,6 +87,18 @@ describe("summarizeArgs", () => {
       undefined,
       undefined,
       undefined,
+    ]);
+  });
+});
+
+describe("summarizeArgv", () => {
+  it("should_keep_flags_and_short_tokens_but_drop_long_free_text", () => {
+    const query = "q".repeat(163);
+    expect(summarizeArgv(["fts_search", "--output-format", "json", query])).toEqual([
+      "fts_search",
+      "--output-format",
+      "json",
+      "[text, 163 chars]",
     ]);
   });
 });
