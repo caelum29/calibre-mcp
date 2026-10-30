@@ -291,8 +291,9 @@ it's safe to run without enabling library writes.
 ### `calibre_find_duplicates`
 
 Surface probable duplicate books so you can decide what to merge. `mode: identical` groups by
-exact title + authors; `mode: similar` groups fuzzily; each group carries a **merge-safety
-score**. `mode: compare` diffs two or more specific books field by field and recommends which to
+exact title + authors; `mode: similar` groups fuzzily (any script; edition suffixes like "3rd Edition" /
+"3-е издание" are ignored, but different editions, volume subtitles or pubdates ≥ 2 years apart
+stay separate); each group carries a **merge-safety score**. `mode: compare` diffs two or more specific books field by field and recommends which to
 keep. It never merges anything — that's `calibre_merge_books`. Mixed-language groups are flagged
 as likely translations (not true duplicates), and a language difference caps the merge-safety
 score with a review warning.
