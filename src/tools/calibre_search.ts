@@ -6,7 +6,7 @@
 // FTS snippets are fenced as untrusted book text.
 
 import { z } from "zod";
-import { CalibreCliError, CalibreNotFoundError } from "../domain/errors.js";
+import { CalibreCliError, CalibreCliTimeoutError, CalibreNotFoundError, isFtsParseDiag } from "../domain/errors.js";
 import type { BoardPayload } from "../ui/board-cache.js";
 import {
   buildScopedQuery,
@@ -408,9 +408,21 @@ export const searchTool = defineTool({
     } catch (err) {
       // A missing calibredb binary carries its own install hint — don't blame the index.
       if (err instanceof CalibreNotFoundError) return toolError(err.message);
-      // calibredb is only invoked on the FTS paths, so any CLI failure here means the
-      // full-text index isn't ready (snippet requests hang/time out without an index).
+      // calibredb is only invoked on the FTS paths — tell the real cause apart (#251).
+      if (err instanceof CalibreCliTimeoutError) {
+        return toolError(
+          "Full-text search timed out — likely a cold start. You can retry once; if it times out again, " +
+            "narrow it with bookId (one book) or filter (a bundle).",
+        );
+      }
       if (err instanceof CalibreCliError) {
+        // FTS5 reads `-`/`:` in a bare query as operators/column filters; a phrase bypasses that.
+        if (isFtsParseDiag(err.stderr ?? "")) {
+          return toolError(
+            "Full-text search couldn't parse that query (FTS is working — the syntax is the problem). " +
+              "Retry with the whole query wrapped in double quotes, or drop operators like - : AND/OR/NEAR.",
+          );
+        }
         return toolError(
           "Full-text search isn't ready for this library. Enable indexing in Calibre " +
             "(Preferences → Searching → Full text search), wait for it to finish, then retry.",

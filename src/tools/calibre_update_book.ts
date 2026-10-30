@@ -7,7 +7,7 @@ import { z } from "zod";
 import { bookFieldValue, buildSetMetadataArgs, isAllowedField, sameFieldValue } from "../calibre/metadata-fields.js";
 import type { ChangeValue } from "../calibre/metadata-fields.js";
 import type { Book } from "../domain/book.js";
-import { CalibreCliTimeoutError } from "../domain/errors.js";
+import { CalibreCliTimeoutError, CalibreHttpError } from "../domain/errors.js";
 import { BookId, jsonRecord } from "./coerce.js";
 import { defineTool } from "./define.js";
 import type { ToolDeps, ToolResult } from "./types.js";
@@ -111,6 +111,10 @@ export const updateBookTool = defineTool({
       }
       return appliedResult(numericId, before, after, fields);
     } catch (err) {
+      // same wording as get_book — never leak the raw HTTP text (#251)
+      if (err instanceof CalibreHttpError && err.status === 404) {
+        return toolError(`No book with id ${bookIdArg(args)} in the requested library`);
+      }
       const msg = err instanceof Error ? err.message : String(err);
       return toolError(msg);
     }

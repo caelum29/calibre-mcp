@@ -66,3 +66,11 @@ export class OperationCancelledError extends Error {
     this.name = "OperationCancelledError";
   }
 }
+
+/**
+ * calibredb's FTS diag for a query SQLite FTS5 couldn't parse (e.g. `LOGTEST-LONG` read as a
+ * column filter → "no such column: LONG"). A user-input problem, not an indexing one (#251).
+ */
+export function isFtsParseDiag(diag: string): boolean {
+  return /Failed to parse search query|fts5: syntax error/i.test(diag);
+}
