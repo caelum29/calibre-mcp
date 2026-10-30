@@ -242,6 +242,22 @@ describe("calibre_bulk_update mid-loop write refusal (#213)", () => {
     expect(text(r)).toContain("Already committed: 1.");
   });
 
+  // #237 — a 401 from an auth-enabled server must stop the loop exactly like a 403
+  it("should_stop_the_loop_on_calibredbs_real_401_message_like_a_403", async () => {
+    const unauthorized = (): never => {
+      throw new CalibreCliError(1, "boom", "A username and password is required to access this server");
+    };
+    const spy = scripted([null, unauthorized]);
+    const r = await bulkUpdateTool.handler(
+      { changes: { tags: ["new"] }, ids: [1, 2, 3], preview: false },
+      deps({ fixture: three, calibredb: spy }),
+    );
+    expect({ calls: spy.mock.calls.length, retryIds: r.structuredContent?.retryIds }).toEqual({
+      calls: 2,
+      retryIds: [2, 3],
+    });
+  });
+
   it("keeps the bare refusal error when the very first book is refused (nothing committed)", async () => {
     const spy = scripted([refusal]);
     const r = await bulkUpdateTool.handler(
