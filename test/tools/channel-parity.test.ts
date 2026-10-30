@@ -11,6 +11,11 @@ import path from "node:path";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
+import type { ProviderHit } from "../../src/domain/enrich/types.js";
+import type { Embedder } from "../../src/semantic/embedder.js";
+import { EMBED_DIM } from "../../src/semantic/model.js";
+import { SqliteIndexStore } from "../../src/semantic/store.js";
+import { l2normalize } from "../../src/semantic/vector.js";
 import { allTools } from "../../src/tools/registry.js";
 import { decodeCursor, pageCursor } from "../../src/tools/cursor.js";
 import { renderResult } from "../../src/tools/result.js";
@@ -268,6 +273,10 @@ interface FakeOpts {
   categoryValues?: { name: string; count: number }[];
   text?: string;
   env?: Record<string, string>;
+  embedder?: Embedder;
+  index?: SqliteIndexStore;
+  /** Metadata-provider hits (OpenLibrary + Google Books both answer with these). */
+  hits?: ProviderHit[];
 }
 
 /** One fake covering every dependency the scenario tools touch — no live Calibre. */
@@ -326,11 +335,47 @@ function fakeDeps(o: FakeOpts = {}): ToolDeps {
     calibre: calibre as unknown as ToolDeps["calibre"],
     extractor: extractor as unknown as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
-    embedder: {} as ToolDeps["embedder"],
-    index: { hasIndex: () => false, isBookIndexed: () => false } as unknown as ToolDeps["index"],
+    embedder: o.embedder ?? ({} as ToolDeps["embedder"]),
+    index: o.index ?? ({ hasIndex: () => false, isBookIndexed: () => false } as unknown as ToolDeps["index"]),
+    providers: { openlibrary: provider("openlibrary"), googlebooks: provider("googlebooks") },
     log,
   };
+
+  function provider(name: "openlibrary" | "googlebooks") {
+    return { name, lookupByIsbn: async () => o.hits ?? [], searchByTitleAuthor: async () => o.hits ?? [] };
+  }
 }
+
+/** Unit vector on one axis — an axis-0 query ranks axis-0 passages first. */
+function axis(i: number): Float32Array {
+  const v = new Float32Array(EMBED_DIM);
+  v[i] = 1;
+  return l2normalize(v);
+}
+
+/** Deterministic embedder: every query and passage lands on axis 0. */
+const fakeEmbedder: Embedder = {
+  embedQuery: async () => axis(0),
+  embedPassages: async (texts) => texts.map(() => axis(0)),
+  warmup: async () => {},
+  countTokens: (s) => Math.ceil(s.length / 4) + 2,
+};
+
+const memoryStore = (): SqliteIndexStore => new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
+
+/** In-memory index holding two library books with one embedded passage each. */
+function indexedStore(): SqliteIndexStore {
+  const s = memoryStore();
+  s.replaceBook("Programming_Books", { bookId: 101, title: "Rust in Action", authors: ["Tim McNamara"] }, [
+    { charStart: 0, charEnd: 30, body: "ownership moves the value", vector: axis(0) },
+  ]);
+  s.replaceBook("Programming_Books", { bookId: 102, title: "Programming Rust", authors: ["Jim Blandy"] }, [
+    { charStart: 40, charEnd: 80, body: "borrowing lends a reference", vector: axis(1) },
+  ]);
+  return s;
+}
+
+const semanticDeps = (): ToolDeps => fakeDeps({ embedder: fakeEmbedder, index: indexedStore() });
 
 interface Scenario {
   tool: string;
@@ -422,6 +467,60 @@ const SCENARIOS: Scenario[] = [
         calibredb: async () => ({ stdout: "Added book ids: 999", stderr: "" }),
       }),
   },
+  // #234 — the three tools that needed embedder / index-store / provider fakes
+  {
+    tool: "calibre_semantic_search",
+    label: "library hits",
+    args: { query: "ownership", scope: "library" },
+    deps: semanticDeps,
+  },
+  {
+    tool: "calibre_semantic_search",
+    label: "book-scope passages",
+    args: { query: "ownership", scope: "book", bookId: 101 },
+    deps: semanticDeps,
+  },
+  {
+    tool: "calibre_semantic_search",
+    label: "no index built (error)",
+    args: { query: "ownership" },
+    deps: () => fakeDeps({ embedder: fakeEmbedder, index: memoryStore() }),
+  },
+  {
+    tool: "calibre_build_index",
+    label: "indexes one book",
+    args: { bookId: 101 },
+    deps: () => fakeDeps({ embedder: fakeEmbedder, index: memoryStore() }),
+  },
+  {
+    tool: "calibre_build_index",
+    label: "no selector (error)",
+    args: {},
+    deps: () => fakeDeps({ embedder: fakeEmbedder, index: memoryStore() }),
+  },
+  {
+    tool: "calibre_recover_metadata",
+    label: "proposal from the book's ISBN",
+    args: { id: 101 },
+    deps: () =>
+      fakeDeps({
+        hits: [
+          {
+            source: "openlibrary",
+            confidence: 0.95,
+            title: "Rust in Action",
+            authors: ["Tim McNamara"],
+            publisher: "Manning Publications",
+          },
+        ],
+      }),
+  },
+  {
+    tool: "calibre_recover_metadata",
+    label: "nothing to look up (error)",
+    args: { id: 101 },
+    deps: () => fakeDeps({ books: [book({ title: "795731065", identifiers: {}, formats: [] })] }),
+  },
 ];
 
 /**
@@ -432,10 +531,6 @@ const ALLOWLIST: Record<string, string> = {
   calibre_get_figures: "no outputSchema → Code falls back to the text content, so both clients see one channel (#227)",
   calibre_board_data: "widget-internal (_meta.ui.visibility app), never shown to the model (D-017, #227)",
   calibre_open_book: "widget-internal (_meta.ui.visibility app), never shown to the model (D-017, #227)",
-  calibre_semantic_search:
-    "needs embedder + vector-index fakes; it is the reference shape (results[]/passages[] mirror the text) — follow-up under #227",
-  calibre_build_index: "needs extractor + index-store + embedder fakes for a full build; follow-up under #227",
-  calibre_recover_metadata: "needs provider fakes (OpenLibrary/Google Books); follow-up under #227",
 };
 
 describe("dual-channel parity over the registry (#227)", () => {

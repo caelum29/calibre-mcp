@@ -462,3 +462,32 @@ describe("calibre_update_book unverified no-op text (#216)", () => {
     expect(text(r)).not.toContain("No changes applied");
   });
 });
+
+// #235 — the summary names only fields that actually changed, matching structuredContent.changed
+describe("calibre_update_book summary names changed fields only (#235)", () => {
+  const text = (r: { content: unknown[] }): string => (r.content[0] as { text: string }).text;
+  const failingReread = (first: Book) => {
+    let calls = 0;
+    return async (): Promise<Book> => {
+      calls += 1;
+      if (calls > 1) throw new CalibreHttpError(0, "u", "Content Server request timed out");
+      return first;
+    };
+  };
+
+  it("should_name_only_title_when_tags_were_already_current", async () => {
+    const r = await updateBookTool.handler(
+      { id: 658, changes: { title: "New", tags: ["old"] } },
+      deps({ books: [book(), book({ title: "New" })] }),
+    );
+    expect(text(r)).toContain("Updated book 658: title.\n");
+  });
+
+  it("should_name_only_the_changing_field_when_the_reread_fails", async () => {
+    const r = await updateBookTool.handler(
+      { id: 658, changes: { title: "New", tags: ["old"] } },
+      deps({ getBook: failingReread(book()) }),
+    );
+    expect(text(r)).toContain("Updated book 658: title. (diff shows intended values");
+  });
+});

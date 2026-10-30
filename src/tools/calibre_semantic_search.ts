@@ -420,7 +420,8 @@ async function bookScope(
   const { maxScore, lowConfidence } = confidence(ranked, deps, rr);
   const head = withNote(
     header("passage", ranked.length, args, maxScore, lowConfidence, rr) +
-      ` Re-read any passage via calibre_get_content (pass its start char as offset).`,
+      // name the book: text-only clients need the id to follow up (#234)
+      ` Re-read any passage via calibre_get_content id=${bookId} (pass its start char as offset).`,
     note,
   );
 
