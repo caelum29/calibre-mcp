@@ -1,0 +1,24 @@
+src/call-log.ts
+  s_69f8e9eb54d2c7::t_ad0f132b9e5bbb 46-58
+src/calibre/client.ts
+  s_69f8e9eb54d2c7::t_ad0f132b9e5bbb 17,139-143
+test/call-log.test.ts
+  s_69f8e9eb54d2c7::t_ad0f132b9e5bbb 5,105-117
+  s_69f8e9eb54d2c7::t_47267018aa0e94 118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "680e91cbeecc4b82a86eb0a1639117d144a3b27f",
+  "prompts": {},
+  "sessions": {
+    "s_69f8e9eb54d2c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1bc4d46a-5d88-4a4a-8bed-5bd3636fa686",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
