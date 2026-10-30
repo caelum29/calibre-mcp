@@ -9,6 +9,56 @@ inserts its generated section above the newest entry. Hand-written notes still g
 `[Unreleased]`; when merging a release PR, fold them into the generated section and leave
 `[Unreleased]` empty.
 
+## [0.11.0](https://github.com/caelum29/calibre-mcp/compare/v0.10.0...v0.11.0) (2026-10-30)
+
+
+### Added
+
+* **observability:** agent-readable JSONL logs, per-call records, ping.recentErrors ([#247](https://github.com/caelum29/calibre-mcp/issues/247)) ([2d381d0](https://github.com/caelum29/calibre-mcp/commit/2d381d011cbb05483046df3e8aaf16a661322969))
+* **observability:** agent-readable JSONL logs, per-call records, ping.recentErrors ([#247](https://github.com/caelum29/calibre-mcp/issues/247)) ([8b09005](https://github.com/caelum29/calibre-mcp/commit/8b09005d0f35fb0d0c8cd882600b05ddababae2b))
+* **semantic:** add EmbeddingGemma 2 candidates (768/256) and bump transformers.js to 4.3.1 ([#139](https://github.com/caelum29/calibre-mcp/issues/139)) ([#209](https://github.com/caelum29/calibre-mcp/issues/209)) ([5883a56](https://github.com/caelum29/calibre-mcp/commit/5883a56bb85ae22405708ebc4b84ddab0490ffce))
+
+
+### Fixed
+
+* **bulk-update:** collapse per-id errors to one bounded line in text ([#216](https://github.com/caelum29/calibre-mcp/issues/216)) ([5c6c0f8](https://github.com/caelum29/calibre-mcp/commit/5c6c0f8eefb1e68c969c7dcb67c88ae0443b8d0b))
+* **bulk-update:** hand back retryIds and a re-run steer after a mid-loop refusal ([#213](https://github.com/caelum29/calibre-mcp/issues/213)) ([70ff746](https://github.com/caelum29/calibre-mcp/commit/70ff746c7840988c396f82b76fb43156e8e6b56f))
+* **bulk-update:** keep committed books visible when a write is refused mid-loop ([#213](https://github.com/caelum29/calibre-mcp/issues/213)) ([74496ff](https://github.com/caelum29/calibre-mcp/commit/74496ff10816845b3df2847c7786eaeaea31f618))
+* **bulk-update:** reject ids combined with query ([#214](https://github.com/caelum29/calibre-mcp/issues/214)) ([a53602f](https://github.com/caelum29/calibre-mcp/commit/a53602f4f4088a7eeafa3a68479d8a7422032688))
+* **curation:** extend raw-filename title heuristics ([#207](https://github.com/caelum29/calibre-mcp/issues/207)) ([53c3f2b](https://github.com/caelum29/calibre-mcp/commit/53c3f2beb0132bffd679b1107f28e59fae60a466))
+* **metadata:** authors are weak only when every entry is suspect ([#201](https://github.com/caelum29/calibre-mcp/issues/201)) ([3b97334](https://github.com/caelum29/calibre-mcp/commit/3b97334d8cec779eb8a9d846f71ee035ca538634))
+* **metadata:** ISBN/metadata recovery heuristics ([#198](https://github.com/caelum29/calibre-mcp/issues/198) [#201](https://github.com/caelum29/calibre-mcp/issues/201)) ([a40cf04](https://github.com/caelum29/calibre-mcp/commit/a40cf0481593a12243cb61f104e8733d883c3731))
+* **metadata:** loosen title agreement to subset or 1/3 overlap with EN/RU stop-words ([#198](https://github.com/caelum29/calibre-mcp/issues/198)) ([fa246b2](https://github.com/caelum29/calibre-mcp/commit/fa246b2b95717d458e66941068f0706bc11c85ec))
+* **metadata:** normalize provider authors, flag suspect authors, drop author-as-publisher, emit ISBN-13 ([#201](https://github.com/caelum29/calibre-mcp/issues/201)) ([541e980](https://github.com/caelum29/calibre-mcp/commit/541e9805f057604719e1035bf6c9ffde11a311df))
+* **metadata:** skip ad/catalog ISBNs and flag title-mismatched hits ([#198](https://github.com/caelum29/calibre-mcp/issues/198)) ([b58e5bf](https://github.com/caelum29/calibre-mcp/commit/b58e5bfc456a20c9befd9a829ced9920ed73e320))
+* **metadata:** titles agree on subset or 2+ shared significant words ([#198](https://github.com/caelum29/calibre-mcp/issues/198)) ([21f06cc](https://github.com/caelum29/calibre-mcp/commit/21f06cca685a37c1de44cc02e542766076a61d33))
+* **metadata:** treat empty and absent field values as equal ([#202](https://github.com/caelum29/calibre-mcp/issues/202)) ([d87ddb8](https://github.com/caelum29/calibre-mcp/commit/d87ddb875203921aad0be6f87281e7cfbcb71422))
+* **observability:** address review of [#250](https://github.com/caelum29/calibre-mcp/issues/250) — retention, prune race, ping parity ([#247](https://github.com/caelum29/calibre-mcp/issues/247)) ([221c23c](https://github.com/caelum29/calibre-mcp/commit/221c23c38dec0e2b3dddeba80cccb69ab4505aaf))
+* **observability:** land [#250](https://github.com/caelum29/calibre-mcp/issues/250)'s live-test fixes — argv/diag redaction, semantic availability logs ([#247](https://github.com/caelum29/calibre-mcp/issues/247)) ([2a07be3](https://github.com/caelum29/calibre-mcp/commit/2a07be3ba8a51d5a99a7669ccd8ecc35693411d7))
+* **observability:** live-test findings — redact calibredb argv, log semantic availability ([#247](https://github.com/caelum29/calibre-mcp/issues/247)) ([b0e95f0](https://github.com/caelum29/calibre-mcp/commit/b0e95f0d9245523e5bc3d936f57e75a42786a326))
+* **observability:** scrub argv echoes from calibredb diag in logs ([#247](https://github.com/caelum29/calibre-mcp/issues/247)) ([fd60cf0](https://github.com/caelum29/calibre-mcp/commit/fd60cf0132f98eabab1467480406a159fc907c44))
+* P1 polish — 401 write refusal, update_book changed-only summary, parity for 3 more tools ([bae5ae4](https://github.com/caelum29/calibre-mcp/commit/bae5ae416251f03599e8bb8e06ccc097844ca614))
+* **parity:** name the book id in book-scope search text and the indexed ids in build_index text ([#234](https://github.com/caelum29/calibre-mcp/issues/234)) ([46f8b25](https://github.com/caelum29/calibre-mcp/commit/46f8b25d13aabd41929afbecbebbc8e82c2bd5e8))
+* **quality-report:** coerce stringified readability boolean ([#212](https://github.com/caelum29/calibre-mcp/issues/212)) ([831aea3](https://github.com/caelum29/calibre-mcp/commit/831aea3cfafddd9856e407855db16bead1de8387))
+* **tools:** mirror quality issues, FTS snippets, dup groups and compare diff into structuredContent ([#199](https://github.com/caelum29/calibre-mcp/issues/199)) ([d73101f](https://github.com/caelum29/calibre-mcp/commit/d73101f644dce78b10aabed5fc2c03a1403313ba))
+* **tools:** one result model for text + structuredContent ([#212](https://github.com/caelum29/calibre-mcp/issues/212) [#227](https://github.com/caelum29/calibre-mcp/issues/227) [#211](https://github.com/caelum29/calibre-mcp/issues/211) [#199](https://github.com/caelum29/calibre-mcp/issues/199)) ([e259b60](https://github.com/caelum29/calibre-mcp/commit/e259b6038be4057b360d0a11194e0b17c5e63e8a))
+* **tools:** render nextCursor into the text channel via pageCursor ([#211](https://github.com/caelum29/calibre-mcp/issues/211)) ([828fef8](https://github.com/caelum29/calibre-mcp/commit/828fef80e1132ed31ffce2a2cd9b3b897c4ad676))
+* **tools:** shared result renderer + pagination helper, committed ids in bulk text ([#227](https://github.com/caelum29/calibre-mcp/issues/227)) ([8563865](https://github.com/caelum29/calibre-mcp/commit/85638656dc44a263c47ba97bc7f65212b74ce7e2))
+* **ui:** key board cache by library and filter ([#215](https://github.com/caelum29/calibre-mcp/issues/215)) ([8aeb446](https://github.com/caelum29/calibre-mcp/commit/8aeb4467f22f675bd3f656ac342f283a4e5c8205))
+* **ui:** key board cache by library and filter ([#215](https://github.com/caelum29/calibre-mcp/issues/215)) ([cdb02ee](https://github.com/caelum29/calibre-mcp/commit/cdb02eeb03cae54a8543f90b54363ee1cb1a6d9d))
+* **update-book:** drop no-op fields from the applied diff ([#202](https://github.com/caelum29/calibre-mcp/issues/202)) ([8693543](https://github.com/caelum29/calibre-mcp/commit/8693543d871af28f744d203da9eae6ecac9d5e78))
+* **update-book:** say no-op in text when the unverified diff is empty ([#216](https://github.com/caelum29/calibre-mcp/issues/216)) ([1e29af3](https://github.com/caelum29/calibre-mcp/commit/1e29af3e32d74de0c72a3de621650858a0f5bb00))
+* **update-book:** summary names only the fields that actually changed ([#235](https://github.com/caelum29/calibre-mcp/issues/235)) ([71ffcc4](https://github.com/caelum29/calibre-mcp/commit/71ffcc4add23c52383a9d9a9475f670459123680))
+* **write-refusal:** classify calibredb's 401 credentials prompt as a write refusal ([#237](https://github.com/caelum29/calibre-mcp/issues/237)) ([612293b](https://github.com/caelum29/calibre-mcp/commit/612293b98dfb6d2d97f0c63cb0be8e5520dcdc6e))
+* **writes:** bulk/update write integrity + text diffs ([#202](https://github.com/caelum29/calibre-mcp/issues/202) [#221](https://github.com/caelum29/calibre-mcp/issues/221) [#213](https://github.com/caelum29/calibre-mcp/issues/213) [#214](https://github.com/caelum29/calibre-mcp/issues/214) [#216](https://github.com/caelum29/calibre-mcp/issues/216)) ([64bae60](https://github.com/caelum29/calibre-mcp/commit/64bae60f54c9bf2eb13487262bd5ce3546d63e98))
+* **writes:** render update diff and bulk per-id errors in text content ([#216](https://github.com/caelum29/calibre-mcp/issues/216)) ([da20da7](https://github.com/caelum29/calibre-mcp/commit/da20da7debdae51e5a2964fa4bdee4dfd02ed701))
+* **writes:** report a dropped mid-request write as may-have-committed ([#233](https://github.com/caelum29/calibre-mcp/issues/233)) ([6e2d97d](https://github.com/caelum29/calibre-mcp/commit/6e2d97d7477341ea568bd5dbd21bf36e82856d39))
+* **writes:** retry transient calibredb errors on idempotent writes ([#233](https://github.com/caelum29/calibre-mcp/issues/233)) ([16bcced](https://github.com/caelum29/calibre-mcp/commit/16bcced80523c3556dd6ad37618efe4099fd3a01))
+* **writes:** retry transient calibredb errors on idempotent writes ([#233](https://github.com/caelum29/calibre-mcp/issues/233)) ([fd278b8](https://github.com/caelum29/calibre-mcp/commit/fd278b86658a68c34bc0fc6e1bebd134557a7ac4))
+* **writes:** share the [#33](https://github.com/caelum29/calibre-mcp/issues/33) timeout-verify helper across write tools ([#221](https://github.com/caelum29/calibre-mcp/issues/221)) ([05903c2](https://github.com/caelum29/calibre-mcp/commit/05903c2c4b3a166ec269df791d747411bcd62427))
+* **writes:** timeout verify compares fields like the diff does — a landed clear is not a failure ([#33](https://github.com/caelum29/calibre-mcp/issues/33), [#221](https://github.com/caelum29/calibre-mcp/issues/221)) ([e5cb225](https://github.com/caelum29/calibre-mcp/commit/e5cb225127b22665d120484b1e2cbfd0b507b4bb))
+* **writes:** timeout verify compares fields like the diff does ([#33](https://github.com/caelum29/calibre-mcp/issues/33), [#221](https://github.com/caelum29/calibre-mcp/issues/221)) ([c8b4900](https://github.com/caelum29/calibre-mcp/commit/c8b4900fa1ceaf3fd770d62353008b982b5f9875))
+
 ## [0.10.0](https://github.com/caelum29/calibre-mcp/compare/v0.9.0...v0.10.0) (2026-10-26)
 
 
