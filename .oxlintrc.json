@@ -8,14 +8,42 @@
     "no-console": "error",
     "complexity": ["warn", 20],
     "max-depth": ["warn", 4],
-    "max-lines": ["warn", { "max": 500, "skipBlankLines": true, "skipComments": true }],
+    "max-lines": [
+      "warn",
+      {
+        "max": 500,
+        "skipBlankLines": true,
+        "skipComments": true
+      }
+    ],
     "max-params": ["warn", 4],
     "typescript/no-import-type-side-effects": "error"
   },
   "overrides": [
     {
       "files": ["test/**/*.ts", "scripts/**/*.mjs", "vitest.config.ts"],
-      "rules": { "no-console": "off", "max-lines": "off" }
+      "rules": {
+        "no-console": "off",
+        "max-lines": "off"
+      }
+    },
+    {
+      "files": ["src/tools/**/*.ts"],
+      "rules": {
+        "no-restricted-globals": [
+          "error",
+          {
+            "name": "RegExp",
+            "message": "Tool args are model-supplied: compile regex via compileUserRegex() in src/tools/user-regex.ts (PCRE inline flags, actionable errors, #30). Use a regex literal for static patterns."
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/tools/user-regex.ts"],
+      "rules": {
+        "no-restricted-globals": "off"
+      }
     }
   ],
   "ignorePatterns": ["dist/**", "dist-mcpb/**", "build/**", "coverage/**", "test/eval/retrieval/reports/**"]
