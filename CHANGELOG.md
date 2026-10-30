@@ -9,6 +9,13 @@ inserts its generated section above the newest entry. Hand-written notes still g
 `[Unreleased]`; when merging a release PR, fold them into the generated section and leave
 `[Unreleased]` empty.
 
+## [0.12.0](https://github.com/caelum29/calibre-mcp/compare/v0.11.0...v0.12.0) (2026-10-30)
+
+
+### Added
+
+* **structure:** EPUB TOC (nav.xhtml / NCX) as a chapter-map source ([#135](https://github.com/caelum29/calibre-mcp/issues/135)) ([c7dbd55](https://github.com/caelum29/calibre-mcp/commit/c7dbd559f51407c63b085ca56cf8a0b7583d57ee))
+
 ## [0.11.0](https://github.com/caelum29/calibre-mcp/compare/v0.10.0...v0.11.0) (2026-10-30)
 
 
