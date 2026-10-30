@@ -56,7 +56,7 @@ describe("server instructions (#262)", () => {
 
   it("mention only tools that exist", async () => {
     const text = (await initializeInstructions()) ?? "";
-    const names = new Set(allTools.map((t) => t.name));
+    const names = new Set<string>(allTools.map((t) => t.name));
     const mentioned = text.match(/\bcalibre_[a-z_]+/g) ?? [];
     expect(mentioned.length).toBeGreaterThanOrEqual(4);
     for (const m of mentioned) expect(names.has(m), m).toBe(true);
