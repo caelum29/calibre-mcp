@@ -1,0 +1,19 @@
+test/tools/index-book.epub-front-matter.test.ts
+  s_a57b5089e0c594::t_518e5a853d4123 1-205
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "15f84296209d08b890e99a3f75424b60e70155ba",
+  "prompts": {},
+  "sessions": {
+    "s_a57b5089e0c594": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f3864261-7e07-432f-a72f-ec733e736687",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
