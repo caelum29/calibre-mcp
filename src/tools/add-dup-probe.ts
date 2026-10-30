@@ -4,6 +4,7 @@
 // callers must treat any failure as "no hint", never as an add failure.
 
 import type { Book } from "../domain/book.js";
+import { foldAccents } from "../domain/curation/normalize.js";
 import type { ToolDeps } from "./types.js";
 
 /** A just-added book that looks like it duplicates existing ones. */
@@ -18,16 +19,12 @@ const MAX_PROBED = 10;
 /** Candidate pool per query; a real duplicate of one title is a handful of books at most. */
 const CANDIDATES = 20;
 
-function stripAccents(s: string): string {
-  return s.normalize("NFKD").replace(/\p{M}/gu, "");
-}
-
 /** Lowercase, accent-free, subtitle-free, alphanumeric-only title ("advanced-microservices" ≡ "Advanced Microservices"). */
 function titleKey(title: string): string {
-  let t = stripAccents(title.toLowerCase());
+  let t = foldAccents(title.toLowerCase());
   const cut = t.search(/[:(]/);
   if (cut > 0) t = t.slice(0, cut);
-  return t.replace(/[^\p{L}\p{N}]/gu, "");
+  return t.replace(/[^\p{L}\p{N}\p{M}]/gu, "");
 }
 
 function isbnKey(b: Book): string {
@@ -35,7 +32,9 @@ function isbnKey(b: Book): string {
 }
 
 function authorKeys(b: Book): Set<string> {
-  return new Set(b.authors.map((a) => stripAccents(a.toLowerCase()).replace(/[^\p{L}\p{N}]/gu, "")).filter(Boolean));
+  return new Set(
+    b.authors.map((a) => foldAccents(a.toLowerCase()).replace(/[^\p{L}\p{N}\p{M}]/gu, "")).filter(Boolean),
+  );
 }
 
 /** Same title but provably different authors is a different book (e.g. two "Algorithms"). */
@@ -75,8 +74,8 @@ export async function probeDuplicates(
       : [];
 
     const key = titleKey(added.title);
-    const words = stripAccents(added.title)
-      .split(/[^\p{L}\p{N}]+/u)
+    const words = foldAccents(added.title)
+      .split(/[^\p{L}\p{N}\p{M}]+/u)
       .filter(Boolean)
       .slice(0, 8);
     const titleIds =
