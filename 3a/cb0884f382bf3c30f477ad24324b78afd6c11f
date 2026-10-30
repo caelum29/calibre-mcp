@@ -1,0 +1,19 @@
+test/tools/build-index.metadata-only.test.ts
+  s_a57b5089e0c594::t_0cd55732389751 1-197
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3acb0884f382bf3c30f477ad24324b78afd6c11f",
+  "prompts": {},
+  "sessions": {
+    "s_a57b5089e0c594": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f3864261-7e07-432f-a72f-ec733e736687",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
