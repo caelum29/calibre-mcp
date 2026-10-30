@@ -44,6 +44,8 @@ export class ThreadEncoder implements BookEncoder {
     await this.#call({ id: this.#nextId++, warmup: true });
   }
 
+  // EncodeHooks are not accepted here (functions can't cross postMessage): this worker path is
+  // not wired into the server, and sub-book embed progress (#245) would vanish if it ever is.
   async encode(job: EncodeJob): Promise<EncodeResult> {
     const result = await this.#call({ id: this.#nextId++, job });
     if (!result) throw new Error("encode worker returned no result");

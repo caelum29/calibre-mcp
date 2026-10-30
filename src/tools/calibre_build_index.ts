@@ -22,6 +22,7 @@ import { toolError, toolOk } from "./result.js";
 import type { PruneCounts } from "../semantic/store.js";
 import type { ToolDeps, ToolResult } from "./types.js";
 import { runBookPipeline } from "../semantic/book-pipeline.js";
+import { bookProgress } from "./book-progress.js";
 
 /** Page size when listing query matches / the whole library (ids only — the response is tiny). */
 const ID_PAGE = 1000;
@@ -212,14 +213,30 @@ export const buildIndexTool = defineTool({
         // Cancelled (client sent notifications/cancelled or went away): queued books never start.
         // Books already committed stay indexed; the in-flight subprocess is killed by its signal.
         signal?.throwIfAborted();
-        return prepareBook(deps, bookId, {
-          libraryId,
-          library: args.library,
-          force: args.force,
-          keywordOnly,
-          tokenBudgeted,
-          signal,
-        });
+        // One book at a time (BUILD_CONCURRENCY), so `settled` is this book's base step.
+        const progress = ctx?.progress;
+        const sub = progress
+          ? bookProgress(
+              (value, message) => {
+                if (!signal?.aborted) progress(value, message, booksRequested);
+              },
+              settled,
+              `Book ${settled + 1}/${booksRequested} (id ${bookId})`,
+            )
+          : undefined;
+        try {
+          return await prepareBook(deps, bookId, {
+            ...(sub ? { onPhase: sub.onPhase } : {}),
+            libraryId,
+            library: args.library,
+            force: args.force,
+            keywordOnly,
+            tokenBudgeted,
+            signal,
+          });
+        } finally {
+          sub?.stop();
+        }
       },
       commit: async (bookId, prepared) => {
         if (prepared.kind !== "ready") return;

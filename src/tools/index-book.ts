@@ -52,7 +52,12 @@ export interface PrepareOptions {
   encoder?: BookEncoder;
   /** Caller cancellation: kills the in-flight extraction / figure-scan subprocess. */
   signal?: AbortSignal;
+  /** Sub-book progress (#245): phase starts, then chunk counts while embedding. */
+  onPhase?: (phase: BookPhase) => void;
 }
+
+/** Where a book being prepared is — lets a long single book report progress. */
+export type BookPhase = { phase: "extract" } | { phase: "chunk" } | { phase: "embed"; done: number; total: number };
 
 /**
  * Everything up to (not including) the index write. Returns "skipped" when the book is
@@ -97,6 +102,7 @@ export async function prepareBook(deps: ToolDeps, bookId: number, opts: PrepareO
   const base = deps.config.serverUrl.replace(/\/+$/, "");
   const downloadUrl = `${base}/get/${fmt.toUpperCase()}/${bookId}/${encodeURIComponent(libraryId)}`;
   const cacheKey = `${bookId}:${fmt}:${book.lastModified ?? ""}`;
+  opts.onPhase?.({ phase: "extract" });
   const extracted = await deps.extractor.getText({ bookId, format: fmt, downloadUrl, cacheKey, signal: opts.signal });
   const extractMs = lap();
 
@@ -118,14 +124,19 @@ export async function prepareBook(deps: ToolDeps, bookId: number, opts: PrepareO
       ? figureRows(deps, { bookId, format: fmt, downloadUrl, cacheKey, signal: opts.signal }, extracted.markers)
       : Promise.resolve([]);
   const encoder = opts.encoder ?? inThreadEncoder(deps.embedder);
-  const encoded = await encoder.encode({
-    text: extracted.text,
-    ctx,
-    outline: extracted.outline,
-    captions: extracted.markers.map((m) => m.caption),
-    keywordOnly,
-    tokenBudgeted,
-  });
+  opts.onPhase?.({ phase: "chunk" });
+  const onPhase = opts.onPhase;
+  const encoded = await encoder.encode(
+    {
+      text: extracted.text,
+      ctx,
+      outline: extracted.outline,
+      captions: extracted.markers.map((m) => m.caption),
+      keywordOnly,
+      tokenBudgeted,
+    },
+    onPhase ? { onEmbedProgress: (done, total) => onPhase({ phase: "embed", done, total }) } : undefined,
+  );
   if (encoded.chunks.length === 0) throw new Error("produced no chunks");
 
   // Chunks that are MOSTLY before the first detected chapter are front matter (TOC/praise/

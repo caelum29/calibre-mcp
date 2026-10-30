@@ -6,11 +6,16 @@
 import { frontMatterEnd } from "../domain/structure/front-matter.js";
 import type { OutlineEntry } from "../domain/structure/pdf-outline.js";
 import { chunkForEmbeddingAsync, type EmbedChunk } from "./chunk.js";
-import type { Embedder } from "./embedder.js";
+import { PASSAGE_BATCH, type Embedder } from "./embedder.js";
 import { MAX_TOKENS, PASSAGE_PREFIX } from "./model.js";
 
 /** Floor on the token budget — a pathologically long title/authors prefix can't starve chunks. */
 const MIN_TOKEN_BUDGET = 64;
+/**
+ * Passages per embedPassages call when progress is reported (#245). A whole multiple of the
+ * embedder's own batch, so the model sees exactly the same batches — vectors are unchanged.
+ */
+const EMBED_SLICE = PASSAGE_BATCH * 5;
 
 export interface EncodeJob {
   /** Extracted (marker-injected) book text. */
@@ -37,14 +42,20 @@ export interface EncodeResult {
   phaseMs: { chunk: number; embed: number };
 }
 
+/** Optional in-process callbacks for one encode — never sent to a worker thread. */
+export interface EncodeHooks {
+  /** Called after each embedded slice but the last: `done` of `total` chunks have vectors. */
+  onEmbedProgress?: (done: number, total: number) => void;
+}
+
 export interface BookEncoder {
-  encode(job: EncodeJob): Promise<EncodeResult>;
+  encode(job: EncodeJob, hooks?: EncodeHooks): Promise<EncodeResult>;
 }
 
 /** Encoder that runs on the calling thread with the given embedder. */
 export function inThreadEncoder(embedder: Embedder): BookEncoder {
   return {
-    async encode(job) {
+    async encode(job, hooks) {
       const t0 = Date.now();
       let chunks: EmbedChunk[];
       if (!job.keywordOnly && job.tokenBudgeted) {
@@ -64,10 +75,33 @@ export function inThreadEncoder(embedder: Embedder): BookEncoder {
       if (job.keywordOnly || chunks.length === 0) {
         return { chunks, fmEnd, phaseMs: { chunk: t1 - t0, embed: 0 } };
       }
-      const vectors = await embedder.embedPassages(chunks.map((c) => job.ctx + c.body));
+      const vectors = await embedSliced(
+        embedder,
+        chunks.map((c) => job.ctx + c.body),
+        hooks?.onEmbedProgress,
+      );
       const captionVectors =
         job.captions.length > 0 ? await embedder.embedPassages(job.captions.map((c) => job.ctx + c)) : [];
       return { chunks, fmEnd, vectors, captionVectors, phaseMs: { chunk: t1 - t0, embed: Date.now() - t1 } };
     },
   };
+}
+
+/**
+ * Embed passages slice by slice so a big book can report progress mid-embed (#245) — one
+ * book of ~900 chunks otherwise runs minutes with no sign of life and the client times out.
+ */
+async function embedSliced(
+  embedder: Embedder,
+  texts: string[],
+  onProgress: ((done: number, total: number) => void) | undefined,
+): Promise<Float32Array[]> {
+  if (!onProgress) return embedder.embedPassages(texts);
+  const out: Float32Array[] = [];
+  for (let i = 0; i < texts.length; i += EMBED_SLICE) {
+    out.push(...(await embedder.embedPassages(texts.slice(i, i + EMBED_SLICE))));
+    // The final slice is the book's end — the caller's per-book step reports that.
+    if (out.length < texts.length) onProgress(out.length, texts.length);
+  }
+  return out;
 }
