@@ -1,0 +1,21 @@
+test/tools/steers-251.test.ts
+  s_b030763972ad34::t_e5f1af4a976a66 1-82
+test/calibre/fts-parse-log-level.test.ts
+  s_b030763972ad34::t_e5f1af4a976a66 1-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "08af18ec1f5973ae27dc26393cf5e91e0a5415ff",
+  "prompts": {},
+  "sessions": {
+    "s_b030763972ad34": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cb731b2b-4ae6-4499-93ce-a01a421719b9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
