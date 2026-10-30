@@ -1,0 +1,39 @@
+test/eval/retrieval/harness.test.ts
+  s_a57b5089e0c594::t_b756b8a6ffc568 23-24
+scripts/reindex.ts
+  s_a57b5089e0c594::t_77b4d02496ace7 20,124-125
+test/semantic/content-match.test.ts
+  s_a57b5089e0c594::t_b756b8a6ffc568 1-45
+docs/tool-catalog.json
+  s_a57b5089e0c594::t_89f762266784e8 300-302
+src/semantic/store.ts
+  s_a57b5089e0c594::t_8c6a959dfc2963 19,176-183,495,543-577,1094-1097
+  s_a57b5089e0c594::t_228ae25ac54602 1098
+src/semantic/content-match.ts
+  s_a57b5089e0c594::t_8c6a959dfc2963 1-27
+src/tools/index-book.ts
+  s_a57b5089e0c594::t_3763f205a33c3d 123,232
+  s_a57b5089e0c594::t_5f2b7bac91750b 226-231,233-237
+  s_a57b5089e0c594::t_f2b78f7ac3b08c 238,240-241,243-245
+  s_a57b5089e0c594::t_8c6a959dfc2963 9,42-47,119-122,124-126,179
+  s_a57b5089e0c594::t_77b4d02496ace7 242
+  s_a57b5089e0c594::t_1ba3431afdc28c 239
+src/tools/calibre_build_index.ts
+  s_a57b5089e0c594::t_77b4d02496ace7 13,65-66,203,246-249,274-275,338,348
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "62a3f3a0ef7d5bffd5339b740b2a22dcb7e2607e",
+  "prompts": {},
+  "sessions": {
+    "s_a57b5089e0c594": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f3864261-7e07-432f-a72f-ec733e736687",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
