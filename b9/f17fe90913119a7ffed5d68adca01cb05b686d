@@ -1,0 +1,19 @@
+test/tools/add-book.dup-probe.test.ts
+  s_b030763972ad34::t_363d0b005df46f 1-120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b9f17fe90913119a7ffed5d68adca01cb05b686d",
+  "prompts": {},
+  "sessions": {
+    "s_b030763972ad34": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cb731b2b-4ae6-4499-93ce-a01a421719b9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
