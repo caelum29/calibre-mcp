@@ -44,6 +44,32 @@
       "rules": {
         "no-restricted-globals": "off"
       }
+    },
+    {
+      "files": ["src/**/*.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "node:child_process",
+                "message": "Spawn subprocesses via src/calibre/spawn.ts: it bounds the timeout and kills the whole process group (#13, #145, #219)."
+              },
+              {
+                "name": "child_process",
+                "message": "Spawn subprocesses via src/calibre/spawn.ts: it bounds the timeout and kills the whole process group (#13, #145, #219)."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/calibre/spawn.ts", "src/calibre/extract.ts"],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
     }
   ],
   "ignorePatterns": ["dist/**", "dist-mcpb/**", "build/**", "coverage/**", "test/eval/retrieval/reports/**"]

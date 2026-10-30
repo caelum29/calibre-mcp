@@ -36,9 +36,7 @@ jobs:
       - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm typecheck
-      # Non-blocking until the knip baseline has held for a while.
       - run: pnpm knip
-        continue-on-error: true
       - run: pnpm versions:check
       - run: pnpm build
       - run: pnpm catalog:check

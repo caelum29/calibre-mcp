@@ -326,7 +326,7 @@ function fakeDeps(o: FakeOpts = {}): ToolDeps {
   const extractor = {
     getText: async () => {
       const text = o.text ?? "Chapter 1. Ownership. ".repeat(200);
-      return { text, backend: "test", chars: text.length, cached: false, markers: [] };
+      return { text, backend: "test", chars: text.length, cached: false, markers: [], unplaced: 0 };
     },
   };
   return {
@@ -668,6 +668,19 @@ describe("dual-channel parity: scenarios are not vacuous", () => {
     expect(r.isError).toBeFalsy();
     expect(r.structuredContent !== undefined).toBe(tool?.outputSchema !== undefined);
   });
+
+  // #157: the SDK validates structuredContent against outputSchema AFTER the handler ran — a
+  // committed write whose result drops an `undefined` key on the wire became a tool error.
+  it.each(nonError.map((s) => [`${s.tool}: ${s.label}`, s] as const))(
+    "%s satisfies its outputSchema after a JSON round-trip",
+    async (_name, s) => {
+      const tool = byName.get(s.tool as AnyToolDescriptor["name"]);
+      if (!tool?.outputSchema) return;
+      const wire: unknown = JSON.parse(JSON.stringify((await runScenario(s)).structuredContent));
+      const parsed = z.object(tool.outputSchema).safeParse(wire);
+      expect(parsed.success ? [] : parsed.error.issues).toEqual([]);
+    },
+  );
 
   it.each(SCENARIOS.filter((s) => s.label.includes("(error)")).map((s) => [`${s.tool}: ${s.label}`, s] as const))(
     "%s is an error result",
