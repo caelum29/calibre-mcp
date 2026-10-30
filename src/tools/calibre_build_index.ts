@@ -310,7 +310,9 @@ export const buildIndexTool = defineTool({
       (degradeWarning ? `${degradeWarning}\n` : "") +
       `${keywordOnly ? "Keyword-only indexed" : "Indexed"} ${booksIndexed}/${booksRequested} book(s) (${booksSkipped} up-to-date, ${totalChunks} chunks${totalFigures > 0 ? `, ${totalFigures} figure captions` : ""}) in ${elapsedMs} ms.` +
       (failures.length ? ` ${failures.length} failed:${failureLines.join("")}` : "") +
-      notes.map((n) => `\n- ${n}`).join("");
+      notes.map((n) => `\n- ${n}`).join("") +
+      // which books are now searchable — Desktop never sees bookDetails (#234)
+      (bookDetails.length ? `\nIndexed ids: ${bookDetails.map((d) => d.bookId).join(", ")}.` : "");
 
     return toolOk([{ type: "text", text: summary }], {
       booksRequested,
