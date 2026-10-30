@@ -69,10 +69,12 @@ It must:
   `_meta.ui.visibility ["app"]`, D-017). The counts are generator-maintained from
   `docs/tool-catalog.json` (`pnpm catalog`).
 - **Never report a committed write as failed.** Routed writes commit server-side *before* `calibredb`
-  replies (#33): a failing post-write diff re-read degrades to a success result with the intended-value
-  diff, and a CLI timeout is verified against a re-read — confirmed → success, unconfirmed → steer the
-  model to `calibre_get_book` before retrying. Applies to `calibre_update_book` and the
-  `calibre_bulk_update` apply loop.
+  replies (#33). A failing post-write diff re-read degrades to success with the intended-value diff;
+  a CLI timeout is verified via `src/tools/write-verify.ts` (fields compared with `sameFieldValue`,
+  #254) — confirmed → success, unconfirmed → steer the model to `calibre_get_book` before retrying;
+  a connection dropped mid-request (#233) is never a plain failure — "may have been committed" steer.
+  Transient errors retry only on idempotent `set_metadata` writes; timeouts are never retried.
+  Applies to `calibre_update_book`, `calibre_bulk_update` and `calibre_merge_books` (#221).
 - **User/model-supplied regex compiles via `src/tools/user-regex.ts`**, never bare `new RegExp()`.
   It accepts leading PCRE-style inline flags (`(?i)…`) by folding them into JS RegExp flags and gives
   an explicit error for inexpressible ones like `x` (#30).
