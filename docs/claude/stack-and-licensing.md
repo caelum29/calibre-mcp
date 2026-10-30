@@ -2,15 +2,12 @@
 
 <!-- Imported by CLAUDE.md. The locked tech stack and the GPL clean-room operating rules. -->
 
-## Tech stack (decided in research, confirm in design)
+## Locked stack choices (versions live in `package.json`)
 
-- **`@modelcontextprotocol/sdk` 1.29.0** (protocol `2025-11-25`), `registerTool` + `outputSchema`/`structuredContent`.
-  Do **not** wait for SDK v2 (alpha); isolate the SDK behind a thin layer to de-risk migration.
-- **Zod** for input schemas (with the coercion layer in CLAUDE.md's gotchas).
+- **MCP SDK v1** — do **not** wait for SDK v2; the SDK-free seam in CLAUDE.md isolates the migration.
 - **Semantic search:** `multilingual-e5-small` (LOCKED — `docs/dev/DECISIONS.md` D-001/D-010), in-memory
   brute-force cosine on `node:sqlite` BLOBs + hybrid FTS5/RRF; full pipeline in `docs/dev/SEMANTIC-SEARCH-design.md`.
-- **Clean Architecture:** keep tool logic (schemas, handlers, embedding/DB code) free of SDK types.
-- Package via **npx** + **MCPB** bundle for Claude Desktop (release recipe → `docs/dev/DECISIONS.md` D-006).
+- Ship via **npx** + **MCPB** bundle for Claude Desktop (release recipe → `docs/dev/DECISIONS.md` D-006).
 
 ## Reusable code (licensing)
 
