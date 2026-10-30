@@ -5,6 +5,7 @@
 import { z } from "zod";
 import { defineTool } from "./define.js";
 import { validateAddPath } from "./add-path.js";
+import { probeDuplicates, renderHint, type PossibleDuplicate } from "./add-dup-probe.js";
 import { toolError, toolOk } from "./result.js";
 import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "./write-refusal.js";
 
@@ -28,7 +29,7 @@ export const addBookTool = defineTool({
   title: "Add a book file",
   description:
     "Import a local ebook file (EPUB/PDF/MOBI/…) into the library. The file must live under an " +
-    "allowed import root and be reachable by the Calibre server process. Requires writes to be enabled.",
+    "allowed import root and be reachable by the Calibre server process. Flags possible duplicates (advisory). Requires writes to be enabled.",
   inputSchema: {
     path: z.string().min(1),
     library: z.string().optional(),
@@ -36,6 +37,9 @@ export const addBookTool = defineTool({
   outputSchema: {
     addedIds: z.array(z.number()).optional(),
     path: z.string().optional(),
+    possibleDuplicates: z
+      .array(z.object({ id: z.number(), of: z.array(z.number()), reason: z.enum(["isbn", "title"]) }))
+      .optional(),
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
   write: true,
@@ -65,7 +69,26 @@ export const addBookTool = defineTool({
         addedIds.length > 0
           ? `Added ${addedIds.length} book(s) (id ${addedIds.join(", ")}) from ${check.resolved}.`
           : `calibredb reported no new ids (possible duplicate) for ${check.resolved}.`;
-      return toolOk([{ type: "text", text: summary }], { addedIds, path: check.resolved });
+
+      // Advisory only (#204): calibredb's duplicate check misses raw-titled imports, so look again.
+      // The add already committed — a failed probe must never turn it into an error.
+      let dups: PossibleDuplicate[] = [];
+      if (addedIds.length > 0) {
+        try {
+          dups = await probeDuplicates(deps, addedIds, args.library);
+        } catch (err) {
+          deps.log.warn("add_book duplicate probe failed", {
+            reason: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+      // Hint goes in the text too: some clients surface only text blocks.
+      const text = dups.length > 0 ? `${summary}\n${dups.map(renderHint).join("\n")}` : summary;
+      return toolOk([{ type: "text", text }], {
+        addedIds,
+        path: check.resolved,
+        ...(dups.length > 0 ? { possibleDuplicates: dups } : {}),
+      });
     } catch (err) {
       return toolError(err instanceof Error ? err.message : String(err));
     }
