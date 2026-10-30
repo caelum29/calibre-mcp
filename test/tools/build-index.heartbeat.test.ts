@@ -142,4 +142,35 @@ describe("calibre_build_index phase heartbeat (#245)", () => {
     await vi.advanceTimersByTimeAsync(HEARTBEAT_MS * 6);
     expect(sent.length).toBe(before);
   });
+
+  // A leaked interval is invisible in the notifications (the reporter drops non-increasing
+  // values), so check the timer table itself.
+  // keyword-only: no embed phase follows chunking, so only the finally can stop the heartbeat.
+  it("leaves no interval behind after a successful keyword-only book", async () => {
+    const r = await buildIndexTool.handler({ ...args, keywordOnly: true }, deps(slowText), progressCtx([]));
+    expect(r.structuredContent).toMatchObject({ booksIndexed: 1 });
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("leaves no interval behind after a failed book", async () => {
+    const failing = async (): Promise<ExtractedText> => {
+      await vi.advanceTimersByTimeAsync(HEARTBEAT_MS * 2.5);
+      throw new Error("EXTRACT_TIMEOUT");
+    };
+    await buildIndexTool.handler(args, deps(failing), progressCtx([]));
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("leaves no interval behind after a cancelled build", async () => {
+    const controller = new AbortController();
+    const cancelled = async (): Promise<ExtractedText> => {
+      await vi.advanceTimersByTimeAsync(HEARTBEAT_MS * 1.5);
+      controller.abort();
+      throw new Error("aborted");
+    };
+    const ctx = { ...progressCtx([]), signal: controller.signal };
+    const r = await buildIndexTool.handler(args, deps(cancelled), ctx);
+    expect(r.structuredContent).toMatchObject({ cancelled: true });
+    expect(vi.getTimerCount()).toBe(0);
+  });
 });
