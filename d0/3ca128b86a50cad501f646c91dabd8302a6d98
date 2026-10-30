@@ -1,0 +1,19 @@
+test/instructions.test.ts
+  s_4de37300f26c01::t_cb648cd8af846e 59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d03ca128b86a50cad501f646c91dabd8302a6d98",
+  "prompts": {},
+  "sessions": {
+    "s_4de37300f26c01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc0bc1ea-7f43-4340-9218-2c751f4e4e06",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
