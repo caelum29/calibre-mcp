@@ -1,0 +1,21 @@
+test/tools/merge-books.handler.test.ts
+  s_f45ec3b2d9bbac::t_9ed3130125efe9 146-179
+test/domain/curation/duplicates.test.ts
+  s_f45ec3b2d9bbac::t_9ed3130125efe9 92-271
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "017513ea127c4cba114112eb0fb120d921ec76e9",
+  "prompts": {},
+  "sessions": {
+    "s_f45ec3b2d9bbac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a2c14e2f-3d3a-4cc3-bd31-9b4c8cecd09d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
