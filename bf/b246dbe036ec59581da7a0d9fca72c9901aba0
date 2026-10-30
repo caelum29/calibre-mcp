@@ -1,0 +1,34 @@
+src/semantic/thread-encoder.ts
+  s_a57b5089e0c594::t_941d521dcb53f5 47-48
+test/eval/retrieval/reports/2026-10-30-fbca69f.json
+  s_a57b5089e0c594::t_f57b766ff733f5 1-5188
+test/tools/build-index.heartbeat.test.ts
+  s_a57b5089e0c594::t_54050f61b9a93a 21
+  s_a57b5089e0c594::t_e5001201887794 1-20,22-145
+test/eval/retrieval/reports/2026-10-30-2d9299c.json
+  s_a57b5089e0c594::t_d9f0c294f56214 1-5188
+test/eval/retrieval/reports/2026-10-30-fbca69f.md
+  s_a57b5089e0c594::t_f57b766ff733f5 1-318
+src/tools/book-progress.ts
+  s_a57b5089e0c594::t_941d521dcb53f5 1-57
+src/tools/calibre_build_index.ts
+  s_a57b5089e0c594::t_941d521dcb53f5 25,218-239
+test/eval/retrieval/reports/2026-10-30-2d9299c.md
+  s_a57b5089e0c594::t_d9f0c294f56214 1-318
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bfb246dbe036ec59581da7a0d9fca72c9901aba0",
+  "prompts": {},
+  "sessions": {
+    "s_a57b5089e0c594": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f3864261-7e07-432f-a72f-ec733e736687",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
