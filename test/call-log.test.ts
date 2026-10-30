@@ -65,7 +65,7 @@ describe("withCallLog", () => {
 });
 
 describe("summarizeArgs", () => {
-  it("should_cap_strings_and_arrays_and_reduce_objects_to_keys", () => {
+  it("should_drop_long_free_text_cap_arrays_and_reduce_objects_to_keys", () => {
     expect(
       summarizeArgs({
         comments: "x".repeat(200),
@@ -75,8 +75,8 @@ describe("summarizeArgs", () => {
         cursor: undefined,
       }),
     ).toEqual({
-      comments: `${"x".repeat(120)}…(200 chars)`,
-      ids: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, "…(12 total)"],
+      comments: "[text, 200 chars]",
+      ids: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, "…(+2 items)"],
       fields: { keys: ["title", "tags"] },
       apply: true,
     });

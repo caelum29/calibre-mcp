@@ -37,21 +37,44 @@ export interface LogContext {
   call: string;
 }
 
+/** Level + file-sink settings applied by the process entry points. */
 export interface LoggingOptions {
   /** Minimum level emitted to every sink (CALIBRE_MCP_LOG_LEVEL). */
   level?: Level;
   /** Directory for daily JSONL files; null/undefined = no file sink. */
   dir?: string | null;
-  /** Days of daily files to keep (older ones are pruned at configure time). */
-  retentionDays?: number;
+}
+
+/** Injectable I/O so tests control stderr and the clock. */
+export interface LoggerIo {
+  stderr?: (s: string) => void;
+  now?: () => Date;
+}
+
+/** The process logger: level methods plus configuration and diagnostics. */
+export interface Logger extends LogSink {
+  /** Set level + file sink. Safe to call again (e.g. the reindex script after the server). */
+  configure(opts: LoggingOptions): void;
+  /** Record the MCP client name (from initialize.clientInfo) on every later line. */
+  setClient(name: string | undefined): void;
+  /** Run `fn` with every log line inside it tagged {tool, call}. */
+  withContext<T>(c: LogContext, fn: () => T): T;
+  /** Last error-level records, oldest first (for calibre_ping self-diagnosis). */
+  recentErrors(): LogRecord[];
+  /** Today's log file, or null when the file sink is off. */
+  currentFile(): string | null;
 }
 
 const FILE_PREFIX = "calibre-mcp-";
-const RECENT_ERRORS_MAX = 20;
+const FILE_RE = new RegExp(`^${FILE_PREFIX}(\\d{4}-\\d{2}-\\d{2})\\.jsonl$`);
+/** Daily files kept, today included. */
+export const RETENTION_DAYS = 7;
+export const RECENT_ERRORS_MAX = 20;
 const STRING_MAX = 500;
 const ARRAY_MAX = 20;
 const DEPTH_MAX = 4;
 const STACK_FRAMES = 6;
+const DAY_MS = 86_400_000;
 
 /** Parse CALIBRE_MCP_LOG_LEVEL tolerantly; anything unknown falls back to info. */
 export function parseLevel(v: string | undefined): Level {
@@ -59,16 +82,25 @@ export function parseLevel(v: string | undefined): Level {
   return t === "debug" || t === "info" || t === "warn" || t === "error" ? t : "info";
 }
 
+// One truncation marker format everywhere, so agents can grep a single pattern.
+/** Cut `s` to `max` chars with a `…(+N chars)` tail. */
+export function capString(s: string, max: number): string {
+  return s.length > max ? `${s.slice(0, max)}…(+${s.length - max} chars)` : s;
+}
+
+/** Keep the first `max` items (mapped) and append a `…(+N items)` marker when cut. */
+export function capArray<T>(a: readonly T[], max: number, map: (x: T) => unknown): unknown[] {
+  const head = a.slice(0, max).map(map);
+  return a.length > max ? [...head, `…(+${a.length - max} items)`] : head;
+}
+
 /**
- * Bound a value for a log line: long strings cut with a "+N chars" tail, arrays capped,
- * Errors flattened to {name, message, stack (first frames)} — JSON.stringify(Error) is `{}`.
- * Agents read logs through a context window, so one runaway field must not eat it.
+ * Bound a value for a log line: long strings and arrays capped, Errors flattened to
+ * {name, message, stack (first frames)} — JSON.stringify(Error) is `{}`. Agents read logs
+ * through a context window, so one runaway field must not eat it.
  */
 export function boundValue(value: unknown, depth = 0): unknown {
-  if (typeof value === "string") {
-    const v = redactHome(value);
-    return v.length > STRING_MAX ? `${v.slice(0, STRING_MAX)}…(+${v.length - STRING_MAX} chars)` : v;
-  }
+  if (typeof value === "string") return capString(redactHome(value), STRING_MAX);
   if (value === null || typeof value !== "object") {
     return typeof value === "bigint" ? value.toString() : value;
   }
@@ -80,10 +112,7 @@ export function boundValue(value: unknown, depth = 0): unknown {
     };
   }
   if (depth >= DEPTH_MAX) return "[depth limit]";
-  if (Array.isArray(value)) {
-    const head = value.slice(0, ARRAY_MAX).map((v) => boundValue(v, depth + 1));
-    return value.length > ARRAY_MAX ? [...head, `…(+${value.length - ARRAY_MAX} items)`] : head;
-  }
+  if (Array.isArray(value)) return capArray(value, ARRAY_MAX, (v) => boundValue(v, depth + 1));
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(value)) {
     if (v === undefined) continue;
@@ -115,44 +144,77 @@ export function logFilePath(dir: string, d: Date = new Date()): string {
   return path.join(dir, `${FILE_PREFIX}${dayStamp(d)}.jsonl`);
 }
 
+/**
+ * Delete daily files older than the retention window (today + RETENTION_DAYS-1 earlier days
+ * survive). Per-file errors are swallowed: several server processes share the dir and may
+ * race to delete the same file — losing that race must not disable anyone's sink.
+ */
+function pruneOldFiles(dir: string, today: Date): void {
+  const cutoff = dayStamp(new Date(today.getTime() - (RETENTION_DAYS - 1) * DAY_MS));
+  let files: string[];
+  try {
+    files = readdirSync(dir);
+  } catch {
+    return;
+  }
+  for (const f of files) {
+    const day = FILE_RE.exec(f)?.[1];
+    if (day === undefined || day >= cutoff) continue;
+    try {
+      unlinkSync(path.join(dir, f));
+    } catch {
+      // already gone (another process won) or not deletable — not our problem
+    }
+  }
+}
+
 // Written next to the log files so an agent that lands in the dir learns the schema there.
 const README = `# calibre-mcp logs (for agents)
 
-One JSON object per line, daily files \`calibre-mcp-YYYY-MM-DD.jsonl\` (UTC), 7-day retention.
+One JSON object per line, daily files \`${FILE_PREFIX}YYYY-MM-DD.jsonl\` (UTC), the last ${RETENTION_DAYS} days kept.
 Every server process (Claude Desktop, Claude Code, \`pnpm reindex\`) appends here; tell them apart by \`pid\`/\`client\`.
 
 Keys (fixed order): ts (ISO UTC), lvl (debug|info|warn|error), msg (stable event text — grep it),
 pid, client (MCP clientInfo.name), tool + call (set on every line emitted inside a tool call;
-\`call\` correlates them), meta (event fields; strings capped at ${STRING_MAX} chars, Errors as {name,message,stack}).
+\`call\` correlates them), meta (event fields; Errors as {name,message,stack}).
+Truncation is always marked: strings \`…(+N chars)\` (cap ${STRING_MAX}), arrays \`…(+N items)\`.
 
 One \`msg:"tool call"\` line closes every tool call: meta = {durationMs, rpcId (JSON-RPC id — joins the client's MCP log),
-isError, errorCode?, error? (the steer text the model got), threw?, args (summary; strings capped, never book text)}.
+isError, errorCode?, error? (the steer text the model got), threw?, args}.
+args is a summary: numbers/booleans as-is, short strings verbatim, long free text as its length only, objects as key names.
 isError results log at warn (the model handles them); server-side failures log at error.
-The home dir is written as \`~\`. Lines may contain book titles, ids and search queries.
+The home dir is written as \`~\`. Lines may contain book titles, ids and search queries — never book text.
 
 Recipes:
-- errors today:            jq -c 'select(.lvl=="error")' calibre-mcp-$(date -u +%F).jsonl
-- one call's full story:   jq -c 'select(.call=="<id>")' calibre-mcp-*.jsonl
-- slow or failed calls:    jq -c 'select(.msg=="tool call" and (.meta.isError or .meta.durationMs>10000))' calibre-mcp-*.jsonl
-- per-tool error counts:   jq -r 'select(.lvl=="error") | .tool // "-"' calibre-mcp-*.jsonl | sort | uniq -c
+- errors today:            jq -c 'select(.lvl=="error")' ${FILE_PREFIX}$(date -u +%F).jsonl
+- one call's full story:   jq -c 'select(.call=="<id>")' ${FILE_PREFIX}*.jsonl
+- slow or failed calls:    jq -c 'select(.msg=="tool call" and (.meta.isError or .meta.durationMs>10000))' ${FILE_PREFIX}*.jsonl
+- per-tool error counts:   jq -r 'select(.lvl=="error") | .tool // "-"' ${FILE_PREFIX}*.jsonl | sort | uniq -c
 
-The same last ${RECENT_ERRORS_MAX} errors are in calibre_ping (recentErrors) without file access.
+The last ${RECENT_ERRORS_MAX} errors of the running process are in calibre_ping (recentErrors) without file access.
 `;
 
-/** Logger instance; the module exports one shared `log` built from this. */
-export function createLogger(io: { stderr?: (s: string) => void; now?: () => Date } = {}) {
+/** Build a logger; the module exports one shared `log` built from this. */
+export function createLogger(io: LoggerIo = {}): Logger {
   const writeStderr = io.stderr ?? ((s: string) => void process.stderr.write(s));
   const now = io.now ?? (() => new Date());
   const ctx = new AsyncLocalStorage<LogContext>();
   const recent: LogRecord[] = [];
   let minRank = LEVEL_RANK.info;
   let dir: string | null = null;
+  let fileDay = "";
   let client: string | undefined;
   let fileBroken = false;
 
   function fileWrite(line: string, at: Date): void {
     if (!dir || fileBroken) return;
     try {
+      // Long-lived servers (Desktop stays up for weeks) prune on each day rollover, not just at boot.
+      const day = dayStamp(at);
+      if (day !== fileDay) {
+        fileDay = day;
+        pruneOldFiles(dir, at);
+      }
       appendFileSync(logFilePath(dir, at), line);
     } catch (err) {
       // Logging must never fail a tool call: drop the file sink, warn once on stderr.
@@ -191,60 +253,44 @@ export function createLogger(io: { stderr?: (s: string) => void; now?: () => Dat
     }
   }
 
-  function prune(d: string, retentionDays: number): void {
-    const cutoff = dayStamp(new Date(now().getTime() - retentionDays * 86_400_000));
-    for (const f of readdirSync(d)) {
-      const m = /^calibre-mcp-(\d{4}-\d{2}-\d{2})\.jsonl$/.exec(f);
-      if (m && m[1]! < cutoff) unlinkSync(path.join(d, f));
-    }
-  }
-
   return {
-    debug: (msg: string, meta?: unknown) => emit("debug", msg, meta),
-    info: (msg: string, meta?: unknown) => emit("info", msg, meta),
-    warn: (msg: string, meta?: unknown) => emit("warn", msg, meta),
-    error: (msg: string, meta?: unknown) => emit("error", msg, meta),
+    debug: (msg, meta) => emit("debug", msg, meta),
+    info: (msg, meta) => emit("info", msg, meta),
+    warn: (msg, meta) => emit("warn", msg, meta),
+    error: (msg, meta) => emit("error", msg, meta),
 
-    /** Set level + file sink. Safe to call again (e.g. the reindex script after the server). */
-    configure(opts: LoggingOptions): void {
+    configure(opts) {
       minRank = LEVEL_RANK[opts.level ?? "info"];
       dir = null;
+      fileDay = "";
       fileBroken = false;
       if (!opts.dir) return;
       try {
         mkdirSync(opts.dir, { recursive: true });
-        const readme = path.join(opts.dir, "README.md");
-        writeFileSync(readme, README); // rewritten each start so it tracks the running version
-        prune(opts.dir, opts.retentionDays ?? 7);
+        writeFileSync(path.join(opts.dir, "README.md"), README); // rewritten each start: tracks the running version
         dir = opts.dir;
       } catch (err) {
         emit("warn", "log file sink unavailable", { dir: opts.dir, err });
       }
     },
 
-    /** Record the MCP client name (from initialize.clientInfo) on every later line. */
-    setClient(name: string | undefined): void {
+    setClient(name) {
       client = name || undefined;
     },
 
-    /** Run `fn` with every log line inside it tagged {tool, call}. */
-    withContext<T>(c: LogContext, fn: () => T): T {
+    withContext(c, fn) {
       return ctx.run(c, fn);
     },
 
-    /** Last error-level records, oldest first (for calibre_ping self-diagnosis). */
-    recentErrors(): LogRecord[] {
+    recentErrors() {
       return [...recent];
     },
 
-    /** Today's log file, or null when the file sink is off. */
-    currentFile(): string | null {
+    currentFile() {
       return dir && !fileBroken ? logFilePath(dir, now()) : null;
     },
   };
 }
-
-export type Logger = ReturnType<typeof createLogger>;
 
 /** Process-wide logger. Unconfigured = info level, stderr only (tests, catalog generator). */
 export const log: Logger = createLogger();

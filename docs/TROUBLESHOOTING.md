@@ -243,7 +243,8 @@ can open them for you: *"check the calibre-mcp logs for errors today"*):
   `client` and `pid` keys tell them apart. A `README.md` in that folder lists the schema
   and ready `jq` recipes.
 - **Every tool call** ends with a `"msg":"tool call"` line: duration, `isError`, the error
-  text the model saw, and a short args summary. Every line logged during that call carries
+  text the model saw, and a short args summary (long free text such as a description edit is
+  logged as its length only). Every line logged during that call carries
   the same `call` id, so `jq -c 'select(.call=="<id>")'` replays one call end to end.
 - **No file access?** `calibre_ping` lists the last server errors and the log path.
 - **More detail:** `CALIBRE_MCP_LOG_LEVEL=debug`. The same lines also go to stderr

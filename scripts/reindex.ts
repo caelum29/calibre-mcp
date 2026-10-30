@@ -40,7 +40,8 @@ function say(msg: string): void {
   process.stderr.write(`[${new Date().toISOString()}] ${msg}\n`);
 }
 
-const prodDir = loadConfig({ ...process.env, CALIBRE_MCP_INDEX_DIR: "" }).indexDir;
+const prodConfig = loadConfig({ ...process.env, CALIBRE_MCP_INDEX_DIR: "" });
+const prodDir = prodConfig.indexDir;
 const indexDir = path.resolve(opt["index-dir"] ?? "");
 // A benchmark that writes the production index would wipe hours of build — make it explicit.
 if (!opt["index-dir"]) throw new Error("--index-dir is required (use a scratch dir for benchmarks)");
@@ -53,8 +54,9 @@ const progressFile = opt.progress ?? path.join(indexDir, "progress.jsonl");
 const minFreeGb = Number(opt["min-free-gb"]);
 
 const config = loadConfig({ ...process.env, CALIBRE_MCP_INDEX_DIR: indexDir });
-// Same JSONL sink as the server (#247), so a long rebuild leaves an agent-readable trail.
-log.configure({ level: config.logLevel, dir: config.logDir });
+// Same JSONL sink as the running servers (#247) — the production logs dir even when
+// --index-dir points at a scratch index, so every process's trail lands in one place.
+log.configure({ level: prodConfig.logLevel, dir: prodConfig.logDir });
 const figures = new FigureInventoryService(config);
 const deps = {
   config,

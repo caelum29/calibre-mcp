@@ -11,6 +11,9 @@ import { loadConfig } from "../../src/config.js";
 import { ContentServerClient } from "../../src/calibre/content-server.js";
 import { FigureInventoryService } from "../../src/calibre/figure-inventory.js";
 import { log, type LogSink } from "../../src/logging.js";
+
+// Typed as the narrow sink ToolDeps expects (an annotation, not a cast).
+const sink: LogSink = log;
 import { getFiguresTool } from "../../src/tools/calibre_get_figures.js";
 import type { ImageBlock, TextBlock, ToolDeps, ToolResult } from "../../src/tools/types.js";
 
@@ -47,7 +50,7 @@ describe.skipIf(!RUN || !ready)("calibre_get_figures (live Content Server)", () 
     config,
     content: new ContentServerClient(config),
     figures: new FigureInventoryService(config),
-    log: log as LogSink,
+    log: sink,
   } as ToolDeps;
 
   it("lists PDF figures with captions and counts", { timeout: 180_000 }, async () => {

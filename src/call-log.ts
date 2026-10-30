@@ -1,18 +1,19 @@
 // Per-tool-call log record (#247): wraps a handler so every call ends with one
-// `tool call` line (ms, isError, errorCode, args summary) and every line logged during the
-// call carries the same `call` id. SDK-free — server.ts applies it at registration.
+// `tool call` line (durationMs, isError, errorCode, args summary) and every line logged during
+// the call carries the same `call` id. SDK-free — server.ts applies it at registration.
 
 import { randomBytes } from "node:crypto";
-import type { Logger } from "./logging.js";
+import { capArray, capString, type Logger } from "./logging.js";
 
 const ARG_STRING_MAX = 120;
 const ARG_ARRAY_MAX = 10;
+const ERROR_TEXT_MAX = 300;
 
 /**
- * Short, content-free view of tool args: numbers/booleans as-is, strings capped (queries are
- * useful, long free text is not), arrays as the first few primitives + count, nested
- * objects reduced to their key names. Never carries book text — tool args don't contain it,
- * and the caps stop a long `comments` edit from bloating the line.
+ * Content-free view of tool args: numbers/booleans as-is, short strings verbatim (ids, queries,
+ * modes), longer strings as their length only — those are free text (a `comments` edit, a
+ * description) that a log must not carry. Arrays keep the first few primitives, nested
+ * objects shrink to their key names.
  */
 export function summarizeArgs(args: unknown): Record<string, unknown> | undefined {
   if (args === null || typeof args !== "object" || Array.isArray(args)) return undefined;
@@ -25,13 +26,10 @@ export function summarizeArgs(args: unknown): Record<string, unknown> | undefine
 }
 
 function summarizeValue(v: unknown): unknown {
-  if (typeof v === "string") return v.length > ARG_STRING_MAX ? `${v.slice(0, ARG_STRING_MAX)}…(${v.length} chars)` : v;
+  if (typeof v === "string") return v.length > ARG_STRING_MAX ? `[text, ${v.length} chars]` : v;
   if (v === null || typeof v !== "object") return v;
   if (Array.isArray(v)) {
-    const head = v
-      .slice(0, ARG_ARRAY_MAX)
-      .map((x) => (x !== null && typeof x === "object" ? "{…}" : summarizeValue(x)));
-    return v.length > ARG_ARRAY_MAX ? [...head, `…(${v.length} total)`] : head;
+    return capArray(v, ARG_ARRAY_MAX, (x) => (x !== null && typeof x === "object" ? "{…}" : summarizeValue(x)));
   }
   return { keys: Object.keys(v) };
 }
@@ -47,6 +45,7 @@ interface ResultLike {
   content?: ReadonlyArray<{ type: string; text?: string }>;
 }
 
+/** What identifies one tool call in the log. */
 export interface CallLogOptions {
   tool: string;
   args: unknown;
@@ -93,11 +92,10 @@ export async function withCallLog<R extends ResultLike>(
 
 function errorTextOf(r: ResultLike | undefined): string | undefined {
   const text = r?.content?.find((b) => b.type === "text")?.text;
-  return text === undefined ? undefined : text.slice(0, 300);
+  return text === undefined ? undefined : capString(text, ERROR_TEXT_MAX);
 }
 
 function errorCodeOf(sc: unknown): string | undefined {
-  if (sc === null || typeof sc !== "object") return undefined;
-  const code = (sc as { errorCode?: unknown }).errorCode;
-  return typeof code === "string" ? code : undefined;
+  if (sc === null || typeof sc !== "object" || !("errorCode" in sc)) return undefined;
+  return typeof sc.errorCode === "string" ? sc.errorCode : undefined;
 }

@@ -8,6 +8,9 @@ import { z } from "zod";
 import { mergeBooksTool } from "../../src/tools/calibre_merge_books.js";
 import { loadConfig } from "../../src/config.js";
 import { log, type LogSink } from "../../src/logging.js";
+
+// Typed as the narrow sink ToolDeps expects (an annotation, not a cast).
+const sink: LogSink = log;
 import type { Book } from "../../src/domain/book.js";
 import type { CustomFieldValue } from "../../src/domain/merge.js";
 import { CalibreCliError, CalibreCliTimeoutError, CalibreHttpError } from "../../src/domain/errors.js";
@@ -85,7 +88,7 @@ function fakeDeps(opts: FakeOpts = {}) {
     content: content as unknown as ToolDeps["content"],
     calibre: { calibredb: spy } as unknown as ToolDeps["calibre"],
     extractor: {} as unknown as ToolDeps["extractor"],
-    log: log as LogSink,
+    log: sink,
   } as ToolDeps;
   return { deps, spy, calls };
 }

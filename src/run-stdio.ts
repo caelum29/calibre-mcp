@@ -35,9 +35,9 @@ process.on("uncaughtException", (err) => {
 
 async function main(): Promise<void> {
   // File sink is configured here, not in buildServer, so in-process test servers never write logs.
-  const { logLevel, logDir } = loadConfig();
-  log.configure({ level: logLevel, dir: logDir });
-  const server = buildServer();
+  const config = loadConfig();
+  log.configure({ level: config.logLevel, dir: config.logDir });
+  const server = buildServer({ config });
   const transport = new StdioServerTransport();
   const send = transport.send.bind(transport);
   // Client-compat rewrite of outgoing tools/list results (wire-compat.ts) — the same one the
