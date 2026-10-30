@@ -1,0 +1,26 @@
+src/tools/add-dup-probe.ts
+  s_cd53974d785a68::t_bbe0ca0cd40dc6 7,24,27,77-78
+  s_cd53974d785a68::t_7d83e389c4fb1d 35-37
+src/domain/curation/normalize.ts
+  s_cd53974d785a68::t_bbe0ca0cd40dc6 37
+test/tools/add-book.dup-probe.test.ts
+  s_cd53974d785a68::t_ce11a80c6ab1ef 110-119
+src/domain/enrich/proposal.ts
+  s_cd53974d785a68::t_bbe0ca0cd40dc6 10,58-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "16fbab7ac55bea218f8d0f0b7f8a537ce1b0301c",
+  "prompts": {},
+  "sessions": {
+    "s_cd53974d785a68": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "775a8006-3fd7-41a4-93f8-a0814c41881c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
