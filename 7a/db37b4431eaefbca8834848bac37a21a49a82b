@@ -1,0 +1,46 @@
+test/architecture.test.ts
+  s_cd53974d785a68::t_7d83e389c4fb1d 89-92,105-109,156-158,190-192
+  s_cd53974d785a68::t_a5ea027f8a5930 66-88,93-104,110-155,159-189,193-206,208,244,247
+  s_cd53974d785a68::t_00cd9ca1e2e244 207,212-231,236,246
+  s_cd53974d785a68::t_215d43af7badea 209-211
+  s_cd53974d785a68::t_04741dba8e70b0 232-235
+  s_cd53974d785a68::t_db42c7cbaa1f00 237-239,241-243
+  s_cd53974d785a68::t_9a107112e88a78 245
+  s_1be2619dc324f6::t_84d2fb63402cbb 6,240
+test/tools/channel-parity.test.ts
+  s_cd53974d785a68::t_f0bf28955ccdb1 672-683
+  s_cd53974d785a68::t_114949d82d8b96 329
+  s_cd53974d785a68::t_144846375e17f5 684
+test/tools/registry.test.ts
+  s_cd53974d785a68::t_c6aeeaf4769779 174-213
+test/setup/isolate-home.ts
+  s_cd53974d785a68::t_54f5e5d9e795c5 1-17
+.oxlintrc.json
+  s_cd53974d785a68::t_6df4dc96793ee0 47-72
+vitest.config.ts
+  s_cd53974d785a68::t_3bf7c3aa0b8bcf 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7adb37b4431eaefbca8834848bac37a21a49a82b",
+  "prompts": {},
+  "sessions": {
+    "s_1be2619dc324f6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4dde577d-6930-4d80-a0ad-04651b706119",
+        "model": "unknown"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    },
+    "s_cd53974d785a68": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "775a8006-3fd7-41a4-93f8-a0814c41881c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
