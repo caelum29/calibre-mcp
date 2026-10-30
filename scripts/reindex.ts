@@ -17,7 +17,7 @@ import { ThreadEncoder } from "../src/semantic/thread-encoder.js";
 import { SqliteIndexStore } from "../src/semantic/store.js";
 import { runBookPipeline } from "../src/semantic/book-pipeline.js";
 import { appendProgress, resumeProgress } from "../src/semantic/build-progress.js";
-import { commitBook, describeError, prepareBook, type PrepareResult } from "../src/tools/index-book.js";
+import { commitBook, commitRefresh, describeError, prepareBook, type PrepareResult } from "../src/tools/index-book.js";
 import type { ToolDeps } from "../src/tools/types.js";
 
 const { values: opt } = parseArgs({
@@ -121,6 +121,8 @@ await runBookPipeline<PrepareResult>(todo, concurrency, {
   },
   commit: (_bookId, prepared) => {
     if (prepared.kind === "ready") commitBook(deps, libraryId, prepared);
+    // --skip-fresh after a metadata cleanup: unchanged text refreshes in place (#244).
+    else if (prepared.kind === "refreshed") commitRefresh(deps, libraryId, prepared.meta);
   },
   onSettled: (o) => {
     settled++;

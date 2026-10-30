@@ -16,6 +16,7 @@ import path from "node:path";
 import type { Config } from "../config.js";
 import { log as defaultLog, type LogSink } from "../logging.js";
 import { EMBED_DIM, INDEX_VERSION, MODEL_ID } from "./model.js";
+import type { ChunkSpan } from "./content-match.js";
 import { stemText } from "./stem.js";
 import { type Candidate, decodeVector, encodeVector, topK } from "./vector.js";
 
@@ -172,6 +173,14 @@ export interface IndexStore {
     figures?: IndexedFigure[],
     opts?: { preserveEmbedded?: boolean },
   ): ReplaceOutcome;
+  /**
+   * Metadata-only refresh (#244): rewrite one book's title/authors/last_modified and the
+   * per-chunk/per-figure book_meta (FTS follows via the update triggers) in ONE transaction,
+   * keeping chunks and vectors. A no-op for a book that is not indexed.
+   */
+  refreshBookMeta(libraryId: string, meta: BookMeta): void;
+  /** One book's stored chunk spans, sorted by charStart (empty when not indexed). */
+  bookChunkSpans(libraryId: string, bookId: number): ChunkSpan[];
   /** Embedded chunks of one book (0 when not indexed or for an absent index). */
   bookVectorCount(libraryId: string, bookId: number): number;
   /** Books whose chunks are not all embedded (keyword-only or partial entries); 0 for an absent index. */
@@ -483,7 +492,7 @@ export class SqliteIndexStore implements IndexStore {
       // Stemmed once per book (same transform as body_stem/queries) and repeated on every
       // chunk row, so the FTS half sees book identity — the vector half already gets it via
       // the embedded "[title › authors]" context prefix.
-      const bookMeta = stemText(`${meta.title} ${meta.authors.join(" ")}`);
+      const bookMeta = bookMetaStem(meta);
       for (const c of chunks) {
         // Pre-stem here so the FTS keyword half is populated by the insert trigger.
         const { lastInsertRowid } = insChunk.run(
@@ -529,6 +538,41 @@ export class SqliteIndexStore implements IndexStore {
       this.#candidateCaches.delete(libraryId);
       this.#figureCaches.delete(libraryId);
     }
+  }
+
+  refreshBookMeta(libraryId: string, meta: BookMeta): void {
+    const db = this.#db(libraryId);
+    const bookMeta = bookMetaStem(meta);
+    // IMMEDIATE for the same reason as replaceBook (#196): wait on another writer's lock.
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      db.prepare("UPDATE books SET title = ?, authors = ?, last_modified = ?, indexed_at = ? WHERE book_id = ?").run(
+        meta.title,
+        JSON.stringify(meta.authors),
+        meta.lastModified ?? null,
+        new Date().toISOString(),
+        meta.bookId,
+      );
+      // The AFTER UPDATE triggers re-sync chunk_fts / figure_fts with the new book_meta.
+      db.prepare("UPDATE chunks SET book_meta = ? WHERE book_id = ?").run(bookMeta, meta.bookId);
+      db.prepare("UPDATE figures SET book_meta = ? WHERE book_id = ?").run(bookMeta, meta.bookId);
+      db.exec("COMMIT");
+    } catch (err) {
+      rollbackQuietly(db);
+      throw err;
+    } finally {
+      // Same wholesale invalidation as replaceBook — correctness over cleverness.
+      this.#candidateCaches.delete(libraryId);
+      this.#figureCaches.delete(libraryId);
+    }
+  }
+
+  bookChunkSpans(libraryId: string, bookId: number): ChunkSpan[] {
+    if (!this.hasIndex(libraryId)) return [];
+    const rows = this.#db(libraryId)
+      .prepare("SELECT char_start, char_end, body FROM chunks WHERE book_id = ? ORDER BY char_start, id")
+      .all(bookId) as Row[];
+    return rows.map((r) => ({ charStart: Number(r.char_start), charEnd: Number(r.char_end), body: String(r.body) }));
   }
 
   indexedBookIds(libraryId: string): number[] {
@@ -1046,4 +1090,9 @@ function parseAuthors(raw: unknown): string[] {
   } catch {
     return raw ? [raw] : [];
   }
+}
+
+/** Stemmed "title authors" repeated on every chunk/figure row, so FTS sees book identity. */
+function bookMetaStem(meta: BookMeta): string {
+  return stemText(`${meta.title} ${meta.authors.join(" ")}`);
 }
