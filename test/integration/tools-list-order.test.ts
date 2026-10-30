@@ -34,6 +34,18 @@ const PINNED_ORDER = [
   "calibre_ping",
 ];
 
+// Gate off: the seven write:true tools are disabled and drop out; the rest keep their order.
+const WRITE_TOOLS = [
+  "calibre_update_book",
+  "calibre_extract_isbn",
+  "calibre_bulk_update",
+  "calibre_add_book",
+  "calibre_remove_book",
+  "calibre_merge_books",
+  "calibre_manage_bundles",
+];
+const PINNED_GATE_OFF = PINNED_ORDER.filter((n) => !WRITE_TOOLS.includes(n));
+
 async function listToolNames(writeEnabled: boolean, calls = 1): Promise<string[][]> {
   const server = buildServer({
     probes: false,
@@ -63,24 +75,31 @@ describe("tools/list order", () => {
     expect(names).toEqual(PINNED_ORDER);
   });
 
-  it("should_return_an_identical_order_on_repeated_calls", async () => {
+  it("should_list_exactly_the_non_write_tools_in_pinned_order_when_the_write_gate_is_off", async () => {
+    const [names] = await listToolNames(false);
+    expect(names).toEqual(PINNED_GATE_OFF);
+  });
+
+  it("should_return_an_identical_order_on_repeated_calls_to_one_server", async () => {
     const [first, second] = await listToolNames(true, 2);
     expect(second).toEqual(first);
   });
 
-  it("should_keep_the_remaining_tools_in_pinned_order_when_the_write_gate_is_off", async () => {
-    const [off] = await listToolNames(false);
-    expect(off).toEqual(PINNED_ORDER.filter((n) => off!.includes(n)));
+  it("should_return_an_identical_order_from_two_separately_built_servers_gate_on", async () => {
+    const [[a], [b]] = await Promise.all([listToolNames(true), listToolNames(true)]);
+    expect(b).toEqual(a);
   });
 
-  it("should_hide_write_tools_when_the_gate_is_off", async () => {
-    const [off] = await listToolNames(false);
-    expect(off!.length).toBeLessThan(PINNED_ORDER.length);
+  it("should_return_an_identical_order_from_two_separately_built_servers_gate_off", async () => {
+    const [[a], [b]] = await Promise.all([listToolNames(false), listToolNames(false)]);
+    expect(b).toEqual(a);
   });
 
+  // docs/tool-catalog.json is sorted alphabetically by its generator, so it cannot define
+  // ORDER; the pinned list is the order of record and the catalog is checked as a SET only.
   it("should_pin_exactly_the_tools_in_the_generated_catalog", () => {
-    const catalog = JSON.parse(readFileSync("docs/tool-catalog.json", "utf8")) as { tools: Array<{ name: string }> };
-    const catalogNames = catalog.tools.map((t) => t.name).sort();
+    const raw = readFileSync(new URL("../../docs/tool-catalog.json", import.meta.url), "utf8");
+    const catalogNames = (JSON.parse(raw) as { tools: Array<{ name: string }> }).tools.map((t) => t.name).sort();
     expect([...PINNED_ORDER].sort()).toEqual(catalogNames);
   });
 });
