@@ -1,0 +1,21 @@
+test/tools/write-refusal.test.ts
+  s_540f3fb0affa94::t_43708be4418528 1-29
+test/tools/bulk-update.handler.test.ts
+  s_540f3fb0affa94::t_43708be4418528 245-260
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "96da4c92158bcf1cbccff1e4980e8402498650a0",
+  "prompts": {},
+  "sessions": {
+    "s_540f3fb0affa94": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "53f6b1a2-cb80-4c95-a83e-122ffc8de661",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
