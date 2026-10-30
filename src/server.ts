@@ -2,6 +2,7 @@
 // imports the MCP SDK (DESIGN §7) — tool logic, the calibre clients, and domain code
 // stay SDK-free so the SDK can be swapped behind this seam. Transport lives in run-stdio.ts.
 
+import { SERVER_INSTRUCTIONS } from "./instructions.js";
 import { z } from "zod";
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
@@ -84,7 +85,7 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
 
   const server = new McpServer(
     { name: "calibre-mcp", version: VERSION },
-    { capabilities: { tools: {}, resources: {} } },
+    { capabilities: { tools: {}, resources: {} }, instructions: SERVER_INSTRUCTIONS },
   );
 
   // Tag later log lines with the client (Desktop vs Code vs …) — the same file is shared.
