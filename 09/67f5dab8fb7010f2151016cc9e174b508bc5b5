@@ -1,0 +1,23 @@
+src/tools/calibre_merge_books.ts
+  s_f45ec3b2d9bbac::t_d077ce6cbd3b15 124-126
+src/domain/curation/duplicates.ts
+  s_f45ec3b2d9bbac::t_d077ce6cbd3b15 79-81
+src/domain/curation/normalize.ts
+  s_f45ec3b2d9bbac::t_d077ce6cbd3b15 31-47,51-57,59-60,64,66,69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0967f5dab8fb7010f2151016cc9e174b508bc5b5",
+  "prompts": {},
+  "sessions": {
+    "s_f45ec3b2d9bbac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a2c14e2f-3d3a-4cc3-bd31-9b4c8cecd09d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
