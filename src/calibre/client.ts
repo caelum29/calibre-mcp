@@ -11,6 +11,7 @@ import {
   CalibreCliTimeoutError,
   CalibreNotFoundError,
   OperationCancelledError,
+  isFtsParseDiag,
 } from "../domain/errors.js";
 import type { FtsHit } from "../domain/search.js";
 import { log } from "../logging.js";
@@ -136,7 +137,10 @@ export class CalibreClient {
     if (result.code !== 0) {
       // Forbidden/write-refused text can land on either stream; keep both for the classifier.
       const diag = [result.stdout, result.stderr].filter(Boolean).join("\n");
-      log.error("calibredb failed", {
+      // A malformed FTS query is the caller's input, not a server fault — keep it out of
+      // calibre_ping.recentErrors (#251).
+      const level = isFtsParseDiag(diag) ? "warn" : "error";
+      log[level]("calibredb failed", {
         argv: summarizeArgv(args),
         code: result.code,
         diag: redactArgvEchoes(diag, args).slice(0, 500),
