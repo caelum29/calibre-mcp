@@ -7,6 +7,7 @@ import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
 import { buildServer } from "../../src/server.js";
 import { allTools } from "../../src/tools/registry.js";
 import { defaultHint } from "../../src/domain/error-codes.js";
+import { log } from "../../src/logging.js";
 
 async function connect() {
   const server = buildServer({
@@ -141,6 +142,44 @@ describe("#325 trace context over the wire", () => {
         tracestate: false,
         baggage: false,
       });
+    } finally {
+      await close();
+    }
+  });
+});
+
+describe("#325 review — channels and 4xx", () => {
+  it("should_carry_the_same_steer_in_the_text_channel_as_structuredContent_error", async () => {
+    captureStderr();
+    const { client, close } = await connect();
+    try {
+      const r = await client.callTool({ name: "calibre_get_book", arguments: { id: 1 } });
+      const text = (r.content as Array<{ type: string; text?: string }>).map((b) => b.text ?? "").join("\n");
+      const sc = r.structuredContent as { error: string };
+      expect({
+        steerInText: sc.error.length > 0 && text.includes(sc.error),
+        prefixed: text.startsWith("Error: "),
+      }).toEqual({ steerInText: true, prefixed: true });
+    } finally {
+      await close();
+    }
+  });
+
+  it("should_close_a_Content_Server_400_at_warn_and_keep_it_out_of_recentErrors", async () => {
+    const lines = captureStderr();
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("bad request", { status: 400 }));
+    const { client, close } = await connect();
+    try {
+      const r = await client.callTool({ name: "calibre_search", arguments: { query: "ddd" } });
+      const closing = records(lines).find((rec) => rec.msg === "tool call" && rec.tool === "calibre_search") as
+        | (Rec & { lvl?: string })
+        | undefined;
+      expect({
+        isError: r.isError,
+        errorCode: (r.structuredContent as { errorCode?: string }).errorCode,
+        lvl: closing?.lvl,
+        inRing: log.recentErrors().some((e) => e.tool === "calibre_search"),
+      }).toEqual({ isError: true, errorCode: "invalid_input", lvl: "warn", inRing: false });
     } finally {
       await close();
     }
