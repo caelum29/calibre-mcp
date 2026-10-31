@@ -9,7 +9,7 @@ import type { CustomFieldValue } from "../domain/merge.js";
 import type { LibraryInfo, Category, CategoryItem, CategoryItemsPage } from "../domain/library.js";
 import type { SearchParams, SearchPage } from "../domain/search.js";
 import { getBytes, getJson } from "./http.js";
-import { toLibId } from "./lib-id.js";
+import { asLibId, type LibId, toLibId } from "./lib-id.js";
 
 // --- Raw /ajax response shapes (loose; only the fields we read) ---
 
@@ -136,23 +136,23 @@ export class ContentServerClient {
    * only if the server doesn't list it (DESIGN: don't hard-code the substitution).
    * No name anywhere (no arg, empty config) → the server's own default library.
    */
-  async resolveLibraryId(display?: string): Promise<string> {
+  async resolveLibraryId(display?: string): Promise<LibId> {
     const name = display || this.cfg.defaultLibrary;
     if (!this.#libMap) await this.libraryInfo();
     const map = this.#libMap ?? {};
     if (!name) {
-      if (this.#defaultLibId) return this.#defaultLibId;
+      if (this.#defaultLibId) return asLibId(this.#defaultLibId);
       throw new Error(
         `The Content Server at ${this.cfg.serverUrl} reports no libraries; ` +
           "set CALIBRE_MCP_LIBRARY or check the server.",
       );
     }
     // If `name` already IS a libId (a key), use it directly.
-    if (map[name] !== undefined) return name;
+    if (map[name] !== undefined) return asLibId(name);
     for (const [libId, displayName] of Object.entries(map)) {
-      if (displayName === name) return libId;
+      if (displayName === name) return asLibId(libId);
     }
-    return toLibId(name);
+    return asLibId(toLibId(name));
   }
 
   /** GET /ajax/search/{libId}?query=&num=&offset=&sort=&sort_order= → SearchPage (ids only). */

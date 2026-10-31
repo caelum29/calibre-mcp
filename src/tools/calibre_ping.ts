@@ -6,6 +6,7 @@ import { defineTool } from "./define.js";
 import { toolText } from "./result.js";
 import { computeSemanticStatus, formatSemanticStatusLine } from "../semantic/status.js";
 import { capString, log } from "../logging.js";
+import type { LibId } from "../calibre/lib-id.js";
 import type { ToolResult } from "./types.js";
 
 export const pingTool = defineTool({
@@ -22,7 +23,7 @@ export const pingTool = defineTool({
     // Resolve the libId (needed for both calibredb and the index vector count) first —
     // --with-library needs the ID, not the display name. A failure here is non-fatal to the
     // semantic diagnosis (it reads local disk/state), so keep it and still report semantics.
-    let libId: string | undefined;
+    let libId: LibId | undefined;
     let listOut: string | undefined;
     let pingError: string | undefined;
     try {
