@@ -124,3 +124,28 @@ export function previewBookChanges(book: Book, changes: Record<string, ChangeVal
     return { field, before, after, changed: JSON.stringify(before) !== JSON.stringify(after) };
   });
 }
+
+/** Entry count of a list-like field value (array items or identifier keys); undefined for scalars. */
+function listSize(v: unknown): number | undefined {
+  if (Array.isArray(v)) return v.length;
+  if (v && typeof v === "object") return Object.keys(v).length;
+  return undefined;
+}
+
+/**
+ * Preview flag for a list-field "set" that would drop existing entries, e.g.
+ * `tags: 15 → 1 (replaces all existing tags)`. Sets replace the whole list, so a one-element
+ * value silently wipes the rest; undefined when nothing existing would be lost.
+ */
+export function listReplacementNote(d: FieldDiff): string | undefined {
+  const was = listSize(d.before);
+  const now = listSize(d.after);
+  if (!was || now === undefined) return undefined;
+  const kept = (e: unknown): boolean => {
+    if (Array.isArray(d.after)) return d.after.some((x) => sameFieldValue(x, e));
+    return typeof e === "string" && !!d.after && typeof d.after === "object" && e in d.after;
+  };
+  const existing = Array.isArray(d.before) ? d.before : Object.keys(d.before as object);
+  if (existing.every(kept)) return undefined;
+  return `${d.field}: ${was} → ${now} (replaces all existing ${d.field})`;
+}
