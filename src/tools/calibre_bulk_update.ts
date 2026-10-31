@@ -72,7 +72,6 @@ export const bulkUpdateTool = defineTool({
       )
       .optional(),
     applied: z.array(z.number()).optional(),
-    unchanged: z.array(z.number()).optional(),
     failed: z.array(z.object({ id: z.number(), error: z.string() })).optional(),
     notAttempted: z.array(z.number()).optional(),
     retryIds: z.array(z.number()).optional(),
@@ -235,11 +234,7 @@ export const bulkUpdateTool = defineTool({
       const libId = await deps.content.resolveLibraryId(args.library);
       const applied: number[] = [];
       const failed: { id: number; error: string }[] = [];
-      // A tags merge often leaves most books as they are (tag already there / not there):
-      // skip those instead of one pointless calibredb call each. `changes`-only calls write all.
-      const toWrite = tagOps ? perBook.filter((b) => b.diff.some((d) => d.changed)) : perBook;
-      const unchanged = tagOps ? perBook.filter((b) => !toWrite.includes(b)).map((b) => b.id) : undefined;
-      for (const [i, b] of toWrite.entries()) {
+      for (const [i, b] of perBook.entries()) {
         try {
           // set_metadata is idempotent, so transient failures are retried in place (#233)
           await withTransientRetry(
@@ -254,7 +249,7 @@ export const bulkUpdateTool = defineTool({
             if (applied.length === 0) return toolError("write_refused", WRITE_REFUSED_MESSAGE);
             failed.push({ id: b.id, error: WRITE_REFUSED_MESSAGE });
             return stoppedMidLoop(
-              { matched: perBook.length, applied, failed, notAttempted: toWrite.slice(i + 1).map((p) => p.id) },
+              { matched: perBook.length, applied, failed, notAttempted: perBook.slice(i + 1).map((p) => p.id) },
               {
                 headline: "Calibre refused the write",
                 steer: `${WRITE_REFUSED_MESSAGE} After fixing the server`,
@@ -268,7 +263,7 @@ export const bulkUpdateTool = defineTool({
           if (transient === "connection") {
             failed.push({ id: b.id, error: describeTransient(err, b.id) });
             return stoppedMidLoop(
-              { matched: perBook.length, applied, failed, notAttempted: toWrite.slice(i + 1).map((p) => p.id) },
+              { matched: perBook.length, applied, failed, notAttempted: perBook.slice(i + 1).map((p) => p.id) },
               {
                 headline: "Stopped: the Calibre Content Server is unreachable",
                 steer: `${describeTransient(err, b.id)} Once it is back`,
@@ -306,8 +301,7 @@ export const bulkUpdateTool = defineTool({
       }
 
       const summary =
-        `Applied ${(tagOps ? [...fields, "tags"] : fields).join(", ")} to ${applied.length}/${toWrite.length} book(s).` +
-        (unchanged?.length ? ` ${unchanged.length} already up to date (skipped): ${unchanged.join(", ")}.` : "") +
+        `Applied ${(tagOps ? [...fields, "tags"] : fields).join(", ")} to ${applied.length}/${perBook.length} book(s).` +
         // on a partial run name the committed ids, so a retry skips them (#227)
         (failed.length > 0 && applied.length > 0 ? ` Committed: ${applied.join(", ")}.` : "") +
         (failed.length > 0 ? ` ${failed.length} failed: ${failed.map((f) => f.id).join(", ")}.` : "") +
@@ -317,7 +311,6 @@ export const bulkUpdateTool = defineTool({
         preview: false,
         matched: perBook.length,
         applied,
-        ...(unchanged ? { unchanged } : {}),
         failed,
       });
     } catch (err) {

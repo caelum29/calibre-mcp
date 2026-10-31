@@ -1,4 +1,4 @@
-// PR #333 review (#321): tag-ops calls skip books the merge leaves unchanged, never look up a
+// PR #333 review (#321): tag-ops calls never look up a
 // tag they also remove, refuse commas inside a tag, treat null as absent, return an actionable
 // error when the spelling lookup fails, and put the add/remove counts in structuredContent.
 import { describe, expect, it } from "vitest";
@@ -11,16 +11,9 @@ import { book, fakeBulkDeps, textOf } from "./fake-bulk-tags.js";
 const schema = z.object(bulkUpdateTool.inputSchema);
 const run = (args: Record<string, unknown>, d: ToolDeps) => bulkUpdateTool.handler(schema.parse(args), d);
 
-describe("tags ops — no-op books are skipped (PR #333 review)", () => {
-  it("should_write_only_books_the_merge_changes", async () => {
-    const f = fakeBulkDeps({ selected: [book({ id: 1, tags: ["old"] }), book({ id: 2, tags: ["x", "old"] })] });
-    const r = await run({ ids: [1, 2], tags_remove: ["x"], preview: false }, f.deps);
-    expect(f.cli.mock.calls.map(([a]) => a)).toEqual([["set_metadata", "2", "--field", "tags:old"]]);
-    expect(r.structuredContent?.applied).toEqual([2]);
-    expect(r.structuredContent?.unchanged).toEqual([1]);
-    expect(textOf(r)).toBe("Applied tags to 1/1 book(s). 1 already up to date (skipped): 1.");
-  });
-
+// Skipping no-op books was dropped (orchestrator, round 1): the frozen #321 RED test pins a
+// write for them. These two cases still hold.
+describe("tags ops — books with other changes are written (PR #333 review)", () => {
   it("should_still_write_a_book_whose_other_changes_differ", async () => {
     const f = fakeBulkDeps({ selected: [book({ id: 1, tags: ["old"] })] });
     await run({ ids: [1], changes: { publisher: "P" }, tags_add: ["old"], preview: false }, f.deps);
