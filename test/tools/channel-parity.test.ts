@@ -19,7 +19,8 @@ import { l2normalize } from "../../src/semantic/vector.js";
 import { allTools } from "../../src/tools/registry.js";
 import { decodeCursor, pageCursor } from "../../src/tools/cursor.js";
 import { renderResult } from "../../src/tools/result.js";
-import type { AnyToolDescriptor, ToolDeps, ToolResult } from "../../src/tools/types.js";
+import type { AnyToolDescriptor, ToolResult } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 import { fakeFts } from "./fake-fts.js";
 
 // ── the parity checker ────────────────────────────────────────────────────────────────

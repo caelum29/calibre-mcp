@@ -5,7 +5,8 @@ import { describe, it, expect } from "vitest";
 import { listLibrariesTool } from "../../src/tools/calibre_list_libraries.js";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
-import type { ToolDeps, ToolResult } from "../../src/tools/types.js";
+import type { ToolResult } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 
 function deps(libraryMap: Record<string, string>, defaultLibrary: string): ToolDeps {
   const content = { libraryInfo: async () => ({ libraryMap, defaultLibrary }) };

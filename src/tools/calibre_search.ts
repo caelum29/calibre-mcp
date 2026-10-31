@@ -36,7 +36,8 @@ import { bookResourceLink } from "./resource-link.js";
 import { resolveNumericId } from "./resolve-id.js";
 import { ENABLE_FTS_STEPS, KEYWORD_SEARCH_FALLBACK } from "./remediation.js";
 import { fence, renderResult, toolError, toolOk } from "./result.js";
-import type { ContentBlock, ToolDeps, ToolResult } from "./types.js";
+import type { ContentBlock, ToolResult } from "./types.js";
+import type { ToolDeps } from "./deps.js";
 
 type SearchArgs = {
   query: string;

@@ -14,7 +14,7 @@ const sink: LogSink = log;
 import type { Book } from "../../src/domain/book.js";
 import type { CustomFieldValue } from "../../src/domain/merge.js";
 import { CalibreCliError, CalibreCliTimeoutError, CalibreHttpError } from "../../src/domain/errors.js";
-import type { ToolDeps } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 
 vi.mock("../../src/calibre/http.js", () => ({
   downloadToFile: vi.fn(async () => ({ bytes: 1 })),

@@ -5,7 +5,7 @@ import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
 import { CalibreCliError, CalibreCliTimeoutError, CalibreHttpError } from "../../src/domain/errors.js";
-import type { ToolDeps } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 
 const book = (over: Partial<Book> = {}): Book => ({
   id: 658,

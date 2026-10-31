@@ -9,7 +9,7 @@ import { log } from "../../src/logging.js";
 import { FiguresError } from "../../src/domain/errors.js";
 import type { Book } from "../../src/domain/book.js";
 import type { FigureInventory } from "../../src/domain/figures/inventory.js";
-import type { ToolDeps } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 
 const inventory: FigureInventory = {
   entries: [{ index: 0, page: 1, captioned: true, label: "1-1", caption: "A model", source: "raster" }],

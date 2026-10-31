@@ -10,7 +10,7 @@ import type { Reranker } from "../../src/semantic/reranker.js";
 import { type IndexedFigure, SqliteIndexStore } from "../../src/semantic/store.js";
 import { EMBED_DIM, MAX_TOKENS, PASSAGE_PREFIX } from "../../src/semantic/model.js";
 import { l2normalize } from "../../src/semantic/vector.js";
-import type { ToolDeps } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 
 /** Asserts a remediation text names all three install layouts and the mandatory restart step (#47). */
 function expectUniversalRemediation(text: string): void {

@@ -12,7 +12,7 @@ const sink: LogSink = log;
 import { buildScopedQuery, invalidateBundleCache, resolveFilter, scopeExpression } from "../../src/tools/bundles.js";
 import { searchTool } from "../../src/tools/calibre_search.js";
 import { fakeFts, type FakeFtsHit } from "./fake-fts.js";
-import type { ToolDeps } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 
 const SAVED_SEARCHES = `Integration status: False
 Name: Rust

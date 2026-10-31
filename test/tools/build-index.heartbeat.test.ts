@@ -13,7 +13,7 @@ import type { ExtractedText } from "../../src/calibre/extract.js";
 import type { Embedder } from "../../src/semantic/embedder.js";
 import { EMBED_DIM } from "../../src/semantic/model.js";
 import { SqliteIndexStore } from "../../src/semantic/store.js";
-import type { ToolDeps } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 
 /** Fake extraction wall time — several heartbeat periods. */
 const EXTRACT_MS = HEARTBEAT_MS * 3.5;

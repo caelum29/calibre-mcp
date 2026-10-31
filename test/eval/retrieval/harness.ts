@@ -17,7 +17,7 @@ import { INDEX_VERSION, MODEL_ID } from "../../../src/semantic/model.js";
 import { SqliteIndexStore } from "../../../src/semantic/store.js";
 import { buildIndexTool } from "../../../src/tools/calibre_build_index.js";
 import { semanticSearchTool } from "../../../src/tools/calibre_semantic_search.js";
-import type { ToolDeps } from "../../../src/tools/types.js";
+import type { ToolDeps } from "../../../src/tools/deps.js";
 import {
   aggregate,
   queryMetrics,

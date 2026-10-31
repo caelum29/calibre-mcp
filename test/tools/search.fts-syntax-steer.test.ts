@@ -7,7 +7,7 @@ import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import { asLibId } from "../../src/calibre/lib-id.js";
 import { FtsError } from "../../src/domain/errors.js";
-import type { ToolDeps } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 import { fakeFts, type FakeFtsHit } from "./fake-fts.js";
 
 // Boundary stub: only what the FTS library branch touches.

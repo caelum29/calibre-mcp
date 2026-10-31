@@ -5,7 +5,7 @@ import type { Book } from "../../src/domain/book.js";
 import type { GetTextArgs } from "../../src/calibre/extract.js";
 import type { ProviderHit } from "../../src/domain/enrich/types.js";
 import { recoverMetadataTool } from "../../src/tools/calibre_recover_metadata.js";
-import type { ToolDeps } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 
 function book(over: Partial<Book> = {}): Book {
   return { id: 1, uuid: "u", title: "", authors: [], identifiers: {}, formats: [], tags: [], languages: [], ...over };

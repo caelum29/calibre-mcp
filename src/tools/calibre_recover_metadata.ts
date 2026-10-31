@@ -22,7 +22,7 @@ import type { IsbnScanResult } from "./isbn-scan.js";
 import { bookIdArg, resolveNumericId } from "./resolve-id.js";
 import { bookResourceLink } from "./resource-link.js";
 import { fence, toolError, toolOk } from "./result.js";
-import type { ToolDeps } from "./types.js";
+import type { ToolDeps } from "./deps.js";
 
 const SOURCE = z.enum(["openlibrary", "googlebooks"]);
 const DEFAULT_SOURCES: Provider["name"][] = ["openlibrary", "googlebooks"];
