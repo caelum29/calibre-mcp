@@ -1,0 +1,21 @@
+docs/standards/writes.md
+  s_75623c0f5aa7cb::t_c121e8bfdcb817 3
+CODING_STANDARDS.md
+  s_75623c0f5aa7cb::t_c121e8bfdcb817 14,46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7a4720683b6c703ec3ffa72a1ed160e73f39c95c",
+  "prompts": {},
+  "sessions": {
+    "s_75623c0f5aa7cb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b6213e68-7eea-4ead-b2f4-3402e4eb4a49",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
