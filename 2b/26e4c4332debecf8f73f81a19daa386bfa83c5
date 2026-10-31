@@ -1,0 +1,21 @@
+test/tools/fake-bulk-tags.ts
+  s_38ec8aae54ac1e::t_64b3101324007a 1-78
+test/tools/bulk-update.tags-ops-review.test.ts
+  s_38ec8aae54ac1e::t_64b3101324007a 1-97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2b26e4c4332debecf8f73f81a19daa386bfa83c5",
+  "prompts": {},
+  "sessions": {
+    "s_38ec8aae54ac1e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "35df8d4b-23d3-49f4-aec1-7f1c00848c39",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
