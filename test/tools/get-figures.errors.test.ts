@@ -78,7 +78,7 @@ describe("calibre_get_figures scan failures", () => {
       };
       const r = await getFiguresTool.handler(args(), deps(figures));
       expect(r.isError).toBe(true);
-      expect(textOf(r)).toBe(text);
+      expect(textOf(r)).toBe(`Error: ${text}`);
     });
   }
 });
