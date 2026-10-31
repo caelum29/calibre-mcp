@@ -1,0 +1,24 @@
+src/tools/calibre_bulk_update.ts
+  s_38ec8aae54ac1e::t_acdacd6b4d1a96 132
+  s_38ec8aae54ac1e::t_c61ab85571723c 8,130-131,133
+test/domain/list-replacement-325.test.ts
+  s_38ec8aae54ac1e::t_c61ab85571723c 5-6
+src/domain/book-fields.ts
+  s_38ec8aae54ac1e::t_c61ab85571723c 130-131,163,168-169,177-180,185-214
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "62bbc490b3aee724c0e5045b3e63ee1629195929",
+  "prompts": {},
+  "sessions": {
+    "s_38ec8aae54ac1e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "35df8d4b-23d3-49f4-aec1-7f1c00848c39",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
