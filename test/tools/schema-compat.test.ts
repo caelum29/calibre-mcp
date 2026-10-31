@@ -11,7 +11,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { buildServer } from "../../src/server.js";
 import { allTools } from "../../src/tools/registry.js";
-import { applyToolsListCompat } from "../../src/wire-compat.js";
+import { applyToolsListCompat, DRAFT_07 } from "../../src/wire-compat.js";
 
 type JsonSchema = Record<string, unknown>;
 interface WireTool {
@@ -60,7 +60,7 @@ function compatProblems(schema: unknown, where: string, kind: "input" | "output"
     out.push(`${where}: $schema in an output schema (Claude Desktop rejects the call)`);
   }
   // #270: the input dialect stays draft-07 on the wire until clients are checked live on 2020-12
-  if (kind === "input" && "$schema" in schema && schema.$schema !== "http://json-schema.org/draft-07/schema#") {
+  if (kind === "input" && "$schema" in schema && schema.$schema !== DRAFT_07) {
     out.push(`${where}: $schema ${String(schema.$schema)} in an input schema (wire is pinned to draft-07)`);
   }
   const type = schema.type;
