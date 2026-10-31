@@ -277,32 +277,60 @@ async function fetchFigures(
   return result;
 }
 
-/** Model-facing wording for a skipped figure's failure code (codes absent here surface as `FIGURES_<code>`). */
-const SKIP_PROSE: Partial<Record<FiguresErrorCode, string>> = {
-  NO_POPPLER: "poppler is missing (brew install poppler) — needed to extract PDF figures.",
-  NO_QLMANAGE: "this SVG figure needs macOS qlmanage to rasterize, which is unavailable here.",
-  FETCH_FAILED: "the image could not be extracted from the source file.",
+interface FigureMessages {
+  /** Whole-call error when the scan fails (`Error: ` is added by toolError). */
+  scan: (bookId: number, fmt: string) => string;
+  /** Reason shown for one skipped figure. */
+  skip: string;
+}
+
+/**
+ * The one code → model-facing wording map. Exhaustive, so a new {@link FiguresErrorCode}
+ * without wording is a compile error. Codes that never had prose keep their old raw
+ * `FIGURES_<code>` text on that path (byte-identical output).
+ */
+/** Legacy raw wording for a code that has no prose on a path: `FIGURES_<code>`. */
+const raw = (code: FiguresErrorCode) => `FIGURES_${code}`;
+
+const MESSAGES: Record<FiguresErrorCode, FigureMessages> = {
+  NO_POPPLER: {
+    scan: () =>
+      "No poppler tools found (pdfimages/pdftotext) — install with `brew install poppler` to scan PDF figures.",
+    skip: "poppler is missing (brew install poppler) — needed to extract PDF figures.",
+  },
+  NO_UNZIP: {
+    scan: () => "No unzip binary found — needed to scan EPUB figures.",
+    skip: raw("NO_UNZIP"),
+  },
+  NO_QLMANAGE: {
+    scan: () => raw("NO_QLMANAGE"),
+    skip: "this SVG figure needs macOS qlmanage to rasterize, which is unavailable here.",
+  },
+  FORMAT_UNSUPPORTED: {
+    scan: (_id, fmt) => `Figures need an EPUB or PDF source; ${fmt} is not supported.`,
+    skip: raw("FORMAT_UNSUPPORTED"),
+  },
+  SCAN_TIMEOUT: {
+    scan: (id, fmt) => `Figure scan timed out for book ${id} (${fmt}) — the file may be very large.`,
+    skip: raw("SCAN_TIMEOUT"),
+  },
+  SCAN_FAILED: {
+    scan: (id, fmt) => `Could not scan book ${id} (${fmt}) for figures — the file may be DRM-protected or corrupt.`,
+    skip: raw("SCAN_FAILED"),
+  },
+  FETCH_FAILED: {
+    scan: () => raw("FETCH_FAILED"),
+    skip: "the image could not be extracted from the source file.",
+  },
 };
 
 function skipReason(s: SkippedFigure): string {
-  if ("reason" in s) return s.reason;
-  return SKIP_PROSE[s.code] ?? new FiguresError(s.code).message;
+  return "reason" in s ? s.reason : MESSAGES[s.code].skip;
 }
 
-/** Model-facing wording for a failed scan, per code (codes absent here surface as their message). */
-const SCAN_ERROR: Partial<Record<FiguresErrorCode, (bookId: number, fmt: string) => string>> = {
-  NO_POPPLER: () =>
-    "No poppler tools found (pdfimages/pdftotext) — install with `brew install poppler` to scan PDF figures.",
-  NO_UNZIP: () => "No unzip binary found — needed to scan EPUB figures.",
-  FORMAT_UNSUPPORTED: (_id, fmt) => `Figures need an EPUB or PDF source; ${fmt} is not supported.`,
-  SCAN_TIMEOUT: (id, fmt) => `Figure scan timed out for book ${id} (${fmt}) — the file may be very large.`,
-  SCAN_FAILED: (id, fmt) =>
-    `Could not scan book ${id} (${fmt}) for figures — the file may be DRM-protected or corrupt.`,
-};
-
 function figuresError(err: unknown, bookId: number, fmt: string) {
-  const text = err instanceof FiguresError ? SCAN_ERROR[err.code]?.(bookId, fmt) : undefined;
-  return toolError(text ?? (err instanceof Error ? err.message : String(err)));
+  if (err instanceof FiguresError) return toolError(MESSAGES[err.code].scan(bookId, fmt));
+  return toolError(err instanceof Error ? err.message : String(err));
 }
 
 function plural(n: number, word: string): string {
