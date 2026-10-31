@@ -1,0 +1,156 @@
+scripts/reindex.ts
+  h_e22d73abc85ef9 24
+src/calibre/client.ts
+  h_e22d73abc85ef9 30-38,40
+src/calibre/content-server.ts
+  h_e22d73abc85ef9 122-135,137
+src/calibre/extract.ts
+  h_e22d73abc85ef9 155-159,161
+src/calibre/figure-inventory.ts
+  h_e22d73abc85ef9 97-102,104
+src/server.ts
+  h_e22d73abc85ef9 25-26,77,84,93,246,252-253
+src/tools/add-dup-probe.ts
+  h_e22d73abc85ef9 8
+src/tools/bundles.ts
+  h_e22d73abc85ef9 8
+src/tools/calibre_build_index.ts
+  h_e22d73abc85ef9 34-35
+src/tools/calibre_get_figures.ts
+  h_e22d73abc85ef9 15-16
+src/tools/calibre_manage_bundles.ts
+  h_e22d73abc85ef9 16
+src/tools/calibre_merge_books.ts
+  h_e22d73abc85ef9 21
+src/tools/calibre_recover_metadata.ts
+  h_e22d73abc85ef9 25
+src/tools/calibre_search.ts
+  h_e22d73abc85ef9 39-40
+src/tools/calibre_semantic_search.ts
+  h_e22d73abc85ef9 29-30
+src/tools/calibre_update_book.ts
+  h_e22d73abc85ef9 14-15
+src/tools/deps.ts
+  h_e22d73abc85ef9 1-59
+src/tools/index-book.ts
+  h_e22d73abc85ef9 13
+src/tools/isbn-scan.ts
+  h_e22d73abc85ef9 11
+src/tools/resolve-id.ts
+  h_e22d73abc85ef9 4
+src/tools/select-books.ts
+  h_e22d73abc85ef9 8
+src/tools/types.ts
+  h_e22d73abc85ef9 7
+src/tools/write-verify.ts
+  h_e22d73abc85ef9 8
+src/ui/board-cache.ts
+  h_e22d73abc85ef9 39-45,50
+test/architecture.test.ts
+  h_e22d73abc85ef9 122-127,133,176-179,186-238
+test/eval/retrieval/harness.ts
+  h_e22d73abc85ef9 20,312
+test/integration/figures.live.test.ts
+  h_e22d73abc85ef9 18-19,55
+test/integration/merge.live.test.ts
+  h_e22d73abc85ef9 25,58
+test/tools/add-book.dup-probe.test.ts
+  h_e22d73abc85ef9 11,53
+test/tools/add-book.handler.test.ts
+  h_e22d73abc85ef9 8,26
+test/tools/board-data.handler.test.ts
+  h_e22d73abc85ef9 7
+test/tools/board-meta.test.ts
+  h_e22d73abc85ef9 15
+test/tools/build-index.background.test.ts
+  h_e22d73abc85ef9 15-16
+test/tools/build-index.handler.test.ts
+  h_e22d73abc85ef9 13,131-132
+test/tools/build-index.heartbeat.test.ts
+  h_e22d73abc85ef9 16,61
+test/tools/build-index.metadata-only.test.ts
+  h_e22d73abc85ef9 17,82
+test/tools/build-index.progress.test.ts
+  h_e22d73abc85ef9 17,66,82
+test/tools/build-index.soft-deadline.test.ts
+  h_e22d73abc85ef9 15-16,95-96
+test/tools/bulk-update.handler.test.ts
+  h_e22d73abc85ef9 8,51
+test/tools/bundle-filter.test.ts
+  h_e22d73abc85ef9 15,65
+test/tools/channel-parity.test.ts
+  h_e22d73abc85ef9 22-23
+test/tools/extract-isbn.handler.test.ts
+  h_e22d73abc85ef9 7,48-49
+test/tools/find-duplicates.handler.test.ts
+  h_e22d73abc85ef9 6,30-31,33-34
+test/tools/get-book.handler.test.ts
+  h_e22d73abc85ef9 9
+test/tools/get-content.handler.test.ts
+  h_e22d73abc85ef9 7,48-49
+test/tools/get-figures.errors.test.ts
+  h_e22d73abc85ef9 12
+test/tools/get-figures.handler.test.ts
+  h_e22d73abc85ef9 12
+test/tools/get-figures.messages.test.ts
+  h_e22d73abc85ef9 12
+test/tools/index-book.epub-front-matter.test.ts
+  h_e22d73abc85ef9 18,83,95
+test/tools/index-book.refresh-flags.test.ts
+  h_e22d73abc85ef9 17,104,116
+test/tools/index-book.test.ts
+  h_e22d73abc85ef9 15,49,51,63
+test/tools/list-categories.handler.test.ts
+  h_e22d73abc85ef9 6,30-31
+test/tools/list-libraries.handler.test.ts
+  h_e22d73abc85ef9 8-9,15-17
+test/tools/manage-bundles.handler.test.ts
+  h_e22d73abc85ef9 11-12,49-51
+test/tools/merge-books.handler.test.ts
+  h_e22d73abc85ef9 17,90
+test/tools/open-book.handler.test.ts
+  h_e22d73abc85ef9 5
+test/tools/ping.handler.test.ts
+  h_e22d73abc85ef9 10-11,36
+test/tools/quality-report.handler.test.ts
+  h_e22d73abc85ef9 7,43-44,46-47
+test/tools/recover-metadata.handler.test.ts
+  h_e22d73abc85ef9 8,45,48-49
+test/tools/remove-book.handler.test.ts
+  h_e22d73abc85ef9 6,30
+test/tools/search-deadline.test.ts
+  h_e22d73abc85ef9 12
+test/tools/search.fts-quoting.test.ts
+  h_e22d73abc85ef9 8-9,17,19
+test/tools/search.fts-syntax-steer.test.ts
+  h_e22d73abc85ef9 10,20,22
+test/tools/search.handler.test.ts
+  h_e22d73abc85ef9 10,43,45
+test/tools/select-books.test.ts
+  h_e22d73abc85ef9 6,56-57,59-60
+test/tools/semantic-search.handler.test.ts
+  h_e22d73abc85ef9 10,76-77
+test/tools/steers-251.test.ts
+  h_e22d73abc85ef9 10,20-21
+test/tools/update-book.handler.test.ts
+  h_e22d73abc85ef9 8,42
+test/tools/write-retry-dropped.handler.test.ts
+  h_e22d73abc85ef9 12
+test/tools/write-retry.handler.test.ts
+  h_e22d73abc85ef9 13,96
+test/tools/write-retry.test.ts
+  h_e22d73abc85ef9 11
+test/tools/write-verify.test.ts
+  h_e22d73abc85ef9 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "775a2334bbd05f6022cf5d9dda25dba5f56d1aab",
+  "prompts": {},
+  "humans": {
+    "h_e22d73abc85ef9": {
+      "author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
