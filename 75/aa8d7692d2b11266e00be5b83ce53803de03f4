@@ -1,0 +1,19 @@
+test/domain/list-replacement-325.test.ts
+  s_38ec8aae54ac1e::t_7e99b977dc9fd8 1-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "75aa8d7692d2b11266e00be5b83ce53803de03f4",
+  "prompts": {},
+  "sessions": {
+    "s_38ec8aae54ac1e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "35df8d4b-23d3-49f4-aec1-7f1c00848c39",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
