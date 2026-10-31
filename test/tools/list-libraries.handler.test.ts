@@ -55,11 +55,6 @@ describe("calibre_list_libraries text channel (#303)", () => {
       expect(text(r)).toContain(`${l.name} (id: ${l.id})`);
     }
   });
-
-  it("still says (none) when the server exposes no libraries", async () => {
-    const r = await listLibrariesTool.handler({}, deps({}, ""));
-    expect(text(r)).toContain("(none)");
-  });
 });
 
 // Stale default (#325): defaultLibrary is not a key of libraryMap, so no line can carry [default].

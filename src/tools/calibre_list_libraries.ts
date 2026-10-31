@@ -28,10 +28,16 @@ export const listLibrariesTool = defineTool({
       // Desktop shows the model only the text: the id (what tools and calibredb take) and the
       // default marker must live here, not just in structuredContent (#227, #303).
       const lines = libraries.map((l) => `${l.name} (id: ${l.id})${l.isDefault ? " [default]" : ""}`);
-      const text = lines.length > 0 ? `Libraries:\n${lines.join("\n")}` : "Libraries: (none)";
+      // A default that isn't an exposed library would 404 if the model passed it on, and no line
+      // can carry [default] for it: omit it from structuredContent and explain in the text instead.
+      const defaultIsListed = libraries.some((l) => l.isDefault);
+      if (!defaultIsListed && info.defaultLibrary) {
+        lines.push(`Note: the server default "${info.defaultLibrary}" is not an exposed library.`);
+      }
+      const text = libraries.length > 0 ? `Libraries:\n${lines.join("\n")}` : "Libraries: (none)";
       return toolOk([{ type: "text", text }], {
         libraries,
-        default: info.defaultLibrary,
+        ...(defaultIsListed ? { default: info.defaultLibrary } : {}),
       });
     } catch (err) {
       // libraryInfo already logged the cause to stderr; give the model a next step.
