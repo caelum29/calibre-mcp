@@ -7,7 +7,7 @@ import { z } from "zod";
 import { compareBooks, findDuplicateGroups } from "../domain/curation/duplicates.js";
 import { buildScopedQuery, honestyLines, resolveFilter } from "./bundles.js";
 import { BookId, CursorParam, jsonArray, limitParam } from "./coerce.js";
-import { pageCursor, resolveCursor } from "./cursor.js";
+import { idsKey, pageCursor, resolveCursor } from "./cursor.js";
 import { defineTool } from "./define.js";
 import { bookResourceLink } from "./resource-link.js";
 import { selectBooks } from "./select-books.js";
@@ -51,6 +51,17 @@ export const findDuplicatesTool = defineTool({
   annotations: { readOnlyHint: true, openWorldHint: true },
   handler: async (args, deps) => {
     try {
+      // Every input that shapes the group list is in the key, and a bad cursor is refused
+      // before the (expensive) book selection — compare mode included, it never pages (#305).
+      const bind = {
+        libId: await deps.content.resolveLibraryId(args.library),
+        mode: `dup:${args.mode}`,
+        query: [idsKey(args.ids), args.query ?? "", args.filter ?? ""].join(":"),
+      };
+      const start = resolveCursor(args.cursor, bind, "calibre_find_duplicates");
+      if (!start.ok) return toolError(start.error);
+      const offset = start.offset;
+
       if (args.mode === "compare") {
         if (!args.ids || args.ids.length < 2) {
           return toolError("compare mode requires ids with at least 2 book ids.");
@@ -101,16 +112,6 @@ export const findDuplicatesTool = defineTool({
       });
       const groups = findDuplicateGroups(books, args.mode);
 
-      const cursorKey = `dup:${args.mode}:${args.query ?? ""}:${args.filter ?? ""}`;
-      // Bound to the resolved library (#305): a cursor from another library must not page this one.
-      const bind = {
-        libId: await deps.content.resolveLibraryId(args.library),
-        mode: `dup:${args.mode}`,
-        query: cursorKey,
-      };
-      const start = resolveCursor(args.cursor, bind, "calibre_find_duplicates");
-      if (!start.ok) return toolError(start.error);
-      const offset = start.offset;
       const pageGroups = groups.slice(offset, offset + args.limit);
       const pg = pageCursor({ offset, fetched: pageGroups.length, total: groups.length, ...bind });
 

@@ -13,8 +13,10 @@ import { compileUserRegex } from "./user-regex.js";
 // Pull a generous page when filtering client-side; categories above this are truncated.
 const FILTER_FETCH_NUM = 10_000;
 
+const TOOL = "calibre_list_categories";
+
 export const listCategoriesTool = defineTool({
-  name: "calibre_list_categories",
+  name: TOOL,
   title: "List categories",
   description:
     "Browse library categories (Authors, Tags, Series, Languages, Publisher). No field → list the categories; with a field → its values + counts, filterable via a valueFilter regex (case-insensitive by default; a leading inline flag like `(?i)` is accepted).",
@@ -39,8 +41,14 @@ export const listCategoriesTool = defineTool({
     try {
       const cats = await deps.content.categories(args.library);
 
-      // No field → list the categories themselves.
+      // No field → list the categories themselves (one page, no cursor). A cursor here was
+      // minted by a values call — refuse it rather than silently ignore it (#305).
       if (!args.field) {
+        if (args.cursor) {
+          const libId = await deps.content.resolveLibraryId(args.library);
+          const start = resolveCursor(args.cursor, { libId, mode: "categories:fields", query: "" }, TOOL);
+          if (!start.ok) return toolError(start.error);
+        }
         const fields = cats.filter((c) => c.name).map((c) => ({ name: c.name, count: c.count }));
         const text = "Categories: " + fields.map((f) => f.name).join(", ");
         return toolOk([{ type: "text", text: fence("CATEGORY FIELDS", text) }], {
@@ -60,13 +68,16 @@ export const listCategoriesTool = defineTool({
         return toolError(`Unknown category "${args.field}". Available: ${names}`);
       }
 
-      // Cursors are bound to the resolved library (#305): one minted elsewhere must not page here.
+      // Bound to the resolved library, field and valueFilter, and checked before any value
+      // fetch (#305): a cursor minted elsewhere must not page here.
       const libId = await deps.content.resolveLibraryId(args.library);
+      const cursorKey = args.valueFilter ? `${node.name}::${args.valueFilter}` : node.name;
+      const start = resolveCursor(args.cursor, { libId, mode: "categories", query: cursorKey }, TOOL);
+      if (!start.ok) return toolError(start.error);
+      const offset = start.offset;
 
       let items: { name: string; count?: number }[];
       let total: number;
-      let offset: number;
-      let cursorKey: string;
 
       if (args.valueFilter) {
         const compiled = compileUserRegex(args.valueFilter);
@@ -77,25 +88,9 @@ export const listCategoriesTool = defineTool({
         // Filter client-side over a large page, then paginate the matches.
         const page = await deps.content.categoryItemsByUrl(node.url, { num: FILTER_FETCH_NUM, offset: 0 });
         const filtered = page.items.filter((it) => re.test(it.name));
-        cursorKey = `${node.name}::${args.valueFilter}`;
-        const start = resolveCursor(
-          args.cursor,
-          { libId, mode: "categories", query: cursorKey },
-          "calibre_list_categories",
-        );
-        if (!start.ok) return toolError(start.error);
-        offset = start.offset;
         total = filtered.length;
         items = filtered.slice(offset, offset + args.limit).map((it) => ({ name: it.name, count: it.count }));
       } else {
-        cursorKey = node.name;
-        const start = resolveCursor(
-          args.cursor,
-          { libId, mode: "categories", query: cursorKey },
-          "calibre_list_categories",
-        );
-        if (!start.ok) return toolError(start.error);
-        offset = start.offset;
         const page = await deps.content.categoryItemsByUrl(node.url, { num: args.limit, offset });
         total = page.total;
         items = page.items.map((it) => ({ name: it.name, count: it.count }));

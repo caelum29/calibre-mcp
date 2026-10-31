@@ -89,6 +89,13 @@ export function resolveCursor(token: string | undefined, bind: CursorBinding, to
   return { ok: true, offset: c.offset };
 }
 
+/** Key part for an `ids` selection: order and repeats don't change the set, so normalise them. */
+export function idsKey(ids: readonly (number | string)[] | undefined): string {
+  if (!ids?.length) return "";
+  const uniq = [...new Set(ids.map(String))];
+  return uniq.sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).join(",");
+}
+
 /** A page's continuation in both channels: the token and the text line that carries it. */
 export interface PageCursor {
   nextCursor?: string;
