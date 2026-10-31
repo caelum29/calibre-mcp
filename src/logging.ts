@@ -189,6 +189,8 @@ isError results log at warn (the model fixes them by changing its call) — exce
 errorCode ${SERVER_FAULT_CODES.join(", ")}. Every error-level line (those faults, \`tool threw\`,
 inner failures such as \`calibredb failed\`) is what calibre_ping.recentErrors shows, so one fault may appear twice there
 (the inner line with its details, then the closing \`tool call\` line with errorCode + hint).
+Per-book faults (\`extraction_failed\` on a scanned PDF, \`timeout\` on a huge book) repeat across a batch and can fill the
+${RECENT_ERRORS_MAX}-slot ring on their own — read the daily file for older errors.
 The home dir is written as \`~\`. Lines may contain book titles, ids and search queries — never book text.
 
 Recipes:

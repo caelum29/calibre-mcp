@@ -97,6 +97,10 @@ function httpCode(err: CalibreHttpError): ErrorCode {
   if (err.name === "CalibreHttpTimeoutError") return "timeout";
   if (err.status === 0) return "calibre_unreachable"; // transport failure, no HTTP reply
   if (err.status === 404) return "not_found";
+  // Any other 4xx is the request's fault (bad query or params) — the model fixes it, so it must
+  // not land in calibre_ping.recentErrors (#325). 401/403 stay faults: we send no credentials,
+  // so only a Content Server setting change fixes them.
+  if (err.status >= 400 && err.status < 500 && err.status !== 401 && err.status !== 403) return "invalid_input";
   return "calibre_error";
 }
 
