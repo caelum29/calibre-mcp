@@ -1,0 +1,175 @@
+src/tools/registry.ts
+  s_4a90abf8bb145b::t_a94477c4964e27 25,50-51
+test/ui/widget-snapshot.test.ts
+  s_4a90abf8bb145b::t_a94477c4964e27 1-38
+src/ui/figures-html.ts
+  s_4a90abf8bb145b::t_a94477c4964e27 9-10,12,18
+.gitignore
+  s_4a90abf8bb145b::t_a94477c4964e27 53-55
+src/calibre/figure-fetch.ts
+  s_4a90abf8bb145b::t_a94477c4964e27 15,164,189,194
+src/calibre/epub-toc.ts
+  s_4a90abf8bb145b::t_a94477c4964e27 20,28
+docs/standards/widgets.md
+  s_4a90abf8bb145b::t_a94477c4964e27 1-34
+src/ui/board/coverflow.css
+  s_4a90abf8bb145b::t_a94477c4964e27 1-38
+src/ui/board/shelf.js
+  s_4a90abf8bb145b::t_a94477c4964e27 1-108
+scripts/gen-tool-catalog.mjs
+  s_4a90abf8bb145b::t_a94477c4964e27 41,61
+.github/workflows/ci.yml
+  s_4a90abf8bb145b::t_a94477c4964e27 41
+src/ui/board/states.css
+  s_4a90abf8bb145b::t_a94477c4964e27 1-54
+scripts/reindex.ts
+  s_4a90abf8bb145b::t_a94477c4964e27 6,22,86-88,102,119
+test/architecture.test.ts
+  s_4a90abf8bb145b::t_a94477c4964e27 6,66-249
+  s_4a90abf8bb145b::t_8055d8acb3e467 250-253
+src/ui/board/boot.js
+  s_4a90abf8bb145b::t_a94477c4964e27 1-25
+docs/standards/writes.md
+  s_4a90abf8bb145b::t_a94477c4964e27 1-58
+test/tools/ping.handler.test.ts
+  s_4a90abf8bb145b::t_a94477c4964e27 1-106
+.oxlintrc.json
+  s_4a90abf8bb145b::t_a94477c4964e27 47-104,107-114
+docs/standards/heuristics.md
+  s_4a90abf8bb145b::t_a94477c4964e27 1-38
+src/ui/board-html.ts
+  s_4a90abf8bb145b::t_a94477c4964e27 11,13
+docs/standards/results-and-errors.md
+  s_4a90abf8bb145b::t_a94477c4964e27 1-37
+src/ui/debug.js
+  s_4a90abf8bb145b::t_a94477c4964e27 1-125
+src/ui/generated/widgets.ts
+  s_4a90abf8bb145b::t_a94477c4964e27 1-11
+vitest.config.ts
+  s_4a90abf8bb145b::t_a94477c4964e27 7
+test/tools/channel-parity.test.ts
+  s_4a90abf8bb145b::t_a94477c4964e27 329,534-535,674-685
+  s_4a90abf8bb145b::t_e755e7b8aca187 686
+src/tools/calibre_ping.ts
+  s_4a90abf8bb145b::t_a94477c4964e27 1-77
+src/semantic/build-progress.ts
+  s_4a90abf8bb145b::t_a94477c4964e27 6,55-76
+test/tools/schema-compat.test.ts
+  s_4a90abf8bb145b::t_a94477c4964e27 13,37,61-64,117-118,127-128
+src/domain/enrich/proposal.ts
+  s_4a90abf8bb145b::t_a94477c4964e27 10,58-59
+src/ui/board/views.html
+  s_4a90abf8bb145b::t_a94477c4964e27 1-57
+src/run-stdio.ts
+  s_4a90abf8bb145b::t_a94477c4964e27 11,43
+src/calibre/figure-inventory.ts
+  s_4a90abf8bb145b::t_a94477c4964e27 32,99-100,372-380
+test/wire-compat.test.ts
+  s_4a90abf8bb145b::t_a94477c4964e27 37-88
+scripts/gen-widgets.mjs
+  s_4a90abf8bb145b::t_a94477c4964e27 1-67
+src/ui/board/shell.css
+  s_4a90abf8bb145b::t_a94477c4964e27 1-84
+src/ui/figures/figures.js
+  s_4a90abf8bb145b::t_a94477c4964e27 1-372
+src/calibre/extract.ts
+  s_4a90abf8bb145b::t_a94477c4964e27 26,177-178,180-182,191-192,396,401-408
+CODING_STANDARDS.md
+  s_4a90abf8bb145b::t_a94477c4964e27 1-87
+src/ui/card/card.css
+  s_4a90abf8bb145b::t_a94477c4964e27 1-214
+src/calibre/binaries.ts
+  s_4a90abf8bb145b::t_a94477c4964e27 1-101
+src/tools/add-dup-probe.ts
+  s_4a90abf8bb145b::t_a94477c4964e27 7,24,27,35-37,77-78
+src/ui/board/board.html
+  s_4a90abf8bb145b::t_a94477c4964e27 1-50
+docs/standards/architecture.md
+  s_4a90abf8bb145b::t_a94477c4964e27 1-34
+src/ui/board/cover.css
+  s_4a90abf8bb145b::t_a94477c4964e27 1-59
+src/ui/board/shelf.css
+  s_4a90abf8bb145b::t_a94477c4964e27 1-46
+src/wire-compat.ts
+  s_4a90abf8bb145b::t_a94477c4964e27 17,25-50,52,55-76
+src/ui/card/card.html
+  s_4a90abf8bb145b::t_a94477c4964e27 1-74
+test/tools/add-book.dup-probe.test.ts
+  s_4a90abf8bb145b::t_a94477c4964e27 110-119
+src/calibre/pdf-outline.ts
+  s_4a90abf8bb145b::t_a94477c4964e27 7,16
+test/wire-compat.transport.test.ts
+  s_4a90abf8bb145b::t_a94477c4964e27 1-9,12-108
+  s_4a90abf8bb145b::t_d05c0889048750 10-11
+docs/standards/state-and-concurrency.md
+  s_4a90abf8bb145b::t_a94477c4964e27 1-37
+src/ui/card-html.ts
+  s_4a90abf8bb145b::t_a94477c4964e27 10-11,13,19
+.oxfmtrc.json
+  s_4a90abf8bb145b::t_a94477c4964e27 14-20
+src/ui/board/arrows.css
+  s_4a90abf8bb145b::t_a94477c4964e27 1-12
+src/ui/figures/figures.css
+  s_4a90abf8bb145b::t_a94477c4964e27 1-140
+src/ui/figures/figures.html
+  s_4a90abf8bb145b::t_a94477c4964e27 1-18
+src/domain/curation/normalize.ts
+  s_4a90abf8bb145b::t_a94477c4964e27 38
+test/tools/registry.test.ts
+  s_4a90abf8bb145b::t_a94477c4964e27 174-213
+test/setup/isolate-home.ts
+  s_4a90abf8bb145b::t_a94477c4964e27 1-17
+test/semantic/build-progress.test.ts
+  s_4a90abf8bb145b::t_a94477c4964e27 1-66
+package.json
+  s_4a90abf8bb145b::t_a94477c4964e27 36,39,56-57
+src/ui/board/coverflow.js
+  s_4a90abf8bb145b::t_a94477c4964e27 1-108
+src/server.ts
+  s_4a90abf8bb145b::t_a94477c4964e27 18,29,104
+  s_4a90abf8bb145b::t_502437a564c1a6 198
+src/ui/board/core.js
+  s_4a90abf8bb145b::t_a94477c4964e27 1-386
+src/ui/card/card.js
+  s_4a90abf8bb145b::t_a94477c4964e27 1-477
+test/ui/__snapshots__/widgets/board-calibre_search-coverflow-debug.html
+  s_4a90abf8bb145b::t_7bd5b8006adcc7 1-1111
+test/ui/__snapshots__/widgets/board-calibre_search-coverflow-nodebug.html
+  s_4a90abf8bb145b::t_aaa449b54f6c1e 1-1010
+test/ui/__snapshots__/widgets/board-calibre_search-shelf-debug.html
+  s_4a90abf8bb145b::t_7eae3fd25ffa3e 1-1111
+test/ui/__snapshots__/widgets/board-calibre_search-shelf-nodebug.html
+  s_4a90abf8bb145b::t_f3b6e038de3657 1-1010
+test/ui/__snapshots__/widgets/board-calibre_semantic_search-coverflow-debug.html
+  s_4a90abf8bb145b::t_9541e950d3d96b 1-1111
+test/ui/__snapshots__/widgets/board-calibre_semantic_search-coverflow-nodebug.html
+  s_4a90abf8bb145b::t_1cb1b14e4faff1 1-1010
+test/ui/__snapshots__/widgets/board-calibre_semantic_search-shelf-debug.html
+  s_4a90abf8bb145b::t_0278fd8e5009d3 1-1111
+test/ui/__snapshots__/widgets/board-calibre_semantic_search-shelf-nodebug.html
+  s_4a90abf8bb145b::t_6ae072a64dd675 1-1010
+test/ui/__snapshots__/widgets/card-debug.html
+  s_4a90abf8bb145b::t_34d4a93c2b805f 1-861
+test/ui/__snapshots__/widgets/card-nodebug.html
+  s_4a90abf8bb145b::t_177062ae809a9f 1-760
+test/ui/__snapshots__/widgets/figures-debug.html
+  s_4a90abf8bb145b::t_8a7f0f1d671f30 1-627
+test/ui/__snapshots__/widgets/figures-nodebug.html
+  s_4a90abf8bb145b::t_7b8022476e9379 1-526
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "baa8e7c0a9cebde23a826a9f1f481e4259e0d024",
+  "prompts": {},
+  "sessions": {
+    "s_4a90abf8bb145b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0f97a282-8575-4fbc-b370-90d325920a31",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
