@@ -252,8 +252,11 @@ only within that generation; store it with any citation you persist (see
 Build (or refresh) the local semantic index for a chosen set of books. A selector is
 **required** — pick books by `bookId`, a list of `ids`, or a Calibre `query` (there's no
 index-everything default). A `query` selects **every** matching book (paged, no cap) — on a
-big library a broad query is a long job that can outlive the client's request timeout; just
-re-run the same call to resume, since books already up to date are skipped. The first
+big library a broad query is a long job. A call still working after about 45 seconds returns a
+**still running** status (a success, not an error) and the build keeps committing in the
+background; re-run the same call to get its result. Only one build runs per library at a time: a
+call made while another build is running reports that build's progress instead of starting a
+second one. Books already up to date are skipped, so a re-run after an interruption resumes. The first
 embedding build downloads the model (~118 MB, one-time), then runs offline. Set `keywordOnly: true` to build a model-free keyword index (zero ML
 dependencies); this also happens automatically if the embedding model isn't installed. Re-run
 after adding books; use `force: true` to re-index books that haven't changed. An embedding

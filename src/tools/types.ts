@@ -86,7 +86,7 @@ export interface ToolDeps {
    * Running index builds + their soft deadline (#284). Defaulted to a process-wide registry;
    * injectable so tests use their own registry and a short deadline.
    */
-  indexBuilds?: IndexBuilds;
+  indexBuilds?: IndexBuilds<ToolResult>;
   /** Pause between transient-write retries (#233). Defaulted to setTimeout; injectable for tests. */
   sleep?: (ms: number) => Promise<void>;
   log: LogSink;

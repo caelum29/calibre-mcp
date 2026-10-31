@@ -182,7 +182,7 @@
         "openWorldHint": true,
         "readOnlyHint": false
       },
-      "description": "Build the semantic index for specific books (required: bookId, ids, or query — full-library indexing is deferred). A query selects ALL matching books (no 100-book cap); large selections run long and may outlive the client timeout — re-run the same call to resume, since up-to-date books are skipped. Extracts, chunks, and embeds each book. Set keywordOnly=true (or when the embedding model is absent, it happens automatically) to build a keyword-only index that powers mode:\"keyword\" search with zero ML dependencies. Re-run after adding books; use force to re-index unchanged ones. Set prune=true to also drop index entries for books that no longer exist in the library (removals/merges leave searchable orphans behind).",
+      "description": "Build the semantic index for specific books (required: bookId, ids, or query — full-library indexing is deferred). A query selects ALL matching books (no 100-book cap); a call still working after ~45 s returns a \"still running\" status (not an error) while the build keeps committing in the background — re-run the same call to get its result; only one build runs per library at a time, and up-to-date books are skipped. Extracts, chunks, and embeds each book. Set keywordOnly=true (or when the embedding model is absent, it happens automatically) to build a keyword-only index that powers mode:\"keyword\" search with zero ML dependencies. Re-run after adding books; use force to re-index unchanged ones. Set prune=true to also drop index entries for books that no longer exist in the library (removals/merges leave searchable orphans behind).",
       "execution": {
         "taskSupport": "forbidden"
       },
@@ -291,6 +291,9 @@
             },
             "type": "array"
           },
+          "booksDone": {
+            "type": "number"
+          },
           "booksIndexed": {
             "type": "number"
           },
@@ -321,6 +324,12 @@
           "figures": {
             "type": "number"
           },
+          "indexedIds": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          },
           "keywordOnly": {
             "type": "boolean"
           },
@@ -338,6 +347,9 @@
           },
           "semanticReason": {
             "type": "string"
+          },
+          "stillRunning": {
+            "type": "boolean"
           }
         },
         "type": "object"
