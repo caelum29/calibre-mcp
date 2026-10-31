@@ -1,0 +1,33 @@
+scripts/gen-tool-catalog.mjs
+  s_152d79443be728::t_96f5d64cef45dd 38-39
+src/run-stdio.ts
+  s_152d79443be728::t_080b6e3f9f3122 6
+src/server.ts
+  s_152d79443be728::t_d96a66a82307d8 7-8,103,210,213-214,289-291,293,296
+test/instructions.test.ts
+  s_152d79443be728::t_aebcacdeb666fb 5
+test/integration/cancellation-progress.test.ts
+  s_152d79443be728::t_5e6ad373ded89a 12-13,136-141,234
+test/integration/ping-diagnostics.test.ts
+  s_152d79443be728::t_61100243d5463e 5
+test/integration/tools-list-order.test.ts
+  s_152d79443be728::t_852dd5116a7818 7
+test/tools/schema-compat.test.ts
+  s_152d79443be728::t_ac340c3a6f5059 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bf38d13daa69257799969da89eda9b9284a9e852",
+  "prompts": {},
+  "sessions": {
+    "s_152d79443be728": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f197654a-44da-417c-98fb-305ee9d82510",
+        "model": "unknown"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
