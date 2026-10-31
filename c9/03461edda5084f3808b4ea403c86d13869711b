@@ -1,0 +1,21 @@
+src/tools/calibre_ping.ts
+  s_c292bb308e7526::t_583ba6d1c40708 15-16
+test/tools/ping-header.test.ts
+  s_c292bb308e7526::t_891a2f4942c3db 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c903461edda5084f3808b4ea403c86d13869711b",
+  "prompts": {},
+  "sessions": {
+    "s_c292bb308e7526": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e234f66e-fd22-4d0a-b34a-0d6b587d1afc",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
