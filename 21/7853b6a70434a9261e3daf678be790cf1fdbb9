@@ -1,0 +1,151 @@
+src/tools/select-books.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 8
+test/tools/open-book.handler.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 5
+test/tools/bulk-update.handler.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 8
+test/tools/write-retry.handler.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 13
+test/tools/build-index.heartbeat.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 16
+test/tools/find-duplicates.handler.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 6
+test/tools/extract-isbn.handler.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 7
+test/tools/merge-books.handler.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 17
+src/tools/write-verify.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 8
+test/tools/list-libraries.handler.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 8-9
+test/eval/retrieval/harness.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 20
+test/tools/search.handler.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 10
+test/tools/ping.handler.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 10-11
+test/tools/semantic-search.handler.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 10
+src/tools/types.ts
+  s_aa002d0f29785d::t_092cdd304cab1e 7
+test/tools/steers-251.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 10
+test/tools/get-figures.messages.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 12
+src/tools/bundles.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 8
+test/tools/build-index.soft-deadline.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 15-16
+test/tools/get-figures.errors.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 12
+src/tools/index-book.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 13
+test/tools/remove-book.handler.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 6
+test/tools/search.fts-syntax-steer.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 10
+src/tools/deps.ts
+  s_aa002d0f29785d::t_092cdd304cab1e 1-59
+src/tools/calibre_manage_bundles.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 16
+test/tools/write-verify.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 4
+src/tools/calibre_semantic_search.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 29-30
+test/tools/build-index.background.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 15-16
+test/tools/index-book.epub-front-matter.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 18
+src/tools/calibre_recover_metadata.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 25
+test/tools/add-book.handler.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 8
+src/tools/calibre_merge_books.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 21
+test/tools/index-book.refresh-flags.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 17
+test/tools/list-categories.handler.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 6
+test/tools/build-index.handler.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 13
+test/tools/board-data.handler.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 7
+test/tools/manage-bundles.handler.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 11-12
+test/tools/write-retry-dropped.handler.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 12
+test/integration/merge.live.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 25
+src/server.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 25-26
+test/tools/bundle-filter.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 15
+test/tools/quality-report.handler.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 7
+test/tools/get-book.handler.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 9
+test/tools/write-retry.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 11
+src/tools/calibre_update_book.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 14-15
+src/tools/resolve-id.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 4
+test/tools/select-books.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 6
+test/tools/channel-parity.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 22-23
+scripts/reindex.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 24
+test/tools/search-deadline.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 12
+test/tools/update-book.handler.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 8
+test/tools/get-content.handler.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 7
+src/tools/calibre_get_figures.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 15-16
+test/integration/figures.live.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 18-19
+test/tools/board-meta.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 15
+src/tools/isbn-scan.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 11
+test/tools/build-index.progress.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 17
+src/tools/calibre_build_index.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 34-35
+test/tools/search.fts-quoting.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 8-9
+src/tools/add-dup-probe.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 8
+test/tools/index-book.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 15
+test/tools/add-book.dup-probe.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 11
+src/tools/calibre_search.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 39-40
+test/tools/get-figures.handler.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 12
+test/tools/recover-metadata.handler.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 8
+test/tools/build-index.metadata-only.test.ts
+  s_aa002d0f29785d::t_41d0b65b7162e3 17
+test/architecture.test.ts
+  s_aa002d0f29785d::t_585c4d68c2e4d2 133
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "217853b6a70434a9261e3daf678be790cf1fdbb9",
+  "prompts": {},
+  "sessions": {
+    "s_aa002d0f29785d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9858b033-3534-4580-8536-b45ea248531d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
