@@ -1,7 +1,8 @@
 // #325 (from #311): Calibre binds the FTS query unchanged into SQLite `MATCH ?`
 // (db/fts/connect.py, calibre bb87130), so AND / OR / binary NOT must reach /fts/search
 // byte-for-byte. Contract test from calibre_search down to the request URL, answered with a
-// recorded /fts/search reply (fixtures/, Calibre 9.17); no live server.
+// recorded /fts/search reply (fixtures/, Calibre 9.17; the reply is recorded, the requests are
+// built by our client); no live server.
 import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -36,13 +37,17 @@ function deps(): ToolDeps {
   };
 }
 
-/** The `query` param of every /fts/search request the tool sent. */
-function sentSearchQueries(): (string | null)[] {
+/** Every /fts/* request the tool sent: path, library and query. */
+function sentFtsRequests(): { path: string; library_id: string | null; query: string | null }[] {
   return vi
     .mocked(getJson)
     .mock.calls.map(([url]) => new URL(String(url)))
-    .filter((u) => u.pathname === "/fts/search")
-    .map((u) => u.searchParams.get("query"));
+    .filter((u) => u.pathname.startsWith("/fts/"))
+    .map((u) => ({
+      path: u.pathname,
+      library_id: u.searchParams.get("library_id"),
+      query: u.searchParams.get("query"),
+    }));
 }
 
 beforeEach(() => {
@@ -65,7 +70,14 @@ describe("FTS query contract — boolean operators pass through (#325, #311)", (
     it(`should_send_${query}_to_fts_search_unchanged`, async () => {
       const r = await searchTool.handler({ query, mode: "fts", scope: "library", limit: 20 }, deps());
       expect(r.isError).toBeFalsy();
-      expect(sentSearchQueries()).toEqual([query]);
+      const lib = "Programming_Books";
+      // phase 1 once, then phase 2 per ranked book (recorded order 293, 285, 1232), same query
+      expect(sentFtsRequests()).toEqual([
+        { path: "/fts/search", library_id: lib, query },
+        { path: "/fts/snippets/293", library_id: lib, query },
+        { path: "/fts/snippets/285", library_id: lib, query },
+        { path: "/fts/snippets/1232", library_id: lib, query },
+      ]);
     });
   }
 
