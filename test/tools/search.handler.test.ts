@@ -5,7 +5,8 @@ import { fence } from "../../src/tools/result.js";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
-import type { FtsHit, SearchPage } from "../../src/domain/search.js";
+import type { SearchPage } from "../../src/domain/search.js";
+import { fakeFts, type FakeFtsHit } from "./fake-fts.js";
 import type { ToolDeps } from "../../src/tools/types.js";
 
 const book = (id: number): Book => ({
@@ -21,7 +22,7 @@ const book = (id: number): Book => ({
 
 interface FakeOpts {
   page?: SearchPage;
-  ftsHits?: FtsHit[];
+  ftsHits?: FakeFtsHit[];
 }
 
 // Fake deps with only the methods each branch touches (boundary stub).
@@ -35,13 +36,12 @@ function deps(opts: FakeOpts = {}): ToolDeps {
     // FTS paths resolve the libId before shelling out (display-name fragments 404).
     resolveLibraryId: async (display?: string) => display || "Programming_Books",
   };
-  const calibre = {
-    ftsSearch: async (): Promise<FtsHit[]> => opts.ftsHits ?? [],
-  };
+  const calibre = {};
   return {
     config: loadConfig({}),
     content: content as unknown as ToolDeps["content"],
     calibre: calibre as unknown as ToolDeps["calibre"],
+    fts: fakeFts(opts.ftsHits),
     extractor: {} as unknown as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],
@@ -114,7 +114,7 @@ describe("calibre_search handler — countOnly (issue #67)", () => {
   });
 
   it("counts_matched_books_for_fts_count", async () => {
-    const hits: FtsHit[] = [
+    const hits: FakeFtsHit[] = [
       { bookId: 1, snippet: "a" },
       { bookId: 1, snippet: "b" },
       { bookId: 2, snippet: "c" },
@@ -149,7 +149,7 @@ describe("calibre_search handler — countOnly (issue #67)", () => {
 
 describe("calibre_search handler — fts/library", () => {
   it("groups hits by book into resource_links + fenced snippets", async () => {
-    const hits: FtsHit[] = [
+    const hits: FakeFtsHit[] = [
       { bookId: 1, snippet: "match one" },
       { bookId: 1, snippet: "match two" },
       { bookId: 2, snippet: "match three" },
@@ -220,7 +220,7 @@ describe("calibre_search cursor in text (#211)", () => {
     return b.type === "text" ? (b.text ?? "") : "";
   };
   const allText = (r: { content: { type: string }[] }): string => r.content.map((_, i) => blockText(r, i)).join("\n");
-  const hits: FtsHit[] = [1, 2, 3].map((id) => ({ bookId: id, snippet: `s${id} >>rust<<` }));
+  const hits: FakeFtsHit[] = [1, 2, 3].map((id) => ({ bookId: id, snippet: `s${id} >>rust<<` }));
 
   it("meta: ends with the continue-with-cursor line carrying nextCursor", async () => {
     const r = await searchTool.handler(
@@ -256,9 +256,10 @@ describe("calibre_search cursor in text (#211)", () => {
   });
 
   it("scope=book: ends with the cursor line carrying nextCursor", async () => {
+    // three in-book snippets for book 1 (the fake answers per book, like /fts/snippets)
     const r = await searchTool.handler(
       { query: "rust", mode: "fts", scope: "book", bookId: 1, limit: 2 },
-      deps({ ftsHits: hits }),
+      deps({ ftsHits: hits.map((h) => ({ ...h, bookId: 1 })) }),
     );
     const cursor = r.structuredContent?.nextCursor as string;
     expect(cursor).toBeTypeOf("string");
@@ -279,7 +280,7 @@ describe("calibre_search cursor in text (#211)", () => {
 describe("calibre_search snippets in structuredContent (#199)", () => {
   const textBlocks = (r: { content: { type: string }[] }): string[] =>
     r.content.filter((b): b is { type: "text"; text: string } => b.type === "text").map((b) => b.text);
-  const hits: FtsHit[] = [
+  const hits: FakeFtsHit[] = [
     { bookId: 1, snippet: "a >>borrow<< b" },
     { bookId: 1, snippet: "c >>borrow<< d" },
     { bookId: 2, snippet: "e >>borrow<< f" },

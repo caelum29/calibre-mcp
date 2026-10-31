@@ -14,6 +14,62 @@ export class CalibreHttpError extends Error {
   }
 }
 
+/**
+ * The Content Server did not answer within the request timeout. Distinct subclass so the
+ * busy breaker can tell "Calibre is stalled" apart from "server down" or a non-2xx reply.
+ */
+export class CalibreHttpTimeoutError extends CalibreHttpError {
+  constructor(url: string) {
+    super(0, url, "Content Server request timed out");
+    this.name = "CalibreHttpTimeoutError";
+  }
+}
+
+/**
+ * Fail-fast refusal while a library is flagged busy after a timeout: Calibre keeps running a
+ * request after its client gives up (no cancellation), so piling more work onto it only
+ * lengthens the stall. Nothing was sent to Calibre. Deliberately NOT a CalibreCliError /
+ * CalibreHttpError subclass, so write-verify and transient-retry never treat it as theirs.
+ */
+export class CalibreBusyError extends Error {
+  constructor(
+    readonly libraryId: string,
+    readonly retryInMs: number,
+  ) {
+    super(
+      `Calibre is still finishing a previous long request on library "${libraryId}" (probably a ` +
+        `full-text search — Calibre can't cancel one once started), so this call was not sent to ` +
+        `Calibre. Retry in ~${Math.max(1, Math.ceil(retryInMs / 1000))} s.`,
+    );
+    this.name = "CalibreBusyError";
+  }
+}
+
+/** One tool call's shared time budget ran out before the next Calibre sub-call could start. */
+export class DeadlineExceededError extends Error {
+  constructor(readonly budgetMs: number) {
+    super(`The call's ${Math.round(budgetMs / 1000)} s time budget ran out.`);
+    this.name = "DeadlineExceededError";
+  }
+}
+
+/** Why the Content Server refused a full-text search. */
+export type FtsErrorCode = "FTS_DISABLED" | "FTS_QUERY_INVALID";
+
+/**
+ * A full-text search refusal with a typed {@link FtsErrorCode}: HTTP 428 = FTS is not enabled
+ * on the library, HTTP 422 = SQLite FTS5 couldn't parse the query (user input, #251).
+ */
+export class FtsError extends Error {
+  constructor(
+    readonly code: FtsErrorCode,
+    readonly libraryId: string,
+  ) {
+    super(code);
+    this.name = "FtsError";
+  }
+}
+
 /** A non-zero exit (or spawn failure) from a calibredb subprocess. */
 export class CalibreCliError extends Error {
   constructor(
@@ -65,14 +121,6 @@ export class OperationCancelledError extends Error {
     super(message);
     this.name = "OperationCancelledError";
   }
-}
-
-/**
- * calibredb's FTS diag for a query SQLite FTS5 couldn't parse (e.g. `LOGTEST-LONG` read as a
- * column filter → "no such column: LONG"). A user-input problem, not an indexing one (#251).
- */
-export function isFtsParseDiag(diag: string): boolean {
-  return /Failed to parse search query|fts5: syntax error/i.test(diag);
 }
 
 /** Why a figure scan or fetch failed; the tool maps each code to model-facing prose. */

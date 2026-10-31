@@ -11,6 +11,7 @@ import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
 import type { SearchPage } from "../../src/domain/search.js";
 import type { LibraryHit } from "../../src/semantic/store.js";
+import { fakeFts } from "./fake-fts.js";
 import type { ToolDeps } from "../../src/tools/types.js";
 
 const book = (id: number): Book => ({
@@ -131,8 +132,10 @@ describe("calibre_search board wiring", () => {
   it("should_not_cache_or_attach_board_payload_on_zero_fts_results", async () => {
     const cache = new BoardCache();
     const deps = metaSearchDeps(cache);
-    (deps.calibre as unknown as Record<string, unknown>).ftsSearch = async () => [];
-    const r = await searchTool.handler({ query: "zzz", mode: "fts", scope: "library", limit: 20 }, deps);
+    const r = await searchTool.handler(
+      { query: "zzz", mode: "fts", scope: "library", limit: 20 },
+      { ...deps, fts: fakeFts([]) },
+    );
     expect(r._meta).toBeUndefined();
     expect(cache.get("calibre_search", "zzz", "Programming_Books")).toBeUndefined();
   });

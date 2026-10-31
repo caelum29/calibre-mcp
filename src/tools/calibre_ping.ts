@@ -1,12 +1,15 @@
 // calibre_ping — connectivity probe that proves the SUBPROCESS path (calibredb --with-library
 // URL) works, complementary to calibre_list_libraries (HTTP /ajax). Also carries the
-// semantic-search self-diagnosis (#48) and the server's recent errors + log file (#247).
+// semantic-search self-diagnosis (#48), the server's recent errors + log file (#247), and the
+// libraries the busy breaker is currently failing fast (calibre/busy.ts).
 
 import { defineTool } from "./define.js";
 import { toolText } from "./result.js";
 import { computeSemanticStatus, formatSemanticStatusLine } from "../semantic/status.js";
 import { capString, log } from "../logging.js";
+import type { BusyLibrary } from "../calibre/busy.js";
 import type { LibId } from "../calibre/lib-id.js";
+import { CalibreBusyError } from "../domain/errors.js";
 import type { ToolResult } from "./types.js";
 
 export const pingTool = defineTool({
@@ -16,7 +19,8 @@ export const pingTool = defineTool({
     "Health check: confirms the MCP server can reach the running Calibre " +
     "Content Server via calibredb, and reports semantic-search status " +
     "(embedding model, dependency, index vector count). Returns library categories on success, " +
-    "plus the server's recent errors and its log file path for self-diagnosis.",
+    "plus libraries currently marked busy after a Calibre timeout, the server's recent errors and its " +
+    "log file path for self-diagnosis.",
   inputSchema: {},
   annotations: { readOnlyHint: true, openWorldHint: true },
   handler: async (_args, deps): Promise<ToolResult> => {
@@ -31,8 +35,11 @@ export const pingTool = defineTool({
       listOut = await deps.calibre.listLibraries(libId);
     } catch (err) {
       pingError = err instanceof Error ? err.message : String(err);
-      deps.log.error("ping failed", { error: pingError });
+      // Busy is a known, self-clearing state (reported below), not a server fault.
+      if (err instanceof CalibreBusyError) deps.log.warn("ping refused: library busy", { libraryId: err.libraryId });
+      else deps.log.error("ping failed", { error: pingError });
     }
+    const busy = busyReport(deps.libraryBusy?.busyLibraries() ?? []);
 
     const semantic = computeSemanticStatus(deps, libId);
     const semLine = formatSemanticStatusLine(semantic);
@@ -43,14 +50,15 @@ export const pingTool = defineTool({
     if (pingError !== undefined) {
       return {
         isError: true,
-        content: [{ type: "text", text: `Calibre unreachable: ${pingError}\n${semLine}\n${diag.text}` }],
-        structuredContent: { ok: false, error: pingError, serverUrl, semantic, ...diag.structured },
+        content: [{ type: "text", text: `Calibre unreachable: ${pingError}\n${busy.text}${semLine}\n${diag.text}` }],
+        structuredContent: { ok: false, error: pingError, serverUrl, semantic, ...busy.structured, ...diag.structured },
       };
     }
-    return toolText(`ok\n${(listOut ?? "").slice(0, 500)}\n${semLine}\n${diag.text}`, {
+    return toolText(`ok\n${(listOut ?? "").slice(0, 500)}\n${busy.text}${semLine}\n${diag.text}`, {
       ok: true,
       serverUrl,
       semantic,
+      ...busy.structured,
       ...diag.structured,
     });
   },
@@ -75,4 +83,15 @@ function diagnostics(): { text: string; structured: Record<string, unknown> } {
     lines.push(`- ${e.ts}${e.tool ? ` [${e.tool} call=${e.call}]` : ""} ${e.msg}${meta}`);
   }
   return { text: lines.join("\n"), structured: { logFile, recentErrors } };
+}
+
+/** Busy-breaker state as one text line per library (empty when none) + its structured mirror. */
+function busyReport(list: BusyLibrary[]): { text: string; structured: Record<string, unknown> } {
+  if (list.length === 0) return { text: "", structured: {} };
+  const lines = list.map(
+    (b) =>
+      `busy: library "${b.libraryId}" — Calibre timed out (${b.source}) at ${b.since}; ` +
+      `calls fail fast for ~${Math.ceil(b.retryInMs / 1000)} s more`,
+  );
+  return { text: `${lines.join("\n")}\n`, structured: { busyLibraries: list } };
 }

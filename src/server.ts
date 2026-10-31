@@ -10,7 +10,9 @@ import { registerAppTool, registerAppResource, RESOURCE_MIME_TYPE } from "@model
 import type { Config } from "./config.js";
 import { loadRuntimeConfig } from "./runtime-config.js";
 import { CalibreClient } from "./calibre/client.js";
+import { LibraryBusyTracker } from "./calibre/busy.js";
 import { ContentServerClient } from "./calibre/content-server.js";
+import { FullTextSearch } from "./calibre/fts.js";
 import { Extractor } from "./calibre/extract.js";
 import { FigureInventoryService } from "./calibre/figure-inventory.js";
 import { TransformersEmbedder } from "./semantic/embedder.js";
@@ -68,10 +70,15 @@ export interface BuildServerOptions {
 export function buildServer(options: BuildServerOptions = {}): McpServer {
   const config = options.config ?? loadRuntimeConfig(options.env);
   const figures = new FigureInventoryService(config);
+  // One breaker shared by both Calibre paths: a stall seen on either fails both fast.
+  const busy = new LibraryBusyTracker();
+  const content = new ContentServerClient(config, busy);
   const deps: ToolDeps = {
     config,
-    content: new ContentServerClient(config),
-    calibre: new CalibreClient(config),
+    content,
+    calibre: new CalibreClient(config, busy),
+    fts: new FullTextSearch(content),
+    libraryBusy: busy,
     extractor: new Extractor(config, figures), // figures dep = inline image markers (#84)
     figures,
     embedder: new TransformersEmbedder(config), // lazy: no model load until first embed

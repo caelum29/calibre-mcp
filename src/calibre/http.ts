@@ -7,7 +7,7 @@ import { unlink } from "node:fs/promises";
 import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { ReadableStream as WebReadableStream } from "node:stream/web";
-import { CalibreHttpError, OperationCancelledError } from "../domain/errors.js";
+import { CalibreHttpError, CalibreHttpTimeoutError, OperationCancelledError } from "../domain/errors.js";
 import { log } from "../logging.js";
 
 export interface HttpOptions {
@@ -50,7 +50,7 @@ async function fetchBody<T>(url: string, opts: HttpOptions, read: (res: Response
   try {
     const res = await fetch(url, { signal: controller.signal });
     if (!res.ok) {
-      logNon2xx("content-server non-2xx", url, res.status);
+      logNon2xx("content-server non-2xx", logUrl(url), res.status);
       throw new CalibreHttpError(res.status, url, `Content Server returned HTTP ${res.status}`);
     }
     return await read(res);
@@ -58,17 +58,24 @@ async function fetchBody<T>(url: string, opts: HttpOptions, read: (res: Response
     if (err instanceof CalibreHttpError) throw err;
     if (opts.signal?.aborted) throw new OperationCancelledError();
     const aborted = err instanceof Error && err.name === "AbortError";
-    const message = aborted ? "Content Server request timed out" : "Cannot reach Calibre Content Server";
     log.error("content-server request failed", {
-      url,
+      url: logUrl(url),
       aborted,
       cause: err instanceof Error ? err.message : String(err),
     });
-    throw new CalibreHttpError(0, url, message);
+    // Timeout subclass: the busy breaker (calibre/busy.ts) keys on it.
+    if (aborted) throw new CalibreHttpTimeoutError(url);
+    throw new CalibreHttpError(0, url, "Cannot reach Calibre Content Server");
   } finally {
     clearTimeout(timeout);
     opts.signal?.removeEventListener("abort", onAbort);
   }
+}
+
+// Log the endpoint, not the query string — it carries raw user queries (FTS/search text, #252).
+function logUrl(url: string): string {
+  const q = url.indexOf("?");
+  return q < 0 ? url : url.slice(0, q);
 }
 
 /** Absolute ceiling on one download, so a byte-per-second drip can't hang a build forever. */

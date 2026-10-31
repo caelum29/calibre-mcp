@@ -1,12 +1,24 @@
 // calibre_search — metadata/FTS search over a library or within one book.
 //   scope=library mode=meta : Content Server /ajax/search (exact fields, query syntax)
-//   scope=library mode=fts  : calibredb fts_search across the library
+//   scope=library mode=fts  : Content Server /fts/search (ranked, no snippets) + per-book snippets
 //   scope=book              : full-text search inside one book (forces FTS; bookId required)
+// Every Calibre sub-call of one call shares a single Deadline, so the reply always beats the
+// client's 60 s timeout (the old 30 s + 60 s per-call timeouts stacked to 90 s).
 // Large result sets come back as resource_links + an app-level nextCursor (DESIGN §2);
 // FTS snippets are fenced as untrusted book text.
 
 import { z } from "zod";
-import { CalibreCliError, CalibreCliTimeoutError, CalibreNotFoundError, isFtsParseDiag } from "../domain/errors.js";
+import type { SnippetBatch } from "../calibre/fts.js";
+import {
+  CalibreBusyError,
+  CalibreCliTimeoutError,
+  CalibreHttpTimeoutError,
+  CalibreNotFoundError,
+  DeadlineExceededError,
+  FtsError,
+} from "../domain/errors.js";
+import type { FtsIndexing } from "../domain/search.js";
+import { Deadline } from "../shared/deadline.js";
 import type { BoardPayload } from "../ui/board-cache.js";
 import {
   buildScopedQuery,
@@ -22,6 +34,7 @@ import { decodeCursor, pageCursor } from "./cursor.js";
 import { defineTool } from "./define.js";
 import { bookResourceLink } from "./resource-link.js";
 import { resolveNumericId } from "./resolve-id.js";
+import { ENABLE_FTS_STEPS, KEYWORD_SEARCH_FALLBACK } from "./remediation.js";
 import { fence, renderResult, toolError, toolOk } from "./result.js";
 import type { ContentBlock, ToolDeps, ToolResult } from "./types.js";
 
@@ -39,9 +52,6 @@ type SearchArgs = {
   filter?: string;
   include_excluded?: boolean;
 };
-
-const FTS_START = ">>";
-const FTS_END = "<<";
 
 /**
  * Feed the cover-board widget (issue #22): cache the page for the widget's re-pull
@@ -64,19 +74,26 @@ function boardMeta(deps: ToolDeps, payload: Omit<BoardPayload, "tool" | "serverU
 async function filterSuffix(
   deps: ToolDeps,
   fRes: FilterResolution,
-  library?: string,
-  scopeSize?: number,
+  deadline: Deadline,
+  scope: { library?: string; size?: number } = {},
 ): Promise<string> {
+  const { library, size: scopeSize } = scope;
   let n = scopeSize;
   if (n === undefined && fRes.bundle) {
-    n = (await deps.content.search({ query: scopeExpression(fRes), library, num: 0 })).total;
+    const timeoutMs = deadline.timeoutFor();
+    n = (await deps.content.search({ query: scopeExpression(fRes), library, num: 0, timeoutMs })).total;
   }
   const lines = honestyLines(fRes, n);
   return lines.length ? `\n${lines.join("\n")}` : "";
 }
 
 /** scope=library, mode=meta — Content Server /ajax/search (the original v1 path). */
-async function metaLibraryScope(args: SearchArgs, deps: ToolDeps, fRes: FilterResolution): Promise<ToolResult> {
+async function metaLibraryScope(
+  args: SearchArgs,
+  deps: ToolDeps,
+  fRes: FilterResolution,
+  deadline: Deadline,
+): Promise<ToolResult> {
   // The bundle scope expands into the server-side query; the cursor keys on the EFFECTIVE
   // query so a page walk that changes filter args can't silently replay a stale offset.
   const effQuery = buildScopedQuery(args.query, fRes);
@@ -91,8 +108,9 @@ async function metaLibraryScope(args: SearchArgs, deps: ToolDeps, fRes: FilterRe
     offset,
     sort: args.sort,
     sortOrder: args.sortOrder,
+    timeoutMs: deadline.timeoutFor(),
   });
-  const honesty = await filterSuffix(deps, fRes, args.library);
+  const honesty = await filterSuffix(deps, fRes, deadline, { library: args.library });
 
   // Count intent (issue #67): answer the aggregate question with COUNT(*) semantics —
   // no row fetch, no board, no cache write.
@@ -165,56 +183,74 @@ function structuredFilterFields(fRes: FilterResolution): Record<string, unknown>
   return boardFilterFields(fRes);
 }
 
-/** scope=library, mode=fts — group FTS hits by book → resource_links + fenced snippets. */
-async function ftsLibraryScope(
-  args: SearchArgs,
-  deps: ToolDeps,
-  fRes: FilterResolution,
-  signal?: AbortSignal,
-): Promise<ToolResult> {
-  // calibredb's --with-library fragment needs the library ID, not the display name
-  // (the display form 404s) — resolve first, same as the write path (commit 71531d2).
+/**
+ * Lead-line notes for an FTS index that isn't complete: books not yet indexed can't match, so a
+ * short list must not read as the whole answer (Honest outcome). Search still runs — Calibre's
+ * own refusal threshold (90 %, calibredb only) would hide everything already indexed.
+ */
+function indexingNote(ix: FtsIndexing): string {
+  if (ix.total === 0) return "\nFTS index is empty — no book files indexed yet, so nothing can match.";
+  if (ix.left <= 0) return "";
+  const done = ix.total - ix.left;
+  const pct = Math.floor((done / ix.total) * 100);
+  return `\nFTS index ${pct}% complete (${done} of ${ix.total} book files) — books not yet indexed can't match.`;
+}
+
+/** Lead-line note when snippet fetching stopped early, naming why and how to get the rest. */
+function snippetNote(batch: SnippetBatch, pageSize: number): string {
+  if (batch.skipped.length === 0) return "";
+  const why: Record<NonNullable<SnippetBatch["stoppedBy"]>, string> = {
+    budget: "snippet time budget reached",
+    timeout: "Calibre stopped answering in time",
+    busy: "Calibre is busy",
+    error: "a snippet request failed",
+  };
+  const shown = pageSize - batch.skipped.length;
+  return (
+    `\nSnippets for ${shown} of ${pageSize} books on this page (${why[batch.stoppedBy ?? "error"]}); ` +
+    `for one book's snippets use scope="book" with its bookId.`
+  );
+}
+
+/** One FTS call's inputs and shared budget, threaded through both FTS scopes. */
+interface FtsCall {
+  args: SearchArgs;
+  deps: ToolDeps;
+  fts: NonNullable<ToolDeps["fts"]>;
+  deadline: Deadline;
+  signal?: AbortSignal;
+}
+
+/** scope=library, mode=fts — ranked FTS matches → resource_links + fenced per-book snippets. */
+async function ftsLibraryScope(call: FtsCall, fRes: FilterResolution): Promise<ToolResult> {
+  const { args, deps, fts, deadline, signal } = call;
   const libId = await deps.content.resolveLibraryId(args.library);
   // The FTS query is raw match syntax — no Calibre grammar to expand a bundle into — so
   // the filter restricts by book-id set instead (one /ajax/search on the scope expression).
-  const allow = await restrictSet(deps, fRes, args.library);
-  const rawHits = await deps.calibre.ftsSearch(args.query, {
-    snippets: true,
-    matchStartMarker: FTS_START,
-    matchEndMarker: FTS_END,
-    library: libId,
-    signal,
-  });
-  const hits = allow === undefined ? rawHits : rawHits.filter((h) => allow.has(h.bookId));
-  const honesty = await filterSuffix(deps, fRes, args.library, allow?.size);
+  const allow = await restrictSet(deps, fRes, args.library, deadline.timeoutFor());
+  const matches = await fts.match(args.query, libId, { deadline, signal });
+  const bookIds = allow === undefined ? matches.bookIds : matches.bookIds.filter((id) => allow.has(id));
+  const scope = { library: args.library, size: allow?.size };
+  const honesty = (await filterSuffix(deps, fRes, deadline, scope)) + indexingNote(matches.indexing);
+  const incomplete = matches.indexing.left > 0 ? { indexing: matches.indexing } : {};
 
-  if (hits.length === 0) {
+  if (bookIds.length === 0) {
     // Zero results attach no board (issue #68).
-    return toolOk(
-      [
-        {
-          type: "text",
-          text: `0 full-text matches for "${args.query}". If you expected matches, the FTS index may not be built (calibredb fts_index --enable).${honesty}`,
-        },
-      ],
-      { total: 0, offset: 0, count: 0, mode: "fts", hits: [] },
-    );
+    return toolOk([{ type: "text", text: `0 full-text matches for "${args.query}".${honesty}` }], {
+      total: 0,
+      offset: 0,
+      count: 0,
+      mode: "fts",
+      hits: [],
+      ...incomplete,
+    });
   }
 
-  const byBook = new Map<number, string[]>();
-  for (const h of hits) {
-    const arr = byBook.get(h.bookId) ?? [];
-    if (h.snippet) arr.push(h.snippet);
-    byBook.set(h.bookId, arr);
-  }
-
-  const bookIds = [...byBook.keys()];
-
-  // Count intent (issue #67): total is known after grouping — skip the row fetch and board.
+  // Count intent (issue #67): the ranked list already has the total — no snippets, no board.
   if (args.countOnly) {
     return toolOk(
       [{ type: "text", text: `${bookIds.length} books have full-text matches for "${args.query}".${honesty}` }],
-      { total: bookIds.length, query: args.query, mode: "fts", ...structuredFilterFields(fRes) },
+      { total: bookIds.length, query: args.query, mode: "fts", ...structuredFilterFields(fRes), ...incomplete },
     );
   }
 
@@ -223,19 +259,22 @@ async function ftsLibraryScope(
   const cur = decodeCursor(args.cursor);
   const offset = cur && cur.query === cursorKey ? cur.offset : 0;
   const pageIds = bookIds.slice(offset, offset + args.limit);
-  const books = await deps.content.booksByIds(pageIds, args.library);
+  // Snippets only for the visible page, one book at a time, under the call's budget.
+  const batch = await fts.snippets(args.query, libId, pageIds, { deadline, signal });
+  const meta = (id: number) => matches.books.get(id) ?? { title: `book ${id}`, authors: [] };
 
   const blocks: ContentBlock[] = [
     {
       type: "text",
-      text: `Found ${bookIds.length} books with full-text matches for "${args.query}", showing ${offset + 1}–${offset + pageIds.length}.${honesty}`,
+      text:
+        `Found ${bookIds.length} books with full-text matches for "${args.query}", showing ${offset + 1}–${offset + pageIds.length}.` +
+        `${snippetNote(batch, pageIds.length)}${honesty}`,
     },
   ];
   const ftsHits: { bookId: number; snippet: string }[] = [];
   for (const id of pageIds) {
-    const b = books.get(id);
-    blocks.push(bookResourceLink({ id, title: b?.title ?? `book ${id}`, authors: b?.authors ?? [] }));
-    const snips = (byBook.get(id) ?? []).slice(0, 3).join("\n…\n");
+    blocks.push(bookResourceLink({ id, ...meta(id) }));
+    const snips = (batch.byBook.get(id) ?? []).slice(0, 3).join("\n…\n");
     if (snips) {
       const snippet = fence("FTS SNIPPET", snips);
       blocks.push({ type: "text", text: snippet });
@@ -250,10 +289,7 @@ async function ftsLibraryScope(
     libraryId: libId,
     total: bookIds.length,
     ...boardFilterFields(fRes),
-    books: pageIds.map((id) => {
-      const b = books.get(id);
-      return { bookId: id, title: b?.title ?? `book ${id}`, authors: b?.authors ?? [] };
-    }),
+    books: pageIds.map((id) => ({ bookId: id, ...meta(id) })),
   });
   return {
     ...renderResult({
@@ -265,7 +301,9 @@ async function ftsLibraryScope(
         bookIds: pageIds,
         mode: "fts",
         hits: ftsHits,
+        ...(batch.skipped.length > 0 ? { snippetsSkipped: batch.skipped } : {}),
         ...structuredFilterFields(fRes),
+        ...incomplete,
       },
       page: pg,
     }),
@@ -274,22 +312,13 @@ async function ftsLibraryScope(
 }
 
 /** scope=book — full-text search within one book; returns fenced in-book snippets. */
-async function ftsBookScope(
-  args: SearchArgs,
-  deps: ToolDeps,
-  bookId: number,
-  signal?: AbortSignal,
-): Promise<ToolResult> {
+async function ftsBookScope(call: FtsCall, bookId: number): Promise<ToolResult> {
+  const { args, deps, fts, deadline, signal } = call;
   const libId = await deps.content.resolveLibraryId(args.library);
-  const hits = await deps.calibre.ftsSearch(args.query, {
-    restrictToIds: [bookId],
-    snippets: true,
-    matchStartMarker: FTS_START,
-    matchEndMarker: FTS_END,
-    library: libId,
-    signal,
-  });
-  const snippets = hits.map((h) => h.snippet).filter((s): s is string => Boolean(s));
+  const batch = await fts.snippets(args.query, libId, [bookId], { deadline, signal });
+  // The one book's request stalled — say so rather than report "0 matches".
+  if (batch.skipped.length > 0) throw new DeadlineExceededError(deadline.totalMs);
+  const snippets = batch.byBook.get(bookId) ?? [];
 
   // Count intent (issue #67): report the match count without paging snippets.
   if (args.countOnly) {
@@ -316,7 +345,7 @@ async function ftsBookScope(
   const offset = cur && cur.query === cursorKey ? cur.offset : 0;
   const pageSnips = snippets.slice(offset, offset + args.limit);
 
-  // calibredb FTS has no offsets or ranking control, so front-matter hits (TOC/praise) can
+  // Calibre FTS has no in-book offsets or ranking control, so front-matter hits (TOC/praise) can
   // top the list. When a better path exists for this book, say so (issue #18).
   const tip =
     deps.index?.hasIndex(libId) && deps.index.isBookIndexed(libId, bookId)
@@ -345,6 +374,38 @@ async function ftsBookScope(
     },
     page: pageCursor({ offset, fetched: pageSnips.length, total: snippets.length, query: cursorKey }),
   });
+}
+
+/**
+ * Map each Calibre failure cause to its own steer (Discriminating catch). Returns undefined for
+ * errors this tool has no specific advice for.
+ */
+function searchErrorSteer(err: unknown, deadline: Deadline): string | undefined {
+  // A missing calibredb binary carries its own install hint — don't blame the index.
+  if (err instanceof CalibreNotFoundError) return err.message;
+  if (err instanceof FtsError) {
+    if (err.code === "FTS_DISABLED") {
+      return `Full-text search is not enabled for library "${err.libraryId}". ${ENABLE_FTS_STEPS} ${KEYWORD_SEARCH_FALLBACK}`;
+    }
+    // FTS5 reads `-`/`:` in a bare query as operators/column filters; a phrase bypasses that.
+    return (
+      "Full-text search couldn't parse that query (FTS is working — the syntax is the problem). " +
+      "Retry with the whole query wrapped in double quotes, or drop operators like - : AND/OR/NEAR."
+    );
+  }
+  if (err instanceof CalibreBusyError) return `${err.message} ${KEYWORD_SEARCH_FALLBACK}`;
+  if (
+    err instanceof DeadlineExceededError ||
+    err instanceof CalibreHttpTimeoutError ||
+    err instanceof CalibreCliTimeoutError
+  ) {
+    return (
+      `Search stopped at its ${Math.round(deadline.totalMs / 1000)} s time budget: Calibre didn't answer in time — ` +
+      "most likely it is still finishing an earlier full-text search (Calibre can't cancel one once started). " +
+      `Retry in about a minute, or narrow it with bookId (one book) or filter (a bundle). ${KEYWORD_SEARCH_FALLBACK}`
+    );
+  }
+  return undefined;
 }
 
 export const searchTool = defineTool({
@@ -381,10 +442,17 @@ export const searchTool = defineTool({
     // FTS snippets mirrored for structured-only clients (#199), fenced exactly like the text
     // blocks; bookId is set on library-scope hits (one entry per book with snippets).
     hits: z.array(z.object({ bookId: z.number().optional(), snippet: z.string() })).optional(),
+    // Page books whose snippets weren't fetched (time budget / stalled Calibre) — see the lead line.
+    snippetsSkipped: z.array(z.number()).optional(),
+    // Present only while the library's FTS index is incomplete: unindexed books can't match.
+    indexing: z.object({ left: z.number(), total: z.number() }).optional(),
   },
   annotations: { readOnlyHint: true, openWorldHint: true },
   handler: async (args, deps, ctx) => {
+    // One budget for every Calibre sub-call below (bundle listing, id resolution, FTS, snippets).
+    const deadline = new Deadline();
     try {
+      const fts = deps.fts;
       // scope=book → full-text within one book (metadata search on a single record is moot).
       // Bundles scope LIBRARY discovery; a named book is already the narrowest scope.
       if (args.scope === "book") {
@@ -392,42 +460,27 @@ export const searchTool = defineTool({
           return toolError("filter (bundle) applies to scope=library only — scope=book already names one book.");
         }
         if (args.bookId === undefined) return toolError("scope=book requires bookId");
+        if (!fts) return toolError(`Full-text search isn't available in this server build. ${KEYWORD_SEARCH_FALLBACK}`);
         const bookId = await resolveNumericId(deps, args.bookId, args.library);
         if (bookId === undefined) return toolError(`No book with id/uuid ${args.bookId}`);
-        return await ftsBookScope(args, deps, bookId, ctx?.signal);
+        return await ftsBookScope({ args, deps, fts, deadline, signal: ctx?.signal }, bookId);
       }
       const fr = await resolveFilter(deps, {
         filter: args.filter,
         includeExcluded: args.include_excluded,
         autoExclude: true,
         library: args.library,
+        timeoutMs: deadline.timeoutFor(),
       });
       if (!fr.ok) return toolError(fr.error);
-      if (args.mode === "fts") return await ftsLibraryScope(args, deps, fr.res, ctx?.signal);
-      return await metaLibraryScope(args, deps, fr.res);
+      if (args.mode === "fts") {
+        if (!fts) return toolError(`Full-text search isn't available in this server build. ${KEYWORD_SEARCH_FALLBACK}`);
+        return await ftsLibraryScope({ args, deps, fts, deadline, signal: ctx?.signal }, fr.res);
+      }
+      return await metaLibraryScope(args, deps, fr.res, deadline);
     } catch (err) {
-      // A missing calibredb binary carries its own install hint — don't blame the index.
-      if (err instanceof CalibreNotFoundError) return toolError(err.message);
-      // calibredb is only invoked on the FTS paths — tell the real cause apart (#251).
-      if (err instanceof CalibreCliTimeoutError) {
-        return toolError(
-          "Full-text search timed out — likely a cold start. You can retry once; if it times out again, " +
-            "narrow it with bookId (one book) or filter (a bundle).",
-        );
-      }
-      if (err instanceof CalibreCliError) {
-        // FTS5 reads `-`/`:` in a bare query as operators/column filters; a phrase bypasses that.
-        if (isFtsParseDiag(err.stderr ?? "")) {
-          return toolError(
-            "Full-text search couldn't parse that query (FTS is working — the syntax is the problem). " +
-              "Retry with the whole query wrapped in double quotes, or drop operators like - : AND/OR/NEAR.",
-          );
-        }
-        return toolError(
-          "Full-text search isn't ready for this library. Enable indexing in Calibre " +
-            "(Preferences → Searching → Full text search), wait for it to finish, then retry.",
-        );
-      }
+      const steer = searchErrorSteer(err, deadline);
+      if (steer !== undefined) return toolError(steer);
       const msg = err instanceof Error ? err.message : String(err);
       return toolError(msg);
     }

@@ -7,11 +7,23 @@ import type { Config } from "../config.js";
 import type { Book, Identifiers } from "../domain/book.js";
 import type { CustomFieldValue } from "../domain/merge.js";
 import type { LibraryInfo, Category, CategoryItem, CategoryItemsPage } from "../domain/library.js";
-import type { SearchParams, SearchPage } from "../domain/search.js";
-import { getBytes, getJson } from "./http.js";
+import { CalibreHttpError, CalibreHttpTimeoutError, FtsError } from "../domain/errors.js";
+import type { FtsMatches, SearchParams, SearchPage } from "../domain/search.js";
+import type { LibraryBusyTracker } from "./busy.js";
+import { getBytes, getJson, type HttpOptions } from "./http.js";
 import { asLibId, type LibId, toLibId } from "./lib-id.js";
 
 // --- Raw /ajax response shapes (loose; only the fields we read) ---
+
+interface RawFtsSearch {
+  metadata?: Record<string, { title?: string; authors?: string }>;
+  indexing_status?: { left?: number; total?: number };
+  results?: Array<{ book_id?: number; format?: string }>;
+}
+
+interface RawFtsSnippets {
+  snippets?: Record<string, Array<{ formats?: string[]; text?: string }>>;
+}
 
 interface RawLibraryInfo {
   library_map?: Record<string, string>;
@@ -115,7 +127,28 @@ export class ContentServerClient {
   // The server's own default library (a libId), for when no library is configured.
   #defaultLibId?: string;
 
-  constructor(private readonly cfg: Config) {}
+  /** `busy` is the per-library breaker shared with CalibreClient; absent = no breaker (tests). */
+  constructor(
+    private readonly cfg: Config,
+    private readonly busy?: LibraryBusyTracker,
+  ) {}
+
+  /**
+   * GET a library-scoped endpoint through the busy breaker: refuse fast while the library is
+   * flagged busy, flag it on a timeout (Calibre keeps working after we give up), clear on success.
+   * Endpoints that don't touch a library's DB lock (library-info) skip this.
+   */
+  async #getLib<T>(libId: string, url: string, opts: HttpOptions = {}): Promise<T> {
+    this.busy?.assertAvailable(libId);
+    try {
+      const raw = await getJson<T>(url, opts);
+      this.busy?.markOk(libId);
+      return raw;
+    } catch (err) {
+      if (err instanceof CalibreHttpTimeoutError) this.busy?.markBusy(libId, "content-server");
+      throw err;
+    }
+  }
 
   private get base(): string {
     return this.cfg.serverUrl.replace(/\/+$/, "");
@@ -165,7 +198,7 @@ export class ContentServerClient {
     if (p.sort) url.searchParams.set("sort", p.sort);
     if (p.sortOrder) url.searchParams.set("sort_order", p.sortOrder);
 
-    const raw = await getJson<RawSearch>(url.toString());
+    const raw = await this.#getLib<RawSearch>(libId, url.toString(), { timeoutMs: p.timeoutMs });
     const bookIds = raw.book_ids ?? [];
     return {
       bookIds,
@@ -180,7 +213,7 @@ export class ContentServerClient {
   // GET /ajax/book/{id}/{libId} — the one fetch behind getBook and bookMergeFacts.
   async #ajaxBook(id: number, library?: string): Promise<{ raw: RawBook; libId: string }> {
     const libId = await this.resolveLibraryId(library);
-    const raw = await getJson<RawBook>(`${this.base}/ajax/book/${id}/${encodeURIComponent(libId)}`);
+    const raw = await this.#getLib<RawBook>(libId, `${this.base}/ajax/book/${id}/${encodeURIComponent(libId)}`);
     return { raw, libId };
   }
 
@@ -196,7 +229,7 @@ export class ContentServerClient {
     if (ids.length === 0) return out;
     const libId = await this.resolveLibraryId(library);
     const url = `${this.base}/ajax/books/${encodeURIComponent(libId)}?ids=${ids.join(",")}`;
-    const raw = await getJson<Record<string, RawBook | null>>(url);
+    const raw = await this.#getLib<Record<string, RawBook | null>>(libId, url);
     for (const id of ids) {
       const entry = raw[String(id)];
       out.set(id, entry ? this.mapBook(entry, id, libId) : null);
@@ -250,10 +283,10 @@ export class ContentServerClient {
    * name → search expression. This is the ONLY endpoint that exposes them; nothing on the
    * server writes them back, which is why VLs are read/use-only for us (D-019).
    */
-  async virtualLibraries(library?: string): Promise<Record<string, string>> {
+  async virtualLibraries(library?: string, opts: { timeoutMs?: number } = {}): Promise<Record<string, string>> {
     const libId = await this.resolveLibraryId(library);
     const url = `${this.base}/interface-data/init?library_id=${encodeURIComponent(libId)}`;
-    const raw = await getJson<RawInterfaceInit>(url);
+    const raw = await this.#getLib<RawInterfaceInit>(libId, url, opts);
     const vls = raw.virtual_libraries;
     if (!vls || typeof vls !== "object") return {};
     const out: Record<string, string> = {};
@@ -266,7 +299,7 @@ export class ContentServerClient {
   /** GET /ajax/categories/{libId} → Category[]. */
   async categories(library?: string): Promise<Category[]> {
     const libId = await this.resolveLibraryId(library);
-    const raw = await getJson<RawCategory[]>(`${this.base}/ajax/categories/${encodeURIComponent(libId)}`);
+    const raw = await this.#getLib<RawCategory[]>(libId, `${this.base}/ajax/categories/${encodeURIComponent(libId)}`);
     return raw.map((c) => ({ name: c.name ?? "", url: c.url ?? "", count: c.count }));
   }
 
@@ -284,7 +317,9 @@ export class ContentServerClient {
     if (opts.offset !== undefined) u.searchParams.set("offset", String(opts.offset));
     if (opts.sort) u.searchParams.set("sort", opts.sort);
 
-    const raw = await getJson<RawCategoryItems>(u.toString());
+    // The node url ends in the libId (`/ajax/category/<hex>/<libId>`) — key the breaker on it.
+    const libId = decodeURIComponent(u.pathname.split("/").pop() ?? "");
+    const raw = await this.#getLib<RawCategoryItems>(libId, u.toString());
     const items: CategoryItem[] = (raw.items ?? []).map((it) => ({
       name: it.name ?? "",
       count: it.count,
@@ -296,6 +331,75 @@ export class ContentServerClient {
       offset: raw.offset ?? opts.offset ?? 0,
       num: raw.num ?? items.length,
     };
+  }
+
+  /**
+   * GET /fts/search — phase 1 of Calibre's own two-phase full-text search (the web UI's): ranked
+   * matches WITHOUT snippets (~0.2 s for 534 rows on 1.1k books) plus the indexing status.
+   * Snippets are the slow part — fetch them per book with {@link ftsSnippets}. Read-only: unlike
+   * `calibredb fts_*`, needs no --enable-local-write. 428 → FTS off, 422 → unparseable query.
+   */
+  async ftsSearch(query: string, libId: LibId, opts: HttpOptions = {}): Promise<FtsMatches> {
+    const url = new URL(`${this.base}/fts/search`);
+    url.searchParams.set("query", query);
+    url.searchParams.set("library_id", libId);
+    const raw = await this.#fts<RawFtsSearch>(libId, url.toString(), opts);
+    const meta = raw.metadata ?? {};
+    const bookIds: number[] = [];
+    const seen = new Set<number>();
+    // One row per (book, format), already in FTS rank order — keep each book's first (best) row.
+    for (const r of raw.results ?? []) {
+      if (typeof r.book_id !== "number" || seen.has(r.book_id)) continue;
+      seen.add(r.book_id);
+      bookIds.push(r.book_id);
+    }
+    const books = new Map(
+      bookIds.map((id) => {
+        const m = meta[String(id)];
+        // authors arrive pre-joined by Calibre's authors_to_string (" & ")
+        const authors = m?.authors ? m.authors.split(" & ").filter(Boolean) : [];
+        return [id, { title: m?.title ?? `book ${id}`, authors }] as const;
+      }),
+    );
+    const status = raw.indexing_status ?? {};
+    return { bookIds, books, indexing: { left: status.left ?? 0, total: status.total ?? 0 } };
+  }
+
+  /**
+   * GET /fts/snippets/{ids} — phase 2: highlighted snippets for the given books only. Each call
+   * holds the library's write lock while it runs (0.3–4 s per large book measured), so callers
+   * ask for one book at a time and stop at a time budget. Identical snippets across formats
+   * arrive merged.
+   */
+  async ftsSnippets(
+    query: string,
+    libId: LibId,
+    bookIds: number[],
+    opts: HttpOptions & { start: string; end: string; size: number },
+  ): Promise<Map<number, string[]>> {
+    const url = new URL(`${this.base}/fts/snippets/${bookIds.join(",")}`);
+    url.searchParams.set("query", query);
+    url.searchParams.set("library_id", libId);
+    url.searchParams.set("snippet_size", String(opts.size));
+    url.searchParams.set("highlight_start", opts.start);
+    url.searchParams.set("highlight_end", opts.end);
+    const raw = await this.#fts<RawFtsSnippets>(libId, url.toString(), opts);
+    const out = new Map<number, string[]>();
+    for (const [id, list] of Object.entries(raw.snippets ?? {})) {
+      out.set(Number(id), list.map((s) => s.text ?? "").filter(Boolean));
+    }
+    return out;
+  }
+
+  // FTS GETs: map Calibre's precondition (FTS off) and parse refusals to the typed FtsError.
+  async #fts<T>(libId: LibId, url: string, opts: HttpOptions): Promise<T> {
+    try {
+      return await this.#getLib<T>(libId, url, opts);
+    } catch (err) {
+      if (err instanceof CalibreHttpError && err.status === 428) throw new FtsError("FTS_DISABLED", libId);
+      if (err instanceof CalibreHttpError && err.status === 422) throw new FtsError("FTS_QUERY_INVALID", libId);
+      throw err;
+    }
   }
 
   /** Normalize a raw /ajax book dict → domain Book. The single /ajax-key-aware spot. */
