@@ -115,7 +115,7 @@ export const findDuplicatesTool = defineTool({
         `${groups.length} duplicate group(s) across ${books.length} books scanned` +
         `${capped ? ` (capped — ${total} matched)` : ""}. ` +
         `Showing ${pageGroups.length ? offset + 1 : 0}–${offset + pageGroups.length}.\n` +
-        "binary mode (byte-level dedupe) is deferred in v1.";
+        "binary mode (byte-level dedupe) is not implemented yet.";
       content.push({ type: "text", text: header });
 
       const groupModels: { bookIds: number[]; mergeSafety: number; mixedLanguages: boolean }[] = [];
