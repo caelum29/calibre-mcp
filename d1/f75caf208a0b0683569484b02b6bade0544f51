@@ -1,0 +1,22 @@
+docs/TROUBLESHOOTING.md
+  s_7f567bda30ea9f::t_4fca8e78351e6c 43-55
+docs/TOOLS.md
+  s_7f567bda30ea9f::t_bc4910934beceb 32-33,76-83
+  s_7f567bda30ea9f::t_9b7ed60d05f57a 84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d1f75caf208a0b0683569484b02b6bade0544f51",
+  "prompts": {},
+  "sessions": {
+    "s_7f567bda30ea9f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1fd2b93-d788-4845-8f7d-593e13bb0509",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
