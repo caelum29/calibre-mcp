@@ -1,0 +1,22 @@
+src/tools/calibre_get_figures.ts
+  s_2748adee5ace54::t_bae67f703d25d2 280-291,295-302,304-305,307-310,312-314,316-318,320-321,323-324,328,332-333
+  s_2748adee5ace54::t_05bcfa51ef6030 292-294,303,306,311,315,319,322
+test/tools/get-figures.messages.test.ts
+  s_2748adee5ace54::t_bae67f703d25d2 1-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b0a10338fab9564084bc7e12163d09df1f95d571",
+  "prompts": {},
+  "sessions": {
+    "s_2748adee5ace54": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eca6633b-40b8-4fea-beac-e4ac360b8a51",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
