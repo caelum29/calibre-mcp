@@ -25,6 +25,10 @@ export interface BuildProgress {
   total: number;
   /** Books committed so far, in commit order. */
   indexedIds: number[];
+  /** Books selected, once resolved — lets a refused call tell whether its books are covered. */
+  selectedIds: number[];
+  /** Books that failed so far, as `book <id>: <reason>` lines, in the order they failed. */
+  failures: string[];
 }
 
 /** Handle the build function gets: progress to update, and whether its caller already returned. */
@@ -165,7 +169,7 @@ export class IndexBuildRegistry<T> implements IndexBuilds<T> {
   ): Promise<BuildOutcome<T>> {
     const entry: Entry<T> = {
       key,
-      progress: { done: 0, total: 0, indexedIds: [] },
+      progress: { done: 0, total: 0, indexedIds: [], selectedIds: [], failures: [] },
       detached: false,
       settled: false,
       keep,
@@ -244,5 +248,11 @@ export class IndexBuildRegistry<T> implements IndexBuilds<T> {
 }
 
 function snapshot(p: BuildProgress): BuildProgress {
-  return { done: p.done, total: p.total, indexedIds: [...p.indexedIds] };
+  return {
+    done: p.done,
+    total: p.total,
+    indexedIds: [...p.indexedIds],
+    selectedIds: [...p.selectedIds],
+    failures: [...p.failures],
+  };
 }

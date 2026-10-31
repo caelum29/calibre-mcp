@@ -151,7 +151,7 @@ describe("calibre_build_index soft deadline (#284)", () => {
     expect(text(res)).toMatch(/^Index build still running in the background/);
     expect(text(res)).toMatch(/not an error/);
     expect(text(res)).toMatch(/re-run the same call/i);
-    expect(text(res)).toMatch(/0\/1 book\(s\) finished/);
+    expect(text(res)).toMatch(/0\/1 processed \(0 indexed, 0 failed\)/);
     // Nothing is committed yet: the only book is still extracting.
     expect(d.index.indexedBookIds(LIB)).toEqual([]);
   });

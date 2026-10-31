@@ -131,8 +131,12 @@ describe("calibre_build_index background outcomes (#284)", () => {
 
     expect(r.isError).toBeFalsy();
     expect(r.structuredContent).toMatchObject({ stillRunning: true, runningBuild: "other" });
-    expect(text(r)).toMatch(/none of this call's books have been indexed yet/);
-    expect(text(r)).toMatch(/That other build \(not this call's selection\): 0\/1 book\(s\) finished so far/);
+    expect(text(r)).toMatch(
+      /None of this call's 1 book\(s\) is committed yet\. Re-run this call once that build finishes\./,
+    );
+    expect(text(r)).toMatch(
+      /That other build \(not this call's selection\): Books so far: 0\/1 processed \(0 indexed, 0 failed\)/,
+    );
   });
 
   it("should_build_fresh_instead_of_inheriting_a_cancelled_background_build", async () => {

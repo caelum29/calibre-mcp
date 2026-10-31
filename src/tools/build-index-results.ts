@@ -3,7 +3,7 @@
 // model must not read it as a failure and retry or report an error while books keep committing.
 
 import { toolError, toolOk } from "./result.js";
-import type { BuildOutcome } from "../semantic/index-builds.js";
+import type { BuildOutcome, BuildProgress } from "../semantic/index-builds.js";
 import type { ToolResult } from "./types.js";
 
 /** Build-call args that pick the work; a re-run with the same key claims its build's result. */
@@ -52,20 +52,34 @@ export function cancelledResult(c: {
   );
 }
 
-/** Success-shaped status for a build still running past the soft deadline. */
-export function stillRunningResult(o: Extract<BuildOutcome<ToolResult>, { kind: "running" }>): ToolResult {
+/**
+ * Numeric ids a call selected, when known without a lookup; otherwise what kind of selection
+ * it was — a refused call does not resolve a query or uuids (that can take as long as a build).
+ */
+export function requestedIds(a: BuildSelector): number[] | "query" | "uuid" {
+  if (a.query) return "query";
+  const raw = [...(a.bookId === undefined ? [] : [a.bookId]), ...(a.ids ?? [])];
+  if (!raw.every((id): id is number => typeof id === "number")) return "uuid";
+  return [...new Set(raw)];
+}
+
+/**
+ * Success-shaped status for a build still running past the soft deadline. `requested` is the
+ * calling selection's ids (see {@link requestedIds}); it matters only when another selection's
+ * build is the one running, to say which of this call's books it already covers.
+ */
+export function stillRunningResult(
+  o: Extract<BuildOutcome<ToolResult>, { kind: "running" }>,
+  requested?: number[] | "query" | "uuid",
+): ToolResult {
   const p = o.progress;
-  const finished =
-    p.total > 0
-      ? `${p.done}/${p.total} book(s) finished so far`
-      : "still preparing (resolving the selection, loading the model)";
-  const committed = p.indexedIds.length ? ` Committed so far: ids ${p.indexedIds.join(", ")}.` : "";
+  const status = progressText(p);
   const text = o.sameSelector
-    ? `Index build still running in the background — not an error; committed books stay indexed. ${finished}.${committed} ` +
+    ? `Index build still running in the background — not an error; committed books stay indexed. ${status} ` +
       "Re-run the same call to check: it waits for this build instead of starting another, and reports the final result once it is done."
     : "Another index build for this library is still running — not an error; this call did not start a second build, " +
-      "since two builds would contend for the same index file, and none of this call's books have been indexed yet. " +
-      `That other build (not this call's selection): ${finished}.${committed} Re-run this call once that build finishes.`;
+      `since two builds would contend for the same index file. ${overlapText(p, requested)} ` +
+      `That other build (not this call's selection): ${status}`;
   return toolOk([{ type: "text", text }], {
     stillRunning: true,
     runningBuild: o.sameSelector ? "this" : "other",
@@ -74,7 +88,44 @@ export function stillRunningResult(o: Extract<BuildOutcome<ToolResult>, { kind: 
     booksDone: p.done,
     booksIndexed: p.indexedIds.length,
     indexedIds: p.indexedIds,
+    failures: p.failures,
   });
+}
+
+/** `6/11 processed (5 indexed, 1 failed)` plus committed ids and failures so far. */
+function progressText(p: BuildProgress): string {
+  if (p.total === 0) return "still preparing (resolving the selection, loading the model).";
+  // "processed" covers skipped and failed books too, so name each kind instead of one count.
+  const kept = p.done - p.indexedIds.length - p.failures.length;
+  const parts = [`${p.indexedIds.length} indexed`, `${p.failures.length} failed`];
+  if (kept > 0) parts.push(`${kept} already in the index`);
+  let out = `Books so far: ${p.done}/${p.total} processed (${parts.join(", ")}).`;
+  if (p.indexedIds.length) out += ` Committed so far: ids ${p.indexedIds.join(", ")}.`;
+  if (p.failures.length) {
+    const shown = p.failures.slice(0, 3);
+    const more = p.failures.length > 3 ? `; …and ${p.failures.length - 3} more` : "";
+    out += ` Failed so far: ${shown.join("; ")}${more}.`;
+  }
+  return out;
+}
+
+/** What a refused call's books have in common with the running build. */
+function overlapText(p: BuildProgress, requested: number[] | "query" | "uuid" | undefined): string {
+  if (!Array.isArray(requested) || requested.length === 0) {
+    const kind = requested === "uuid" ? "uuid ids" : "a query";
+    return `This call's selection (${kind}) was not checked against that build. Re-run this call once that build finishes.`;
+  }
+  const committed = requested.filter((id) => p.indexedIds.includes(id));
+  const n = requested.length;
+  const head = committed.length
+    ? `${committed.length} of this call's ${n} book(s) ${committed.length === 1 ? "is" : "are"} already committed ` +
+      `by the running build (${committed.length === 1 ? "id" : "ids"} ${committed.join(", ")}).`
+    : `None of this call's ${n} book(s) is committed yet.`;
+  // Only a resolved selection can contain the call's books; while preparing, nothing is known.
+  const covered = p.selectedIds.length > 0 && requested.every((id) => p.selectedIds.includes(id));
+  return covered
+    ? `${head} All of them are part of the running build, so they will be covered when that build finishes — re-run this call then to confirm.`
+    : `${head} Re-run this call once that build finishes.`;
 }
 
 /** isError result for a background build that threw: the reason, and that a re-run retries. */

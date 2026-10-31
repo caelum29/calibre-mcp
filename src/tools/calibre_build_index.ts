@@ -25,6 +25,7 @@ import {
   cancelledResult,
   fromEarlierCall,
   selectorKey,
+  requestedIds,
   stillRunningResult,
   type BuildSelector,
 } from "./build-index-results.js";
@@ -89,7 +90,8 @@ export const buildIndexTool = defineTool({
     // Soft-deadline status (#284): a build is still running in the background — a success, not
     // an error. runningBuild says whose: "this" = this call's selection; "other" = another
     // selector's build that blocks this one, and booksRequested/booksDone/booksIndexed/indexedIds
-    // then count THAT build, not this call's selection (nothing of this call has run yet).
+    // then count THAT build, not this call's selection (nothing of this call has run yet);
+    // failures then lists that build's books failed so far.
     stillRunning: z.boolean().optional(),
     runningBuild: z.enum(["this", "other"]).optional(),
     // The background build an earlier call started threw; failures[0] carries the reason.
@@ -147,7 +149,7 @@ export const buildIndexTool = defineTool({
       // A cancelled build's result must not answer the next call: that call should build.
       { signal, keep: (r) => r.structuredContent?.cancelled !== true },
     );
-    if (outcome.kind === "running") return stillRunningResult(outcome);
+    if (outcome.kind === "running") return stillRunningResult(outcome, requestedIds(args));
     if (outcome.kind === "failed") {
       return backgroundFailedResult(describeError(outcome.error), outcome.earlierCallFinishedAgoMs);
     }
@@ -210,6 +212,7 @@ async function runBuild(
 
   const booksRequested = targets.size;
   run.progress.total = booksRequested;
+  run.progress.selectedIds = [...targets];
   if (booksRequested === 0) {
     return toolError(`No books resolved from the selector. ${failures.join("; ")}`.trim());
   }
@@ -327,7 +330,10 @@ async function runBuild(
       }
       if (signal?.aborted) return;
       if (!o.ok) {
-        deps.log.warn("book failed", { bookId: o.bookId, stage: o.stage, reason: describeError(o.error) });
+        const reason = describeError(o.error);
+        // Shared with "still running" reports, so a failure shows up while the build runs.
+        run.progress.failures.push(`book ${o.bookId}: ${reason}`);
+        deps.log.warn("book failed", { bookId: o.bookId, stage: o.stage, reason });
       }
       progress?.(settled, `Indexed ${settled}/${booksRequested} book(s)`, booksRequested);
     },
