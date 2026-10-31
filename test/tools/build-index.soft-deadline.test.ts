@@ -365,3 +365,33 @@ describe("calibre_build_index still-running messages (#284 live check)", () => {
     expect(text(r)).not.toContain("none of this call's books have been indexed yet");
   });
 });
+
+describe("calibre_build_index refusal coverage needs the same build mode (#284 review)", () => {
+  it("should_not_promise_coverage_when_the_refused_call_forces_books_the_running_build_does_not", async () => {
+    // Running build = ids 7, 11, 13 without force; force:true on 11, 13 is different work.
+    const ex = scriptedExtractor({ gate: [11] });
+    const d = deps(ex, 300);
+    await within(buildIndexTool.handler(args({ bookId: undefined, ids: [7, 11, 13] }), d, ctx()));
+
+    const r = (await within(
+      buildIndexTool.handler(args({ bookId: undefined, ids: [11, 13], force: true }), d, ctx()),
+    )) as ToolResult;
+
+    expect(text(r)).toContain(
+      "None of this call's 2 book(s) is committed yet. Re-run this call once that build finishes.",
+    );
+    expect(text(r)).not.toContain("will be covered when that build finishes");
+  });
+
+  it("should_warn_that_a_covered_book_can_still_fail", async () => {
+    const ex = scriptedExtractor({ gate: [11] });
+    const d = deps(ex, 300);
+    await within(buildIndexTool.handler(args({ bookId: undefined, ids: [7, 11, 13] }), d, ctx()));
+
+    const r = (await within(
+      buildIndexTool.handler(args({ bookId: undefined, ids: [13, 11] }), d, ctx()),
+    )) as ToolResult;
+
+    expect(text(r)).toContain("will be covered when that build finishes (unless one fails)");
+  });
+});

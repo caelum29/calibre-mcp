@@ -22,6 +22,7 @@ import { INSTALL_TRANSFORMERS } from "./remediation.js";
 import { toolError, toolOk } from "./result.js";
 import {
   backgroundFailedResult,
+  buildModeKey,
   cancelledResult,
   fromEarlierCall,
   selectorKey,
@@ -103,6 +104,8 @@ export const buildIndexTool = defineTool({
     // requested (keywordOnly=true) or auto-degraded — with the reason spelled out.
     semanticAvailable: z.boolean().optional(),
     semanticReason: z.string().optional(),
+    // Per result kind: final = every per-book failure; still running = failures so far;
+    // background build failed = [0] is the reason.
     failures: z.array(z.string()).optional(),
     // Per-book triage record (#87): format/backend chosen, cache hit, front-matter and
     // figure-marker diagnostics — the raw material for re-index failure-bucket analysis.
@@ -149,7 +152,8 @@ export const buildIndexTool = defineTool({
       // A cancelled build's result must not answer the next call: that call should build.
       { signal, keep: (r) => r.structuredContent?.cancelled !== true },
     );
-    if (outcome.kind === "running") return stillRunningResult(outcome, requestedIds(args));
+    if (outcome.kind === "running")
+      return stillRunningResult(outcome, { ids: requestedIds(args), mode: buildModeKey(args) });
     if (outcome.kind === "failed") {
       return backgroundFailedResult(describeError(outcome.error), outcome.earlierCallFinishedAgoMs);
     }
@@ -175,6 +179,8 @@ async function runBuild(
   run: BuildRun,
 ): Promise<ToolResult> {
   const signal = ctx?.signal;
+  // Set before the first await, so a refused call always sees which mode this build runs in.
+  run.progress.mode = buildModeKey(args);
   const started = Date.now();
   const notes: string[] = [];
   const failures: string[] = [];

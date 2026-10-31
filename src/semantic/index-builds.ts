@@ -29,6 +29,8 @@ export interface BuildProgress {
   selectedIds: number[];
   /** Books that failed so far, as `book <id>: <reason>` lines, in the order they failed. */
   failures: string[];
+  /** The build's flags that change what it does to a book (force, keywordOnly…); opaque here. */
+  mode: string;
 }
 
 /** Handle the build function gets: progress to update, and whether its caller already returned. */
@@ -169,7 +171,7 @@ export class IndexBuildRegistry<T> implements IndexBuilds<T> {
   ): Promise<BuildOutcome<T>> {
     const entry: Entry<T> = {
       key,
-      progress: { done: 0, total: 0, indexedIds: [], selectedIds: [], failures: [] },
+      progress: { done: 0, total: 0, indexedIds: [], selectedIds: [], failures: [], mode: "" },
       detached: false,
       settled: false,
       keep,
@@ -254,5 +256,6 @@ function snapshot(p: BuildProgress): BuildProgress {
     indexedIds: [...p.indexedIds],
     selectedIds: [...p.selectedIds],
     failures: [...p.failures],
+    mode: p.mode,
   };
 }

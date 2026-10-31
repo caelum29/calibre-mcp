@@ -53,6 +53,20 @@ export function cancelledResult(c: {
 }
 
 /**
+ * The flags that change what a build does to each selected book. Two calls with the same books
+ * but a different mode (say force:true) are different work, so neither covers the other.
+ */
+export function buildModeKey(a: BuildSelector): string {
+  return JSON.stringify([a.force, a.enableFts, a.keywordOnly, a.prune]);
+}
+
+/** What a refused call asked for: its ids (see {@link requestedIds}) and {@link buildModeKey}. */
+export interface CallerSelection {
+  ids: number[] | "query" | "uuid";
+  mode: string;
+}
+
+/**
  * Numeric ids a call selected, when known without a lookup; otherwise what kind of selection
  * it was — a refused call does not resolve a query or uuids (that can take as long as a build).
  */
@@ -64,13 +78,13 @@ export function requestedIds(a: BuildSelector): number[] | "query" | "uuid" {
 }
 
 /**
- * Success-shaped status for a build still running past the soft deadline. `requested` is the
- * calling selection's ids (see {@link requestedIds}); it matters only when another selection's
- * build is the one running, to say which of this call's books it already covers.
+ * Success-shaped status for a build still running past the soft deadline. `caller` is the
+ * calling selection; it matters only when another selection's build is the one running, to
+ * say which of this call's books it already covers.
  */
 export function stillRunningResult(
   o: Extract<BuildOutcome<ToolResult>, { kind: "running" }>,
-  requested?: number[] | "query" | "uuid",
+  caller?: CallerSelection,
 ): ToolResult {
   const p = o.progress;
   const status = progressText(p);
@@ -78,7 +92,7 @@ export function stillRunningResult(
     ? `Index build still running in the background — not an error; committed books stay indexed. ${status} ` +
       "Re-run the same call to check: it waits for this build instead of starting another, and reports the final result once it is done."
     : "Another index build for this library is still running — not an error; this call did not start a second build, " +
-      `since two builds would contend for the same index file. ${overlapText(p, requested)} ` +
+      `since two builds would contend for the same index file. ${overlapText(p, caller)} ` +
       `That other build (not this call's selection): ${status}`;
   return toolOk([{ type: "text", text }], {
     stillRunning: true,
@@ -110,7 +124,8 @@ function progressText(p: BuildProgress): string {
 }
 
 /** What a refused call's books have in common with the running build. */
-function overlapText(p: BuildProgress, requested: number[] | "query" | "uuid" | undefined): string {
+function overlapText(p: BuildProgress, caller: CallerSelection | undefined): string {
+  const requested = caller?.ids;
   if (!Array.isArray(requested) || requested.length === 0) {
     const kind = requested === "uuid" ? "uuid ids" : "a query";
     return `This call's selection (${kind}) was not checked against that build. Re-run this call once that build finishes.`;
@@ -122,9 +137,12 @@ function overlapText(p: BuildProgress, requested: number[] | "query" | "uuid" | 
       `by the running build (${committed.length === 1 ? "id" : "ids"} ${committed.join(", ")}).`
     : `None of this call's ${n} book(s) is committed yet.`;
   // Only a resolved selection can contain the call's books; while preparing, nothing is known.
-  const covered = p.selectedIds.length > 0 && requested.every((id) => p.selectedIds.includes(id));
+  // Same books are not the same work: a different mode (force, keywordOnly…) is not covered.
+  const covered =
+    p.mode === caller?.mode && p.selectedIds.length > 0 && requested.every((id) => p.selectedIds.includes(id));
   return covered
-    ? `${head} All of them are part of the running build, so they will be covered when that build finishes — re-run this call then to confirm.`
+    ? `${head} All of them are part of the running build, so they will be covered when that build finishes ` +
+        "(unless one fails) — re-run this call then to confirm."
     : `${head} Re-run this call once that build finishes.`;
 }
 
