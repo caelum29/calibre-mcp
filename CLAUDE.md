@@ -51,9 +51,11 @@ search spans both via a `scope: library|book` param, not extra tools.
 - **libId-resolve pattern for ALL `calibredb` calls.** `calibredb --with-library` needs the library
   **ID** (`Programming_Books`), **not** the display name (`Programming Books`, which 404s). Resolve
   display→libId via `content.resolveLibraryId` first, then pass it as `calibredb` `opts.library` (D-008).
-- **SDK-free seam.** Tool handlers/schemas/domain code never import `@modelcontextprotocol/sdk`; only
-  the transport/registration layer (`server.ts` + `run-stdio.ts`) does. `tools/types.ts` structurally
-  mirrors `CallToolResult`/`ToolAnnotations` so handlers stay SDK-free. Isolates the SDK-v2 migration.
+- **SDK-free seam.** Tool handlers/schemas/domain code never import the MCP SDK
+  (`@modelcontextprotocol/server`/`client`/`core`); only the transport/registration layer
+  (`server.ts` + `run-stdio.ts`) does. `tools/types.ts` keeps a hand-written structural mirror of
+  `CallToolResult`/`ToolAnnotations` — no re-export from `@modelcontextprotocol/core` (#121) — and tool
+  modules declare raw Zod shapes; `server.ts` wraps them in `z.object()` for v2's Standard Schema API.
 - **Return-not-throw.** Handlers return `isError` + an actionable message steering the model's next step.
 - **Tool-count ≤ ~20.** Selection accuracy degrades as confusable tools pile up (`docs/dev/DESIGN.md`
   §9.1), so fold related calibredb subcommands into task/intent tools — one `calibre_recover_metadata`,
