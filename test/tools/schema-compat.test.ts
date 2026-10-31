@@ -11,7 +11,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { buildServer } from "../../src/server.js";
 import { allTools } from "../../src/tools/registry.js";
-import { stripOutputSchemaDollarSchema } from "../../src/wire-compat.js";
+import { applyToolsListCompat, DRAFT_07 } from "../../src/wire-compat.js";
 
 type JsonSchema = Record<string, unknown>;
 interface WireTool {
@@ -35,7 +35,7 @@ async function liveTools(): Promise<WireTool[]> {
   await client.connect(c);
   try {
     const result = await client.listTools();
-    stripOutputSchemaDollarSchema(result);
+    applyToolsListCompat(result);
     return result.tools as WireTool[];
   } finally {
     await Promise.allSettled([client.close(), server.close()]);
@@ -58,6 +58,10 @@ function compatProblems(schema: unknown, where: string, kind: "input" | "output"
   if (!isObject(schema)) return;
   if (kind === "output" && "$schema" in schema) {
     out.push(`${where}: $schema in an output schema (Claude Desktop rejects the call)`);
+  }
+  // #270: the input dialect stays draft-07 on the wire until clients are checked live on 2020-12
+  if (kind === "input" && "$schema" in schema && schema.$schema !== DRAFT_07) {
+    out.push(`${where}: $schema ${String(schema.$schema)} in an input schema (wire is pinned to draft-07)`);
   }
   const type = schema.type;
   const isArray = type === "array" || (Array.isArray(type) && type.includes("array"));
@@ -121,6 +125,7 @@ describe("advertised tool schemas", () => {
     const problems: string[] = [];
     compatProblems({ $schema: "x", type: "object", properties: { a: { type: "array" } } }, "o", "output", problems);
     compatProblems({ type: "object", properties: { b: { const: true } } }, "i", "input", problems);
-    expect(problems).toHaveLength(3);
+    compatProblems({ $schema: "https://json-schema.org/draft/2020-12/schema", type: "object" }, "d", "input", problems);
+    expect(problems).toHaveLength(4);
   });
 });

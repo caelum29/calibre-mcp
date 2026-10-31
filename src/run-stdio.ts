@@ -8,7 +8,7 @@ import { buildServer } from "./server.js";
 import { loadConfig } from "./config.js";
 import { log } from "./logging.js";
 import { createShutdown, installShutdownHandlers } from "./shutdown.js";
-import { stripDollarSchema } from "./wire-compat.js";
+import { installWireCompat } from "./wire-compat.js";
 import { VERSION } from "./version.js";
 
 // Process-level safety net (issue #73). On Node >=15 a single unhandled rejection kills
@@ -38,11 +38,9 @@ async function main(): Promise<void> {
   const config = loadConfig();
   log.configure({ level: config.logLevel, dir: config.logDir });
   const server = buildServer({ config });
-  const transport = new StdioServerTransport();
-  const send = transport.send.bind(transport);
   // Client-compat rewrite of outgoing tools/list results (wire-compat.ts) — the same one the
   // tool-catalog generator applies, so docs/tool-catalog.json matches the wire.
-  transport.send = (msg) => send(stripDollarSchema(msg));
+  const transport = installWireCompat(new StdioServerTransport());
   await server.connect(transport);
   // Exit with the client: stdin EOF/close or SIGINT/SIGTERM kills any running calibredb /
   // ebook-convert process groups, closes the server and exits 0 (idempotent).
