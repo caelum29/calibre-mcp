@@ -1,0 +1,22 @@
+.oxlintrc.json
+  s_2748adee5ace54::t_3bdf645fba599e 69
+test/architecture.test.ts
+  s_2748adee5ace54::t_396d906bae809e 186-190
+  s_2748adee5ace54::t_1c2f2fa4f54260 210
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cf93c36892154de098d0ed4862197d49b2109d92",
+  "prompts": {},
+  "sessions": {
+    "s_2748adee5ace54": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eca6633b-40b8-4fea-beac-e4ac360b8a51",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
