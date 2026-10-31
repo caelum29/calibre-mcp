@@ -1,0 +1,19 @@
+test/tools/list-libraries.handler.test.ts
+  s_c292bb308e7526::t_7c6afb31b7dde0 1-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6c07ecdc146aa46146698911f5952a2cba770cba",
+  "prompts": {},
+  "sessions": {
+    "s_c292bb308e7526": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e234f66e-fd22-4d0a-b34a-0d6b587d1afc",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
