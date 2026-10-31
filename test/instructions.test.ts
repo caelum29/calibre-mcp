@@ -2,8 +2,7 @@
 // cross-tool guidance, within the length cap, naming only tools/env vars that exist.
 
 import { describe, it, expect } from "vitest";
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
 import { buildServer } from "../src/server.js";
 import { MAX_INSTRUCTIONS_LENGTH, SERVER_INSTRUCTIONS } from "../src/instructions.js";
 import { allTools } from "../src/tools/registry.js";

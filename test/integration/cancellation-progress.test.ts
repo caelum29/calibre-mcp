@@ -9,9 +9,8 @@ import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { ProgressNotificationSchema, type CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
+import type { CallToolResult } from "@modelcontextprotocol/client";
 import { buildServer } from "../../src/server.js";
 
 const posix = process.platform !== "win32";
@@ -134,9 +133,12 @@ describe.runIf(posix)("cancellation", () => {
     const { client, close } = await connect();
     try {
       const controller = new AbortController();
-      const call = client.callTool({ name: "calibre_get_content", arguments: { id: 7 } }, undefined, {
-        signal: controller.signal,
-      });
+      const call = client.callTool(
+        { name: "calibre_get_content", arguments: { id: 7 } },
+        {
+          signal: controller.signal,
+        },
+      );
       // Cancel once the converter is actually running.
       expect(await waitFor(() => existsSync(pidFile) && readFileSync(pidFile, "utf8") !== "")).toBe(true);
       const pid = Number(readFileSync(pidFile, "utf8"));
@@ -209,7 +211,6 @@ describe.runIf(posix)("progress", () => {
           name: "calibre_build_index",
           arguments: { query: "all", force: true, keywordOnly: true },
         },
-        undefined,
         { onprogress: (p) => seen.push(p) },
       )) as CallToolResult;
       expect(r.isError).toBeFalsy();
@@ -230,7 +231,7 @@ describe.runIf(posix)("progress", () => {
     let notified = 0;
     // Replace the SDK's own progress handler (the fallback handler never sees progress
     // notifications, so counting there could not fail).
-    client.setNotificationHandler(ProgressNotificationSchema, async () => {
+    client.setNotificationHandler("notifications/progress", async () => {
       notified++;
     });
     try {

@@ -4,9 +4,8 @@
 
 import { SERVER_INSTRUCTIONS } from "./instructions.js";
 import { z } from "zod";
-import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
-import type { CallToolResult, ServerNotification, ServerRequest } from "@modelcontextprotocol/sdk/types.js";
+import { McpServer, ResourceTemplate } from "@modelcontextprotocol/server";
+import type { CallToolResult, ServerContext } from "@modelcontextprotocol/server";
 import { registerAppTool, registerAppResource, RESOURCE_MIME_TYPE } from "@modelcontextprotocol/ext-apps/server";
 import { loadConfig, type Config } from "./config.js";
 import { CalibreClient } from "./calibre/client.js";
@@ -101,7 +100,7 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
     log.info("client initialized", { client: c.name, clientVersion: c.version, serverVersion: VERSION });
   };
   server.server.oninitialized = tagClient;
-  type Extra = RequestHandlerExtra<ServerRequest, ServerNotification>;
+  type Extra = ServerContext;
   // Every tool call (registry tools and ping alike) runs inside one logged call context.
   const logged = (tool: string, args: unknown, extra: Extra, run: () => Promise<CallToolResult>) => {
     tagClient();
@@ -208,11 +207,11 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
         "Content Server via calibredb, and reports semantic-search status " +
         "(embedding model, dependency, index vector count). Returns library categories on success, " +
         "plus the server's recent errors and its log file path for self-diagnosis.",
-      inputSchema: {},
+      inputSchema: z.object({}),
       annotations: { readOnlyHint: true, openWorldHint: true },
     },
-    async (args: unknown, extra: Extra) =>
-      logged("calibre_ping", args, extra, async () => {
+    async (args: unknown, ctx: Extra) =>
+      logged("calibre_ping", args, ctx, async () => {
         // Resolve the libId (needed for both calibredb and the index vector count) first —
         // --with-library needs the ID, not the display name. A failure here is non-fatal to the
         // semantic diagnosis (it reads local disk/state), so keep it and still report semantics.
@@ -287,14 +286,14 @@ function diagnostics(): { text: string; structured: Record<string, unknown> } {
  * cancellation signal as-is, and a throttled monotonic progress callback only when the
  * client sent a progressToken (otherwise there is nobody to notify).
  */
-function toolContext(extra: RequestHandlerExtra<ServerRequest, ServerNotification>): ToolContext {
-  const progressToken = extra._meta?.progressToken;
-  if (progressToken === undefined) return { signal: extra.signal };
+function toolContext(extra: ServerContext): ToolContext {
+  const progressToken = extra.mcpReq._meta?.progressToken;
+  if (progressToken === undefined) return { signal: extra.mcpReq.signal };
   return {
-    signal: extra.signal,
+    signal: extra.mcpReq.signal,
     progress: createProgressReporter({
       progressToken,
-      send: (params) => extra.sendNotification({ method: "notifications/progress", params }),
+      send: (params) => extra.mcpReq.notify({ method: "notifications/progress", params }),
       onError: (err) => log.debug("progress notification failed", { msg: String(err) }),
     }),
   };

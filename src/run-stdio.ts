@@ -3,7 +3,7 @@
 // design (DESIGN §7): all server logic lives in server.ts; this file only
 // owns the transport so an HTTP transport could be added without touching it.
 
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
 import { buildServer } from "./server.js";
 import { loadConfig } from "./config.js";
 import { log } from "./logging.js";

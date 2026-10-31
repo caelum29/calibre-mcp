@@ -2,8 +2,7 @@
 // channels (Desktop reads text only, Code reads structuredContent only).
 
 import { describe, it, expect } from "vitest";
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
 import { buildServer } from "../../src/server.js";
 
 describe("calibre_ping diagnostics", () => {
