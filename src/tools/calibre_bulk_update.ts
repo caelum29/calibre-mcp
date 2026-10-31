@@ -9,7 +9,7 @@ import { caseRenameNotes, isAllowedField, listReplacementNote, previewBookChange
 import type { ChangeValue } from "../domain/book-fields.js";
 import { CalibreCliTimeoutError } from "../domain/errors.js";
 import { buildScopedQuery, honestyLines, resolveFilter } from "../app/bundles.js";
-import { BookId, CoercedBool, jsonArray, jsonRecord } from "./coerce.js";
+import { BookId, CoercedBool, jsonArray, jsonRecord, jsonStringList } from "./coerce.js";
 import { defineTool } from "./define.js";
 import { fence, toolError, toolOk } from "./result.js";
 import type { ToolResult } from "./types.js";
@@ -24,6 +24,8 @@ import {
   verifyTimedOutWrite,
 } from "../app/write-policy.js";
 import { errorCodeFor } from "../domain/error-codes.js";
+import { mergeTags, type TagMerge } from "../domain/tag-ops.js";
+import { resolveTagSpellings } from "../app/tag-spelling.js";
 
 /** Hard cap on books mutated in one call — a bulk write must be a deliberate, bounded set. */
 const MAX_BULK = 500;
@@ -35,9 +37,13 @@ export const bulkUpdateTool = defineTool({
     "Apply the same metadata changes (tags, series, publisher, etc.) to a set of books selected " +
     "by ids, a search query, or filter (a bundle name). Preview-first: returns the per-book diff " +
     "without writing unless preview is set false. A book set is required (never all books). " +
+    "A list in changes replaces the whole list; to add or remove tags while keeping the rest, use " +
+    "tags_add / tags_remove (merged per book, case-insensitive, not together with changes.tags). " +
     "Requires writes to be enabled.",
   inputSchema: {
-    changes: jsonRecord(ChangeValueSchema),
+    changes: jsonRecord(ChangeValueSchema).optional(),
+    tags_add: jsonStringList().optional(),
+    tags_remove: jsonStringList().optional(),
     ids: jsonArray(BookId()).optional(),
     query: z.string().optional(),
     filter: z.string().trim().min(1).max(256).optional(),
@@ -65,9 +71,22 @@ export const bulkUpdateTool = defineTool({
   write: true,
   handler: async (args, deps) => {
     try {
-      const changes = args.changes as Record<string, ChangeValue>;
+      const changes = (args.changes ?? {}) as Record<string, ChangeValue>;
       const fields = Object.keys(changes);
-      if (fields.length === 0) return toolError("invalid_input", "Provide at least one field in changes.");
+      const tagsAdd = args.tags_add ?? [];
+      const tagsRemove = args.tags_remove ?? [];
+      const tagOps = tagsAdd.length > 0 || tagsRemove.length > 0;
+      if (fields.length === 0 && !tagOps) {
+        return toolError("invalid_input", "Provide at least one field in changes, or tags_add/tags_remove.");
+      }
+      // one tags value per book: a full replacement and a merge can't both apply
+      if (tagOps && "tags" in changes) {
+        return toolError(
+          "invalid_input",
+          "Pass tags either as changes.tags (replaces the whole list) or as tags_add/tags_remove " +
+            "(merges per book), not both.",
+        );
+      }
 
       const unknown = fields.filter((f) => !isAllowedField(f));
       if (unknown.length > 0) {
@@ -111,25 +130,50 @@ export const bulkUpdateTool = defineTool({
         );
       }
 
-      const perBook = selection.books.map((b) => ({
-        id: b.id,
-        title: b.title,
-        diff: previewBookChanges(b, changes),
-        book: b, // before-snapshot, needed to verify an ambiguous (timed-out) write
-      }));
+      // An added tag takes the library's spelling: a new case would rename it on every book.
+      const added = tagOps
+        ? await resolveTagSpellings(
+            deps,
+            tagsAdd,
+            selection.books.flatMap((b) => b.tags),
+            args.library,
+          )
+        : [];
+      const perBook = selection.books.map((b) => {
+        const merge: TagMerge | undefined = tagOps ? mergeTags(b.tags, added, tagsRemove) : undefined;
+        // per-book changes: the merged tags differ per book; verify checks this, not the raw params
+        const bookChanges = merge ? { ...changes, tags: merge.tags } : changes;
+        return {
+          id: b.id,
+          title: b.title,
+          changes: bookChanges,
+          merge,
+          diff: previewBookChanges(b, bookChanges),
+          book: b, // before-snapshot, needed to verify an ambiguous (timed-out) write
+        };
+      });
 
       // Preview (default): show the diff, write nothing.
       if (args.preview) {
         const lines = perBook.map((b) => {
-          const parts = b.diff.map(
-            (d) =>
+          const merged = (field: string): TagMerge | undefined => (field === "tags" ? b.merge : undefined);
+          const parts = b.diff.map((d) => {
+            const m = merged(d.field);
+            const counts = m && d.changed ? ` (+${m.added} added, ${m.removed} removed)` : "";
+            return (
               `  ${d.field}: ${JSON.stringify(d.before)} → ${JSON.stringify(d.after)}` +
-              (d.changed ? "" : " (no change)"),
-          );
+              (d.changed ? counts : " (no change)")
+            );
+          });
           // a list set replaces the whole list — say so in text, where a one-item set is easy to miss
-          // and a case-only edit of a tag/author renames the shared item on every book
+          // (not for a tags merge, which keeps what it doesn't remove) — and a case-only edit of a
+          // tag/author renames the shared item on every book
           const flags = b.diff
-            .flatMap((d) => [listReplacementNote(d), ...caseRenameNotes(d)].filter((n): n is string => !!n))
+            .flatMap((d) =>
+              [merged(d.field) ? undefined : listReplacementNote(d), ...caseRenameNotes(d)].filter(
+                (n): n is string => !!n,
+              ),
+            )
             .map((n) => `  ⚠ ${n}`);
           return `#${b.id} ${b.title}\n${[...parts, ...flags].join("\n")}`;
         });
@@ -165,7 +209,7 @@ export const bulkUpdateTool = defineTool({
         try {
           // set_metadata is idempotent, so transient failures are retried in place (#233)
           await withTransientRetry(
-            () => deps.calibre.calibredb(buildSetMetadataArgs(b.id, changes), { library: libId }),
+            () => deps.calibre.calibredb(buildSetMetadataArgs(b.id, b.changes), { library: libId }),
             deps.sleep,
           );
           applied.push(b.id);
@@ -208,7 +252,7 @@ export const bulkUpdateTool = defineTool({
             const check = await verifyTimedOutWrite(deps, {
               id: b.id,
               before: b.book,
-              changes,
+              changes: b.changes,
               library: args.library,
             });
             if (check.status === "landed") {
@@ -228,7 +272,7 @@ export const bulkUpdateTool = defineTool({
       }
 
       const summary =
-        `Applied ${fields.join(", ")} to ${applied.length}/${perBook.length} book(s).` +
+        `Applied ${(tagOps ? [...fields, "tags"] : fields).join(", ")} to ${applied.length}/${perBook.length} book(s).` +
         // on a partial run name the committed ids, so a retry skips them (#227)
         (failed.length > 0 && applied.length > 0 ? ` Committed: ${applied.join(", ")}.` : "") +
         (failed.length > 0 ? ` ${failed.length} failed: ${failed.map((f) => f.id).join(", ")}.` : "") +
