@@ -157,11 +157,25 @@ export function listReplacementNote(d: FieldDiff): string | undefined {
   const after = splitListString(d.field, d.after);
   const now = listSize(after);
   if (!was || now === undefined) return undefined;
-  const kept = (e: unknown): boolean => {
-    if (Array.isArray(after)) return after.some((x) => sameFieldValue(x, e));
-    return typeof e === "string" && !!after && typeof after === "object" && e in after;
-  };
-  const existing = Array.isArray(d.before) ? d.before : Object.keys(d.before as object);
-  if (existing.every(kept)) return undefined;
+  if (Array.isArray(d.before)) {
+    const list = Array.isArray(after) ? after : [];
+    const kept = (e: unknown): boolean =>
+      list.some((x) => (typeof x === "string" && typeof e === "string" ? sameItemName(x, e) : sameFieldValue(x, e)));
+    if (d.before.every(kept)) return undefined;
+  } else if (after && typeof after === "object" && !Array.isArray(after)) {
+    // An identifier is kept only with the same value: isbn 1 → 2 replaces the old one.
+    const next = Object.entries(after);
+    const kept = ([type, val]: [string, unknown]): boolean => next.some(([t, v]) => sameItemName(t, type) && v === val);
+    if (Object.entries(d.before as Record<string, unknown>).every(kept)) return undefined;
+  }
   return `${d.field}: ${was} → ${now} (replaces all existing ${d.field})`;
+}
+
+/**
+ * Whether two names are the same Calibre item (tag, author, language, identifier type).
+ * Calibre keeps those as case-insensitive unique values (`COLLATE NOCASE` + `UNIQUE`, looked up
+ * lowercased), so setting `python` on a book reuses the existing `Python` item.
+ */
+export function sameItemName(a: string, b: string): boolean {
+  return a === b || a.toLowerCase() === b.toLowerCase();
 }
