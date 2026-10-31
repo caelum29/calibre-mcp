@@ -1,0 +1,16 @@
+{
+  "metadata": {
+    "293": { "title": "Effective Rust: 35 Specific Ways to Improve Your Rust Code", "authors": "David Drysdale" },
+    "285": {
+      "title": "Rust Fundamentals for Data Science: An Introductory Guide For Data Science",
+      "authors": "Strauss, Johann & Van Der Post, Hayden"
+    },
+    "1232": { "title": "Category Theory for Programmers", "authors": "Bartosz Milewski" }
+  },
+  "indexing_status": { "left": 0, "total": 1136 },
+  "results": [
+    { "book_id": 293, "format": "PDF" },
+    { "book_id": 285, "format": "EPUB" },
+    { "book_id": 1232, "format": "PDF" }
+  ]
+}
