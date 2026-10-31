@@ -1,0 +1,19 @@
+test/tools/semantic-search.snippet-window.test.ts
+  s_d856ef3a0da662::t_c0978db2eb285d 1-141
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f6f2e976925af898150885cf775b0aac5e0b8cfb",
+  "prompts": {},
+  "sessions": {
+    "s_d856ef3a0da662": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc47d0e8-c9be-4814-af6c-d0969a96f5cd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
