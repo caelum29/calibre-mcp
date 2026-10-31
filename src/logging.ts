@@ -6,7 +6,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { appendFileSync, mkdirSync, readdirSync, unlinkSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
-import { ERROR_CODES } from "./domain/error-codes.js";
+import { ERROR_CODES, SERVER_FAULT_CODES } from "./domain/error-codes.js";
 
 export type Level = "debug" | "info" | "warn" | "error";
 
@@ -185,7 +185,10 @@ traceId? + parentSpanId? (from the client's W3C traceparent in _meta), isError, 
 error? (the steer text the model got), threw?, args}.
 errorCode is one of: ${ERROR_CODES.join(", ")}.
 args is a summary: numbers/booleans as-is, short strings verbatim, long free text as its length only, objects as key names.
-isError results log at warn (the model handles them); server-side failures log at error.
+isError results log at warn (the model fixes them by changing its call) — except server faults, which log at error:
+errorCode ${SERVER_FAULT_CODES.join(", ")}. Every error-level line (those faults, \`tool threw\`,
+inner failures such as \`calibredb failed\`) is what calibre_ping.recentErrors shows, so one fault may appear twice there
+(the inner line with its details, then the closing \`tool call\` line with errorCode + hint).
 The home dir is written as \`~\`. Lines may contain book titles, ids and search queries — never book text.
 
 Recipes:

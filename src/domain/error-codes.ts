@@ -38,6 +38,29 @@ export const ERROR_CODES = [
 
 export type ErrorCode = (typeof ERROR_CODES)[number];
 
+// The server or its environment is broken — the user must fix something outside the chat. These
+// isError results log at error, so they reach calibre_ping.recentErrors (#325); the rest are
+// requests the model fixes by changing its call (or self-clearing, like busy) and log at warn.
+/** Codes whose isError results reach calibre_ping.recentErrors (listed in the log README). */
+export const SERVER_FAULT_CODES: readonly ErrorCode[] = [
+  "write_refused",
+  "write_failed",
+  "write_unverified",
+  "calibre_unreachable",
+  "calibre_error",
+  "timeout",
+  "index_build_failed",
+  "dependency_missing",
+  "extraction_failed",
+  "internal",
+];
+const SERVER_FAULTS: ReadonlySet<string> = new Set(SERVER_FAULT_CODES);
+
+/** True when `code` is one of the server-fault codes that calibre_ping.recentErrors must show. */
+export function isServerFault(code: string | undefined): boolean {
+  return code !== undefined && SERVER_FAULTS.has(code);
+}
+
 // Adapter-layer errors (calibre/spawn.ts) matched by name — domain must not import adapters.
 const SPAWN_CODES: Record<string, ErrorCode> = {
   SpawnTimeoutError: "timeout",

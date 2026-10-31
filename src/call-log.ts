@@ -3,6 +3,7 @@
 // the call carries the same `call` id. SDK-free — server.ts applies it at registration.
 
 import { randomBytes } from "node:crypto";
+import { isServerFault } from "./domain/error-codes.js";
 import { capArray, capString, type Logger } from "./logging.js";
 
 const ARG_STRING_MAX = 120;
@@ -109,9 +110,10 @@ export async function withCallLog<R extends ResultLike>(
         ...(result === undefined ? { threw: true } : {}),
         args: summarizeArgs(args),
       };
-      // An isError result is the model's to handle — warn, not error; ping's ring keeps
-      // only the server-side failures logged at error level.
-      if (isError || result === undefined) log.warn("tool call", meta);
+      // A server-fault result logs at error so ping's ring shows it with its hint (#325); any
+      // other isError result is the model's to handle — warn.
+      if (isError && isServerFault(errorCode)) log.error("tool call", meta);
+      else if (isError || result === undefined) log.warn("tool call", meta);
       else log.info("tool call", meta);
     }
   });
@@ -128,12 +130,21 @@ function stringField(sc: unknown, key: "errorCode" | "hint"): string | undefined
   return typeof v === "string" ? v : undefined;
 }
 
-// version-traceId-parentId-flags; all-zero ids are invalid per W3C Trace Context.
-const TRACEPARENT = /^[\da-f]{2}-([\da-f]{32})-([\da-f]{16})-[\da-f]{2}$/;
+// W3C Trace Context Level 1 (Recommendation 2021-11-23): every field is lowercase hex (§3.2.2);
+// version ff is forbidden (§3.2.2.1); version 00 is exactly the three fields (§3.2.2.2); a higher
+// version is parsed by its known fields, anything after the flags' trailing dash ignored (§3.2.4).
+const TRACEPARENT = /^([\da-f]{2})-([\da-f]{32})-([\da-f]{16})-[\da-f]{2}(-.*)?$/;
 
-/** traceId + parentSpanId from a W3C traceparent; nothing for a missing or malformed one. */
+/**
+ * traceId + parentSpanId from a W3C traceparent; nothing for a missing or invalid one.
+ * tracestate and baggage are never logged: vendor-opaque or user data (spec §6 privacy).
+ */
 export function parseTraceparent(tp: string | undefined): { traceId?: string; parentSpanId?: string } {
-  const m = tp === undefined ? null : TRACEPARENT.exec(tp.trim().toLowerCase());
-  if (!m || /^0+$/.test(m[1]!) || /^0+$/.test(m[2]!)) return {};
-  return { traceId: m[1], parentSpanId: m[2] };
+  const m = tp === undefined ? null : TRACEPARENT.exec(tp.trim());
+  if (!m) return {};
+  const [, version, traceId, parentSpanId, rest] = m;
+  if (version === "ff" || (version === "00" && rest !== undefined)) return {};
+  // all-zero ids are invalid (§3.2.2.3, §3.2.2.4)
+  if (/^0+$/.test(traceId!) || /^0+$/.test(parentSpanId!)) return {};
+  return { traceId, parentSpanId };
 }
