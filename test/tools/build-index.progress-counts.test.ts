@@ -138,3 +138,98 @@ describe("calibre_build_index progress counts (#312)", () => {
     });
   });
 });
+
+/** Runs the build to the end and returns its own result; `last.progress` keeps the final progress. */
+function capture() {
+  const last: { progress?: BuildProgress } = {};
+  const builds: IndexBuilds<ToolResult> = {
+    softDeadlineMs: 0,
+    async run(_libraryId, _key, build) {
+      const progress: BuildProgress = { done: 0, total: 0, indexedIds: [], selectedIds: [], failures: [], mode: "" };
+      last.progress = progress;
+      return { kind: "done", result: await build({ progress, detached: () => true }) };
+    },
+  };
+  return { builds, last };
+}
+
+const progressOf = (p: BuildProgress | undefined) => ({
+  done: p?.done,
+  indexedIds: p?.indexedIds,
+  failures: p?.failures,
+});
+
+describe("calibre_build_index cancel summary agrees with progress (#325 review)", () => {
+  it("should_report_books_refused_at_commit_in_the_cancelled_result", async () => {
+    // 1 ok, 2 refused at commit, 3 ok, 4 cut short by the cancel, 5 never started.
+    const ac = new AbortController();
+    const index = store();
+    const replace = index.replaceBook.bind(index);
+    vi.spyOn(index, "replaceBook").mockImplementation((lib, meta, ...rest) =>
+      meta.bookId === 2 ? "preserved" : replace(lib, meta, ...rest),
+    );
+    const getText = async (a: { bookId: number }) => {
+      if (a.bookId === 4) {
+        ac.abort();
+        throw new Error("aborted");
+      }
+      return extracted();
+    };
+    const { builds, last } = capture();
+    const r = await buildIndexTool.handler(
+      args({ ids: [1, 2, 3, 4, 5], keywordOnly: true }),
+      { ...deps(getText, index), indexBuilds: builds },
+      { signal: ac.signal },
+    );
+    expect({ text: text(r), sc: r.structuredContent, progress: progressOf(last.progress) }).toMatchObject({
+      text: expect.stringContaining(
+        "Index build cancelled after 3/5 book(s) (2 indexed, 0 failed, 1 already in the index).",
+      ),
+      sc: { cancelled: true, booksDone: 3, booksIndexed: 2, booksSkipped: 0, booksPreserved: 1, failures: [] },
+      progress: { done: 3, indexedIds: [1, 3], failures: [] },
+    });
+  });
+
+  it("should_count_a_commit_failure_during_the_cancel_as_failed_not_cut_short", async () => {
+    const ac = new AbortController();
+    const index = store();
+    const replace = index.replaceBook.bind(index);
+    vi.spyOn(index, "replaceBook").mockImplementation((lib, meta, ...rest) => {
+      if (meta.bookId !== 2) return replace(lib, meta, ...rest);
+      ac.abort(); // the cancel lands while book 2 commits — and that commit really fails
+      throw new Error("disk full");
+    });
+    const { builds, last } = capture();
+    const r = await buildIndexTool.handler(
+      args({ ids: [1, 2, 3] }),
+      { ...deps(async () => extracted(), index), indexBuilds: builds },
+      { signal: ac.signal },
+    );
+    expect({ text: text(r), sc: r.structuredContent, progress: progressOf(last.progress) }).toMatchObject({
+      text: expect.stringContaining("Index build cancelled after 2/3 book(s) (1 indexed, 1 failed)."),
+      sc: { cancelled: true, booksDone: 2, booksIndexed: 1, failures: ["book 2: disk full"] },
+      progress: { done: 2, indexedIds: [1], failures: ["book 2: disk full"] },
+    });
+  });
+
+  it("should_count_a_book_committed_during_the_cancel_as_indexed", async () => {
+    const ac = new AbortController();
+    const index = store();
+    const replace = index.replaceBook.bind(index);
+    vi.spyOn(index, "replaceBook").mockImplementation((lib, meta, ...rest) => {
+      if (meta.bookId === 2) ac.abort(); // the cancel lands while book 2 commits; the commit succeeds
+      return replace(lib, meta, ...rest);
+    });
+    const { builds, last } = capture();
+    const r = await buildIndexTool.handler(
+      args({ ids: [1, 2, 3] }),
+      { ...deps(async () => extracted(), index), indexBuilds: builds },
+      { signal: ac.signal },
+    );
+    expect({ text: text(r), sc: r.structuredContent, progress: progressOf(last.progress) }).toMatchObject({
+      text: expect.stringContaining("Index build cancelled after 2/3 book(s) (2 indexed, 0 failed)."),
+      sc: { cancelled: true, booksDone: 2, booksIndexed: 2, failures: [] },
+      progress: { done: 2, indexedIds: [1, 2], failures: [] },
+    });
+  });
+});
