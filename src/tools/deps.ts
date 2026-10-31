@@ -12,7 +12,7 @@ import type { FtsPort } from "../calibre/fts.js";
 import type { Embedder } from "../semantic/embedder.js";
 import type { Reranker } from "../semantic/reranker.js";
 import type { IndexBuilds } from "../semantic/index-builds.js";
-import type { IndexStore } from "../semantic/store.js";
+import type { IndexStore } from "../semantic/store/index.js";
 import type { Provider } from "../enrich/provider.js";
 import type { BoardStore } from "../ui/board-cache.js";
 import type { LogSink } from "../logging.js";

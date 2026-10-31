@@ -10,12 +10,12 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { loadConfig } from "../../src/config.js";
 import { EMBED_DIM } from "../../src/semantic/model.js";
 import { stemText } from "../../src/semantic/stem.js";
-import { type IndexedChunk, SqliteIndexStore } from "../../src/semantic/store.js";
+import { type IndexedChunk, SqliteIndexStore } from "../../src/semantic/store/index.js";
 import { l2normalize } from "../../src/semantic/vector.js";
 
 const LIB = "Plan_Lib";
 
-// Pre-rewrite SQL, kept verbatim (weights 1.0/1.0/0.5 as in store.ts).
+// Pre-rewrite SQL, kept verbatim (weights 1.0/1.0/0.5 as in store/shared.ts).
 const LEGACY_BOOK_FTS = `SELECT c.id AS chunk_id, bm25(chunk_fts, 1.0, 1.0, 0.5) AS score
   FROM chunk_fts JOIN chunks c ON c.id = chunk_fts.rowid
   WHERE chunk_fts MATCH ? AND c.book_id = ? ORDER BY score LIMIT ?`;
@@ -31,7 +31,7 @@ function vec(i: number): Float32Array {
   return l2normalize(v);
 }
 
-// Same quoting as store.ts ftsMatch (private there): quoted tokens OR-ed together.
+// Same quoting as store/shared.ts ftsMatch: quoted tokens OR-ed together.
 function ftsMatch(stemmed: string): string {
   return stemmed
     .split(/\s+/)

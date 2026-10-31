@@ -11,7 +11,7 @@ import type { ExtractedText } from "../../src/calibre/extract.js";
 import type { Embedder } from "../../src/semantic/embedder.js";
 import { EMBED_DIM } from "../../src/semantic/model.js";
 import { IndexBuildRegistry } from "../../src/semantic/index-builds.js";
-import { SqliteIndexStore } from "../../src/semantic/store.js";
+import { SqliteIndexStore } from "../../src/semantic/store/index.js";
 import type { ToolContext, ToolResult } from "../../src/tools/types.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
 

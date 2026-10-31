@@ -162,7 +162,7 @@ describe.runIf(posix)("cancellation", () => {
     const { loadConfig } = await import("../../src/config.js");
     const { ContentServerClient } = await import("../../src/calibre/content-server.js");
     const { Extractor } = await import("../../src/calibre/extract.js");
-    const { SqliteIndexStore } = await import("../../src/semantic/store.js");
+    const { SqliteIndexStore } = await import("../../src/semantic/store/index.js");
     const { log } = await import("../../src/logging.js");
     const config = loadConfig({
       CALIBRE_MCP_SERVER_URL: baseUrl,

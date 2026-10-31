@@ -7,7 +7,7 @@ import type { Book } from "../../src/domain/book.js";
 import type { ExtractedText } from "../../src/calibre/extract.js";
 import type { Embedder } from "../../src/semantic/embedder.js";
 import type { Reranker } from "../../src/semantic/reranker.js";
-import { type IndexedFigure, SqliteIndexStore } from "../../src/semantic/store.js";
+import { type IndexedFigure, SqliteIndexStore } from "../../src/semantic/store/index.js";
 import { EMBED_DIM, MAX_TOKENS, PASSAGE_PREFIX } from "../../src/semantic/model.js";
 import { l2normalize } from "../../src/semantic/vector.js";
 import type { ToolDeps } from "../../src/tools/deps.js";

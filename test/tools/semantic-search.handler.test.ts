@@ -4,7 +4,7 @@ import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Embedder } from "../../src/semantic/embedder.js";
 import { RERANK_POOL, type Reranker } from "../../src/semantic/reranker.js";
-import { SqliteIndexStore } from "../../src/semantic/store.js";
+import { SqliteIndexStore } from "../../src/semantic/store/index.js";
 import { EMBED_DIM, INDEX_VERSION } from "../../src/semantic/model.js";
 import { l2normalize } from "../../src/semantic/vector.js";
 import type { ToolDeps } from "../../src/tools/deps.js";

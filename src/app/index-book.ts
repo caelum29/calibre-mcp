@@ -9,7 +9,7 @@ import { frontMatterEnd } from "../domain/structure/front-matter.js";
 import { inThreadEncoder, structureOf, type BookEncoder } from "../semantic/book-encoder.js";
 import { textMatchesChunks, type ChunkSpan } from "../semantic/content-match.js";
 import { isFrontMatterSpan } from "../semantic/front-matter-flag.js";
-import type { BookMeta, IndexedChunk, IndexedFigure } from "../semantic/store.js";
+import type { BookMeta, IndexedChunk, IndexedFigure } from "../semantic/store/index.js";
 import type { ToolDeps } from "../tools/deps.js";
 
 /** Per-book diagnostics surfaced to structuredContent — the re-index triage record (#87). */

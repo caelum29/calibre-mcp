@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import { loadConfig } from "../../src/config.js";
 import { EMBED_DIM } from "../../src/semantic/model.js";
 import { stemText } from "../../src/semantic/stem.js";
-import { type IndexedChunk, type IndexedFigure, SqliteIndexStore } from "../../src/semantic/store.js";
+import { type IndexedChunk, type IndexedFigure, SqliteIndexStore } from "../../src/semantic/store/index.js";
 import { l2normalize } from "../../src/semantic/vector.js";
 
 const LIB = "Test_Lib";

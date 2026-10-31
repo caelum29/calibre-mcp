@@ -17,7 +17,7 @@ import { Extractor } from "./calibre/extract.js";
 import { FigureInventoryService } from "./calibre/figure-inventory.js";
 import { TransformersEmbedder } from "./semantic/embedder.js";
 import { TransformersReranker } from "./semantic/reranker.js";
-import { SqliteIndexStore } from "./semantic/store.js";
+import { SqliteIndexStore } from "./semantic/store/index.js";
 import { computeSemanticStatus } from "./semantic/status.js";
 import { readBookResource } from "./resources/book.js";
 import { allTools, assertWriteClassification } from "./tools/registry.js";
