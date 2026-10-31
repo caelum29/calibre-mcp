@@ -110,14 +110,12 @@ const LAYER_RULES: LayerRule[] = [
   { name: "ui does not import tools", from: /^src\/ui\//, forbidden: /^src\/tools\// },
   { name: "resources take ports, not tools", from: /^src\/resources\//, forbidden: /^src\/tools\// },
   { name: "scripts do not reach into tools", from: /^scripts\//, forbidden: /^src\/tools\// },
+  // neutral helpers both tools/ and resources/ import (#261): they may lean on domain only
+  { name: "shared imports only domain", from: /^src\/shared\//, forbidden: /^src\/(?!domain\/|shared\/)/ },
 ];
 
 // Known breaks, each owned by an open refactor issue. Shrink-only: a fixed edge must be removed.
 const LAYER_ALLOWLIST = new Set([
-  "src/config.ts -> src/calibre/discover.ts", // #261
-  "src/resources/book.ts -> src/tools/types.ts", // #261
-  "src/resources/book.ts -> src/tools/result.ts", // #261
-  "src/resources/book.ts -> src/tools/resource-link.ts", // #261
   "scripts/reindex.ts -> src/tools/index-book.ts", // #260
   "scripts/reindex.ts -> src/tools/types.ts", // #260
 ]);
@@ -158,6 +156,13 @@ describe("layer directions", () => {
       "scripts/x.mjs -> src/tools/index-book.ts",
     ]);
     expect(at("src/domain/x.ts", `// import { a } from "../calibre/client.js";`)).toEqual([]);
+    expect(at("src/shared/x.ts", `import { fence } from "../tools/result.js";`)).toEqual([
+      "src/shared/x.ts -> src/tools/result.ts",
+    ]);
+    expect(at("src/shared/x.ts", `import type { Book } from "../domain/book.js";`)).toEqual([]);
+    expect(at("src/config.ts", `import { discoverCalibredb } from "./calibre/discover.js";`)).toEqual([
+      "src/config.ts -> src/calibre/discover.ts",
+    ]);
   });
 });
 

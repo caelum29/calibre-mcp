@@ -11,7 +11,7 @@
 
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
-import { loadConfig } from "../dist/config.js";
+import { loadRuntimeConfig } from "../dist/runtime-config.js";
 import { ContentServerClient } from "../dist/calibre/content-server.js";
 import { Extractor } from "../dist/calibre/extract.js";
 import { chooseExtractFormat } from "../dist/calibre/extract.js";
@@ -83,7 +83,7 @@ async function main() {
   }
   if (books.length === 0) err("warning: no --book ids given; shingle/compression run against 0 sources");
 
-  const config = loadConfig();
+  const config = loadRuntimeConfig();
   const deps = { config, content: new ContentServerClient(config), extractor: new Extractor(config) };
 
   // Shareable markdown files (skip the provenance manifest). Only .md is shareable.

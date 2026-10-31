@@ -14,7 +14,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { loadConfig } from "../../src/config.js";
+import { loadRuntimeConfig } from "../../src/runtime-config.js";
 import { CalibreClient } from "../../src/calibre/client.js";
 import { ContentServerClient } from "../../src/calibre/content-server.js";
 import { log, type LogSink } from "../../src/logging.js";
@@ -27,7 +27,7 @@ import type { ToolDeps } from "../../src/tools/types.js";
 const RUN = process.env.RUN_CALIBRE_TESTS === "1";
 const TEST_LIBRARY = process.env.CALIBRE_TEST_LIBRARY; // display name or libId; default lib otherwise
 
-const config = loadConfig(process.env as Record<string, string | undefined>);
+const config = loadRuntimeConfig(process.env as Record<string, string | undefined>);
 
 // Probe the server once at collection time: down → the whole suite SKIPS, not fails.
 let serverUp = false;

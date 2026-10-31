@@ -3,7 +3,7 @@
 // First run downloads the ~118 MB q8 model (huggingface.co); later runs are offline.
 
 import { describe, expect, it } from "vitest";
-import { loadConfig } from "../../src/config.js";
+import { loadRuntimeConfig } from "../../src/runtime-config.js";
 import { EMBED_DIM } from "../../src/semantic/model.js";
 import { TransformersEmbedder } from "../../src/semantic/embedder.js";
 import { dot } from "../../src/semantic/vector.js";
@@ -11,7 +11,7 @@ import { dot } from "../../src/semantic/vector.js";
 const RUN = process.env.RUN_MODEL_TESTS === "1";
 
 describe.skipIf(!RUN)("TransformersEmbedder (live model)", () => {
-  const embedder = new TransformersEmbedder(loadConfig());
+  const embedder = new TransformersEmbedder(loadRuntimeConfig());
 
   it("cold-starts and returns a unit-norm 384-dim vector", async () => {
     const t0 = performance.now();

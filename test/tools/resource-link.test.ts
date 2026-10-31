@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { bookResourceLink, bookResourceUri } from "../../src/tools/resource-link.js";
+import { bookResourceLink } from "../../src/tools/resource-link.js";
+import { bookResourceUri } from "../../src/shared/book-uri.js";
 
 describe("bookResourceUri", () => {
   it("builds the canonical book uri", () => {
