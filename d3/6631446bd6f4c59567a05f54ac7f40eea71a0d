@@ -1,0 +1,135 @@
+src/tools/calibre_search.ts
+  s_d856ef3a0da662::t_a55ba77a0f919d 31,33,90-96,136,233-239,298,331-336,391
+src/tools/calibre_semantic_search.ts
+  s_d856ef3a0da662::t_29da25c1d5977a 20
+.oxlintrc.json
+  s_d856ef3a0da662::t_46a4a11dce2cf8 31
+CLAUDE.md
+  s_d856ef3a0da662::t_d8b8eaf1c31930 69,72-73
+CODING_STANDARDS.md
+  s_d856ef3a0da662::t_bb60a3e6677356 25,28-29,47-48
+docs/TOOLS.md
+  s_d856ef3a0da662::t_d56ded542b7616 31
+docs/TROUBLESHOOTING.md
+  s_d856ef3a0da662::t_04b5c569a5d937 168-173
+docs/claude/overnight-profile.md
+  s_d856ef3a0da662::t_dc7acd4e4cac5d 18
+docs/tool-catalog.json
+  s_d856ef3a0da662::t_9f73473ce859ac 1518
+scripts/reindex.ts
+  s_d856ef3a0da662::t_bed064aaf2d793 23,65-66,76
+src/app/bundles.ts
+  s_d856ef3a0da662::t_a2d1b295c2ef50 8
+src/app/index-book.ts
+  s_d856ef3a0da662::t_c1ca11d0c9412c 13
+src/app/isbn-scan.ts
+  s_d856ef3a0da662::t_e61dc21e5676a5 11
+src/app/select-books.ts
+  s_d856ef3a0da662::t_971e4801c1e7d0 7-8
+src/app/write-policy.ts
+  s_d856ef3a0da662::t_1eceb9e381c3ed 1-30,124-158
+src/calibre/content-server.ts
+  s_d856ef3a0da662::t_7e7dfa4e9513ef 215-218
+src/calibre/fts-highlight.ts
+  s_d856ef3a0da662::t_d94aa221e1e72e 1-158
+src/calibre/fts.ts
+  s_d856ef3a0da662::t_8a245a39691647 17,112-113
+src/domain/enrich/extract-isbn.ts
+  s_d856ef3a0da662::t_aba377652f1e49 37
+src/domain/errors.ts
+  s_d856ef3a0da662::t_18438fc8cfa044 32
+src/domain/search.ts
+  s_d856ef3a0da662::t_a9f4962707297a 21-22
+src/semantic/status.ts
+  s_d856ef3a0da662::t_935d71286ef666 93,177
+src/tools/book-progress.ts
+  s_d856ef3a0da662::t_db5ecd0d1403b4 6
+src/tools/calibre_add_book.ts
+  s_d856ef3a0da662::t_cde7adc5d5c2e0 10
+src/tools/calibre_build_index.ts
+  s_d856ef3a0da662::t_c92f05daf05e4f 19
+src/tools/calibre_bulk_update.ts
+  s_d856ef3a0da662::t_0f281591ecd3a8 11,16,18-25
+src/tools/calibre_extract_isbn.ts
+  s_d856ef3a0da662::t_b457820337492d 12,15
+src/tools/calibre_find_duplicates.ts
+  s_d856ef3a0da662::t_cbfacdd42ea17b 8,10,13,54-64,116
+src/tools/calibre_list_categories.ts
+  s_d856ef3a0da662::t_63cee51a95f3c5 8,16-17,19,44-45,47-51,71-78,106
+src/tools/calibre_manage_bundles.ts
+  s_d856ef3a0da662::t_eed16ef2ca38ce 11,17,19
+src/tools/calibre_merge_books.ts
+  s_d856ef3a0da662::t_4a107c0b1970dd 22
+src/tools/calibre_ping.ts
+  s_d856ef3a0da662::t_6eb88a34a53004 8,13-14,23-24,36-37,51-53,58-72,75,78,117-221
+src/tools/calibre_quality_report.ts
+  s_d856ef3a0da662::t_c9723806997e14 8,10,12,70-79,137
+src/tools/calibre_recover_metadata.ts
+  s_d856ef3a0da662::t_4580c303c6bbfd 20-21
+src/tools/calibre_remove_book.ts
+  s_d856ef3a0da662::t_3d3f1b4f5a52cf 14
+src/tools/calibre_update_book.ts
+  s_d856ef3a0da662::t_de02836be993e5 18-26
+src/tools/cursor.ts
+  s_d856ef3a0da662::t_575b7ae29328c0 1-6,8-17,22-26,29,33,39,42,44,46,52-98,111,114
+src/version.ts
+  s_d856ef3a0da662::t_b317734e070f0f 6-7,20-44
+test/architecture.test.ts
+  s_d856ef3a0da662::t_9000b01829881c 122-128,138,184-190,232-234
+test/calibre/fts-highlight-review.test.ts
+  s_d856ef3a0da662::t_bbc68d63607c04 1-59
+test/calibre/fts-highlight.test.ts
+  s_d856ef3a0da662::t_8c00891a233f4f 1-92
+test/calibre/search-probe.test.ts
+  s_d856ef3a0da662::t_379f1778fa5265 1-46
+test/tools/bundle-filter.test.ts
+  s_d856ef3a0da662::t_62c65d390d403b 12
+test/tools/channel-parity.test.ts
+  s_d856ef3a0da662::t_6247359b6e97b2 198-199,204-205,209,216,225,236
+test/tools/cursor-binding-review.test.ts
+  s_d856ef3a0da662::t_11ea8d87a05c23 1-159
+test/tools/cursor-binding.test.ts
+  s_d856ef3a0da662::t_11b62fd867f152 1-176
+test/tools/cursor.test.ts
+  s_d856ef3a0da662::t_44837ef43376c2 6,16-18,26
+test/tools/index-book.epub-front-matter.test.ts
+  s_d856ef3a0da662::t_d8d86197cf89a6 17
+test/tools/index-book.refresh-flags.test.ts
+  s_d856ef3a0da662::t_4af8d98946d568 16
+test/tools/index-book.test.ts
+  s_d856ef3a0da662::t_e85741bb2a01dc 14
+test/tools/list-categories.handler.test.ts
+  s_d856ef3a0da662::t_c7692cfc5a7dfc 24
+test/tools/ping-header.test.ts
+  s_d856ef3a0da662::t_07cbf1a29b70cb 1-132
+test/tools/ping-review.test.ts
+  s_d856ef3a0da662::t_bc92576efe5b82 1-167
+test/tools/ping.handler.test.ts
+  s_d856ef3a0da662::t_c8a6dd5b9ae4e5 61,66-68,74,77,89-91
+test/tools/search-deadline.test.ts
+  s_d856ef3a0da662::t_37fad44ceb9245 10
+test/tools/select-books.test.ts
+  s_d856ef3a0da662::t_c351d0b78b1ba0 5
+test/tools/write-refusal.test.ts
+  s_d856ef3a0da662::t_b927b80f91258d 3
+test/tools/write-retry.test.ts
+  s_d856ef3a0da662::t_7f3a1543aaadbc 2,6
+test/tools/write-verify.test.ts
+  s_d856ef3a0da662::t_b269f2c796fb61 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d36631446bd6f4c59567a05f54ac7f40eea71a0d",
+  "prompts": {},
+  "sessions": {
+    "s_d856ef3a0da662": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc47d0e8-c9be-4814-af6c-d0969a96f5cd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
