@@ -155,7 +155,35 @@ describe("calibre_bulk_update breaker text (#233)", () => {
         throw cli("Forbidden");
       }),
     );
-    // only the code + hint (#249), no applied/failed ledger
-    expect(Object.keys(r.structuredContent ?? {}).sort()).toEqual(["errorCode", "hint"]);
+    // only the code, hint and mirrored steer (#249), no applied/failed ledger
+    expect(r.structuredContent).toEqual({
+      errorCode: "write_refused",
+      error: expect.stringContaining("Calibre refused the write"),
+      hint: expect.any(String),
+    });
+  });
+
+  // #249 review: a stopped loop carries the cause's code, not a blanket write_failed
+  it("should_code_a_connection_stop_as_calibre_unreachable", async () => {
+    const r = await bulkUpdateTool.handler(
+      { changes: { tags: ["new"] }, ids: [1, 2], preview: false },
+      deps(async () => {
+        throw cli(REFUSED);
+      }),
+    );
+    expect(r.structuredContent?.errorCode).toBe("calibre_unreachable");
+  });
+
+  it("should_code_a_mid_loop_refusal_as_write_refused", async () => {
+    let call = 0;
+    const r = await bulkUpdateTool.handler(
+      { changes: { tags: ["new"] }, ids: [1, 2], preview: false },
+      deps(async () => {
+        call += 1;
+        if (call > 1) throw cli("Forbidden");
+        return { stdout: "", stderr: "" };
+      }),
+    );
+    expect(r.structuredContent?.errorCode).toBe("write_refused");
   });
 });
