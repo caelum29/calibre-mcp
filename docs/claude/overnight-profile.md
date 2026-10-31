@@ -5,8 +5,8 @@ Repo specifics for the `overnight-orchestrator` skill. The skill holds the proce
 ## Gate
 
 - Install: `pnpm install --frozen-lockfile`
-- Local gate (children, before push): `pnpm format:check && pnpm lint && pnpm typecheck && pnpm knip && pnpm build && pnpm catalog:check && pnpm test`. The tests take ~5 s.
-- If the tool surface or descriptions changed, run `pnpm catalog` first and commit the result.
+- Local gate (children, before push): `pnpm format:check && pnpm lint && pnpm typecheck && pnpm knip && pnpm widgets:check && pnpm build && pnpm catalog:check && pnpm test`. The tests take ~5 s.
+- If the tool surface or descriptions changed, run `pnpm catalog` first and commit the result. If widget sources under `src/ui/` changed, run `pnpm widgets` first and commit `src/ui/generated/`.
 - Required checks (`protect-main` ruleset): `static`, `test (22)`, `test (22.16.0)`, `test (24)`, `conventional-title`. PR titles must be conventional commits.
 - Merge style: merge commits (`gh pr merge --merge`).
 
