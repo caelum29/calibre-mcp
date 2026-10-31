@@ -212,18 +212,26 @@ function scoreDriftChecks(
     }
   }
 
-  // A missing current row is non-regression's job (it counts as broken there), not drift's.
+  // Every baseline cosine row must be matched: an empty or partial compare would pass while
+  // seeing nothing (a renamed query, a run that stopped recording maxScore).
   const curScore = new Map(current.perQuery.map((r) => [`${r.mode}/${r.id}`, r.maxScore]));
-  const shifts = baseline.perQuery
-    .filter((r) => cfg.maxScoreModes.includes(r.mode) && typeof r.maxScore === "number")
+  const eligible = baseline.perQuery.filter(
+    (r) => cfg.maxScoreModes.includes(r.mode) && typeof r.maxScore === "number",
+  );
+  const missing: string[] = [];
+  const shifts = eligible
     .flatMap((r) => {
-      const now = curScore.get(`${r.mode}/${r.id}`);
-      return typeof now === "number" ? [{ key: `${r.mode}/${r.id}`, was: r.maxScore!, now }] : [];
+      const key = `${r.mode}/${r.id}`;
+      const now = curScore.get(key);
+      if (typeof now === "number") return [{ key, was: r.maxScore!, now }];
+      missing.push(key);
+      return [];
     })
     .map((s) => ({ ...s, delta: Math.abs(s.now - s.was) }))
     .sort((a, b) => b.delta - a.delta);
   const over = shifts.filter((s) => s.delta > cfg.maxScoreEpsilon);
   const worst = shifts[0];
+  const complete = eligible.length > 0 && missing.length === 0;
 
   return [
     {
@@ -237,9 +245,10 @@ function scoreDriftChecks(
     {
       name: "score drift: per-query maxScore",
       active: true,
-      pass: over.length === 0,
-      detail:
-        over.length && worst
+      pass: complete && over.length === 0,
+      detail: !complete
+        ? `only ${shifts.length}/${eligible.length} baseline rows matched${missing.length ? `; missing: ${missing.sort().join(", ")}` : ""}`
+        : over.length && worst
           ? `${over.length} beyond ±${cfg.maxScoreEpsilon}; worst ${worst.key} ${fmt(worst.was)} → ${fmt(worst.now)}`
           : `${shifts.length} rows within ±${cfg.maxScoreEpsilon}${worst ? ` (max |Δ| ${worst.delta.toFixed(4)})` : ""}`,
     },
