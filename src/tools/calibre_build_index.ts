@@ -296,7 +296,7 @@ async function runBuild(
   const bookDetails: BookDetail[] = [];
   let settled = 0;
   // Books a cancel cut short: settled, but never processed — kept out of progress.done (#325).
-  let cutShort = 0;
+  const cutShort = new Set<number>();
   progress?.(0, `Indexing ${booksRequested} book(s)…`, booksRequested);
   // Book-level pipeline (#99): write-free prepare per book, one serialized writer commits —
   // the same path the threaded bulk re-index uses, so both keep the single-writer invariant.
@@ -341,8 +341,10 @@ async function runBuild(
     },
     onSettled: (o) => {
       settled++;
-      if (!o.ok && signal?.aborted) cutShort++;
-      run.progress.done = settled - cutShort;
+      // Only a prepare can be cut short (the extraction is killed by the signal); a commit is a
+      // synchronous SQLite write, so a commit failure is a real failure even mid-cancel.
+      if (!o.ok && o.stage === "prepare" && signal?.aborted) cutShort.add(o.bookId);
+      run.progress.done = settled - cutShort.size;
       // A write refused at commit (embedded meanwhile) kept the old rows — not indexed (#325).
       if (o.ok && o.prepared.kind === "ready" && !preservedAtCommit.has(o.bookId)) {
         run.progress.indexedIds.push(o.bookId);
@@ -350,13 +352,13 @@ async function runBuild(
       if (settled % PROGRESS_EVERY === 0) {
         deps.log.info("build progress", { done: settled, of: booksRequested });
       }
-      if (signal?.aborted) return;
-      if (!o.ok) {
+      if (!o.ok && !cutShort.has(o.bookId)) {
         const reason = describeError(o.error);
         // Shared with "still running" reports, so a failure shows up while the build runs.
         run.progress.failures.push(`book ${o.bookId}: ${reason}`);
         deps.log.warn("book failed", { bookId: o.bookId, stage: o.stage, reason });
       }
+      if (signal?.aborted) return;
       progress?.(settled, `Indexed ${settled}/${booksRequested} book(s)`, booksRequested);
     },
   });
@@ -364,7 +366,7 @@ async function runBuild(
   for (const o of outcomes) {
     if (!o.ok) {
       // A book cut short by the cancel did not fail — it just never finished.
-      if (!signal?.aborted) failures.push(`book ${o.bookId}: ${describeError(o.error)}`);
+      if (!cutShort.has(o.bookId)) failures.push(`book ${o.bookId}: ${describeError(o.error)}`);
     } else if (o.prepared.kind === "skipped") {
       booksSkipped++;
     } else if (o.prepared.kind === "refreshed") {
@@ -381,8 +383,16 @@ async function runBuild(
     }
   }
   if (signal?.aborted) {
-    const done = booksIndexed + booksSkipped + booksPreserved;
-    return cancelledResult({ done, booksRequested, booksIndexed, booksSkipped, chunks: totalChunks });
+    // Same buckets as the progress text, so the cancel summary and "Books so far" agree.
+    return cancelledResult({
+      booksRequested,
+      booksIndexed,
+      booksSkipped,
+      booksRefreshed,
+      booksPreserved,
+      failures,
+      chunks: totalChunks,
+    });
   }
   if (booksPreserved > 0) {
     notes.push(
