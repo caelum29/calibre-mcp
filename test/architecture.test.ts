@@ -187,6 +187,11 @@ const TWIN_RULES: TwinRule[] = [
     home: [],
   },
   {
+    name: "a LibId is minted only by content.resolveLibraryId (D-008, #218)",
+    pattern: /\basLibId\s*\(/,
+    home: ["src/calibre/content-server.ts", "src/calibre/lib-id.ts"],
+  },
+  {
     name: "external-binary candidate paths live in calibre/binaries.ts (#219)",
     pattern: /["'`]\/(?:opt\/homebrew|usr\/local|usr)\/bin\//,
     home: ["src/calibre/binaries.ts", "src/calibre/discover.ts"], // discover: calibredb lookup, injectable
@@ -210,6 +215,7 @@ describe("one home per mechanism", () => {
     const at = (source: string) => findTwinViolations([{ path: "src/tools/x.ts", source }]);
     expect(at(`const k = s.normalize("NFKD").replace(/\\p{M}/gu, "");`)).toHaveLength(1);
     expect(at(`const r = await fetch(url);`)).toHaveLength(1);
+    expect(at(`const id = asLibId(name);`)).toHaveLength(1);
     expect(at(`throw new Error("FIGURES_NO_POPPLER");`)).toHaveLength(1);
     expect(at(`const c = ["/opt/homebrew/bin/pdftotext"];`)).toHaveLength(1);
     expect(at(`const k = s.normalize("NFC");`)).toEqual([]);
