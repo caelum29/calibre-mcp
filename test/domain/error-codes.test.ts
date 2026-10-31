@@ -64,7 +64,11 @@ describe("toolError", () => {
     const r = toolError("index_missing", "No semantic index for this library yet.", { hint: "build it" });
     expect(r).toEqual({
       content: [{ type: "text", text: "Error: No semantic index for this library yet." }],
-      structuredContent: { errorCode: "index_missing", hint: "build it" },
+      structuredContent: {
+        errorCode: "index_missing",
+        hint: "build it",
+        error: "No semantic index for this library yet.",
+      },
       isError: true,
     });
   });
