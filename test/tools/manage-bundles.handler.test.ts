@@ -46,9 +46,9 @@ function deps(stubs: Stubs = {}): ToolDeps {
     content: content as unknown as ToolDeps["content"],
     calibre: {
       calibredb: stubs.calibredb ?? (async () => ({ stdout: LIST_STDOUT, stderr: "" })),
-    } as unknown as ToolDeps["calibre"],
-    extractor: {} as unknown as ToolDeps["extractor"],
-    figures: {} as unknown as ToolDeps["figures"],
+    } satisfies Partial<ToolDeps["calibre"]> as ToolDeps["calibre"],
+    extractor: {} as ToolDeps["extractor"],
+    figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],
     index: {} as ToolDeps["index"],
     log,

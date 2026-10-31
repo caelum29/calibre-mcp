@@ -27,8 +27,14 @@ export interface CalibreClientOptions {
   signal?: AbortSignal;
 }
 
+/** `calibredb` routed through the running Content Server: library writes and library discovery (#258). */
+export interface LibraryWriter {
+  calibredb(args: readonly string[], opts: CalibreClientOptions): Promise<{ stdout: string; stderr: string }>;
+  listLibraries(library: LibId): Promise<string>;
+}
+
 /** Shells out to `calibredb` (routed through the Content Server URL) and Calibre CLI tools. */
-export class CalibreClient {
+export class CalibreClient implements LibraryWriter {
   /** `busy` is the per-library breaker shared with ContentServerClient; absent = no breaker (tests). */
   constructor(
     private readonly cfg: Config,

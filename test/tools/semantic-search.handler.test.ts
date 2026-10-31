@@ -73,8 +73,8 @@ function deps(
   return {
     config: loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:", ...env }),
     content: content as unknown as ToolDeps["content"],
-    calibre: {} as unknown as ToolDeps["calibre"],
-    extractor: {} as unknown as ToolDeps["extractor"],
+    calibre: {} as ToolDeps["calibre"],
+    extractor: {} as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder,
     ...(reranker ? { reranker } : {}),

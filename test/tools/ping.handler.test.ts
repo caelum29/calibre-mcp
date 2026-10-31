@@ -33,7 +33,7 @@ function deps(o: { resolveLibraryId?: () => Promise<string>; listLibraries?: (li
     } as unknown as ToolDeps["calibre"],
     extractor: {} as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
-    embedder: { loadState: () => "not-attempted" } as unknown as ToolDeps["embedder"],
+    embedder: { loadState: () => "not-attempted" } satisfies Partial<ToolDeps["embedder"]> as ToolDeps["embedder"],
     index: { indexMeta: () => undefined, hasIndex: () => false } as unknown as ToolDeps["index"],
     log,
   };

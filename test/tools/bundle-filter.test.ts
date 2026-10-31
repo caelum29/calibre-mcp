@@ -62,7 +62,7 @@ function fake(opts: FakeOpts = {}) {
     content: content as unknown as ToolDeps["content"],
     calibre: calibre as unknown as ToolDeps["calibre"],
     fts: fakeFts(opts.ftsHits),
-    extractor: {} as unknown as ToolDeps["extractor"],
+    extractor: {} as ToolDeps["extractor"],
     log: sink,
   } as ToolDeps;
   return { deps, queries };

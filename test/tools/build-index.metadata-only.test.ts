@@ -79,7 +79,7 @@ function deps(store: SqliteIndexStore, embedder: Embedder, ed: Edition): ToolDep
         outline: [],
         epubToc: null,
       }),
-    } as unknown as ToolDeps["extractor"],
+    } satisfies Partial<ToolDeps["extractor"]> as ToolDeps["extractor"],
     figures: { getInventory: async () => ({ inventory: { entries: [] } }) } as unknown as ToolDeps["figures"],
     embedder,
     index: store,

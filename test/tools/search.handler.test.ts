@@ -40,9 +40,9 @@ function deps(opts: FakeOpts = {}): ToolDeps {
   return {
     config: loadConfig({}),
     content: content as unknown as ToolDeps["content"],
-    calibre: calibre as unknown as ToolDeps["calibre"],
+    calibre: calibre satisfies Partial<ToolDeps["calibre"]> as ToolDeps["calibre"],
     fts: fakeFts(opts.ftsHits),
-    extractor: {} as unknown as ToolDeps["extractor"],
+    extractor: {} as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],
     index: { hasIndex: () => false } as unknown as ToolDeps["index"], // no semantic index → no tip

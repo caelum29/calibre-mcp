@@ -39,7 +39,7 @@ function deps(opts: FakeOpts = {}): ToolDeps {
     config: loadConfig({}),
     content: content as unknown as ToolDeps["content"],
     calibre: calibre as unknown as ToolDeps["calibre"],
-    extractor: {} as unknown as ToolDeps["extractor"],
+    extractor: {} as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],
     index: {} as ToolDeps["index"],

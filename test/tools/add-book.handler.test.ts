@@ -23,7 +23,7 @@ function deps(calibredb: (args: readonly string[]) => Promise<{ stdout: string; 
     config: loadConfig({ CALIBRE_MCP_ADD_ROOTS: root }),
     content: content as unknown as ToolDeps["content"],
     calibre: { calibredb } as unknown as ToolDeps["calibre"],
-    extractor: {} as unknown as ToolDeps["extractor"],
+    extractor: {} as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],
     index: {} as ToolDeps["index"],
