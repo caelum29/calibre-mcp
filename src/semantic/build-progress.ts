@@ -3,6 +3,7 @@
 // never matters, so a concurrent build resumes exactly like a sequential one.
 
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
+import path from "node:path";
 
 /** One settled book. Extra telemetry (bookDetails fields, ms, worker) rides alongside. */
 export interface ProgressRecord {
@@ -50,4 +51,26 @@ export function resumeProgress(file: string): Set<number> {
     if (text.length > 0 && !text.endsWith("\n")) appendFileSync(file, "\n");
   }
   return readCompletedIds(file);
+}
+
+/**
+ * Default resume-log path for one library. Book ids are per library and overlap, so a log shared
+ * across the index dir would make the second library skip books it never indexed (#285).
+ */
+export function defaultProgressPath(indexDir: string, libraryId: string, flagsOnly: boolean): string {
+  // Library ids come from the server — keep the file inside the index dir whatever they contain.
+  // Unicode-aware so distinct non-ASCII ids stay distinct; "a b" vs "a_b" can't collide in
+  // practice because Calibre already turns spaces in library ids into "_".
+  const safe = libraryId.replace(/[^\p{L}\p{N}_.-]/gu, "_");
+  return path.join(indexDir, `${flagsOnly ? "flags-progress" : "progress"}-${safe}.jsonl`);
+}
+
+/** The progress log a run uses: an explicit --progress file wins, else the per-library default. */
+export function resolveProgressPath(
+  explicit: string | undefined,
+  indexDir: string,
+  libraryId: string,
+  flagsOnly: boolean,
+): string {
+  return explicit ?? defaultProgressPath(indexDir, libraryId, flagsOnly);
 }
