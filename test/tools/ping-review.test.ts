@@ -2,14 +2,15 @@
 // mirror of the new text facts.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { allTools } from "../../src/tools/registry.js";
+import { type PingDeps, pingTool as ping } from "../../src/tools/calibre_ping.js";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import { VERSION } from "../../src/version.js";
 import { EMBED_DIM, INDEX_VERSION, MODEL_ID } from "../../src/semantic/model.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
+import type { IndexMeta } from "../../src/semantic/store/index.js";
+import type { StatusIndex } from "../../src/semantic/status.js";
 
-const ping = allTools.find((t) => t.name === "calibre_ping")!;
 const MAP = { Programming_Books: "Programming Books", Humanities: "Humanities", Reaserch_Books: "Reaserch Books" };
 const META_OK = { modelId: MODEL_ID, dim: EMBED_DIM, indexVersion: INDEX_VERSION };
 
@@ -24,13 +25,13 @@ function deps(o: {
   libraryInfo?: () => Promise<unknown>;
   search?: (p: unknown) => Promise<{ total: number }>;
   hasIndex?: (id: string) => boolean;
-  meta?: (id: string) => unknown;
+  meta?: (id: string) => IndexMeta | undefined;
   writes?: boolean;
-}): { d: ToolDeps; spies: Spies } {
+}): { d: PingDeps; spies: Spies } {
   const libraryInfo = vi.fn(o.libraryInfo ?? (async () => ({ libraryMap: MAP, defaultLibrary: "Programming_Books" })));
   const search = vi.fn(o.search ?? (async () => ({ total: 100 })));
   const stats = vi.fn(() => ({ books: 10, chunks: 1, figures: 0 }));
-  const d = {
+  const d: PingDeps = {
     config: loadConfig({
       CALIBRE_MCP_SERVER_URL: "http://127.0.0.1:9",
       CALIBRE_MCP_INDEX_DIR: ":memory:",
@@ -52,9 +53,9 @@ function deps(o: {
       stats,
       vectorCount: () => 1,
       booksMissingVectors: () => 0,
-    } as unknown as ToolDeps["index"],
+    } satisfies StatusIndex,
     log,
-  } as ToolDeps;
+  };
   return { d, spies: { libraryInfo, search, stats } };
 }
 

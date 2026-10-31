@@ -5,7 +5,7 @@
 import type { Book } from "../domain/book.js";
 import { log } from "../logging.js";
 import { resolveNumericId } from "../tools/resolve-id.js";
-import type { ToolDeps } from "../tools/deps.js";
+import type { BaseDeps } from "../tools/deps.js";
 
 /** Upper bound on books pulled for one curation run (library sweep). */
 export const MAX_BOOKS = 2000;
@@ -39,7 +39,7 @@ export interface Selection {
  * ({@link BATCH_CONCURRENCY}); order is preserved so results are deterministic.
  * Times the whole fetch to stderr so a future hang is diagnosable from logs.
  */
-async function fetchBooks(deps: ToolDeps, ids: number[], library?: string): Promise<Book[]> {
+async function fetchBooks(deps: BaseDeps, ids: number[], library?: string): Promise<Book[]> {
   if (ids.length === 0) return [];
 
   // Pre-slice into batches, keeping their index so we can reassemble in order.
@@ -86,7 +86,7 @@ async function fetchBooks(deps: ToolDeps, ids: number[], library?: string): Prom
  * resolveNumericId, so uuids work); otherwise `query` searches the library — an empty query
  * returns all books (verified against the Content Server). The result is capped at MAX_BOOKS.
  */
-export async function selectBooks(deps: ToolDeps, args: SelectArgs): Promise<Selection> {
+export async function selectBooks(deps: BaseDeps, args: SelectArgs): Promise<Selection> {
   if (args.ids && args.ids.length > 0) {
     const resolved: number[] = [];
     for (const id of args.ids) {

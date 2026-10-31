@@ -3,14 +3,14 @@ import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
 import { findDuplicatesTool } from "../../src/tools/calibre_find_duplicates.js";
-import type { ToolDeps } from "../../src/tools/deps.js";
+import type { BaseDeps, ToolDeps } from "../../src/tools/deps.js";
 
 function book(over: Partial<Book> = {}): Book {
   return { id: 1, uuid: "u", title: "", authors: [], identifiers: {}, formats: [], tags: [], languages: [], ...over };
 }
 
 /** Fake content client: search returns all ids; booksByIds serves from a fixture map. */
-function deps(fixture: Book[]): ToolDeps {
+function deps(fixture: Book[]): BaseDeps {
   const byId = new Map(fixture.map((b) => [b.id, b] as const));
   const content = {
     resolveLibraryId: async () => "Lib",
@@ -31,7 +31,6 @@ function deps(fixture: Book[]): ToolDeps {
     extractor: {} as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],
-    index: {} as ToolDeps["index"],
     log,
   };
 }

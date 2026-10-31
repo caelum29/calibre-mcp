@@ -12,7 +12,7 @@ import { CalibreCliTimeoutError, CalibreHttpError } from "../domain/errors.js";
 import { BookId, jsonRecord } from "./coerce.js";
 import { defineTool } from "./define.js";
 import type { ToolResult } from "./types.js";
-import type { ToolDeps } from "./deps.js";
+import type { BaseDeps } from "./deps.js";
 import { bookIdArg, resolveNumericId } from "./resolve-id.js";
 import { fence, toolError, toolOk } from "./result.js";
 import {
@@ -181,7 +181,7 @@ function diffText(changed: { field: string; before: unknown; after: unknown }[])
  * if every requested field landed, report success (never fail a committed write — issue
  * #33); otherwise return an error that steers the model to check before retrying.
  */
-async function confirmTimedOutWrite(deps: ToolDeps, write: TimedOutWrite): Promise<ToolResult> {
+async function confirmTimedOutWrite(deps: BaseDeps, write: TimedOutWrite): Promise<ToolResult> {
   const { id, before, changes } = write;
   const check = await verifyTimedOutWrite(deps, write);
   if (check.status === "unverifiable") {

@@ -4,7 +4,7 @@ import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
 import type { GetTextArgs } from "../../src/calibre/extract.js";
 import { extractIsbnTool } from "../../src/tools/calibre_extract_isbn.js";
-import type { ToolDeps } from "../../src/tools/deps.js";
+import type { BaseDeps, ToolDeps } from "../../src/tools/deps.js";
 
 function book(over: Partial<Book> = {}): Book {
   return { id: 1, uuid: "u", title: "", authors: [], identifiers: {}, formats: [], tags: [], languages: [], ...over };
@@ -17,7 +17,7 @@ interface Fixture {
   calibredb?: (args: string[], opts: { library: string }) => Promise<string>;
 }
 
-function deps(f: Fixture): { deps: ToolDeps; calls: { args: string[] }[] } {
+function deps(f: Fixture): { deps: BaseDeps; calls: { args: string[] }[] } {
   const calls: { args: string[] }[] = [];
   const content = {
     resolveLibraryId: async () => "Lib",
@@ -46,7 +46,6 @@ function deps(f: Fixture): { deps: ToolDeps; calls: { args: string[] }[] } {
       extractor: extractor as unknown as ToolDeps["extractor"],
       figures: {} as ToolDeps["figures"],
       embedder: {} as ToolDeps["embedder"],
-      index: {} as ToolDeps["index"],
       log,
     },
   };

@@ -9,8 +9,17 @@ import { frontMatterEnd } from "../domain/structure/front-matter.js";
 import { inThreadEncoder, structureOf, type BookEncoder } from "../semantic/book-encoder.js";
 import { textMatchesChunks, type ChunkSpan } from "../semantic/content-match.js";
 import { isFrontMatterSpan } from "../semantic/front-matter-flag.js";
-import type { BookMeta, IndexedChunk, IndexedFigure } from "../semantic/store/index.js";
-import type { ToolDeps } from "../tools/deps.js";
+import type { BookMeta, IndexedChunk, IndexedFigure, IndexFreshness, IndexWriter } from "../semantic/store/index.js";
+import type { BaseDeps, DepsWithIndex } from "../tools/deps.js";
+
+/**
+ * The index ports one book's index trip uses (#272): its freshness/span reads and the
+ * whole-book replace or in-place refresh — never prune or retrieval.
+ */
+export type BookIndexPorts = Pick<IndexFreshness, "isBookIndexed" | "bookVectorCount" | "bookChunkSpans"> &
+  Pick<IndexWriter, "replaceBook" | "refreshBookMeta">;
+/** Deps of the index-book use case: BaseDeps plus BookIndexPorts. */
+export type IndexBookDeps = DepsWithIndex<BookIndexPorts>;
 
 /** Per-book diagnostics surfaced to structuredContent — the re-index triage record (#87). */
 export interface BookDetail {
@@ -88,7 +97,7 @@ export type BookPhase = { phase: "extract" } | { phase: "chunk" } | { phase: "em
  * build meets an embedded book. Throws on a per-book failure — the caller collects it;
  * nothing has been written at that point.
  */
-export async function prepareBook(deps: ToolDeps, bookId: number, opts: PrepareOptions): Promise<PrepareResult> {
+export async function prepareBook(deps: IndexBookDeps, bookId: number, opts: PrepareOptions): Promise<PrepareResult> {
   const { libraryId, library, keywordOnly, tokenBudgeted } = opts;
   let mark = Date.now();
   const lap = (): number => {
@@ -210,7 +219,7 @@ export async function prepareBook(deps: ToolDeps, bookId: number, opts: PrepareO
  * book's previous rows are intact. Callers must serialize it (single writer). Returns
  * undefined when a keyword-only write was refused because the book already has embeddings.
  */
-export function commitBook(deps: ToolDeps, libraryId: string, book: PreparedBook): BookDetail | undefined {
+export function commitBook(deps: IndexBookDeps, libraryId: string, book: PreparedBook): BookDetail | undefined {
   const outcome = deps.index.replaceBook(libraryId, book.meta, book.chunks, book.figures, {
     preserveEmbedded: book.keywordOnly,
   });
@@ -239,7 +248,7 @@ export function commitBook(deps: ToolDeps, libraryId: string, book: PreparedBook
  * "[title › authors]" prefix — accepted; force re-embeds. flagsOnly demands this path.
  */
 function refreshOutcome(
-  deps: ToolDeps,
+  deps: IndexBookDeps,
   opts: PrepareOptions,
   meta: BookMeta,
   extracted: ExtractedText,
@@ -268,7 +277,7 @@ function refreshOutcome(
 const TEXT_CHANGED = "text changed since indexing — needs a full re-index, not a flag backfill";
 
 /** The write for an unchanged-text book (#244/#269): metadata + flags in place, vectors kept. */
-export function commitRefresh(deps: ToolDeps, libraryId: string, book: RefreshedBook): void {
+export function commitRefresh(deps: IndexBookDeps, libraryId: string, book: RefreshedBook): void {
   // Another writer re-chunked the book between prepare and commit: the boundary no longer
   // applies to its rows. Nothing was written — report it like a changed-text book.
   if (!deps.index.refreshBookMeta(libraryId, book.meta, { frontMatterEnd: book.frontMatterEnd, spans: book.spans })) {
@@ -286,7 +295,7 @@ export function commitRefresh(deps: ToolDeps, libraryId: string, book: Refreshed
  * only source/dims are omitted (never guessed) — and figure indexing never fails the book.
  */
 async function figureRows(
-  deps: ToolDeps,
+  deps: BaseDeps,
   invArgs: { bookId: number; format: string; downloadUrl: string; cacheKey: string; signal?: AbortSignal },
   markers: FigureMarker[],
 ): Promise<IndexedFigure[]> {

@@ -4,7 +4,7 @@
 // only server.ts crosses the seam, DESIGN §7).
 
 import type { z } from "zod";
-import type { ToolDeps } from "./deps.js";
+import type { BaseDeps, ToolDeps } from "./deps.js";
 
 export interface TextBlock {
   type: "text";
@@ -67,7 +67,11 @@ export interface ToolContext {
  * A plain, SDK-free tool definition. server.ts maps each onto registerTool and calls
  * `.disable()` on `write` tools when the write gate is off (DESIGN §4).
  */
-export interface ToolDescriptor<Shape extends z.ZodRawShape = z.ZodRawShape> {
+/**
+ * Authoring-time tool shape. `D` is the deps slice the handler reads (#272): BaseDeps by default,
+ * or a `DepsWithIndex<…>` for index consumers. Any D the full ToolDeps satisfies is accepted.
+ */
+export interface ToolDescriptor<Shape extends z.ZodRawShape = z.ZodRawShape, D = BaseDeps> {
   /** Template-literal enforces the `calibre_` namespace (DESIGN §2). */
   name: `calibre_${string}`;
   title: string;
@@ -85,7 +89,7 @@ export interface ToolDescriptor<Shape extends z.ZodRawShape = z.ZodRawShape> {
    */
   localWrite?: boolean;
   /** `ctx` is always supplied by server.ts; optional so direct (test) calls can omit it. */
-  handler: (args: z.infer<z.ZodObject<Shape>>, deps: ToolDeps, ctx?: ToolContext) => Promise<ToolResult>;
+  handler: (args: z.infer<z.ZodObject<Shape>>, deps: D, ctx?: ToolContext) => Promise<ToolResult>;
 }
 
 /**
@@ -105,3 +109,11 @@ export interface AnyToolDescriptor {
   localWrite?: boolean;
   handler: (args: unknown, deps: ToolDeps, ctx?: ToolContext) => Promise<ToolResult>;
 }
+
+/**
+ * A defined tool: registry-compatible (ToolDeps is assignable to D), while direct calls — tests —
+ * see the narrow D, so their fakes supply only the deps the handler reads (#272).
+ */
+export type DefinedTool<D> = Omit<AnyToolDescriptor, "handler"> & {
+  handler: (args: unknown, deps: D, ctx?: ToolContext) => Promise<ToolResult>;
+};

@@ -3,14 +3,15 @@
 
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
-import { allTools } from "../../src/tools/registry.js";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import { VERSION } from "../../src/version.js";
 import { EMBED_DIM, INDEX_VERSION, MODEL_ID } from "../../src/semantic/model.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
+import type { IndexMeta } from "../../src/semantic/store/index.js";
+import type { StatusIndex } from "../../src/semantic/status.js";
+import { type PingDeps, pingTool as ping } from "../../src/tools/calibre_ping.js";
 
-const ping = allTools.find((t) => t.name === "calibre_ping")!;
 const sdkVersion = (
   JSON.parse(readFileSync("node_modules/@modelcontextprotocol/server/package.json", "utf8")) as { version: string }
 ).version;
@@ -24,10 +25,10 @@ interface Over {
   libraryInfo?: () => Promise<unknown>;
   search?: (p: { library?: string }) => Promise<{ total: number }>;
   stats?: (id: string) => { books: number; chunks: number; figures: number };
-  meta?: (id: string) => unknown;
+  meta?: (id: string) => IndexMeta | undefined;
 }
 
-function deps(o: Over = {}): ToolDeps {
+function deps(o: Over = {}): PingDeps {
   return {
     config: loadConfig({
       CALIBRE_MCP_SERVER_URL: "http://127.0.0.1:9",
@@ -51,7 +52,7 @@ function deps(o: Over = {}): ToolDeps {
       stats: o.stats ?? ((id: string) => ({ books: BOOKS[id] ?? 0, chunks: 10, figures: 0 })),
       vectorCount: () => 1,
       booksMissingVectors: () => 0,
-    } as unknown as ToolDeps["index"],
+    } satisfies StatusIndex,
     log,
   };
 }

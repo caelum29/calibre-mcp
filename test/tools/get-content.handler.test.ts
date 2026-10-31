@@ -4,7 +4,7 @@ import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
 import type { ExtractedText } from "../../src/calibre/extract.js";
-import type { ToolDeps } from "../../src/tools/deps.js";
+import type { BaseDeps, ToolDeps } from "../../src/tools/deps.js";
 
 const baseBook: Book = {
   id: 1,
@@ -23,7 +23,7 @@ interface FakeOpts {
   getText?: () => Promise<ExtractedText>;
 }
 
-function deps(opts: FakeOpts = {}): ToolDeps {
+function deps(opts: FakeOpts = {}): BaseDeps {
   const content = {
     getBook: async (): Promise<Book> => ({ ...baseBook, ...opts.book }),
     resolveLibraryId: async () => "Programming_Books",
@@ -49,7 +49,6 @@ function deps(opts: FakeOpts = {}): ToolDeps {
     extractor: extractor satisfies Partial<ToolDeps["extractor"]> as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],
-    index: {} as ToolDeps["index"],
     log,
   };
 }

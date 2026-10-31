@@ -13,6 +13,8 @@ import type { SearchPage } from "../../src/domain/search.js";
 import type { LibraryHit } from "../../src/semantic/store/index.js";
 import { fakeFts } from "./fake-fts.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
+import type { SearchDeps, SearchIndex } from "../../src/tools/calibre_search.js";
+import type { SemanticDeps, SemanticIndex } from "../../src/tools/calibre_semantic_search.js";
 
 const book = (id: number): Book => ({
   id,
@@ -34,7 +36,7 @@ const page: SearchPage = {
   libraryId: "Programming_Books",
 };
 
-function metaSearchDeps(cache: BoardCache): ToolDeps {
+function metaSearchDeps(cache: BoardCache): SearchDeps {
   return {
     config: loadConfig({}),
     content: {
@@ -46,7 +48,7 @@ function metaSearchDeps(cache: BoardCache): ToolDeps {
     extractor: {} as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],
-    index: {} as ToolDeps["index"],
+    index: { hasIndex: () => false, isBookIndexed: () => false } satisfies SearchIndex,
     boardCache: cache,
     log,
   };
@@ -63,7 +65,7 @@ const libHit = (bookId: number): LibraryHit => ({
   body: "body",
 });
 
-function semanticDeps(cache: BoardCache): ToolDeps {
+function semanticDeps(cache: BoardCache): SemanticDeps {
   return {
     config: loadConfig({}),
     content: {
@@ -81,7 +83,15 @@ function semanticDeps(cache: BoardCache): ToolDeps {
       hasVectors: () => true,
       searchLibrary: () => [libHit(1), libHit(2)],
       searchLibraryFts: () => [],
-    } as unknown as ToolDeps["index"],
+      isBookIndexed: () => true,
+      searchBook: () => [],
+      searchBookFts: () => [],
+      chunkAt: () => undefined,
+      searchFigures: () => [],
+      searchFiguresFts: () => [],
+      figureCount: () => 0,
+      figuresInSpan: () => [],
+    } satisfies SemanticIndex,
     boardCache: cache,
     log,
   };

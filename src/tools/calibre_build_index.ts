@@ -30,9 +30,10 @@ import {
   stillRunningResult,
   type BuildSelector,
 } from "./build-index-results.js";
-import type { PruneCounts } from "../semantic/store/index.js";
+import type { IndexFreshness, IndexWriter, PruneCounts } from "../semantic/store/index.js";
+import type { BookIndexPorts } from "../app/index-book.js";
 import type { ToolContext, ToolResult } from "./types.js";
-import type { ToolDeps } from "./deps.js";
+import type { BaseDeps, DepsWithIndex } from "./deps.js";
 import { IndexBuildRegistry, type BuildRun } from "../semantic/index-builds.js";
 import { log } from "../logging.js";
 import { runBookPipeline } from "../semantic/book-pipeline.js";
@@ -56,6 +57,13 @@ const PROGRESS_EVERY = 25;
  * since each thread loads its own model copy (~0.9 GB) inside the long-lived server process.
  */
 const BUILD_CONCURRENCY = 1;
+
+/** calibre_build_index's index ports (#272): the per-book trip plus the orphan prune. */
+export type BuildIndexPorts = BookIndexPorts &
+  Pick<IndexFreshness, "indexedBookIds"> &
+  Pick<IndexWriter, "deleteBooks">;
+/** calibre_build_index's deps: BaseDeps plus BuildIndexPorts. */
+export type BuildIndexDeps = DepsWithIndex<BuildIndexPorts>;
 
 /** The process-wide registry; deps.indexBuilds overrides it only in tests. */
 const sharedBuilds = new IndexBuildRegistry<ToolResult>({ log });
@@ -131,7 +139,7 @@ export const buildIndexTool = defineTool({
   // readOnlyHint:false but NOT write-gated: this writes to the server's own index dir, not the
   // user's library, so the library write gate doesn't apply. localWrite marks that carve-out.
   localWrite: true,
-  handler: async (args, deps, ctx) => {
+  handler: async (args, deps: BuildIndexDeps, ctx) => {
     const signal = ctx?.signal;
     if (args.bookId === undefined && !args.ids?.length && !args.query) {
       return toolError("invalid_input", "Specify bookId, ids, or query — full-library indexing is deferred.");
@@ -175,7 +183,7 @@ type BuildArgs = BuildSelector & { library?: string | undefined };
  */
 async function runBuild(
   args: BuildArgs,
-  deps: ToolDeps,
+  deps: BuildIndexDeps,
   ctx: ToolContext | undefined,
   libraryId: string,
   run: BuildRun,
@@ -446,7 +454,7 @@ async function runBuild(
  * endpoint by offset. Feeds both the query selector and the orphan-prune keep-set, so it must
  * be complete — a partial walk would under-index (#138) or delete live rows (prune).
  */
-async function allMatchingIds(deps: ToolDeps, query: string, library: string | undefined): Promise<Set<number>> {
+async function allMatchingIds(deps: BaseDeps, query: string, library: string | undefined): Promise<Set<number>> {
   const ids = new Set<number>();
   let offset = 0;
   for (let page = 0; page < ID_MAX_PAGES; page++) {

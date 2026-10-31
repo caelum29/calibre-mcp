@@ -17,7 +17,7 @@
 import { z } from "zod";
 import { type RankedHits, type RetrievalMode, retrieve } from "../semantic/retrieve.js";
 import { SNIPPET_CHARS } from "../semantic/snippet.js";
-import type { LibraryHit } from "../semantic/store/index.js";
+import type { ChunkIndex, FigureIndex, IndexFreshness, LibraryHit } from "../semantic/store/index.js";
 import { type FilterResolution, honestyLines, restrictSet, resolveFilter } from "../app/bundles.js";
 import { boardMeta } from "./board-meta.js";
 import { BookId, CoercedBool, limitParam } from "./coerce.js";
@@ -27,7 +27,7 @@ import { resolveNumericId } from "./resolve-id.js";
 import { INSTALL_TRANSFORMERS } from "./remediation.js";
 import { fence, toolError, toolOk } from "./result.js";
 import type { ContentBlock, ToolResult } from "./types.js";
-import type { ToolDeps } from "./deps.js";
+import type { BaseDeps, DepsWithIndex } from "./deps.js";
 import { errorCodeFor } from "../domain/error-codes.js";
 
 export const semanticSearchTool = defineTool({
@@ -124,7 +124,7 @@ export const semanticSearchTool = defineTool({
       .optional(),
   },
   annotations: { readOnlyHint: true, openWorldHint: false },
-  handler: async (args, deps) => {
+  handler: async (args, deps: SemanticDeps) => {
     try {
       const libraryId = await deps.content.resolveLibraryId(args.library);
 
@@ -248,6 +248,16 @@ function filterFields(scope: FilterCtx): { filter?: string; exclusionsApplied?: 
   };
 }
 
+/**
+ * The index ports calibre_semantic_search reads (#272): presence/provenance checks plus chunk and
+ * figure retrieval — never writes.
+ */
+export type SemanticIndex = Pick<IndexFreshness, "hasIndex" | "indexMeta" | "hasVectors" | "isBookIndexed"> &
+  ChunkIndex &
+  FigureIndex;
+/** calibre_semantic_search's deps: BaseDeps plus the SemanticIndex port. */
+export type SemanticDeps = DepsWithIndex<SemanticIndex>;
+
 /** Semantic-capability verdict for the resolved library's index, spread into every success. */
 interface SemStatus {
   semanticAvailable: boolean;
@@ -256,7 +266,7 @@ interface SemStatus {
 
 /** Board payload for a ranked book page (issue #22) — library scope only. */
 function semanticBoardMeta(
-  deps: ToolDeps,
+  deps: BaseDeps,
   args: Args,
   libraryId: string,
   ranked: RankedHits<LibraryHit>["hits"],
@@ -283,7 +293,7 @@ function semanticBoardMeta(
 /** scope=library — rank books; emit resource_links + fenced snippets. */
 async function libraryScope(
   args: Args,
-  deps: ToolDeps,
+  deps: SemanticDeps,
   libraryId: string,
   sem: SemStatus,
   degradeNote?: string,
@@ -369,7 +379,7 @@ async function libraryScope(
 /** scope=book — rank passages within one book; emit fenced excerpts with char spans. */
 async function bookScope(
   args: Args,
-  deps: ToolDeps,
+  deps: SemanticDeps,
   libraryId: string,
   bookId: number,
   sem: SemStatus,
@@ -445,7 +455,7 @@ async function bookScope(
  */
 async function figuresTarget(
   args: Args,
-  deps: ToolDeps,
+  deps: SemanticDeps,
   libraryId: string,
   bookId: number | undefined,
   sem: SemStatus,
