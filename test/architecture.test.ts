@@ -14,7 +14,9 @@ const SRC = join(ROOT, "src");
 const SDK_ALLOWLIST = new Set(["src/server.ts", "src/run-stdio.ts"]);
 
 // Static `import … from`, side-effect `import "…"`, `export … from`, dynamic `import()`, `require()`.
-const SDK_IMPORT = /(?:\bfrom\s*|\bimport\s*\(?\s*|\brequire\s*\(\s*)["'`]@modelcontextprotocol\/sdk(?:[/"'`])/;
+// v1 ships one package (`sdk`); v2 splits it into `server` / `client` / `core` (#123).
+const SDK_IMPORT =
+  /(?:\bfrom\s*|\bimport\s*\(?\s*|\brequire\s*\(\s*)["'`]@modelcontextprotocol\/(?:sdk|server|client|core)(?:[/"'`])/;
 
 function listTsFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true, recursive: true })
@@ -33,7 +35,7 @@ function findSdkImportViolations(files: ReadonlyArray<{ path: string; source: st
 }
 
 describe("SDK-free seam", () => {
-  it("only server.ts and run-stdio.ts import @modelcontextprotocol/sdk", () => {
+  it("only server.ts and run-stdio.ts import the MCP SDK (v1 sdk or v2 server/client/core)", () => {
     const files = listTsFiles(SRC).map((abs) => ({
       path: relative(ROOT, abs).split("\\").join("/"),
       source: readFileSync(abs, "utf8"),
@@ -53,7 +55,12 @@ describe("SDK-free seam", () => {
       [`const m = require("${sdk}");`, true],
       [`// handlers never import ${sdk}`, false],
       [`/* see "${sdk}/types.js" */`, false],
+      [`import { McpServer } from "@modelcontextprotocol/server";`, true],
+      [`import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";`, true],
+      [`import type { CallToolResult } from "@modelcontextprotocol/core";`, true],
+      [`import { Client } from "@modelcontextprotocol/client";`, true],
       [`import { x } from "@modelcontextprotocol/ext-apps";`, false],
+      [`import { x } from "@modelcontextprotocol/servers-extra";`, false],
     ];
     for (const [source, violates] of cases) {
       expect(findSdkImportViolations([{ path: "src/tools/x.ts", source }]), source).toEqual(

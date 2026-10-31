@@ -35,8 +35,8 @@ if (!existsSync(path.join(root, "dist", "server.js"))) {
   process.exit(1);
 }
 
-const { Client } = await import("@modelcontextprotocol/sdk/client/index.js");
-const { InMemoryTransport } = await import("@modelcontextprotocol/sdk/inMemory.js");
+const { Client } = await import("@modelcontextprotocol/client");
+const { InMemoryTransport } = await import("@modelcontextprotocol/server");
 const { buildServer } = await import("../dist/server.js");
 const { applyToolsListCompat } = await import("../dist/wire-compat.js");
 

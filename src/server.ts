@@ -4,9 +4,8 @@
 
 import { SERVER_INSTRUCTIONS } from "./instructions.js";
 import { z } from "zod";
-import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
-import type { CallToolResult, ServerNotification, ServerRequest } from "@modelcontextprotocol/sdk/types.js";
+import { McpServer, ResourceTemplate } from "@modelcontextprotocol/server";
+import type { CallToolResult, ServerContext } from "@modelcontextprotocol/server";
 import { registerAppTool, registerAppResource, RESOURCE_MIME_TYPE } from "@modelcontextprotocol/ext-apps/server";
 import type { Config } from "./config.js";
 import { loadRuntimeConfig } from "./runtime-config.js";
@@ -102,11 +101,11 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
     log.info("client initialized", { client: c.name, clientVersion: c.version, serverVersion: VERSION });
   };
   server.server.oninitialized = tagClient;
-  type Extra = RequestHandlerExtra<ServerRequest, ServerNotification>;
+  type Extra = ServerContext;
   // Every tool call runs inside one logged call context.
   const logged = (tool: string, args: unknown, extra: Extra, run: () => Promise<CallToolResult>) => {
     tagClient();
-    return withCallLog(log, { tool, args, rpcId: extra.requestId }, run);
+    return withCallLog(log, { tool, args, rpcId: extra.mcpReq.id }, run);
   };
 
   // Fail loud at boot if any non-read-only tool is unclassified (no write / localWrite).
@@ -118,8 +117,10 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
     const toolConfig = {
       title: t.title,
       description: t.description,
-      inputSchema: t.inputSchema,
-      outputSchema: t.outputSchema,
+      // v2 takes Standard Schemas, not raw Zod shapes: wrap the descriptor's shapes here (the
+      // seam) so tool modules keep their SDK-agnostic raw shapes.
+      inputSchema: z.object(t.inputSchema),
+      outputSchema: t.outputSchema && z.object(t.outputSchema),
       annotations: t.annotations,
     };
     // ToolResult is structurally a CallToolResult minus the SDK's loose index signature;
@@ -171,7 +172,7 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
       {
         title: "Widget probe log",
         description: "Debug-only sink for widget probe lines (CALIBRE_MCP_WIDGET_DEBUG).",
-        inputSchema: { line: z.string().max(4000) },
+        inputSchema: z.object({ line: z.string().max(4000) }),
         annotations: { readOnlyHint: true },
         _meta: { ui: { visibility: ["app"] } },
       },
@@ -213,14 +214,15 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
  * cancellation signal as-is, and a throttled monotonic progress callback only when the
  * client sent a progressToken (otherwise there is nobody to notify).
  */
-function toolContext(extra: RequestHandlerExtra<ServerRequest, ServerNotification>): ToolContext {
-  const progressToken = extra._meta?.progressToken;
-  if (progressToken === undefined) return { signal: extra.signal };
+function toolContext(extra: ServerContext): ToolContext {
+  const progressToken = extra.mcpReq._meta?.progressToken;
+  if (progressToken === undefined) return { signal: extra.mcpReq.signal };
   return {
-    signal: extra.signal,
+    signal: extra.mcpReq.signal,
     progress: createProgressReporter({
       progressToken,
-      send: (params) => extra.sendNotification({ method: "notifications/progress", params }),
+      // spread: v2's notify params carry an index signature our ProgressNotification lacks
+      send: (params) => extra.mcpReq.notify({ method: "notifications/progress", params: { ...params } }),
       onError: (err) => log.debug("progress notification failed", { msg: String(err) }),
     }),
   };

@@ -1,6 +1,7 @@
 // SDK-free contracts at the registration seam. These structurally mirror the SDK's
-// CallToolResult / ToolAnnotations so tool handlers never import @modelcontextprotocol/sdk
-// (Clean Architecture — only server.ts crosses the seam, DESIGN §7).
+// CallToolResult / ToolAnnotations so tool handlers never import the MCP SDK — kept
+// hand-written, not re-exported from @modelcontextprotocol/core (#121; Clean Architecture —
+// only server.ts crosses the seam, DESIGN §7).
 
 import type { z } from "zod";
 import type { Config } from "../config.js";

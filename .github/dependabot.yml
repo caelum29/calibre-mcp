@@ -17,7 +17,12 @@ updates:
       interval: weekly
     open-pull-requests-limit: 5
     ignore:
-      # ext-apps 2.x targets SDK-v2 callbacks (ServerContext); we stay on SDK 1.x until the v2 migration
+      # An MCP SDK major is a migration (codemod + hand edits + live host checks, #123), not a
+      # routine bump; ext-apps majors track SDK majors, so they move with that migration too
+      - dependency-name: "@modelcontextprotocol/server"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@modelcontextprotocol/client"
+        update-types: ["version-update:semver-major"]
       - dependency-name: "@modelcontextprotocol/ext-apps"
         update-types: ["version-update:semver-major"]
       # TS 7 (native compiler) is a toolchain migration, not a routine bump
@@ -27,6 +32,11 @@ updates:
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
     groups:
+      # server (prod) and client (dev) ship from one release train; bump them in one PR so a
+      # test client never runs ahead of the server it tests
+      mcp-sdk:
+        patterns: ["@modelcontextprotocol/server", "@modelcontextprotocol/client"]
+        update-types: [minor, patch]
       dev-dependencies:
         dependency-type: development
         update-types: [minor, patch]

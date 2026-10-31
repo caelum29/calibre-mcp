@@ -13,9 +13,6 @@
         "readOnlyHint": false
       },
       "description": "Import a local ebook file (EPUB/PDF/MOBI/…) into the library. The file must live under an allowed import root and be reachable by the Calibre server process. Flags possible duplicates (advisory). Requires writes to be enabled.",
-      "execution": {
-        "taskSupport": "forbidden"
-      },
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {
@@ -93,9 +90,6 @@
         "readOnlyHint": true
       },
       "description": "Internal endpoint for the in-chat cover-board widget. Returns the cached payload of a recent search. Do not call as the model — search results already contain everything this returns.",
-      "execution": {
-        "taskSupport": "forbidden"
-      },
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {
@@ -183,9 +177,6 @@
         "readOnlyHint": false
       },
       "description": "Build the semantic index for specific books (required: bookId, ids, or query — full-library indexing is deferred). A query selects ALL matching books (no 100-book cap); a call still working after ~45 s returns a \"still running\" status (not an error) while the build keeps committing in the background — re-run the same call to get its result; only one build runs per library at a time, and up-to-date books are skipped. Extracts, chunks, and embeds each book. Set keywordOnly=true (or when the embedding model is absent, it happens automatically) to build a keyword-only index that powers mode:\"keyword\" search with zero ML dependencies. Re-run after adding books; use force to re-index unchanged ones. Set prune=true to also drop index entries for books that no longer exist in the library (removals/merges leave searchable orphans behind).",
-      "execution": {
-        "taskSupport": "forbidden"
-      },
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {
@@ -373,9 +364,6 @@
         "readOnlyHint": false
       },
       "description": "Apply the same metadata changes (tags, series, publisher, etc.) to a set of books selected by ids, a search query, or filter (a bundle name). Preview-first: returns the per-book diff without writing unless preview is set false. A book set is required (never all books). Requires writes to be enabled.",
-      "execution": {
-        "taskSupport": "forbidden"
-      },
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {
@@ -543,9 +531,6 @@
         "readOnlyHint": false
       },
       "description": "Offline scan of a book's own text for a checksum-valid ISBN → sets identifiers:isbn (no network; for online lookup use calibre_recover_metadata). Preview-first: apply=false reports only, merges into existing identifiers. Requires writes enabled.",
-      "execution": {
-        "taskSupport": "forbidden"
-      },
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {
@@ -614,9 +599,6 @@
         "readOnlyHint": true
       },
       "description": "Find probable duplicate books. mode=identical (exact title+authors) or similar (fuzzy) group the library (or ids/query/filter subset — filter takes a bundle name) with a merge-safety score; mode=compare diffs 2+ ids field-by-field. Read-only — never merges.",
-      "execution": {
-        "taskSupport": "forbidden"
-      },
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {
@@ -780,9 +762,6 @@
         "readOnlyHint": true
       },
       "description": "Get full metadata (authors, ISBN, formats, comments, cover) for one book by its id or uuid (id and bookId are interchangeable — pass the bookId from a search result). Set include_cover=true only when the cover image itself must be inspected.",
-      "execution": {
-        "taskSupport": "forbidden"
-      },
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {
@@ -920,9 +899,6 @@
         "readOnlyHint": true
       },
       "description": "Extract a book's text as a capped, fenced excerpt; pass the returned nextCursor token verbatim to walk the whole book, or jump to a char position with offset (e.g. a search passage's charStart). Set structure=true for a chapter map with per-chapter cursors. To find text inside a book, use calibre_search scope=book.",
-      "execution": {
-        "taskSupport": "forbidden"
-      },
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {
@@ -1068,9 +1044,6 @@
         "readOnlyHint": true
       },
       "description": "List a book's figures — images the text references, identified by caption (Figure 1-2 / Рис. 3.1) — with page + caption per figure, then fetch chosen ones as images via indexes (≤3 per call). Captions let you pick figures before spending image tokens. In MCP Apps hosts the fetched figures also render for the user in an in-chat viewer, so you can point at them by figure number — but describe only what the pixels you received actually show.",
-      "execution": {
-        "taskSupport": "forbidden"
-      },
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {
@@ -1141,9 +1114,6 @@
         "readOnlyHint": true
       },
       "description": "Browse library categories (Authors, Tags, Series, Languages, Publisher). No field → list the categories; with a field → its values + counts, filterable via a valueFilter regex (case-insensitive by default; a leading inline flag like `(?i)` is accepted).",
-      "execution": {
-        "taskSupport": "forbidden"
-      },
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {
@@ -1223,9 +1193,6 @@
         "readOnlyHint": true
       },
       "description": "List the Calibre libraries available on the Content Server and which one is the default. Call this first to discover valid library names.",
-      "execution": {
-        "taskSupport": "forbidden"
-      },
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {},
@@ -1273,9 +1240,6 @@
         "readOnlyHint": false
       },
       "description": "List, create, update or delete Bundles — named topical filters backed by Calibre saved searches (e.g. a 'rust' bundle scoping searches to Rust books). A name starting with '-' is an exclusion marker. Also lists virtual libraries, which are read-only here. Preview-first: create/update report the match count until confirm=true. Requires writes to be enabled.",
-      "execution": {
-        "taskSupport": "forbidden"
-      },
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {
@@ -1365,9 +1329,6 @@
         "readOnlyHint": false
       },
       "description": "Merge duplicate book records: moves formats from source books into a target (target's copy wins conflicts), merges metadata per Calibre's rules, then trashes the sources. mode=safe keeps sources; mode=formatsOnly moves formats only. Dry-run unless confirm=true. Requires writes to be enabled.",
-      "execution": {
-        "taskSupport": "forbidden"
-      },
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {
@@ -1506,9 +1467,6 @@
         "readOnlyHint": true
       },
       "description": "Internal endpoint for the in-chat widgets' Open button. Launches a book in the local Calibre viewer via the calibre:// scheme. Do not call as the model — use calibre_get_book to show a book instead.",
-      "execution": {
-        "taskSupport": "forbidden"
-      },
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {
@@ -1558,9 +1516,6 @@
         "readOnlyHint": true
       },
       "description": "Health check: confirms the MCP server can reach the running Calibre Content Server via calibredb, and reports semantic-search status (embedding model, dependency, index vector count). Returns library categories on success, plus the server's recent errors and its log file path for self-diagnosis.",
-      "execution": {
-        "taskSupport": "forbidden"
-      },
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {},
@@ -1575,9 +1530,6 @@
         "readOnlyHint": true
       },
       "description": "Scan books for metadata problems: missing fields, raw-filename titles, invalid ISBNs, author-sort mismatches, series gaps. Defaults to the whole library; narrow with ids/query/filter (a bundle name) or specific checks. Read-only.",
-      "execution": {
-        "taskSupport": "forbidden"
-      },
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {
@@ -1710,9 +1662,6 @@
         "readOnlyHint": true
       },
       "description": "Propose real metadata for a book with a missing/raw-filename title via online provider lookup (ISBN from its identifiers or text, else title/author) on Open Library and Google Books. Preview only — returns a changes object for calibre_update_book; never writes.",
-      "execution": {
-        "taskSupport": "forbidden"
-      },
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {
@@ -1802,9 +1751,6 @@
         "readOnlyHint": false
       },
       "description": "Remove books from the library. Removed books go to Calibre's Trash and can be restored from the Calibre GUI, so this is recoverable. Two-step: the first call is a dry-run listing what would be removed; re-run with confirm=true to proceed. Requires writes to be enabled.",
-      "execution": {
-        "taskSupport": "forbidden"
-      },
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {
@@ -1884,9 +1830,6 @@
         "readOnlyHint": true
       },
       "description": "Find books by exact title, author, ISBN, tag, or Calibre query syntax (mode=meta), or by full text (mode=fts). scope=book returns short keyword snippets from inside one book; first hits often land in TOC/front matter — for definitional or topic questions within a book prefer calibre_semantic_search scope=book (ranked passages with char offsets). Use calibre_semantic_search for meaning/topic queries. For \"how many\" questions use countOnly=true (returns only the count). filter accepts a bundle name to scope the search (list bundles via calibre_manage_bundles).",
-      "execution": {
-        "taskSupport": "forbidden"
-      },
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {
@@ -2048,9 +1991,6 @@
         "readOnlyHint": true
       },
       "description": "Meaning-based search over the local index. scope=library ranks books; scope=book (needs bookId) ranks passages within one book. target=figures searches figure captions instead of text — use when the user asks for a diagram/chart/schema; hits point at calibre_get_figures for the pixels. mode=hybrid (default) fuses semantic + keyword matches; mode=vector is semantic-only; mode=keyword is exact keyword/FTS (no model at query time). All modes need an index built by calibre_build_index. filter accepts a bundle name to scope library searches (list bundles via calibre_manage_bundles). Model inference is serialized: prefer one call at a time — parallel calls queue, and past a few the extras skip the rerank.",
-      "execution": {
-        "taskSupport": "forbidden"
-      },
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {
@@ -2329,9 +2269,6 @@
         "readOnlyHint": false
       },
       "description": "Replace metadata fields on one book (title, authors, tags, series, rating, identifiers, comments, or any #custom column). Omitted fields are untouched. Requires writes to be enabled.",
-      "execution": {
-        "taskSupport": "forbidden"
-      },
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {

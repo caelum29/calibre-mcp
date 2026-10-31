@@ -7,8 +7,8 @@ import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
 import { PassThrough } from "node:stream";
 import { fileURLToPath } from "node:url";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
+import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
+import type { JSONRPCMessage } from "@modelcontextprotocol/server";
 import { installWireCompat } from "../src/wire-compat.js";
 
 interface WireTool {

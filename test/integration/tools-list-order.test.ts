@@ -4,8 +4,7 @@
 
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
 import { buildServer } from "../../src/server.js";
 
 // The documented order: src/tools/registry.ts allTools, then calibre_ping (registered last).

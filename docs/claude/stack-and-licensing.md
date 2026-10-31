@@ -4,7 +4,8 @@
 
 ## Locked stack choices (versions live in `package.json`)
 
-- **MCP SDK v1** — do **not** wait for SDK v2; the SDK-free seam in CLAUDE.md isolates the migration.
+- **MCP SDK v2** (`@modelcontextprotocol/server`; `client` is dev-only, for tests/scripts) + `ext-apps` 2.x
+  (#123). The SDK-free seam in CLAUDE.md keeps SDK types out of tool/domain code.
 - **Semantic search:** `multilingual-e5-small` (LOCKED — `docs/dev/DECISIONS.md` D-001/D-010), in-memory
   brute-force cosine on `node:sqlite` BLOBs + hybrid FTS5/RRF; full pipeline in `docs/dev/SEMANTIC-SEARCH-design.md`.
 - Ship via **npx** + **MCPB** bundle for Claude Desktop (release recipe → `docs/dev/DECISIONS.md` D-006).
