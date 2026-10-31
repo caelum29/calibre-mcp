@@ -271,3 +271,97 @@ describe("calibre_build_index soft deadline (#284)", () => {
     expect(ex.calls).toEqual([1]);
   });
 });
+
+/**
+ * Extraction scripted per book: listed `fail` ids reject at once, `gate` ids block until
+ * `release()`, every other id extracts at once — so a build can commit, fail and then stall.
+ */
+function scriptedExtractor(script: { fail?: Record<number, string>; gate: number[] }): Gated {
+  const g = gatedExtractor();
+  return {
+    ...g,
+    getText: async (a: { bookId: number; signal?: AbortSignal }): Promise<ExtractedText> => {
+      const reason = script.fail?.[a.bookId];
+      if (reason !== undefined) {
+        g.calls.push(a.bookId);
+        throw new Error(reason);
+      }
+      if (script.gate.includes(a.bookId)) return g.getText(a);
+      g.calls.push(a.bookId);
+      return extracted();
+    },
+  };
+}
+
+describe("calibre_build_index still-running messages (#284 live check)", () => {
+  it("should_count_failures_apart_from_indexed_books_and_list_them_in_the_progress_text", async () => {
+    // Live run: 6/11 "finished" came with only 5 committed ids — the 6th had failed.
+    const ex = scriptedExtractor({ fail: { 12: "no extractable text (pdf)" }, gate: [11] });
+    const d = deps(ex, 300);
+
+    const r = (await within(
+      buildIndexTool.handler(args({ bookId: undefined, ids: [7, 10, 8, 6, 9, 12, 11] }), d, ctx()),
+    )) as ToolResult;
+
+    expect(r.structuredContent).toMatchObject({ stillRunning: true, booksDone: 6, booksIndexed: 5 });
+    expect(text(r)).toContain("6/7 processed (5 indexed, 1 failed)");
+    expect(text(r)).toContain("Committed so far: ids 7, 10, 8, 6, 9.");
+    expect(text(r)).toContain("Failed so far: book 12: no extractable text (pdf).");
+    expect(r.structuredContent?.failures).toEqual(["book 12: no extractable text (pdf)"]);
+  });
+
+  it("should_say_a_refused_book_is_already_committed_and_covered_when_it_is_part_of_the_running_build", async () => {
+    // Live run: bookId 9 was in "Committed so far", yet the refusal said none of it was indexed.
+    const ex = scriptedExtractor({ gate: [11] });
+    const d = deps(ex, 300);
+    await within(buildIndexTool.handler(args({ bookId: undefined, ids: [7, 9, 11] }), d, ctx()));
+
+    const r = (await within(buildIndexTool.handler(args({ bookId: 9 }), d, ctx()))) as ToolResult;
+
+    expect(r.isError).toBeFalsy();
+    expect(r.structuredContent).toMatchObject({ stillRunning: true, runningBuild: "other" });
+    expect(text(r)).toContain("1 of this call's 1 book(s) is already committed by the running build (id 9).");
+    expect(text(r)).toContain("will be covered when that build finishes");
+    expect(text(r)).not.toContain("none of this call's books have been indexed yet");
+  });
+
+  it("should_name_only_the_committed_overlap_when_the_refused_selection_is_not_inside_the_running_build", async () => {
+    const ex = scriptedExtractor({ gate: [11] });
+    const d = deps(ex, 300);
+    await within(buildIndexTool.handler(args({ bookId: undefined, ids: [7, 9, 11] }), d, ctx()));
+
+    const r = (await within(
+      buildIndexTool.handler(args({ bookId: undefined, ids: [9, 4, 5] }), d, ctx()),
+    )) as ToolResult;
+
+    expect(text(r)).toContain("1 of this call's 3 book(s) is already committed by the running build (id 9).");
+    expect(text(r)).not.toContain("will be covered when that build finishes");
+    expect(text(r)).toContain("Re-run this call once that build finishes.");
+  });
+
+  it("should_say_a_not_yet_committed_selection_inside_the_running_build_will_be_covered", async () => {
+    const ex = scriptedExtractor({ gate: [11] });
+    const d = deps(ex, 300);
+    await within(buildIndexTool.handler(args({ bookId: undefined, ids: [7, 11, 13] }), d, ctx()));
+
+    const r = (await within(
+      buildIndexTool.handler(args({ bookId: undefined, ids: [13, 11] }), d, ctx()),
+    )) as ToolResult;
+
+    expect(text(r)).toContain("None of this call's 2 book(s) is committed yet.");
+    expect(text(r)).toContain("will be covered when that build finishes");
+  });
+
+  it("should_not_claim_anything_about_a_query_selection_it_did_not_resolve", async () => {
+    const ex = scriptedExtractor({ gate: [11] });
+    const d = deps(ex, 300);
+    await within(buildIndexTool.handler(args({ bookId: undefined, ids: [7, 11] }), d, ctx()));
+
+    const r = (await within(
+      buildIndexTool.handler(args({ bookId: undefined, query: "tags:rust" }), d, ctx()),
+    )) as ToolResult;
+
+    expect(text(r)).toContain("This call's selection (a query) was not checked against that build.");
+    expect(text(r)).not.toContain("none of this call's books have been indexed yet");
+  });
+});
