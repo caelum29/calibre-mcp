@@ -119,6 +119,13 @@ const LAYER_RULES: LayerRule[] = [
   { name: "scripts do not reach into tools", from: /^scripts\//, forbidden: /^src\/tools\// },
   // neutral helpers both tools/ and resources/ import (#261): they may lean on domain only
   { name: "shared imports only domain", from: /^src\/shared\//, forbidden: /^src\/(?!domain\/|shared\/)/ },
+  // use-cases (#260): domain + ports only — no MCP result types, no tool modules, no UI.
+  // tools/deps.ts is the port bundle; tools/resolve-id.ts stays in tools/ per #260's table.
+  {
+    name: "app imports no MCP plumbing",
+    from: /^src\/app\//,
+    forbidden: /^src\/(tools\/(?!deps\.ts$|resolve-id\.ts$)|ui\/|server\.ts$|resources\/)/,
+  },
   // the SDK-free protocol mirror every tool module imports stays free of infra types (#258)
   {
     name: "tool protocol mirror imports no adapters",
@@ -128,10 +135,7 @@ const LAYER_RULES: LayerRule[] = [
 ];
 
 // Known breaks, each owned by an open refactor issue. Shrink-only: a fixed edge must be removed.
-const LAYER_ALLOWLIST = new Set([
-  "scripts/reindex.ts -> src/tools/index-book.ts", // #260
-  "scripts/reindex.ts -> src/tools/deps.ts", // #260
-]);
+const LAYER_ALLOWLIST = new Set<string>([]);
 
 /** `"<file> -> <target> (<rule>)"` for every import that crosses a forbidden layer edge. */
 function findLayerViolations(files: SourceFile[]): string[] {
@@ -177,6 +181,13 @@ describe("layer directions", () => {
       "src/tools/types.ts -> src/calibre/extract.ts",
     ]);
     expect(at("src/tools/types.ts", `import type { ToolDeps } from "./deps.js";`)).toEqual([]);
+    expect(at("src/app/x.ts", `import { toolError } from "../tools/result.js";`)).toEqual([
+      "src/app/x.ts -> src/tools/result.ts",
+    ]);
+    expect(at("src/app/x.ts", `import type { ToolResult } from "../tools/types.js";`)).toEqual([
+      "src/app/x.ts -> src/tools/types.ts",
+    ]);
+    expect(at("src/app/x.ts", `import type { ToolDeps } from "../tools/deps.js";`)).toEqual([]);
     expect(at("src/config.ts", `import { discoverCalibredb } from "./calibre/discover.js";`)).toEqual([
       "src/config.ts -> src/calibre/discover.ts",
     ]);
