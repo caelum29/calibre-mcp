@@ -3,7 +3,7 @@ import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
 import { selectBooks } from "../../src/app/select-books.js";
-import type { ToolDeps } from "../../src/tools/deps.js";
+import type { BaseDeps, ToolDeps } from "../../src/tools/deps.js";
 
 function book(id: number): Book {
   return {
@@ -28,7 +28,7 @@ interface Recorder {
  * defers a tick so concurrent in-flight batches actually overlap, and records
  * batch order + peak concurrency for assertions.
  */
-function deps(count: number, rec: Recorder): ToolDeps {
+function deps(count: number, rec: Recorder): BaseDeps {
   const ids = Array.from({ length: count }, (_, i) => i + 1);
   let inFlight = 0;
   const content = {
@@ -57,7 +57,6 @@ function deps(count: number, rec: Recorder): ToolDeps {
     extractor: {} as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],
-    index: {} as ToolDeps["index"],
     log,
   };
 }

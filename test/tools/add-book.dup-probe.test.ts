@@ -8,7 +8,7 @@ import { addBookTool } from "../../src/tools/calibre_add_book.js";
 import { loadConfig } from "../../src/config.js";
 import type { Book } from "../../src/domain/book.js";
 import type { LogSink } from "../../src/logging.js";
-import type { ToolDeps } from "../../src/tools/deps.js";
+import type { BaseDeps, ToolDeps } from "../../src/tools/deps.js";
 
 let root: string;
 let file: string;
@@ -33,7 +33,7 @@ interface Fx {
   searchThrows?: boolean;
 }
 
-function deps(newId: number, fx: Fx, warn: LogSink["warn"] = () => {}): ToolDeps {
+function deps(newId: number, fx: Fx, warn: LogSink["warn"] = () => {}): BaseDeps {
   const byId = new Map(fx.books.map((b) => [b.id, b] as const));
   const content = {
     resolveLibraryId: async () => "Lib",
@@ -53,7 +53,6 @@ function deps(newId: number, fx: Fx, warn: LogSink["warn"] = () => {}): ToolDeps
     extractor: {} as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],
-    index: {} as ToolDeps["index"],
     log,
   };
 }

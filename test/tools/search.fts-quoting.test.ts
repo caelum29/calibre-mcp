@@ -7,9 +7,10 @@ import { log } from "../../src/logging.js";
 import { fakeFts, type FakeFtsHit } from "./fake-fts.js";
 import type { ToolResult } from "../../src/tools/types.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
+import type { SearchDeps, SearchIndex } from "../../src/tools/calibre_search.js";
 
 // Boundary stub: only what the FTS branches touch.
-function deps(ftsHits: FakeFtsHit[]): ToolDeps {
+function deps(ftsHits: FakeFtsHit[]): SearchDeps {
   const content = { resolveLibraryId: async (display?: string) => display || "Programming_Books" };
   return {
     config: loadConfig({}),
@@ -19,7 +20,7 @@ function deps(ftsHits: FakeFtsHit[]): ToolDeps {
     extractor: {} as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],
-    index: { hasIndex: () => false } as unknown as ToolDeps["index"],
+    index: { hasIndex: () => false, isBookIndexed: () => false } satisfies SearchIndex,
     log,
   };
 }

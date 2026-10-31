@@ -11,6 +11,7 @@ import { listCategoriesTool } from "../../src/tools/calibre_list_categories.js";
 import { qualityReportTool } from "../../src/tools/calibre_quality_report.js";
 import { findDuplicatesTool } from "../../src/tools/calibre_find_duplicates.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
+import type { SearchDeps, SearchIndex } from "../../src/tools/calibre_search.js";
 import type { ToolResult } from "../../src/tools/types.js";
 import { fakeFts } from "./fake-fts.js";
 
@@ -27,7 +28,7 @@ const BOOKS: Book[] = Array.from({ length: 8 }, (_, i) => ({
 }));
 
 interface Fake {
-  deps: ToolDeps;
+  deps: SearchDeps;
   /** Book-selection fetches (search + booksByIds) — the expensive part a bad cursor must skip. */
   fetches: () => number;
 }
@@ -68,7 +69,7 @@ function fake(opts: { ftsHits?: number } = {}): Fake {
       extractor: {} as ToolDeps["extractor"],
       figures: {} as ToolDeps["figures"],
       embedder: {} as ToolDeps["embedder"],
-      index: { hasIndex: () => false } as unknown as ToolDeps["index"],
+      index: { hasIndex: () => false, isBookIndexed: () => false } satisfies SearchIndex,
       log,
     },
   };

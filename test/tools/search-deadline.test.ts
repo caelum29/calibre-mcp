@@ -10,6 +10,7 @@ import { log } from "../../src/logging.js";
 import { invalidateBundleCache } from "../../src/app/bundles.js";
 import { searchTool } from "../../src/tools/calibre_search.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
+import type { SearchDeps, SearchIndex } from "../../src/tools/calibre_search.js";
 
 /** A boundary call that hangs until its own timeout fires, like a request queued behind a held lock. */
 const hangUntilTimeout = (err: () => Error) => (timeoutMs: number | undefined) =>
@@ -28,7 +29,7 @@ interface Stalls {
   fts?: "hang" | "disabled";
 }
 
-function deps(stall: Stalls): ToolDeps {
+function deps(stall: Stalls): SearchDeps {
   const content = {
     resolveLibraryId: async () => "Programming_Books",
     search: async (): Promise<SearchPage> => ({
@@ -63,7 +64,7 @@ function deps(stall: Stalls): ToolDeps {
     extractor: {} as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],
-    index: { hasIndex: () => false } as unknown as ToolDeps["index"],
+    index: { hasIndex: () => false, isBookIndexed: () => false } satisfies SearchIndex,
     log,
   };
 }
@@ -72,7 +73,7 @@ const ARGS = { query: "dependency injection", mode: "fts", scope: "library", lim
 const textOf = (r: { content: { type: string; text?: string }[] }) => r.content.map((c) => c.text ?? "").join("\n");
 
 /** Run the handler on fake time; returns the result and how long (fake ms) it took. */
-async function timed(d: ToolDeps) {
+async function timed(d: SearchDeps) {
   const start = Date.now();
   let endedAt = -1;
   const p = searchTool.handler(ARGS, d).then((r) => {

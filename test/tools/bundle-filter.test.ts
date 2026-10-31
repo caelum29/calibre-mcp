@@ -13,6 +13,7 @@ import { buildScopedQuery, invalidateBundleCache, resolveFilter, scopeExpression
 import { searchTool } from "../../src/tools/calibre_search.js";
 import { fakeFts, type FakeFtsHit } from "./fake-fts.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
+import type { SearchDeps, SearchIndex } from "../../src/tools/calibre_search.js";
 
 const SAVED_SEARCHES = `Integration status: False
 Name: Rust
@@ -57,14 +58,16 @@ function fake(opts: FakeOpts = {}) {
   const calibre = {
     calibredb: async () => ({ stdout: opts.savedSearches ?? SAVED_SEARCHES, stderr: "" }),
   };
+  const index: SearchIndex = { hasIndex: () => false, isBookIndexed: () => false };
   const deps = {
     config: loadConfig({}),
     content: content as unknown as ToolDeps["content"],
     calibre: calibre as unknown as ToolDeps["calibre"],
     fts: fakeFts(opts.ftsHits),
     extractor: {} as ToolDeps["extractor"],
+    index,
     log: sink,
-  } as ToolDeps;
+  } as SearchDeps;
   return { deps, queries };
 }
 

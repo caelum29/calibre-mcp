@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { Book } from "../../src/domain/book.js";
 import { CalibreHttpError } from "../../src/domain/errors.js";
-import type { ToolDeps } from "../../src/tools/deps.js";
+import type { BaseDeps } from "../../src/tools/deps.js";
 import { verifyTimedOutWrite } from "../../src/app/write-policy.js";
 
 const book = (over: Partial<Book> = {}): Book => ({
@@ -17,14 +17,14 @@ const book = (over: Partial<Book> = {}): Book => ({
 });
 
 /** Fake content whose re-read answers only for book 7 in library "Lib"; anything else 404s. */
-function deps(reread: () => Promise<Book>): ToolDeps {
+function deps(reread: () => Promise<Book>): BaseDeps {
   const content = {
     getBook: async (id: number, library?: string): Promise<Book> => {
       if (id !== 7 || library !== "Lib") throw new CalibreHttpError(404, "u", "Not Found");
       return reread();
     },
   };
-  return { content } as unknown as ToolDeps;
+  return { content } as unknown as BaseDeps;
 }
 
 describe("verifyTimedOutWrite (#221)", () => {

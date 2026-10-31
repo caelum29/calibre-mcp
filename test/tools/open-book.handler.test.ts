@@ -2,9 +2,9 @@ import { describe, it, expect, afterEach } from "vitest";
 import { openBookTool, setLauncher } from "../../src/tools/calibre_open_book.js";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
-import type { ToolDeps } from "../../src/tools/deps.js";
+import type { BaseDeps, ToolDeps } from "../../src/tools/deps.js";
 
-function deps(content: Partial<Record<"resolveLibraryId" | "getBook", unknown>>): ToolDeps {
+function deps(content: Partial<Record<"resolveLibraryId" | "getBook", unknown>>): BaseDeps {
   return {
     config: loadConfig({}),
     content: content as unknown as ToolDeps["content"],
@@ -12,7 +12,6 @@ function deps(content: Partial<Record<"resolveLibraryId" | "getBook", unknown>>)
     extractor: {} as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],
-    index: {} as ToolDeps["index"],
     log,
   };
 }

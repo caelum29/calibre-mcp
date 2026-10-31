@@ -12,6 +12,7 @@ import { listCategoriesTool } from "../../src/tools/calibre_list_categories.js";
 import { qualityReportTool } from "../../src/tools/calibre_quality_report.js";
 import { findDuplicatesTool } from "../../src/tools/calibre_find_duplicates.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
+import type { SearchDeps, SearchIndex } from "../../src/tools/calibre_search.js";
 import type { ToolResult } from "../../src/tools/types.js";
 import { fakeFts } from "./fake-fts.js";
 
@@ -32,7 +33,7 @@ const BOOKS: Book[] = Array.from({ length: 8 }, (_, i) => ({
 const NAMES = ["Alice", "Bob", "Carol", "Dave", "Eve"];
 
 // Boundary stub of the Content Server; every library serves the same fixture.
-function deps(): ToolDeps {
+function deps(): SearchDeps {
   const byId = new Map(BOOKS.map((b) => [b.id, b] as const));
   const content = {
     resolveLibraryId,
@@ -65,7 +66,7 @@ function deps(): ToolDeps {
     extractor: {} as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],
-    index: { hasIndex: () => false } as unknown as ToolDeps["index"],
+    index: { hasIndex: () => false, isBookIndexed: () => false } satisfies SearchIndex,
     log,
   };
 }

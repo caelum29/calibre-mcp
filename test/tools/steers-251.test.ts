@@ -8,9 +8,10 @@ import { log } from "../../src/logging.js";
 import { asLibId } from "../../src/calibre/lib-id.js";
 import { CalibreBusyError, CalibreHttpError, CalibreHttpTimeoutError, FtsError } from "../../src/domain/errors.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
+import type { SearchDeps, SearchIndex } from "../../src/tools/calibre_search.js";
 import { fakeFts } from "./fake-fts.js";
 
-function deps(content: object, calibre: object): ToolDeps {
+function deps(content: object, calibre: object): SearchDeps {
   return {
     config: loadConfig({}),
     content: {
@@ -21,7 +22,7 @@ function deps(content: object, calibre: object): ToolDeps {
     extractor: {} as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],
-    index: { hasIndex: () => false } as unknown as ToolDeps["index"],
+    index: { hasIndex: () => false, isBookIndexed: () => false } satisfies SearchIndex,
     log,
   };
 }
@@ -29,7 +30,7 @@ function deps(content: object, calibre: object): ToolDeps {
 // The FTS port fails the way ContentServerClient maps real /fts/search replies (probed
 // 2026-10-31): 428 "Full text searching is not enabled on this library" → FTS_DISABLED,
 // 422 "Failed to parse search query: a:b- with error: no such column: a" → FTS_QUERY_INVALID.
-const ftsFails = (err: Error): ToolDeps => ({
+const ftsFails = (err: Error): SearchDeps => ({
   ...deps({}, {}),
   fts: fakeFts([], { match: async () => Promise.reject(err) }),
 });

@@ -5,7 +5,7 @@ import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
 import { CalibreCliError, CalibreCliTimeoutError, CalibreHttpError } from "../../src/domain/errors.js";
-import type { ToolDeps } from "../../src/tools/deps.js";
+import type { BaseDeps, ToolDeps } from "../../src/tools/deps.js";
 
 const book = (over: Partial<Book> = {}): Book => ({
   id: 658,
@@ -25,7 +25,7 @@ interface FakeOpts {
   getBook?: () => Promise<Book>; // overrides the seq-based fake entirely
 }
 
-function deps(opts: FakeOpts = {}): ToolDeps {
+function deps(opts: FakeOpts = {}): BaseDeps {
   const seq = [...(opts.books ?? [book(), book({ tags: ["new"] })])];
   const content = {
     getBook: opts.getBook ?? (async (): Promise<Book> => seq.shift() ?? book()),
@@ -42,7 +42,6 @@ function deps(opts: FakeOpts = {}): ToolDeps {
     extractor: {} as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],
-    index: {} as ToolDeps["index"],
     log,
   };
 }

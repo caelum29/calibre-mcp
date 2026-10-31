@@ -11,7 +11,7 @@ import { decodeCursor, encodeCursor } from "../../src/tools/cursor.js";
 import { getContentTool } from "../../src/tools/calibre_get_content.js";
 import { listCategoriesTool } from "../../src/tools/calibre_list_categories.js";
 import { qualityReportTool } from "../../src/tools/calibre_quality_report.js";
-import type { ToolDeps } from "../../src/tools/deps.js";
+import type { BaseDeps, ToolDeps } from "../../src/tools/deps.js";
 
 describe("CursorParam null / empty / junk (#325)", () => {
   it.each([[null], [""]])("%j means no cursor", (v) => {
@@ -59,9 +59,8 @@ const deps = {
   } as unknown as ToolDeps["extractor"],
   figures: {} as ToolDeps["figures"],
   embedder: {} as ToolDeps["embedder"],
-  index: {} as ToolDeps["index"],
   log,
-} satisfies ToolDeps;
+} satisfies BaseDeps;
 
 const content = (raw: Record<string, unknown>) =>
   getContentTool.handler(z.object(getContentTool.inputSchema).parse({ id: 1, sentenceAware: false, ...raw }), deps);

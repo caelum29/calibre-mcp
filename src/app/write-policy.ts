@@ -7,7 +7,7 @@ import { CONNECTION_STDERR, DROPPED_MID_REQUEST_STDERR, WRITE_REFUSED_STDERR } f
 import { changesSatisfied } from "../domain/book-fields.js";
 import type { ChangeValue } from "../domain/book-fields.js";
 import type { Book } from "../domain/book.js";
-import type { ToolDeps } from "../tools/deps.js";
+import type { BaseDeps } from "../tools/deps.js";
 
 // ── refusal ──
 // Shared classification of a Content-Server write refusal. calibredb routed through the
@@ -135,7 +135,7 @@ export interface TimedOutWrite {
  * Re-read the book after a timed-out routed write and classify it. A failed re-read is
  * `unverifiable` (the write MAY have landed), never `not-landed`.
  */
-export async function verifyTimedOutWrite(deps: ToolDeps, write: TimedOutWrite): Promise<TimedOutWriteCheck> {
+export async function verifyTimedOutWrite(deps: BaseDeps, write: TimedOutWrite): Promise<TimedOutWriteCheck> {
   // nothing requested means nothing to confirm — don't let an empty set read as "landed"
   if (Object.keys(write.changes).length === 0) return { status: "unverifiable" };
   let after: Book;

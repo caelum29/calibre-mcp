@@ -5,7 +5,7 @@ import path from "node:path";
 import { addBookTool, parseAddedIds } from "../../src/tools/calibre_add_book.js";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
-import type { ToolDeps } from "../../src/tools/deps.js";
+import type { BaseDeps, ToolDeps } from "../../src/tools/deps.js";
 import { CalibreCliError } from "../../src/domain/errors.js";
 
 let root: string;
@@ -18,7 +18,7 @@ beforeAll(() => {
 });
 afterAll(() => rmSync(root, { recursive: true, force: true }));
 
-function deps(calibredb: (args: readonly string[]) => Promise<{ stdout: string; stderr: string }>): ToolDeps {
+function deps(calibredb: (args: readonly string[]) => Promise<{ stdout: string; stderr: string }>): BaseDeps {
   const content = { resolveLibraryId: async (name?: string): Promise<string> => name ?? "Programming_Books" };
   return {
     config: loadConfig({ CALIBRE_MCP_ADD_ROOTS: root }),
@@ -27,7 +27,6 @@ function deps(calibredb: (args: readonly string[]) => Promise<{ stdout: string; 
     extractor: {} as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],
-    index: {} as ToolDeps["index"],
     log,
   };
 }

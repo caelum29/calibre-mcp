@@ -5,7 +5,7 @@
 
 import type { Book } from "../domain/book.js";
 import { foldAccents } from "../domain/curation/normalize.js";
-import type { ToolDeps } from "./deps.js";
+import type { BaseDeps } from "./deps.js";
 
 /** A just-added book that looks like it duplicates existing ones. */
 export interface PossibleDuplicate {
@@ -45,7 +45,7 @@ function authorsConflict(a: Book, b: Book): boolean {
   return ![...ka].some((k) => kb.has(k));
 }
 
-async function searchIds(deps: ToolDeps, query: string, library?: string): Promise<number[]> {
+async function searchIds(deps: BaseDeps, query: string, library?: string): Promise<number[]> {
   const page = await deps.content.search({ query, num: CANDIDATES, library });
   return page.bookIds;
 }
@@ -55,7 +55,7 @@ async function searchIds(deps: ToolDeps, query: string, library?: string): Promi
  * caller owns the degrade-and-log policy.
  */
 export async function probeDuplicates(
-  deps: ToolDeps,
+  deps: BaseDeps,
   addedIds: number[],
   library?: string,
 ): Promise<PossibleDuplicate[]> {

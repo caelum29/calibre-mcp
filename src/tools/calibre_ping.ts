@@ -5,15 +5,18 @@
 
 import { defineTool } from "./define.js";
 import { toolError, toolText } from "./result.js";
-import { computeSemanticStatus, formatSemanticStatusLine, staleness } from "../semantic/status.js";
+import { computeSemanticStatus, formatSemanticStatusLine, staleness, type StatusIndex } from "../semantic/status.js";
 import { capString, log } from "../logging.js";
 import type { BusyLibrary } from "../calibre/busy.js";
 import type { LibId } from "../calibre/lib-id.js";
 import { CalibreBusyError } from "../domain/errors.js";
 import { SDK_VERSION, VERSION } from "../version.js";
-import type { ToolDeps } from "./deps.js";
+import type { BaseDeps, DepsWithIndex } from "./deps.js";
 import type { ToolResult } from "./types.js";
 import { defaultHint, errorCodeFor } from "../domain/error-codes.js";
+
+/** calibre_ping's deps (#272): its index reads are exactly the semantic-status ones. */
+export type PingDeps = DepsWithIndex<StatusIndex>;
 
 export const pingTool = defineTool({
   name: "calibre_ping",
@@ -26,7 +29,7 @@ export const pingTool = defineTool({
     "log file path for self-diagnosis.",
   inputSchema: {},
   annotations: { readOnlyHint: true, openWorldHint: true },
-  handler: async (_args, deps): Promise<ToolResult> => {
+  handler: async (_args, deps: PingDeps): Promise<ToolResult> => {
     // Resolve the libId (needed for both calibredb and the index vector count) first —
     // --with-library needs the ID, not the display name. A failure here is non-fatal to the
     // semantic diagnosis (it reads local disk/state), so keep it and still report semantics.
@@ -120,7 +123,7 @@ function busyReport(list: BusyLibrary[]): { text: string; structured: Record<str
 }
 
 /** structuredContent twin of the header + index line, for clients that show only structured data. */
-function serverFacts(deps: ToolDeps, indexes: LibraryIndex[] | undefined): Record<string, unknown> {
+function serverFacts(deps: BaseDeps, indexes: LibraryIndex[] | undefined): Record<string, unknown> {
   return {
     version: VERSION,
     sdkVersion: SDK_VERSION,
@@ -131,7 +134,7 @@ function serverFacts(deps: ToolDeps, indexes: LibraryIndex[] | undefined): Recor
 }
 
 /** Version / calibredb / write-gate block — facts a session otherwise has to infer (#304). */
-function serverHeader(deps: ToolDeps): string {
+function serverHeader(deps: BaseDeps): string {
   const writes = deps.config.writeEnabled
     ? "writes: ENABLED (CALIBRE_MCP_ENABLE_WRITE)"
     : "writes: disabled (set CALIBRE_MCP_ENABLE_WRITE to enable)";
@@ -177,7 +180,7 @@ async function within<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
  * read-only probe cannot flag the library busy for real calls.
  */
 async function libraryIndexReport(
-  deps: ToolDeps,
+  deps: PingDeps,
   unreachable: boolean,
 ): Promise<{ line: string; indexes?: LibraryIndex[] }> {
   // With Calibre down, libraryInfo would just burn another full timeout.

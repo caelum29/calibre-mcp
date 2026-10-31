@@ -5,7 +5,7 @@
 // in text content by the caller — never silent subtraction.
 
 import type { LibId } from "../calibre/lib-id.js";
-import type { ToolDeps } from "../tools/deps.js";
+import type { BaseDeps } from "../tools/deps.js";
 
 export interface BundleEntry {
   name: string;
@@ -71,7 +71,7 @@ export function mergeBundles(
 
 /** Read every bundle. VLs are a nicety — a failing /interface-data must not kill the read. */
 export async function loadBundles(
-  deps: ToolDeps,
+  deps: BaseDeps,
   library?: string,
   opts: { timeoutMs?: number } = {},
 ): Promise<BundleEntry[]> {
@@ -118,7 +118,7 @@ export function invalidateBundleCache(libId?: LibId): void {
 }
 
 // Single-flight load per library; stores only if no invalidation happened meanwhile.
-function refreshBundles(deps: ToolDeps, libId: LibId, library: string | undefined, timeoutMs: number) {
+function refreshBundles(deps: BaseDeps, libId: LibId, library: string | undefined, timeoutMs: number) {
   const running = inflight.get(libId);
   if (running) return running;
   const gen = generation;
@@ -139,7 +139,7 @@ function refreshBundles(deps: ToolDeps, libId: LibId, library: string | undefine
  * returns immediately and refreshes in the background; a cold miss waits at most `timeoutMs`.
  */
 export async function loadBundlesCached(
-  deps: ToolDeps,
+  deps: BaseDeps,
   library?: string,
   opts: { timeoutMs?: number } = {},
 ): Promise<{ libId: LibId; bundles: BundleEntry[] }> {
@@ -204,7 +204,7 @@ function coldWait(req: FilterRequest): number | undefined {
  * - Auto-exclusion failing to load bundles degrades with a note; a failing `filter` load errors
  *   (the filter is load-bearing, the exclusion sweep is not).
  */
-export async function resolveFilter(deps: ToolDeps, req: FilterRequest): Promise<FilterOutcome> {
+export async function resolveFilter(deps: BaseDeps, req: FilterRequest): Promise<FilterOutcome> {
   const wantExclusions = req.autoExclude && req.includeExcluded !== true;
   if (!req.filter && !wantExclusions) return { ok: true, res: { markers: [] } };
   // No calibredb wired (fixture/eval deps, degraded deployments) = bundles unsupported:
@@ -301,7 +301,7 @@ const RESTRICT_MAX = 100_000;
  * Returns undefined when the resolution is unscoped (no restriction needed).
  */
 export async function restrictSet(
-  deps: ToolDeps,
+  deps: BaseDeps,
   res: FilterResolution,
   library?: string,
   timeoutMs?: number,

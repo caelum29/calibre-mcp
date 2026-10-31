@@ -9,7 +9,7 @@ import { log } from "../../src/logging.js";
 import { FiguresError } from "../../src/domain/errors.js";
 import type { Book } from "../../src/domain/book.js";
 import type { FigureInventory } from "../../src/domain/figures/inventory.js";
-import type { ToolDeps } from "../../src/tools/deps.js";
+import type { BaseDeps, ToolDeps } from "../../src/tools/deps.js";
 
 const inventory: FigureInventory = {
   entries: [{ index: 0, page: 1, captioned: true, label: "1-1", caption: "A model", source: "raster" }],
@@ -29,7 +29,7 @@ const book: Book = {
   languages: [],
 };
 
-function deps(figures: unknown): ToolDeps {
+function deps(figures: unknown): BaseDeps {
   return {
     config: loadConfig({}),
     content: {
@@ -39,7 +39,6 @@ function deps(figures: unknown): ToolDeps {
     calibre: {} as ToolDeps["calibre"],
     extractor: {} as ToolDeps["extractor"],
     embedder: {} as ToolDeps["embedder"],
-    index: {} as ToolDeps["index"],
     figures: figures as ToolDeps["figures"],
     log,
   };
