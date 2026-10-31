@@ -21,6 +21,7 @@ import { resolveNumericId } from "./resolve-id.js";
 import { INSTALL_TRANSFORMERS } from "./remediation.js";
 import { toolError, toolOk } from "./result.js";
 import {
+  backgroundFailedResult,
   cancelledResult,
   fromEarlierCall,
   selectorKey,
@@ -52,7 +53,7 @@ const PROGRESS_EVERY = 25;
  */
 const BUILD_CONCURRENCY = 1;
 
-/** Fallback when deps carry no registry (server.ts wires one per process). */
+/** The process-wide registry; deps.indexBuilds overrides it only in tests. */
 const sharedBuilds = new IndexBuildRegistry<ToolResult>({ log });
 
 export const buildIndexTool = defineTool({
@@ -85,9 +86,14 @@ export const buildIndexTool = defineTool({
     prunedChunks: z.number().optional(),
     prunedFigures: z.number().optional(),
     elapsedMs: z.number().optional(),
-    // Soft-deadline status (#284): the build is still running in the background — a success, not
-    // an error. booksRequested/booksDone/booksIndexed then describe the RUNNING build.
+    // Soft-deadline status (#284): a build is still running in the background — a success, not
+    // an error. runningBuild says whose: "this" = this call's selection; "other" = another
+    // selector's build that blocks this one, and booksRequested/booksDone/booksIndexed/indexedIds
+    // then count THAT build, not this call's selection (nothing of this call has run yet).
     stillRunning: z.boolean().optional(),
+    runningBuild: z.enum(["this", "other"]).optional(),
+    // The background build an earlier call started threw; failures[0] carries the reason.
+    backgroundBuildFailed: z.boolean().optional(),
     booksDone: z.number().optional(),
     indexedIds: z.array(z.number()).optional(),
     keywordOnly: z.boolean().optional(),
@@ -138,9 +144,13 @@ export const buildIndexTool = defineTool({
       libraryId,
       selectorKey(args),
       (run) => runBuild(args, deps, ctx, libraryId, run),
-      signal,
+      // A cancelled build's result must not answer the next call: that call should build.
+      { signal, keep: (r) => r.structuredContent?.cancelled !== true },
     );
     if (outcome.kind === "running") return stillRunningResult(outcome);
+    if (outcome.kind === "failed") {
+      return backgroundFailedResult(describeError(outcome.error), outcome.earlierCallFinishedAgoMs);
+    }
     return outcome.earlierCallFinishedAgoMs === undefined
       ? outcome.result
       : fromEarlierCall(outcome.result, outcome.earlierCallFinishedAgoMs);

@@ -14,6 +14,12 @@ export const BUILD_SOFT_DEADLINE_MS = 45_000;
 /** Finished background results kept for a re-run; bounded so unclaimed ones can't pile up. */
 const KEPT_RESULTS = 16;
 
+/**
+ * How long a background result stays claimable. A re-run minutes later wants that report;
+ * one days later wants a fresh build that picks up new books. Guess, tune in #284.
+ */
+export const KEPT_RESULT_TTL_MS = 5 * 60_000;
+
 /** Live snapshot of one build, shared with every call that finds it running. */
 export interface BuildProgress {
   /** Books settled so far (indexed, skipped or failed). */
@@ -40,6 +46,12 @@ export type BuildOutcome<T> =
       earlierCallFinishedAgoMs?: number;
     }
   | {
+      /** A background build an earlier call started threw; `error` is why (never kept past the TTL). */
+      kind: "failed";
+      error: unknown;
+      earlierCallFinishedAgoMs: number;
+    }
+  | {
       kind: "running";
       progress: BuildProgress;
       /** False when the running build was started for a different selector. */
@@ -53,19 +65,28 @@ export interface IndexBuilds<T> {
    * Run `build` for `libraryId` unless a build is already running there; wait for the running
    * build (or the new one) until the soft deadline, then report "running" instead of blocking.
    * `key` identifies the selector, so a re-run of the same call claims the result of its build.
-   * `signal` ends only this call's wait — the build itself watches its own signal.
+   * `opts.signal` ends only this call's wait — the build itself watches its own signal.
+   * `opts.keep` says whether a result may be handed to a later call (a cancelled build's may not).
    */
   run(
     libraryId: string,
     key: string,
     build: (run: BuildRun) => Promise<T>,
-    signal?: AbortSignal,
+    opts?: RunOptions<T>,
   ): Promise<BuildOutcome<T>>;
+}
+
+/** Per-call options for {@link IndexBuilds.run}. */
+export interface RunOptions<T> {
+  signal?: AbortSignal | undefined;
+  /** False for results a later call must not inherit; default keeps every result. */
+  keep?: (value: T) => boolean;
 }
 
 /** Options for {@link IndexBuildRegistry}; the deadline and clock are injectable for tests. */
 export interface IndexBuildRegistryOptions {
   softDeadlineMs?: number;
+  keptTtlMs?: number;
   log?: LogSink;
   now?: () => number;
 }
@@ -76,19 +97,25 @@ interface Entry<T> {
   detached: boolean;
   settled: boolean;
   result?: { value: T };
+  failure?: { error: unknown };
+  keep: (value: T) => boolean;
   done: Promise<void>;
 }
+
+type Kept<T> = { at: number } & ({ value: T } | { error: unknown });
 
 /** One registry per server process: at most one build per library, results kept for the re-run. */
 export class IndexBuildRegistry<T> implements IndexBuilds<T> {
   readonly softDeadlineMs: number;
+  private readonly keptTtlMs: number;
   private readonly log: LogSink | undefined;
   private readonly now: () => number;
   private readonly running = new Map<string, Entry<T>>();
-  private readonly kept = new Map<string, { value: T; at: number }>();
+  private readonly kept = new Map<string, Kept<T>>();
 
   constructor(opts: IndexBuildRegistryOptions = {}) {
     this.softDeadlineMs = opts.softDeadlineMs ?? BUILD_SOFT_DEADLINE_MS;
+    this.keptTtlMs = opts.keptTtlMs ?? KEPT_RESULT_TTL_MS;
     this.log = opts.log;
     this.now = opts.now ?? Date.now;
   }
@@ -97,27 +124,38 @@ export class IndexBuildRegistry<T> implements IndexBuilds<T> {
     libraryId: string,
     key: string,
     build: (run: BuildRun) => Promise<T>,
-    signal?: AbortSignal,
+    opts: RunOptions<T> = {},
   ): Promise<BuildOutcome<T>> {
     const deadline = this.now() + this.softDeadlineMs;
     const keptKey = `${libraryId}\u0000${key}`;
+    const keep = opts.keep ?? (() => true);
     for (;;) {
-      const kept = this.kept.get(keptKey);
-      if (kept) {
-        this.kept.delete(keptKey);
-        return { kind: "done", result: kept.value, earlierCallFinishedAgoMs: this.now() - kept.at };
-      }
+      const claimed = this.claim(keptKey);
+      if (claimed) return claimed;
       const cur = this.running.get(libraryId);
-      if (!cur) return this.start(libraryId, key, keptKey, build, deadline);
-      const settled = (await this.waitUntil(cur.done, deadline, signal)) || cur.settled;
+      if (!cur) return this.start(libraryId, key, keptKey, build, keep, deadline);
+      const settled = (await this.waitUntil(cur.done, deadline, opts.signal)) || cur.settled;
       if (!settled) return { kind: "running", progress: snapshot(cur.progress), sameSelector: cur.key === key };
-      if (cur.key === key && cur.result) {
+      if (cur.key === key && cur.result && cur.keep(cur.result.value)) {
         // Same selector: the build this call waited for is its answer, so nobody re-reports it.
         this.kept.delete(keptKey);
         return { kind: "done", result: cur.result.value, earlierCallFinishedAgoMs: 0 };
       }
-      // A different build finished in time: loop to start ours, or to wait on whoever started first.
+      // A different (or failed/cancelled) build settled in time: loop to claim its kept failure,
+      // start ours, or wait on whoever started first.
     }
+  }
+
+  /** The kept outcome for this selector, consumed once; past the TTL it is dropped instead. */
+  private claim(keptKey: string): BuildOutcome<T> | undefined {
+    const kept = this.kept.get(keptKey);
+    if (!kept) return undefined;
+    this.kept.delete(keptKey);
+    const agoMs = this.now() - kept.at;
+    if (agoMs > this.keptTtlMs) return undefined;
+    return "value" in kept
+      ? { kind: "done", result: kept.value, earlierCallFinishedAgoMs: agoMs }
+      : { kind: "failed", error: kept.error, earlierCallFinishedAgoMs: agoMs };
   }
 
   private async start(
@@ -125,6 +163,7 @@ export class IndexBuildRegistry<T> implements IndexBuilds<T> {
     key: string,
     keptKey: string,
     build: (run: BuildRun) => Promise<T>,
+    keep: (value: T) => boolean,
     deadline: number,
   ): Promise<BuildOutcome<T>> {
     const entry: Entry<T> = {
@@ -132,21 +171,26 @@ export class IndexBuildRegistry<T> implements IndexBuilds<T> {
       progress: { done: 0, total: 0, indexedIds: [] },
       detached: false,
       settled: false,
+      keep,
       done: Promise.resolve(),
     };
-    let failure: unknown;
-    let failed = false;
     const startedAt = this.now();
+    // A synchronous throw becomes a rejection, so the finally below always frees the library.
+    let started: Promise<T>;
+    try {
+      started = build({ progress: entry.progress, detached: () => entry.detached });
+    } catch (err) {
+      started = Promise.reject(err);
+    }
     // Registered before the first await, so a concurrent call always sees this build.
     this.running.set(libraryId, entry);
-    entry.done = build({ progress: entry.progress, detached: () => entry.detached })
+    entry.done = started
       .then(
         (value) => {
           entry.result = { value };
         },
-        (err: unknown) => {
-          failed = true;
-          failure = err;
+        (error: unknown) => {
+          entry.failure = { error };
         },
       )
       .finally(() => {
@@ -155,10 +199,13 @@ export class IndexBuildRegistry<T> implements IndexBuilds<T> {
         if (!entry.detached) return;
         const elapsedMs = this.now() - startedAt;
         if (entry.result) {
-          this.keep(keptKey, entry.result.value);
+          // A cancelled build is not an answer: the next call should build, not inherit it.
+          if (keep(entry.result.value)) this.store(keptKey, { value: entry.result.value });
           this.log?.info("background index build finished", { done: entry.progress.done, elapsedMs });
-        } else {
-          this.log?.warn("background index build failed", { elapsedMs, reason: String(failure) });
+        } else if (entry.failure) {
+          // Kept so the re-run can tell the model why — a log line alone never reaches it.
+          this.store(keptKey, { error: entry.failure.error });
+          this.log?.warn("background index build failed", { elapsedMs, reason: String(entry.failure.error) });
         }
       });
 
@@ -167,14 +214,14 @@ export class IndexBuildRegistry<T> implements IndexBuilds<T> {
       entry.detached = true;
       return { kind: "running", progress: snapshot(entry.progress), sameSelector: true };
     }
-    if (failed) throw failure;
-    // settled && !failed means the build resolved, so result is set.
+    if (entry.failure) throw entry.failure.error;
+    // Settled without a failure means the build resolved, so result is set.
     return { kind: "done", result: (entry.result as { value: T }).value };
   }
 
-  private keep(keptKey: string, value: T): void {
+  private store(keptKey: string, outcome: { value: T } | { error: unknown }): void {
     this.kept.delete(keptKey);
-    this.kept.set(keptKey, { value, at: this.now() });
+    this.kept.set(keptKey, { ...outcome, at: this.now() });
     // Map iteration is insertion order, so the first key is the oldest unclaimed result.
     while (this.kept.size > KEPT_RESULTS) this.kept.delete(this.kept.keys().next().value as string);
   }

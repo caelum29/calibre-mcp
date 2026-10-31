@@ -244,6 +244,9 @@
       "outputSchema": {
         "additionalProperties": false,
         "properties": {
+          "backgroundBuildFailed": {
+            "type": "boolean"
+          },
           "bookDetails": {
             "items": {
               "additionalProperties": false,
@@ -341,6 +344,13 @@
           },
           "prunedFigures": {
             "type": "number"
+          },
+          "runningBuild": {
+            "enum": [
+              "this",
+              "other"
+            ],
+            "type": "string"
           },
           "semanticAvailable": {
             "type": "boolean"

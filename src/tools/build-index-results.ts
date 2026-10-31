@@ -63,11 +63,13 @@ export function stillRunningResult(o: Extract<BuildOutcome<ToolResult>, { kind: 
   const text = o.sameSelector
     ? `Index build still running in the background — not an error; committed books stay indexed. ${finished}.${committed} ` +
       "Re-run the same call to check: it waits for this build instead of starting another, and reports the final result once it is done."
-    : `Another index build for this library is still running (${finished}) — not an error; this call did not start a second build, ` +
-      `since two builds would contend for the same index file.${committed} Re-run this call once that build finishes.`;
+    : "Another index build for this library is still running — not an error; this call did not start a second build, " +
+      "since two builds would contend for the same index file, and none of this call's books have been indexed yet. " +
+      `That other build (not this call's selection): ${finished}.${committed} Re-run this call once that build finishes.`;
   return toolOk([{ type: "text", text }], {
     stillRunning: true,
-    // Counts of the RUNNING build — for a different selector that is not this call's selection.
+    runningBuild: o.sameSelector ? "this" : "other",
+    // Counts of the build named by runningBuild (see the outputSchema comment).
     booksRequested: p.total,
     booksDone: p.done,
     booksIndexed: p.indexedIds.length,
@@ -75,15 +77,27 @@ export function stillRunningResult(o: Extract<BuildOutcome<ToolResult>, { kind: 
   });
 }
 
+/** isError result for a background build that threw: the reason, and that a re-run retries. */
+export function backgroundFailedResult(reason: string, finishedAgoMs: number): ToolResult {
+  return toolError(
+    `The background build an earlier call started failed ${ago(finishedAgoMs)}: ${reason}. Books it committed ` +
+      "before the failure stay indexed; re-run the same call to retry (finished books are skipped).",
+    { backgroundBuildFailed: true, failures: [reason] },
+  );
+}
+
 /** Lead the text with where the result came from when an earlier call started the build. */
 export function fromEarlierCall(result: ToolResult, finishedAgoMs: number): ToolResult {
   const [first, ...rest] = result.content;
   if (first?.type !== "text") return result;
-  const when = finishedAgoMs < 1_000 ? "just finished" : `finished ${Math.round(finishedAgoMs / 1_000)} s ago`;
-  const lead = `The background build an earlier call started ${when}; its result:\n`;
+  const lead = `The background build an earlier call started finished ${ago(finishedAgoMs)}; its result:\n`;
   // Keep the "Error: " prefix first on a failed or cancelled build, so it still reads as one.
   const textOut = first.text.startsWith("Error: ")
     ? `Error: ${lead}${first.text.slice("Error: ".length)}`
     : lead + first.text;
   return { ...result, content: [{ ...first, text: textOut }, ...rest] };
+}
+
+function ago(ms: number): string {
+  return ms < 1_000 ? "just now" : `${Math.round(ms / 1_000)} s ago`;
 }
