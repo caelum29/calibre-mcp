@@ -11,6 +11,7 @@
     "pnpm-lock.yaml",
     "test/eval/retrieval/*.json",
     "test/eval/retrieval/corpus/**",
-    "test/eval/retrieval/reports/**"
+    "test/eval/retrieval/reports/**",
+    "test/ui/__snapshots__/**"
   ]
 }
