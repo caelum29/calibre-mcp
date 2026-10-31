@@ -181,6 +181,7 @@ describe("calibre_build_index background outcomes (#284)", () => {
       backgroundBuildFailed: true,
       failures: ["content server 503"],
       errorCode: "index_build_failed",
+      error: expect.stringContaining("content server 503"),
     });
   });
 });

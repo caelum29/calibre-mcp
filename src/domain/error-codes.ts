@@ -12,6 +12,7 @@ import {
   FtsError,
   OperationCancelledError,
 } from "./errors.js";
+import { CONNECTION_STDERR, DROPPED_MID_REQUEST_STDERR, WRITE_REFUSED_STDERR } from "./calibredb-stderr.js";
 
 /** Every code a tool error may carry. Adding one = update the log README table too. */
 export const ERROR_CODES = [
@@ -53,9 +54,20 @@ export function errorCodeFor(err: unknown): ErrorCode {
   if (err instanceof CalibreHttpError) return httpCode(err);
   // Subclasses first: a missing binary and a timeout are both CalibreCliErrors.
   if (err instanceof CalibreNotFoundError) return "dependency_missing";
-  if (err instanceof CalibreCliError) return err.name === "CalibreCliTimeoutError" ? "timeout" : "calibre_error";
+  if (err instanceof CalibreCliError) return cliCode(err);
   if (err instanceof Error) return SPAWN_CODES[err.name] ?? "internal";
   return "internal";
+}
+
+// calibredb's stderr says more than the class: a refusal, a drop that may have committed, or
+// a server that never answered (patterns shared with app/write-policy.ts).
+function cliCode(err: CalibreCliError): ErrorCode {
+  if (err.name === "CalibreCliTimeoutError") return "timeout";
+  const stderr = err.stderr ?? "";
+  if (WRITE_REFUSED_STDERR.test(stderr)) return "write_refused";
+  if (DROPPED_MID_REQUEST_STDERR.test(stderr)) return "write_unverified";
+  if (CONNECTION_STDERR.test(stderr)) return "calibre_unreachable";
+  return "calibre_error";
 }
 
 function httpCode(err: CalibreHttpError): ErrorCode {

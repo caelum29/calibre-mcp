@@ -4,7 +4,7 @@
 // libraries the busy breaker is currently failing fast (calibre/busy.ts).
 
 import { defineTool } from "./define.js";
-import { toolText } from "./result.js";
+import { toolError, toolText } from "./result.js";
 import { computeSemanticStatus, formatSemanticStatusLine, staleness } from "../semantic/status.js";
 import { capString, log } from "../logging.js";
 import type { BusyLibrary } from "../calibre/busy.js";
@@ -32,12 +32,14 @@ export const pingTool = defineTool({
     // semantic diagnosis (it reads local disk/state), so keep it and still report semantics.
     let libId: LibId | undefined;
     let pingError: string | undefined;
+    let pingCause: unknown;
     try {
       libId = await deps.content.resolveLibraryId();
       // reachability probe only; its raw category dump is noise, so it is not echoed (#304)
       await deps.calibre.listLibraries(libId);
     } catch (err) {
       pingError = err instanceof Error ? err.message : String(err);
+      pingCause = err;
       // Busy is a known, self-clearing state (reported below), not a server fault.
       if (err instanceof CalibreBusyError) deps.log.warn("ping refused: library busy", { libraryId: err.libraryId });
       else {
@@ -57,24 +59,22 @@ export const pingTool = defineTool({
     const facts = serverFacts(deps, index.indexes);
 
     if (pingError !== undefined) {
-      return {
-        isError: true,
-        content: [
-          {
-            type: "text",
-            text: `Calibre unreachable: ${pingError}\n${header}\n${busy.text}${semLine}\n${index.line}\n${diag.text}`,
+      return toolError(
+        errorCodeFor(pingCause),
+        `Calibre unreachable: ${pingError}\n${header}\n${busy.text}${semLine}\n${index.line}\n${diag.text}`,
+        {
+          bare: true, // the report leads with its own headline, as before
+          structured: {
+            ok: false,
+            error: pingError,
+            serverUrl,
+            ...facts,
+            semantic,
+            ...busy.structured,
+            ...diag.structured,
           },
-        ],
-        structuredContent: {
-          ok: false,
-          error: pingError,
-          serverUrl,
-          ...facts,
-          semantic,
-          ...busy.structured,
-          ...diag.structured,
         },
-      };
+      );
     }
     return toolText(`ok\n${header}\n${busy.text}${semLine}\n${index.line}\n${diag.text}`, {
       ok: true,

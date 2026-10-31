@@ -177,6 +177,7 @@ export const bulkUpdateTool = defineTool({
               {
                 headline: "Calibre refused the write",
                 steer: `${WRITE_REFUSED_MESSAGE} After fixing the server`,
+                err,
               },
             );
           }
@@ -190,6 +191,7 @@ export const bulkUpdateTool = defineTool({
               {
                 headline: "Stopped: the Calibre Content Server is unreachable",
                 steer: `${describeTransient(err, b.id)} Once it is back`,
+                err,
               },
             );
           }
@@ -257,6 +259,8 @@ function oneLine(error: string): string {
 interface StopCause {
   headline: string;
   steer: string;
+  /** The failure that stopped the loop — its code is the result's errorCode (#249). */
+  err: unknown;
 }
 
 /**
@@ -280,7 +284,7 @@ function stoppedMidLoop(
     (notAttempted.length > 0 ? `Not attempted: ${notAttempted.join(", ")}. ` : "") +
     // writes are idempotent sets, so re-running is safe; naming the ids saves the model the set math
     `${cause.steer}, re-run with ids=[${retryIds.join(",")}].`;
-  return toolError("write_failed", text, {
+  return toolError(errorCodeFor(cause.err), text, {
     structured: { preview: false, matched, applied, failed, notAttempted, retryIds },
   });
 }

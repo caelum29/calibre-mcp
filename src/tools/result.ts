@@ -42,19 +42,23 @@ export interface ToolErrorOptions {
   hint?: string;
   /** Extra structured fields (e.g. a partial-write ledger) kept next to errorCode. */
   structured?: Record<string, unknown>;
+  /** Use `message` as the text verbatim, without the `Error: ` prefix (calibre_ping's report). */
+  bare?: boolean;
 }
 
 /**
  * Error result — LLM-actionable message, not a stack trace. `message` should tell the
  * model what to do next (e.g. "Writes are disabled; set CALIBRE_MCP_ENABLE_WRITE=1").
  * `code` (closed set, #249) and the hint go to structuredContent, where the `tool call`
- * log record picks them up; the text the model reads is unchanged.
+ * log record picks them up. The message is mirrored there as `error`: Claude Code renders
+ * structuredContent when present, so a code-only payload would hide the steer.
  */
 export function toolError(code: ErrorCode, message: string, opts: ToolErrorOptions = {}): ToolResult {
   const hint = opts.hint ?? defaultHint(code);
   return {
-    content: [{ type: "text", text: `Error: ${message}` }],
-    structuredContent: { ...opts.structured, errorCode: code, ...(hint === undefined ? {} : { hint }) },
+    content: [{ type: "text", text: opts.bare ? message : `Error: ${message}` }],
+    // a caller's own `error` field (e.g. ping's raw cause) wins over the mirrored message
+    structuredContent: { error: message, ...opts.structured, errorCode: code, ...(hint === undefined ? {} : { hint }) },
     isError: true,
   };
 }

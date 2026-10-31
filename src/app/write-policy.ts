@@ -3,6 +3,7 @@
 // transient-failure retry (#233), timed-out-write verification (#33).
 
 import { CalibreCliError, CalibreCliTimeoutError } from "../domain/errors.js";
+import { CONNECTION_STDERR, DROPPED_MID_REQUEST_STDERR, WRITE_REFUSED_STDERR } from "../domain/calibredb-stderr.js";
 import { changesSatisfied } from "../domain/book-fields.js";
 import type { ChangeValue } from "../domain/book-fields.js";
 import type { Book } from "../domain/book.js";
@@ -13,12 +14,9 @@ import type { ToolDeps } from "../tools/deps.js";
 // server returns Forbidden/401/403 when anonymous local writes are blocked; every write
 // tool turns that into the same actionable guidance (CAPABILITIES §2) instead of a raw error.
 
-// calibredb never prints "401" for an auth-enabled server, only the credentials prompt (#237)
-const WRITE_REFUSED = /forbidden|unauthorized|\b401\b|\b403\b|username and password is required/i;
-
 /** True when a calibredb failure looks like the server refusing an anonymous write. */
 export function isWriteRefused(err: unknown): boolean {
-  return err instanceof CalibreCliError && WRITE_REFUSED.test(err.stderr ?? "");
+  return err instanceof CalibreCliError && WRITE_REFUSED_STDERR.test(err.stderr ?? "");
 }
 
 /** The actionable message shown when the server refuses a write. */
@@ -48,17 +46,7 @@ export const RETRY_PAUSES_MS: readonly number[] = [1000, 3000];
 /** Production sleep. */
 export const realSleep: Sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Observed in the #233 probes (calibredb 9.x client, `--with-library http://localhost:8099/#lib`
-// `set_metadata`; exit code 1 in every case; record: docs/dev/probes/233-transient-stderr.md):
-//   stopped server        → "ConnectionRefusedError: [Errno 61] Connection refused" (CONFIRMED, real server)
-//   killed mid-request    → "ConnectionResetError: [Errno 54] Connection reset by peer" (CONFIRMED, real server)
-//   closed, no response   → "http.client.RemoteDisconnected: Remote end closed connection without response"
-//                           (UNCONFIRMED — seen only with a fake server; matched defensively)
-const CONNECTION = /connection refused|connection reset|remote end closed connection/i;
-
-// A drop AFTER the request went out: the server may already have committed the write (#33 rule).
-// `connection refused` is excluded — that request never reached the server.
-const DROPPED_MID_REQUEST = /connection reset|remote end closed connection/i;
+// Patterns + probe record: domain/calibredb-stderr.ts.
 
 // Observed with the fake server: mechanize renders a 5xx as "HTTP Error 503: Service Unavailable".
 // Whether a real calibre-server ever answers 502/503/504 (vs. only a reverse proxy in front of
@@ -73,7 +61,7 @@ const GATEWAY_5XX = /HTTP Error (50[234])\b/;
 export function classifyTransient(err: unknown): TransientKind | undefined {
   if (!(err instanceof CalibreCliError) || err instanceof CalibreCliTimeoutError) return undefined;
   const stderr = err.stderr ?? "";
-  if (CONNECTION.test(stderr)) return "connection";
+  if (CONNECTION_STDERR.test(stderr)) return "connection";
   if (GATEWAY_5XX.test(stderr)) return "server";
   return undefined;
 }
@@ -97,7 +85,9 @@ export async function withTransientRetry<T>(fn: () => Promise<T>, sleep: Sleep =
 
 /** True when the connection dropped after the request was sent, so the write may have landed. */
 export function isDroppedMidRequest(err: unknown): boolean {
-  return classifyTransient(err) === "connection" && DROPPED_MID_REQUEST.test((err as CalibreCliError).stderr ?? "");
+  return (
+    classifyTransient(err) === "connection" && DROPPED_MID_REQUEST_STDERR.test((err as CalibreCliError).stderr ?? "")
+  );
 }
 
 /**

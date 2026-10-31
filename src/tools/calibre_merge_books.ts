@@ -27,6 +27,8 @@ interface Step {
   step: string;
   status: "pending" | "done" | "skipped" | "failed" | "not-run";
   note?: string;
+  /** What a failed step threw — the "did not start" result's errorCode (#249). Not rendered. */
+  cause?: unknown;
 }
 
 /** The benign `--dont-replace` collision: target already holds that format (probe §1). */
@@ -275,6 +277,7 @@ async function executeMerge(deps: ToolDeps, job: MergeJob) {
           }
         }
         step.status = "failed";
+        step.cause = err;
         step.note = isWriteRefused(err) ? WRITE_REFUSED_MESSAGE : err instanceof Error ? err.message : String(err);
         aborted = true;
         break;
@@ -333,6 +336,7 @@ async function executeMerge(deps: ToolDeps, job: MergeJob) {
           }
           if (!handled) {
             metaStep.status = "failed";
+            metaStep.cause = err;
             metaStep.note =
               "calibredb timed out and the re-read does not confirm the metadata merge — " +
               `verify with calibre_get_book id=${target.id} before retrying`;
@@ -342,6 +346,7 @@ async function executeMerge(deps: ToolDeps, job: MergeJob) {
         }
         if (!handled) {
           metaStep.status = "failed";
+          metaStep.cause = err;
           metaStep.note = isWriteRefused(err)
             ? WRITE_REFUSED_MESSAGE
             : err instanceof Error
@@ -377,6 +382,7 @@ async function executeMerge(deps: ToolDeps, job: MergeJob) {
         }
         if (!handled) {
           removeStep.status = "failed";
+          removeStep.cause = err;
           removeStep.note = isWriteRefused(err)
             ? WRITE_REFUSED_MESSAGE
             : err instanceof CalibreCliTimeoutError
@@ -424,11 +430,14 @@ function ledgerResult(job: MergeJob, steps: Step[]) {
   }
 
   if (!committed) {
-    return toolError(
-      "write_failed",
-      `Merge did not start — ${failed[0]!.note ?? failed[0]!.step}. Nothing was changed.\n` + `Steps:\n${ledger}`,
-      { structured: { ...structured, status: "incomplete" } },
-    );
+    const message =
+      `Merge did not start — ${failed[0]!.note ?? failed[0]!.step}. Nothing was changed.\n` + `Steps:\n${ledger}`;
+    const opts = { structured: { ...structured, status: "incomplete" } };
+    // the failing step's own cause when it threw; a failed post-add check has none
+    const cause = failed[0]!.cause;
+    return cause === undefined
+      ? toolError("write_failed", message, opts)
+      : toolError(errorCodeFor(cause), message, opts);
   }
 
   // Something committed: NEVER isError (issue #33). Steer: re-running is safe.
