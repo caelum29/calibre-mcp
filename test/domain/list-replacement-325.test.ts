@@ -2,6 +2,8 @@
 // Calibre's semantics. Tags/authors/languages are case-insensitive unique items (a set of
 // `python` reuses the existing `Python` item, nothing is dropped); identifier types are
 // lowercased; a value-only identifier change still replaces the existing value.
+// Correction (PR #332 review): the item is not silently reused — Calibre RENAMES it on every
+// book (calibre-debug, 9.17), which caseRenameNotes now reports; this file's flag cases stand.
 import { describe, expect, it } from "vitest";
 import { listReplacementNote, type ChangeValue } from "../../src/domain/book-fields.js";
 

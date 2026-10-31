@@ -5,7 +5,7 @@
 
 import { z } from "zod";
 import { buildSetMetadataArgs } from "../calibre/metadata-fields.js";
-import { isAllowedField, listReplacementNote, previewBookChanges } from "../domain/book-fields.js";
+import { caseRenameNotes, isAllowedField, listReplacementNote, previewBookChanges } from "../domain/book-fields.js";
 import type { ChangeValue } from "../domain/book-fields.js";
 import { CalibreCliTimeoutError } from "../domain/errors.js";
 import { buildScopedQuery, honestyLines, resolveFilter } from "../app/bundles.js";
@@ -127,7 +127,10 @@ export const bulkUpdateTool = defineTool({
               (d.changed ? "" : " (no change)"),
           );
           // a list set replaces the whole list — say so in text, where a one-item set is easy to miss
-          const flags = b.diff.flatMap((d) => listReplacementNote(d) ?? []).map((n) => `  ⚠ ${n}`);
+          // and a case-only edit of a tag/author renames the shared item on every book
+          const flags = b.diff
+            .flatMap((d) => [listReplacementNote(d), ...caseRenameNotes(d)].filter((n): n is string => !!n))
+            .map((n) => `  ⚠ ${n}`);
           return `#${b.id} ${b.title}\n${[...parts, ...flags].join("\n")}`;
         });
         const changing = perBook.filter((b) => b.diff.some((d) => d.changed)).length;

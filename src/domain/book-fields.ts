@@ -127,7 +127,8 @@ export function previewBookChanges(book: Book, changes: Record<string, ChangeVal
 
 /** Entry count of a list-like field value (array items or identifier keys); undefined for scalars. */
 function listSize(v: unknown): number | undefined {
-  if (Array.isArray(v)) return v.length;
+  // Calibre stores `Python, python` as one item, so count case-duplicates once.
+  if (Array.isArray(v)) return v.filter((x, i) => !v.slice(0, i).some((y) => sameEntry(x, y))).length;
   if (v && typeof v === "object") return Object.keys(v).length;
   return undefined;
 }
@@ -159,13 +160,13 @@ export function listReplacementNote(d: FieldDiff): string | undefined {
   if (!was || now === undefined) return undefined;
   if (Array.isArray(d.before)) {
     const list = Array.isArray(after) ? after : [];
-    const kept = (e: unknown): boolean =>
-      list.some((x) => (typeof x === "string" && typeof e === "string" ? sameItemName(x, e) : sameFieldValue(x, e)));
+    const kept = (e: unknown): boolean => list.some((x) => sameEntry(x, e));
     if (d.before.every(kept)) return undefined;
   } else if (after && typeof after === "object" && !Array.isArray(after)) {
     // An identifier is kept only with the same value: isbn 1 → 2 replaces the old one.
     const next = Object.entries(after);
-    const kept = ([type, val]: [string, unknown]): boolean => next.some(([t, v]) => sameItemName(t, type) && v === val);
+    const kept = ([type, val]: [string, unknown]): boolean =>
+      next.some(([t, v]) => sameItemName(t, type) && String(v) === String(val));
     if (Object.entries(d.before as Record<string, unknown>).every(kept)) return undefined;
   }
   return `${d.field}: ${was} → ${now} (replaces all existing ${d.field})`;
@@ -173,9 +174,41 @@ export function listReplacementNote(d: FieldDiff): string | undefined {
 
 /**
  * Whether two names are the same Calibre item (tag, author, language, identifier type).
- * Calibre keeps those as case-insensitive unique values (`COLLATE NOCASE` + `UNIQUE`, looked up
- * lowercased), so setting `python` on a book reuses the existing `Python` item.
+ * Calibre keeps one case-insensitive item per name (its Python layer lowercases, Cyrillic
+ * included), so setting `python` on a book with `Python` RENAMES that item library-wide.
+ * Strings only, exact otherwise: no trim or NFC here (Calibre strips tags itself), and
+ * identifier VALUES are not names — compare those exactly.
  */
 export function sameItemName(a: string, b: string): boolean {
   return a === b || a.toLowerCase() === b.toLowerCase();
+}
+
+// One list entry vs another: names case-insensitively, anything else structurally.
+function sameEntry(a: unknown, b: unknown): boolean {
+  return typeof a === "string" && typeof b === "string" ? sameItemName(a, b) : sameFieldValue(a, b);
+}
+
+// Fields whose items are shared across books, so a case change renames them everywhere.
+const SHARED_NAME_FIELDS = new Set(["tags", "authors"]);
+
+/**
+ * Preview notes for case-only edits of shared items, e.g.
+ * `tags: Python → python renames it on every book in the library (…)`: Calibre keeps one
+ * case-insensitive item, so the new case applies to every book that has it.
+ */
+export function caseRenameNotes(d: FieldDiff): string[] {
+  if (!SHARED_NAME_FIELDS.has(d.field) || !Array.isArray(d.before)) return [];
+  const after = splitListString(d.field, d.after);
+  if (!Array.isArray(after)) return [];
+  const notes: string[] = [];
+  for (const old of d.before) {
+    if (typeof old !== "string") continue;
+    const next = after.find((x): x is string => typeof x === "string" && sameItemName(x, old));
+    if (next !== undefined && next !== old) {
+      notes.push(
+        `${d.field}: ${old} → ${next} renames it on every book in the library (Calibre keeps one case-insensitive item)`,
+      );
+    }
+  }
+  return notes;
 }
