@@ -146,9 +146,10 @@ function wordMatches(word: string, term: string, prefix: boolean): boolean {
   const t = fold(term);
   if (w === t) return true;
   if (prefix) return w.startsWith(t);
-  // SQLite's porter tokenizer leaves tokens under 3 chars unstemmed, and a shifted marker
-  // often lands on a short common word: `us`/`on` must not pass for use/only/one.
-  if (Math.min(w.length, t.length) < 3) return false;
+  // SQLite's porter tokenizer leaves text tokens under 3 chars unstemmed, and a shifted marker
+  // often lands on a short common word: `us`/`on` must not pass for use/only/one. A short
+  // QUERY term still matches its inflections (go → going), as porter stems those to it.
+  if (w.length < 3) return false;
   if (stem(w) === stem(t)) return true;
   const shorter = Math.min(w.length, t.length);
   const cp = commonPrefix(w, t);
@@ -164,7 +165,7 @@ function fold(s: string): string {
 
 const SUFFIXES = ["ations", "ation", "ings", "ing", "edly", "ed", "ers", "er", "ly", "es", "s"];
 
-// Porter strips -ing/-ed only when a vowel stays in the stem: thing ≠ the (th), using = use (us).
+// Porter strips -ing/-ed only when a vowel stays in the stem: thing ≠ the, bring ≠ bred, using = use.
 const HAS_VOWEL = /[aeiouy]/;
 
 /** Rough English stem: strip one inflection, undouble a final consonant, drop a final e. */
@@ -178,7 +179,9 @@ function stem(w: string): string {
     }
   }
   if (/([b-df-hj-np-tv-z])\1$/.test(s)) s = s.slice(0, -1); // running → runn → run
-  if (s.endsWith("e") && s.length > 2 && HAS_VOWEL.test(s.slice(0, -1))) s = s.slice(0, -1); // making → mak ← make
+  // No vowel check here: a vowel-less e-stem (the → th) can only equal another stem that kept
+  // no vowel, which the suffix rule above already refuses (thing stays thing).
+  if (s.endsWith("e") && s.length > 2) s = s.slice(0, -1); // making → mak ← make
   return s;
 }
 
