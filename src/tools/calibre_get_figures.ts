@@ -5,7 +5,8 @@
 
 import { z } from "zod";
 import type { FigureInventory } from "../domain/figures/inventory.js";
-import { CalibreHttpError } from "../domain/errors.js";
+import type { SkippedFigure } from "../calibre/figure-inventory.js";
+import { CalibreHttpError, FiguresError, type FiguresErrorCode } from "../domain/errors.js";
 import { log } from "../logging.js";
 import { BookId, CoercedBool, CoercedInt, jsonArray } from "./coerce.js";
 import { defineTool } from "./define.js";
@@ -234,7 +235,7 @@ async function fetchFigures(
     );
   }
   for (const s of outcome.skipped) {
-    blocks.push({ type: "text", text: `Figure index ${s.index} skipped: ${skipReason(s.reason)}` });
+    blocks.push({ type: "text", text: `Figure index ${s.index} skipped: ${skipReason(s)}` });
   }
   if (outcome.images.length > 0) {
     // First-pass confabulation is the verified failure mode (#80): models answer
@@ -269,47 +270,39 @@ async function fetchFigures(
       : toolOk(blocks, {
           format: fmt,
           returned,
-          skipped: outcome.skipped.map((s) => ({ index: s.index, reason: skipReason(s.reason) })),
+          skipped: outcome.skipped.map((s) => ({ index: s.index, reason: skipReason(s) })),
           text: summary,
         });
   if (anyFailed) result.isError = true;
   return result;
 }
 
-/** Coded reasons → model-actionable prose. */
-function skipReason(reason: string): string {
-  switch (reason) {
-    case "FIGURES_NO_POPPLER":
-      return "poppler is missing (brew install poppler) — needed to extract PDF figures.";
-    case "FIGURES_NO_QLMANAGE":
-      return "this SVG figure needs macOS qlmanage to rasterize, which is unavailable here.";
-    case "FIGURES_FETCH_FAILED":
-      return "the image could not be extracted from the source file.";
-    default:
-      return reason;
-  }
+/** Model-facing wording for a skipped figure's failure code (codes absent here surface as `FIGURES_<code>`). */
+const SKIP_PROSE: Partial<Record<FiguresErrorCode, string>> = {
+  NO_POPPLER: "poppler is missing (brew install poppler) — needed to extract PDF figures.",
+  NO_QLMANAGE: "this SVG figure needs macOS qlmanage to rasterize, which is unavailable here.",
+  FETCH_FAILED: "the image could not be extracted from the source file.",
+};
+
+function skipReason(s: SkippedFigure): string {
+  if ("reason" in s) return s.reason;
+  return SKIP_PROSE[s.code] ?? new FiguresError(s.code).message;
 }
 
+/** Model-facing wording for a failed scan, per code (codes absent here surface as their message). */
+const SCAN_ERROR: Partial<Record<FiguresErrorCode, (bookId: number, fmt: string) => string>> = {
+  NO_POPPLER: () =>
+    "No poppler tools found (pdfimages/pdftotext) — install with `brew install poppler` to scan PDF figures.",
+  NO_UNZIP: () => "No unzip binary found — needed to scan EPUB figures.",
+  FORMAT_UNSUPPORTED: (_id, fmt) => `Figures need an EPUB or PDF source; ${fmt} is not supported.`,
+  SCAN_TIMEOUT: (id, fmt) => `Figure scan timed out for book ${id} (${fmt}) — the file may be very large.`,
+  SCAN_FAILED: (id, fmt) =>
+    `Could not scan book ${id} (${fmt}) for figures — the file may be DRM-protected or corrupt.`,
+};
+
 function figuresError(err: unknown, bookId: number, fmt: string) {
-  const m = err instanceof Error ? err.message : String(err);
-  switch (m) {
-    case "FIGURES_NO_POPPLER":
-      return toolError(
-        "No poppler tools found (pdfimages/pdftotext) — install with `brew install poppler` to scan PDF figures.",
-      );
-    case "FIGURES_NO_UNZIP":
-      return toolError("No unzip binary found — needed to scan EPUB figures.");
-    case "FIGURES_FORMAT_UNSUPPORTED":
-      return toolError(`Figures need an EPUB or PDF source; ${fmt} is not supported.`);
-    case "FIGURES_SCAN_TIMEOUT":
-      return toolError(`Figure scan timed out for book ${bookId} (${fmt}) — the file may be very large.`);
-    case "FIGURES_SCAN_FAILED":
-      return toolError(
-        `Could not scan book ${bookId} (${fmt}) for figures — the file may be DRM-protected or corrupt.`,
-      );
-    default:
-      return toolError(m);
-  }
+  const text = err instanceof FiguresError ? SCAN_ERROR[err.code]?.(bookId, fmt) : undefined;
+  return toolError(text ?? (err instanceof Error ? err.message : String(err)));
 }
 
 function plural(n: number, word: string): string {

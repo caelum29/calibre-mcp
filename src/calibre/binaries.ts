@@ -43,10 +43,8 @@ export interface RunToolOptions {
   signal?: AbortSignal;
   /** Exit codes treated as success (default `[0]`). */
   okCodes?: readonly number[];
-  /** Coded `Error.message` thrown on spawn failure / bad exit. */
-  failedCode: string;
-  /** Coded `Error.message` thrown on timeout. */
-  timeoutCode: string;
+  /** Builds the coded error thrown on failure (spawn error, bad exit, maxBuffer) or timeout. */
+  fail: (timedOut: boolean) => Error;
   /** Log line for a failure (the raw error leaks temp paths, so only the coded error is thrown). */
   logMessage: string;
 }
@@ -54,7 +52,7 @@ export interface RunToolOptions {
 /**
  * Run a converter/scanner to completion and return stdout. Goes through {@link spawnCollect}
  * (process-group hard-kill on timeout). Abort → {@link OperationCancelledError}; timeout →
- * `timeoutCode`; anything else (spawn error, bad exit, maxBuffer) → `failedCode`.
+ * `fail(true)`; anything else (spawn error, bad exit, maxBuffer) → `fail(false)`.
  */
 export async function runTool(bin: string, args: readonly string[], opts: RunToolOptions): Promise<string> {
   try {
@@ -79,7 +77,7 @@ export async function runTool(bin: string, args: readonly string[], opts: RunToo
             ? err.message.slice(0, 300)
             : String(err),
     });
-    throw new Error(timedOut ? opts.timeoutCode : opts.failedCode);
+    throw opts.fail(timedOut);
   }
 }
 
