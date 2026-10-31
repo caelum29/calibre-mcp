@@ -10,6 +10,7 @@ import type { Extractor } from "../calibre/extract.js";
 import type { FigureInventoryService } from "../calibre/figure-inventory.js";
 import type { Embedder } from "../semantic/embedder.js";
 import type { Reranker } from "../semantic/reranker.js";
+import type { IndexBuilds } from "../semantic/index-builds.js";
 import type { IndexStore } from "../semantic/store.js";
 import type { Provider } from "../enrich/provider.js";
 import type { BoardCache } from "../ui/board-cache.js";
@@ -81,6 +82,11 @@ export interface ToolDeps {
   boardCache?: BoardCache;
   /** External metadata providers for recovery. Defaulted in-handler; injectable for tests. */
   providers?: Record<Provider["name"], Provider>;
+  /**
+   * Running index builds + their soft deadline (#284). Defaulted to a process-wide registry;
+   * injectable so tests use their own registry and a short deadline.
+   */
+  indexBuilds?: IndexBuilds;
   /** Pause between transient-write retries (#233). Defaulted to setTimeout; injectable for tests. */
   sleep?: (ms: number) => Promise<void>;
   log: LogSink;
