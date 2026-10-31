@@ -1,0 +1,33 @@
+src/domain/book-fields.ts
+  s_be552e672e852f::t_58f413f1d9a792 127-167
+src/tools/calibre_bulk_update.ts
+  s_be552e672e852f::t_f8f2ca662b8118 8,119-121
+src/tools/calibre_find_duplicates.ts
+  s_be552e672e852f::t_2349b5a77cba14 118
+src/tools/calibre_quality_report.ts
+  s_be552e672e852f::t_81c66ae3010daf 108
+test/tools/bulk-update.handler.test.ts
+  s_be552e672e852f::t_f532e7443d615d 519-568
+test/tools/find-duplicates.handler.test.ts
+  s_be552e672e852f::t_7f651d5ec08434 89-95
+test/tools/quality-report.handler.test.ts
+  s_be552e672e852f::t_4c32eec7aa282c 108
+test/tools/stale-copy-306.test.ts
+  s_be552e672e852f::t_0d73e4455ecb2c 1-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d613e4461c2e01335d567d591584dfa4675796d9",
+  "prompts": {},
+  "sessions": {
+    "s_be552e672e852f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aa226cd4-0524-4ac4-992f-241c2d962397",
+        "model": "unknown"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
