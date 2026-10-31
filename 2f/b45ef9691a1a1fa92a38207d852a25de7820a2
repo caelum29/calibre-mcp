@@ -1,0 +1,19 @@
+docs/claude/overnight-profile.md
+  s_be552e672e852f::t_b18b312f40d0c9 42-49,52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2fb45ef9691a1a1fa92a38207d852a25de7820a2",
+  "prompts": {},
+  "sessions": {
+    "s_be552e672e852f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aa226cd4-0524-4ac4-992f-241c2d962397",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
