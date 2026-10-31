@@ -1,0 +1,23 @@
+test/tools/cursor-library-binding.test.ts
+  s_8daf88438d71af::t_d31599490f6624 1-83,87-88
+  s_8daf88438d71af::t_3b1771a1a64f6f 84-86
+test/tools/cursor-old-shape.test.ts
+  s_8daf88438d71af::t_3b1771a1a64f6f 24-33
+  s_8daf88438d71af::t_78327d001d60f6 1-23,34-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ca06968a04b01abe6615f21d7866fa2a6349e388",
+  "prompts": {},
+  "sessions": {
+    "s_8daf88438d71af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e01f011e-ea43-41e7-a24e-bc2595293cf1",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
