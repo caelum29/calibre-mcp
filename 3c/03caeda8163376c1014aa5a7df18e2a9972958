@@ -1,0 +1,23 @@
+src/calibre/client.ts
+  s_aa002d0f29785d::t_ec3dc959bdccd2 30-33
+test/architecture.test.ts
+  s_aa002d0f29785d::t_ec3dc959bdccd2 191-214,220-236
+src/tools/deps.ts
+  s_aa002d0f29785d::t_ec3dc959bdccd2 26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3c03caeda8163376c1014aa5a7df18e2a9972958",
+  "prompts": {},
+  "sessions": {
+    "s_aa002d0f29785d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9858b033-3534-4580-8536-b45ea248531d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
