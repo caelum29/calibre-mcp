@@ -11,10 +11,10 @@ vi.mock("../../src/app/write-policy.js", async (orig) => {
 import { verifyTimedOutWrite } from "../../src/app/write-policy.js";
 import { bulkUpdateTool } from "../../src/tools/calibre_bulk_update.js";
 import { CalibreCliTimeoutError } from "../../src/domain/errors.js";
-import type { ToolDeps } from "../../src/tools/deps.js";
+import type { BaseDeps } from "../../src/tools/deps.js";
 import { book, fakeBulkDeps } from "./fake-bulk-tags.js";
 
-const run = (args: Record<string, unknown>, d: ToolDeps) =>
+const run = (args: Record<string, unknown>, d: BaseDeps) =>
   bulkUpdateTool.handler(z.object(bulkUpdateTool.inputSchema).parse(args), d);
 
 describe("tags ops — write-verify gets the merged list (PR #333 review)", () => {

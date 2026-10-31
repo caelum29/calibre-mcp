@@ -9,7 +9,7 @@ import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
 import { CalibreCliTimeoutError } from "../../src/domain/errors.js";
-import type { ToolDeps } from "../../src/tools/deps.js";
+import type { BaseDeps, ToolDeps } from "../../src/tools/deps.js";
 
 const book = (over: Partial<Book> = {}): Book => ({
   id: 1,
@@ -34,7 +34,7 @@ interface Fake {
 }
 
 /** Fake deps; `searches` records every search query the handler sent. */
-function deps(f: Fake): { deps: ToolDeps; searches: string[]; cli: ReturnType<typeof vi.fn<Cli>> } {
+function deps(f: Fake): { deps: BaseDeps; searches: string[]; cli: ReturnType<typeof vi.fn<Cli>> } {
   const all = [...f.selected, ...(f.others ?? [])];
   const byId = new Map(all.map((b) => [b.id, b] as const));
   const searches: string[] = [];
@@ -69,7 +69,6 @@ function deps(f: Fake): { deps: ToolDeps; searches: string[]; cli: ReturnType<ty
       extractor: {} as ToolDeps["extractor"],
       figures: {} as ToolDeps["figures"],
       embedder: {} as ToolDeps["embedder"],
-      index: {} as ToolDeps["index"],
       log,
     },
   };
@@ -78,7 +77,7 @@ function deps(f: Fake): { deps: ToolDeps; searches: string[]; cli: ReturnType<ty
 const text = (r: { content: { type: string; text?: string }[] }): string =>
   r.content.map((b) => (b.type === "text" ? b.text : "")).join("\n");
 
-const run = (args: Record<string, unknown>, d: ToolDeps) =>
+const run = (args: Record<string, unknown>, d: BaseDeps) =>
   bulkUpdateTool.handler(z.object(bulkUpdateTool.inputSchema).parse(args), d);
 
 describe("calibre_bulk_update tags_add / tags_remove — merge (#321)", () => {

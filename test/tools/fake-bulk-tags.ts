@@ -4,7 +4,7 @@ import { vi } from "vitest";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
-import type { ToolDeps } from "../../src/tools/deps.js";
+import type { BaseDeps, ToolDeps } from "../../src/tools/deps.js";
 
 /** A Book with defaults; `over` wins. */
 export const book = (over: Partial<Book> = {}): Book => ({
@@ -32,7 +32,7 @@ export interface FakeBulk {
 }
 
 /** Fake deps plus the recorded search queries and calibredb spy. */
-export function fakeBulkDeps(f: FakeBulk): { deps: ToolDeps; searches: string[]; cli: ReturnType<typeof vi.fn<Cli>> } {
+export function fakeBulkDeps(f: FakeBulk): { deps: BaseDeps; searches: string[]; cli: ReturnType<typeof vi.fn<Cli>> } {
   const all = [...f.selected, ...(f.others ?? [])];
   const byId = new Map(all.map((b) => [b.id, b] as const));
   const searches: string[] = [];
@@ -67,7 +67,6 @@ export function fakeBulkDeps(f: FakeBulk): { deps: ToolDeps; searches: string[];
       extractor: {} as ToolDeps["extractor"],
       figures: {} as ToolDeps["figures"],
       embedder: {} as ToolDeps["embedder"],
-      index: {} as ToolDeps["index"],
       log,
     },
   };

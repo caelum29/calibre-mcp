@@ -5,11 +5,11 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { bulkUpdateTool } from "../../src/tools/calibre_bulk_update.js";
 import { CalibreHttpTimeoutError } from "../../src/domain/errors.js";
-import type { ToolDeps } from "../../src/tools/deps.js";
+import type { BaseDeps } from "../../src/tools/deps.js";
 import { book, fakeBulkDeps, textOf } from "./fake-bulk-tags.js";
 
 const schema = z.object(bulkUpdateTool.inputSchema);
-const run = (args: Record<string, unknown>, d: ToolDeps) => bulkUpdateTool.handler(schema.parse(args), d);
+const run = (args: Record<string, unknown>, d: BaseDeps) => bulkUpdateTool.handler(schema.parse(args), d);
 
 // Skipping no-op books was dropped (orchestrator, round 1): the frozen #321 RED test pins a
 // write for them. These two cases still hold.
