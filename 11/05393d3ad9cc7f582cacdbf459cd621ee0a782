@@ -1,0 +1,35 @@
+src/calibre/content-server.ts
+  s_2748adee5ace54::t_4effd1a66e7176 12,139,144,151,153,155
+src/tools/calibre_ping.ts
+  s_2748adee5ace54::t_b8ca18bd038a01 9
+  s_2748adee5ace54::t_6e88ae437d1398 26
+test/calibre/fts-parse-log-level.test.ts
+  s_2748adee5ace54::t_43bdd49fe80b2f 8,33,42
+test/integration/merge.live.test.ts
+  s_2748adee5ace54::t_317379b04e0d3a 12
+  s_2748adee5ace54::t_43bdd49fe80b2f 62
+src/calibre/lib-id.ts
+  s_2748adee5ace54::t_4effd1a66e7176 10-24
+src/calibre/client.ts
+  s_2748adee5ace54::t_6e88ae437d1398 52
+  s_2748adee5ace54::t_4effd1a66e7176 19,25-26,38,91-92,100,151,162
+src/tools/calibre_manage_bundles.ts
+  s_2748adee5ace54::t_b8ca18bd038a01 14
+  s_2748adee5ace54::t_6e88ae437d1398 103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1105393d3ad9cc7f582cacdbf459cd621ee0a782",
+  "prompts": {},
+  "sessions": {
+    "s_2748adee5ace54": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eca6633b-40b8-4fea-beac-e4ac360b8a51",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
