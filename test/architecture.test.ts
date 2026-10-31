@@ -253,6 +253,8 @@ interface TwinRule {
   name: string;
   pattern: RegExp;
   home: string[];
+  /** Top-level dirs the rule applies to; default src only (tooling may legitimately differ). */
+  roots?: string[];
 }
 
 // A second copy of these drifts: the fix lands in one copy and misses the other.
@@ -285,8 +287,11 @@ const TWIN_RULES: TwinRule[] = [
   },
   {
     name: "one SQLite connection owner: only semantic/store/schema.ts opens a DatabaseSync (#272)",
-    pattern: /\bnew\s+DatabaseSync\s*\(/,
+    // also `new sqlite.DatabaseSync(` (namespace import) and `DatabaseSync as X` (aliased, #322)
+    pattern: /\bnew\s+(?:\w+\.)?DatabaseSync\s*\(|\bDatabaseSync\s+as\s+\w/,
     home: ["src/semantic/store/schema.ts"],
+    // scripts/ too: a reindex/maintenance script opening its own connection races the store (#322)
+    roots: ["src", "scripts"],
   },
   {
     name: "ranking/fusion/rerank live in semantic/retrieve.ts, not in a tool adapter (#259)",
@@ -300,15 +305,20 @@ const TWIN_RULES: TwinRule[] = [
   },
 ];
 
-/** The files the twin rules are checked against. */
+/** The files the twin rules are checked against: src/ plus the scripts/ tooling. */
 function twinScanFiles(): SourceFile[] {
-  return readSources("src", /\.ts$/);
+  return [...readSources("src", /\.ts$/), ...readSources("scripts", /\.(?:ts|mjs|js)$/)];
+}
+
+/** True when the file sits under one of the rule's roots (default: src). */
+function inRoots(rule: TwinRule, file: SourceFile): boolean {
+  return (rule.roots ?? ["src"]).some((root) => file.path.startsWith(`${root}/`));
 }
 
 function findTwinViolations(files: SourceFile[]): string[] {
   return TWIN_RULES.flatMap((r) =>
     files
-      .filter((f) => !r.home.includes(f.path) && r.pattern.test(stripComments(f.source)))
+      .filter((f) => inRoots(r, f) && !r.home.includes(f.path) && r.pattern.test(stripComments(f.source)))
       .map((f) => `${f.path}: ${r.name}`),
   );
 }
