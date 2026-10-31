@@ -188,7 +188,8 @@ const TWIN_RULES: TwinRule[] = [
   },
   {
     name: "a LibId is minted only by content.resolveLibraryId (D-008, #218)",
-    pattern: /\basLibId\s*\(/,
+    // any mention of asLibId (covers aliased imports) plus the `as LibId` / `<LibId>` casts
+    pattern: /\basLibId\b|\bas\s+LibId\b|<LibId>/,
     home: ["src/calibre/content-server.ts", "src/calibre/lib-id.ts"],
   },
   {
@@ -216,6 +217,11 @@ describe("one home per mechanism", () => {
     expect(at(`const k = s.normalize("NFKD").replace(/\\p{M}/gu, "");`)).toHaveLength(1);
     expect(at(`const r = await fetch(url);`)).toHaveLength(1);
     expect(at(`const id = asLibId(name);`)).toHaveLength(1);
+    expect(at(`import { asLibId as mint } from "./lib-id.js";`)).toHaveLength(1);
+    expect(at(`const id = name as LibId;`)).toHaveLength(1);
+    expect(at(`const id = name as unknown as LibId;`)).toHaveLength(1);
+    expect(at(`const id = <LibId>name;`)).toHaveLength(1);
+    expect(at(`import type { LibId } from "./lib-id.js"; const x: LibId = y;`)).toEqual([]);
     expect(at(`throw new Error("FIGURES_NO_POPPLER");`)).toHaveLength(1);
     expect(at(`const c = ["/opt/homebrew/bin/pdftotext"];`)).toHaveLength(1);
     expect(at(`const k = s.normalize("NFC");`)).toEqual([]);
