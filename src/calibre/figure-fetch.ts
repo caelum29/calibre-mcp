@@ -12,6 +12,7 @@ import path from "node:path";
 import { computeBand, findAnchors, parseBboxPage, selectAnchor } from "../domain/figures/band.js";
 import type { FigureEntry, FigureInventory } from "../domain/figures/inventory.js";
 import { parsePdfImagesList } from "../domain/figures/inventory.js";
+import { findBin } from "./binaries.js";
 
 /** Longest-side pixel cap per detail tier (D-018: resolution is the token lever). */
 export const DETAIL_MAX_SIDE: Record<"standard" | "high", number> = {
@@ -22,10 +23,6 @@ export const DETAIL_MAX_SIDE: Record<"standard" | "high", number> = {
 const RENDER_DPI = 150;
 const PT_TO_PX = RENDER_DPI / 72;
 
-export const PDFTOPPM_CANDIDATES = ["/opt/homebrew/bin/pdftoppm", "/usr/local/bin/pdftoppm", "/usr/bin/pdftoppm"];
-const SIPS_CANDIDATES = ["/usr/bin/sips"];
-const QLMANAGE_CANDIDATES = ["/usr/bin/qlmanage"];
-
 /** Encoded image ready for an MCP ImageContent block. */
 export interface EncodedImage {
   data: string; // base64, no data: prefix
@@ -35,11 +32,6 @@ export interface EncodedImage {
 
 /** Subprocess runner injected by the service (shares timeout/logging discipline). */
 export type Runner = (bin: string, args: string[], okCodes?: number[]) => Promise<string>;
-
-/** First existing path among the candidates, or null when none is installed. */
-export function findBin(candidates: string[]): string | null {
-  return candidates.find(existsSync) ?? null;
-}
 
 /**
  * Extract a raster figure from a single PDF page. `pdfimages` numbering restarts
@@ -169,7 +161,7 @@ export async function inlineSvgToFile(html: string, ordinal: number, scratch: st
  * original bytes pass through untouched (the byte cap still protects the response).
  */
 export async function encodeSmallest(run: Runner, imageFile: string, maxSide: number): Promise<EncodedImage> {
-  const sips = findBin(SIPS_CANDIDATES);
+  const sips = findBin("sips");
   if (!sips) {
     const raw = await readFile(imageFile);
     return { data: raw.toString("base64"), mimeType: "image/png", bytes: raw.length };
@@ -194,10 +186,10 @@ export async function encodeSmallest(run: Runner, imageFile: string, maxSide: nu
 
 /** Resolved `pdftoppm` path (poppler), or null when not installed. */
 export function pdftoppmBinary(): string | null {
-  return findBin(PDFTOPPM_CANDIDATES);
+  return findBin("pdftoppm");
 }
 
 /** Resolved macOS `qlmanage` path (SVG rasterizing), or null when not available. */
 export function qlmanageBinary(): string | null {
-  return findBin(QLMANAGE_CANDIDATES);
+  return findBin("qlmanage");
 }

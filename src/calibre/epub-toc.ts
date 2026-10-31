@@ -4,7 +4,6 @@
 // (text detectors), never fails extraction.
 
 import { randomUUID } from "node:crypto";
-import { existsSync } from "node:fs";
 import { mkdir, readFile, rm } from "node:fs/promises";
 import path from "node:path";
 import { parseContainerRootfile, parseOpfSpine } from "../domain/figures/epub.js";
@@ -18,15 +17,15 @@ import {
   type SpineHtml,
 } from "../domain/structure/epub-toc.js";
 import { log } from "../logging.js";
+import { findBin } from "./binaries.js";
 import { spawnCollect } from "./spawn.js";
 
 // EPUB = zip; system unzip is universal on macOS/Linux, keeps the zero-new-deps rule.
-const UNZIP_CANDIDATES = ["/usr/bin/unzip", "/opt/homebrew/bin/unzip", "/usr/local/bin/unzip"];
 const UNZIP_TIMEOUT_MS = 30_000;
 
 /** System unzip, or null when missing (never on macOS; minimal Linux images only). */
 export function unzipBinary(): string | null {
-  return UNZIP_CANDIDATES.find(existsSync) ?? null;
+  return findBin("unzip");
 }
 
 export interface ReadEpubTocOptions {

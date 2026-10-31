@@ -2,13 +2,10 @@
 // outline whatever page range it converts, so a single-page run is enough (~0.03 s). The
 // outline is a best-effort chapter source — every failure degrades to [] (text detectors).
 
-import { existsSync } from "node:fs";
 import { type OutlineEntry, parsePdfOutlineXml } from "../domain/structure/pdf-outline.js";
 import { log } from "../logging.js";
+import { findBin } from "./binaries.js";
 import { spawnCollect } from "./spawn.js";
-
-// Same probe order as pdftotext — the server may run with a minimal PATH (Claude Desktop).
-const PDFTOHTML_CANDIDATES = ["/opt/homebrew/bin/pdftohtml", "/usr/local/bin/pdftohtml", "/usr/bin/pdftohtml"];
 
 const OUTLINE_TIMEOUT_MS = 20_000;
 // Page 1's text rides along in the XML; a huge first page plus a big outline stays far below this.
@@ -16,7 +13,7 @@ const OUTLINE_MAX_BUFFER = 16 * 1024 * 1024;
 
 /** Absolute pdftohtml path, or null when poppler's pdftohtml isn't installed in a known spot. */
 export function pdftohtmlBinary(): string | null {
-  return PDFTOHTML_CANDIDATES.find(existsSync) ?? null;
+  return findBin("pdftohtml");
 }
 
 /** pdftohtml argv: quiet, no images, XML to stdout, first page only (the outline is global). */

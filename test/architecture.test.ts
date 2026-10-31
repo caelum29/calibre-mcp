@@ -183,6 +183,11 @@ const TWIN_RULES: TwinRule[] = [
     pattern: /(?<![.\w])fetch\s*\(/,
     home: ["src/calibre/http.ts", "src/enrich/http.ts", "src/calibre/content-server.ts"], // content-server: #223
   },
+  {
+    name: "external-binary candidate paths live in calibre/binaries.ts (#219)",
+    pattern: /["'`]\/(?:opt\/homebrew|usr\/local|usr)\/bin\//,
+    home: ["src/calibre/binaries.ts", "src/calibre/discover.ts"], // discover: calibredb lookup, injectable
+  },
 ];
 
 function findTwinViolations(files: SourceFile[]): string[] {
@@ -202,6 +207,7 @@ describe("one home per mechanism", () => {
     const at = (source: string) => findTwinViolations([{ path: "src/tools/x.ts", source }]);
     expect(at(`const k = s.normalize("NFKD").replace(/\\p{M}/gu, "");`)).toHaveLength(1);
     expect(at(`const r = await fetch(url);`)).toHaveLength(1);
+    expect(at(`const c = ["/opt/homebrew/bin/pdftotext"];`)).toHaveLength(1);
     expect(at(`const k = s.normalize("NFC");`)).toEqual([]);
     expect(at(`await deps.content.fetchBook(1); // fetch(url)`)).toEqual([]);
   });
