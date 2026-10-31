@@ -1,0 +1,97 @@
+test/semantic/store.test.ts
+  s_d856ef3a0da662::t_32ac2a0539d371 9
+src/semantic/store/writer.ts
+  s_d856ef3a0da662::t_32d6b8ac1dae61 1-209
+src/semantic/status.ts
+  s_d856ef3a0da662::t_86f81ba1246ed8 15,67-68
+scripts/reindex.ts
+  s_d856ef3a0da662::t_32ac2a0539d371 20
+test/tools/index-book.refresh-flags.test.ts
+  s_d856ef3a0da662::t_32ac2a0539d371 14
+src/tools/calibre_build_index.ts
+  s_d856ef3a0da662::t_32ac2a0539d371 33
+src/app/index-book.ts
+  s_d856ef3a0da662::t_32ac2a0539d371 12
+test/tools/build-index.progress.test.ts
+  s_d856ef3a0da662::t_32ac2a0539d371 15
+test/tools/index-book.test.ts
+  s_d856ef3a0da662::t_32ac2a0539d371 12
+test/tools/build-index.handler.test.ts
+  s_d856ef3a0da662::t_32ac2a0539d371 10
+test/tools/build-index.background.test.ts
+  s_d856ef3a0da662::t_32ac2a0539d371 14
+src/semantic/store/index.ts
+  s_d856ef3a0da662::t_32ac2a0539d371 1-193
+src/semantic/store/chunks.ts
+  s_d856ef3a0da662::t_7b341bde70e674 1-222
+test/tools/channel-parity.test.ts
+  s_d856ef3a0da662::t_32ac2a0539d371 17
+src/semantic/store/shared.ts
+  s_d856ef3a0da662::t_c3e5e5e1a6e04f 1-85
+test/semantic/store-restrict.test.ts
+  s_d856ef3a0da662::t_32ac2a0539d371 9
+test/tools/index-book.epub-front-matter.test.ts
+  s_d856ef3a0da662::t_32ac2a0539d371 15
+test/semantic/status.test.ts
+  s_d856ef3a0da662::t_32ac2a0539d371 14
+test/eval/retrieval/harness.ts
+  s_d856ef3a0da662::t_32ac2a0539d371 19
+test/tools/build-index.heartbeat.test.ts
+  s_d856ef3a0da662::t_32ac2a0539d371 15
+test/integration/cancellation-progress.test.ts
+  s_d856ef3a0da662::t_32ac2a0539d371 165
+test/tools/build-index.metadata-only.test.ts
+  s_d856ef3a0da662::t_32ac2a0539d371 16
+src/semantic/store/schema.ts
+  s_d856ef3a0da662::t_c3e5e5e1a6e04f 1-166,169-240
+  s_d856ef3a0da662::t_32d6b8ac1dae61 167-168
+src/semantic/store/types.ts
+  s_d856ef3a0da662::t_32d6b8ac1dae61 1-239
+test/integration/figure-chunk-linkage.test.ts
+  s_d856ef3a0da662::t_32ac2a0539d371 12
+test/semantic/store-concurrency.test.ts
+  s_d856ef3a0da662::t_32ac2a0539d371 11
+test/tools/build-index.soft-deadline.test.ts
+  s_d856ef3a0da662::t_32ac2a0539d371 14
+test/eval/retrieval/harness.test.ts
+  s_d856ef3a0da662::t_32ac2a0539d371 7
+src/server.ts
+  s_d856ef3a0da662::t_32ac2a0539d371 20
+src/semantic/retrieve.ts
+  s_d856ef3a0da662::t_86f81ba1246ed8 13,54-55
+src/tools/calibre_semantic_search.ts
+  s_d856ef3a0da662::t_32ac2a0539d371 19
+test/tools/board-meta.test.ts
+  s_d856ef3a0da662::t_32ac2a0539d371 13
+src/semantic/store/freshness.ts
+  s_d856ef3a0da662::t_32d6b8ac1dae61 1-53,56-118
+  s_d856ef3a0da662::t_32ac2a0539d371 54-55
+test/tools/semantic-search.handler.test.ts
+  s_d856ef3a0da662::t_32ac2a0539d371 7
+src/semantic/store/figures.ts
+  s_d856ef3a0da662::t_32ac2a0539d371 146-147
+  s_d856ef3a0da662::t_7b341bde70e674 1-145,148-160
+test/semantic/retrieve.test.ts
+  s_d856ef3a0da662::t_86f81ba1246ed8 7,25-32
+src/tools/deps.ts
+  s_d856ef3a0da662::t_32ac2a0539d371 15
+test/semantic/store-fts-plan.test.ts
+  s_d856ef3a0da662::t_32ac2a0539d371 13
+  s_d856ef3a0da662::t_2bf66bf9d8557f 18,34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "006b12834acbd2a30edbde125433058fca91ac6f",
+  "prompts": {},
+  "sessions": {
+    "s_d856ef3a0da662": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc47d0e8-c9be-4814-af6c-d0969a96f5cd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
