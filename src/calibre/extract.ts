@@ -402,8 +402,7 @@ export class Extractor {
       timeoutMs: timeout,
       maxBuffer: 8 * 1024 * 1024,
       signal,
-      failedCode: "EXTRACT_FAILED",
-      timeoutCode: "EXTRACT_TIMEOUT",
+      fail: (timedOut) => new Error(timedOut ? "EXTRACT_TIMEOUT" : "EXTRACT_FAILED"),
       logMessage: "extract convert failed",
     });
   }

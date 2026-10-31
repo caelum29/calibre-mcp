@@ -1,3 +1,4 @@
+import { FiguresError } from "../../src/domain/errors.js";
 import { describe, expect, it } from "vitest";
 import { buildIndexTool } from "../../src/tools/calibre_build_index.js";
 import { loadConfig } from "../../src/config.js";
@@ -588,7 +589,7 @@ describe("figure caption indexing (D-018 Phase B / #86)", () => {
   };
   const figuresService = (fail = false) => ({
     getInventory: async () => {
-      if (fail) throw new Error("FIGURES_SCAN_FAILED");
+      if (fail) throw new FiguresError("SCAN_FAILED");
       return { inventory, cached: true };
     },
   });

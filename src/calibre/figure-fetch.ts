@@ -12,6 +12,7 @@ import path from "node:path";
 import { computeBand, findAnchors, parseBboxPage, selectAnchor } from "../domain/figures/band.js";
 import type { FigureEntry, FigureInventory } from "../domain/figures/inventory.js";
 import { parsePdfImagesList } from "../domain/figures/inventory.js";
+import { FiguresError } from "../domain/errors.js";
 import { findBin } from "./binaries.js";
 
 /** Longest-side pixel cap per detail tier (D-018: resolution is the token lever). */
@@ -56,12 +57,12 @@ export async function extractPdfRaster(
   const ordinal = siblings.findIndex((e) => e.index === entry.index);
   const imageRows = rows.filter((r) => r.type === "image");
   const row = imageRows[ordinal];
-  if (ordinal < 0 || !row) throw new Error("FIGURES_FETCH_FAILED");
+  if (ordinal < 0 || !row) throw new FiguresError("FETCH_FAILED");
   const rowIndex = rows.indexOf(row); // file numbering counts smask rows too
   const root = path.join(scratch, "px");
   await run(pdfimages, ["-png", "-f", page, "-l", page, src, root]);
   const file = `${root}-${String(rowIndex).padStart(3, "0")}.png`;
-  if (!existsSync(file)) throw new Error("FIGURES_FETCH_FAILED");
+  if (!existsSync(file)) throw new FiguresError("FETCH_FAILED");
   return file;
 }
 
@@ -114,7 +115,7 @@ export async function renderPdfBand(
     out,
   ]);
   const file = `${out}.png`;
-  if (!existsSync(file)) throw new Error("FIGURES_FETCH_FAILED");
+  if (!existsSync(file)) throw new FiguresError("FETCH_FAILED");
   return file;
 }
 
@@ -133,7 +134,7 @@ export async function rasterizeSvg(
 ): Promise<string> {
   await run(qlmanage, ["-t", "-s", String(maxSide), "-o", scratch, svgFile]);
   const produced = path.join(scratch, `${path.basename(svgFile)}.png`);
-  if (!existsSync(produced)) throw new Error("FIGURES_FETCH_FAILED");
+  if (!existsSync(produced)) throw new FiguresError("FETCH_FAILED");
   // rename away from the .svg.png double extension before sips sees it
   const clean = produced.replace(/\.svg\.png$/, ".png");
   if (clean !== produced) await rename(produced, clean);
@@ -148,7 +149,7 @@ export async function inlineSvgToFile(html: string, ordinal: number, scratch: st
     // inventory instead — mirror that split or the ordinal drifts
     .filter((b) => !/<image\b[^>]*\b(?:xlink:)?href=/i.test(b));
   const block = blocks[ordinal];
-  if (!block) throw new Error("FIGURES_FETCH_FAILED");
+  if (!block) throw new FiguresError("FETCH_FAILED");
   const svg = /\bxmlns=/.test(block) ? block : block.replace(/<svg\b/i, '<svg xmlns="http://www.w3.org/2000/svg"');
   const file = path.join(scratch, `inline-${ordinal}.svg`);
   await writeFile(file, svg, "utf8");

@@ -74,3 +74,24 @@ export class OperationCancelledError extends Error {
 export function isFtsParseDiag(diag: string): boolean {
   return /Failed to parse search query|fts5: syntax error/i.test(diag);
 }
+
+/** Why a figure scan or fetch failed; the tool maps each code to model-facing prose. */
+export type FiguresErrorCode =
+  | "NO_POPPLER"
+  | "NO_UNZIP"
+  | "NO_QLMANAGE"
+  | "FORMAT_UNSUPPORTED"
+  | "SCAN_TIMEOUT"
+  | "SCAN_FAILED"
+  | "FETCH_FAILED";
+
+/**
+ * A figure scan/fetch failure with a machine-readable {@link FiguresErrorCode}. The message is
+ * `FIGURES_<code>` (generic, path-free) so logs and any unmapped surface stay stable.
+ */
+export class FiguresError extends Error {
+  constructor(readonly code: FiguresErrorCode) {
+    super(`FIGURES_${code}`);
+    this.name = "FiguresError";
+  }
+}
