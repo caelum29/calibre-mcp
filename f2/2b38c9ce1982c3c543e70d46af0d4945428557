@@ -1,0 +1,19 @@
+test/tools/cursor-binding-review.test.ts
+  s_50fe1718966656::t_5ee92b14cda371 1-159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f22b38c9ce1982c3c543e70d46af0d4945428557",
+  "prompts": {},
+  "sessions": {
+    "s_50fe1718966656": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c5973f1c-3570-4745-853d-adb0886a9129",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
