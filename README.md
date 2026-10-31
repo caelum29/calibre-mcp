@@ -362,7 +362,7 @@ back a much heavier copy (an 8 MB PDF served as 70 MB), so a disk-sized cap sile
   neither do we.
 - **Library not found (404)** — pass the library’s *display name* or *ID* as shown by
   `calibre_list_libraries`; when in doubt, leave the library unset and let the server
-  pick its default.
+  pick its default (unless `calibre_list_libraries` reports the default as unavailable — then pass an explicit id).
 
 ## 🛠️ Development
 

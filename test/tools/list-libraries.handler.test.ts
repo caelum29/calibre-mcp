@@ -77,3 +77,26 @@ describe("calibre_list_libraries with no libraries (#325)", () => {
     expect(r.structuredContent).toEqual({ libraries: [] });
   });
 });
+
+describe("calibre_list_libraries default handling, review round (#325)", () => {
+  it("listed default: no Note line, structured default equals the id, no defaultUnavailable", async () => {
+    const r = await listLibrariesTool.handler({}, deps(MAP, "Humanities"));
+    const sc = r.structuredContent as { default?: string; defaultUnavailable?: string };
+    expect(text(r)).not.toContain("Note:");
+    expect(sc.default).toBe("Humanities");
+    expect(sc.defaultUnavailable).toBeUndefined();
+  });
+
+  it("stale default: names it in defaultUnavailable and steers to an explicit id", async () => {
+    const r = await listLibrariesTool.handler({}, deps(MAP, "Gone_Library"));
+    const sc = r.structuredContent as { defaultUnavailable?: string };
+    expect(sc.defaultUnavailable).toBe("Gone_Library");
+    expect(text(r)).toContain("Pass an explicit library id from this list");
+  });
+
+  it("zero libraries + stale default: (none) plus the Note, defaultUnavailable set", async () => {
+    const r = await listLibrariesTool.handler({}, deps({}, "Gone_Library"));
+    expect(text(r)).toBe('Libraries: (none)\nNote: the server default "Gone_Library" is not an exposed library.');
+    expect(r.structuredContent).toStrictEqual({ libraries: [], defaultUnavailable: "Gone_Library" });
+  });
+});

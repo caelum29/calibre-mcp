@@ -1205,6 +1205,9 @@
           "default": {
             "type": "string"
           },
+          "defaultUnavailable": {
+            "type": "string"
+          },
           "libraries": {
             "items": {
               "additionalProperties": false,
