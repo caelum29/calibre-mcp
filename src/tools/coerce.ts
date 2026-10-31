@@ -64,5 +64,14 @@ export function limitParam(max: number, def: number) {
     .default(def);
 }
 
-/** Opaque pagination cursor — a raw string we mint and decode ourselves (see cursor.ts). */
-export const CursorParam = z.string().optional();
+/**
+ * Opaque pagination cursor — a raw string we mint and decode ourselves (see cursor.ts). A client
+ * that forwards a number/object would fail z.string() with a -32602; stringify it instead so
+ * resolveCursor answers with its actionable "Invalid cursor" error. Advertised type stays string.
+ */
+export const CursorParam = z
+  .preprocess((v) => {
+    if (v === undefined || typeof v === "string") return v;
+    return typeof v === "object" && v !== null ? JSON.stringify(v) : String(v);
+  }, z.string())
+  .optional();
