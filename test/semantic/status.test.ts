@@ -11,7 +11,7 @@ import { loadConfig } from "../../src/config.js";
 import type { Config } from "../../src/config.js";
 import type { Embedder, EmbedderLoadState } from "../../src/semantic/embedder.js";
 import { EMBED_DIM, INDEX_VERSION, MODEL_ID } from "../../src/semantic/model.js";
-import { SqliteIndexStore } from "../../src/semantic/store.js";
+import { SqliteIndexStore } from "../../src/semantic/store/index.js";
 import { l2normalize } from "../../src/semantic/vector.js";
 import { computeSemanticStatus, formatSemanticStatusLine } from "../../src/semantic/status.js";
 

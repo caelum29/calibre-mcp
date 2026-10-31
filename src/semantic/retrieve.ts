@@ -10,7 +10,7 @@ import type { Embedder } from "./embedder.js";
 import { RRF_K, rrfFuse } from "./fusion.js";
 import { RERANK_FLOOR, RERANK_POOL, type Reranker } from "./reranker.js";
 import { stemText } from "./stem.js";
-import type { BookHit, FigureHit, IndexStore, LibraryHit } from "./store.js";
+import type { BookHit, ChunkIndex, FigureHit, FigureIndex, LibraryHit } from "./store/index.js";
 
 /** Per-half candidate pool the fuser draws from (design: vector top-50 + keyword top-50). */
 const POOL = 50;
@@ -51,7 +51,8 @@ export type RetrievalMode = "hybrid" | "vector" | "keyword";
 
 /** What retrieve() needs — a structural subset of ToolDeps, so tools pass theirs as-is. */
 export interface RetrievalDeps {
-  index: IndexStore;
+  /** Only the retrieval ports (#272): chunk + figure search, never writes or freshness. */
+  index: ChunkIndex & FigureIndex;
   embedder: Embedder;
   /** Absent = reranking not wired → the fused order is kept silently. */
   reranker?: Reranker;

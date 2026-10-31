@@ -10,7 +10,7 @@ import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
 import type { SearchPage } from "../../src/domain/search.js";
-import type { LibraryHit } from "../../src/semantic/store.js";
+import type { LibraryHit } from "../../src/semantic/store/index.js";
 import { fakeFts } from "./fake-fts.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
 

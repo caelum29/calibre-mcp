@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 import type { Reranker } from "../../../src/semantic/reranker.js";
-import type { IndexStore } from "../../../src/semantic/store.js";
+import type { IndexStore } from "../../../src/semantic/store/index.js";
 import { detectChapters } from "../../../src/domain/structure/chapters.js";
 import { frontMatterEnd, leadingFrontMatter } from "../../../src/domain/structure/front-matter.js";
 import { hashEmbedder } from "./hash-embedder.js";

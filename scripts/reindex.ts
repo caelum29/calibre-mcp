@@ -17,7 +17,7 @@ import { FigureInventoryService } from "../src/calibre/figure-inventory.js";
 import { TransformersEmbedder } from "../src/semantic/embedder.js";
 import { inThreadEncoder, type BookEncoder } from "../src/semantic/book-encoder.js";
 import { ThreadEncoder } from "../src/semantic/thread-encoder.js";
-import { SqliteIndexStore } from "../src/semantic/store.js";
+import { SqliteIndexStore } from "../src/semantic/store/index.js";
 import { runBookPipeline } from "../src/semantic/book-pipeline.js";
 import { appendProgress, resolveProgressPath, resumeProgress } from "../src/semantic/build-progress.js";
 import { commitBook, commitRefresh, describeError, prepareBook, type PrepareResult } from "../src/app/index-book.js";

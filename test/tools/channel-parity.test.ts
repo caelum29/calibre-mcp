@@ -14,7 +14,7 @@ import type { Book } from "../../src/domain/book.js";
 import type { ProviderHit } from "../../src/domain/enrich/types.js";
 import type { Embedder } from "../../src/semantic/embedder.js";
 import { EMBED_DIM } from "../../src/semantic/model.js";
-import { SqliteIndexStore } from "../../src/semantic/store.js";
+import { SqliteIndexStore } from "../../src/semantic/store/index.js";
 import { l2normalize } from "../../src/semantic/vector.js";
 import { allTools } from "../../src/tools/registry.js";
 import { decodeCursor, pageCursor } from "../../src/tools/cursor.js";

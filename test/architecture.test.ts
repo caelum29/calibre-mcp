@@ -1,7 +1,7 @@
 // Mechanical guards for architecture invariants from CLAUDE.md, so violations fail CI
 // instead of relying on the model reading the docs. (The user-regex rule lives in
 // .oxlintrc.json as a `no-restricted-globals` override on src/tools/**.)
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, relative } from "node:path";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
@@ -284,6 +284,11 @@ const TWIN_RULES: TwinRule[] = [
     home: ["src/calibre/binaries.ts", "src/calibre/discover.ts"], // discover: calibredb lookup, injectable
   },
   {
+    name: "one SQLite connection owner: only semantic/store/schema.ts opens a DatabaseSync (#272)",
+    pattern: /\bnew\s+DatabaseSync\s*\(/,
+    home: ["src/semantic/store/schema.ts"],
+  },
+  {
     name: "ranking/fusion/rerank live in semantic/retrieve.ts, not in a tool adapter (#259)",
     pattern: /\brrfFuse\s*\(|\.rerank\s*\(|\bRRF_WEIGHT\b|\bVECTOR_RRF_WEIGHT\b/,
     home: ["src/semantic/fusion.ts", "src/semantic/retrieve.ts"],
@@ -325,8 +330,41 @@ describe("one home per mechanism", () => {
     expect(at(`const VECTOR_RRF_WEIGHT = 1.0;`)).toHaveLength(1);
     expect(at(`function boardMeta(deps, payload) {}`)).toHaveLength(1);
     expect(at(`const _meta = boardMeta(deps, payload);`)).toEqual([]);
+    expect(at(`const db = new DatabaseSync(file, { readOnly: true });`)).toHaveLength(1);
+    expect(at(`import { DatabaseSync } from "node:sqlite"; let db: DatabaseSync;`)).toEqual([]);
     expect(at(`const k = s.normalize("NFC");`)).toEqual([]);
     expect(at(`await deps.content.fetchBook(1); // fetch(url)`)).toEqual([]);
+  });
+});
+
+// ── semantic store split by concern (#272) ───────────────────────────────────────────
+
+const STORE_DIR = "src/semantic/store";
+// One module per concern; index.ts composes them behind the full IndexStore.
+const STORE_MODULES = ["schema.ts", "writer.ts", "freshness.ts", "chunks.ts", "figures.ts", "index.ts"];
+// Mirrors .oxlintrc.json max-lines (skipBlankLines + skipComments) — the split must stay split.
+const STORE_MAX_LINES = 500;
+
+/** Lines that are neither blank nor comment-only (the oxlint max-lines counting rule). */
+function codeLines(source: string): number {
+  return stripComments(source)
+    .split("\n")
+    .filter((l) => l.trim() !== "").length;
+}
+
+describe("semantic store split (#272)", () => {
+  it("the store.ts monolith is gone and every concern module exists", () => {
+    expect(existsSync(join(ROOT, "src/semantic/store.ts"))).toBe(false);
+    expect(STORE_MODULES.filter((m) => !existsSync(join(ROOT, STORE_DIR, m)))).toEqual([]);
+  });
+
+  it(`no store module exceeds ${STORE_MAX_LINES} code lines`, () => {
+    const files = existsSync(join(ROOT, STORE_DIR)) ? readSources(STORE_DIR, /\.ts$/) : [];
+    expect(files.filter((f) => codeLines(f.source) > STORE_MAX_LINES).map((f) => f.path)).toEqual([]);
+  });
+
+  it("codeLines skips blank and comment-only lines", () => {
+    expect(codeLines("// a\n\nconst x = 1;\n/* b\n c */\nconst y = 2; // tail\n")).toBe(2);
   });
 });
 

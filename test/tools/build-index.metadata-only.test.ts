@@ -13,7 +13,7 @@ import type { FigureMarker } from "../../src/domain/figures/markers.js";
 import type { Embedder } from "../../src/semantic/embedder.js";
 import { EMBED_DIM } from "../../src/semantic/model.js";
 import { stemText } from "../../src/semantic/stem.js";
-import { SqliteIndexStore } from "../../src/semantic/store.js";
+import { SqliteIndexStore } from "../../src/semantic/store/index.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
 
 const LIB = "Programming_Books";

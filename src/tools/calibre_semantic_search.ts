@@ -16,7 +16,7 @@
 
 import { z } from "zod";
 import { type RankedHits, type RetrievalMode, retrieve } from "../semantic/retrieve.js";
-import type { LibraryHit } from "../semantic/store.js";
+import type { LibraryHit } from "../semantic/store/index.js";
 import { type FilterResolution, honestyLines, restrictSet, resolveFilter } from "../app/bundles.js";
 import { boardMeta } from "./board-meta.js";
 import { BookId, CoercedBool, limitParam } from "./coerce.js";

@@ -12,7 +12,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Config } from "../config.js";
 import type { Embedder, EmbedderLoadState } from "./embedder.js";
-import type { IndexMeta, IndexStore } from "./store.js";
+import type { IndexFreshness, IndexMeta } from "./store/index.js";
 import { EMBED_DIM, INDEX_VERSION, MODEL_ID } from "./model.js";
 
 /** The semantic block mirrored onto calibre_ping's structuredContent. */
@@ -64,7 +64,8 @@ export interface SemanticStatus {
 interface StatusDeps {
   config: Config;
   embedder: Embedder;
-  index: IndexStore;
+  /** Coverage/provenance reads only (#272) — status never searches or writes. */
+  index: IndexFreshness;
 }
 
 /**

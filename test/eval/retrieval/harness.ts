@@ -16,7 +16,7 @@ import { TransformersEmbedder, type Embedder } from "../../../src/semantic/embed
 import type { Reranker } from "../../../src/semantic/reranker.js";
 import { INDEX_VERSION, MODEL_ID } from "../../../src/semantic/model.js";
 import { retrieve, type RankedHits } from "../../../src/semantic/retrieve.js";
-import { SqliteIndexStore } from "../../../src/semantic/store.js";
+import { SqliteIndexStore } from "../../../src/semantic/store/index.js";
 import { buildIndexTool } from "../../../src/tools/calibre_build_index.js";
 import { semanticSearchTool } from "../../../src/tools/calibre_semantic_search.js";
 import type { ToolDeps } from "../../../src/tools/deps.js";

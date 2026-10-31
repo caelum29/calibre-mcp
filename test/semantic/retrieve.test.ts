@@ -4,7 +4,7 @@
 import { describe, expect, it } from "vitest";
 import { log } from "../../src/logging.js";
 import { retrieve, type RetrievalDeps } from "../../src/semantic/retrieve.js";
-import type { IndexStore, LibraryHit } from "../../src/semantic/store.js";
+import type { ChunkIndex, FigureIndex, LibraryHit } from "../../src/semantic/store/index.js";
 
 const hit = (bookId: number, score = 0): LibraryHit => ({
   bookId,
@@ -22,7 +22,14 @@ function deps(): RetrievalDeps {
   const index = {
     searchLibrary: () => [hit(1, 0.9), hit(2, 0.85), hit(3, 0.8)],
     searchLibraryFts: () => [hit(3), hit(2), hit(1)],
-  } as unknown as IndexStore;
+    searchBook: () => [],
+    searchBookFts: () => [],
+    chunkAt: () => undefined,
+    searchFigures: () => [],
+    searchFiguresFts: () => [],
+    figureCount: () => 0,
+    figuresInSpan: () => [],
+  } satisfies ChunkIndex & FigureIndex;
   return {
     index,
     embedder: { embedQuery: async () => new Float32Array(4) } as unknown as RetrievalDeps["embedder"],

@@ -9,7 +9,7 @@ import { loadConfig } from "../../src/config.js";
 import type { FigureInventory } from "../../src/domain/figures/inventory.js";
 import { injectFigureMarkers } from "../../src/domain/figures/markers.js";
 import { chunkForEmbedding } from "../../src/semantic/chunk.js";
-import { SqliteIndexStore, type IndexedFigure } from "../../src/semantic/store.js";
+import { SqliteIndexStore, type IndexedFigure } from "../../src/semantic/store/index.js";
 
 const LIB = "Linkage_Test";
 const BOOK = 7;

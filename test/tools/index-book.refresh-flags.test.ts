@@ -11,7 +11,7 @@ import type { EpubToc } from "../../src/domain/structure/epub-toc.js";
 import type { OutlineEntry } from "../../src/domain/structure/pdf-outline.js";
 import type { Embedder } from "../../src/semantic/embedder.js";
 import { EMBED_DIM } from "../../src/semantic/model.js";
-import { SqliteIndexStore } from "../../src/semantic/store.js";
+import { SqliteIndexStore } from "../../src/semantic/store/index.js";
 import { buildIndexTool } from "../../src/tools/calibre_build_index.js";
 import { commitBook, commitRefresh, prepareBook, type PrepareOptions } from "../../src/app/index-book.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
