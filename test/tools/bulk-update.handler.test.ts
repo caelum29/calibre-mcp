@@ -516,3 +516,44 @@ describe("calibre_bulk_update per-id error lines stay one line (#216)", () => {
     expect(r.structuredContent?.failed).toEqual([{ id: 1, error: "a\nb" }]);
   });
 });
+
+// #306: a list-field "set" replaces the whole list; the text preview must say so.
+describe("calibre_bulk_update preview flags list replacement (#306)", () => {
+  const previewText = async (changes: Record<string, unknown>, fixture: Book[]): Promise<string> => {
+    const r = await bulkUpdateTool.handler(
+      { changes, ids: fixture.map((b) => b.id), preview: true },
+      deps({ fixture }),
+    );
+    return r.content.map((b) => (b.type === "text" ? b.text : "")).join("\n");
+  };
+  const fifteen = Array.from({ length: 15 }, (_, i) => `t${i}`);
+
+  it("flags tags 15 → 1", async () => {
+    const t = await previewText({ tags: ["zz"] }, [book({ id: 1, tags: fifteen })]);
+    expect(t).toContain("tags: 15 → 1 (replaces all existing tags)");
+  });
+
+  it("flags authors and languages too", async () => {
+    const t = await previewText({ authors: ["Solo"], languages: ["ru"] }, [
+      book({ id: 1, authors: ["A", "B"], languages: ["en", "de"] }),
+    ]);
+    expect(t).toContain("authors: 2 → 1 (replaces all existing authors)");
+    expect(t).toContain("languages: 2 → 1 (replaces all existing languages)");
+  });
+
+  it("flags identifiers by key count", async () => {
+    const t = await previewText({ identifiers: { isbn: "1" } }, [
+      book({ id: 1, identifiers: { isbn: "9", doi: "x", goodreads: "7" } }),
+    ]);
+    expect(t).toContain("identifiers: 3 → 1 (replaces all existing identifiers)");
+  });
+
+  it("does not flag a scalar change, an empty-before list, or a list that only grows", async () => {
+    const t = await previewText({ title: "New", series: "S" }, [book({ id: 1 })]);
+    expect(t).not.toContain("replaces all existing");
+    const empty = await previewText({ tags: ["a"] }, [book({ id: 1, tags: [] })]);
+    expect(empty).not.toContain("replaces all existing");
+    const grow = await previewText({ tags: ["old", "new"] }, [book({ id: 1, tags: ["old"] })]);
+    expect(grow).not.toContain("replaces all existing");
+  });
+});
