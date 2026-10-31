@@ -1,0 +1,22 @@
+test/tools/get-figures.errors.test.ts
+  s_2748adee5ace54::t_bda0b67d44e632 1-122
+test/architecture.test.ts
+  s_2748adee5ace54::t_bda0b67d44e632 187-190,215
+  s_2748adee5ace54::t_528f2f7157ea66 186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9cdbbe079ebfe025413755f5f2ba1d6efb8413be",
+  "prompts": {},
+  "sessions": {
+    "s_2748adee5ace54": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eca6633b-40b8-4fea-beac-e4ac360b8a51",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
