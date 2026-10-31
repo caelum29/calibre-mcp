@@ -1,0 +1,19 @@
+src/tools/calibre_list_libraries.ts
+  s_c292bb308e7526::t_30b551bde37bdd 27-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "94e4f2c8fa5d3d05e082040a690779cdd697c10e",
+  "prompts": {},
+  "sessions": {
+    "s_c292bb308e7526": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e234f66e-fd22-4d0a-b34a-0d6b587d1afc",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
