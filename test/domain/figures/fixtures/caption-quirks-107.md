@@ -37,7 +37,7 @@ Fixtures: `caption-quirks-107.ts` (all fail on current, all pass on the prototyp
    `(`+lowercase: `рис. 3.18 наглядно`, `рис. 3.2 (справа)`. RU captions start capitalized.
 7. **PUA separator glyphs (3).** Strip a leading U+E000–U+F8FF char from the text. Book 610 renders ``
    at the start of every caption.
-8. **Label-only listing (1).** Keep `captioned: true` with empty text (the label anchors a Figure, per CONTEXT.md),
+8. **Label-only listing (1).** Keep `captioned: true` with empty text (the label anchors a Figure, per GLOSSARY.md),
    but render `(label only — no caption text)` instead of a blank cell.
 
 Optional belt-and-braces, not needed for the measured books: for a `.`-terminated empty head
