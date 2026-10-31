@@ -1,0 +1,40 @@
+src/tools/board-meta.ts
+  s_d856ef3a0da662::t_698d0f088e44bf 1-20
+test/eval/retrieval/harness.ts
+  s_d856ef3a0da662::t_34ac23bc2cbd87 256-257,524,566
+  s_d856ef3a0da662::t_da64b259f6be71 3-5,18,202-206,358-359,367-388,391-392,397,399-401,406-407,415,419-421,433,437-457,517,521-523,525-527
+src/semantic/retrieve.ts
+  s_d856ef3a0da662::t_308235f2aab062 127,129,135
+  s_d856ef3a0da662::t_2a289ef4241d7d 1-126,128,130-134,136-143,145-158,160-163,165-166,182-206,212-243,249-250,252-335
+  s_d856ef3a0da662::t_94f5f3f850746e 207-211,244-248,251
+  s_d856ef3a0da662::t_78a367d1c52b69 144,159,164,167-181
+src/tools/calibre_semantic_search.ts
+  s_d856ef3a0da662::t_94f5f3f850746e 208-209,246-247,251,255,269,281-288,290,306,344,357-367,381,461-469,471,490,579,596
+  s_d856ef3a0da662::t_8a49a6b1a1f442 15,18-19,21
+test/eval/retrieval/rrf-sweep.sh
+  s_d856ef3a0da662::t_34ac23bc2cbd87 2,4-5,15,17,19
+test/eval/retrieval/thresholds.json
+  s_d856ef3a0da662::t_23dd326969e163 86
+src/tools/calibre_search.ts
+  s_d856ef3a0da662::t_e56f3438114f42 34,133,275
+test/eval/retrieval/run.ts
+  s_d856ef3a0da662::t_34ac23bc2cbd87 7-8,21-22,44,71,85-93,200
+test/semantic/retrieve.test.ts
+  s_d856ef3a0da662::t_afd7d6d953d7e2 1-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "09b71f5c39df43e3bf800815ac2f9b84753292e0",
+  "prompts": {},
+  "sessions": {
+    "s_d856ef3a0da662": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc47d0e8-c9be-4814-af6c-d0969a96f5cd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
