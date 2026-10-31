@@ -8,7 +8,7 @@ import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
 import { CalibreCliError } from "../../src/domain/errors.js";
-import type { ToolDeps } from "../../src/tools/deps.js";
+import type { BaseDeps } from "../../src/tools/deps.js";
 
 const REFUSED = "urllib.error.URLError: <urlopen error [Errno 61] Connection refused>";
 const cli = (stderr?: string) => new CalibreCliError(1, "calibredb command failed", stderr);
@@ -87,7 +87,7 @@ describe("calibre_bulk_update breaker text (#233)", () => {
     tags: ["old"],
     languages: ["en"],
   });
-  const deps = (calibredb: () => Promise<{ stdout: string; stderr: string }>): ToolDeps =>
+  const deps = (calibredb: () => Promise<{ stdout: string; stderr: string }>): BaseDeps =>
     ({
       config: loadConfig({}),
       content: {
@@ -98,7 +98,7 @@ describe("calibre_bulk_update breaker text (#233)", () => {
       calibre: { calibredb },
       sleep: async () => {},
       log,
-    }) as unknown as ToolDeps;
+    }) as unknown as BaseDeps;
   const text = (r: { content: unknown[] }): string => (r.content[0] as { text: string }).text;
 
   it("should_render_the_breaker_result_exactly_when_nothing_committed", async () => {

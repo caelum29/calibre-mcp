@@ -9,7 +9,7 @@ import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
 import { CalibreCliError } from "../../src/domain/errors.js";
-import type { ToolDeps } from "../../src/tools/deps.js";
+import type { BaseDeps } from "../../src/tools/deps.js";
 
 // real calibre-server killed mid-request (probe 233-transient-stderr.md, follow-up)
 const RESET = "ConnectionResetError: [Errno 54] Connection reset by peer";
@@ -38,7 +38,7 @@ const book = (id: number, tags = ["old"]): Book => ({
   languages: ["en"],
 });
 
-const deps = (calibredb: () => Promise<{ stdout: string; stderr: string }>): ToolDeps =>
+const deps = (calibredb: () => Promise<{ stdout: string; stderr: string }>): BaseDeps =>
   ({
     config: loadConfig({}),
     content: {
@@ -49,7 +49,7 @@ const deps = (calibredb: () => Promise<{ stdout: string; stderr: string }>): Too
     calibre: { calibredb },
     sleep: async () => {},
     log,
-  }) as unknown as ToolDeps;
+  }) as unknown as BaseDeps;
 
 const text = (r: { content: unknown[] }): string => (r.content[0] as { text: string }).text;
 const failedError = (r: { structuredContent?: Record<string, unknown> }, id: number): string | undefined =>

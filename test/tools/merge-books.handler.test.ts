@@ -14,7 +14,7 @@ const sink: LogSink = log;
 import type { Book } from "../../src/domain/book.js";
 import type { CustomFieldValue } from "../../src/domain/merge.js";
 import { CalibreCliError, CalibreCliTimeoutError, CalibreHttpError } from "../../src/domain/errors.js";
-import type { ToolDeps } from "../../src/tools/deps.js";
+import type { BaseDeps, ToolDeps } from "../../src/tools/deps.js";
 
 vi.mock("../../src/calibre/http.js", () => ({
   downloadToFile: vi.fn(async () => ({ bytes: 1 })),
@@ -89,7 +89,7 @@ function fakeDeps(opts: FakeOpts = {}) {
     calibre: { calibredb: spy } as unknown as ToolDeps["calibre"],
     extractor: {} as ToolDeps["extractor"],
     log: sink,
-  } as ToolDeps;
+  } as BaseDeps;
   return { deps, spy, calls };
 }
 
