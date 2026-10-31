@@ -15,6 +15,8 @@ import { EMBED_DIM } from "../../src/semantic/model.js";
 import { SqliteIndexStore } from "../../src/semantic/store/index.js";
 import { l2normalize } from "../../src/semantic/vector.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
+import { asLibId } from "../../src/calibre/lib-id.js";
+import { fakeCalibre, fakeContent, fakeExtractor, fakeFigures } from "./fake-ports.js";
 
 /** Fake model cost per embedded passage — a 100+ chunk book takes many throttle windows. */
 const MS_PER_PASSAGE = 50;
@@ -55,16 +57,16 @@ const slowEmbedder: Embedder = {
 function deps(): ToolDeps {
   return {
     config: loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }),
-    content: {
+    content: fakeContent({
       // metadata fetch and extraction each take fake time, so their phases are observable
       getBook: async (id: number) => {
         tick(150);
         return book(id);
       },
-      resolveLibraryId: async () => "Programming_Books",
-    } as unknown as ToolDeps["content"],
-    calibre: {} as ToolDeps["calibre"],
-    extractor: {
+      resolveLibraryId: async () => asLibId("Programming_Books"),
+    }),
+    calibre: fakeCalibre(),
+    extractor: fakeExtractor({
       getText: async (): Promise<ExtractedText> => {
         tick(500);
         const text = "Ownership and borrowing in systems programming. ".repeat(6000);
@@ -79,8 +81,8 @@ function deps(): ToolDeps {
           epubToc: null,
         };
       },
-    } satisfies Partial<ToolDeps["extractor"]> as ToolDeps["extractor"],
-    figures: {} as ToolDeps["figures"],
+    }),
+    figures: fakeFigures(),
     embedder: slowEmbedder,
     index: new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" })),
     log,

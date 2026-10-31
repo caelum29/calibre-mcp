@@ -4,7 +4,9 @@ import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
 import type { ExtractedText } from "../../src/calibre/extract.js";
-import type { BaseDeps, ToolDeps } from "../../src/tools/deps.js";
+import type { BaseDeps } from "../../src/tools/deps.js";
+import { asLibId } from "../../src/calibre/lib-id.js";
+import { fakeCalibre, fakeContent, fakeEmbedder, fakeExtractor, fakeFigures } from "./fake-ports.js";
 
 const baseBook: Book = {
   id: 1,
@@ -23,12 +25,13 @@ interface FakeOpts {
   getText?: () => Promise<ExtractedText>;
 }
 
+// Full-port fakes (#316): stubs for what the handler reads, the rest throw if reached.
 function deps(opts: FakeOpts = {}): BaseDeps {
-  const content = {
+  const content = fakeContent({
     getBook: async (): Promise<Book> => ({ ...baseBook, ...opts.book }),
-    resolveLibraryId: async () => "Programming_Books",
-  };
-  const extractor = {
+    resolveLibraryId: async () => asLibId("Programming_Books"),
+  });
+  const extractor = fakeExtractor({
     getText:
       opts.getText ??
       (async (): Promise<ExtractedText> => ({
@@ -41,14 +44,14 @@ function deps(opts: FakeOpts = {}): BaseDeps {
         outline: [],
         epubToc: null,
       })),
-  };
+  });
   return {
     config: loadConfig({}),
-    content: content as unknown as ToolDeps["content"],
-    calibre: {} as ToolDeps["calibre"],
-    extractor: extractor satisfies Partial<ToolDeps["extractor"]> as ToolDeps["extractor"],
-    figures: {} as ToolDeps["figures"],
-    embedder: {} as ToolDeps["embedder"],
+    content,
+    calibre: fakeCalibre(),
+    extractor,
+    figures: fakeFigures(),
+    embedder: fakeEmbedder(),
     log,
   };
 }

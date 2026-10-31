@@ -15,6 +15,8 @@ import { EMBED_DIM } from "../../src/semantic/model.js";
 import { stemText } from "../../src/semantic/stem.js";
 import { SqliteIndexStore } from "../../src/semantic/store/index.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
+import { asLibId } from "../../src/calibre/lib-id.js";
+import { fakeCalibre, fakeContent, fakeExtractor, fakeFigures } from "./fake-ports.js";
 
 const LIB = "Programming_Books";
 const BODY = "Ownership and borrowing keep memory safe without a garbage collector. ".repeat(300);
@@ -63,12 +65,12 @@ function deps(store: SqliteIndexStore, embedder: Embedder, ed: Edition): ToolDep
   const text = ed.text ?? BODY;
   return {
     config: loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }),
-    content: {
+    content: fakeContent({
       getBook: async () => book,
-      resolveLibraryId: async () => LIB,
-    } as unknown as ToolDeps["content"],
-    calibre: {} as unknown as ToolDeps["calibre"],
-    extractor: {
+      resolveLibraryId: async () => asLibId(LIB),
+    }),
+    calibre: fakeCalibre(),
+    extractor: fakeExtractor({
       getText: async (): Promise<ExtractedText> => ({
         text,
         backend: "pdftotext",
@@ -79,8 +81,13 @@ function deps(store: SqliteIndexStore, embedder: Embedder, ed: Edition): ToolDep
         outline: [],
         epubToc: null,
       }),
-    } satisfies Partial<ToolDeps["extractor"]> as ToolDeps["extractor"],
-    figures: { getInventory: async () => ({ inventory: { entries: [] } }) } as unknown as ToolDeps["figures"],
+    }),
+    figures: fakeFigures({
+      getInventory: async () => ({
+        inventory: { entries: [], pageCount: 0, scanned: false, counts: { figures: 0, uncaptioned: 0, pageRender: 0 } },
+        cached: false,
+      }),
+    }),
     embedder,
     index: store,
     log,

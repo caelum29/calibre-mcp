@@ -10,7 +10,10 @@ import type { Reranker } from "../../src/semantic/reranker.js";
 import { type IndexedFigure, SqliteIndexStore } from "../../src/semantic/store/index.js";
 import { EMBED_DIM, MAX_TOKENS, PASSAGE_PREFIX } from "../../src/semantic/model.js";
 import { l2normalize } from "../../src/semantic/vector.js";
-import type { ToolDeps } from "../../src/tools/deps.js";
+import type { BuildIndexDeps } from "../../src/tools/calibre_build_index.js";
+import { asLibId } from "../../src/calibre/lib-id.js";
+import type { FigureInventory } from "../../src/domain/figures/inventory.js";
+import { fakeCalibre, fakeContent, fakeExtractor, fakeFigures } from "./fake-ports.js";
 
 /** Asserts a remediation text names all three install layouts and the mandatory restart step (#47). */
 function expectUniversalRemediation(text: string): void {
@@ -99,19 +102,20 @@ interface FakeOpts {
   libraryIds?: number[];
 }
 
-function deps(opts: FakeOpts = {}): ToolDeps {
+// Full-port fakes (#316): stubs for what the build reads, the rest throw if reached.
+function deps(opts: FakeOpts = {}): BuildIndexDeps {
   const ids = opts.libraryIds ?? [1];
-  const content = {
+  const content = fakeContent({
     getBook: async (): Promise<Book> => ({ ...baseBook, ...opts.book }),
-    resolveLibraryId: async () => "Programming_Books",
+    resolveLibraryId: async () => asLibId("Programming_Books"),
     // Honors num/offset like /ajax/search, so paging loops are exercised for real.
-    search: async (p: { num?: number; offset?: number }) => {
+    search: async (p) => {
       const offset = p.offset ?? 0;
       const page = ids.slice(offset, offset + (p.num ?? 100));
       return { bookIds: page, total: ids.length, num: page.length, offset, sort: "", libraryId: "Programming_Books" };
     },
-  };
-  const extractor = {
+  });
+  const extractor = fakeExtractor({
     getText:
       opts.getText ??
       (async (): Promise<ExtractedText> => ({
@@ -124,13 +128,13 @@ function deps(opts: FakeOpts = {}): ToolDeps {
         outline: [],
         epubToc: null,
       })),
-  };
+  });
   return {
     config: loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:", ...opts.env }),
-    content: content as unknown as ToolDeps["content"],
-    calibre: {} as ToolDeps["calibre"],
-    extractor: extractor satisfies Partial<ToolDeps["extractor"]> as ToolDeps["extractor"],
-    figures: {} as ToolDeps["figures"],
+    content,
+    calibre: fakeCalibre(),
+    extractor,
+    figures: fakeFigures(),
     embedder: opts.embedder ?? makeFakeEmbedder(),
     ...(opts.reranker ? { reranker: opts.reranker } : {}),
     index: opts.store ?? new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" })),
@@ -578,7 +582,7 @@ describe("figure caption indexing (D-018 Phase B / #86)", () => {
     epubToc: null,
   });
   /** Inventory matching the markers by entry index — the source/dims join input. */
-  const inventory = {
+  const inventory: FigureInventory = {
     entries: [
       { index: 0, page: 3, captioned: true, source: "raster", width: 640, height: 480, pdfImageNum: 2 },
       { index: 1, page: 7, captioned: true, source: "page-render" },
@@ -587,16 +591,14 @@ describe("figure caption indexing (D-018 Phase B / #86)", () => {
     scanned: false,
     counts: { figures: 2, uncaptioned: 0, pageRender: 1 },
   };
-  const figuresService = (fail = false) => ({
-    getInventory: async () => {
-      if (fail) throw new FiguresError("SCAN_FAILED");
-      return { inventory, cached: true };
-    },
-  });
-  const withFigures = (d: ToolDeps, fail = false): ToolDeps => ({
-    ...d,
-    figures: figuresService(fail) as unknown as ToolDeps["figures"],
-  });
+  const figuresService = (fail = false) =>
+    fakeFigures({
+      getInventory: async () => {
+        if (fail) throw new FiguresError("SCAN_FAILED");
+        return { inventory, cached: true };
+      },
+    });
+  const withFigures = (d: BuildIndexDeps, fail = false): BuildIndexDeps => ({ ...d, figures: figuresService(fail) });
 
   it("indexes every placed marker as a figure row, joined with inventory source/dims", async () => {
     const store = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));

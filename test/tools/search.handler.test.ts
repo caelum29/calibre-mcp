@@ -7,7 +7,8 @@ import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
 import type { SearchPage } from "../../src/domain/search.js";
 import { fakeFts, type FakeFtsHit } from "./fake-fts.js";
-import type { ToolDeps } from "../../src/tools/deps.js";
+import { asLibId } from "../../src/calibre/lib-id.js";
+import { fakeCalibre, fakeContent, fakeEmbedder, fakeExtractor, fakeFigures } from "./fake-ports.js";
 import type { SearchDeps, SearchIndex } from "../../src/tools/calibre_search.js";
 
 const book = (id: number): Book => ({
@@ -26,26 +27,26 @@ interface FakeOpts {
   ftsHits?: FakeFtsHit[];
 }
 
-// Fake deps with only the methods each branch touches (boundary stub).
+// Full-port fakes (#316): stubs for the methods each branch touches, the rest throw if reached.
 function deps(opts: FakeOpts = {}): SearchDeps {
-  const content = {
-    search: async (p: { query: string }): Promise<SearchPage> => {
+  const content = fakeContent({
+    search: async (p): Promise<SearchPage> => {
       if (p.query.startsWith("uuid:")) return { ...page(), bookIds: [99] };
       return opts.page ?? page();
     },
     booksByIds: async (ids: number[]) => new Map(ids.map((id) => [id, book(id)])),
     // FTS paths resolve the libId before shelling out (display-name fragments 404).
-    resolveLibraryId: async (display?: string) => display || "Programming_Books",
-  };
-  const calibre = {};
+    resolveLibraryId: async (display) => asLibId(display || "Programming_Books"),
+  });
   return {
     config: loadConfig({}),
-    content: content as unknown as ToolDeps["content"],
-    calibre: calibre satisfies Partial<ToolDeps["calibre"]> as ToolDeps["calibre"],
+    content,
+    // no saved searches → no bundles and no auto-exclusion sweep
+    calibre: fakeCalibre({ calibredb: async () => ({ stdout: "", stderr: "" }) }),
     fts: fakeFts(opts.ftsHits),
-    extractor: {} as ToolDeps["extractor"],
-    figures: {} as ToolDeps["figures"],
-    embedder: {} as ToolDeps["embedder"],
+    extractor: fakeExtractor(),
+    figures: fakeFigures(),
+    embedder: fakeEmbedder(),
     index: { hasIndex: () => false, isBookIndexed: () => false } satisfies SearchIndex, // no semantic index → no tip
     log,
   };

@@ -14,6 +14,8 @@ import type { Embedder } from "../../src/semantic/embedder.js";
 import { EMBED_DIM } from "../../src/semantic/model.js";
 import { SqliteIndexStore } from "../../src/semantic/store/index.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
+import { asLibId } from "../../src/calibre/lib-id.js";
+import { fakeCalibre, fakeContent, fakeExtractor, fakeFigures } from "./fake-ports.js";
 
 /** Fake extraction wall time — several heartbeat periods. */
 const EXTRACT_MS = HEARTBEAT_MS * 3.5;
@@ -53,13 +55,13 @@ const embedder: Embedder = {
 function deps(getText: () => Promise<ExtractedText>): ToolDeps {
   return {
     config: loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }),
-    content: {
+    content: fakeContent({
       getBook: async () => book,
-      resolveLibraryId: async () => "Programming_Books",
-    } as unknown as ToolDeps["content"],
-    calibre: {} as unknown as ToolDeps["calibre"],
-    extractor: { getText } satisfies Partial<ToolDeps["extractor"]> as ToolDeps["extractor"],
-    figures: {} as ToolDeps["figures"],
+      resolveLibraryId: async () => asLibId("Programming_Books"),
+    }),
+    calibre: fakeCalibre(),
+    extractor: fakeExtractor({ getText }),
+    figures: fakeFigures(),
     embedder,
     index: new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" })),
     log,

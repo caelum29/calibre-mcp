@@ -7,7 +7,9 @@ import { RERANK_POOL, type Reranker } from "../../src/semantic/reranker.js";
 import { SqliteIndexStore } from "../../src/semantic/store/index.js";
 import { EMBED_DIM, INDEX_VERSION } from "../../src/semantic/model.js";
 import { l2normalize } from "../../src/semantic/vector.js";
-import type { ToolDeps } from "../../src/tools/deps.js";
+import type { SemanticDeps } from "../../src/tools/calibre_semantic_search.js";
+import { asLibId } from "../../src/calibre/lib-id.js";
+import { fakeCalibre, fakeContent, fakeExtractor, fakeFigures } from "./fake-ports.js";
 
 const LIB = "Programming_Books";
 
@@ -65,17 +67,19 @@ function deps(
   embedder: Embedder = queryEmbedder,
   reranker?: Reranker,
   env: NodeJS.ProcessEnv = {},
-): ToolDeps {
-  const content = {
-    resolveLibraryId: async () => LIB,
+): SemanticDeps {
+  // Full-port fakes (#316): stubs for what the handler reads, the rest throw if reached.
+  const content = fakeContent({
+    resolveLibraryId: async () => asLibId(LIB),
     search: async () => ({ bookIds: [], total: 0, num: 0, offset: 0, sort: "", libraryId: LIB }),
-  };
+  });
   return {
     config: loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:", ...env }),
-    content: content as unknown as ToolDeps["content"],
-    calibre: {} as ToolDeps["calibre"],
-    extractor: {} as ToolDeps["extractor"],
-    figures: {} as ToolDeps["figures"],
+    content,
+    // no saved searches → no bundles and no auto-exclusion sweep
+    calibre: fakeCalibre({ calibredb: async () => ({ stdout: "", stderr: "" }) }),
+    extractor: fakeExtractor(),
+    figures: fakeFigures(),
     embedder,
     ...(reranker ? { reranker } : {}),
     index: store,

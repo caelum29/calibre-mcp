@@ -14,6 +14,8 @@ import { IndexBuildRegistry } from "../../src/semantic/index-builds.js";
 import { SqliteIndexStore } from "../../src/semantic/store/index.js";
 import type { ToolContext, ToolResult } from "../../src/tools/types.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
+import { asLibId } from "../../src/calibre/lib-id.js";
+import { fakeCalibre, fakeContent, fakeExtractor, fakeFigures } from "./fake-ports.js";
 
 const LIB = "Programming_Books";
 const DEADLINE_MS = 40;
@@ -73,24 +75,24 @@ function deps(opts: { search?: () => Promise<never> } = {}) {
   const calls: number[] = [];
   const d: ToolDeps & { index: SqliteIndexStore } = {
     config: loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }),
-    content: {
+    content: fakeContent({
       getBook: async (id: number) => book(id),
-      resolveLibraryId: async () => LIB,
+      resolveLibraryId: async () => asLibId(LIB),
       search: async () => {
         await g.opened;
-        return opts.search ? opts.search() : { bookIds: [], total: 0 };
+        return opts.search ? opts.search() : { bookIds: [], total: 0, num: 0, offset: 0, sort: "", libraryId: LIB };
       },
-    } as unknown as ToolDeps["content"],
-    calibre: {} as unknown as ToolDeps["calibre"],
+    }),
+    calibre: fakeCalibre(),
     // Ignores the abort signal: a cancel that lands in a phase that cannot be interrupted.
-    extractor: {
+    extractor: fakeExtractor({
       getText: async (a: { bookId: number }) => {
         calls.push(a.bookId);
         await g.opened;
         return extracted();
       },
-    } as unknown as ToolDeps["extractor"],
-    figures: {} as ToolDeps["figures"],
+    }),
+    figures: fakeFigures(),
     embedder,
     index: new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" })),
     indexBuilds: new IndexBuildRegistry<ToolResult>({ softDeadlineMs: DEADLINE_MS }),

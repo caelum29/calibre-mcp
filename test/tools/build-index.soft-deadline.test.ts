@@ -14,6 +14,8 @@ import { IndexBuildRegistry } from "../../src/semantic/index-builds.js";
 import { SqliteIndexStore } from "../../src/semantic/store/index.js";
 import type { ToolContext, ToolResult } from "../../src/tools/types.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
+import { asLibId } from "../../src/calibre/lib-id.js";
+import { fakeCalibre, fakeContent, fakeExtractor, fakeFigures } from "./fake-ports.js";
 
 const LIB = "Programming_Books";
 /** Short real deadline: the fake extraction is gated, so it outlasts this unless released. */
@@ -88,13 +90,13 @@ function deps(ex: Gated, softDeadlineMs = DEADLINE_MS): ToolDeps & { index: Sqli
   drains.push(ex);
   return {
     config: loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }),
-    content: {
+    content: fakeContent({
       getBook: async (id: number) => book(id),
-      resolveLibraryId: async () => LIB,
-    } as unknown as ToolDeps["content"],
-    calibre: {} as ToolDeps["calibre"],
-    extractor: { getText: ex.getText } satisfies Partial<ToolDeps["extractor"]> as ToolDeps["extractor"],
-    figures: {} as ToolDeps["figures"],
+      resolveLibraryId: async () => asLibId(LIB),
+    }),
+    calibre: fakeCalibre(),
+    extractor: fakeExtractor({ getText: ex.getText }),
+    figures: fakeFigures(),
     embedder,
     index: new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" })),
     indexBuilds: new IndexBuildRegistry({ softDeadlineMs }),

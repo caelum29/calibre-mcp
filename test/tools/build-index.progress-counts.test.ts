@@ -13,7 +13,8 @@ import { EMBED_DIM } from "../../src/semantic/model.js";
 import type { BuildProgress, IndexBuilds } from "../../src/semantic/index-builds.js";
 import { SqliteIndexStore } from "../../src/semantic/store/index.js";
 import type { ToolResult } from "../../src/tools/types.js";
-import type { ToolDeps } from "../../src/tools/deps.js";
+import { asLibId } from "../../src/calibre/lib-id.js";
+import { fakeCalibre, fakeContent, fakeExtractor, fakeFigures } from "./fake-ports.js";
 
 const LIB = "Programming_Books";
 
@@ -73,13 +74,13 @@ function deps(
 ) {
   return {
     config: loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }),
-    content: {
+    content: fakeContent({
       getBook: async (id: number) => book(id),
-      resolveLibraryId: async () => LIB,
-    } as unknown as ToolDeps["content"],
-    calibre: {} as ToolDeps["calibre"],
-    extractor: { getText } satisfies Partial<ToolDeps["extractor"]> as ToolDeps["extractor"],
-    figures: {} as ToolDeps["figures"],
+      resolveLibraryId: async () => asLibId(LIB),
+    }),
+    calibre: fakeCalibre(),
+    extractor: fakeExtractor({ getText }),
+    figures: fakeFigures(),
     embedder,
     index,
     indexBuilds: reportAsRunning,
