@@ -366,15 +366,17 @@ interface QueryOutcome {
   reranked?: boolean;
 }
 
+/** Per-run query context shared by runQuery and the handler check. */
+interface QueryCtx {
+  deps: ToolDeps;
+  libraryId: string;
+  topK: number;
+  rrfWeights?: number[];
+}
+
 /** One query in one mode → retrieve() (the ranking service the tool renders) → scored outcome. */
-async function runQuery(
-  q: GoldenQuery,
-  mode: Mode,
-  deps: ToolDeps,
-  libraryId: string,
-  topK: number,
-  rrfWeights?: number[],
-): Promise<QueryOutcome> {
+async function runQuery(q: GoldenQuery, mode: Mode, ctx: QueryCtx): Promise<QueryOutcome> {
+  const { deps, libraryId, topK, rrfWeights } = ctx;
   const base = { libraryId, query: q.query, mode, topK };
   const opts = rrfWeights ? { rrfWeights } : {};
   // Mirror the handler's envelope: confidence fields only on non-empty results; rerank fields
@@ -440,23 +442,74 @@ function requireBookId(q: GoldenQuery): number {
 }
 
 /**
- * The one end-to-end handler check (#259): the tool must emit exactly the ranking retrieve()
- * produced, so a broken adapter can't hide behind a green retrieval eval.
+ * End-to-end handler check (#259): for a handful of queries the tool must emit exactly the
+ * ranking retrieve() produced — same ids, same order — so a broken adapter (wrong mode, scope or
+ * request field passed through) can't hide behind a green retrieval eval. Library scope keys on
+ * bookIds, book scope on the passage spans in structuredContent.
  */
-async function assertHandlerMatches(q: GoldenQuery, mode: Mode, deps: ToolDeps, topK: number, out: QueryOutcome) {
+async function assertHandlerMatches(q: GoldenQuery, mode: Mode, ctx: QueryCtx, out: QueryOutcome) {
+  const { deps, topK } = ctx;
   const r = await semanticSearchTool.handler(
     { query: q.query, scope: q.scope, target: q.target ?? "text", mode, bookId: q.bookId, topK },
     deps,
   );
   if (r.isError) throw new Error(`${q.id} [${mode}]: tool errored: ${firstText(r.content)}`);
-  const ids = ((r.structuredContent?.bookIds as number[] | undefined) ?? []).map(String);
-  if (JSON.stringify(ids) !== JSON.stringify(out.retrieved)) {
-    throw new Error(`${q.id} [${mode}]: handler ranking ${ids.join(",")} ≠ retrieve() ${out.retrieved.join(",")}`);
+  const sc = r.structuredContent ?? {};
+  const got =
+    q.scope === "library"
+      ? ((sc.bookIds as number[] | undefined) ?? []).map(String)
+      : ((sc.passages as Array<{ charStart: number; charEnd: number }> | undefined) ?? []).map(
+          (p) => `@${p.charStart}-${p.charEnd}`,
+        );
+  if (JSON.stringify(got) !== JSON.stringify(out.retrieved)) {
+    throw new Error(`${q.id} [${mode}]: handler ranking ${got.join(",")} ≠ retrieve() ${out.retrieved.join(",")}`);
   }
+}
+
+/** Fail the eval when an owed handler round-trip never ran (a silently skipped check is no check). */
+function assertHandlerChecksRan(done: ReadonlySet<string>, modes: Mode[], live: boolean): void {
+  // Live runs carry library-scope queries only — no book-scope round-trip is possible there.
+  const owed = [...modes.map((m) => `library:${m}`), ...(live ? [] : ["book"])];
+  const missing = owed.filter((k) => !done.has(k));
+  if (missing.length > 0) throw new Error(`handler end-to-end check did not run for: ${missing.join(", ")}`);
+}
+
+/** Which handler round-trips a run owes: library scope in every mode, plus book scope once (fixture only). */
+function handlerCheckKey(q: GoldenQuery, mode: Mode, out: QueryOutcome, bookChecked: boolean): string | undefined {
+  // a non-empty ranking only — two empty lists would match without proving anything
+  if (q.target || q.kind === "negative" || out.count === 0) return undefined;
+  if (q.scope === "library") return `library:${mode}`;
+  return bookChecked ? undefined : "book";
 }
 
 function overlap(a: { start: number; end: number }, l: SpanLabel): number {
   return Math.max(0, Math.min(a.end, l.charEnd) - Math.max(a.start, l.charStart));
+}
+
+/** One scored per-query report row from a query outcome. */
+function toRow(q: GoldenQuery, mode: Mode, out: QueryOutcome): PerQueryRow {
+  const row: PerQueryRow = {
+    id: q.id,
+    kind: q.kind,
+    scope: q.scope,
+    ...(q.target ? { target: q.target } : {}),
+    ...(q.diagnostic ? { diagnostic: true } : {}),
+    mode,
+    ru: q.ru === true,
+    retrieved: out.retrieved,
+  };
+  if (out.maxScore !== undefined) row.maxScore = round4(out.maxScore);
+  // Rerank confidence per query — RERANK_FLOOR calibration input (#140). 4 significant
+  // digits, not 4 decimals: candidate floors go down to 1e-3 and positives sit near 1e-4.
+  if (out.maxRerank !== undefined) row.maxRerank = Number(out.maxRerank.toPrecision(4));
+  if (out.reranked !== undefined) row.reranked = out.reranked;
+  if (q.kind === "negative" || q.kind === "figure-negative") {
+    row.flagged = out.count === 0 || out.lowConfidence === true;
+  } else {
+    const m = queryMetrics(out.rel);
+    row.metrics = { hit1: m.hit1, recall5: round4(m.recall5), rr: round4(m.rr), ndcg10: round4(m.ndcg10) };
+  }
+  return row;
 }
 
 /** Run the full eval: (build +) query + score. The single entry point for CLI and tests. */
@@ -514,41 +567,23 @@ export async function runRetrievalEval(opts: HarnessOptions): Promise<EvalReport
   const stats = deps.index.stats(libraryId);
 
   const perQuery: PerQueryRow[] = [];
-  let handlerChecked = false;
+  // Shipped weights only: a sweep runs retrieve() with weights the handler can't take.
+  const handlerChecks = new Set<string>();
+  const ctx: QueryCtx = { deps, libraryId, topK, ...(opts.rrfWeights ? { rrfWeights: opts.rrfWeights } : {}) };
   for (const mode of modes) {
     progress(`running ${queries.length} queries in mode=${mode}…`);
     for (const q of queries) {
-      const out = await runQuery(q, mode, deps, libraryId, topK, opts.rrfWeights);
-      // One handler round-trip per run, on the first library-scope text query with the shipped
-      // weights (a weight sweep runs retrieve() with weights the handler can't take).
-      if (!handlerChecked && !opts.rrfWeights && q.scope === "library" && !q.target && q.kind !== "negative") {
-        await assertHandlerMatches(q, mode, deps, topK, out);
-        handlerChecked = true;
+      const out = await runQuery(q, mode, ctx);
+      const key = opts.rrfWeights ? undefined : handlerCheckKey(q, mode, out, handlerChecks.has("book"));
+      if (key !== undefined && !handlerChecks.has(key)) {
+        await assertHandlerMatches(q, mode, ctx, out);
+        handlerChecks.add(key);
       }
-      const row: PerQueryRow = {
-        id: q.id,
-        kind: q.kind,
-        scope: q.scope,
-        ...(q.target ? { target: q.target } : {}),
-        ...(q.diagnostic ? { diagnostic: true } : {}),
-        mode,
-        ru: q.ru === true,
-        retrieved: out.retrieved,
-      };
-      if (out.maxScore !== undefined) row.maxScore = round4(out.maxScore);
-      // Rerank confidence per query — RERANK_FLOOR calibration input (#140). 4 significant
-      // digits, not 4 decimals: candidate floors go down to 1e-3 and positives sit near 1e-4.
-      if (out.maxRerank !== undefined) row.maxRerank = Number(out.maxRerank.toPrecision(4));
-      if (out.reranked !== undefined) row.reranked = out.reranked;
-      if (q.kind === "negative" || q.kind === "figure-negative") {
-        row.flagged = out.count === 0 || out.lowConfidence === true;
-      } else {
-        const m = queryMetrics(out.rel);
-        row.metrics = { hit1: m.hit1, recall5: round4(m.recall5), rr: round4(m.rr), ndcg10: round4(m.ndcg10) };
-      }
-      perQuery.push(row);
+      perQuery.push(toRow(q, mode, out));
     }
   }
+
+  if (!opts.rrfWeights) assertHandlerChecksRan(handlerChecks, modes, opts.live !== undefined);
 
   return assemble(perQuery, {
     model: MODEL_ID,
