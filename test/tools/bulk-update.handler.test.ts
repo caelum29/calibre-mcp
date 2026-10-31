@@ -566,3 +566,18 @@ describe("calibre_bulk_update preview flags list replacement (#306)", () => {
     expect(grow).not.toContain("replaces all existing");
   });
 });
+
+// PR #332 review (#325): a case-only tag set renames the shared Calibre item library-wide.
+describe("calibre_bulk_update preview notes a case-only rename (#325)", () => {
+  it("should_warn_that_python_renames_Python_on_every_book", async () => {
+    const r = await bulkUpdateTool.handler(
+      { changes: { tags: ["python", "Rust"] }, ids: [1], preview: true },
+      deps({ fixture: [book({ id: 1, tags: ["Python", "Rust"] })] }),
+    );
+    const t = r.content.map((b) => (b.type === "text" ? b.text : "")).join("\n");
+    expect(t).toContain(
+      "  ⚠ tags: Python → python renames it on every book in the library (Calibre keeps one case-insensitive item)",
+    );
+    expect(t).not.toContain("replaces all existing");
+  });
+});
