@@ -1,0 +1,28 @@
+test/tools/write-retry.test.ts
+  s_aa002d0f29785d::t_e55a4ecc667803 158-187
+test/tools/merge-books.handler.test.ts
+  s_aa002d0f29785d::t_e55a4ecc667803 375-395
+test/domain/error-codes.review.test.ts
+  s_aa002d0f29785d::t_e55a4ecc667803 1-42
+test/tools/add-book.handler.test.ts
+  s_aa002d0f29785d::t_e55a4ecc667803 9,73-82
+  s_aa002d0f29785d::t_3c6ae1239bc42f 83
+test/tools/channel-parity.test.ts
+  s_aa002d0f29785d::t_e55a4ecc667803 697-715
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e0b667692e5bab0e0555d405e3137b3689fd4c69",
+  "prompts": {},
+  "sessions": {
+    "s_aa002d0f29785d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9858b033-3534-4580-8536-b45ea248531d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
