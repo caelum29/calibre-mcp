@@ -1,0 +1,19 @@
+test/tools/get-figures.errors.test.ts
+  s_9d48d71e14f5ee::t_a2b5e6fc1aa135 81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "78a1d1e237eb9d067bf5297780bff586ef4c817a",
+  "prompts": {},
+  "sessions": {
+    "s_9d48d71e14f5ee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "235dc0ab-848b-456f-bc57-9b6ee9972bfb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
