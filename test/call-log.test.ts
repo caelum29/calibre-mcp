@@ -116,3 +116,33 @@ describe("redactArgvEchoes", () => {
     expect(redactArgvEchoes("bad id 42", ["show_metadata", "42"])).toBe("bad id 42");
   });
 });
+
+describe("withCallLog — #249 hint + trace context", () => {
+  it("should_copy_the_hint_into_the_tool_call_record", async () => {
+    const { logger, records, now } = setup();
+    await withCallLog(logger, { tool: "calibre_semantic_search", args: {}, now }, async () => ({
+      isError: true,
+      content: [{ type: "text", text: "Error: No semantic index" }],
+      structuredContent: { errorCode: "index_missing", hint: "run calibre_build_index first" },
+    }));
+    expect(records()[0]?.meta).toMatchObject({ errorCode: "index_missing", hint: "run calibre_build_index first" });
+  });
+
+  it("should_log_traceId_and_parentSpanId_from_a_traceparent", async () => {
+    const { logger, records, now } = setup();
+    const traceparent = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01";
+    await withCallLog(logger, { tool: "calibre_ping", args: {}, traceparent, now }, async () => ({ content: [] }));
+    expect(records()[0]?.meta).toMatchObject({
+      traceId: "4bf92f3577b34da6a3ce929d0e0e4736",
+      parentSpanId: "00f067aa0ba902b7",
+    });
+  });
+
+  it("should_ignore_a_malformed_traceparent", async () => {
+    const { logger, records, now } = setup();
+    await withCallLog(logger, { tool: "calibre_ping", args: {}, traceparent: "garbage", now }, async () => ({
+      content: [],
+    }));
+    expect(records()[0]?.meta).not.toHaveProperty("traceId");
+  });
+});
