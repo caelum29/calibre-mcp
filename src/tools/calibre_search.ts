@@ -28,7 +28,7 @@ import {
   restrictSet,
   resolveFilter,
   scopeExpression,
-} from "./bundles.js";
+} from "../app/bundles.js";
 import { BookId, CoercedBool, CursorParam, limitParam } from "./coerce.js";
 import { decodeCursor, pageCursor } from "./cursor.js";
 import { defineTool } from "./define.js";

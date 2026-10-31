@@ -7,7 +7,7 @@ import { defineTool } from "./define.js";
 import { validateAddPath } from "./add-path.js";
 import { probeDuplicates, renderHint, type PossibleDuplicate } from "./add-dup-probe.js";
 import { toolError, toolOk } from "./result.js";
-import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "./write-refusal.js";
+import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "../app/write-policy.js";
 
 /**
  * Pull the numeric ids out of calibredb's "Added book ids: 1, 2" success line. Matching is

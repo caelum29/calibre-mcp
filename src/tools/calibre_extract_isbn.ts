@@ -9,10 +9,10 @@ import { buildSetMetadataArgs } from "../calibre/metadata-fields.js";
 import { isValidIsbn } from "../domain/curation/isbn.js";
 import { BookId, CoercedBool } from "./coerce.js";
 import { defineTool } from "./define.js";
-import { scanForIsbn, scanOutcomeHint } from "./isbn-scan.js";
+import { scanForIsbn, scanOutcomeHint } from "../app/isbn-scan.js";
 import { bookIdArg, resolveNumericId } from "./resolve-id.js";
 import { toolError, toolOk } from "./result.js";
-import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "./write-refusal.js";
+import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "../app/write-policy.js";
 
 export const extractIsbnTool = defineTool({
   name: "calibre_extract_isbn",

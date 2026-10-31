@@ -8,15 +8,15 @@
 
 import { z } from "zod";
 import { CalibreHttpError } from "../domain/errors.js";
-import { type BundleEntry, invalidateBundleCache, isExclusionMarker, loadBundles } from "./bundles.js";
+import { type BundleEntry, invalidateBundleCache, isExclusionMarker, loadBundles } from "../app/bundles.js";
 import { CoercedBool } from "./coerce.js";
 import { defineTool } from "./define.js";
 import type { LibId } from "../calibre/lib-id.js";
 import { toolError, toolOk } from "./result.js";
 import type { ToolDeps } from "./deps.js";
-import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "./write-refusal.js";
+import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "../app/write-policy.js";
 
-export { mergeBundles, parseSavedSearches } from "./bundles.js";
+export { mergeBundles, parseSavedSearches } from "../app/bundles.js";
 
 /**
  * argv for a saved-search write. The `--` separator MUST come after every option (the client

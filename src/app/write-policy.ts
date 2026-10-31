@@ -1,8 +1,36 @@
+// Write policy for routed calibredb writes (#260): one home for how every write tool treats
+// a refusal, a transient failure and a timeout. Sections, in order: refusal classification,
+// transient-failure retry (#233), timed-out-write verification (#33).
+
+import { CalibreCliError, CalibreCliTimeoutError } from "../domain/errors.js";
+import { changesSatisfied } from "../domain/book-fields.js";
+import type { ChangeValue } from "../domain/book-fields.js";
+import type { Book } from "../domain/book.js";
+import type { ToolDeps } from "../tools/deps.js";
+
+// ── refusal ──
+// Shared classification of a Content-Server write refusal. calibredb routed through the
+// server returns Forbidden/401/403 when anonymous local writes are blocked; every write
+// tool turns that into the same actionable guidance (CAPABILITIES §2) instead of a raw error.
+
+// calibredb never prints "401" for an auth-enabled server, only the credentials prompt (#237)
+const WRITE_REFUSED = /forbidden|unauthorized|\b401\b|\b403\b|username and password is required/i;
+
+/** True when a calibredb failure looks like the server refusing an anonymous write. */
+export function isWriteRefused(err: unknown): boolean {
+  return err instanceof CalibreCliError && WRITE_REFUSED.test(err.stderr ?? "");
+}
+
+/** The actionable message shown when the server refuses a write. */
+export const WRITE_REFUSED_MESSAGE =
+  "Calibre refused the write. Anonymous writes are blocked — restart the Content Server " +
+  "with --enable-local-write (localhost), or configure an authenticated non-restricted user. " +
+  'See the README\'s "Enabling writes" section.';
+
+// ── transient retry ──
 // Auto-retry of transient calibredb failures for IDEMPOTENT routed writes only (#233):
 // calibre_update_book and calibre_bulk_update (both `set_metadata`). Never wire it into
 // add_book (duplicate risk), merge_books or remove_book (partial ops are unpredictable).
-
-import { CalibreCliError, CalibreCliTimeoutError } from "../domain/errors.js";
 
 /**
  * Transient failure class. `connection` = the Content Server is unreachable or died
@@ -92,4 +120,39 @@ export function describeTransient(err: unknown, id: number): string {
   }
   const status = err instanceof CalibreCliError ? GATEWAY_5XX.exec(err.stderr ?? "")?.[1] : undefined;
   return `The Calibre Content Server answered HTTP ${status ?? "5xx"} ${retries}; it may be restarting — retry shortly.`;
+}
+
+// ── timeout verification ──
+// Shared #33 check for routed writes whose calibredb call TIMED OUT. The Content Server may
+// have committed before the CLI gave up, so every write tool re-reads the book and decides
+// landed / not-landed / unverifiable from that, instead of reporting the timeout as failure.
+
+/** What a timed-out write is, judged from a re-read of the book. */
+export type TimedOutWriteCheck =
+  | { status: "landed"; after: Book }
+  | { status: "not-landed" }
+  | { status: "unverifiable" };
+
+/** The write being verified: target book, its pre-write snapshot, and the requested changes. */
+export interface TimedOutWrite {
+  id: number;
+  before: Book;
+  changes: Record<string, ChangeValue>;
+  library?: string;
+}
+
+/**
+ * Re-read the book after a timed-out routed write and classify it. A failed re-read is
+ * `unverifiable` (the write MAY have landed), never `not-landed`.
+ */
+export async function verifyTimedOutWrite(deps: ToolDeps, write: TimedOutWrite): Promise<TimedOutWriteCheck> {
+  // nothing requested means nothing to confirm — don't let an empty set read as "landed"
+  if (Object.keys(write.changes).length === 0) return { status: "unverifiable" };
+  let after: Book;
+  try {
+    after = await deps.content.getBook(write.id, write.library);
+  } catch {
+    return { status: "unverifiable" };
+  }
+  return changesSatisfied(write.before, after, write.changes) ? { status: "landed", after } : { status: "not-landed" };
 }

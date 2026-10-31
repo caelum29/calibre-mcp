@@ -8,16 +8,21 @@ import { buildSetMetadataArgs } from "../calibre/metadata-fields.js";
 import { isAllowedField, listReplacementNote, previewBookChanges } from "../domain/book-fields.js";
 import type { ChangeValue } from "../domain/book-fields.js";
 import { CalibreCliTimeoutError } from "../domain/errors.js";
-import { buildScopedQuery, honestyLines, resolveFilter } from "./bundles.js";
+import { buildScopedQuery, honestyLines, resolveFilter } from "../app/bundles.js";
 import { BookId, CoercedBool, jsonArray, jsonRecord } from "./coerce.js";
 import { defineTool } from "./define.js";
 import { fence, toolError, toolOk } from "./result.js";
 import type { ToolResult } from "./types.js";
-import { selectBooks } from "./select-books.js";
+import { selectBooks } from "../app/select-books.js";
 import { ChangeValueSchema } from "./calibre_update_book.js";
-import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "./write-refusal.js";
-import { classifyTransient, describeTransient, withTransientRetry } from "./write-retry.js";
-import { verifyTimedOutWrite } from "./write-verify.js";
+import {
+  isWriteRefused,
+  WRITE_REFUSED_MESSAGE,
+  classifyTransient,
+  describeTransient,
+  withTransientRetry,
+  verifyTimedOutWrite,
+} from "../app/write-policy.js";
 
 /** Hard cap on books mutated in one call — a bulk write must be a deliberate, bounded set. */
 const MAX_BULK = 500;

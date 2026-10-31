@@ -5,12 +5,12 @@
 
 import { z } from "zod";
 import { compareBooks, findDuplicateGroups } from "../domain/curation/duplicates.js";
-import { buildScopedQuery, honestyLines, resolveFilter } from "./bundles.js";
+import { buildScopedQuery, honestyLines, resolveFilter } from "../app/bundles.js";
 import { BookId, CursorParam, jsonArray, limitParam } from "./coerce.js";
 import { decodeCursor, pageCursor } from "./cursor.js";
 import { defineTool } from "./define.js";
 import { bookResourceLink } from "./resource-link.js";
-import { selectBooks } from "./select-books.js";
+import { selectBooks } from "../app/select-books.js";
 import { fence, renderResult, toolError, toolOk } from "./result.js";
 import type { ContentBlock } from "./types.js";
 
