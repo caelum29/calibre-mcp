@@ -53,7 +53,7 @@ export interface SnippetWindow {
  * chunk fits in one snippet.
  */
 export function snippetWindow(body: string, query: string, width: number = SNIPPET_CHARS): SnippetWindow {
-  const head = { start: 0, text: body.slice(0, width) };
+  const head = { start: 0, text: wholeSlice(body, 0, width) };
   if (body.length <= width) return head;
   const terms = queryTerms(query);
   if (terms.size === 0) return head;
@@ -79,8 +79,25 @@ export function snippetWindow(body: string, query: string, width: number = SNIPP
     for (const stem of inside) score += weight(stem);
     if (score > best.score) best = { start, score };
   }
-  const text = body.slice(best.start, best.start + width);
-  return { start: best.start, text: best.start > 0 ? `…${text}` : text };
+  const start = pairStart(body, best.start);
+  const text = wholeSlice(body, start, start + width);
+  return { start, text: start > 0 ? `…${text}` : text };
+}
+
+// A UTF-16 cut between the two halves of an astral char (emoji, 𝔸) leaves a lone surrogate:
+// ill-formed text that some clients reject or render as "�". Cuts move to the pair boundary.
+const isHigh = (code: number) => code >= 0xd800 && code <= 0xdbff;
+const isLow = (code: number) => code >= 0xdc00 && code <= 0xdfff;
+
+/** `at`, moved forward past a low surrogate whose high half sits before it. */
+function pairStart(body: string, at: number): number {
+  return at > 0 && isLow(body.charCodeAt(at)) && isHigh(body.charCodeAt(at - 1)) ? at + 1 : at;
+}
+
+/** body.slice(start, end), ending one unit early rather than on the high half of a pair. */
+function wholeSlice(body: string, start: number, end: number): string {
+  const cut = end < body.length && isHigh(body.charCodeAt(end - 1)) && isLow(body.charCodeAt(end)) ? end - 1 : end;
+  return body.slice(start, cut);
 }
 
 /** Distinct stems of the query's topic words: stopwords and very short stems dropped. */
