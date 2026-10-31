@@ -1,0 +1,28 @@
+src/semantic/store/chunks.ts
+  s_d856ef3a0da662::t_d17aee3ef717bb 8,224-275
+src/tools/calibre_semantic_search.ts
+  s_d856ef3a0da662::t_d17aee3ef717bb 87-88,311-319,326-327,337
+src/semantic/store/types.ts
+  s_d856ef3a0da662::t_d17aee3ef717bb 95-96
+src/semantic/retrieve.ts
+  s_d856ef3a0da662::t_d17aee3ef717bb 13,146-148,171-174
+  s_d856ef3a0da662::t_ca66a53958aee2 175-176
+src/semantic/stem.ts
+  s_d856ef3a0da662::t_d17aee3ef717bb 44-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e175be9f61f2815ab0b9a593db2bdd6de2f05fc9",
+  "prompts": {},
+  "sessions": {
+    "s_d856ef3a0da662": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc47d0e8-c9be-4814-af6c-d0969a96f5cd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
