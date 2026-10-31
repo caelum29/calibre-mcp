@@ -22,6 +22,7 @@ import { mergeBooksTool } from "./calibre_merge_books.js";
 import { manageBundlesTool } from "./calibre_manage_bundles.js";
 import { boardDataTool } from "./calibre_board_data.js";
 import { openBookTool } from "./calibre_open_book.js";
+import { pingTool } from "./calibre_ping.js";
 
 export const allTools: AnyToolDescriptor[] = [
   listLibrariesTool,
@@ -46,6 +47,8 @@ export const allTools: AnyToolDescriptor[] = [
   // Apps hide these from the model, so the model-facing surface stays at 18 tools (+ ping).
   boardDataTool,
   openBookTool,
+  // Health check, kept last: tools/list order is pinned (tools-list-order.test.ts).
+  pingTool,
 ];
 
 /**

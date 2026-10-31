@@ -111,8 +111,8 @@ describe("advertised tool schemas", () => {
     expect(validate(committedTools())).toEqual([]);
   });
 
-  it("advertises exactly the registry's tools plus calibre_ping", () => {
-    const expected = [...allTools.map((t) => t.name), "calibre_ping"].sort();
+  it("advertises exactly the registry's tools", () => {
+    const expected = allTools.map((t) => t.name).sort();
     expect(live.map((t) => t.name).sort()).toEqual(expected);
     expect(committedTools().map((t) => t.name)).toEqual(expected);
   });

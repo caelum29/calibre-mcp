@@ -531,6 +531,8 @@ const ALLOWLIST: Record<string, string> = {
   calibre_get_figures: "no outputSchema → Code falls back to the text content, so both clients see one channel (#227)",
   calibre_board_data: "widget-internal (_meta.ui.visibility app), never shown to the model (D-017, #227)",
   calibre_open_book: "widget-internal (_meta.ui.visibility app), never shown to the model (D-017, #227)",
+  calibre_ping:
+    "no outputSchema → Code falls back to the text content; text/structured diagnostics covered by ping.handler.test.ts + ping-diagnostics.test.ts (#222)",
 };
 
 describe("dual-channel parity over the registry (#227)", () => {
