@@ -133,17 +133,33 @@ function listSize(v: unknown): number | undefined {
 }
 
 /**
+ * A string given for a list field is split by calibredb on its separator (authors ` & `,
+ * tags/languages `,`), so the preview must count it as a list too.
+ */
+function splitListString(field: string, v: ChangeValue): ChangeValue {
+  if (typeof v !== "string") return v;
+  const sep = field === "authors" ? " & " : field === "tags" || field === "languages" ? "," : undefined;
+  return sep
+    ? v
+        .split(sep)
+        .map((x) => x.trim())
+        .filter(Boolean)
+    : v;
+}
+
+/**
  * Preview flag for a list-field "set" that would drop existing entries, e.g.
  * `tags: 15 → 1 (replaces all existing tags)`. Sets replace the whole list, so a one-element
  * value silently wipes the rest; undefined when nothing existing would be lost.
  */
 export function listReplacementNote(d: FieldDiff): string | undefined {
   const was = listSize(d.before);
-  const now = listSize(d.after);
+  const after = splitListString(d.field, d.after);
+  const now = listSize(after);
   if (!was || now === undefined) return undefined;
   const kept = (e: unknown): boolean => {
-    if (Array.isArray(d.after)) return d.after.some((x) => sameFieldValue(x, e));
-    return typeof e === "string" && !!d.after && typeof d.after === "object" && e in d.after;
+    if (Array.isArray(after)) return after.some((x) => sameFieldValue(x, e));
+    return typeof e === "string" && !!after && typeof after === "object" && e in after;
   };
   const existing = Array.isArray(d.before) ? d.before : Object.keys(d.before as object);
   if (existing.every(kept)) return undefined;

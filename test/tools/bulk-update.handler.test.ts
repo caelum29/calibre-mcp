@@ -548,6 +548,15 @@ describe("calibre_bulk_update preview flags list replacement (#306)", () => {
     expect(t).toContain("identifiers: 3 → 1 (replaces all existing identifiers)");
   });
 
+  it("flags string forms of list fields the way calibredb splits them", async () => {
+    const a = await previewText({ authors: "Solo" }, [book({ id: 1, authors: ["A", "B"] })]);
+    expect(a).toContain("authors: 2 → 1 (replaces all existing authors)");
+    const t = await previewText({ tags: "a,b" }, [book({ id: 1, tags: ["x", "y", "z"] })]);
+    expect(t).toContain("tags: 3 → 2 (replaces all existing tags)");
+    const keep = await previewText({ authors: "A & B & C" }, [book({ id: 1, authors: ["A", "B"] })]);
+    expect(keep).not.toContain("replaces all existing");
+  });
+
   it("does not flag a scalar change, an empty-before list, or a list that only grows", async () => {
     const t = await previewText({ title: "New", series: "S" }, [book({ id: 1 })]);
     expect(t).not.toContain("replaces all existing");
