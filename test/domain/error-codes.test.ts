@@ -133,3 +133,21 @@ describe("errorCodeFor", () => {
     ]);
   });
 });
+
+// #325 review: a non-404 4xx is the request's fault (bad query, bad params) — model-fixable, so
+// it must not map to a server-fault code that lands in calibre_ping.recentErrors. 401/403 stay
+// faults: we send no credentials, so only a Content Server setting change fixes them.
+describe("errorCodeFor — #325 HTTP 4xx", () => {
+  it.each([
+    [400, "invalid_input"],
+    [405, "invalid_input"],
+    [422, "invalid_input"],
+    [401, "calibre_error"],
+    [403, "calibre_error"],
+    [404, "not_found"],
+    [500, "calibre_error"],
+    [503, "calibre_error"],
+  ] as const)("should_map_HTTP_%i_to_%s", (status, code) => {
+    expect(errorCodeFor(new CalibreHttpError(status, "u", `HTTP ${status}`))).toBe(code);
+  });
+});

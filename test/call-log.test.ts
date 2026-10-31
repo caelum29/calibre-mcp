@@ -2,7 +2,8 @@
 
 import { describe, it, expect } from "vitest";
 import { createLogger, type LogRecord } from "../src/logging.js";
-import { redactArgvEchoes, summarizeArgs, summarizeArgv, withCallLog } from "../src/call-log.js";
+import { parseTraceparent, redactArgvEchoes, summarizeArgs, summarizeArgv, withCallLog } from "../src/call-log.js";
+import { ERROR_CODES, type ErrorCode } from "../src/domain/error-codes.js";
 
 function setup() {
   const lines: string[] = [];
@@ -144,5 +145,121 @@ describe("withCallLog — #249 hint + trace context", () => {
       content: [],
     }));
     expect(records()[0]?.meta).not.toHaveProperty("traceId");
+  });
+});
+
+// #325: which isError results reach calibre_ping.recentErrors. A code that means the server or
+// its environment is broken (the user must fix something outside the chat) logs at error and
+// lands in the ring with its hint; a code the model fixes by changing its call stays at warn.
+describe("withCallLog — #325 recentErrors rule", () => {
+  const LEVEL_BY_CODE: Record<ErrorCode, "warn" | "error"> = {
+    invalid_input: "warn",
+    not_found: "warn",
+    path_not_allowed: "warn",
+    write_refused: "error",
+    write_failed: "error",
+    write_unverified: "error",
+    calibre_unreachable: "error",
+    calibre_busy: "warn",
+    calibre_error: "error",
+    timeout: "error",
+    cancelled: "warn",
+    fts_unavailable: "warn",
+    index_missing: "warn",
+    index_incompatible: "warn",
+    index_build_failed: "error",
+    dependency_missing: "error",
+    extraction_failed: "error",
+    internal: "error",
+  };
+
+  it("should_classify_every_error_code", () => {
+    expect(Object.keys(LEVEL_BY_CODE).sort()).toEqual([...ERROR_CODES].sort());
+  });
+
+  it.each(ERROR_CODES.map((code) => [code, LEVEL_BY_CODE[code]] as const))(
+    "should_close_an_isError_%s_result_at_%s",
+    async (code, lvl) => {
+      const { logger, records, now } = setup();
+      await withCallLog(logger, { tool: "calibre_get_book", args: {}, now }, async () => ({
+        isError: true,
+        content: [{ type: "text", text: `Error: ${code}` }],
+        structuredContent: { errorCode: code },
+      }));
+      expect(records()[0]?.lvl).toBe(lvl);
+    },
+  );
+
+  it("should_put_a_server_fault_result_in_recentErrors_with_its_code_and_hint", async () => {
+    const { logger, now } = setup();
+    await withCallLog(logger, { tool: "calibre_get_book", args: { id: 3 }, now }, async () => ({
+      isError: true,
+      content: [{ type: "text", text: "Error: Content Server unreachable" }],
+      structuredContent: { errorCode: "calibre_unreachable", hint: "start the Content Server" },
+    }));
+    expect(logger.recentErrors().map((r) => ({ msg: r.msg, tool: r.tool, meta: r.meta }))).toMatchObject([
+      {
+        msg: "tool call",
+        tool: "calibre_get_book",
+        meta: { errorCode: "calibre_unreachable", hint: "start the Content Server" },
+      },
+    ]);
+  });
+
+  it("should_keep_a_caller_error_result_out_of_recentErrors", async () => {
+    const { logger, now } = setup();
+    await withCallLog(logger, { tool: "calibre_get_book", args: { id: 3 }, now }, async () => ({
+      isError: true,
+      content: [{ type: "text", text: "Error: book 3 not found" }],
+      structuredContent: { errorCode: "not_found" },
+    }));
+    expect(logger.recentErrors()).toEqual([]);
+  });
+
+  it("should_keep_an_isError_result_without_a_code_at_warn", async () => {
+    const { logger, records, now } = setup();
+    await withCallLog(logger, { tool: "x", args: {}, now }, async () => ({
+      isError: true,
+      content: [{ type: "text", text: "Error: tool x disabled" }],
+    }));
+    expect(records()[0]?.lvl).toBe("warn");
+  });
+});
+
+// #325: W3C Trace Context Level 1 (Recommendation 2021-11-23), https://www.w3.org/TR/trace-context/
+describe("parseTraceparent — #325 W3C versioning", () => {
+  const TID = "4bf92f3577b34da6a3ce929d0e0e4736";
+  const PID = "00f067aa0ba902b7";
+  const OK = { traceId: TID, parentSpanId: PID };
+
+  it.each([
+    // §3.2.4: a higher version is parsed by its known fields; anything after a dash is ignored
+    ["a higher version with trailing fields", `01-${TID}-${PID}-01-future-field`, OK],
+    ["a higher version with no trailing fields", `01-${TID}-${PID}-01`, OK],
+    ["the highest legal version", `fe-${TID}-${PID}-00-x`, OK],
+    ["version 00", `00-${TID}-${PID}-01`, OK],
+    ["surrounding whitespace (header OWS)", `  00-${TID}-${PID}-01 `, OK],
+  ])("should_parse_%s", (_name, tp, expected) => {
+    expect(parseTraceparent(tp)).toEqual(expected);
+  });
+
+  it.each([
+    // §3.2.2.1: version ff is forbidden
+    ["version ff", `ff-${TID}-${PID}-01`],
+    // §3.2.2.2: version 00 is exactly the three fields
+    ["version 00 with trailing fields", `00-${TID}-${PID}-01-extra`],
+    // §3.2.4: the flags must be followed by end of string or a dash
+    ["a higher version whose flags run on", `01-${TID}-${PID}-01x`],
+    // §3.2.4: shorter than 55 chars is not parsed
+    ["a higher version shorter than 55 chars", `01-${TID}-${PID}-0`],
+    // §3.2.2: every field is lowercase hex (HEXDIGLC)
+    ["an uppercase trace-id", `00-${TID.toUpperCase()}-${PID}-01`],
+    ["an uppercase parent-id", `00-${TID}-${PID.toUpperCase()}-01`],
+    ["a non-hex version", `0g-${TID}-${PID}-01`],
+    // §3.2.2.3 / §3.2.2.4: all-zero ids are invalid
+    ["an all-zero trace-id", `01-${"0".repeat(32)}-${PID}-01`],
+    ["an all-zero parent-id", `01-${TID}-${"0".repeat(16)}-01`],
+  ])("should_reject_%s", (_name, tp) => {
+    expect(parseTraceparent(tp)).toEqual({});
   });
 });
