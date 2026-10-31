@@ -1,0 +1,19 @@
+src/calibre/fts-highlight.ts
+  s_38ec8aae54ac1e::t_56385cc1b5bb7d 48-50,56,58,60,62,65,75-76,84,93,101-122,149-151,167-169,174-176,181
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d27d58bc9e2cddf8f7387a3301fedf8a09bfc1cd",
+  "prompts": {},
+  "sessions": {
+    "s_38ec8aae54ac1e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "35df8d4b-23d3-49f4-aec1-7f1c00848c39",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
