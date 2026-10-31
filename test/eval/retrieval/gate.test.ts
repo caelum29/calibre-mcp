@@ -159,3 +159,101 @@ describe("evaluateGate", () => {
     expect(evaluateGate(report(rows), baseline, thresholds).pass).toBe(false);
   });
 });
+
+// Score drift (#325, from #317/#322/#323): non-regression only sees Hit@1 flips, so small
+// ranking/score shifts vs the frozen baseline pass unseen. These pin the drift check.
+describe("evaluateGate score drift (#325)", () => {
+  const drift = { metricEpsilon: 0.005, maxScoreEpsilon: 0.01, maxScoreModes: ["hybrid", "vector"] as Mode[] };
+  const withDrift: Thresholds = { ...thresholds, scoreDrift: drift };
+  const agg = (ndcg10: number) => ({ n: 2, hit1: 1, recall5: 1, mrr: 1, ndcg10 });
+
+  /** A report with aggregates and per-query maxScore set; `edit` tweaks one copy. */
+  function scored(ndcgHybrid: number, sp01Hybrid = 0.84, sp01Keyword = -7.5): EvalReport {
+    const rows = healthyRows()
+      .filter((r) => !r.kind.startsWith("figure"))
+      .map((r) =>
+        r.id === "sp-01"
+          ? { ...r, maxScore: r.mode === "hybrid" ? sp01Hybrid : r.mode === "keyword" ? sp01Keyword : 0.84 }
+          : r,
+      );
+    return {
+      ...report(rows),
+      overall: { hybrid: agg(ndcgHybrid), vector: agg(0.97), keyword: agg(0.818) },
+      ruInvolved: { hybrid: agg(0.9824), vector: agg(0.9824), keyword: agg(0.5238) },
+    };
+  }
+  const base = scored(0.9705);
+  const withFigures = (r: EvalReport): EvalReport => ({
+    ...r,
+    perQuery: [...r.perQuery, ...healthyRows().filter((x) => x.kind.startsWith("figure"))],
+  });
+  const check = (res: ReturnType<typeof evaluateGate>, name: string) => res.checks.find((c) => c.name === name);
+
+  it("passes when the run reproduces the baseline scores", () => {
+    const res = evaluateGate(withFigures(scored(0.9705)), base, withDrift);
+    expect(check(res, "score drift: aggregate metrics")).toMatchObject({ active: true, pass: true });
+    expect(check(res, "score drift: per-query maxScore")).toMatchObject({ active: true, pass: true });
+    expect(res.pass).toBe(true);
+  });
+
+  it("tolerates aggregate drift within the epsilon", () => {
+    const res = evaluateGate(withFigures(scored(0.9665)), base, withDrift); // |Δ| = 0.004
+    expect(check(res, "score drift: aggregate metrics")?.pass).toBe(true);
+  });
+
+  it("fails on aggregate drift beyond the epsilon and names the metric", () => {
+    const res = evaluateGate(withFigures(scored(0.9645)), base, withDrift); // |Δ| = 0.006
+    expect(res.pass).toBe(false);
+    expect(check(res, "score drift: aggregate metrics")?.detail).toBe(
+      "1 beyond ±0.005: overall hybrid ndcg10 0.9705 → 0.9645",
+    );
+  });
+
+  it("fails when a baseline aggregate is missing from the run", () => {
+    const cur = withFigures(scored(0.9705));
+    const { keyword: _dropped, ...overall } = cur.overall;
+    const res = evaluateGate({ ...cur, overall }, base, withDrift);
+    expect(check(res, "score drift: aggregate metrics")?.detail).toContain("overall keyword MISSING");
+    expect(res.pass).toBe(false);
+  });
+
+  it("fails on a per-query maxScore shift beyond the epsilon in a gated mode only", () => {
+    const res = evaluateGate(withFigures(scored(0.9705, 0.82)), base, withDrift); // hybrid Δ 0.02
+    expect(res.pass).toBe(false);
+    expect(check(res, "score drift: per-query maxScore")?.detail).toBe(
+      "1 beyond ±0.01; worst hybrid/sp-01 0.8400 → 0.8200",
+    );
+    // keyword bm25 scores are not in maxScoreModes: a large shift there is ignored
+    const kw = evaluateGate(withFigures(scored(0.9705, 0.84, -3)), base, withDrift);
+    expect(check(kw, "score drift: per-query maxScore")?.pass).toBe(true);
+  });
+
+  it("fails when no baseline maxScore row is matched (an empty compare is not a pass)", () => {
+    const cur = withFigures(scored(0.9705));
+    const noScores = { ...cur, perQuery: cur.perQuery.map(({ maxScore: _m, ...r }) => r) };
+    const res = evaluateGate(noScores, base, withDrift);
+    expect(check(res, "score drift: per-query maxScore")).toMatchObject({
+      pass: false,
+      detail: "only 0/2 baseline rows matched; missing: hybrid/sp-01, vector/sp-01",
+    });
+    expect(res.pass).toBe(false);
+  });
+
+  it("fails when fewer rows match than the baseline has, naming the missing ones", () => {
+    const cur = withFigures(scored(0.9705));
+    const partial = {
+      ...cur,
+      perQuery: cur.perQuery.map((r) => (r.id === "sp-01" && r.mode === "vector" ? { ...r, maxScore: undefined } : r)),
+    };
+    const res = evaluateGate(partial, base, withDrift);
+    expect(check(res, "score drift: per-query maxScore")).toMatchObject({
+      pass: false,
+      detail: "only 1/2 baseline rows matched; missing: vector/sp-01",
+    });
+  });
+
+  it("adds no drift checks when thresholds declare none", () => {
+    const res = evaluateGate(withFigures(scored(0.9)), base, thresholds);
+    expect(res.checks.filter((c) => c.name.startsWith("score drift"))).toEqual([]);
+  });
+});

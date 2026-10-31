@@ -32,6 +32,12 @@
     "queryIds": ["fmt-04", "fmt-05", "fmt-06"],
     "minHit1Queries": { "keyword": 2, "hybrid": 3, "vector": 3 }
   },
+  "scoreDrift": {
+    "$comment": "#325 (from #317/#322/#323), declared BEFORE measuring the current run against the baseline (D-012). nonRegression only sees Hit@1 flips; this catches small rank/score shifts. Aggregates: overall + ruInvolved hit1/recall5/mrr/ndcg10 per mode, |delta| <= metricEpsilon (0.005 is below one rank-1->2 swap over the 59 positive queries, ~0.006 nDCG). Per-query maxScore: cosine modes only (keyword maxScore is bm25), |delta| <= maxScoreEpsilon. A deliberate model/ranking change re-baselines (baselineReport) instead of widening these.",
+    "metricEpsilon": 0.005,
+    "maxScoreEpsilon": 0.01,
+    "maxScoreModes": ["hybrid", "vector"]
+  },
   "liveEval": {
     "$comment": "Before/after diff on the real library is a mandatory triage artifact, NOT a gate — live-relevance.json labels are unverified and the re-index mixes markers + figures + D-016 demotion.",
     "gate": false

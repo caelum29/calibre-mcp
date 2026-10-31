@@ -97,3 +97,52 @@ describe("snippetWindow", () => {
     }
   });
 });
+
+// #325 (from #323): very long queries, a surrogate pair cut at a window edge, mixed EN/RU.
+describe("snippetWindow edge cases (#325)", () => {
+  const ASTRAL = "𝔸"; // U+1D538: one char, two UTF-16 units (a surrogate pair)
+  const FILLER = "Plain filler words about nothing in particular. "; // 48 chars, no query terms
+
+  it("a very long query (2,000 words) still opens at its one matching topic term", () => {
+    const query = Array.from({ length: 2000 }, (_, i) => `zzterm${i}`).join(" ") + " Paxos";
+    const body = FILLER.repeat(10) + "Paxos is the classic answer. " + TAIL;
+    const w = snippetWindow(body, query);
+    expect(w.start).toBe(480);
+    expect(w.text).toBe(`…${body.slice(480, 480 + SNIPPET_CHARS)}`);
+  });
+
+  it("does not end on a lone high surrogate: the cut pair is dropped whole", () => {
+    // window opens at Paxos (480); 320 units later is the middle of an astral pair
+    const body = FILLER.repeat(10) + "Paxos xy " + ASTRAL.repeat(300);
+    const w = snippetWindow(body, "Paxos");
+    expect(w.start).toBe(480);
+    expect(w.text).toBe(`…${body.slice(480, 480 + SNIPPET_CHARS - 1)}`);
+    expect(w.text.isWellFormed()).toBe(true);
+  });
+
+  it("does not start on a lone low surrogate: the start moves past the cut pair", () => {
+    // no whitespace before the term → the end-of-chunk shift lands on end - width = 289, mid-pair
+    const body = ASTRAL.repeat(300) + ",Paxos xy";
+    const w = snippetWindow(body, "Paxos");
+    expect(w.start).toBe(290);
+    expect(w.text).toBe(`…${body.slice(290)}`);
+    expect(w.text.isWellFormed()).toBe(true);
+  });
+
+  it("the head fallback does not end on a lone high surrogate either", () => {
+    const body = "x" + ASTRAL.repeat(300); // unit 319 is a high surrogate
+    const w = snippetWindow(body, "nothing here");
+    expect(w).toEqual({ start: 0, text: body.slice(0, SNIPPET_CHARS - 1) });
+    expect(w.text.isWellFormed()).toBe(true);
+  });
+
+  it("a mixed EN/RU query opens at the rare RU term, matched across inflection", () => {
+    // "Raft" is everywhere in the head (generic); "консенсуса" occurs once (rare) and must win
+    const head = "Raft notes. Raft logs. Raft again here. ".repeat(10);
+    const hit = "Для консенсуса нужно большинство голосов.";
+    const body = head + hit + " " + TAIL;
+    const w = snippetWindow(body, "Raft консенсус");
+    expect(w.start).toBe(head.length);
+    expect(raw(w).startsWith(hit)).toBe(true);
+  });
+});

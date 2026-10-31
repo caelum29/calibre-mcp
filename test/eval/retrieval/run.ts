@@ -22,7 +22,7 @@
 //   seam via retrieve()'s opts.rrfWeights (#259); the shipped weights stay in retrieve.ts.
 
 import { execSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadConfig } from "../../../src/config.js";
@@ -175,11 +175,17 @@ async function main(): Promise<void> {
   ensureModelCache(args.workDir);
 
   let live: LiveRelevance | undefined;
+  // Fixture runs build into their own temp dir under the work dir, so two concurrent evals (or a
+  // killed run's -wal/-shm leftovers) never share one sqlite file (#325: "disk I/O error").
+  // Models are shared via a symlink — copying them per run would cost hundreds of MB.
+  let indexDir = args.workDir;
   if (args.live) {
     live = prepareLive(args.workDir);
   } else {
     // Fresh fixture build every run — deterministic and immune to INDEX_VERSION bumps.
-    rmSync(path.join(args.workDir, sqliteName("eval_fixture")), { force: true });
+    indexDir = mkdtempSync(path.join(args.workDir, "run-"));
+    const models = path.join(args.workDir, "models");
+    if (existsSync(models)) symlinkSync(models, path.join(indexDir, "models"), "dir");
   }
 
   const sha = gitSha();
@@ -191,7 +197,7 @@ async function main(): Promise<void> {
   const rerankLabel = args.rerank ?? `${RERANKER_MODEL_ID} q8`;
 
   const report = await runRetrievalEval({
-    indexDir: args.workDir,
+    indexDir,
     modes: args.modes,
     topK: args.topK,
     ...(reranker ? { reranker } : {}),
@@ -200,6 +206,9 @@ async function main(): Promise<void> {
     ...(args.rrfWeights ? { rrfWeights: args.rrfWeights } : {}),
     ...(live ? { live } : {}),
     onProgress: progress,
+  }).finally(() => {
+    // rmSync never follows the models symlink; it only unlinks it
+    if (indexDir !== args.workDir) rmSync(indexDir, { recursive: true, force: true });
   });
   if (reranker && report.meta.rerankedRows === 0) {
     progress("WARNING: rerank was ON but 0 rows reranked — model unavailable, run is reranker-degraded");

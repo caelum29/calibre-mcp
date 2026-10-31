@@ -253,6 +253,8 @@ interface TwinRule {
   name: string;
   pattern: RegExp;
   home: string[];
+  /** Top-level dirs the rule applies to; default src only (tooling may legitimately differ). */
+  roots?: string[];
 }
 
 // A second copy of these drifts: the fix lands in one copy and misses the other.
@@ -285,8 +287,14 @@ const TWIN_RULES: TwinRule[] = [
   },
   {
     name: "one SQLite connection owner: only semantic/store/schema.ts opens a DatabaseSync (#272)",
-    pattern: /\bnew\s+DatabaseSync\s*\(/,
+    // also `new sqlite.DatabaseSync(` / `new a.b.DatabaseSync(` / a member chain split across lines
+    // (namespace imports) and `DatabaseSync as X` (aliased, #322). Not caught: a destructured
+    // `require` (`const { DatabaseSync: D } = …; new D(`) and `new (x.DatabaseSync)(`. A string
+    // literal containing the pattern trips it — acceptable, the failure is loud and points at the file.
+    pattern: /\bnew\s+(?:[\w$]+\s*\.\s*)*DatabaseSync\s*\(|\bDatabaseSync\s+as\s+[\w$]/,
     home: ["src/semantic/store/schema.ts"],
+    // scripts/ too: a reindex/maintenance script opening its own connection races the store (#322)
+    roots: ["src", "scripts"],
   },
   {
     name: "ranking/fusion/rerank live in semantic/retrieve.ts, not in a tool adapter (#259)",
@@ -300,17 +308,56 @@ const TWIN_RULES: TwinRule[] = [
   },
 ];
 
+/** The files the twin rules are checked against: src/ plus the scripts/ tooling. */
+// Every JS/TS flavour the tooling may use: .js .mjs .cjs .ts .mts .cts
+const SCRIPT_EXT = /\.[cm]?[jt]s$/;
+
+function twinScanFiles(): SourceFile[] {
+  return [...readSources("src", /\.ts$/), ...readSources("scripts", SCRIPT_EXT)];
+}
+
+/** True when the file sits under one of the rule's roots (default: src). */
+function inRoots(rule: TwinRule, file: SourceFile): boolean {
+  return (rule.roots ?? ["src"]).some((root) => file.path.startsWith(`${root}/`));
+}
+
 function findTwinViolations(files: SourceFile[]): string[] {
   return TWIN_RULES.flatMap((r) =>
     files
-      .filter((f) => !r.home.includes(f.path) && r.pattern.test(stripComments(f.source)))
+      .filter((f) => inRoots(r, f) && !r.home.includes(f.path) && r.pattern.test(stripComments(f.source)))
       .map((f) => `${f.path}: ${r.name}`),
   );
 }
 
 describe("one home per mechanism", () => {
   it("no copy of a shared mechanism outside its home", () => {
-    expect(findTwinViolations(readSources("src", /\.ts$/))).toEqual([]);
+    expect(findTwinViolations(twinScanFiles())).toEqual([]);
+  });
+
+  it("the SQLite-owner rule reaches scripts/ and namespace/aliased imports (#322)", () => {
+    // scripts/ (reindex.ts, the .mjs tooling) is scanned too, not just src/
+    expect(twinScanFiles().map((f) => f.path)).toContain("scripts/reindex.ts");
+    const inScripts = (source: string) => findTwinViolations([{ path: "scripts/x.mjs", source }]);
+    expect(inScripts(`const db = new DatabaseSync(file);`)).toEqual([
+      "scripts/x.mjs: one SQLite connection owner: only semantic/store/schema.ts opens a DatabaseSync (#272)",
+    ]);
+    // other twin rules stay src-only: tooling may legitimately name a binary path
+    expect(inScripts(`const p = "/usr/local/bin/calibredb";`)).toEqual([]);
+    const at = (source: string) => findTwinViolations([{ path: "src/tools/x.ts", source }]);
+    expect(at(`import * as sqlite from "node:sqlite"; const db = new sqlite.DatabaseSync(file);`)).toHaveLength(1);
+    expect(at(`import { DatabaseSync as Db } from "node:sqlite";`)).toHaveLength(1);
+    expect(at(`import type { DatabaseSync } from "node:sqlite"; let db: DatabaseSync;`)).toEqual([]);
+  });
+
+  it("the SQLite-owner rule catches deep and line-split member chains, and cjs/mts scripts (#325 review)", () => {
+    const at = (source: string) => findTwinViolations([{ path: "src/tools/x.ts", source }]);
+    expect(at(`const db = new a.b.DatabaseSync(file);`)).toHaveLength(1);
+    expect(at(`const db = new sqlite\n  .DatabaseSync(file);`)).toHaveLength(1);
+    expect(at(`const db = new $q.DatabaseSync(file);`)).toHaveLength(1);
+    expect(at(`const db = openDatabaseSync(file);`)).toEqual([]);
+    const scanned = (name: string) => SCRIPT_EXT.test(name);
+    expect(["a.cjs", "a.mts", "a.cts", "a.mjs", "a.js", "a.ts"].filter(scanned)).toHaveLength(6);
+    expect(["a.py", "a.sh", "a.json"].filter(scanned)).toEqual([]);
   });
 
   it("detects each twin and ignores comments and method names", () => {
