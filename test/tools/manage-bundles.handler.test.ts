@@ -8,7 +8,8 @@ import {
 import { CalibreHttpError } from "../../src/domain/errors.js";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
-import type { ToolDeps, ToolResult } from "../../src/tools/types.js";
+import type { ToolResult } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 
 const LIST_STDOUT = [
   "Integration status: False",

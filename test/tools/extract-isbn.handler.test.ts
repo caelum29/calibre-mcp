@@ -4,7 +4,7 @@ import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
 import type { GetTextArgs } from "../../src/calibre/extract.js";
 import { extractIsbnTool } from "../../src/tools/calibre_extract_isbn.js";
-import type { ToolDeps } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 
 function book(over: Partial<Book> = {}): Book {
   return { id: 1, uuid: "u", title: "", authors: [], identifiers: {}, formats: [], tags: [], languages: [], ...over };

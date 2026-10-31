@@ -15,7 +15,8 @@ import { log, type LogSink } from "../../src/logging.js";
 // Typed as the narrow sink ToolDeps expects (an annotation, not a cast).
 const sink: LogSink = log;
 import { getFiguresTool } from "../../src/tools/calibre_get_figures.js";
-import type { ImageBlock, TextBlock, ToolDeps, ToolResult } from "../../src/tools/types.js";
+import type { ImageBlock, TextBlock, ToolResult } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 
 const RUN = process.env.RUN_CALIBRE_TESTS === "1";
 const PDF_BOOK = 164; // Software Architecture Metrics

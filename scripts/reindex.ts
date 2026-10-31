@@ -21,7 +21,7 @@ import { SqliteIndexStore } from "../src/semantic/store.js";
 import { runBookPipeline } from "../src/semantic/book-pipeline.js";
 import { appendProgress, resolveProgressPath, resumeProgress } from "../src/semantic/build-progress.js";
 import { commitBook, commitRefresh, describeError, prepareBook, type PrepareResult } from "../src/tools/index-book.js";
-import type { ToolDeps } from "../src/tools/types.js";
+import type { ToolDeps } from "../src/tools/deps.js";
 
 const { values: opt } = parseArgs({
   options: {

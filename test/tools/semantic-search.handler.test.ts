@@ -7,7 +7,7 @@ import { RERANK_POOL, type Reranker } from "../../src/semantic/reranker.js";
 import { SqliteIndexStore } from "../../src/semantic/store.js";
 import { EMBED_DIM, INDEX_VERSION } from "../../src/semantic/model.js";
 import { l2normalize } from "../../src/semantic/vector.js";
-import type { ToolDeps } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 
 const LIB = "Programming_Books";
 

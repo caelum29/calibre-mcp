@@ -9,7 +9,7 @@ import type { FtsMatches, SearchPage } from "../../src/domain/search.js";
 import { log } from "../../src/logging.js";
 import { invalidateBundleCache } from "../../src/tools/bundles.js";
 import { searchTool } from "../../src/tools/calibre_search.js";
-import type { ToolDeps } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 
 /** A boundary call that hangs until its own timeout fires, like a request queued behind a held lock. */
 const hangUntilTimeout = (err: () => Error) => (timeoutMs: number | undefined) =>

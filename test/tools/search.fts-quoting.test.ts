@@ -5,7 +5,8 @@ import { searchTool } from "../../src/tools/calibre_search.js";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import { fakeFts, type FakeFtsHit } from "./fake-fts.js";
-import type { ToolDeps, ToolResult } from "../../src/tools/types.js";
+import type { ToolResult } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 
 // Boundary stub: only what the FTS branches touch.
 function deps(ftsHits: FakeFtsHit[]): ToolDeps {

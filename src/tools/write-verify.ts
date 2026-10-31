@@ -5,7 +5,7 @@
 import { changesSatisfied } from "../domain/book-fields.js";
 import type { ChangeValue } from "../domain/book-fields.js";
 import type { Book } from "../domain/book.js";
-import type { ToolDeps } from "./types.js";
+import type { ToolDeps } from "./deps.js";
 
 /** What a timed-out write is, judged from a re-read of the book. */
 export type TimedOutWriteCheck =

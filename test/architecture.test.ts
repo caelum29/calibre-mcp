@@ -130,7 +130,7 @@ const LAYER_RULES: LayerRule[] = [
 // Known breaks, each owned by an open refactor issue. Shrink-only: a fixed edge must be removed.
 const LAYER_ALLOWLIST = new Set([
   "scripts/reindex.ts -> src/tools/index-book.ts", // #260
-  "scripts/reindex.ts -> src/tools/types.ts", // #260
+  "scripts/reindex.ts -> src/tools/deps.ts", // #260
 ]);
 
 /** `"<file> -> <target> (<rule>)"` for every import that crosses a forbidden layer edge. */

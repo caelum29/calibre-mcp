@@ -5,7 +5,7 @@
 // in text content by the caller — never silent subtraction.
 
 import type { LibId } from "../calibre/lib-id.js";
-import type { ToolDeps } from "./types.js";
+import type { ToolDeps } from "./deps.js";
 
 export interface BundleEntry {
   name: string;

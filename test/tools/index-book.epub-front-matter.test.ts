@@ -15,7 +15,7 @@ import { EMBED_DIM } from "../../src/semantic/model.js";
 import { SqliteIndexStore } from "../../src/semantic/store.js";
 import { buildIndexTool } from "../../src/tools/calibre_build_index.js";
 import { commitBook, commitRefresh, prepareBook, type PrepareOptions } from "../../src/tools/index-book.js";
-import type { ToolDeps } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 
 const LIB = "Programming_Books";
 const PREFACE = "This preface explains why the book exists and who should read it. ".repeat(75);

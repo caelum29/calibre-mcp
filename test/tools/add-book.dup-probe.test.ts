@@ -8,7 +8,7 @@ import { addBookTool } from "../../src/tools/calibre_add_book.js";
 import { loadConfig } from "../../src/config.js";
 import type { Book } from "../../src/domain/book.js";
 import type { LogSink } from "../../src/logging.js";
-import type { ToolDeps } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 
 let root: string;
 let file: string;
