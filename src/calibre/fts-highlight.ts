@@ -45,18 +45,24 @@ function repairOne(snippet: string, units: QueryUnit[], span: RegExp, markers: H
   if (spans.every((m) => spanIsValid(m[1]!, units))) return snippet;
   let out = "";
   let plain = "";
+  // Where an unmarked span's edges sit in `plain`: Calibre's markers stood at a word boundary,
+  // so `>>foo<<>>bogus<<foo` must not re-match as one word `bogusfoo`.
+  let cuts: number[] = [];
   let cursor = 0;
   for (const m of spans) {
     plain += snippet.slice(cursor, m.index);
     cursor = m.index + m[0].length;
     if (spanIsValid(m[1]!, units)) {
-      out += highlight(plain, units, markers) + m[0];
+      out += highlight(plain, units, markers, cuts) + m[0];
       plain = "";
+      cuts = [];
     } else {
+      cuts.push(plain.length);
       plain += m[1];
+      cuts.push(plain.length);
     }
   }
-  return out + highlight(plain + snippet.slice(cursor), units, markers);
+  return out + highlight(plain + snippet.slice(cursor), units, markers, cuts);
 }
 
 // A span is a real highlight when each of its words matches some query term.
@@ -66,8 +72,8 @@ function spanIsValid(inner: string, units: QueryUnit[]): boolean {
 }
 
 /** Wrap every occurrence of a query unit (phrase words in order) in the markers. */
-function highlight(text: string, units: QueryUnit[], { start, end }: HighlightMarkers): string {
-  const words = [...text.matchAll(WORD)];
+function highlight(text: string, units: QueryUnit[], { start, end }: HighlightMarkers, cuts: number[]): string {
+  const words = splitAt([...text.matchAll(WORD)], cuts);
   // Longest phrases first, so "event sourcing" wins over a bare "event".
   const ordered = [...units].sort((a, b) => b.words.length - a.words.length);
   let out = "";
@@ -75,7 +81,7 @@ function highlight(text: string, units: QueryUnit[], { start, end }: HighlightMa
   let i = 0;
   while (i < words.length) {
     const unit = ordered.find((u) =>
-      u.words.every((t, k) => words[i + k] && wordMatches(words[i + k]![0], t, u.prefix)),
+      u.words.every((t, k) => words[i + k] && wordMatches(words[i + k]!.text, t, u.prefix)),
     );
     if (!unit) {
       i++;
@@ -84,12 +90,34 @@ function highlight(text: string, units: QueryUnit[], { start, end }: HighlightMa
     const first = words[i]!;
     const last = words[i + unit.words.length - 1]!;
     const from = first.index;
-    const to = last.index + last[0].length;
+    const to = last.index + last.text.length;
     out += `${text.slice(cursor, from)}${start}${text.slice(from, to)}${end}`;
     cursor = to;
     i += unit.words.length;
   }
   return out + text.slice(cursor);
+}
+
+/** A word of the text and its offset. */
+interface Word {
+  text: string;
+  index: number;
+}
+
+// Split words that straddle a cut (an unmarked span's edge) into separate words.
+function splitAt(matches: RegExpMatchArray[], cuts: number[]): Word[] {
+  const out: Word[] = [];
+  for (const m of matches) {
+    let from = m.index!;
+    const to = from + m[0].length;
+    for (const c of cuts) {
+      if (c <= from || c >= to) continue;
+      out.push({ text: m[0].slice(from - m.index!, c - m.index!), index: from });
+      from = c;
+    }
+    out.push({ text: m[0].slice(from - m.index!), index: from });
+  }
+  return out;
 }
 
 /** Query → match units: quoted phrases, then bare words; operators and NEAR distances dropped. */
@@ -118,6 +146,9 @@ function wordMatches(word: string, term: string, prefix: boolean): boolean {
   const t = fold(term);
   if (w === t) return true;
   if (prefix) return w.startsWith(t);
+  // SQLite's porter tokenizer leaves tokens under 3 chars unstemmed, and a shifted marker
+  // often lands on a short common word: `us`/`on` must not pass for use/only/one.
+  if (Math.min(w.length, t.length) < 3) return false;
   if (stem(w) === stem(t)) return true;
   const shorter = Math.min(w.length, t.length);
   const cp = commonPrefix(w, t);
@@ -133,17 +164,21 @@ function fold(s: string): string {
 
 const SUFFIXES = ["ations", "ation", "ings", "ing", "edly", "ed", "ers", "er", "ly", "es", "s"];
 
+// Porter strips -ing/-ed only when a vowel stays in the stem: thing ≠ the (th), using = use (us).
+const HAS_VOWEL = /[aeiouy]/;
+
 /** Rough English stem: strip one inflection, undouble a final consonant, drop a final e. */
 function stem(w: string): string {
   let s = w;
   for (const suf of SUFFIXES) {
-    if (s.endsWith(suf) && s.length - suf.length >= 2) {
-      s = s.slice(0, -suf.length);
+    const rest = s.slice(0, -suf.length);
+    if (s.endsWith(suf) && rest.length >= 2 && HAS_VOWEL.test(rest)) {
+      s = rest;
       break;
     }
   }
   if (/([b-df-hj-np-tv-z])\1$/.test(s)) s = s.slice(0, -1); // running → runn → run
-  if (s.endsWith("e") && s.length > 2) s = s.slice(0, -1); // making → mak ← make
+  if (s.endsWith("e") && s.length > 2 && HAS_VOWEL.test(s.slice(0, -1))) s = s.slice(0, -1); // making → mak ← make
   return s;
 }
 
