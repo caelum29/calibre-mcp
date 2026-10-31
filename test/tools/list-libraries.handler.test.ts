@@ -54,9 +54,48 @@ describe("calibre_list_libraries text channel (#303)", () => {
       expect(text(r)).toContain(`${l.name} (id: ${l.id})`);
     }
   });
+});
 
-  it("still says (none) when the server exposes no libraries", async () => {
+// Stale default (#325): defaultLibrary is not a key of libraryMap, so no line can carry [default].
+// Both channels must agree: no default is reported, and the text says why.
+describe("calibre_list_libraries with a stale defaultLibrary (#325)", () => {
+  it("marks no line [default], omits structured default, and says so in the text", async () => {
+    const r = await listLibrariesTool.handler({}, deps(MAP, "Gone_Library"));
+    const sc = r.structuredContent as { libraries: { isDefault: boolean }[]; default?: string };
+    expect(text(r)).not.toContain("[default]");
+    expect(sc.libraries.map((l) => l.isDefault)).toEqual([false, false, false]);
+    expect(sc.default).toBeUndefined();
+    expect(text(r).split("\n").at(-1)).toBe('Note: the server default "Gone_Library" is not an exposed library.');
+  });
+});
+
+describe("calibre_list_libraries with no libraries (#325)", () => {
+  it("says exactly (none) in the text and reports no default", async () => {
     const r = await listLibrariesTool.handler({}, deps({}, ""));
-    expect(text(r)).toContain("(none)");
+    expect(text(r)).toBe("Libraries: (none)");
+    expect(r.structuredContent).toEqual({ libraries: [] });
+  });
+});
+
+describe("calibre_list_libraries default handling, review round (#325)", () => {
+  it("listed default: no Note line, structured default equals the id, no defaultUnavailable", async () => {
+    const r = await listLibrariesTool.handler({}, deps(MAP, "Humanities"));
+    const sc = r.structuredContent as { default?: string; defaultUnavailable?: string };
+    expect(text(r)).not.toContain("Note:");
+    expect(sc.default).toBe("Humanities");
+    expect(sc.defaultUnavailable).toBeUndefined();
+  });
+
+  it("stale default: names it in defaultUnavailable and steers to an explicit id", async () => {
+    const r = await listLibrariesTool.handler({}, deps(MAP, "Gone_Library"));
+    const sc = r.structuredContent as { defaultUnavailable?: string };
+    expect(sc.defaultUnavailable).toBe("Gone_Library");
+    expect(text(r)).toContain("Pass an explicit library id from this list");
+  });
+
+  it("zero libraries + stale default: (none) plus the Note, defaultUnavailable set", async () => {
+    const r = await listLibrariesTool.handler({}, deps({}, "Gone_Library"));
+    expect(text(r)).toBe('Libraries: (none)\nNote: the server default "Gone_Library" is not an exposed library.');
+    expect(r.structuredContent).toStrictEqual({ libraries: [], defaultUnavailable: "Gone_Library" });
   });
 });
