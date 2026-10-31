@@ -1,0 +1,25 @@
+CLAUDE.md
+  s_dc7de0317f6835::t_f0ad890a75e04e 85-100
+docs/agents/domain.md
+  s_dc7de0317f6835::t_87cf27c0243bdc 1-46
+docs/agents/issue-tracker.md
+  s_dc7de0317f6835::t_e07ad8b44ca666 1-45
+docs/agents/triage-labels.md
+  s_dc7de0317f6835::t_3502559335b280 1-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b99e0eeb3418c0cd27046197e20527e8167b9b78",
+  "prompts": {},
+  "sessions": {
+    "s_dc7de0317f6835": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "85885bd3-efdb-4858-a017-65e07fb13a0e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
