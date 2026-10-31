@@ -104,7 +104,7 @@ describe("calibre_ping per-library index breakdown (#304)", () => {
       },
       stats: (id) => {
         if (id === "Humanities") throw new Error("database is locked");
-        return { books: 5, chunks: 1, figures: 0 };
+        return { books: BOOKS[id] ?? 0, chunks: 1, figures: 0 };
       },
     });
     const r = await ping.handler({}, d);
