@@ -295,6 +295,8 @@ async function runBuild(
   let totalUnplaced = 0;
   const bookDetails: BookDetail[] = [];
   let settled = 0;
+  // Books a cancel cut short: settled, but never processed — kept out of progress.done (#325).
+  let cutShort = 0;
   progress?.(0, `Indexing ${booksRequested} book(s)…`, booksRequested);
   // Book-level pipeline (#99): write-free prepare per book, one serialized writer commits —
   // the same path the threaded bulk re-index uses, so both keep the single-writer invariant.
@@ -339,8 +341,12 @@ async function runBuild(
     },
     onSettled: (o) => {
       settled++;
-      run.progress.done = settled;
-      if (o.ok && o.prepared.kind === "ready") run.progress.indexedIds.push(o.bookId);
+      if (!o.ok && signal?.aborted) cutShort++;
+      run.progress.done = settled - cutShort;
+      // A write refused at commit (embedded meanwhile) kept the old rows — not indexed (#325).
+      if (o.ok && o.prepared.kind === "ready" && !preservedAtCommit.has(o.bookId)) {
+        run.progress.indexedIds.push(o.bookId);
+      }
       if (settled % PROGRESS_EVERY === 0) {
         deps.log.info("build progress", { done: settled, of: booksRequested });
       }
