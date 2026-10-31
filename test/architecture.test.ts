@@ -183,6 +183,18 @@ describe("layer directions", () => {
   });
 });
 
+// ── ToolDeps on ports (#258) ─────────────────────────────────────────────────────────
+
+// Handlers see narrow ports; only server.ts (the composition root) names the adapter classes.
+const ADAPTER_CLASSES = /\b(ContentServerClient|CalibreClient|Extractor|FigureInventoryService|BoardCache)\b/g;
+
+describe("ToolDeps on ports", () => {
+  it("tools/deps.ts names no concrete adapter class", () => {
+    const source = stripComments(readFileSync(join(SRC, "tools", "deps.ts"), "utf8"));
+    expect([...new Set(source.match(ADAPTER_CLASSES) ?? [])]).toEqual([]);
+  });
+});
+
 // ── one home per mechanism (twin paths: #219, #221, #223, #241) ──────────────────────
 
 interface TwinRule {
