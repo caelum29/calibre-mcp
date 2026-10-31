@@ -1,0 +1,52 @@
+src/tools/result.ts
+  s_aa002d0f29785d::t_feca0e2f6ee2ba 45-46,53-54,59-61
+src/domain/error-codes.ts
+  s_aa002d0f29785d::t_d7a0dcaedbdc84 15,57,62-70
+  s_aa002d0f29785d::t_28186927a7f410 71-72
+src/tools/calibre_merge_books.ts
+  s_aa002d0f29785d::t_85aa019d3e539a 438-440
+  s_aa002d0f29785d::t_14810160a88267 280,339,349,385
+  s_aa002d0f29785d::t_c7b613f759a80e 433-437
+  s_aa002d0f29785d::t_4503a41a163769 30-31
+src/ui/card/card.js
+  s_aa002d0f29785d::t_895d4051035a90 197
+test/tools/build-index.background.test.ts
+  s_aa002d0f29785d::t_895d4051035a90 184
+src/ui/generated/widgets.ts
+  s_aa002d0f29785d::t_895d4051035a90 7
+src/tools/calibre_list_libraries.ts
+  s_aa002d0f29785d::t_85aa019d3e539a 6-7
+  s_aa002d0f29785d::t_c7b613f759a80e 36,38-41
+src/domain/calibredb-stderr.ts
+  s_aa002d0f29785d::t_7bd30a6023e3bb 1-17
+src/tools/calibre_bulk_update.ts
+  s_aa002d0f29785d::t_4503a41a163769 180,194,262-263,287
+src/app/write-policy.ts
+  s_aa002d0f29785d::t_a14d2071ee3326 19
+  s_aa002d0f29785d::t_02d1d6f029eca5 64
+  s_aa002d0f29785d::t_7bd30a6023e3bb 6,49
+  s_aa002d0f29785d::t_85aa019d3e539a 88-90
+src/tools/calibre_ping.ts
+  s_aa002d0f29785d::t_85aa019d3e539a 7
+  s_aa002d0f29785d::t_c7b613f759a80e 35,42,62-74,77
+test/ui/__snapshots__/widgets/card-debug.html
+  s_aa002d0f29785d::t_b27c6917c101b0 578
+test/ui/__snapshots__/widgets/card-nodebug.html
+  s_aa002d0f29785d::t_39278db9a7890d 477
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b3da9810fc103adcacb83bc34dfbb5885ea59804",
+  "prompts": {},
+  "sessions": {
+    "s_aa002d0f29785d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9858b033-3534-4580-8536-b45ea248531d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
