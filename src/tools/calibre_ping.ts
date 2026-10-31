@@ -5,13 +5,12 @@
 
 import { defineTool } from "./define.js";
 import { toolText } from "./result.js";
-import { computeSemanticStatus, formatSemanticStatusLine } from "../semantic/status.js";
+import { computeSemanticStatus, formatSemanticStatusLine, staleness } from "../semantic/status.js";
 import { capString, log } from "../logging.js";
 import type { BusyLibrary } from "../calibre/busy.js";
 import type { LibId } from "../calibre/lib-id.js";
 import { CalibreBusyError } from "../domain/errors.js";
 import { SDK_VERSION, VERSION } from "../version.js";
-import { EMBED_DIM, INDEX_VERSION, MODEL_ID } from "../semantic/model.js";
 import type { ToolDeps } from "./deps.js";
 import type { ToolResult } from "./types.js";
 
@@ -50,7 +49,8 @@ export const pingTool = defineTool({
     const diag = diagnostics();
     const serverUrl = deps.config.serverUrl;
     const header = serverHeader(deps);
-    const indexLine = await libraryIndexLine(deps);
+    const index = await libraryIndexReport(deps, pingError !== undefined);
+    const facts = serverFacts(deps, index.indexes);
 
     if (pingError !== undefined) {
       return {
@@ -58,15 +58,24 @@ export const pingTool = defineTool({
         content: [
           {
             type: "text",
-            text: `Calibre unreachable: ${pingError}\n${header}\n${busy.text}${semLine}\n${indexLine}\n${diag.text}`,
+            text: `Calibre unreachable: ${pingError}\n${header}\n${busy.text}${semLine}\n${index.line}\n${diag.text}`,
           },
         ],
-        structuredContent: { ok: false, error: pingError, serverUrl, semantic, ...busy.structured, ...diag.structured },
+        structuredContent: {
+          ok: false,
+          error: pingError,
+          serverUrl,
+          ...facts,
+          semantic,
+          ...busy.structured,
+          ...diag.structured,
+        },
       };
     }
-    return toolText(`ok\n${header}\n${busy.text}${semLine}\n${indexLine}\n${diag.text}`, {
+    return toolText(`ok\n${header}\n${busy.text}${semLine}\n${index.line}\n${diag.text}`, {
       ok: true,
       serverUrl,
+      ...facts,
       semantic,
       ...busy.structured,
       ...diag.structured,
@@ -106,6 +115,17 @@ function busyReport(list: BusyLibrary[]): { text: string; structured: Record<str
   return { text: `${lines.join("\n")}\n`, structured: { busyLibraries: list } };
 }
 
+/** structuredContent twin of the header + index line, for clients that show only structured data. */
+function serverFacts(deps: ToolDeps, indexes: LibraryIndex[] | undefined): Record<string, unknown> {
+  return {
+    version: VERSION,
+    sdkVersion: SDK_VERSION,
+    calibredbPath: deps.config.calibredbPath,
+    writeEnabled: deps.config.writeEnabled,
+    ...(indexes ? { indexes } : {}),
+  };
+}
+
 /** Version / calibredb / write-gate block — facts a session otherwise has to infer (#304). */
 function serverHeader(deps: ToolDeps): string {
   const writes = deps.config.writeEnabled
@@ -118,41 +138,84 @@ function serverHeader(deps: ToolDeps): string {
   ].join("\n");
 }
 
-/**
- * One line of per-library index coverage, e.g. `Index: Programming Books: 1064/1092 indexed ·
- * Reaserch Books: none`. Each library degrades on its own (unreachable total → `?`, locked or
- * unreadable store, stale index) so ping itself never fails here. Reads only existing public
- * IndexStore methods; never creates an index file.
- */
-async function libraryIndexLine(deps: ToolDeps): Promise<string> {
-  let map: Record<string, string>;
+/** One library's index coverage; `total` is null when the Content Server did not answer in time. */
+interface LibraryIndex {
+  id: string;
+  name: string;
+  state: "ok" | "none" | "stale" | "unreadable";
+  indexed?: number;
+  total?: number | null;
+}
+
+/** The whole index section (libraryInfo + every count) gets one short budget, so ping stays fast. */
+const INDEX_DEADLINE_MS = 5000;
+
+/** Resolves `fallback` if `p` has not settled by `ms`; the timer never outlives the race. */
+async function within<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
   try {
-    map = (await deps.content.libraryInfo()).libraryMap;
-  } catch {
-    return "Index: libraries unavailable";
+    return await Promise.race([
+      p,
+      new Promise<T>((resolve) => {
+        timer = setTimeout(() => resolve(fallback), ms);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
   }
-  const parts = await Promise.all(
-    Object.entries(map).map(async ([id, name]) => {
-      let booksIndexed: number;
+}
+
+/**
+ * Per-library index coverage (text line + structured array). Each library degrades on its own
+ * (unknown total → `?`/null, store error, stale index) and ping itself never fails here. Reads
+ * only existing public IndexStore methods and never opens a store that has no meta row — that
+ * would initialise the file under a write lock. The count goes through `noBreaker` so a slow
+ * read-only probe cannot flag the library busy for real calls.
+ */
+async function libraryIndexReport(
+  deps: ToolDeps,
+  unreachable: boolean,
+): Promise<{ line: string; indexes?: LibraryIndex[] }> {
+  // With Calibre down, libraryInfo would just burn another full timeout.
+  if (unreachable) return { line: "Index: skipped — Calibre unreachable" };
+  let map: Record<string, string> | undefined;
+  try {
+    map = (await within(deps.content.libraryInfo(), INDEX_DEADLINE_MS, undefined))?.libraryMap;
+  } catch {
+    map = undefined;
+  }
+  if (!map) return { line: "Index: libraries unavailable" };
+  const started = Date.now();
+  const indexes = await Promise.all(
+    Object.entries(map).map(async ([id, name]): Promise<LibraryIndex> => {
       try {
-        if (!deps.index.hasIndex(id)) return `${name}: none`;
+        if (!deps.index.hasIndex(id)) return { id, name, state: "none" };
         const meta = deps.index.indexMeta(id);
-        if (meta && (meta.modelId !== MODEL_ID || meta.dim !== EMBED_DIM || meta.indexVersion !== INDEX_VERSION)) {
-          return `${name}: stale index (rebuild)`;
-        }
-        booksIndexed = deps.index.stats(id).books;
+        if (!meta) return { id, name, state: "unreadable" };
+        if (staleness(meta) !== undefined) return { id, name, state: "stale" };
+        const indexed = deps.index.stats(id).books;
+        const left = Math.max(0, INDEX_DEADLINE_MS - (Date.now() - started));
+        const total = await within(
+          deps.content
+            .search({ query: "", library: id, num: 0, timeoutMs: left, noBreaker: true })
+            .then((r) => r.total as number | null)
+            .catch(() => null),
+          left,
+          null,
+        );
+        return { id, name, state: "ok", indexed, total };
       } catch {
-        return `${name}: index unreadable`;
+        return { id, name, state: "unreadable" };
       }
-      // total is a cheap num=0 count; if the server can't answer, still show what is indexed
-      let total = "?";
-      try {
-        total = String((await deps.content.search({ query: "", library: id, num: 0, timeoutMs: 5000 })).total);
-      } catch {
-        // keep "?"
-      }
-      return `${name}: ${booksIndexed}/${total} indexed`;
     }),
   );
-  return `Index: ${parts.length > 0 ? parts.join(" · ") : "(no libraries)"}`;
+  const part = (i: LibraryIndex): string =>
+    i.state === "ok"
+      ? `${i.name}: ${i.indexed}/${i.total ?? "?"} indexed`
+      : i.state === "none"
+        ? `${i.name}: none`
+        : i.state === "stale"
+          ? `${i.name}: stale index (rebuild)`
+          : `${i.name}: index unreadable`;
+  return { line: `Index: ${indexes.length > 0 ? indexes.map(part).join(" · ") : "(no libraries)"}`, indexes };
 }

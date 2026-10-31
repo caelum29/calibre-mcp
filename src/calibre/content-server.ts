@@ -212,7 +212,10 @@ export class ContentServerClient implements LibraryReader {
     if (p.sort) url.searchParams.set("sort", p.sort);
     if (p.sortOrder) url.searchParams.set("sort_order", p.sortOrder);
 
-    const raw = await this.#getLib<RawSearch>(libId, url.toString(), { timeoutMs: p.timeoutMs });
+    const opts = { timeoutMs: p.timeoutMs };
+    const raw = p.noBreaker
+      ? await getJson<RawSearch>(url.toString(), opts)
+      : await this.#getLib<RawSearch>(libId, url.toString(), opts);
     const bookIds = raw.book_ids ?? [];
     return {
       bookIds,
