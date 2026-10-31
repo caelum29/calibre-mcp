@@ -105,7 +105,7 @@ describe("calibre_quality_report handler", () => {
     const parsed = z.object(qualityReportTool.inputSchema).safeParse({ readability: "true" });
     expect(parsed.success).toBe(true);
     const r = await qualityReportTool.handler(parsed.data!, deps([book()]));
-    expect((r.content[0] as { text: string }).text).toContain("readability check is deferred");
+    expect((r.content[0] as { text: string }).text).toContain("readability check is not implemented yet");
   });
 
   it('reads readability "false" as false (no deferral note)', async () => {
