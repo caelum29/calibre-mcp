@@ -38,7 +38,7 @@ if (!existsSync(path.join(root, "dist", "server.js"))) {
 const { Client } = await import("@modelcontextprotocol/sdk/client/index.js");
 const { InMemoryTransport } = await import("@modelcontextprotocol/sdk/inMemory.js");
 const { buildServer } = await import("../dist/server.js");
-const { stripOutputSchemaDollarSchema } = await import("../dist/wire-compat.js");
+const { applyToolsListCompat } = await import("../dist/wire-compat.js");
 
 // A fixed env: the catalog must not depend on the developer's shell (e.g. a local
 // CALIBRE_MCP_WIDGET_DEBUG would register the debug-only widget log tool). The server URL
@@ -58,7 +58,7 @@ async function listTools() {
   await client.connect(clientTransport);
   try {
     const result = await client.listTools();
-    stripOutputSchemaDollarSchema(result);
+    applyToolsListCompat(result);
     return result.tools;
   } finally {
     await Promise.allSettled([client.close(), server.close()]);
