@@ -27,7 +27,10 @@ export interface CalibreClientOptions {
   signal?: AbortSignal;
 }
 
-/** `calibredb` routed through the running Content Server: library writes and library discovery (#258). */
+/**
+ * `calibredb` routed through the running Content Server (#258): library writes, plus one read,
+ * `listLibraries`, that calibre_ping uses to probe the calibredb path end to end.
+ */
 export interface LibraryWriter {
   calibredb(args: readonly string[], opts: CalibreClientOptions): Promise<{ stdout: string; stderr: string }>;
   listLibraries(library: LibId): Promise<string>;

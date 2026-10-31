@@ -23,7 +23,7 @@ import type { ToolResult } from "./types.js";
 export interface ToolDeps {
   config: Config;
   content: LibraryReader; // HTTP /ajax reads (preferred)
-  calibre: LibraryWriter; // subprocess: writes + fts
+  calibre: LibraryWriter; // calibredb subprocess: writes (+ listLibraries for ping)
   extractor: TextExtractor; // book-text extraction (download + convert + cache)
   figures: FigureSource; // figure inventory + pixel fetch (D-018)
   embedder: Embedder; // semantic query/passage embedding (transformers.js, lazy)
