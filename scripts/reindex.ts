@@ -116,7 +116,7 @@ const phaseTotals = { fetch: 0, extract: 0, chunk: 0, embed: 0 };
 const t0 = Date.now();
 await runBookPipeline<PrepareResult>(todo, concurrency, {
   prepare: (bookId, worker) => {
-    // A full disk mid-write is worse than a pause — the run is resumable from progress.jsonl.
+    // A full disk mid-write is worse than a pause — the run is resumable from the progress log.
     if (abort) throw new Error("ABORTED_LOW_DISK");
     return prepareBook(deps, bookId, {
       libraryId,
