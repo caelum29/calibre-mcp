@@ -1,0 +1,21 @@
+src/logging.ts
+  s_76f3a6a7c1b73e::t_15feae998eac37 192-193
+src/domain/error-codes.ts
+  s_76f3a6a7c1b73e::t_15feae998eac37 100-103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "66dbbf6a0b8a18d9583c20e00afd83788a06dcb9",
+  "prompts": {},
+  "sessions": {
+    "s_76f3a6a7c1b73e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3279731b-0a94-4458-a389-b31266d20c67",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
