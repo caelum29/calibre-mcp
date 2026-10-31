@@ -21,6 +21,25 @@ export interface HttpOptions {
  * transport failure, non-2xx, or invalid JSON — never leaks host paths in the message.
  */
 export async function getJson<T>(url: string, opts: HttpOptions = {}): Promise<T> {
+  return fetchBody(url, opts, async (res) => (await res.json()) as T);
+}
+
+/**
+ * GET `url` as raw bytes (e.g. a cover thumbnail) with the same timeout, cancellation and
+ * error mapping as {@link getJson}. `contentType` is null when the server sent none.
+ */
+export async function getBytes(
+  url: string,
+  opts: HttpOptions = {},
+): Promise<{ data: Buffer; contentType: string | null }> {
+  return fetchBody(url, opts, async (res) => ({
+    data: Buffer.from(await res.arrayBuffer()),
+    contentType: res.headers.get("content-type"),
+  }));
+}
+
+// Shared GET: timeout + caller-signal abort + error normalization; `read` consumes a 2xx body.
+async function fetchBody<T>(url: string, opts: HttpOptions, read: (res: Response) => Promise<T>): Promise<T> {
   if (opts.signal?.aborted) throw new OperationCancelledError();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), opts.timeoutMs ?? 30_000);
@@ -34,7 +53,7 @@ export async function getJson<T>(url: string, opts: HttpOptions = {}): Promise<T
       logNon2xx("content-server non-2xx", url, res.status);
       throw new CalibreHttpError(res.status, url, `Content Server returned HTTP ${res.status}`);
     }
-    return (await res.json()) as T;
+    return await read(res);
   } catch (err) {
     if (err instanceof CalibreHttpError) throw err;
     if (opts.signal?.aborted) throw new OperationCancelledError();
