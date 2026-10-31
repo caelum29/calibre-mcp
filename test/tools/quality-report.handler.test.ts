@@ -4,7 +4,7 @@ import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
 import { qualityReportTool } from "../../src/tools/calibre_quality_report.js";
-import type { ToolDeps } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 
 function book(over: Partial<Book> = {}): Book {
   return {
@@ -40,11 +40,11 @@ function deps(fixture: Book[]): ToolDeps {
   return {
     config: loadConfig({}),
     content: content as unknown as ToolDeps["content"],
-    calibre: {} as unknown as ToolDeps["calibre"],
-    extractor: {} as unknown as ToolDeps["extractor"],
+    calibre: {} as ToolDeps["calibre"],
+    extractor: {} as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
-    embedder: {} as unknown as ToolDeps["embedder"],
-    index: {} as unknown as ToolDeps["index"],
+    embedder: {} as ToolDeps["embedder"],
+    index: {} as ToolDeps["index"],
     log,
   };
 }

@@ -14,7 +14,7 @@ import type { Embedder } from "../../src/semantic/embedder.js";
 import { EMBED_DIM } from "../../src/semantic/model.js";
 import { SqliteIndexStore } from "../../src/semantic/store.js";
 import { l2normalize } from "../../src/semantic/vector.js";
-import type { ToolDeps } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 
 /** Fake model cost per embedded passage — a 100+ chunk book takes many throttle windows. */
 const MS_PER_PASSAGE = 50;
@@ -63,7 +63,7 @@ function deps(): ToolDeps {
       },
       resolveLibraryId: async () => "Programming_Books",
     } as unknown as ToolDeps["content"],
-    calibre: {} as unknown as ToolDeps["calibre"],
+    calibre: {} as ToolDeps["calibre"],
     extractor: {
       getText: async (): Promise<ExtractedText> => {
         tick(500);
@@ -79,7 +79,7 @@ function deps(): ToolDeps {
           epubToc: null,
         };
       },
-    } as unknown as ToolDeps["extractor"],
+    } satisfies Partial<ToolDeps["extractor"]> as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: slowEmbedder,
     index: new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" })),

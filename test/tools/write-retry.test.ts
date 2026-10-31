@@ -8,7 +8,7 @@ import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
 import { CalibreCliError } from "../../src/domain/errors.js";
-import type { ToolDeps } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 
 const REFUSED = "urllib.error.URLError: <urlopen error [Errno 61] Connection refused>";
 const cli = (stderr?: string) => new CalibreCliError(1, "calibredb command failed", stderr);

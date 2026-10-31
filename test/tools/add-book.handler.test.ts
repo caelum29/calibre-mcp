@@ -5,7 +5,7 @@ import path from "node:path";
 import { addBookTool, parseAddedIds } from "../../src/tools/calibre_add_book.js";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
-import type { ToolDeps } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 
 let root: string;
 let file: string;
@@ -23,7 +23,7 @@ function deps(calibredb: (args: readonly string[]) => Promise<{ stdout: string; 
     config: loadConfig({ CALIBRE_MCP_ADD_ROOTS: root }),
     content: content as unknown as ToolDeps["content"],
     calibre: { calibredb } as unknown as ToolDeps["calibre"],
-    extractor: {} as unknown as ToolDeps["extractor"],
+    extractor: {} as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],
     index: {} as ToolDeps["index"],

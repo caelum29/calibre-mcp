@@ -5,15 +5,16 @@ import { describe, it, expect } from "vitest";
 import { listLibrariesTool } from "../../src/tools/calibre_list_libraries.js";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
-import type { ToolDeps, ToolResult } from "../../src/tools/types.js";
+import type { ToolResult } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 
 function deps(libraryMap: Record<string, string>, defaultLibrary: string): ToolDeps {
   const content = { libraryInfo: async () => ({ libraryMap, defaultLibrary }) };
   return {
     config: loadConfig({}),
-    content: content as unknown as ToolDeps["content"],
-    calibre: {} as unknown as ToolDeps["calibre"],
-    extractor: {} as unknown as ToolDeps["extractor"],
+    content: content satisfies Partial<ToolDeps["content"]> as ToolDeps["content"],
+    calibre: {} as ToolDeps["calibre"],
+    extractor: {} as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],
     index: {} as ToolDeps["index"],

@@ -5,7 +5,7 @@
 
 import type { Book } from "../domain/book.js";
 import { foldAccents } from "../domain/curation/normalize.js";
-import type { ToolDeps } from "./types.js";
+import type { ToolDeps } from "./deps.js";
 
 /** A just-added book that looks like it duplicates existing ones. */
 export interface PossibleDuplicate {

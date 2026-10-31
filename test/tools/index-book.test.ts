@@ -12,7 +12,7 @@ import { EMBED_DIM } from "../../src/semantic/model.js";
 import { SqliteIndexStore } from "../../src/semantic/store.js";
 import { l2normalize } from "../../src/semantic/vector.js";
 import { commitBook, isDbBusy, prepareBook, withBusyRetry, type PreparedBook } from "../../src/tools/index-book.js";
-import type { ToolDeps } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 
 const LIB = "Programming_Books";
 const book: Book = {
@@ -46,9 +46,9 @@ function deps(store: SqliteIndexStore): ToolDeps {
   return {
     config: loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }),
     content: { getBook: async () => book } as unknown as ToolDeps["content"],
-    calibre: {} as unknown as ToolDeps["calibre"],
+    calibre: {} as ToolDeps["calibre"],
     // no markers are placed, so the figure inventory is never consulted
-    figures: {} as unknown as ToolDeps["figures"],
+    figures: {} as ToolDeps["figures"],
     extractor: {
       getText: async (): Promise<ExtractedText> => ({
         text: "Ownership and borrowing. ".repeat(300),
@@ -60,7 +60,7 @@ function deps(store: SqliteIndexStore): ToolDeps {
         outline: [],
         epubToc: null,
       }),
-    } as unknown as ToolDeps["extractor"],
+    } satisfies Partial<ToolDeps["extractor"]> as ToolDeps["extractor"],
     embedder,
     index: store,
     log,

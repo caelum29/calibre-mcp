@@ -7,7 +7,7 @@ import { RERANK_POOL, type Reranker } from "../../src/semantic/reranker.js";
 import { SqliteIndexStore } from "../../src/semantic/store.js";
 import { EMBED_DIM, INDEX_VERSION } from "../../src/semantic/model.js";
 import { l2normalize } from "../../src/semantic/vector.js";
-import type { ToolDeps } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 
 const LIB = "Programming_Books";
 
@@ -73,8 +73,8 @@ function deps(
   return {
     config: loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:", ...env }),
     content: content as unknown as ToolDeps["content"],
-    calibre: {} as unknown as ToolDeps["calibre"],
-    extractor: {} as unknown as ToolDeps["extractor"],
+    calibre: {} as ToolDeps["calibre"],
+    extractor: {} as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder,
     ...(reranker ? { reranker } : {}),

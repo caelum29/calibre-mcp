@@ -119,8 +119,22 @@ export function matchCategory(categories: Category[], field: string): Category |
   );
 }
 
+/** The library reads tool handlers use (#258); fakes implement only what a test needs. */
+export interface LibraryReader {
+  libraryInfo(): Promise<LibraryInfo>;
+  resolveLibraryId(display?: string): Promise<LibId>;
+  search(p: SearchParams): Promise<SearchPage>;
+  getBook(id: number, library?: string): Promise<Book>;
+  booksByIds(ids: number[], library?: string): Promise<Map<number, Book | null>>;
+  bookMergeFacts(id: number, library?: string): Promise<{ customFields: CustomFieldValue[]; hasCover: boolean }>;
+  coverThumb(id: number, library?: string, sz?: string): Promise<{ data: string; mimeType: string } | null>;
+  virtualLibraries(library?: string, opts?: { timeoutMs?: number }): Promise<Record<string, string>>;
+  categories(library?: string): Promise<Category[]>;
+  categoryItemsByUrl(url: string, opts?: { num?: number; offset?: number; sort?: string }): Promise<CategoryItemsPage>;
+}
+
 /** HTTP client for the Content Server `/ajax/*` read API; maps raw JSON to domain objects. */
-export class ContentServerClient {
+export class ContentServerClient implements LibraryReader {
   // Process-lifetime cache of libId → display name. Libraries rarely change; a
   // rename/add mid-session goes stale until restart (acceptable for local stdio use).
   #libMap?: Record<string, string>;

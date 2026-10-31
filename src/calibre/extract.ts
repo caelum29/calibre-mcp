@@ -152,8 +152,13 @@ export function ebookConvertArgs(src: string, dest: string, formatting: TxtForma
   return [src, dest, `--txt-output-formatting=${formatting}`];
 }
 
+/** Book-text extraction as tool handlers see it (#258). */
+export interface TextExtractor {
+  getText(args: GetTextArgs): Promise<ExtractedText>;
+}
+
 /** Downloads a book format, converts it to text via the best detected backend, and caches the result. */
-export class Extractor {
+export class Extractor implements TextExtractor {
   #report?: Promise<BackendReport>;
 
   constructor(

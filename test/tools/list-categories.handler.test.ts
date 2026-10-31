@@ -3,7 +3,7 @@ import { listCategoriesTool } from "../../src/tools/calibre_list_categories.js";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Category, CategoryItemsPage } from "../../src/domain/library.js";
-import type { ToolDeps } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 
 const cats: Category[] = [
   { name: "Authors", url: "/ajax/category/aaa/Lib" },
@@ -27,8 +27,8 @@ function deps(): ToolDeps {
   return {
     config: loadConfig({}),
     content: content as unknown as ToolDeps["content"],
-    calibre: {} as unknown as ToolDeps["calibre"],
-    extractor: {} as unknown as ToolDeps["extractor"],
+    calibre: {} as ToolDeps["calibre"],
+    extractor: {} as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],
     index: {} as ToolDeps["index"],

@@ -31,7 +31,8 @@ import {
   type BuildSelector,
 } from "./build-index-results.js";
 import type { PruneCounts } from "../semantic/store.js";
-import type { ToolContext, ToolDeps, ToolResult } from "./types.js";
+import type { ToolContext, ToolResult } from "./types.js";
+import type { ToolDeps } from "./deps.js";
 import { IndexBuildRegistry, type BuildRun } from "../semantic/index-builds.js";
 import { log } from "../logging.js";
 import { runBookPipeline } from "../semantic/book-pipeline.js";

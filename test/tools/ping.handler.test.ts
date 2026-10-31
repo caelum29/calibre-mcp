@@ -7,7 +7,8 @@ import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import { LibraryBusyTracker } from "../../src/calibre/busy.js";
 import { CalibreBusyError } from "../../src/domain/errors.js";
-import type { AnyToolDescriptor, ToolDeps } from "../../src/tools/types.js";
+import type { AnyToolDescriptor } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 
 const SERVER_URL = "http://127.0.0.1:9";
 
@@ -32,7 +33,7 @@ function deps(o: { resolveLibraryId?: () => Promise<string>; listLibraries?: (li
     } as unknown as ToolDeps["calibre"],
     extractor: {} as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
-    embedder: { loadState: () => "not-attempted" } as unknown as ToolDeps["embedder"],
+    embedder: { loadState: () => "not-attempted" } satisfies Partial<ToolDeps["embedder"]> as ToolDeps["embedder"],
     index: { indexMeta: () => undefined, hasIndex: () => false } as unknown as ToolDeps["index"],
     log,
   };

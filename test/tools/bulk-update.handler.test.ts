@@ -5,7 +5,7 @@ import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
 import { CalibreCliError, CalibreCliTimeoutError } from "../../src/domain/errors.js";
-import type { ToolDeps } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 
 const book = (over: Partial<Book> = {}): Book => ({
   id: 1,
@@ -48,7 +48,7 @@ function deps(opts: FakeOpts = {}): ToolDeps {
     calibre: {
       calibredb: opts.calibredb ?? (async () => ({ stdout: "", stderr: "" })),
     } as unknown as ToolDeps["calibre"],
-    extractor: {} as unknown as ToolDeps["extractor"],
+    extractor: {} as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],
     index: {} as ToolDeps["index"],

@@ -13,7 +13,7 @@ import { CoercedBool } from "./coerce.js";
 import { defineTool } from "./define.js";
 import type { LibId } from "../calibre/lib-id.js";
 import { toolError, toolOk } from "./result.js";
-import type { ToolDeps } from "./types.js";
+import type { ToolDeps } from "./deps.js";
 import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "./write-refusal.js";
 
 export { mergeBundles, parseSavedSearches } from "./bundles.js";

@@ -12,7 +12,8 @@ import { BookId, CoercedBool, CoercedInt, jsonArray } from "./coerce.js";
 import { defineTool } from "./define.js";
 import { bookIdArg, resolveNumericId } from "./resolve-id.js";
 import { fence, toolError, toolOk } from "./result.js";
-import type { ContentBlock, ToolDeps } from "./types.js";
+import type { ContentBlock } from "./types.js";
+import type { ToolDeps } from "./deps.js";
 
 /** Figures come from the source file, so only these formats work (D-018). */
 const FIGURE_FORMATS = ["epub", "pdf"] as const;

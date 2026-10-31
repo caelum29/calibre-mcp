@@ -9,7 +9,7 @@ import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
 import { CalibreCliError } from "../../src/domain/errors.js";
-import type { ToolDeps } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 
 // real calibre-server killed mid-request (probe 233-transient-stderr.md, follow-up)
 const RESET = "ConnectionResetError: [Errno 54] Connection reset by peer";

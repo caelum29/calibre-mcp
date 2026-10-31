@@ -36,11 +36,18 @@ export interface BoardPayload {
 
 const CAPACITY = 16;
 
+/** The cover-board payload store tool handlers write and the widget re-pull reads (#258). */
+export interface BoardStore {
+  set(payload: BoardPayload): void;
+  get(tool: string, query: string, libraryId: string, filter?: string): BoardPayload | undefined;
+  get(tool?: string): BoardPayload | undefined;
+}
+
 /**
  * LRU of recent library-scope search payloads keyed by (tool, query, libraryId, filter),
  * plus a latest-per-tool pointer for widgets that never received their tool-input args.
  */
-export class BoardCache {
+export class BoardCache implements BoardStore {
   #entries = new Map<string, BoardPayload>();
   #latest = new Map<string, BoardPayload>();
 

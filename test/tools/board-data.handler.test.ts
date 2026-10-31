@@ -4,7 +4,7 @@ import { boardDataTool } from "../../src/tools/calibre_board_data.js";
 import { BoardCache, type BoardPayload } from "../../src/ui/board-cache.js";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
-import type { ToolDeps } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 
 const payload: BoardPayload = {
   tool: "calibre_search",

@@ -12,7 +12,7 @@ import type { Book } from "../../src/domain/book.js";
 import type { SearchPage } from "../../src/domain/search.js";
 import type { LibraryHit } from "../../src/semantic/store.js";
 import { fakeFts } from "./fake-fts.js";
-import type { ToolDeps } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 
 const book = (id: number): Book => ({
   id,

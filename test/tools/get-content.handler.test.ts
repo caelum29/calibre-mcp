@@ -4,7 +4,7 @@ import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
 import type { ExtractedText } from "../../src/calibre/extract.js";
-import type { ToolDeps } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 
 const baseBook: Book = {
   id: 1,
@@ -45,8 +45,8 @@ function deps(opts: FakeOpts = {}): ToolDeps {
   return {
     config: loadConfig({}),
     content: content as unknown as ToolDeps["content"],
-    calibre: {} as unknown as ToolDeps["calibre"],
-    extractor: extractor as unknown as ToolDeps["extractor"],
+    calibre: {} as ToolDeps["calibre"],
+    extractor: extractor satisfies Partial<ToolDeps["extractor"]> as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],
     index: {} as ToolDeps["index"],

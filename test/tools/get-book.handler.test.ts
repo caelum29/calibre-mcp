@@ -6,7 +6,7 @@ import { getBookTool } from "../../src/tools/calibre_get_book.js";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
-import type { ToolDeps } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 
 const book: Book = {
   id: 7,
