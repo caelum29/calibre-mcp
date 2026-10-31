@@ -29,7 +29,7 @@ const BOOK_560_FIXED =
 const BOOK_644_SHIFTED =
   "…Undo >>Bad<< Deltas with >>New<< Deltas-Build >>Forward<<: Undo Bad Deltas with New Deltas, Event >>Design<<\n\nfor event sourcing, Delta Events for Event Sourcing-Delta Events for Event Sourcing\n\nproblems with, There >>is<< an infinite >>amount<< >>of<< delta >>event<< types->>Inability<< >>to<< maintain >>historical<< data";
 const BOOK_644_FIXED =
-  "…Undo Bad Deltas with New Deltas-Build Forward: Undo Bad Deltas with New Deltas, >>Event<< Design\n\nfor >>event<< >>sourcing<<, Delta >>Events<< for >>Event<< >>Sourcing<<-Delta >>Events<< for >>Event<< >>Sourcing<<\n\nproblems with, There is an infinite amount of delta >>event<< types->Inability to maintain historical data";
+  "…Undo Bad Deltas with New Deltas-Build Forward: Undo Bad Deltas with New Deltas, >>Event<< Design\n\nfor >>event<< >>sourcing<<, Delta >>Events<< for >>Event<< >>Sourcing<<-Delta >>Events<< for >>Event<< >>Sourcing<<\n\nproblems with, There is an infinite amount of delta >>event<< types-Inability to maintain historical data";
 
 describe("FTS snippet highlight repair (#308)", () => {
   it("should_rehighlight_the_book_560_phrase_snippet_on_event_sourcing", async () => {
@@ -52,7 +52,7 @@ describe("FTS snippet highlight repair (#308)", () => {
   });
 
   it("should_repair_only_the_bad_variant_of_a_book", async () => {
-    const ok = "A >>stemmed<< match: >>events<< and >>sourced<< data.";
+    const ok = "Stemmed matches: >>events<< and >>sourced<< data.";
     const bad = "Some >>words<< about event sourcing.";
     expect(await snippetsFor("event sourcing", [ok, bad])).toEqual([ok, "Some words about >>event<< >>sourcing<<."]);
   });
