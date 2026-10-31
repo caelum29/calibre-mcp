@@ -1,0 +1,39 @@
+src/tools/calibre_update_book.ts
+  s_75623c0f5aa7cb::t_a517cae8db83a6 7-9
+src/domain/enrich/proposal.ts
+  s_75623c0f5aa7cb::t_a517cae8db83a6 7-8
+src/calibre/metadata-fields.ts
+  s_75623c0f5aa7cb::t_a517cae8db83a6 6
+src/domain/merge.ts
+  s_75623c0f5aa7cb::t_a517cae8db83a6 6,72-73,157,177-178
+src/tools/calibre_bulk_update.ts
+  s_75623c0f5aa7cb::t_a517cae8db83a6 7-9
+test/calibre/metadata-fields.test.ts
+  s_75623c0f5aa7cb::t_a517cae8db83a6 2
+src/domain/book-fields.ts
+  s_75623c0f5aa7cb::t_a517cae8db83a6 1-126
+src/domain/enrich/types.ts
+  s_75623c0f5aa7cb::t_a517cae8db83a6 6
+src/tools/write-verify.ts
+  s_75623c0f5aa7cb::t_a517cae8db83a6 5-6
+src/tools/calibre_merge_books.ts
+  s_75623c0f5aa7cb::t_a517cae8db83a6 11
+test/domain/book-fields.test.ts
+  s_75623c0f5aa7cb::t_a517cae8db83a6 1-147
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "38b896493caa3c57170dc2f99c39103b5ab70731",
+  "prompts": {},
+  "sessions": {
+    "s_75623c0f5aa7cb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b6213e68-7eea-4ead-b2f4-3402e4eb4a49",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
