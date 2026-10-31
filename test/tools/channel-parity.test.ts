@@ -38,12 +38,18 @@ function textChannel(r: ToolResult): string {
 
 const CURSOR_KEY = /cursor$/i;
 const ID_KEY = /^(id|ids|keep|applied|notAttempted)$|Ids?$/;
+// String ids are checked on plain `id`/`ids` only: `libraryId` in get_book/search is widget plumbing
+// (serverUrl + libraryId for the card's URLs), not something the model acts on.
+const STRING_ID_KEY = /^ids?$/;
 const FAILURE_KEY = /^(error|errors|reason|failures?|warnings?|semanticReason)$/;
 const DIFF_KEY = /^(changed|diffs?|changes|metadataChanges)$/;
 /** Free-text values are compared on a prefix — renderers may truncate long values. */
 const PREFIX = 60;
 
 const hasNumber = (text: string, n: number): boolean => new RegExp(`(^|[^\\d.])${n}($|[^\\d])`).test(text);
+
+const hasToken = (text: string, t: string): boolean =>
+  new RegExp(`(^|[^\\w])${t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}($|[^\\w])`).test(text);
 
 /** Every scalar leaf of a diff entry (field names, before/after values). */
 function diffLeaves(v: unknown, out: (string | number)[] = []): (string | number)[] {
@@ -70,9 +76,12 @@ function structuredOnly(structured: unknown, text: string, at = "$"): string[] {
     const where = `${at}.${k}`;
     if (CURSOR_KEY.test(k) && typeof v === "string") {
       if (!text.includes(v)) gaps.push(`${where} (cursor) missing from text`);
-    } else if (ID_KEY.test(k) && (typeof v === "number" || Array.isArray(v))) {
+    } else if (ID_KEY.test(k) && (typeof v === "number" || typeof v === "string" || Array.isArray(v))) {
       for (const n of [v].flat()) {
         if (typeof n === "number" && !hasNumber(text, n)) gaps.push(`${where} id ${n} missing from text`);
+        // String ids (library ids): whole-token match so "Lib" isn't satisfied by "Library".
+        else if (typeof n === "string" && STRING_ID_KEY.test(k) && !hasToken(text, n))
+          gaps.push(`${where} id "${n}" missing from text`);
       }
     } else if (FAILURE_KEY.test(k) && (typeof v === "string" || Array.isArray(v))) {
       for (const s of [v].flat()) {
@@ -173,6 +182,18 @@ describe("parity checker (self-test)", () => {
     expect(
       parityGaps(ok("Updated tags.", { changed: [{ field: "tags", before: ["alpha"], after: ["beta"] }] })),
     ).toEqual(['$.changed diff value "alpha" missing from text', '$.changed diff value "beta" missing from text']);
+  });
+
+  it("flags a structured-only string id (library id) but not a mere substring match", () => {
+    expect(parityGaps(ok("Programming Books", { libraries: [{ id: "Programming_Books" }] }))).toEqual([
+      '$.libraries[0].id id "Programming_Books" missing from text',
+    ]);
+    expect(parityGaps(ok("Library Humanities_2", { libraries: [{ id: "Humanities" }] }))).toEqual([
+      '$.libraries[0].id id "Humanities" missing from text',
+    ]);
+    expect(
+      parityGaps(ok("Programming Books (id: Programming_Books)", { libraries: [{ id: "Programming_Books" }] })),
+    ).toEqual([]);
   });
 
   it("flags a text-only book id, issue check and snippet", () => {

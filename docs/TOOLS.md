@@ -12,7 +12,7 @@ The two search tools (`calibre_search`, `calibre_semantic_search`) span both sco
 
 Everything is read-only unless you turn writes on; see [Write safety](#write-safety) at the
 end. Most tools accept a `library` parameter (the library's display name or id, as shown by
-`calibre_list_libraries`); leave it unset to use the Content Server's default library.
+`calibre_list_libraries`); leave it unset to use the Content Server's default library (unless `calibre_list_libraries` says the default is unavailable — then pass an explicit id).
 
 Book ids: wherever a tool takes `id` / `bookId`, you can pass a numeric database id or a
 book uuid — they're interchangeable. The id you get back from a search result is what these
