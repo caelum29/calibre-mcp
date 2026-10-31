@@ -22,10 +22,11 @@ what to require. Cite the rule's heading in findings.
 
 CI fails on them, so a finding here is noise:
 
-- oxlint: `console.*` in `src/`, `new RegExp` in `src/tools/**` (→ `compileUserRegex`),
+- oxlint: `console.*` in `src/`, `new RegExp` in `src/tools/**` and `src/app/**` (→ `compileUserRegex`),
   `child_process` outside `calibre/spawn.ts`/`extract.ts`.
 - `test/architecture.test.ts`: SDK imports outside `server.ts`/`run-stdio.ts`; layer directions
-  (domain pure, config/ui/resources/scripts); `normalize("NFKD")` outside `normalize.ts`; raw
+  (domain pure, config/ui/resources/scripts, `app/` = domain + ports — no MCP plumbing, no
+  concrete adapters in `app/` or `tools/`); `normalize("NFKD")` outside `normalize.ts`; raw
   `fetch(` outside the HTTP clients; JSDoc on exported functions and classes.
 - `test/tools/registry.test.ts`: input booleans via `CoercedBool`; numbers/arrays/objects parse
   from their JSON string; write/localWrite classification.

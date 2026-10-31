@@ -34,7 +34,7 @@ export interface ExtractIsbnOptions {
   /**
    * Trust only explicitly labeled "ISBN …" matches, skipping bare digit runs. Bare runs risk
    * false positives so the caller caps them to front/tail slices; a labeled token is safe to
-   * sweep across the whole book (see isbn-scan.ts's middle sweep).
+   * sweep across the whole book (see app/isbn-scan.ts's middle sweep).
    */
   labeledOnly?: boolean;
 }

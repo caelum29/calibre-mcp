@@ -229,9 +229,9 @@ describe("ToolDeps on ports", () => {
     expect([...new Set(source.match(ADAPTER_CLASSES) ?? [])]).toEqual([]);
   });
 
-  // No exceptions: server.ts is the only composition root and sits outside src/tools/.
-  it("no tool module value-imports or constructs a concrete adapter", () => {
-    expect(findAdapterUses(readSources("src/tools", /\.ts$/))).toEqual([]);
+  // No exceptions: server.ts is the only composition root and sits outside src/tools/ and src/app/.
+  it("no tool or use-case module value-imports or constructs a concrete adapter", () => {
+    expect(findAdapterUses([...readSources("src/tools", /\.ts$/), ...readSources("src/app", /\.ts$/)])).toEqual([]);
   });
 
   it("flags value imports and construction, not type-only imports", () => {
