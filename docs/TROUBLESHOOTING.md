@@ -165,6 +165,12 @@ Content cursors are opaque continuation tokens bound to one book and format — 
 On this error, just restart the read (plain call, or `structure: true` to grab a chapter map
 and jump from there). `cursor` and `offset` are mutually exclusive — pass one or the other.
 
+Page cursors from `calibre_search`, `calibre_list_categories`, `calibre_quality_report` and
+`calibre_find_duplicates` are bound the same way: to one library, mode and query. Reusing one
+with another library (or with `library` omitted, i.e. the default library), another mode or
+query, or after a server upgrade returns this error. Repeat the original call's arguments
+with the cursor, or rerun without `cursor` to start from the first page.
+
 ---
 
 ### The assistant describes a figure wrongly on the first try

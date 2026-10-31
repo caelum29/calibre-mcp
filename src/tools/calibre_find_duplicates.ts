@@ -7,7 +7,7 @@ import { z } from "zod";
 import { compareBooks, findDuplicateGroups } from "../domain/curation/duplicates.js";
 import { buildScopedQuery, honestyLines, resolveFilter } from "../app/bundles.js";
 import { BookId, CursorParam, jsonArray, limitParam } from "./coerce.js";
-import { decodeCursor, pageCursor } from "./cursor.js";
+import { idsKey, pageCursor, resolveCursor } from "./cursor.js";
 import { defineTool } from "./define.js";
 import { bookResourceLink } from "./resource-link.js";
 import { selectBooks } from "../app/select-books.js";
@@ -51,6 +51,17 @@ export const findDuplicatesTool = defineTool({
   annotations: { readOnlyHint: true, openWorldHint: true },
   handler: async (args, deps) => {
     try {
+      // Every input that shapes the group list is in the key, and a bad cursor is refused
+      // before the (expensive) book selection — compare mode included, it never pages (#305).
+      const bind = {
+        libId: await deps.content.resolveLibraryId(args.library),
+        mode: `dup:${args.mode}`,
+        query: [idsKey(args.ids), args.query ?? "", args.filter ?? ""].join(":"),
+      };
+      const start = resolveCursor(args.cursor, bind, "calibre_find_duplicates");
+      if (!start.ok) return toolError(start.error);
+      const offset = start.offset;
+
       if (args.mode === "compare") {
         if (!args.ids || args.ids.length < 2) {
           return toolError("compare mode requires ids with at least 2 book ids.");
@@ -101,11 +112,8 @@ export const findDuplicatesTool = defineTool({
       });
       const groups = findDuplicateGroups(books, args.mode);
 
-      const cursorKey = `dup:${args.mode}:${args.query ?? ""}:${args.filter ?? ""}`;
-      const cur = decodeCursor(args.cursor);
-      const offset = cur && cur.query === cursorKey ? cur.offset : 0;
       const pageGroups = groups.slice(offset, offset + args.limit);
-      const pg = pageCursor({ offset, fetched: pageGroups.length, total: groups.length, query: cursorKey });
+      const pg = pageCursor({ offset, fetched: pageGroups.length, total: groups.length, ...bind });
 
       const content: ContentBlock[] = [];
       // The count is only the bundle's size when the bundle alone selected the set.
