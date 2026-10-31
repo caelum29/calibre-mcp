@@ -1,6 +1,6 @@
 // Freshness / coverage reads over the index (#272): has-index, provenance meta, vector
-// coverage, indexed ids and counts. Diagnostic reads (calibre_ping) never create a db file —
-// each guards on IndexConnections.has first. Home for #244's content fingerprint.
+// coverage, indexed ids and counts. Diagnostic reads (calibre_ping) never create or write a db
+// file — they go through IndexConnections.read (read-only unless a handle is already open). Home for #244's content fingerprint.
 
 import type { DatabaseSync } from "node:sqlite";
 import type { ChunkSpan } from "../content-match.js";
@@ -49,17 +49,22 @@ export class SqliteFreshness implements IndexFreshness {
   }
 
   booksMissingVectors(libraryId: string): number {
-    // A diagnostic read (calibre_ping) must never create a db file.
-    if (!this.conn.has(libraryId)) return 0;
-    const row = this.conn
-      .db(libraryId)
-      .prepare(
-        // Legacy rows (embedded_chunks NULL, pre-#197) fall back to counting their embeddings.
-        `SELECT COUNT(*) AS n FROM books b
-         WHERE COALESCE(b.embedded_chunks, (SELECT COUNT(*) FROM embeddings e WHERE e.book_id = b.book_id)) < b.chunk_count`,
-      )
-      .get() as Row;
-    return Number(row?.n ?? 0);
+    return this.conn.read(
+      libraryId,
+      (db) => {
+        // Legacy rows (embedded_chunks NULL, pre-#197) fall back to counting their embeddings; a
+        // read-only peek can't migrate, so a pre-#197 file without the column counts them all that way.
+        const cols = db.prepare("PRAGMA table_info(books)").all() as Row[];
+        const embedded = cols.some((c) => c.name === "embedded_chunks") ? "b.embedded_chunks" : "NULL";
+        const counted = hasTable(db, "embeddings")
+          ? "(SELECT COUNT(*) FROM embeddings e WHERE e.book_id = b.book_id)"
+          : "0";
+        const sql = `SELECT COUNT(*) AS n FROM books b
+           WHERE COALESCE(${embedded}, ${counted}) < b.chunk_count`;
+        return Number((db.prepare(sql).get() as Row)?.n ?? 0);
+      },
+      0,
+    );
   }
 
   bookChunkSpans(libraryId: string, bookId: number): ChunkSpan[] {
@@ -74,24 +79,28 @@ export class SqliteFreshness implements IndexFreshness {
   }
 
   stats(libraryId: string): { books: number; chunks: number; figures: number } {
-    const db = this.conn.db(libraryId);
-    const books = db.prepare("SELECT COUNT(*) AS n FROM books").get() as Row;
-    const chunks = db.prepare("SELECT COUNT(*) AS n FROM chunks").get() as Row;
-    const figures = db.prepare("SELECT COUNT(*) AS n FROM figures").get() as Row;
-    return {
-      books: Number(books?.n ?? 0),
-      chunks: Number(chunks?.n ?? 0),
-      figures: Number(figures?.n ?? 0),
-    };
+    return this.conn.read(
+      libraryId,
+      (db) => ({ books: count(db, "books"), chunks: count(db, "chunks"), figures: count(db, "figures") }),
+      { books: 0, chunks: 0, figures: 0 },
+    );
   }
 
   vectorCount(libraryId: string): number {
-    // Guard so a diagnostic read (calibre_ping) never creates a db file for a library
-    // that was never indexed.
-    if (!this.conn.has(libraryId)) return 0;
-    const row = this.conn.db(libraryId).prepare("SELECT COUNT(*) AS n FROM embeddings").get() as Row;
-    return Number(row?.n ?? 0);
+    return this.conn.read(libraryId, (db) => count(db, "embeddings"), 0);
   }
+}
+
+// A read-only peek can't migrate, so an index built before a table existed (pre-D-018 has no
+// `figures`) would throw on it — count a missing table as empty instead (#325).
+function hasTable(db: DatabaseSync, table: string): boolean {
+  return db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(table) !== undefined;
+}
+
+/** Rows in `table` (a fixed internal name), 0 when the table doesn't exist yet. */
+function count(db: DatabaseSync, table: "books" | "chunks" | "figures" | "embeddings"): number {
+  if (!hasTable(db, table)) return 0;
+  return Number((db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as Row)?.n ?? 0);
 }
 
 /** A book's chunk count vs its embedded-chunk count, or undefined when it isn't indexed. */

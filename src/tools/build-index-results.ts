@@ -32,22 +32,36 @@ export function selectorKey(a: BuildSelector): string {
 
 /** isError result for a build the client cancelled — partial counts, and how to resume. */
 export function cancelledResult(c: {
-  done: number;
   booksRequested: number;
   booksIndexed: number;
   booksSkipped: number;
+  booksRefreshed: number;
+  booksPreserved: number;
+  /** Books that really failed (not the ones the cancel cut short), as `book <id>: <reason>`. */
+  failures: string[];
   chunks: number;
 }): ToolResult {
+  // Skipped, refreshed and preserved books were already in the index — the progress text's bucket.
+  const kept = c.booksSkipped + c.booksRefreshed + c.booksPreserved;
+  const done = c.booksIndexed + c.failures.length + kept;
+  const parts = [`${c.booksIndexed} indexed`, `${c.failures.length} failed`];
+  if (kept > 0) parts.push(`${kept} already in the index`);
+  const failed = c.failures.length
+    ? ` Failed: ${c.failures.slice(0, 3).join("; ")}${c.failures.length > 3 ? `; …and ${c.failures.length - 3} more` : ""}.`
+    : "";
   return toolError(
     "cancelled",
-    `Index build cancelled after ${c.done}/${c.booksRequested} book(s) (${c.booksIndexed} indexed, ` +
-      `${c.booksSkipped} up-to-date). Books finished before the cancel stay indexed — re-run the same ` +
-      "call to continue (finished books are skipped).",
+    `Index build cancelled after ${done}/${c.booksRequested} book(s) (${parts.join(", ")}).${failed} ` +
+      "Books finished before the cancel stay indexed — re-run the same call to continue (finished books are skipped).",
     {
       structured: {
         booksRequested: c.booksRequested,
+        booksDone: done,
         booksIndexed: c.booksIndexed,
         booksSkipped: c.booksSkipped,
+        ...(c.booksRefreshed > 0 ? { booksRefreshed: c.booksRefreshed } : {}),
+        ...(c.booksPreserved > 0 ? { booksPreserved: c.booksPreserved } : {}),
+        failures: c.failures,
         chunks: c.chunks,
         cancelled: true,
       },

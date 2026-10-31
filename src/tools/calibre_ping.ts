@@ -152,6 +152,8 @@ interface LibraryIndex {
   state: "ok" | "none" | "stale" | "unreadable";
   indexed?: number;
   total?: number | null;
+  /** Books in the index with no (or partial) embeddings — keyword-only rows. */
+  withoutEmbeddings?: number;
 }
 
 /** The whole index section (libraryInfo + every count) gets one short budget, so ping stays fast. */
@@ -185,6 +187,8 @@ async function libraryIndexReport(
 ): Promise<{ line: string; indexes?: LibraryIndex[] }> {
   // With Calibre down, libraryInfo would just burn another full timeout.
   if (unreachable) return { line: "Index: skipped — Calibre unreachable" };
+  // One clock for the whole section: a slow libraryInfo leaves the counts less time (#325).
+  const started = Date.now();
   let map: Record<string, string> | undefined;
   try {
     map = (await within(deps.content.libraryInfo(), INDEX_DEADLINE_MS, undefined))?.libraryMap;
@@ -192,7 +196,6 @@ async function libraryIndexReport(
     map = undefined;
   }
   if (!map) return { line: "Index: libraries unavailable" };
-  const started = Date.now();
   const indexes = await Promise.all(
     Object.entries(map).map(async ([id, name]): Promise<LibraryIndex> => {
       try {
@@ -200,7 +203,10 @@ async function libraryIndexReport(
         const meta = deps.index.indexMeta(id);
         if (!meta) return { id, name, state: "unreadable" };
         if (staleness(meta) !== undefined) return { id, name, state: "stale" };
+        // Keyword-only books are FTS-searchable, so they count as indexed; semantic search can't
+        // reach them, so the line says how many (#325).
         const indexed = deps.index.stats(id).books;
+        const withoutEmbeddings = deps.index.booksMissingVectors(id);
         const left = Math.max(0, INDEX_DEADLINE_MS - (Date.now() - started));
         const total = await within(
           deps.content
@@ -210,7 +216,7 @@ async function libraryIndexReport(
           left,
           null,
         );
-        return { id, name, state: "ok", indexed, total };
+        return { id, name, state: "ok", indexed, total, withoutEmbeddings };
       } catch {
         return { id, name, state: "unreadable" };
       }
@@ -218,7 +224,7 @@ async function libraryIndexReport(
   );
   const part = (i: LibraryIndex): string =>
     i.state === "ok"
-      ? `${i.name}: ${i.indexed}/${i.total ?? "?"} indexed`
+      ? `${i.name}: ${i.indexed}/${i.total ?? "?"} indexed${i.withoutEmbeddings ? ` (${i.withoutEmbeddings} without embeddings)` : ""}`
       : i.state === "none"
         ? `${i.name}: none`
         : i.state === "stale"

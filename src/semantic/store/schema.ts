@@ -149,6 +149,30 @@ export class IndexConnections {
     }
   }
 
+  /**
+   * Run a diagnostic read on the library's db: the open handle when there is one, else a
+   * short-lived READ-ONLY one, so a read never creates, migrates or writes the file — on a
+   * damaged index a writable open would create the missing schema (#325). `absent` when no
+   * index exists. Same compatibility guard as {@link db} (INDEX_INCOMPATIBLE); a file with no
+   * meta, missing tables or not a sqlite file throws to the caller — nothing is repaired here.
+   */
+  read<T>(libraryId: string, fn: (db: DatabaseSync) => T, absent: T): T {
+    const open = this.#dbs.get(libraryId);
+    if (open) return fn(open);
+    if (!this.has(libraryId)) return absent;
+    const db = new DatabaseSync(this.#file(libraryId), { readOnly: true });
+    try {
+      // Read-only can't switch journal mode, but must still wait out a concurrent writer (#196).
+      db.exec(`PRAGMA busy_timeout = ${this.cfg.indexBusyTimeoutMs}`);
+      const meta = readMeta(db);
+      if (meta.size === 0) throw new Error("INDEX_UNREADABLE: the index file has no meta (not built by this server).");
+      assertCompatible(meta);
+      return fn(db);
+    } finally {
+      db.close();
+    }
+  }
+
   /** Checkpoint and close every open db (a self-contained .sqlite to copy/move). */
   close(): void {
     for (const db of this.#dbs.values()) {
@@ -205,29 +229,14 @@ export class IndexConnections {
 
   /** Write index metadata on a fresh db; refuse to use one built by a different model/version. */
   #ensureMeta(db: DatabaseSync): void {
-    const existing = new Map<string, string>();
-    for (const r of db.prepare("SELECT key, value FROM meta").all() as Row[]) {
-      existing.set(String(r.key), String(r.value));
-    }
-    const want: Record<string, string> = {
-      model_id: MODEL_ID,
-      dim: String(EMBED_DIM),
-      index_version: String(INDEX_VERSION),
-    };
+    const existing = readMeta(db);
     if (existing.size === 0) {
       const ins = db.prepare("INSERT INTO meta(key, value) VALUES(?, ?)");
-      for (const [k, v] of Object.entries(want)) ins.run(k, v);
+      for (const [k, v] of Object.entries(wantedMeta())) ins.run(k, v);
       db.prepare("INSERT INTO meta(key, value) VALUES(?, ?)").run("created_at", new Date().toISOString());
       return;
     }
-    for (const [k, v] of Object.entries(want)) {
-      if (existing.get(k) !== v) {
-        throw new Error(
-          `INDEX_INCOMPATIBLE: index built with ${k}=${existing.get(k)} but this server uses ${v}. ` +
-            `Delete the index and rebuild (calibre_build_index force=true).`,
-        );
-      }
-    }
+    assertCompatible(existing);
   }
 
   /** Db path for a library (no fs side effects). ":memory:" when the index dir is in-memory. */
@@ -236,5 +245,27 @@ export class IndexConnections {
     // Sanitize the library id into a safe filename component.
     const safe = libraryId.replace(/[^A-Za-z0-9._-]/g, "_") || "default";
     return path.join(this.cfg.indexDir, `${safe}.sqlite`);
+  }
+}
+
+function readMeta(db: DatabaseSync): Map<string, string> {
+  const kv = new Map<string, string>();
+  for (const r of db.prepare("SELECT key, value FROM meta").all() as Row[]) kv.set(String(r.key), String(r.value));
+  return kv;
+}
+
+function wantedMeta(): Record<string, string> {
+  return { model_id: MODEL_ID, dim: String(EMBED_DIM), index_version: String(INDEX_VERSION) };
+}
+
+/** Refuse an index built by a different model/version — it can't be searched or extended. */
+function assertCompatible(existing: Map<string, string>): void {
+  for (const [k, v] of Object.entries(wantedMeta())) {
+    if (existing.get(k) !== v) {
+      throw new Error(
+        `INDEX_INCOMPATIBLE: index built with ${k}=${existing.get(k)} but this server uses ${v}. ` +
+          `Delete the index and rebuild (calibre_build_index force=true).`,
+      );
+    }
   }
 }

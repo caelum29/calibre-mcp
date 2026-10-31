@@ -97,12 +97,16 @@ export function computeSemanticStatus(
   const stale = meta !== undefined && staleness(meta) !== undefined;
   // A stale index is refused on open (INDEX_INCOMPATIBLE), so counting it would throw — skip.
   if (libraryId && meta && !stale && deps.index.hasIndex(libraryId)) {
-    const stats = deps.index.stats(libraryId);
-    indexedBooks = stats.books;
-    chunkCount = stats.chunks;
-    figureCount = stats.figures;
-    vectorCount = deps.index.vectorCount(libraryId);
-    booksWithoutVectors = deps.index.booksMissingVectors(libraryId);
+    try {
+      const stats = deps.index.stats(libraryId);
+      indexedBooks = stats.books;
+      chunkCount = stats.chunks;
+      figureCount = stats.figures;
+      vectorCount = deps.index.vectorCount(libraryId);
+      booksWithoutVectors = deps.index.booksMissingVectors(libraryId);
+    } catch {
+      // Valid meta but damaged tables: the counts stay unknown — a diagnosis must not throw (#325).
+    }
   }
 
   const available = dependencyInstalled && loaded !== "failed" && !stale;
