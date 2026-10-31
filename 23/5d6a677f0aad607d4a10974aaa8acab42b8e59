@@ -1,0 +1,139 @@
+test/domain/book-fields.test.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 1-147
+src/domain/merge.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 6,72-73,157,177-178
+src/calibre/binaries.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 46-47,55,80
+test/calibre/metadata-fields.test.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 2
+test/semantic/embedder-gemma2.integration.test.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 8,28
+src/tools/calibre_bulk_update.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 7-9
+docs/standards/writes.md
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 3
+src/domain/book-fields.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 1-126
+src/tools/calibre_update_book.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 7-9
+test/architecture.test.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 120-121,166-172,194-205,231-237
+test/integration/figures.live.test.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 10,24
+test/semantic/embedder.integration.test.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 6,14
+test/semantic/index-builds.test.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 1-126
+test/tools/build-index.handler.test.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 1,592
+src/domain/enrich/proposal.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 7-8
+src/tools/calibre_merge_books.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 11
+src/domain/enrich/types.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 6
+src/shared/book-uri.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 1-9
+src/calibre/http.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 24-42,56
+src/tools/write-verify.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 5-6
+src/runtime-config.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 1-10
+test/calibre/content-server.test.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 6-7,132-165
+src/calibre/figure-inventory.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 29,69-71,74,117,119,121,168,184,220-221,242,247,251,254,259,263,266,270,275,298,302,314,382
+src/server.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 10-11,69,196
+test/runtime-config.test.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 1-32
+test/tools/get-figures.messages.test.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 1-68
+src/domain/errors.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 77-97
+src/calibre/content-server.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 11-12,139,144,151,153,155,180-186,189,213,241-242
+scripts/reindex.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 11,47,61
+src/tools/result.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 8-10
+src/calibre/figure-fetch.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 15,60,65,118,137,152
+src/run-stdio.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 8,38
+src/calibre/client.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 19,25-26,38,52,91-92,100,151,162
+docs/tool-catalog.json
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 179,238-240,288-290,321-326,339-345,351-353
+src/tools/build-index-results.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 1-103
+test/tools/get-figures.errors.test.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 1-122
+src/resources/book.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 5-12,21-22
+test/tools/build-index.background.test.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 1-177
+src/tools/bundles.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 7,90,93,102
+src/calibre/lib-id.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 10-24
+src/tools/calibre_get_figures.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 8-9,238,273,280-328,332-333
+src/config.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 15,106-114
+test/tools/build-index.soft-deadline.test.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 1-273
+src/semantic/index-builds.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 1-251
+src/calibre/extract.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 405
+test/calibre/fts-parse-log-level.test.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 8,33,42
+src/tools/calibre_manage_bundles.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 14,103
+scripts/legal-gate.mjs
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 14,86
+CODING_STANDARDS.md
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 14,46
+test/calibre/http-bytes.test.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 1-38
+src/tools/calibre_ping.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 9,26
+docs/TOOLS.md
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 255-259
+src/tools/calibre_build_index.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 23-30,32-34,56-58,63,89-98,140-152,154-158,160-161,163-204,206,209,211-215,217-245,247-248,250-261,263,266,268-296,298-314,316-352,354-369,371-391,393,395-397,399-410,412-427
+src/tools/types.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 14,86-90
+test/semantic/reranker.integration.test.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 7,13
+src/tools/resource-link.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 7
+src/calibre/metadata-fields.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 6
+test/integration/merge.live.test.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 12,17,30,62
+test/tools/resource-link.test.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 2-3
+src/shared/fence.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 1-12
+test/calibre/lib-id-brand.test.ts
+  s_4a90abf8bb145b::t_96da5c63d4c1e2 1-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "235d6a677f0aad607d4a10974aaa8acab42b8e59",
+  "prompts": {},
+  "sessions": {
+    "s_4a90abf8bb145b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0f97a282-8575-4fbc-b370-90d325920a31",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
