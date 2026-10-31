@@ -209,6 +209,16 @@ const TWIN_RULES: TwinRule[] = [
     pattern: /["'`]\/(?:opt\/homebrew|usr\/local|usr)\/bin\//,
     home: ["src/calibre/binaries.ts", "src/calibre/discover.ts"], // discover: calibredb lookup, injectable
   },
+  {
+    name: "ranking/fusion/rerank live in semantic/retrieve.ts, not in a tool adapter (#259)",
+    pattern: /\brrfFuse\s*\(|\.rerank\s*\(|\bRRF_WEIGHT\b|\bVECTOR_RRF_WEIGHT\b/,
+    home: ["src/semantic/fusion.ts", "src/semantic/retrieve.ts"],
+  },
+  {
+    name: "the cover-board _meta is built by one boardMeta helper (#259)",
+    pattern: /\bfunction\s+boardMeta\s*\(/,
+    home: ["src/tools/board-meta.ts"],
+  },
 ];
 
 function findTwinViolations(files: SourceFile[]): string[] {
@@ -236,6 +246,11 @@ describe("one home per mechanism", () => {
     expect(at(`import type { LibId } from "./lib-id.js"; const x: LibId = y;`)).toEqual([]);
     expect(at(`throw new Error("FIGURES_NO_POPPLER");`)).toHaveLength(1);
     expect(at(`const c = ["/opt/homebrew/bin/pdftotext"];`)).toHaveLength(1);
+    expect(at(`return rrfFuse([a, b], RRF_K, RRF_WEIGHTS);`)).toHaveLength(1);
+    expect(at(`const scores = await deps.reranker.rerank(q, bodies);`)).toHaveLength(1);
+    expect(at(`const VECTOR_RRF_WEIGHT = 1.0;`)).toHaveLength(1);
+    expect(at(`function boardMeta(deps, payload) {}`)).toHaveLength(1);
+    expect(at(`const _meta = boardMeta(deps, payload);`)).toEqual([]);
     expect(at(`const k = s.normalize("NFC");`)).toEqual([]);
     expect(at(`await deps.content.fetchBook(1); // fetch(url)`)).toEqual([]);
   });
