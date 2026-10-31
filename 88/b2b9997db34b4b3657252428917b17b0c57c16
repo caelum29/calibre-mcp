@@ -1,0 +1,21 @@
+src/tools/bundles.ts
+  s_2748adee5ace54::t_5e9448212ff068 7,90,93,102
+test/architecture.test.ts
+  s_2748adee5ace54::t_5e9448212ff068 191-192,220-224
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "88b2b9997db34b4b3657252428917b17b0c57c16",
+  "prompts": {},
+  "sessions": {
+    "s_2748adee5ace54": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eca6633b-40b8-4fea-beac-e4ac360b8a51",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
