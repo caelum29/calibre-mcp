@@ -1,0 +1,24 @@
+src/calibre/fts-highlight.ts
+  s_50fe1718966656::t_1bcdd8d5a9fa15 58-60
+  s_50fe1718966656::t_aaad0317adcdfe 1-5,8-36,39-57,61-107,109-119
+  s_50fe1718966656::t_92da28c6c933fc 37-38
+  s_50fe1718966656::t_25e1a92ddbc15b 6-7,108
+src/calibre/fts.ts
+  s_50fe1718966656::t_b2da1547c77791 17,112-113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0a7350437f9d1b09060fb15354e836305d391a9e",
+  "prompts": {},
+  "sessions": {
+    "s_50fe1718966656": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c5973f1c-3570-4745-853d-adb0886a9129",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
