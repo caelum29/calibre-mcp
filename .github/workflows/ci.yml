@@ -38,6 +38,7 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm knip
       - run: pnpm versions:check
+      - run: pnpm widgets:check
       - run: pnpm build
       - run: pnpm catalog:check
 

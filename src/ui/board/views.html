@@ -1,0 +1,57 @@
+<!--@ Board views — both skeletons and both results views in one block; no ID collisions. @-->
+
+  <div class="view view-shelf-loading">
+    <ul class="strip" aria-hidden="true" id="skelStrip"></ul>
+  </div>
+
+  <div class="view view-coverflow-loading" aria-hidden="true">
+    <ul class="skelstage" id="skelstage"></ul>
+  </div>
+
+  <div class="view view-shelf">
+    <div class="shelf">
+      <ul class="strip" id="strip" role="listbox" aria-label="Search results"></ul>
+      <button class="arrow prev" id="prev" aria-label="Previous results"><svg width="14" height="14" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <button class="arrow next" id="next" aria-label="Next results"><svg width="14" height="14" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></button>
+    </div>
+  </div>
+
+  <div class="view view-hero">
+    <div class="hero">
+      <button class="hero-cover" id="hCover" type="button" aria-label="Show full book details"></button>
+      <div class="hero-info">
+        <div class="ht" id="hTitle"></div>
+        <div class="ha" id="hAuthors"></div>
+        <div class="hero-actions">
+          <button class="fbtn primary" id="hOpen" type="button">
+            <svg class="i" viewBox="0 0 24 24"><path d="M2 4h7a3 3 0 013 3v13a3 3 0 00-3-3H2zM22 4h-7a3 3 0 00-3 3v13a3 3 0 013-3h7z"/></svg>
+            Open</button>
+          <button class="fbtn ghost" id="hSearch" type="button" data-need="msg">
+            <svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+            Search inside</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="view view-coverflow">
+    <div class="flow">
+      <div class="fscroll" id="fscroll" tabindex="0" role="listbox" aria-label="Search results, coverflow">
+        <div class="fsticky"><ul class="fstage" id="fstage"></ul></div>
+        <div class="frow" id="frow"></div>
+      </div>
+      <button class="arrow prev" id="fprev" aria-label="Previous"><svg width="14" height="14" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <button class="arrow next" id="fnext" aria-label="Next"><svg width="14" height="14" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></button>
+      <div class="flabel">
+        <div class="ft" id="ft"></div><div class="fa" id="fa"></div>
+        <div class="facts-row">
+          <button class="fbtn primary" id="fopen" type="button">
+            <svg class="i" viewBox="0 0 24 24"><path d="M2 4h7a3 3 0 013 3v13a3 3 0 00-3-3H2zM22 4h-7a3 3 0 00-3 3v13a3 3 0 013-3h7z"/></svg>
+            Open</button>
+          <button class="fbtn ghost" id="fsearch" type="button" data-need="msg">
+            <svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+            Search inside</button>
+        </div>
+      </div>
+    </div>
+  </div>

@@ -1,0 +1,84 @@
+/*@ Cover-board shell (#271 source, inlined by scripts/gen-widgets.mjs): tokens, base, meta row
+   + variant toggle. The ONLY place board colors live (frozen mockup); both variants consume these tokens. @*/
+/* ============ tokens — the ONLY place colors live (frozen mockup) ============ */
+:root{
+  color-scheme: light dark;
+  /* fallbacks (no light-dark support) */
+  --bg:#faf7f2; --tx:#33302b; --tx-muted:#8a8378; --card:#ffffff;
+  --line:rgba(60,50,40,.14); --accent:#c67139; --accent-deep:#8f4c20; --btn:#ffffff;
+  /* live tokens */
+  --bg: light-dark(#faf7f2, #262624);
+  --tx: light-dark(#33302b, #ece9e3);
+  --tx-muted: light-dark(#8a8378, #9c958a);
+  --card: light-dark(#ffffff, #31302e);
+  --line: light-dark(rgba(60,50,40,.14), rgba(255,255,255,.13));
+  --accent: light-dark(#c67139, #d98d55);
+  --accent-deep: light-dark(#8f4c20, #e8ab7d);
+  --accent-tint: light-dark(rgba(198,113,57,.12), rgba(217,141,85,.16));
+  --btn: light-dark(rgba(255,255,255,.94), rgba(49,48,46,.94));
+  --skel: light-dark(rgba(60,50,40,.08), rgba(255,255,255,.07));
+  --skel-hi: light-dark(rgba(255,255,255,.65), rgba(255,255,255,.09));
+  --shadow: 0 1px 2px rgba(0,0,0,.07), 0 5px 16px rgba(0,0,0,.09);
+  --shadow-lg: 0 2px 4px rgba(0,0,0,.09), 0 10px 26px rgba(0,0,0,.14);
+  --scrim: light-dark(rgba(255,253,250,.88), rgba(38,38,36,.88));
+  /* book-volume knobs */
+  --spine: light-dark(rgba(0,0,0,.16), rgba(0,0,0,.42));
+  --crease: light-dark(rgba(255,255,255,.55), rgba(255,255,255,.14));
+  --sheen: light-dark(rgba(255,255,255,.26), rgba(255,255,255,.05));
+  --pages: light-dark(#f1ebe0, #46453f);
+  --pages-line: light-dark(#d8d0c2, #2c2b28);
+  --pagestack: 1.5px 0 0 var(--pages), 2.5px 0 0 var(--pages-line), 4px 0 0 var(--pages), 5px 0 0 var(--pages-line);
+  /* generated-cover knobs (hue arrives per-card via --h/--h2) */
+  --cov-l:84%; --cov-l2:73%; --cov-c:.05; --cov-c2:.075;
+  --cov-tx-l:29%; --cov-tx-c:.055;
+  --cov-line:rgba(0,0,0,.10); --cov-shine:rgba(255,255,255,.35);
+}
+:root[data-theme="light"]{ color-scheme:light; }
+:root[data-theme="dark"]{ color-scheme:dark; }
+:root[data-theme="dark"]{
+  --cov-l:39%; --cov-l2:30%; --cov-c:.045; --cov-c2:.06;
+  --cov-tx-l:91%; --cov-tx-c:.03;
+  --cov-line:rgba(255,255,255,.12); --cov-shine:rgba(255,255,255,.08);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --cov-l:39%; --cov-l2:30%; --cov-c:.045; --cov-c2:.06;
+    --cov-tx-l:91%; --cov-tx-c:.03;
+    --cov-line:rgba(255,255,255,.12); --cov-shine:rgba(255,255,255,.08);
+  }
+}
+/* ============ base ============ */
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--bg); color:var(--tx);
+  font:14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  padding:10px 0 0;
+}
+body[data-collapsed="1"]{display:none}
+a{color:var(--accent)} a:hover{color:var(--tx)}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:8px}
+svg.i{width:12px;height:12px;stroke:currentColor;stroke-width:2.75;fill:none;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* ============ widget shell ============ */
+.widget{position:relative; max-width:800px; margin:0 auto;}
+.meta{
+  display:flex; align-items:center; gap:12px;
+  padding:0 18px 6px; min-height:24px;
+}
+.meta .note{
+  font-size:12.5px; color:var(--tx-muted);
+  display:none; align-items:center; gap:6px;
+}
+.meta .note::before{
+  content:""; width:7px; height:7px; border-radius:50%;
+  background:var(--accent); opacity:.7; flex:none; display:inline-block;
+}
+.widget[data-lowconf="1"] .meta .note{display:inline-flex}
+.meta .pos{margin-left:auto; font-size:12px; color:var(--tx-muted); font-variant-numeric:tabular-nums; white-space:nowrap;}
+/* chrome-level variant toggle (shelf ⇄ coverflow) */
+.vswitch{display:inline-flex; background:var(--btn); box-shadow:var(--shadow); border-radius:999px; padding:2px}
+.vswitch button{display:grid; place-items:center; width:26px; height:20px; border-radius:999px; color:var(--tx-muted)}
+.vswitch button:hover{color:var(--accent)}
+.vswitch button[aria-pressed="true"]{background:var(--accent-tint); color:var(--accent)}

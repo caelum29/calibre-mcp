@@ -1,0 +1,59 @@
+/*@ Board cover shared by both variants; per-variant dimensions live in shelf.css/coverflow.css.
+   The score badge stays semantic-only. @*/
+/* ============ shared cover (both variants) ============ */
+.cover{
+  position:relative; display:block; overflow:hidden;
+  border-radius:4px 11px 11px 4px; /* square spine edge, rounded fore-edge */
+  box-shadow:var(--pagestack), var(--shadow);
+  transition:transform .18s ease, box-shadow .18s ease;
+}
+.cover::before{ /* spine crease + top sheen = volume */
+  content:""; position:absolute; inset:0; z-index:1; pointer-events:none; border-radius:inherit;
+  background:
+    linear-gradient(90deg, var(--spine) 0%, transparent 9%),
+    linear-gradient(90deg, transparent 4.5%, var(--crease) 7%, transparent 11%),
+    linear-gradient(168deg, var(--sheen) 0%, transparent 24%);
+}
+.cover img{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; background:var(--card)}
+/* generated placeholder cover */
+.ph{
+  position:absolute; inset:0; display:flex; flex-direction:column; padding:12px 11px 10px;
+  background:linear-gradient(160deg,
+    oklch(var(--cov-l) var(--cov-c) var(--h)) 0%,
+    oklch(var(--cov-l2) var(--cov-c2) var(--h2)) 100%);
+  color:oklch(var(--cov-tx-l) var(--cov-tx-c) var(--h));
+}
+.ph::after{ /* inner rule = deliberate "printed cover" feel */
+  content:""; position:absolute; inset:6px; border-radius:7px;
+  border:1px solid var(--cov-line); pointer-events:none;
+}
+.ph .mark{width:22px; height:22px; border-radius:50%; background:var(--cov-shine); margin-bottom:10px; flex:none}
+.ph[data-v="1"] .mark{border-radius:6px}
+.ph[data-v="2"] .mark{width:34px; height:10px; border-radius:999px}
+.ph .pt{
+  font-size:13px; line-height:1.25; font-weight:650; letter-spacing:.01em;
+  display:-webkit-box; -webkit-line-clamp:5; -webkit-box-orient:vertical; overflow:hidden;
+  overflow-wrap:anywhere; text-wrap:pretty;
+}
+.ph .pt.raw{ /* raw filename → typewriter-ish, still intentional */
+  font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-weight:500; font-size:11.5px;
+}
+.ph .pa{margin-top:auto; font-size:10.5px; opacity:.75; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+/* score badge (semantic only) */
+.score{
+  position:absolute; left:7px; bottom:7px; z-index:2;
+  font-size:10px; font-variant-numeric:tabular-nums;
+  padding:2px 7px; border-radius:999px;
+  background:var(--scrim); color:var(--tx-muted); display:none;
+}
+[data-mode="semantic"] .score{display:block}
+[data-mode="semantic"] .ph .pa{padding-left:44px} /* reserve room for score badge */
+/* opening chip */
+.opening{
+  position:absolute; inset:auto 7px 7px auto; z-index:2;
+  font-size:10.5px; padding:3px 8px; border-radius:999px;
+  background:var(--accent); color:#fff;
+  opacity:0; transform:translateY(4px);
+  transition:opacity .15s ease, transform .15s ease; pointer-events:none;
+}
+.card.is-opening .opening{opacity:1; transform:none}

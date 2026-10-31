@@ -1,0 +1,50 @@
+<!--@ Cover-board document: both variants + shared core in one HTML file. boardHtml() fills
+     __TOOL__, __VERSION__, __VARIANT__ and __DEBUG__ at render time. @-->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>calibre-mcp cover board</title>
+<style>
+{{include shell.css}}
+{{include cover.css}}
+{{include arrows.css}}
+{{include shelf.css}}
+{{include coverflow.css}}
+{{include states.css}}</style>
+</head>
+<body>
+
+<div class="widget" id="w" data-state="loading" data-variant="__VARIANT__" data-mode="keyword" data-lowconf="0">
+  <div class="meta">
+    <span class="note">Weak matches — try rephrasing your query</span>
+    <span class="vswitch" role="group" aria-label="Board layout">
+      <button id="vShelf" type="button" aria-pressed="true" aria-label="Shelf layout" title="Shelf">
+        <svg class="i" viewBox="0 0 24 24"><rect x="3" y="5" width="5" height="14" rx="1"/><rect x="10" y="5" width="5" height="14" rx="1"/><rect x="17" y="5" width="4" height="14" rx="1"/></svg></button>
+      <button id="vFlow" type="button" aria-pressed="false" aria-label="Coverflow layout" title="Coverflow">
+        <svg class="i" viewBox="0 0 24 24"><rect x="8" y="4" width="8" height="16" rx="1"/><path d="M4 6v12M20 6v12"/></svg></button>
+    </span>
+    <span class="pos" id="pos"></span>
+  </div>
+{{include views.html}}
+  <div class="view view-empty flat">
+    <span><b>No books matched</b>&nbsp; <span class="q" id="emptyQ"></span></span>
+  </div>
+
+  <div class="view view-error flat">
+    <span>Couldn&rsquo;t load results</span>
+    <button class="retry" id="retry">Retry</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+(function () {
+{{include core.js}}
+{{include shelf.js}}
+{{include coverflow.js}}
+{{include boot.js}}})();
+</script>
+</body>
+</html>

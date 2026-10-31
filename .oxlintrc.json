@@ -70,7 +70,46 @@
       "rules": {
         "no-restricted-imports": "off"
       }
+    },
+    // Widget JS (#271): browser globals. Catch params and escapes stay as-is: the move is
+    // byte-equivalent (test/ui/widget-snapshot.test.ts), cleanups are a separate change. Escapes are
+    // off, not warn: lint-staged runs `oxlint --fix`, which would rewrite them on commit.
+    {
+      "files": ["src/ui/**/*.js"],
+      "env": {
+        "browser": true
+      },
+      "rules": {
+        "no-unused-vars": [
+          "error",
+          {
+            "caughtErrors": "none"
+          }
+        ],
+        "no-useless-escape": "off"
+      }
+    },
+    // Board JS files are fragments of one IIFE (board.html), so functions are used across files.
+    {
+      "files": ["src/ui/board/*.js"],
+      "rules": {
+        "no-unused-vars": "off"
+      }
+    },
+    // These carry the bare __DEBUG__ placeholder line that the *-html.ts render replaces.
+    {
+      "files": ["src/ui/board/core.js", "src/ui/card/card.js", "src/ui/figures/figures.js"],
+      "rules": {
+        "no-unused-expressions": "off"
+      }
     }
   ],
-  "ignorePatterns": ["dist/**", "dist-mcpb/**", "build/**", "coverage/**", "test/eval/retrieval/reports/**"]
+  "ignorePatterns": [
+    "dist/**",
+    "dist-mcpb/**",
+    "build/**",
+    "coverage/**",
+    "test/eval/retrieval/reports/**",
+    "src/ui/generated/**"
+  ]
 }
