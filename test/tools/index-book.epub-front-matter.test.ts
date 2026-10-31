@@ -15,7 +15,7 @@ import { EMBED_DIM } from "../../src/semantic/model.js";
 import { SqliteIndexStore } from "../../src/semantic/store.js";
 import { buildIndexTool } from "../../src/tools/calibre_build_index.js";
 import { commitBook, commitRefresh, prepareBook, type PrepareOptions } from "../../src/tools/index-book.js";
-import type { ToolDeps } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 
 const LIB = "Programming_Books";
 const PREFACE = "This preface explains why the book exists and who should read it. ".repeat(75);
@@ -80,7 +80,7 @@ function deps(store: SqliteIndexStore, embedder: Embedder, ed: Edition): ToolDep
   return {
     config: loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }),
     content: { getBook: async () => book, resolveLibraryId: async () => LIB } as unknown as ToolDeps["content"],
-    calibre: {} as unknown as ToolDeps["calibre"],
+    calibre: {} as ToolDeps["calibre"],
     extractor: {
       getText: async (): Promise<ExtractedText> => ({
         text,
@@ -92,7 +92,7 @@ function deps(store: SqliteIndexStore, embedder: Embedder, ed: Edition): ToolDep
         outline: [],
         epubToc: ed.epubToc,
       }),
-    } as unknown as ToolDeps["extractor"],
+    } satisfies Partial<ToolDeps["extractor"]> as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder,
     index: store,

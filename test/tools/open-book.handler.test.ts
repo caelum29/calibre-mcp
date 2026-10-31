@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from "vitest";
 import { openBookTool, setLauncher } from "../../src/tools/calibre_open_book.js";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
-import type { ToolDeps } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 
 function deps(content: Partial<Record<"resolveLibraryId" | "getBook", unknown>>): ToolDeps {
   return {

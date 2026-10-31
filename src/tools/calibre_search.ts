@@ -37,7 +37,8 @@ import { bookResourceLink } from "./resource-link.js";
 import { resolveNumericId } from "./resolve-id.js";
 import { ENABLE_FTS_STEPS, KEYWORD_SEARCH_FALLBACK } from "./remediation.js";
 import { fence, renderResult, toolError, toolOk } from "./result.js";
-import type { ContentBlock, ToolDeps, ToolResult } from "./types.js";
+import type { ContentBlock, ToolResult } from "./types.js";
+import type { ToolDeps } from "./deps.js";
 
 type SearchArgs = {
   query: string;
@@ -201,6 +202,16 @@ function snippetNote(batch: SnippetBatch, pageSize: number): string {
   );
 }
 
+/**
+ * Render an FTS query for a result header. A query that already carries quotes (a phrase or a
+ * boolean with inner phrases) goes in backticks so the header never reads `""event sourcing""` (#309).
+ */
+function quotedQuery(query: string): string {
+  if (!query.includes('"')) return `"${query}"`;
+  // A backtick inside would close a single-backtick span early — fence with two instead.
+  return query.includes("`") ? `\`\` ${query} \`\`` : `\`${query}\``;
+}
+
 /** One FTS call's inputs and shared budget, threaded through both FTS scopes. */
 interface FtsCall {
   args: SearchArgs;
@@ -225,7 +236,7 @@ async function ftsLibraryScope(call: FtsCall, fRes: FilterResolution): Promise<T
 
   if (bookIds.length === 0) {
     // Zero results attach no board (issue #68).
-    return toolOk([{ type: "text", text: `0 full-text matches for "${args.query}".${honesty}` }], {
+    return toolOk([{ type: "text", text: `0 full-text matches for ${quotedQuery(args.query)}.${honesty}` }], {
       total: 0,
       offset: 0,
       count: 0,
@@ -238,7 +249,12 @@ async function ftsLibraryScope(call: FtsCall, fRes: FilterResolution): Promise<T
   // Count intent (issue #67): the ranked list already has the total — no snippets, no board.
   if (args.countOnly) {
     return toolOk(
-      [{ type: "text", text: `${bookIds.length} books have full-text matches for "${args.query}".${honesty}` }],
+      [
+        {
+          type: "text",
+          text: `${bookIds.length} books have full-text matches for ${quotedQuery(args.query)}.${honesty}`,
+        },
+      ],
       { total: bookIds.length, query: args.query, mode: "fts", ...structuredFilterFields(fRes), ...incomplete },
     );
   }
@@ -256,7 +272,7 @@ async function ftsLibraryScope(call: FtsCall, fRes: FilterResolution): Promise<T
     {
       type: "text",
       text:
-        `Found ${bookIds.length} books with full-text matches for "${args.query}", showing ${offset + 1}–${offset + pageIds.length}.` +
+        `Found ${bookIds.length} books with full-text matches for ${quotedQuery(args.query)}, showing ${offset + 1}–${offset + pageIds.length}.` +
         `${snippetNote(batch, pageIds.length)}${honesty}`,
     },
   ];
@@ -312,13 +328,13 @@ async function ftsBookScope(call: FtsCall, bookId: number): Promise<ToolResult> 
   // Count intent (issue #67): report the match count without paging snippets.
   if (args.countOnly) {
     return toolOk(
-      [{ type: "text", text: `${snippets.length} in-book matches for "${args.query}" in book ${bookId}.` }],
+      [{ type: "text", text: `${snippets.length} in-book matches for ${quotedQuery(args.query)} in book ${bookId}.` }],
       { total: snippets.length, query: args.query, bookId, scope: "book", mode: "fts" },
     );
   }
 
   if (snippets.length === 0) {
-    return toolOk([{ type: "text", text: `0 in-book matches for "${args.query}" in book ${bookId}.` }], {
+    return toolOk([{ type: "text", text: `0 in-book matches for ${quotedQuery(args.query)} in book ${bookId}.` }], {
       total: 0,
       offset: 0,
       count: 0,
@@ -345,7 +361,7 @@ async function ftsBookScope(call: FtsCall, bookId: number): Promise<ToolResult> 
   const blocks: ContentBlock[] = [
     {
       type: "text",
-      text: `${snippets.length} in-book matches for "${args.query}" in book ${bookId}, showing ${offset + 1}–${offset + pageSnips.length}.${tip}`,
+      text: `${snippets.length} in-book matches for ${quotedQuery(args.query)} in book ${bookId}, showing ${offset + 1}–${offset + pageSnips.length}.${tip}`,
     },
     ...snippetHits.map((h): ContentBlock => ({ type: "text", text: h.snippet })),
   ];
@@ -377,9 +393,10 @@ function searchErrorSteer(err: unknown, deadline: Deadline): string | undefined 
       return `Full-text search is not enabled for library "${err.libraryId}". ${ENABLE_FTS_STEPS} ${KEYWORD_SEARCH_FALLBACK}`;
     }
     // FTS5 reads `-`/`:` in a bare query as operators/column filters; a phrase bypasses that.
+    // AND/OR/NOT are valid but binary: a leading/trailing one (`NOT foo`) is a syntax error.
     return (
       "Full-text search couldn't parse that query (FTS is working — the syntax is the problem). " +
-      "Retry with the whole query wrapped in double quotes, or drop operators like - : AND/OR/NEAR."
+      "Retry with the phrase wrapped in double quotes, or drop - and : from bare words; AND/OR/NOT go between terms (a NOT b), never first or last."
     );
   }
   if (err instanceof CalibreBusyError) return `${err.message} ${KEYWORD_SEARCH_FALLBACK}`;
@@ -401,7 +418,7 @@ export const searchTool = defineTool({
   name: "calibre_search",
   title: "Search books",
   description:
-    'Find books by exact title, author, ISBN, tag, or Calibre query syntax (mode=meta), or by full text (mode=fts). scope=book returns short keyword snippets from inside one book; first hits often land in TOC/front matter — for definitional or topic questions within a book prefer calibre_semantic_search scope=book (ranked passages with char offsets). Use calibre_semantic_search for meaning/topic queries. For "how many" questions use countOnly=true (returns only the count). filter accepts a bundle name to scope the search (list bundles via calibre_manage_bundles).',
+    'Find books by exact title, author, ISBN, tag, or Calibre query syntax (mode=meta), or by full text (mode=fts). mode=fts words match independently and stemmed (events matches event); wrap a phrase in double quotes for an exact match ("event sourcing"); supports AND/OR/NOT between terms (uppercase, e.g. a NOT b). scope=book returns short keyword snippets from inside one book; first hits often land in TOC/front matter — for definitional or topic questions within a book prefer calibre_semantic_search scope=book (ranked passages with char offsets). Use calibre_semantic_search for meaning/topic queries. For "how many" questions use countOnly=true (returns only the count). filter accepts a bundle name to scope the search (list bundles via calibre_manage_bundles).',
   inputSchema: {
     query: z.string().min(1).max(512),
     mode: z.enum(["meta", "fts"]).optional().default("meta"),

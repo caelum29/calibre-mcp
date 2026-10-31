@@ -94,8 +94,14 @@ interface CacheEnvelope {
   inventory: FigureInventory;
 }
 
+/** Figure inventory + pixel fetch as tool handlers see them (#258, D-018). */
+export interface FigureSource {
+  getInventory(args: GetInventoryArgs): Promise<InventoryResult>;
+  fetchFigures(args: FetchFiguresArgs): Promise<FetchOutcome>;
+}
+
 /** Figure inventory: poppler over PDFs, system unzip over EPUBs (spine HTML scan). */
-export class FigureInventoryService {
+export class FigureInventoryService implements FigureSource {
   constructor(private readonly cfg: Config) {}
 
   /** Both poppler binaries, or null when the toolchain is missing. */

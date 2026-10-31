@@ -8,7 +8,7 @@ import { chooseExtractFormat } from "../calibre/extract.js";
 import { log } from "../logging.js";
 import { extractIsbns } from "../domain/enrich/extract-isbn.js";
 import type { Book } from "../domain/book.js";
-import type { ToolDeps } from "./types.js";
+import type { ToolDeps } from "./deps.js";
 
 // Bare digit runs are capped to the front/tail slices (ISBN_SCAN_CHARS each) — sweeping the whole
 // book for BARE runs invites false positives. Labeled "ISBN …" tokens carry no such risk, so the

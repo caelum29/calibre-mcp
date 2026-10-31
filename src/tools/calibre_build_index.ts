@@ -22,14 +22,17 @@ import { INSTALL_TRANSFORMERS } from "./remediation.js";
 import { toolError, toolOk } from "./result.js";
 import {
   backgroundFailedResult,
+  buildModeKey,
   cancelledResult,
   fromEarlierCall,
   selectorKey,
+  requestedIds,
   stillRunningResult,
   type BuildSelector,
 } from "./build-index-results.js";
 import type { PruneCounts } from "../semantic/store.js";
-import type { ToolContext, ToolDeps, ToolResult } from "./types.js";
+import type { ToolContext, ToolResult } from "./types.js";
+import type { ToolDeps } from "./deps.js";
 import { IndexBuildRegistry, type BuildRun } from "../semantic/index-builds.js";
 import { log } from "../logging.js";
 import { runBookPipeline } from "../semantic/book-pipeline.js";
@@ -89,7 +92,8 @@ export const buildIndexTool = defineTool({
     // Soft-deadline status (#284): a build is still running in the background — a success, not
     // an error. runningBuild says whose: "this" = this call's selection; "other" = another
     // selector's build that blocks this one, and booksRequested/booksDone/booksIndexed/indexedIds
-    // then count THAT build, not this call's selection (nothing of this call has run yet).
+    // then count THAT build, not this call's selection (nothing of this call has run yet);
+    // failures then lists that build's books failed so far.
     stillRunning: z.boolean().optional(),
     runningBuild: z.enum(["this", "other"]).optional(),
     // The background build an earlier call started threw; failures[0] carries the reason.
@@ -101,6 +105,8 @@ export const buildIndexTool = defineTool({
     // requested (keywordOnly=true) or auto-degraded — with the reason spelled out.
     semanticAvailable: z.boolean().optional(),
     semanticReason: z.string().optional(),
+    // Per result kind: final = every per-book failure; still running = failures so far;
+    // background build failed = [0] is the reason.
     failures: z.array(z.string()).optional(),
     // Per-book triage record (#87): format/backend chosen, cache hit, front-matter and
     // figure-marker diagnostics — the raw material for re-index failure-bucket analysis.
@@ -147,7 +153,8 @@ export const buildIndexTool = defineTool({
       // A cancelled build's result must not answer the next call: that call should build.
       { signal, keep: (r) => r.structuredContent?.cancelled !== true },
     );
-    if (outcome.kind === "running") return stillRunningResult(outcome);
+    if (outcome.kind === "running")
+      return stillRunningResult(outcome, { ids: requestedIds(args), mode: buildModeKey(args) });
     if (outcome.kind === "failed") {
       return backgroundFailedResult(describeError(outcome.error), outcome.earlierCallFinishedAgoMs);
     }
@@ -173,6 +180,8 @@ async function runBuild(
   run: BuildRun,
 ): Promise<ToolResult> {
   const signal = ctx?.signal;
+  // Set before the first await, so a refused call always sees which mode this build runs in.
+  run.progress.mode = buildModeKey(args);
   const started = Date.now();
   const notes: string[] = [];
   const failures: string[] = [];
@@ -210,6 +219,7 @@ async function runBuild(
 
   const booksRequested = targets.size;
   run.progress.total = booksRequested;
+  run.progress.selectedIds = [...targets];
   if (booksRequested === 0) {
     return toolError(`No books resolved from the selector. ${failures.join("; ")}`.trim());
   }
@@ -327,7 +337,10 @@ async function runBuild(
       }
       if (signal?.aborted) return;
       if (!o.ok) {
-        deps.log.warn("book failed", { bookId: o.bookId, stage: o.stage, reason: describeError(o.error) });
+        const reason = describeError(o.error);
+        // Shared with "still running" reports, so a failure shows up while the build runs.
+        run.progress.failures.push(`book ${o.bookId}: ${reason}`);
+        deps.log.warn("book failed", { bookId: o.bookId, stage: o.stage, reason });
       }
       progress?.(settled, `Indexed ${settled}/${booksRequested} book(s)`, booksRequested);
     },

@@ -105,7 +105,7 @@ export const qualityReportTool = defineTool({
             .map(([k, v]) => `${k}=${v}`)
             .join(", ") || "none"
         }.` +
-        (args.readability ? "\nreadability check is deferred in v1 (needs full-text extraction)." : "");
+        (args.readability ? "\nreadability check is not implemented yet (needs full-text extraction)." : "");
 
       const lines = page.map((i) => `[${i.severity}] #${i.bookId} "${i.title}" — ${i.check}: ${i.message}`);
       const text = `${summary}\n${lines.join("\n")}`;

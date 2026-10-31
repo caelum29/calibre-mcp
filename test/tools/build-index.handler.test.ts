@@ -10,7 +10,7 @@ import type { Reranker } from "../../src/semantic/reranker.js";
 import { type IndexedFigure, SqliteIndexStore } from "../../src/semantic/store.js";
 import { EMBED_DIM, MAX_TOKENS, PASSAGE_PREFIX } from "../../src/semantic/model.js";
 import { l2normalize } from "../../src/semantic/vector.js";
-import type { ToolDeps } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 
 /** Asserts a remediation text names all three install layouts and the mandatory restart step (#47). */
 function expectUniversalRemediation(text: string): void {
@@ -128,8 +128,8 @@ function deps(opts: FakeOpts = {}): ToolDeps {
   return {
     config: loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:", ...opts.env }),
     content: content as unknown as ToolDeps["content"],
-    calibre: {} as unknown as ToolDeps["calibre"],
-    extractor: extractor as unknown as ToolDeps["extractor"],
+    calibre: {} as ToolDeps["calibre"],
+    extractor: extractor satisfies Partial<ToolDeps["extractor"]> as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: opts.embedder ?? makeFakeEmbedder(),
     ...(opts.reranker ? { reranker: opts.reranker } : {}),

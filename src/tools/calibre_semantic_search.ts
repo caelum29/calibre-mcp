@@ -25,7 +25,8 @@ import { bookResourceLink } from "./resource-link.js";
 import { resolveNumericId } from "./resolve-id.js";
 import { INSTALL_TRANSFORMERS } from "./remediation.js";
 import { fence, toolError, toolOk } from "./result.js";
-import type { ContentBlock, ToolDeps, ToolResult } from "./types.js";
+import type { ContentBlock, ToolResult } from "./types.js";
+import type { ToolDeps } from "./deps.js";
 
 /** Chars of the linked context chunk shown per figure hit (mirrors the store's snippet cap). */
 const CONTEXT_SNIPPET_CHARS = 320;

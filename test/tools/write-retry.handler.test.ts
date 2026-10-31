@@ -10,7 +10,7 @@ import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
 import { CalibreCliError, CalibreCliTimeoutError } from "../../src/domain/errors.js";
-import type { ToolDeps } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 
 // Tails of the real calibredb 9.x stderr, captured by the #233 probe (frames trimmed).
 const STDERR = {
@@ -93,7 +93,7 @@ function deps(opts: FakeOpts): ToolDeps {
     config: loadConfig({}),
     content: content as unknown as ToolDeps["content"],
     calibre: { calibredb: opts.calibredb } as unknown as ToolDeps["calibre"],
-    extractor: {} as unknown as ToolDeps["extractor"],
+    extractor: {} as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],
     index: {} as ToolDeps["index"],

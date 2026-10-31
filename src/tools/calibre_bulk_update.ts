@@ -5,7 +5,7 @@
 
 import { z } from "zod";
 import { buildSetMetadataArgs } from "../calibre/metadata-fields.js";
-import { isAllowedField, previewBookChanges } from "../domain/book-fields.js";
+import { isAllowedField, listReplacementNote, previewBookChanges } from "../domain/book-fields.js";
 import type { ChangeValue } from "../domain/book-fields.js";
 import { CalibreCliTimeoutError } from "../domain/errors.js";
 import { buildScopedQuery, honestyLines, resolveFilter } from "./bundles.js";
@@ -116,7 +116,9 @@ export const bulkUpdateTool = defineTool({
               `  ${d.field}: ${JSON.stringify(d.before)} → ${JSON.stringify(d.after)}` +
               (d.changed ? "" : " (no change)"),
           );
-          return `#${b.id} ${b.title}\n${parts.join("\n")}`;
+          // a list set replaces the whole list — say so in text, where a one-item set is easy to miss
+          const flags = b.diff.flatMap((d) => listReplacementNote(d) ?? []).map((n) => `  ⚠ ${n}`);
+          return `#${b.id} ${b.title}\n${[...parts, ...flags].join("\n")}`;
         });
         const changing = perBook.filter((b) => b.diff.some((d) => d.changed)).length;
         const honesty = honestyLines(fr.res, hasFilter && !hasQuery ? selection.total : undefined);

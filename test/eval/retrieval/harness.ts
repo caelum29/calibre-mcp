@@ -19,7 +19,7 @@ import { retrieve, type RankedHits } from "../../../src/semantic/retrieve.js";
 import { SqliteIndexStore } from "../../../src/semantic/store.js";
 import { buildIndexTool } from "../../../src/tools/calibre_build_index.js";
 import { semanticSearchTool } from "../../../src/tools/calibre_semantic_search.js";
-import type { ToolDeps } from "../../../src/tools/types.js";
+import type { ToolDeps } from "../../../src/tools/deps.js";
 import {
   aggregate,
   queryMetrics,
@@ -318,7 +318,7 @@ function fixtureDeps(
   return {
     config: cfg,
     content: content as unknown as ToolDeps["content"],
-    calibre: {} as unknown as ToolDeps["calibre"],
+    calibre: {} as ToolDeps["calibre"],
     extractor: extractor as unknown as ToolDeps["extractor"],
     figures: figures as unknown as ToolDeps["figures"],
     embedder,

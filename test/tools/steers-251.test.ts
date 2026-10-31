@@ -7,7 +7,7 @@ import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import { asLibId } from "../../src/calibre/lib-id.js";
 import { CalibreBusyError, CalibreHttpError, CalibreHttpTimeoutError, FtsError } from "../../src/domain/errors.js";
-import type { ToolDeps } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 import { fakeFts } from "./fake-fts.js";
 
 function deps(content: object, calibre: object): ToolDeps {
@@ -17,8 +17,8 @@ function deps(content: object, calibre: object): ToolDeps {
       resolveLibraryId: async (d?: string) => d || "Programming_Books",
       ...content,
     } as unknown as ToolDeps["content"],
-    calibre: calibre as unknown as ToolDeps["calibre"],
-    extractor: {} as unknown as ToolDeps["extractor"],
+    calibre: calibre satisfies Partial<ToolDeps["calibre"]> as ToolDeps["calibre"],
+    extractor: {} as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],
     index: { hasIndex: () => false } as unknown as ToolDeps["index"],

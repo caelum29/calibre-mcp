@@ -119,12 +119,18 @@ const LAYER_RULES: LayerRule[] = [
   { name: "scripts do not reach into tools", from: /^scripts\//, forbidden: /^src\/tools\// },
   // neutral helpers both tools/ and resources/ import (#261): they may lean on domain only
   { name: "shared imports only domain", from: /^src\/shared\//, forbidden: /^src\/(?!domain\/|shared\/)/ },
+  // the SDK-free protocol mirror every tool module imports stays free of infra types (#258)
+  {
+    name: "tool protocol mirror imports no adapters",
+    from: /^src\/tools\/types\.ts$/,
+    forbidden: /^src\/(calibre|semantic|enrich|ui)\//,
+  },
 ];
 
 // Known breaks, each owned by an open refactor issue. Shrink-only: a fixed edge must be removed.
 const LAYER_ALLOWLIST = new Set([
   "scripts/reindex.ts -> src/tools/index-book.ts", // #260
-  "scripts/reindex.ts -> src/tools/types.ts", // #260
+  "scripts/reindex.ts -> src/tools/deps.ts", // #260
 ]);
 
 /** `"<file> -> <target> (<rule>)"` for every import that crosses a forbidden layer edge. */
@@ -167,9 +173,66 @@ describe("layer directions", () => {
       "src/shared/x.ts -> src/tools/result.ts",
     ]);
     expect(at("src/shared/x.ts", `import type { Book } from "../domain/book.js";`)).toEqual([]);
+    expect(at("src/tools/types.ts", `import type { Extractor } from "../calibre/extract.js";`)).toEqual([
+      "src/tools/types.ts -> src/calibre/extract.ts",
+    ]);
+    expect(at("src/tools/types.ts", `import type { ToolDeps } from "./deps.js";`)).toEqual([]);
     expect(at("src/config.ts", `import { discoverCalibredb } from "./calibre/discover.js";`)).toEqual([
       "src/config.ts -> src/calibre/discover.ts",
     ]);
+  });
+});
+
+// ── ToolDeps on ports (#258) ─────────────────────────────────────────────────────────
+
+// Handlers see narrow ports; only server.ts (the composition root) names the adapter classes.
+const ADAPTER_CLASSES = /\b(ContentServerClient|CalibreClient|Extractor|FigureInventoryService|BoardCache)\b/g;
+
+// Value imports (`import { X }`, not `import type`) and `new X(` — how a handler would build its own adapter.
+const VALUE_IMPORT = /\bimport\s+(?!type\b)\{([^}]*)\}\s*from/g;
+const ADAPTER_NAME = /^(ContentServerClient|CalibreClient|Extractor|FigureInventoryService|BoardCache)$/;
+const ADAPTER_NEW = /\bnew\s+(ContentServerClient|CalibreClient|Extractor|FigureInventoryService|BoardCache)\b/g;
+
+/** `"<file>: <Class>"` for every adapter class a file value-imports or constructs. */
+function findAdapterUses(files: SourceFile[]): string[] {
+  const out = new Set<string>();
+  for (const f of files) {
+    const code = stripComments(f.source);
+    for (const m of code.matchAll(VALUE_IMPORT)) {
+      for (const raw of m[1]!.split(",")) {
+        const name = raw.trim();
+        // `type X` inside a value import is still type-only; `X as Y` keeps X as the imported name
+        if (name.startsWith("type ")) continue;
+        const imported = name.split(/\s+as\s+/)[0]!;
+        if (ADAPTER_NAME.test(imported)) out.add(`${f.path}: ${imported}`);
+      }
+    }
+    for (const m of code.matchAll(ADAPTER_NEW)) out.add(`${f.path}: ${m[1]}`);
+  }
+  return [...out].sort();
+}
+
+describe("ToolDeps on ports", () => {
+  it("tools/deps.ts names no concrete adapter class", () => {
+    const source = stripComments(readFileSync(join(SRC, "tools", "deps.ts"), "utf8"));
+    expect([...new Set(source.match(ADAPTER_CLASSES) ?? [])]).toEqual([]);
+  });
+
+  // No exceptions: server.ts is the only composition root and sits outside src/tools/.
+  it("no tool module value-imports or constructs a concrete adapter", () => {
+    expect(findAdapterUses(readSources("src/tools", /\.ts$/))).toEqual([]);
+  });
+
+  it("flags value imports and construction, not type-only imports", () => {
+    const at = (source: string) => findAdapterUses([{ path: "src/tools/x.ts", source }]);
+    expect(at(`import { ContentServerClient } from "../calibre/content-server.js";`)).toEqual([
+      "src/tools/x.ts: ContentServerClient",
+    ]);
+    expect(at(`import { log, BoardCache as BC } from "../ui/board-cache.js";`)).toEqual(["src/tools/x.ts: BoardCache"]);
+    expect(at(`const e = new Extractor(cfg, figs);`)).toEqual(["src/tools/x.ts: Extractor"]);
+    expect(at(`import type { CalibreClient } from "../calibre/client.js";`)).toEqual([]);
+    expect(at(`import { type FigureInventoryService, x } from "../calibre/figure-inventory.js";`)).toEqual([]);
+    expect(at(`// import { CalibreClient } from "../calibre/client.js";`)).toEqual([]);
   });
 });
 

@@ -22,7 +22,8 @@ import { computeSemanticStatus } from "./semantic/status.js";
 import { readBookResource } from "./resources/book.js";
 import { allTools, assertWriteClassification } from "./tools/registry.js";
 import { toolError } from "./tools/result.js";
-import type { ToolContext, ToolDeps } from "./tools/types.js";
+import type { ToolContext } from "./tools/types.js";
+import type { ToolDeps } from "./tools/deps.js";
 import { OperationCancelledError } from "./domain/errors.js";
 import { createProgressReporter } from "./progress.js";
 import { BoardCache } from "./ui/board-cache.js";
@@ -73,13 +74,14 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
   // One breaker shared by both Calibre paths: a stall seen on either fails both fast.
   const busy = new LibraryBusyTracker();
   const content = new ContentServerClient(config, busy);
+  const extractor = new Extractor(config, figures); // figures dep = inline image markers (#84)
   const deps: ToolDeps = {
     config,
     content,
     calibre: new CalibreClient(config, busy),
     fts: new FullTextSearch(content),
     libraryBusy: busy,
-    extractor: new Extractor(config, figures), // figures dep = inline image markers (#84)
+    extractor,
     figures,
     embedder: new TransformersEmbedder(config), // lazy: no model load until first embed
     reranker: new TransformersReranker(config), // lazy: no model load until first rerank
@@ -88,7 +90,7 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
     log,
   };
 
-  if (options.probes !== false) startBootProbes(deps);
+  if (options.probes !== false) startBootProbes(deps, extractor);
 
   const server = new McpServer(
     { name: "calibre-mcp", version: VERSION },
@@ -241,13 +243,14 @@ function toolContext(extra: ServerContext): ToolContext {
  * Then tell a first-time user whether the Content Server is up before the first tool call
  * fails — which also warms the library-map cache.
  */
-function startBootProbes(deps: ToolDeps): void {
+function startBootProbes(deps: ToolDeps, extractor: Extractor): void {
   const { config } = deps;
   // Semantic availability at boot — otherwise only ping reveals a missing optional dep.
   const sem = computeSemanticStatus(deps);
   if (sem.available) log.info("semantic search available", { model: sem.model });
   else log.warn("semantic search unavailable", { reason: sem.reason });
-  void deps.extractor
+  // Backend detection is adapter-only (not on the TextExtractor port), so the root passes it in.
+  void extractor
     .detectBackends()
     .then((r) => log.info("extractor backends", r))
     .catch((e) => log.warn("extractor detection failed", { msg: String(e) }));

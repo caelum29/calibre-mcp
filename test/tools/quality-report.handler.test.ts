@@ -4,7 +4,7 @@ import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
 import { qualityReportTool } from "../../src/tools/calibre_quality_report.js";
-import type { ToolDeps } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 
 function book(over: Partial<Book> = {}): Book {
   return {
@@ -40,11 +40,11 @@ function deps(fixture: Book[]): ToolDeps {
   return {
     config: loadConfig({}),
     content: content as unknown as ToolDeps["content"],
-    calibre: {} as unknown as ToolDeps["calibre"],
-    extractor: {} as unknown as ToolDeps["extractor"],
+    calibre: {} as ToolDeps["calibre"],
+    extractor: {} as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
-    embedder: {} as unknown as ToolDeps["embedder"],
-    index: {} as unknown as ToolDeps["index"],
+    embedder: {} as ToolDeps["embedder"],
+    index: {} as ToolDeps["index"],
     log,
   };
 }
@@ -105,7 +105,7 @@ describe("calibre_quality_report handler", () => {
     const parsed = z.object(qualityReportTool.inputSchema).safeParse({ readability: "true" });
     expect(parsed.success).toBe(true);
     const r = await qualityReportTool.handler(parsed.data!, deps([book()]));
-    expect((r.content[0] as { text: string }).text).toContain("readability check is deferred");
+    expect((r.content[0] as { text: string }).text).toContain("readability check is not implemented yet");
   });
 
   it('reads readability "false" as false (no deferral note)', async () => {

@@ -1,7 +1,7 @@
 // Shared book-id resolution. BookId() coerces numeric strings to numbers, so a string
 // that reaches a handler is a uuid — resolve it to a numeric db id via a uuid: search.
 
-import type { ToolDeps } from "./types.js";
+import type { ToolDeps } from "./deps.js";
 
 /**
  * Pick a book id from either `id` or its `bookId` alias. Single-book tools take `id`, but the

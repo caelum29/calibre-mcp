@@ -14,7 +14,7 @@ import type { Embedder } from "../../src/semantic/embedder.js";
 import { EMBED_DIM } from "../../src/semantic/model.js";
 import { stemText } from "../../src/semantic/stem.js";
 import { SqliteIndexStore } from "../../src/semantic/store.js";
-import type { ToolDeps } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 
 const LIB = "Programming_Books";
 const BODY = "Ownership and borrowing keep memory safe without a garbage collector. ".repeat(300);
@@ -79,7 +79,7 @@ function deps(store: SqliteIndexStore, embedder: Embedder, ed: Edition): ToolDep
         outline: [],
         epubToc: null,
       }),
-    } as unknown as ToolDeps["extractor"],
+    } satisfies Partial<ToolDeps["extractor"]> as ToolDeps["extractor"],
     figures: { getInventory: async () => ({ inventory: { entries: [] } }) } as unknown as ToolDeps["figures"],
     embedder,
     index: store,

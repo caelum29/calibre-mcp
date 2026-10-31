@@ -12,7 +12,8 @@ import type { Embedder } from "../../src/semantic/embedder.js";
 import { EMBED_DIM } from "../../src/semantic/model.js";
 import { IndexBuildRegistry } from "../../src/semantic/index-builds.js";
 import { SqliteIndexStore } from "../../src/semantic/store.js";
-import type { ToolContext, ToolDeps, ToolResult } from "../../src/tools/types.js";
+import type { ToolContext, ToolResult } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 
 const LIB = "Programming_Books";
 const DEADLINE_MS = 40;
@@ -131,8 +132,12 @@ describe("calibre_build_index background outcomes (#284)", () => {
 
     expect(r.isError).toBeFalsy();
     expect(r.structuredContent).toMatchObject({ stillRunning: true, runningBuild: "other" });
-    expect(text(r)).toMatch(/none of this call's books have been indexed yet/);
-    expect(text(r)).toMatch(/That other build \(not this call's selection\): 0\/1 book\(s\) finished so far/);
+    expect(text(r)).toMatch(
+      /None of this call's 1 book\(s\) is committed yet\. Re-run this call once that build finishes\./,
+    );
+    expect(text(r)).toMatch(
+      /That other build \(not this call's selection\): Books so far: 0\/1 processed \(0 indexed, 0 failed\)/,
+    );
   });
 
   it("should_build_fresh_instead_of_inheriting_a_cancelled_background_build", async () => {

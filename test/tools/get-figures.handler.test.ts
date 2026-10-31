@@ -9,7 +9,7 @@ import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
 import type { FigureInventory } from "../../src/domain/figures/inventory.js";
-import type { ToolDeps } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 
 const inventory: FigureInventory = {
   entries: [
