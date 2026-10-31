@@ -217,7 +217,9 @@ function snippetNote(batch: SnippetBatch, pageSize: number): string {
  * boolean with inner phrases) goes in backticks so the header never reads `""event sourcing""` (#309).
  */
 function quotedQuery(query: string): string {
-  return query.includes('"') ? `\`${query}\`` : `"${query}"`;
+  if (!query.includes('"')) return `"${query}"`;
+  // A backtick inside would close a single-backtick span early — fence with two instead.
+  return query.includes("`") ? `\`\` ${query} \`\`` : `\`${query}\``;
 }
 
 /** One FTS call's inputs and shared budget, threaded through both FTS scopes. */
@@ -401,9 +403,10 @@ function searchErrorSteer(err: unknown, deadline: Deadline): string | undefined 
       return `Full-text search is not enabled for library "${err.libraryId}". ${ENABLE_FTS_STEPS} ${KEYWORD_SEARCH_FALLBACK}`;
     }
     // FTS5 reads `-`/`:` in a bare query as operators/column filters; a phrase bypasses that.
+    // AND/OR/NOT are valid but binary: a leading/trailing one (`NOT foo`) is a syntax error.
     return (
       "Full-text search couldn't parse that query (FTS is working — the syntax is the problem). " +
-      "Retry with the whole query wrapped in double quotes, or drop operators like - : AND/OR/NEAR."
+      "Retry with the phrase wrapped in double quotes, or drop - and : from bare words; AND/OR/NOT go between terms (a NOT b), never first or last."
     );
   }
   if (err instanceof CalibreBusyError) return `${err.message} ${KEYWORD_SEARCH_FALLBACK}`;
@@ -425,7 +428,7 @@ export const searchTool = defineTool({
   name: "calibre_search",
   title: "Search books",
   description:
-    'Find books by exact title, author, ISBN, tag, or Calibre query syntax (mode=meta), or by full text (mode=fts). mode=fts words match independently and stemmed (events matches event); wrap a phrase in double quotes for an exact match ("event sourcing"); supports AND/OR/NOT (uppercase). scope=book returns short keyword snippets from inside one book; first hits often land in TOC/front matter — for definitional or topic questions within a book prefer calibre_semantic_search scope=book (ranked passages with char offsets). Use calibre_semantic_search for meaning/topic queries. For "how many" questions use countOnly=true (returns only the count). filter accepts a bundle name to scope the search (list bundles via calibre_manage_bundles).',
+    'Find books by exact title, author, ISBN, tag, or Calibre query syntax (mode=meta), or by full text (mode=fts). mode=fts words match independently and stemmed (events matches event); wrap a phrase in double quotes for an exact match ("event sourcing"); supports AND/OR/NOT between terms (uppercase, e.g. a NOT b). scope=book returns short keyword snippets from inside one book; first hits often land in TOC/front matter — for definitional or topic questions within a book prefer calibre_semantic_search scope=book (ranked passages with char offsets). Use calibre_semantic_search for meaning/topic queries. For "how many" questions use countOnly=true (returns only the count). filter accepts a bundle name to scope the search (list bundles via calibre_manage_bundles).',
   inputSchema: {
     query: z.string().min(1).max(512),
     mode: z.enum(["meta", "fts"]).optional().default("meta"),
