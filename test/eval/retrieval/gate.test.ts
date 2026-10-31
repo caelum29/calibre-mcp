@@ -228,6 +228,30 @@ describe("evaluateGate score drift (#325)", () => {
     expect(check(kw, "score drift: per-query maxScore")?.pass).toBe(true);
   });
 
+  it("fails when no baseline maxScore row is matched (an empty compare is not a pass)", () => {
+    const cur = withFigures(scored(0.9705));
+    const noScores = { ...cur, perQuery: cur.perQuery.map(({ maxScore: _m, ...r }) => r) };
+    const res = evaluateGate(noScores, base, withDrift);
+    expect(check(res, "score drift: per-query maxScore")).toMatchObject({
+      pass: false,
+      detail: "only 0/2 baseline rows matched; missing: hybrid/sp-01, vector/sp-01",
+    });
+    expect(res.pass).toBe(false);
+  });
+
+  it("fails when fewer rows match than the baseline has, naming the missing ones", () => {
+    const cur = withFigures(scored(0.9705));
+    const partial = {
+      ...cur,
+      perQuery: cur.perQuery.map((r) => (r.id === "sp-01" && r.mode === "vector" ? { ...r, maxScore: undefined } : r)),
+    };
+    const res = evaluateGate(partial, base, withDrift);
+    expect(check(res, "score drift: per-query maxScore")).toMatchObject({
+      pass: false,
+      detail: "only 1/2 baseline rows matched; missing: vector/sp-01",
+    });
+  });
+
   it("adds no drift checks when thresholds declare none", () => {
     const res = evaluateGate(withFigures(scored(0.9)), base, thresholds);
     expect(res.checks.filter((c) => c.name.startsWith("score drift"))).toEqual([]);
