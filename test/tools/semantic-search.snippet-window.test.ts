@@ -9,6 +9,7 @@ import type { Embedder } from "../../src/semantic/embedder.js";
 import { EMBED_DIM } from "../../src/semantic/model.js";
 import { SqliteIndexStore } from "../../src/semantic/store/index.js";
 import { l2normalize } from "../../src/semantic/vector.js";
+import { fence } from "../../src/shared/fence.js";
 import { semanticSearchTool } from "../../src/tools/calibre_semantic_search.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
 
@@ -129,13 +130,13 @@ describe("library snippet window (#243)", () => {
     const store = storeWith(5, "Short", 400, body);
     const { top } = await search(store, "Raft", "keyword");
     expect(top.snippetStart).toBe(400);
-    expect(top.snippet).toBe(body);
+    expect(top.snippet).toBe(fence("MATCH book 5 @400-462 snippet@400", body));
   });
 
   it("falls back to the chunk head when no query term occurs (semantic-only hit)", async () => {
     const store = storeWith(38, "An Elegant Puzzle", BOOK38_START, BOOK38_BODY);
     const { top } = await search(store, "консенсус", "vector");
     expect(top.snippetStart).toBe(BOOK38_START);
-    expect(top.snippet).toBe(BOOK38_BODY.slice(0, 320));
+    expect(top.snippet).toBe(fence("MATCH book 38 @352024-354052 snippet@352024", BOOK38_BODY.slice(0, 320)));
   });
 });
