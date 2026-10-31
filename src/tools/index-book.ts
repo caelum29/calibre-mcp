@@ -4,9 +4,11 @@
 
 import { chooseExtractFormat, noTextReason } from "../calibre/extract.js";
 import type { FigureMarker } from "../domain/figures/markers.js";
-import type { EmbedChunk } from "../semantic/chunk.js";
-import { inThreadEncoder, type BookEncoder } from "../semantic/book-encoder.js";
-import { textMatchesChunks } from "../semantic/content-match.js";
+import type { ExtractedText } from "../calibre/extract.js";
+import { frontMatterEnd } from "../domain/structure/front-matter.js";
+import { inThreadEncoder, structureOf, type BookEncoder } from "../semantic/book-encoder.js";
+import { textMatchesChunks, type ChunkSpan } from "../semantic/content-match.js";
+import { isFrontMatterSpan } from "../semantic/front-matter-flag.js";
 import type { BookMeta, IndexedChunk, IndexedFigure } from "../semantic/store.js";
 import type { ToolDeps } from "./types.js";
 
@@ -39,12 +41,20 @@ export interface PreparedBook {
  * "skipped" = already fresh for this build; "preserved" = a keyword-only build left a book
  * that already has embeddings untouched rather than downgrading it (#197).
  */
-export type PrepareResult =
-  | PreparedBook
-  | { kind: "skipped" }
-  | { kind: "preserved" }
-  // Metadata-only edit (#244): text unchanged, so only title/authors are refreshed in place.
-  | { kind: "refreshed"; meta: BookMeta };
+export type PrepareResult = PreparedBook | { kind: "skipped" } | { kind: "preserved" } | RefreshedBook;
+
+/**
+ * Text unchanged since indexing, so nothing is re-embedded: title/authors (#244) and the
+ * front-matter flags (#269, from the current outline/TOC) are refreshed in place.
+ */
+export interface RefreshedBook {
+  kind: "refreshed";
+  meta: BookMeta;
+  /** Front-matter boundary in the (unchanged) text — 0 = none. */
+  frontMatterEnd: number;
+  /** The stored chunk spans the text was verified against — re-checked at commit. */
+  spans: ChunkSpan[];
+}
 
 export interface PrepareOptions {
   libraryId: string;
@@ -60,6 +70,12 @@ export interface PrepareOptions {
   signal?: AbortSignal;
   /** Sub-book progress (#245): phase starts, then chunk counts while embedding. */
   onPhase?: (phase: BookPhase) => void;
+  /**
+   * Flag-only backfill (#269): bypass the freshness skip, and refresh an indexed book's
+   * front-matter flags + metadata in place. Throws when the book is not indexed or its text
+   * changed — never re-embeds.
+   */
+  flagsOnly?: boolean;
 }
 
 /** Where a book being prepared is — lets a long single book report progress. */
@@ -88,6 +104,7 @@ export async function prepareBook(deps: ToolDeps, bookId: number, opts: PrepareO
   // writer on the same db (e.g. a model-less .mcpb) may have stored chunks without vectors.
   if (
     !opts.force &&
+    !opts.flagsOnly &&
     deps.index.isBookIndexed(libraryId, bookId, book.lastModified ?? "", { requireVectors: !keywordOnly })
   ) {
     return { kind: "skipped" };
@@ -117,12 +134,8 @@ export async function prepareBook(deps: ToolDeps, bookId: number, opts: PrepareO
   }
 
   const meta: BookMeta = { bookId, title: book.title, authors: book.authors, lastModified: book.lastModified };
-  // Calibre bumps last_modified on ANY metadata edit (#244): when the stored chunks still match
-  // the fresh text, refresh title/authors in place and keep the vectors instead of re-embedding.
-  // The vectors keep the old "[title › authors]" prefix — accepted; force re-embeds.
-  if (!opts.force && isMetadataOnlyEdit(deps, { libraryId, bookId, text: extracted.text, keywordOnly })) {
-    return { kind: "refreshed", meta };
-  }
+  const refreshed = refreshOutcome(deps, opts, meta, extracted);
+  if (refreshed) return refreshed;
 
   // Deterministic context prefix — captures most of contextual-retrieval's benefit at zero
   // LLM cost. It goes into the EMBEDDED text only; the stored body stays the raw chunk so
@@ -144,7 +157,7 @@ export async function prepareBook(deps: ToolDeps, bookId: number, opts: PrepareO
     {
       text: extracted.text,
       ctx,
-      outline: extracted.outline,
+      ...structureOf(extracted),
       captions: extracted.markers.map((m) => m.caption),
       keywordOnly,
       tokenBudgeted,
@@ -154,19 +167,15 @@ export async function prepareBook(deps: ToolDeps, bookId: number, opts: PrepareO
   if (encoded.chunks.length === 0) throw new Error("produced no chunks");
 
   // Chunks that are MOSTLY before the first detected chapter are front matter (TOC/praise/
-  // foreword) — search demotes them below body matches (issue #18). Majority overlap, not
-  // full containment: chunks run ~2k chars, so the whole front matter usually lands inside
-  // one boundary-straddling chunk that a containment rule would never flag.
+  // foreword) — search demotes them below body matches (issue #18).
   const { fmEnd, vectors, captionVectors } = encoded;
-  const isFrontMatter = (c: EmbedChunk): boolean =>
-    fmEnd > 0 && Math.min(c.charEnd, fmEnd) - c.charStart >= 0.5 * (c.charEnd - c.charStart);
 
   // keywordOnly: no vectors — chunks are stored raw + pre-stemmed (in the store) for FTS search.
   const indexed: IndexedChunk[] = encoded.chunks.map((c, i) => ({
     charStart: c.charStart,
     charEnd: c.charEnd,
     body: c.body,
-    frontMatter: isFrontMatter(c),
+    frontMatter: isFrontMatterSpan(c, fmEnd),
     ...(vectors ? { vector: vectors[i]! } : {}),
   }));
   let figures = await figureRowsP;
@@ -224,23 +233,51 @@ export function commitBook(deps: ToolDeps, libraryId: string, book: PreparedBook
 }
 
 /**
- * True when the indexed entry is complete for this build (every chunk embedded, unless
- * keyword-only) and its chunks still match the freshly extracted text (#244).
+ * The no-re-embed outcome, when one applies. Calibre bumps last_modified on ANY metadata edit
+ * (#244): when the stored chunks still match the fresh text, refresh title/authors and the
+ * front-matter flags (#269) in place instead of re-embedding. The vectors keep the old
+ * "[title › authors]" prefix — accepted; force re-embeds. flagsOnly demands this path.
  */
-function isMetadataOnlyEdit(
+function refreshOutcome(
   deps: ToolDeps,
-  { libraryId, bookId, text, keywordOnly }: { libraryId: string; bookId: number; text: string; keywordOnly: boolean },
-): boolean {
-  return (
-    deps.index.isBookIndexed(libraryId, bookId, undefined, { requireVectors: !keywordOnly }) &&
-    textMatchesChunks(text, deps.index.bookChunkSpans(libraryId, bookId))
-  );
+  opts: PrepareOptions,
+  meta: BookMeta,
+  extracted: ExtractedText,
+): RefreshedBook | undefined {
+  const { libraryId, keywordOnly } = opts;
+  // The spans the text was verified against travel to the commit, which re-checks them (#269).
+  const spans = deps.index.bookChunkSpans(libraryId, meta.bookId);
+  const refreshed = (): RefreshedBook => ({
+    kind: "refreshed",
+    meta,
+    frontMatterEnd: frontMatterEnd(extracted.text, structureOf(extracted)),
+    spans,
+  });
+  if (opts.flagsOnly) {
+    if (!deps.index.isBookIndexed(libraryId, meta.bookId)) {
+      throw new Error("not indexed — a flag-only backfill only updates indexed books");
+    }
+    if (!textMatchesChunks(extracted.text, spans)) throw new Error(TEXT_CHANGED);
+    return refreshed();
+  }
+  // A complete entry for this build (every chunk embedded, unless keyword-only) is required.
+  const complete = deps.index.isBookIndexed(libraryId, meta.bookId, undefined, { requireVectors: !keywordOnly });
+  return !opts.force && complete && textMatchesChunks(extracted.text, spans) ? refreshed() : undefined;
 }
 
-/** The write for a metadata-only edit (#244): title/authors in place, chunks and vectors kept. */
-export function commitRefresh(deps: ToolDeps, libraryId: string, meta: BookMeta): void {
-  deps.index.refreshBookMeta(libraryId, meta);
-  deps.log.info("refreshed book metadata — text unchanged, no re-embed", { bookId: meta.bookId });
+const TEXT_CHANGED = "text changed since indexing — needs a full re-index, not a flag backfill";
+
+/** The write for an unchanged-text book (#244/#269): metadata + flags in place, vectors kept. */
+export function commitRefresh(deps: ToolDeps, libraryId: string, book: RefreshedBook): void {
+  // Another writer re-chunked the book between prepare and commit: the boundary no longer
+  // applies to its rows. Nothing was written — report it like a changed-text book.
+  if (!deps.index.refreshBookMeta(libraryId, book.meta, { frontMatterEnd: book.frontMatterEnd, spans: book.spans })) {
+    throw new Error(`book re-indexed during the refresh — ${TEXT_CHANGED}`);
+  }
+  deps.log.info("refreshed book in place — text unchanged, no re-embed", {
+    bookId: book.meta.bookId,
+    frontMatterEnd: book.frontMatterEnd,
+  });
 }
 
 /**

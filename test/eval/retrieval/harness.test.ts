@@ -20,7 +20,7 @@ function reversed(inner: IndexStore): IndexStore {
     hasVectors: (l) => inner.hasVectors(l),
     isBookIndexed: (l, b, m, o) => inner.isBookIndexed(l, b, m, o),
     replaceBook: (l, m, c, f, o) => inner.replaceBook(l, m, c, f, o),
-    refreshBookMeta: (l, m) => inner.refreshBookMeta(l, m),
+    refreshBookMeta: (l, m, c) => inner.refreshBookMeta(l, m, c),
     bookChunkSpans: (l, b) => inner.bookChunkSpans(l, b),
     bookVectorCount: (l, b) => inner.bookVectorCount(l, b),
     booksMissingVectors: (l) => inner.booksMissingVectors(l),

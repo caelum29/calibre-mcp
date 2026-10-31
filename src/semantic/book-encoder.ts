@@ -4,6 +4,7 @@
 // so book-level concurrency on ONE thread can't speed them up.
 
 import { frontMatterEnd } from "../domain/structure/front-matter.js";
+import type { EpubToc } from "../domain/structure/epub-toc.js";
 import type { OutlineEntry } from "../domain/structure/pdf-outline.js";
 import { chunkForEmbeddingAsync, type EmbedChunk } from "./chunk.js";
 import { PASSAGE_BATCH, type Embedder } from "./embedder.js";
@@ -24,6 +25,8 @@ export interface EncodeJob {
   ctx: string;
   /** PDF outline (bookmarks) — preferred chapter-map source for the front-matter boundary (#134). */
   outline: OutlineEntry[];
+  /** EPUB authored TOC (#269) — plain data, so it survives the worker-thread postMessage. */
+  epubToc?: EpubToc;
   /** Figure captions to embed alongside the passages (empty when none were placed). */
   captions: string[];
   keywordOnly: boolean;
@@ -70,7 +73,7 @@ export function inThreadEncoder(embedder: Embedder): BookEncoder {
         // the conservative char-based default applies.
         chunks = await chunkForEmbeddingAsync(job.text);
       }
-      const fmEnd = chunks.length > 0 ? frontMatterEnd(job.text, { outline: job.outline }) : 0;
+      const fmEnd = chunks.length > 0 ? frontMatterEnd(job.text, structureOf(job)) : 0;
       const t1 = Date.now();
       if (job.keywordOnly || chunks.length === 0) {
         return { chunks, fmEnd, phaseMs: { chunk: t1 - t0, embed: 0 } };
@@ -104,4 +107,12 @@ async function embedSliced(
     if (out.length < texts.length) onProgress(out.length, texts.length);
   }
   return out;
+}
+
+/** The structure hints front-matter detection uses: PDF outline and/or EPUB TOC (#269). */
+export function structureOf(src: { outline: OutlineEntry[]; epubToc?: EpubToc | null }): {
+  outline: OutlineEntry[];
+  epubToc?: EpubToc;
+} {
+  return { outline: src.outline, ...(src.epubToc ? { epubToc: src.epubToc } : {}) };
 }

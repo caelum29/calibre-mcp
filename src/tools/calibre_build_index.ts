@@ -244,7 +244,7 @@ export const buildIndexTool = defineTool({
       },
       commit: async (bookId, prepared) => {
         if (prepared.kind === "refreshed") {
-          await withBusyRetry(() => commitRefresh(deps, libraryId, prepared.meta));
+          await withBusyRetry(() => commitRefresh(deps, libraryId, prepared));
           return;
         }
         if (prepared.kind !== "ready") return;
