@@ -1,0 +1,25 @@
+src/tools/calibre_quality_report.ts
+  s_c292bb308e7526::t_1dd95829dc5288 108
+src/tools/calibre_bulk_update.ts
+  s_c292bb308e7526::t_1dd95829dc5288 8,119-121
+src/domain/book-fields.ts
+  s_c292bb308e7526::t_1dd95829dc5288 127-151
+src/tools/calibre_find_duplicates.ts
+  s_c292bb308e7526::t_1dd95829dc5288 118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a64580edf82ee0a21853a68a94df1937b0448c56",
+  "prompts": {},
+  "sessions": {
+    "s_c292bb308e7526": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e234f66e-fd22-4d0a-b34a-0d6b587d1afc",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
