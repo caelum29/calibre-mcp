@@ -12,9 +12,6 @@ importers:
 
   .:
     dependencies:
-      '@modelcontextprotocol/client':
-        specifier: ^2.4.0
-        version: 2.4.0
       '@modelcontextprotocol/ext-apps':
         specifier: 2.0.4
         version: 2.0.4(@modelcontextprotocol/client@2.4.0)(@modelcontextprotocol/core@2.4.0)(@modelcontextprotocol/server@2.4.0)(react@19.2.8)(zod@4.6.7)
@@ -31,6 +28,9 @@ importers:
         specifier: 4.6.7
         version: 4.6.7
     devDependencies:
+      '@modelcontextprotocol/client':
+        specifier: ^2.4.0
+        version: 2.4.0
       '@modelcontextprotocol/inspector':
         specifier: 2.12.0
         version: 2.12.0(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)
