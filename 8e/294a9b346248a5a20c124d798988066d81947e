@@ -1,0 +1,28 @@
+test/tools/build-index.soft-deadline.test.ts
+  s_aa002d0f29785d::t_4c434acd9dbe0b 368-397
+src/semantic/index-builds.ts
+  s_aa002d0f29785d::t_7c0e4a34aea9cf 32-33,174,259
+src/tools/calibre_build_index.ts
+  s_aa002d0f29785d::t_4c434acd9dbe0b 155-156
+  s_aa002d0f29785d::t_7c0e4a34aea9cf 25,107-108,182-183
+src/tools/build-index-results.ts
+  s_aa002d0f29785d::t_4c434acd9dbe0b 142
+  s_aa002d0f29785d::t_7c0e4a34aea9cf 56-68,81-83,87,95,127-128,140-141,144-145
+  s_aa002d0f29785d::t_fe894bd9220cd2 55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8e294a9b346248a5a20c124d798988066d81947e",
+  "prompts": {},
+  "sessions": {
+    "s_aa002d0f29785d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9858b033-3534-4580-8536-b45ea248531d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
