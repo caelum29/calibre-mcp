@@ -10,6 +10,7 @@ import type { Embedder } from "./embedder.js";
 import { RRF_K, rrfFuse } from "./fusion.js";
 import { RERANK_FLOOR, RERANK_POOL, type Reranker } from "./reranker.js";
 import { stemText } from "./stem.js";
+import { snippetWindow } from "./store/chunks.js";
 import type { BookHit, ChunkIndex, FigureHit, FigureIndex, LibraryHit } from "./store/index.js";
 
 /** Per-half candidate pool the fuser draws from (design: vector top-50 + keyword top-50). */
@@ -142,7 +143,9 @@ export async function retrieve(
   const weights = opts.rrfWeights ?? RRF_WEIGHTS;
   if (req.scope === "library") {
     const rr = await applyRerank(await rankBooks(req, deps, weights), (r) => r.hit.body, req, deps);
-    return outcome(rr, rr.hits, confidence(rr.hits, deps, rr), rr.note);
+    // Display only (#243): re-cut each snippet around the query terms after ranking is final.
+    const hits = rr.hits.map((r) => ({ ...r, hit: withSnippet(r.hit, req.query) }));
+    return outcome(rr, hits, confidence(hits, deps, rr), rr.note);
   }
   if (req.scope === "book") {
     const rr = await applyRerank(await rankPassages(req, deps, weights), (r) => r.hit.body, req, deps);
@@ -163,6 +166,12 @@ export async function retrieve(
   const floorNote =
     req.mode !== "keyword" && rr.hits.length > 0 && FIGURES_SEMANTIC_FLOOR === null ? FIGURES_FLOOR_NOTE : undefined;
   return outcome(rr, rr.hits, figuresConfidence(rr.hits, rr), rr.note, floorNote);
+}
+
+/** A library hit whose snippet is the query-term window of its chunk, with its book offset. */
+function withSnippet(hit: LibraryHit, query: string): LibraryHit {
+  const w = snippetWindow(hit.body, query);
+  return { ...hit, snippet: w.text, snippetStart: hit.charStart + w.start };
 }
 
 /** Assemble the public result from the rerank outcome, final hit order and confidence. */

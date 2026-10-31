@@ -84,6 +84,8 @@ export const semanticSearchTool = defineTool({
           rerankScore: z.number().optional(),
           charStart: z.number(),
           charEnd: z.number(),
+          // Book offset the snippet starts at (#243) — calibre_get_content offset= jumps there.
+          snippetStart: z.number().optional(),
           snippet: z.string(),
         }),
       )
@@ -306,14 +308,23 @@ async function libraryScope(
 
   const { maxScore, lowConfidence } = rr;
   const blocks: ContentBlock[] = [
-    { type: "text", text: withNote(header("book", ranked.length, args, maxScore, lowConfidence, rr), note) },
+    {
+      type: "text",
+      text: withNote(
+        header("book", ranked.length, args, maxScore, lowConfidence, rr) +
+          // snippets are cut around the query terms (#243); say how to read on from one
+          " Snippets show the matched part of each chunk; read on via calibre_get_content id=<bookId> offset=<snippet@>.",
+        note,
+      ),
+    },
   ];
   const results: Record<string, unknown>[] = [];
   for (const r of ranked) {
     const link = bookResourceLink({ id: r.hit.bookId, title: r.hit.title, authors: r.hit.authors });
     link.description = [scoreLabel(r), r.hit.authors.join(", ")].filter(Boolean).join(" — ");
     blocks.push(link);
-    const fenced = fence(`MATCH book ${r.hit.bookId} @${r.hit.charStart}-${r.hit.charEnd}`, r.hit.snippet);
+    const at = r.hit.snippetStart !== undefined ? ` snippet@${r.hit.snippetStart}` : "";
+    const fenced = fence(`MATCH book ${r.hit.bookId} @${r.hit.charStart}-${r.hit.charEnd}${at}`, r.hit.snippet);
     blocks.push({ type: "text", text: fenced });
     results.push({
       bookId: r.hit.bookId,
@@ -323,6 +334,7 @@ async function libraryScope(
       ...(r.rerankScore !== undefined ? { rerankScore: r.rerankScore } : {}),
       charStart: r.hit.charStart,
       charEnd: r.hit.charEnd,
+      ...(r.hit.snippetStart !== undefined ? { snippetStart: r.hit.snippetStart } : {}),
       snippet: fenced,
     });
   }

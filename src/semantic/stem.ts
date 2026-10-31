@@ -41,3 +41,8 @@ export function stemText(text: string): string {
   for (const m of text.matchAll(TOKEN)) out.push(stemToken(m[0]));
   return out.join(" ");
 }
+
+/** Word tokens of `text` with their stems and char positions — same tokenizer as stemText. */
+export function* stemmedTokens(text: string): Generator<{ stem: string; index: number; length: number }> {
+  for (const m of text.matchAll(TOKEN)) yield { stem: stemToken(m[0]), index: m.index, length: m[0].length };
+}

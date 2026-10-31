@@ -5,6 +5,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { LogSink } from "../../logging.js";
 import { EMBED_DIM } from "../model.js";
+import { stemText, stemmedTokens } from "../stem.js";
 import { type Candidate, decodeVector, topK } from "../vector.js";
 import type { IndexConnections } from "./schema.js";
 import { type CandidateCache, cacheOf, ftsMatch, parseAuthors, restrict, type Row, WEIGHTED_BM25 } from "./shared.js";
@@ -219,4 +220,56 @@ export function loadChunkCandidates(db: DatabaseSync): Candidate[] {
     bookId: Number(r.book_id),
     vector: decodeVector(r.vector as Uint8Array),
   }));
+}
+
+// Snippet window (#243): show the part of the chunk that matched, not its head. Display only —
+// ranking never reads it. Query terms shorter than this are skipped (в, и, of, to: noise).
+const MIN_TERM_CHARS = 3;
+// How far back from the first matched term to look for its sentence start.
+const MAX_SENTENCE_LEAD = 160;
+const SENTENCE_END = /[.!?…]\s+|\n/g;
+
+/** Where a snippet of `body` starts (chunk-relative) and its text, "…"-prefixed when cut. */
+export interface SnippetWindow {
+  start: number;
+  text: string;
+}
+
+/**
+ * Pick the `width`-char window of a chunk with the most distinct query terms (then the most
+ * term hits, then the earliest), starting at the sentence that holds its first term. Terms are
+ * matched on stems, the same transform the keyword half uses, so Cyrillic inflections match.
+ * Falls back to the chunk head when no term occurs (a semantic-only hit) or the chunk is short.
+ */
+export function snippetWindow(body: string, query: string, width: number = SNIPPET_CHARS): SnippetWindow {
+  const head = { start: 0, text: body.slice(0, width) };
+  if (body.length <= width) return head;
+  const terms = new Set(
+    stemText(query)
+      .split(" ")
+      .filter((t) => t.length >= MIN_TERM_CHARS),
+  );
+  if (terms.size === 0) return head;
+  const hits = [...stemmedTokens(body)].filter((t) => terms.has(t.stem));
+  if (hits.length === 0) return head;
+
+  let best = { start: 0, distinct: 0, count: 0 };
+  for (const anchor of hits) {
+    const start = sentenceStart(body, anchor.index);
+    const inside = hits.filter((h) => h.index >= start && h.index + h.length <= start + width);
+    const distinct = new Set(inside.map((h) => h.stem)).size;
+    if (distinct > best.distinct || (distinct === best.distinct && inside.length > best.count)) {
+      best = { start, distinct, count: inside.length };
+    }
+  }
+  const text = body.slice(best.start, best.start + width);
+  return { start: best.start, text: best.start > 0 ? `…${text}` : text };
+}
+
+/** Start of the sentence holding `at`, if it begins within MAX_SENTENCE_LEAD chars; else `at`. */
+function sentenceStart(body: string, at: number): number {
+  const from = Math.max(0, at - MAX_SENTENCE_LEAD);
+  let start = from === 0 ? 0 : at;
+  for (const m of body.slice(from, at).matchAll(SENTENCE_END)) start = from + m.index + m[0].length;
+  return start;
 }
