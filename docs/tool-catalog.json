@@ -2251,6 +2251,9 @@
                 "snippet": {
                   "type": "string"
                 },
+                "snippetStart": {
+                  "type": "number"
+                },
                 "title": {
                   "type": "string"
                 }
