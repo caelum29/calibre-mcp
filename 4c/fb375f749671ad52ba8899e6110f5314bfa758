@@ -1,0 +1,19 @@
+test/tools/bulk-update.tags-ops.test.ts
+  s_38ec8aae54ac1e::t_b73c19cde6f798 1-231
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4cfb375f749671ad52ba8899e6110f5314bfa758",
+  "prompts": {},
+  "sessions": {
+    "s_38ec8aae54ac1e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "35df8d4b-23d3-49f4-aec1-7f1c00848c39",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
