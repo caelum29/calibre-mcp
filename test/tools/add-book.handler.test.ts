@@ -6,6 +6,7 @@ import { addBookTool, parseAddedIds } from "../../src/tools/calibre_add_book.js"
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
+import { CalibreCliError } from "../../src/domain/errors.js";
 
 let root: string;
 let file: string;
@@ -68,5 +69,16 @@ describe("calibre_add_book handler", () => {
     rmSync(outside, { force: true });
     expect(r.isError).toBe(true);
     expect(spy).not.toHaveBeenCalled();
+  });
+
+  // #249 review: a non-retried write against a stopped server is unreachable, not calibre_error
+  it("codes a connection-refused add as calibre_unreachable", async () => {
+    const r = await addBookTool.handler(
+      { path: file },
+      deps(async () => {
+        throw new CalibreCliError(1, "failed", "ConnectionRefusedError: [Errno 61] Connection refused");
+      }),
+    );
+    expect(r.structuredContent?.errorCode).toBe("calibre_unreachable");
   });
 });

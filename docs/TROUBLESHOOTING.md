@@ -261,6 +261,26 @@ can open them for you: *"check the calibre-mcp logs for errors today"*):
   text the model saw, and a short args summary (long free text such as a description edit is
   logged as its length only). Every line logged during that call carries
   the same `call` id, so `jq -c 'select(.call=="<id>")'` replays one call end to end.
+- **Failed calls** carry an `errorCode` from a closed set (`not_found`, `invalid_input`,
+  `calibre_unreachable`, `timeout`, `index_missing`, … — the full list is in the folder's
+  `README.md`) and, where there is a generic next step, a `hint`. Group failures with
+  `jq -r 'select(.msg=="tool call" and .meta.isError) | .meta.errorCode' calibre-mcp-*.jsonl | sort | uniq -c`.
+- **Trace context:** when the client sends a W3C `traceparent` in the request's `_meta`,
+  the `tool call` line carries its `traceId` and `parentSpanId`, so it joins the client's trace.
+- **OpenTelemetry names.** The keys stay short to save tokens; this is how they map onto
+  OTel (the MCP semantic conventions are still in Development status, so treat it as best-effort):
+
+  | ours | OTel |
+  |---|---|
+  | `ts` | `timestamp` |
+  | `lvl` | `severity_text` |
+  | `msg` | `body` / `event.name` |
+  | `tool` | `gen_ai.tool.name` |
+  | `meta.rpcId` | `jsonrpc.request.id` |
+  | `meta.durationMs` | `mcp.server.operation.duration` (ms here, s in OTel) |
+  | `meta.errorCode` | `error.type` (OTel sets `tool_error` on any isError result; ours is finer) |
+  | `meta.traceId` / `meta.parentSpanId` | `trace_id` / parent `span_id` |
+  | `client` | `client` / MCP `clientInfo.name` |
 - **No file access?** `calibre_ping` lists the last server errors and the log path.
 - **More detail:** `CALIBRE_MCP_LOG_LEVEL=debug`. The same lines also go to stderr
   (prefixed `[calibre-mcp]`), which the client keeps in its own MCP log.

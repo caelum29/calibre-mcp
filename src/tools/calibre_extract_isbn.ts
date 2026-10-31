@@ -13,6 +13,7 @@ import { scanForIsbn, scanOutcomeHint } from "../app/isbn-scan.js";
 import { bookIdArg, resolveNumericId } from "./resolve-id.js";
 import { toolError, toolOk } from "./result.js";
 import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "../app/write-policy.js";
+import { errorCodeFor } from "../domain/error-codes.js";
 
 export const extractIsbnTool = defineTool({
   name: "calibre_extract_isbn",
@@ -38,10 +39,10 @@ export const extractIsbnTool = defineTool({
   write: true,
   handler: async (args, deps) => {
     const idArg = bookIdArg(args);
-    if (idArg === undefined) return toolError("Provide id (the book's db id or uuid).");
+    if (idArg === undefined) return toolError("invalid_input", "Provide id (the book's db id or uuid).");
     try {
       const numericId = await resolveNumericId(deps, idArg, args.library);
-      if (numericId === undefined) return toolError(`No book with id/uuid ${idArg}`);
+      if (numericId === undefined) return toolError("not_found", `No book with id/uuid ${idArg}`);
       const book = await deps.content.getBook(numericId, args.library);
 
       const currentIsbn =
@@ -52,6 +53,7 @@ export const extractIsbnTool = defineTool({
 
       if (!scan.isbn) {
         return toolError(
+          "not_found",
           `No ISBN extracted from book ${numericId} ("${book.title}"): ${scanOutcomeHint(scan.outcome)}.`,
         );
       }
@@ -99,7 +101,7 @@ export const extractIsbnTool = defineTool({
           library: libId,
         });
       } catch (err) {
-        if (isWriteRefused(err)) return toolError(WRITE_REFUSED_MESSAGE);
+        if (isWriteRefused(err)) return toolError("write_refused", WRITE_REFUSED_MESSAGE);
         throw err;
       }
 
@@ -114,7 +116,7 @@ export const extractIsbnTool = defineTool({
         applied: true,
       });
     } catch (err) {
-      return toolError(err instanceof Error ? err.message : String(err));
+      return toolError(errorCodeFor(err), err instanceof Error ? err.message : String(err));
     }
   },
 });

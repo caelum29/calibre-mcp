@@ -37,6 +37,7 @@ import { IndexBuildRegistry, type BuildRun } from "../semantic/index-builds.js";
 import { log } from "../logging.js";
 import { runBookPipeline } from "../semantic/book-pipeline.js";
 import { bookProgress } from "./book-progress.js";
+import { errorCodeFor } from "../domain/error-codes.js";
 
 /** Page size when listing query matches / the whole library (ids only — the response is tiny). */
 const ID_PAGE = 1000;
@@ -133,14 +134,14 @@ export const buildIndexTool = defineTool({
   handler: async (args, deps, ctx) => {
     const signal = ctx?.signal;
     if (args.bookId === undefined && !args.ids?.length && !args.query) {
-      return toolError("Specify bookId, ids, or query — full-library indexing is deferred.");
+      return toolError("invalid_input", "Specify bookId, ids, or query — full-library indexing is deferred.");
     }
 
     let libraryId: string;
     try {
       libraryId = await deps.content.resolveLibraryId(args.library);
     } catch (err) {
-      return toolError(err instanceof Error ? err.message : String(err));
+      return toolError(errorCodeFor(err), err instanceof Error ? err.message : String(err));
     }
 
     // One build per library at a time (one index file, one writer); past the soft deadline the
@@ -221,7 +222,7 @@ async function runBuild(
   run.progress.total = booksRequested;
   run.progress.selectedIds = [...targets];
   if (booksRequested === 0) {
-    return toolError(`No books resolved from the selector. ${failures.join("; ")}`.trim());
+    return toolError("not_found", `No books resolved from the selector. ${failures.join("; ")}`.trim());
   }
 
   // Decide the build mode up front. keywordOnly skips the model entirely; otherwise probe

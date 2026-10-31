@@ -694,6 +694,25 @@ describe("dual-channel parity: scenarios are not vacuous", () => {
       expect((await runScenario(s)).isError).toBe(true);
     },
   );
+
+  // #249 review: Code renders structuredContent when present, so an error result must carry
+  // its steer there too — not just {errorCode}.
+  it.each(SCENARIOS.filter((s) => s.label.includes("(error)")).map((s) => [`${s.tool}: ${s.label}`, s] as const))(
+    "%s mirrors its steer in both channels",
+    async (_name, s) => {
+      const r = await runScenario(s);
+      const steer = textChannel(r)
+        .replace(/^Error: /, "")
+        .slice(0, PREFIX);
+      expect({
+        gaps: parityGaps(r),
+        steerInStructured: JSON.stringify(r.structuredContent ?? {}).includes(JSON.stringify(steer).slice(1, -1)),
+      }).toEqual({
+        gaps: [],
+        steerInStructured: true,
+      });
+    },
+  );
 });
 
 describe("dual-channel parity: get_content cursors", () => {

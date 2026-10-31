@@ -6,6 +6,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { appendFileSync, mkdirSync, readdirSync, unlinkSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
+import { ERROR_CODES } from "./domain/error-codes.js";
 
 export type Level = "debug" | "info" | "warn" | "error";
 
@@ -180,7 +181,9 @@ pid, client (MCP clientInfo.name), tool + call (set on every line emitted inside
 Truncation is always marked: strings \`…(+N chars)\` (cap ${STRING_MAX}), arrays \`…(+N items)\`.
 
 One \`msg:"tool call"\` line closes every tool call: meta = {durationMs, rpcId (JSON-RPC id — joins the client's MCP log),
-isError, errorCode?, error? (the steer text the model got), threw?, args}.
+traceId? + parentSpanId? (from the client's W3C traceparent in _meta), isError, errorCode?, hint? (generic next step),
+error? (the steer text the model got), threw?, args}.
+errorCode is one of: ${ERROR_CODES.join(", ")}.
 args is a summary: numbers/booleans as-is, short strings verbatim, long free text as its length only, objects as key names.
 isError results log at warn (the model handles them); server-side failures log at error.
 The home dir is written as \`~\`. Lines may contain book titles, ids and search queries — never book text.
@@ -189,9 +192,23 @@ Recipes:
 - errors today:            jq -c 'select(.lvl=="error")' ${FILE_PREFIX}$(date -u +%F).jsonl
 - one call's full story:   jq -c 'select(.call=="<id>")' ${FILE_PREFIX}*.jsonl
 - slow or failed calls:    jq -c 'select(.msg=="tool call" and (.meta.isError or .meta.durationMs>10000))' ${FILE_PREFIX}*.jsonl
+- failures by code:        jq -r 'select(.msg=="tool call" and .meta.isError) | .meta.errorCode' ${FILE_PREFIX}*.jsonl | sort | uniq -c
 - per-tool error counts:   jq -r 'select(.lvl=="error") | .tool // "-"' ${FILE_PREFIX}*.jsonl | sort | uniq -c
 
 The last ${RECENT_ERRORS_MAX} errors of the running process are in calibre_ping (recentErrors) without file access.
+
+OpenTelemetry names (best-effort — the OTel MCP semconv is still Development status):
+| ours | OTel |
+|---|---|
+| ts | timestamp |
+| lvl | severity_text |
+| msg | body / event.name |
+| tool | gen_ai.tool.name |
+| meta.rpcId | jsonrpc.request.id |
+| meta.durationMs | mcp.server.operation.duration (ms here, s in OTel) |
+| meta.errorCode | error.type (OTel: tool_error on any isError result; ours is finer) |
+| meta.traceId / meta.parentSpanId | trace_id / parent span_id |
+| client | client / MCP clientInfo.name |
 `;
 
 /** Build a logger; the module exports one shared `log` built from this. */

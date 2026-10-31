@@ -9,6 +9,7 @@ import { pageCursor, resolveCursor } from "./cursor.js";
 import { defineTool } from "./define.js";
 import { fence, renderResult, toolError, toolOk } from "./result.js";
 import { compileUserRegex } from "./user-regex.js";
+import { errorCodeFor } from "../domain/error-codes.js";
 
 // Pull a generous page when filtering client-side; categories above this are truncated.
 const FILTER_FETCH_NUM = 10_000;
@@ -47,7 +48,7 @@ export const listCategoriesTool = defineTool({
         if (args.cursor) {
           const libId = await deps.content.resolveLibraryId(args.library);
           const start = resolveCursor(args.cursor, { libId, mode: "categories:fields", query: "" }, TOOL);
-          if (!start.ok) return toolError(start.error);
+          if (!start.ok) return toolError("invalid_input", start.error);
         }
         const fields = cats.filter((c) => c.name).map((c) => ({ name: c.name, count: c.count }));
         const text = "Categories: " + fields.map((f) => f.name).join(", ");
@@ -65,7 +66,7 @@ export const listCategoriesTool = defineTool({
           .map((c) => c.name)
           .filter(Boolean)
           .join(", ");
-        return toolError(`Unknown category "${args.field}". Available: ${names}`);
+        return toolError("invalid_input", `Unknown category "${args.field}". Available: ${names}`);
       }
 
       // Bound to the resolved library, field and valueFilter, and checked before any value
@@ -73,7 +74,7 @@ export const listCategoriesTool = defineTool({
       const libId = await deps.content.resolveLibraryId(args.library);
       const cursorKey = args.valueFilter ? `${node.name}::${args.valueFilter}` : node.name;
       const start = resolveCursor(args.cursor, { libId, mode: "categories", query: cursorKey }, TOOL);
-      if (!start.ok) return toolError(start.error);
+      if (!start.ok) return toolError("invalid_input", start.error);
       const offset = start.offset;
 
       let items: { name: string; count?: number }[];
@@ -82,7 +83,7 @@ export const listCategoriesTool = defineTool({
       if (args.valueFilter) {
         const compiled = compileUserRegex(args.valueFilter);
         if (!compiled.regex) {
-          return toolError(`Invalid valueFilter regex: ${compiled.error}`);
+          return toolError("invalid_input", `Invalid valueFilter regex: ${compiled.error}`);
         }
         const re = compiled.regex;
         // Filter client-side over a large page, then paginate the matches.
@@ -107,7 +108,7 @@ export const listCategoriesTool = defineTool({
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      return toolError(msg);
+      return toolError(errorCodeFor(err), msg);
     }
   },
 });

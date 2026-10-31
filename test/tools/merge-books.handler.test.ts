@@ -372,6 +372,27 @@ describe("calibre_merge_books failure semantics (#33)", () => {
     expect(r.isError).toBe(true);
     expect((r.content[0] as { text: string }).text).toContain("--enable-local-write");
   });
+
+  // #249 review: the "did not start" result carries the failing step's code
+  it("codes a refused merge as write_refused", async () => {
+    const d = fakeDeps({
+      calibredb: async () => {
+        throw new CalibreCliError(1, "failed", "HTTP Error 403: Forbidden");
+      },
+    });
+    const r = await run({ targetId: 10, sourceIds: [12], confirm: true }, d);
+    expect(r.structuredContent?.errorCode).toBe("write_refused");
+  });
+
+  it("codes a merge against a stopped server as calibre_unreachable", async () => {
+    const d = fakeDeps({
+      calibredb: async () => {
+        throw new CalibreCliError(1, "failed", "ConnectionRefusedError: [Errno 61] Connection refused");
+      },
+    });
+    const r = await run({ targetId: 10, sourceIds: [12], confirm: true }, d);
+    expect(r.structuredContent?.errorCode).toBe("calibre_unreachable");
+  });
 });
 
 describe("calibre_merge_books schema coercion", () => {

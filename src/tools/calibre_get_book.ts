@@ -14,6 +14,7 @@ import { defineTool } from "./define.js";
 import { bookResourceLink } from "./resource-link.js";
 import { fence, toolError, toolOk } from "./result.js";
 import type { ContentBlock } from "./types.js";
+import { errorCodeFor } from "../domain/error-codes.js";
 
 // All-optional so the SDK validates structuredContent without stripping/rejecting (permissive).
 const bookSchema = z.object({
@@ -57,7 +58,7 @@ export const getBookTool = defineTool({
   annotations: { readOnlyHint: true, openWorldHint: true },
   handler: async (args, deps) => {
     const idArg = bookIdArg(args);
-    if (idArg === undefined) return toolError("Provide id (the book's db id or uuid).");
+    if (idArg === undefined) return toolError("invalid_input", "Provide id (the book's db id or uuid).");
     try {
       // BookId coerces numeric strings to numbers, so a string here is a uuid.
       let numericId: number;
@@ -70,7 +71,7 @@ export const getBookTool = defineTool({
           library: args.library,
         });
         const first = page.bookIds[0];
-        if (first === undefined) return toolError(`No book with uuid ${idArg}`);
+        if (first === undefined) return toolError("not_found", `No book with uuid ${idArg}`);
         numericId = first;
       }
 
@@ -95,10 +96,10 @@ export const getBookTool = defineTool({
       );
     } catch (err) {
       if (err instanceof CalibreHttpError && err.status === 404) {
-        return toolError(`No book with id ${idArg} in the requested library`);
+        return toolError("not_found", `No book with id ${idArg} in the requested library`);
       }
       const msg = err instanceof Error ? err.message : String(err);
-      return toolError(msg);
+      return toolError(errorCodeFor(err), msg);
     }
   },
 });

@@ -7,6 +7,7 @@
 import { z } from "zod";
 import { defineTool } from "./define.js";
 import { toolError, toolText } from "./result.js";
+import { errorCodeFor } from "../domain/error-codes.js";
 
 type Launcher = (url: string) => Promise<unknown>;
 
@@ -51,15 +52,18 @@ export const openBookTool = defineTool({
       formats = book.formats ?? [];
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      return toolError(`Could not look up book ${args.id}: ${msg}`);
+      return toolError(errorCodeFor(err), `Could not look up book ${args.id}: ${msg}`);
     }
     if (formats.length === 0) {
-      return toolError(`Book ${args.id} has no formats to open.`);
+      return toolError("not_found", `Book ${args.id} has no formats to open.`);
     }
     const want = args.format?.toLowerCase();
     const fmt = want ? formats.find((f) => f.toLowerCase() === want) : formats[0];
     if (!fmt) {
-      return toolError(`Book ${args.id} has no ${args.format ?? ""} format — available: ${formats.join(", ")}.`);
+      return toolError(
+        "not_found",
+        `Book ${args.id} has no ${args.format ?? ""} format — available: ${formats.join(", ")}.`,
+      );
     }
     const url = `calibre://view-book/${libraryId}/${args.id}/${fmt.toUpperCase()}`;
     try {
@@ -67,6 +71,7 @@ export const openBookTool = defineTool({
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       return toolError(
+        "dependency_missing",
         `Could not launch the Calibre viewer (${url}): ${msg}. ` +
           `Is Calibre installed? Its installer registers the calibre:// scheme.`,
       );

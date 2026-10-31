@@ -20,12 +20,15 @@ import { defineTool } from "./define.js";
 import { fence, toolError, toolOk } from "./result.js";
 import type { ToolDeps } from "./deps.js";
 import { isWriteRefused, WRITE_REFUSED_MESSAGE, verifyTimedOutWrite } from "../app/write-policy.js";
+import { errorCodeFor } from "../domain/error-codes.js";
 
 /** One executed (or planned) write step in the merge ledger. */
 interface Step {
   step: string;
   status: "pending" | "done" | "skipped" | "failed" | "not-run";
   note?: string;
+  /** What a failed step threw — the "did not start" result's errorCode (#249). Not rendered. */
+  cause?: unknown;
 }
 
 /** The benign `--dont-replace` collision: target already holds that format (probe §1). */
@@ -72,10 +75,10 @@ export const mergeBooksTool = defineTool({
     try {
       const sourceIds = [...new Set(args.sourceIds)];
       if (sourceIds.length === 0) {
-        return toolError("Provide at least one source book id in sourceIds.");
+        return toolError("invalid_input", "Provide at least one source book id in sourceIds.");
       }
       if (sourceIds.includes(args.targetId)) {
-        return toolError("sourceIds must not include targetId — the target is the surviving record.");
+        return toolError("invalid_input", "sourceIds must not include targetId — the target is the surviving record.");
       }
 
       // Fresh reads every call: the confirm run re-verifies the sources still exist.
@@ -84,6 +87,7 @@ export const mergeBooksTool = defineTool({
       const missing = allIds.filter((id) => !map.get(id));
       if (missing.length > 0) {
         return toolError(
+          "not_found",
           `No book(s) with id ${missing.join(", ")} — check with calibre_get_book ` +
             `(they may already have been merged or removed).`,
         );
@@ -144,7 +148,7 @@ export const mergeBooksTool = defineTool({
         warnings,
       });
     } catch (err) {
-      return toolError(err instanceof Error ? err.message : String(err));
+      return toolError(errorCodeFor(err), err instanceof Error ? err.message : String(err));
     }
   },
 });
@@ -273,6 +277,7 @@ async function executeMerge(deps: ToolDeps, job: MergeJob) {
           }
         }
         step.status = "failed";
+        step.cause = err;
         step.note = isWriteRefused(err) ? WRITE_REFUSED_MESSAGE : err instanceof Error ? err.message : String(err);
         aborted = true;
         break;
@@ -331,6 +336,7 @@ async function executeMerge(deps: ToolDeps, job: MergeJob) {
           }
           if (!handled) {
             metaStep.status = "failed";
+            metaStep.cause = err;
             metaStep.note =
               "calibredb timed out and the re-read does not confirm the metadata merge — " +
               `verify with calibre_get_book id=${target.id} before retrying`;
@@ -340,6 +346,7 @@ async function executeMerge(deps: ToolDeps, job: MergeJob) {
         }
         if (!handled) {
           metaStep.status = "failed";
+          metaStep.cause = err;
           metaStep.note = isWriteRefused(err)
             ? WRITE_REFUSED_MESSAGE
             : err instanceof Error
@@ -375,6 +382,7 @@ async function executeMerge(deps: ToolDeps, job: MergeJob) {
         }
         if (!handled) {
           removeStep.status = "failed";
+          removeStep.cause = err;
           removeStep.note = isWriteRefused(err)
             ? WRITE_REFUSED_MESSAGE
             : err instanceof CalibreCliTimeoutError
@@ -422,10 +430,14 @@ function ledgerResult(job: MergeJob, steps: Step[]) {
   }
 
   if (!committed) {
-    return toolError(
-      `Merge did not start — ${failed[0]!.note ?? failed[0]!.step}. Nothing was changed.\n` + `Steps:\n${ledger}`,
-      { ...structured, status: "incomplete" },
-    );
+    const message =
+      `Merge did not start — ${failed[0]!.note ?? failed[0]!.step}. Nothing was changed.\n` + `Steps:\n${ledger}`;
+    const opts = { structured: { ...structured, status: "incomplete" } };
+    // the failing step's own cause when it threw; a failed post-add check has none
+    const cause = failed[0]!.cause;
+    return cause === undefined
+      ? toolError("write_failed", message, opts)
+      : toolError(errorCodeFor(cause), message, opts);
   }
 
   // Something committed: NEVER isError (issue #33). Steer: re-running is safe.

@@ -194,7 +194,7 @@ __DEBUG__
     try { txt = (r.content || []).map(function (c) { return c.text || ""; }).join(" ").trim(); } catch (e) { /* shape */ }
     note.textContent = txt || "Couldn\u2019t open the book.";
   }
-  // A RESOLVED ui/open-link never degrades: Desktop replies {isError:true} even when the
+  // A RESOLVED ui/open-link never degrades: Desktop replies with an isError result even when the
   // link opened / the user merely declined the dialog (probe 2026-07-21, issue #69), so the
   // reply body is meaningless as a capability signal. Only a method-not-found rejection
   // proves the host can't open links; the initialize openLinks capability stays primary.

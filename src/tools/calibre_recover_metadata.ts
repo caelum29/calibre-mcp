@@ -23,6 +23,7 @@ import { bookIdArg, resolveNumericId } from "./resolve-id.js";
 import { bookResourceLink } from "./resource-link.js";
 import { fence, toolError, toolOk } from "./result.js";
 import type { ToolDeps } from "./deps.js";
+import { errorCodeFor } from "../domain/error-codes.js";
 
 const SOURCE = z.enum(["openlibrary", "googlebooks"]);
 const DEFAULT_SOURCES: Provider["name"][] = ["openlibrary", "googlebooks"];
@@ -56,10 +57,10 @@ export const recoverMetadataTool = defineTool({
   annotations: { readOnlyHint: true, openWorldHint: true },
   handler: async (args, deps) => {
     const idArg = bookIdArg(args);
-    if (idArg === undefined) return toolError("Provide id (the book's db id or uuid).");
+    if (idArg === undefined) return toolError("invalid_input", "Provide id (the book's db id or uuid).");
     try {
       const numericId = await resolveNumericId(deps, idArg, args.library);
-      if (numericId === undefined) return toolError(`No book with id/uuid ${idArg}`);
+      if (numericId === undefined) return toolError("not_found", `No book with id/uuid ${idArg}`);
       const book = await deps.content.getBook(numericId, args.library);
 
       // Pick the lookup key: existing valid ISBN → text-scraped ISBN → usable title.
@@ -94,6 +95,7 @@ export const recoverMetadataTool = defineTool({
           ? `is an importer placeholder. Add an ISBN (e.g. from the book's copyright page), then retry.`
           : `looks like a raw filename. Add an ISBN or a real title, then retry.`;
         return toolError(
+          "not_found",
           `Nothing to look up for book ${numericId}: no ISBN${scanHint} and its title "${book.title}" ${fix}`,
         );
       }
@@ -114,6 +116,7 @@ export const recoverMetadataTool = defineTool({
 
       if (hits.length === 0) {
         return toolError(
+          "not_found",
           `No metadata found for ${lookupKey} on ${order.join(", ")}. ` +
             (byIsbn ? "The ISBN may be unlisted." : "Try a different title or add an ISBN."),
         );
@@ -169,9 +172,9 @@ export const recoverMetadataTool = defineTool({
       );
     } catch (err) {
       if (err instanceof CalibreHttpError && err.status === 404) {
-        return toolError(`No book with id ${args.id} in the requested library`);
+        return toolError("not_found", `No book with id ${args.id} in the requested library`);
       }
-      return toolError(err instanceof Error ? err.message : String(err));
+      return toolError(errorCodeFor(err), err instanceof Error ? err.message : String(err));
     }
   },
 });

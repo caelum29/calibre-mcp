@@ -3,7 +3,8 @@
 
 import { z } from "zod";
 import { defineTool } from "./define.js";
-import { toolOk } from "./result.js";
+import { toolError, toolOk } from "./result.js";
+import { errorCodeFor } from "../domain/error-codes.js";
 
 export const listLibrariesTool = defineTool({
   name: "calibre_list_libraries",
@@ -32,17 +33,12 @@ export const listLibrariesTool = defineTool({
         libraries,
         default: info.defaultLibrary,
       });
-    } catch {
+    } catch (err) {
       // libraryInfo already logged the cause to stderr; give the model a next step.
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Error: Cannot reach Calibre Content Server at ${deps.config.serverUrl} — is the Calibre GUI / Content Server running?`,
-          },
-        ],
-        isError: true,
-      };
+      return toolError(
+        errorCodeFor(err),
+        `Cannot reach Calibre Content Server at ${deps.config.serverUrl} — is the Calibre GUI / Content Server running?`,
+      );
     }
   },
 });

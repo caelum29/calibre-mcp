@@ -73,6 +73,8 @@ export interface CallLogOptions {
   args: unknown;
   /** JSON-RPC request id — joins our record with the client's own MCP log. */
   rpcId?: string | number;
+  /** W3C `traceparent` from the request's _meta — logged as traceId/parentSpanId (#249). */
+  traceparent?: string;
   now?: () => number;
 }
 
@@ -93,12 +95,15 @@ export async function withCallLog<R extends ResultLike>(
       return result;
     } finally {
       const isError = result?.isError === true;
-      const errorCode = isError ? errorCodeOf(result?.structuredContent) : undefined;
+      const errorCode = isError ? stringField(result?.structuredContent, "errorCode") : undefined;
+      const hint = isError ? stringField(result?.structuredContent, "hint") : undefined;
       const meta = {
         durationMs: Math.round(now() - t0),
         ...(opts.rpcId === undefined ? {} : { rpcId: opts.rpcId }),
+        ...parseTraceparent(opts.traceparent),
         isError,
         ...(errorCode ? { errorCode } : {}),
+        ...(hint ? { hint } : {}),
         // The steer text the model saw — what an agent needs to explain the failure.
         ...(isError ? { error: errorTextOf(result) } : {}),
         ...(result === undefined ? { threw: true } : {}),
@@ -117,7 +122,18 @@ function errorTextOf(r: ResultLike | undefined): string | undefined {
   return text === undefined ? undefined : capString(text, ERROR_TEXT_MAX);
 }
 
-function errorCodeOf(sc: unknown): string | undefined {
-  if (sc === null || typeof sc !== "object" || !("errorCode" in sc)) return undefined;
-  return typeof sc.errorCode === "string" ? sc.errorCode : undefined;
+function stringField(sc: unknown, key: "errorCode" | "hint"): string | undefined {
+  if (sc === null || typeof sc !== "object" || !(key in sc)) return undefined;
+  const v = (sc as Record<string, unknown>)[key];
+  return typeof v === "string" ? v : undefined;
+}
+
+// version-traceId-parentId-flags; all-zero ids are invalid per W3C Trace Context.
+const TRACEPARENT = /^[\da-f]{2}-([\da-f]{32})-([\da-f]{16})-[\da-f]{2}$/;
+
+/** traceId + parentSpanId from a W3C traceparent; nothing for a missing or malformed one. */
+export function parseTraceparent(tp: string | undefined): { traceId?: string; parentSpanId?: string } {
+  const m = tp === undefined ? null : TRACEPARENT.exec(tp.trim().toLowerCase());
+  if (!m || /^0+$/.test(m[1]!) || /^0+$/.test(m[2]!)) return {};
+  return { traceId: m[1], parentSpanId: m[2] };
 }

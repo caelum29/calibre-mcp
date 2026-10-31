@@ -5,7 +5,10 @@
 import { realpathSync, statSync } from "node:fs";
 import path from "node:path";
 
-export type AddPathResult = { ok: true; resolved: string } | { ok: false; reason: string };
+export type AddPathResult =
+  | { ok: true; resolved: string }
+  // outsideRoots tells the whitelist refusal apart from a missing file (#249 code)
+  | { ok: false; reason: string; outsideRoots?: true };
 
 /**
  * Validate that `candidate` is a real file inside one of `roots`. Resolving with realpath
@@ -41,6 +44,7 @@ export function validateAddPath(candidate: string, roots: string[]): AddPathResu
   if (!inside) {
     return {
       ok: false,
+      outsideRoots: true,
       reason:
         `Path is outside the allowed import roots. Allowed: ${roots.join(", ")}. ` +
         `Set CALIBRE_MCP_ADD_ROOTS to add more.`,
