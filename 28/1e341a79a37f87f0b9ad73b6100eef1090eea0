@@ -1,0 +1,25 @@
+docs/claude/artifacts-and-qmd.md
+  s_dc7de0317f6835::t_968da5edfb51d7 12-13
+src/domain/figures/captions.ts
+  s_dc7de0317f6835::t_54ee3b9a417b61 1
+src/domain/figures/inventory.ts
+  s_dc7de0317f6835::t_d9c8e83b7d6c18 20
+test/domain/figures/fixtures/caption-quirks-107.md
+  s_dc7de0317f6835::t_0566a2020dabfc 40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "281e341a79a37f87f0b9ad73b6100eef1090eea0",
+  "prompts": {},
+  "sessions": {
+    "s_dc7de0317f6835": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "85885bd3-efdb-4858-a017-65e07fb13a0e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
