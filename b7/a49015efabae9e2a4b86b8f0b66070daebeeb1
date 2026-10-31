@@ -1,0 +1,22 @@
+test/architecture.test.ts
+  s_2748adee5ace54::t_295dc62a1efb14 190-193,218
+  s_2748adee5ace54::t_38470d44d01eb4 189
+test/calibre/lib-id-brand.test.ts
+  s_2748adee5ace54::t_295dc62a1efb14 1-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b7a49015efabae9e2a4b86b8f0b66070daebeeb1",
+  "prompts": {},
+  "sessions": {
+    "s_2748adee5ace54": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eca6633b-40b8-4fea-beac-e4ac360b8a51",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
