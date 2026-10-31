@@ -70,13 +70,15 @@ function deps(
 ): SemanticDeps {
   // Full-port fakes (#316): stubs for what the handler reads, the rest throw if reached.
   const content = fakeContent({
+    virtualLibraries: async () => ({}),
     resolveLibraryId: async () => asLibId(LIB),
     search: async () => ({ bookIds: [], total: 0, num: 0, offset: 0, sort: "", libraryId: LIB }),
   });
   return {
     config: loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:", ...env }),
     content,
-    // no saved searches → no bundles and no auto-exclusion sweep
+    // no saved searches (calibredb) and no virtual libraries (content) → the auto-exclusion
+    // sweep runs and finds no bundles
     calibre: fakeCalibre({ calibredb: async () => ({ stdout: "", stderr: "" }) }),
     extractor: fakeExtractor(),
     figures: fakeFigures(),

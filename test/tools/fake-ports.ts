@@ -2,6 +2,8 @@
 // method fails typecheck here, once, instead of passing every `satisfies Partial<Port> as Port`
 // fake and failing at runtime in whichever handler test first reaches it. Methods a test doesn't
 // stub throw a named error, so reaching one fails loudly rather than as "x is not a function".
+// Caveat: a handler path that catches errors (best-effort sweeps, figure inventory) swallows that
+// throw and degrades silently. Stub every method such a path calls explicitly in the test.
 
 import type { LibraryWriter } from "../../src/calibre/client.js";
 import type { LibraryReader } from "../../src/calibre/content-server.js";

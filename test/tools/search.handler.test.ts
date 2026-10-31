@@ -30,6 +30,7 @@ interface FakeOpts {
 // Full-port fakes (#316): stubs for the methods each branch touches, the rest throw if reached.
 function deps(opts: FakeOpts = {}): SearchDeps {
   const content = fakeContent({
+    virtualLibraries: async () => ({}),
     search: async (p): Promise<SearchPage> => {
       if (p.query.startsWith("uuid:")) return { ...page(), bookIds: [99] };
       return opts.page ?? page();
@@ -41,7 +42,8 @@ function deps(opts: FakeOpts = {}): SearchDeps {
   return {
     config: loadConfig({}),
     content,
-    // no saved searches → no bundles and no auto-exclusion sweep
+    // no saved searches (calibredb) and no virtual libraries (content) → the auto-exclusion
+    // sweep runs and finds no bundles
     calibre: fakeCalibre({ calibredb: async () => ({ stdout: "", stderr: "" }) }),
     fts: fakeFts(opts.ftsHits),
     extractor: fakeExtractor(),
