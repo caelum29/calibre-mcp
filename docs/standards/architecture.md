@@ -30,5 +30,5 @@ edge removes it; a diff that adds an entry is a finding.
 
 - Beyond the checked homes, binary lookup goes through one helper and `/ajax/book` through one
   content-server fetch (#219, #223). A new `findBin` or second fetch of the same endpoint is a twin.
-- `store.ts`, widget `*-html.ts` and other files near the 500-line cap do not grow with new
+- `src/semantic/store/` modules, widget `*-html.ts` and other files near the 500-line cap do not grow with new
   concerns; split instead of dodging `max-lines` (#271, #272).
