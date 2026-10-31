@@ -1,0 +1,24 @@
+test/tools/bulk-update.handler.test.ts
+  s_c292bb308e7526::t_f68022e8d932e1 551-559
+test/tools/find-duplicates.handler.test.ts
+  s_c292bb308e7526::t_f68022e8d932e1 89-95
+src/domain/book-fields.ts
+  s_c292bb308e7526::t_f68022e8d932e1 136-149,157-158,161-162
+  s_c292bb308e7526::t_bfe0fe037a558a 135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ce58a1027f33a437889aca74ba658a30ed47978c",
+  "prompts": {},
+  "sessions": {
+    "s_c292bb308e7526": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e234f66e-fd22-4d0a-b34a-0d6b587d1afc",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
