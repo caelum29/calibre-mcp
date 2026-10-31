@@ -50,7 +50,7 @@ Mostly PDF/EPUB, technical, EN + RU. Calibre GUI + Content Server on `:8080` are
 | `calibre_quality_report` | Library audit: missing metadata, rule violations, readability | `checks`, `ids`/`query`/`filter`, `readability` |
 | `calibre_recover_metadata` | Propose metadata for raw-filename books (ISBN → OpenLibrary → Google Books) | `id`, `sources` — returns a *proposal*; apply via `calibre_update_book` |
 | `calibre_update_book` | Write metadata for one book | `id`, `changes` (object incl. `#custom` fields) |
-| `calibre_bulk_update` | Same change across many books | `changes`, `ids` OR `query` OR `filter` (one required), `preview` |
+| `calibre_bulk_update` | Same change across many books | `changes` and/or `tags_add`/`tags_remove`, `ids` OR `query` OR `filter` (one required), `preview` |
 | `calibre_add_book` | Import a file (path must be under the whitelisted roots) | `path` |
 | `calibre_remove_book` | Delete books | `ids`, `confirm` |
 | `calibre_merge_books` | Merge duplicate records: formats + metadata into a target, sources → trash | `targetId`, `sourceIds`, `mode: merge\|safe\|formatsOnly`, `confirm` |
@@ -141,8 +141,9 @@ then drill into a hit: `calibre_search scope:book bookId:N` or
 `calibre_update_book` with `changes: {tags: [...], title: "...", rating: 8}`.
 
 **Batch tag by search:**
-`calibre_bulk_update` with `query: "title:SQL"` and `changes: {tags: [...]}` — review the
-preview, then re-call with `preview:false`.
+`calibre_bulk_update` with `query: "title:SQL"` and `tags_add: ["SQL"]` (keeps each book's other
+tags; `changes: {tags: [...]}` would replace them) — review the preview, then re-call with
+`preview:false`.
 
 **Fix a raw-filename book (e.g. `795731065.pdf`):**
 `calibre_extract_isbn` (preview) → `calibre_recover_metadata` → confirm with user →
