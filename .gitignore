@@ -50,3 +50,6 @@ Support/
 
 # test coverage reports
 coverage/
+
+# Understand-Anything knowledge graph + cache (local only, not committed)
+.ua/

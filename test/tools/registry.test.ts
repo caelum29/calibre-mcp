@@ -171,3 +171,43 @@ describe("no bare boolean anywhere in an input schema (#212)", () => {
     expect(allTools.flatMap((t) => scan(t.inputSchema, t.name).out)).toEqual([]);
   });
 });
+
+// -32602 hardening beyond booleans: buggy clients stringify top-level args ("42", '["a"]',
+// '{"tags":…}'), so any non-string value a field accepts must parse the same from its JSON
+// string form (z.coerce.number, jsonArray, jsonRecord). Probed behaviourally per field.
+describe("stringified number/array/object inputs parse like the real value (-32602)", () => {
+  const kindOf = (v: unknown): string => (Array.isArray(v) ? "array" : typeof v);
+  const CANDIDATES: unknown[] = [0, 1, 42, [], [1, 2], ["a", "b"], [{ id: 1 }], {}, { tags: ["x"] }, { title: "t" }];
+
+  /** Fields × non-string candidates the field accepts as a real value. */
+  const probes = allTools.flatMap((t) =>
+    Object.entries(t.inputSchema).flatMap(([key, field]) => {
+      const schema = z.object({ f: field });
+      // Only where the field keeps the value's kind — lenient coercers turn [] into 0 or 42 into true.
+      return CANDIDATES.filter((v) => {
+        const r = schema.safeParse({ f: v });
+        return r.success && kindOf(r.data.f) === kindOf(v);
+      }).map((v) => ({
+        where: `${t.name}.${key} ← ${JSON.stringify(v)}`,
+        schema,
+        value: v,
+      }));
+    }),
+  );
+
+  it("finds number, array and object inputs to check (the walk is not vacuous)", () => {
+    const kinds = new Set(probes.map((p) => kindOf(p.value)));
+    expect([...kinds].sort()).toEqual(["array", "number", "object"]);
+  });
+
+  it("every accepted value also parses from its JSON string, to the same result", () => {
+    const broken = probes
+      .filter(({ schema, value }) => {
+        const real = schema.safeParse({ f: value });
+        const str = schema.safeParse({ f: JSON.stringify(value) });
+        return !(str.success && real.success && JSON.stringify(str.data) === JSON.stringify(real.data));
+      })
+      .map((p) => p.where);
+    expect(broken).toEqual([]);
+  });
+});

@@ -1,0 +1,74 @@
+<!--@ Book-card document (calibre_get_book). Markup frozen from the approved mockup;
+     cardHtml() fills __VERSION__ and __DEBUG__. @-->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>calibre-mcp book detail</title>
+<style>
+{{include card.css}}</style>
+</head>
+<body>
+
+<div class="widget" id="w" data-state="loading">
+  <div class="view view-loading" aria-hidden="true">
+    <div class="hero">
+      <div class="cover-s"></div>
+      <div style="flex:1;padding-top:4px">
+        <div class="sl" style="width:75%;height:15px"></div>
+        <div class="sl" style="width:45%;margin-top:9px"></div>
+        <div class="sl" style="width:60%;margin-top:22px"></div>
+        <div class="sl" style="width:52%;margin-top:7px"></div>
+        <div class="sl" style="width:57%;margin-top:7px"></div>
+        <div class="sl" style="width:35%;margin-top:24px;height:26px;border-radius:999px"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="view view-loaded">
+    <div class="hero">
+      <div class="coverwrap">
+        <button class="coverbtn" id="coverBtn" type="button" data-zoom aria-label="View cover at full size">
+          <span class="cover" id="cover"></span>
+        </button>
+      </div>
+      <div class="meta">
+        <h1 class="title" id="title"></h1>
+        <p class="authors" id="authors"></p>
+        <span class="series" id="series" hidden></span>
+        <dl class="facts" id="facts"></dl>
+        <div class="tags" id="tags"></div>
+        <form class="searchrow" id="searchForm" data-need="msg">
+          <input type="text" id="searchInput" placeholder="Search inside this book…" aria-label="Search inside this book">
+          <button type="submit"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg> Search</button>
+        </form>
+      </div>
+      <div class="acts" id="actions"></div>
+    </div>
+    <div class="desc clamped" id="desc">
+      <div class="body" id="descBody"></div>
+      <button class="more" id="more" type="button">Show more</button>
+    </div>
+    <div class="curation" id="curation" data-need="msg">
+      <button class="cur" type="button" data-fix><svg class="i" viewBox="0 0 24 24"><path d="M14.7 6.3a4.5 4.5 0 00-6 6L3 18l3 3 5.7-5.7a4.5 4.5 0 006-6L14 13l-3-3z"/></svg> Fix metadata</button>
+      <button class="cur" type="button" data-dupes><svg class="i" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg> Find duplicates</button>
+      <button class="cur" type="button" data-sum><svg class="i" viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9zM19 17l.8 2.2L22 20l-2.2.8L19 23l-.8-2.2L16 20l2.2-.8z"/></svg> Summarize</button>
+    </div>
+    <div class="ids" id="ids"></div>
+  </div>
+
+  <div class="view view-notfound flat">
+    <span><b>Book not found</b>&nbsp; <span class="q" id="nfId"></span></span>
+  </div>
+
+  <div class="view view-error flat">
+    <span>Couldn&rsquo;t load book</span>
+    <button class="retry" id="retry" type="button">Retry</button>
+  </div>
+</div>
+
+<script>
+{{include card.js}}</script>
+</body>
+</html>

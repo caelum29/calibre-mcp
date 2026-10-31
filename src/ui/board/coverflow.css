@@ -1,0 +1,38 @@
+/*@ Coverflow variant — layout only (stage + cover dims + label bar + skeleton). @*/
+/* ============ coverflow ============ */
+.flow{position:relative}
+.view-coverflow .arrow{top:106px}
+.fscroll{position:relative; overflow-x:auto; overflow-y:hidden; scrollbar-width:none;
+  scroll-snap-type:x mandatory; scroll-behavior:smooth}
+.fscroll::-webkit-scrollbar{display:none}
+.fsticky{position:sticky; left:0; width:100%; height:246px; overflow:hidden}
+.fstage{position:absolute; inset:0; margin:0; padding:0; list-style:none; perspective:1100px}
+.frow{display:flex; height:1px; width:max-content} /* padding set in JS so scroll range is exact */
+.fsnap{flex:none; width:70px; scroll-snap-align:center}
+.fitem{position:absolute; left:50%; top:12px; width:150px; margin-left:-75px; will-change:transform}
+.fitem .cover{
+  width:150px; height:200px; border-radius:4px 10px 10px 4px;
+  -webkit-box-reflect:below 3px linear-gradient(transparent 62%, rgba(0,0,0,.15));
+}
+.fitem .card{display:block; width:150px; text-align:left; border-radius:12px}
+.fitem .card[aria-pressed="true"] .cover{outline:2.5px solid var(--accent); outline-offset:3px}
+/* label + actions under the flow */
+.flabel{display:flex; flex-direction:column; align-items:center; gap:1px;
+  padding:2px 18px 0; text-align:center; min-height:62px}
+.flabel .ft{font-size:13px; font-weight:600; line-height:1.3; max-width:420px;
+  display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden}
+.flabel .fa{font-size:11.5px; color:var(--tx-muted)}
+.facts-row{display:flex; gap:8px; margin-top:5px}
+.fbtn{display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:600; padding:5px 14px; border-radius:999px}
+.fbtn.primary{background:var(--accent); color:#fff}
+.fbtn.primary:hover{background:var(--accent-deep)}
+.fbtn.ghost{background:var(--btn); box-shadow:var(--shadow)}
+.fbtn.ghost:hover{background:var(--accent-tint); color:var(--accent)}
+
+/* ============ coverflow skeleton (coverflow pose) ============ */
+.skelstage{position:relative; height:246px; overflow:hidden; perspective:1100px; margin:0; padding:0; list-style:none}
+.skelstage .fitem{top:12px}
+.skelstage .cover-s{
+  width:150px; height:200px; border-radius:4px 10px 10px 4px;
+  background:var(--skel); position:relative; overflow:hidden;
+}

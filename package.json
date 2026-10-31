@@ -33,10 +33,10 @@
     "node": ">=22.16"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "node scripts/gen-widgets.mjs && tsc -p tsconfig.json",
     "dev": "tsx watch src/run-stdio.ts",
     "start": "node dist/run-stdio.js",
-    "inspect": "tsc -p tsconfig.json && mcp-inspector node dist/run-stdio.js",
+    "inspect": "pnpm build && mcp-inspector node dist/run-stdio.js",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p test/tsconfig.json",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
@@ -53,6 +53,8 @@
     "versions:check": "node scripts/check-versions.mjs",
     "catalog": "pnpm build && node scripts/gen-tool-catalog.mjs",
     "catalog:check": "node scripts/gen-tool-catalog.mjs --check",
+    "widgets": "node scripts/gen-widgets.mjs",
+    "widgets:check": "node scripts/gen-widgets.mjs --check",
     "prepublishOnly": "pnpm run versions:check && pnpm run build && pnpm run test",
     "pack:mcpb": "node scripts/pack-mcpb.mjs",
     "pack:mcpb:dev": "node scripts/pack-mcpb.mjs --dev",

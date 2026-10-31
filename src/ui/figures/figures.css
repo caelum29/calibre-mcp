@@ -1,0 +1,140 @@
+/*@ Figures-strip styles; tokens follow the cover-board family plus the plate/mat knobs. @*/
+/* ============ tokens (shared family: cover-board, book-card) ============ */
+:root{
+  color-scheme: light dark;
+  --bg: light-dark(#faf7f2, #262624);
+  --tx: light-dark(#33302b, #ece9e3);
+  --tx-muted: light-dark(#8a8378, #9c958a);
+  --card: light-dark(#ffffff, #31302e);
+  --line: light-dark(rgba(60,50,40,.14), rgba(255,255,255,.13));
+  --accent: light-dark(#c67139, #d98d55);
+  --accent-deep: light-dark(#8f4c20, #e8ab7d);
+  --accent-tint: light-dark(rgba(198,113,57,.12), rgba(217,141,85,.16));
+  --sage: light-dark(#7a8a5e, #95a67a);
+  --sage-tint: light-dark(rgba(122,138,94,.14), rgba(149,166,122,.16));
+  --btn: light-dark(rgba(255,255,255,.94), rgba(49,48,46,.94));
+  --skel: light-dark(rgba(60,50,40,.08), rgba(255,255,255,.07));
+  --skel-hi: light-dark(rgba(255,255,255,.65), rgba(255,255,255,.09));
+  --shadow: 0 1px 2px rgba(0,0,0,.07), 0 5px 16px rgba(0,0,0,.09);
+  --shadow-lg: 0 2px 4px rgba(0,0,0,.09), 0 10px 26px rgba(0,0,0,.14);
+  --scrim: light-dark(rgba(255,253,250,.92), rgba(38,38,36,.92));
+  /* the plate: line art is dark-on-white, so paper stays paper in both themes —
+     softened in dark so a white diagram reads as an illustration, not a glowing hole */
+  --plate: light-dark(#ffffff, #e9e4db);
+  --plate-edge: light-dark(rgba(60,50,40,.15), rgba(0,0,0,.5));
+  --plate-mat: light-dark(#f3ece1, #2c2b28);   /* mat board the plate sits on */
+}
+:root[data-theme="light"]{ color-scheme:light; }
+:root[data-theme="dark"]{ color-scheme:dark; }
+
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg); color:var(--tx);
+  font:14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:10px}
+svg.i{width:14px;height:14px;stroke:currentColor;stroke-width:2.4;fill:none;
+  stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* ============ widget shell ============ */
+.widget{position:relative; max-width:700px; margin:0 auto; padding:10px 16px 12px}
+/* Collapsed = the whole document goes away AND reportSize() sends height 0: a zero-height
+   widget div is not enough, documentElement.scrollHeight never drops below the iframe
+   viewport, so the host would keep a tall empty frame (board-widget precedent). */
+body[data-collapsed="1"]{display:none}
+
+/* ============ reading pane + margin rail ============ */
+.reader{display:grid; grid-template-columns:auto minmax(0,1fr); gap:10px; align-items:stretch}
+.reader[data-single="1"]{grid-template-columns:minmax(0,1fr)}
+
+/* margin rail — thumbnails as small plates, like figures pinned in a page margin */
+.rail{display:flex; flex-direction:column; gap:7px; width:52px; flex:none}
+.reader[data-single="1"] .rail{display:none}
+.tab{position:relative; height:52px; border-radius:8px; padding:3px;
+  background:var(--plate-mat); border:1px solid var(--plate-edge);
+  display:grid; place-items:center; overflow:hidden;
+  transition:border-color .15s ease, background .15s ease}
+.tab img{position:absolute; inset:3px; width:calc(100% - 6px); height:calc(100% - 6px);
+  object-fit:contain; display:block; border-radius:4px}
+.tab:hover{border-color:var(--accent)}
+.tab[aria-selected="true"]{background:var(--accent-tint); border-color:var(--accent);
+  box-shadow:inset 0 0 0 1px var(--accent)}
+.tab .n{position:absolute; left:2px; top:1px; font-size:9px; font-weight:700;
+  color:var(--tx-muted); background:var(--scrim); border-radius:4px; padding:0 3px}
+.tab.is-stub{background:var(--sage-tint); border-style:dashed; color:var(--sage)}
+.tab.is-stub svg.i{width:15px;height:15px}
+
+/* the pane — the figure is the UI */
+.pane{position:relative; min-width:0; display:flex; flex-direction:column}
+.plate{position:relative; flex:none; display:flex; align-items:center; justify-content:center;
+  background:var(--plate); border:1px solid var(--plate-edge); border-radius:12px;
+  box-shadow:var(--shadow); overflow:hidden; padding:10px;
+  height:var(--pane-h,300px); cursor:zoom-in}
+.reader[data-single="1"] .plate{height:var(--pane-h,306px)}
+.plate img{max-width:100%; max-height:100%; width:auto; height:auto; display:block;
+  user-select:none; -webkit-user-drag:none}
+/* the pv wrapper scrolls on zoom; the plate itself never scrolls, so the chip stays pinned */
+.pv{display:flex; align-items:center; justify-content:center; width:100%; height:100%; min-width:0}
+.plate.is-zoomed{padding:0}
+.plate.is-zoomed .pv{position:absolute; inset:0; width:auto; height:auto;
+  overflow:auto; align-items:flex-start; justify-content:flex-start; cursor:grab}
+.plate.is-zoomed .pv.is-dragging{cursor:grabbing}
+.plate.is-zoomed img{max-width:none; max-height:none}
+
+/* zoom affordance — quiet chip, states read as "Fit" / "100%" */
+.zoomchip{position:absolute; right:8px; bottom:8px; z-index:3;
+  display:inline-flex; align-items:center; gap:5px;
+  font-size:11px; font-weight:600; padding:3.5px 9px; border-radius:999px;
+  background:var(--scrim); color:var(--tx); box-shadow:var(--shadow);
+  border:1px solid var(--line); opacity:0; transform:translateY(3px);
+  transition:opacity .15s ease, transform .15s ease}
+.plate:hover .zoomchip, .plate:focus-visible .zoomchip, .plate.is-zoomed .zoomchip{opacity:1; transform:none}
+.plate.is-zoomed .zoomchip{color:var(--accent)}
+
+/* caption block under the pane */
+.cap{margin:9px 2px 0; font-size:13px; line-height:1.4; color:var(--tx); text-wrap:pretty;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
+.cap.is-empty{color:var(--tx-muted); font-style:italic}
+.provrow{display:flex; align-items:baseline; gap:10px; margin:2px 2px 0}
+.prov{font-size:11.5px; color:var(--tx-muted); font-variant-numeric:tabular-nums}
+.count{margin-left:auto; font-size:11.5px; color:var(--tx-muted); font-variant-numeric:tabular-nums}
+
+/* skipped stub — one quiet line, never a crash */
+.stub{display:flex; align-items:center; gap:7px; margin:9px 0 0; padding:6px 10px;
+  border:1px dashed var(--line); border-radius:9px;
+  font-size:12px; color:var(--tx-muted); background:var(--sage-tint)}
+.stub svg.i{width:13px;height:13px; color:var(--sage)}
+.stub b{font-weight:600; color:var(--tx)}
+/* the stub selected in the rail takes the pane as a calm placard, not an image */
+.stubpane{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:6px; text-align:center; height:var(--pane-h,300px); padding:20px;
+  border:1px dashed var(--line); border-radius:12px; background:var(--plate-mat);
+  color:var(--tx-muted); font-size:12.5px}
+.stubpane svg.i{width:20px;height:20px; color:var(--sage)}
+.stubpane b{color:var(--tx); font-size:13px}
+
+/* ============ skeleton ============ */
+.sk{border-radius:10px; background:var(--skel); position:relative; overflow:hidden}
+.sk::after{content:""; position:absolute; inset:0; transform:translateX(-100%);
+  background:linear-gradient(90deg, transparent, var(--skel-hi), transparent);
+  animation:sweep 1.35s infinite}
+@keyframes sweep{100%{transform:translateX(100%)}}
+.sk-tab{height:52px; border-radius:8px}
+.sk-plate{height:300px; border-radius:12px}
+.sk-line{height:11px; margin-top:9px; width:58%}
+.sk-line.s{width:30%; height:9px; margin-top:6px}
+
+/* ============ error ============ */
+.err{display:flex; align-items:center; gap:7px; padding:9px 11px; border-radius:10px;
+  border:1px solid var(--line); background:var(--card); color:var(--tx-muted); font-size:12.5px}
+.err svg.i{color:var(--accent)}
+
+@media (max-width:520px){
+  .rail{flex-direction:row; width:auto}
+  .reader{grid-template-columns:minmax(0,1fr); grid-template-areas:"pane" "rail"}
+  .pane{grid-area:pane} .rail{grid-area:rail}
+  .tab{width:52px}
+}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{transition:none!important; animation:none!important}
+}

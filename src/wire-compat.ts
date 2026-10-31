@@ -14,10 +14,7 @@
  * in place. Anything that is not a tools/list result is left untouched.
  */
 export function stripOutputSchemaDollarSchema(result: unknown): void {
-  if (!result || typeof result !== "object") return;
-  const tools = (result as { tools?: unknown }).tools;
-  if (!Array.isArray(tools)) return;
-  for (const tool of tools as Array<Record<string, unknown>>) {
+  for (const tool of toolsOf(result)) {
     const out = tool?.outputSchema;
     if (out && typeof out === "object" && "$schema" in out) {
       delete (out as Record<string, unknown>).$schema;
@@ -25,8 +22,55 @@ export function stripOutputSchemaDollarSchema(result: unknown): void {
   }
 }
 
-/** Apply {@link stripOutputSchemaDollarSchema} to an outgoing JSON-RPC message's `result`. */
+// SDK v2 flips every inputSchema's declared dialect from draft-07 to 2020-12 (#270). Our
+// -32602 history with Desktop/Cowork makes an unverified dialect change too risky, so the
+// wire stays draft-07 until a live check in Desktop, Cowork and Code accepts 2020-12.
+/** The JSON Schema dialect every tools/list inputSchema declares on the wire (#270). */
+export const DRAFT_07 = "http://json-schema.org/draft-07/schema#";
+
+/**
+ * Pin a declared `$schema` on every tool's inputSchema root to draft-07, in place. A schema
+ * that declares no dialect is left alone (no new key on the wire); nested keys are untouched.
+ */
+export function pinInputSchemaDraft07(result: unknown): void {
+  for (const tool of toolsOf(result)) {
+    const input = tool?.inputSchema;
+    if (input && typeof input === "object" && "$schema" in input) {
+      (input as Record<string, unknown>).$schema = DRAFT_07;
+    }
+  }
+}
+
+/** Every wire rewrite for a tools/list result: output `$schema` stripped, input dialect pinned. */
+export function applyToolsListCompat(result: unknown): void {
+  stripOutputSchemaDollarSchema(result);
+  pinInputSchemaDraft07(result);
+}
+
+/** Apply {@link applyToolsListCompat} to an outgoing JSON-RPC message's `result`. */
 export function stripDollarSchema<T extends object>(msg: T): T {
-  if ("result" in msg) stripOutputSchemaDollarSchema((msg as { result?: unknown }).result);
+  if ("result" in msg) applyToolsListCompat((msg as { result?: unknown }).result);
   return msg;
+}
+
+/** Structural slice of an MCP transport: just the outgoing-message hook (keeps this file SDK-free). */
+export interface MessageSender<M extends object> {
+  send(message: M): Promise<void>;
+}
+
+/**
+ * Route every outgoing message of `transport` through {@link stripDollarSchema}, in place.
+ * The stdio entry point installs this; one shared factory so a test can pin the hookup.
+ */
+export function installWireCompat<M extends object, T extends MessageSender<M>>(transport: T): T {
+  const send = transport.send.bind(transport);
+  transport.send = (msg: M) => send(stripDollarSchema(msg));
+  return transport;
+}
+
+/** The `tools` array of a tools/list result, or none for any other value. */
+function toolsOf(result: unknown): Array<Record<string, unknown>> {
+  if (!result || typeof result !== "object") return [];
+  const tools = (result as { tools?: unknown }).tools;
+  return Array.isArray(tools) ? (tools as Array<Record<string, unknown>>) : [];
 }

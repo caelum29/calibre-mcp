@@ -11,6 +11,12 @@
     "pnpm-lock.yaml",
     "test/eval/retrieval/*.json",
     "test/eval/retrieval/corpus/**",
-    "test/eval/retrieval/reports/**"
+    "test/eval/retrieval/reports/**",
+    "test/ui/__snapshots__/**",
+    "src/ui/board/**",
+    "src/ui/card/**",
+    "src/ui/figures/**",
+    "src/ui/debug.js",
+    "src/ui/generated/**"
   ]
 }

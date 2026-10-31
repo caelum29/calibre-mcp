@@ -326,7 +326,7 @@ function fakeDeps(o: FakeOpts = {}): ToolDeps {
   const extractor = {
     getText: async () => {
       const text = o.text ?? "Chapter 1. Ownership. ".repeat(200);
-      return { text, backend: "test", chars: text.length, cached: false, markers: [] };
+      return { text, backend: "test", chars: text.length, cached: false, markers: [], unplaced: 0 };
     },
   };
   return {
@@ -531,6 +531,8 @@ const ALLOWLIST: Record<string, string> = {
   calibre_get_figures: "no outputSchema → Code falls back to the text content, so both clients see one channel (#227)",
   calibre_board_data: "widget-internal (_meta.ui.visibility app), never shown to the model (D-017, #227)",
   calibre_open_book: "widget-internal (_meta.ui.visibility app), never shown to the model (D-017, #227)",
+  calibre_ping:
+    "no outputSchema → Code falls back to the text content; text/structured diagnostics covered by ping.handler.test.ts + ping-diagnostics.test.ts (#222)",
 };
 
 describe("dual-channel parity over the registry (#227)", () => {
@@ -668,6 +670,19 @@ describe("dual-channel parity: scenarios are not vacuous", () => {
     expect(r.isError).toBeFalsy();
     expect(r.structuredContent !== undefined).toBe(tool?.outputSchema !== undefined);
   });
+
+  // #157: the SDK validates structuredContent against outputSchema AFTER the handler ran — a
+  // committed write whose result drops an `undefined` key on the wire became a tool error.
+  it.each(nonError.map((s) => [`${s.tool}: ${s.label}`, s] as const))(
+    "%s satisfies its outputSchema after a JSON round-trip",
+    async (_name, s) => {
+      const tool = byName.get(s.tool as AnyToolDescriptor["name"]);
+      if (!tool?.outputSchema) return;
+      const wire: unknown = JSON.parse(JSON.stringify((await runScenario(s)).structuredContent));
+      const parsed = z.object(tool.outputSchema).safeParse(wire);
+      expect(parsed.success ? [] : parsed.error.issues).toEqual([]);
+    },
+  );
 
   it.each(SCENARIOS.filter((s) => s.label.includes("(error)")).map((s) => [`${s.tool}: ${s.label}`, s] as const))(
     "%s is an error result",

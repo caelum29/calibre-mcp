@@ -1,0 +1,12 @@
+/*@ Board nav arrows for both variants; per variant only the vertical offset differs. @*/
+/* ============ nav arrows (both variants; per-variant only the vertical offset) ============ */
+.arrow{
+  position:absolute; z-index:4;
+  width:34px; height:34px; border-radius:50%;
+  background:var(--btn); box-shadow:var(--shadow-lg);
+  display:grid; place-items:center; transition:opacity .15s ease;
+}
+.arrow:hover{background:var(--accent-tint)}
+.arrow svg{stroke:var(--tx); stroke-width:2.75; fill:none; stroke-linecap:round; stroke-linejoin:round}
+.arrow[disabled]{opacity:0; pointer-events:none}
+.arrow.prev{left:8px} .arrow.next{right:8px}

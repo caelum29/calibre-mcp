@@ -1,0 +1,54 @@
+/*@ Board empty/error states and the rest of the shared tail of the stylesheet. @*/
+/* ============ empty / error ============ */
+.flat{
+  display:none; align-items:center; gap:10px;
+  padding:18px; font-size:13px; color:var(--tx-muted);
+}
+.flat b{color:var(--tx); font-weight:550}
+.flat .q{
+  font-family:ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size:12px; background:var(--skel); padding:2px 7px; border-radius:6px;
+}
+.retry{
+  padding:4px 13px; border-radius:999px; font-size:12.5px;
+  background:var(--accent-tint); color:var(--accent); font-weight:550;
+}
+.retry:hover{background:var(--accent); color:#fff}
+
+/* ============ shared shimmer (both skeletons) ============ */
+.cover-s::after{
+  content:""; position:absolute; inset:0;
+  background:linear-gradient(100deg, transparent 30%, var(--skel-hi) 50%, transparent 70%);
+  transform:translateX(-100%); animation:shimmer 1.4s infinite;
+}
+@keyframes shimmer{to{transform:translateX(100%)}}
+
+/* degrade: first failed ui/message hides every message-dependent affordance at once */
+body[data-nomsg="1"] [data-need="msg"]{display:none}
+
+/* ============ hero — single identified book renders card-like, not a lone shelf (issue #71) ============ */
+.view-hero{padding:6px 18px 14px}
+.view-hero .hero{display:flex; gap:22px; align-items:flex-start}
+.view-hero .cover{width:168px; height:224px}
+.hero-cover{display:block; flex:none; border-radius:14px; text-align:left}
+.hero-cover:hover .cover{transform:translateY(-3px); box-shadow:var(--pagestack), var(--shadow-lg)}
+.hero-info{min-width:0; display:flex; flex-direction:column; gap:4px; padding-top:8px}
+.hero-info .ht{font-size:17px; font-weight:650; line-height:1.3; overflow-wrap:anywhere; text-wrap:pretty}
+.hero-info .ha{font-size:13px; color:var(--tx-muted)}
+.hero-actions{display:flex; flex-wrap:wrap; gap:8px; margin-top:14px}
+
+/* ============ state × variant switching ============ */
+.view{display:none}
+.widget[data-state="loading"][data-variant="shelf"] .view-shelf-loading{display:block}
+.widget[data-state="loading"][data-variant="coverflow"] .view-coverflow-loading{display:block}
+.widget[data-state="results"][data-variant="shelf"] .view-shelf{display:block}
+.widget[data-state="results"][data-variant="coverflow"] .view-coverflow{display:block}
+.widget[data-state="hero"] .view-hero{display:block}
+.widget[data-state="hero"] .vswitch{display:none} /* one book — nothing to lay out */
+.widget[data-state="empty"] .view-empty{display:flex}
+.widget[data-state="error"] .view-error{display:flex}
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation:none!important; transition:none!important}
+  .strip,.fscroll{scroll-behavior:auto}
+}

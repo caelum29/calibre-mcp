@@ -29,8 +29,7 @@ import {
 import type { FigureEntry } from "../domain/figures/inventory.js";
 import { unzipBinary } from "./epub-toc.js";
 import { downloadToFile } from "./http.js";
-import { OperationCancelledError } from "../domain/errors.js";
-import { SpawnAbortedError, spawnCollect, SpawnTimeoutError } from "./spawn.js";
+import { findBin, runTool } from "./binaries.js";
 
 export interface GetInventoryArgs {
   bookId: number;
@@ -86,9 +85,6 @@ const INVENTORY_VERSION = 5;
 const RUN_TIMEOUT_MS = 120_000;
 const MAX_LIST_BUFFER = 8 * 1024 * 1024;
 
-const PDFIMAGES_CANDIDATES = ["/opt/homebrew/bin/pdfimages", "/usr/local/bin/pdfimages", "/usr/bin/pdfimages"];
-const PDFTOTEXT_CANDIDATES = ["/opt/homebrew/bin/pdftotext", "/usr/local/bin/pdftotext", "/usr/bin/pdftotext"];
-
 interface CacheEnvelope {
   v: number;
   inventory: FigureInventory;
@@ -100,8 +96,8 @@ export class FigureInventoryService {
 
   /** Both poppler binaries, or null when the toolchain is missing. */
   binaries(): { pdfimages: string; pdftotext: string } | null {
-    const pdfimages = PDFIMAGES_CANDIDATES.find(existsSync);
-    const pdftotext = PDFTOTEXT_CANDIDATES.find(existsSync);
+    const pdfimages = findBin("pdfimages");
+    const pdftotext = findBin("pdftotext");
     if (!pdfimages || !pdftotext) return null;
     return { pdfimages, pdftotext };
   }
@@ -373,24 +369,15 @@ export class FigureInventoryService {
     okCodes: number[] = [0],
     signal?: AbortSignal,
   ): Promise<string> {
-    try {
-      const { stdout, code } = await spawnCollect(bin, args, {
-        timeoutMs: timeout,
-        maxBuffer: MAX_LIST_BUFFER,
-        signal,
-      });
-      if (code === null || !okCodes.includes(code)) throw new Error(`exit ${code}`);
-      return stdout;
-    } catch (err) {
-      if (err instanceof SpawnAbortedError) throw new OperationCancelledError();
-      const timedOut = err instanceof SpawnTimeoutError;
-      log.error("figure inventory scan failed", {
-        bin: path.basename(bin),
-        killed: timedOut,
-        msg: err instanceof Error ? err.message.slice(0, 300) : String(err),
-      });
-      throw new Error(timedOut ? "FIGURES_SCAN_TIMEOUT" : "FIGURES_SCAN_FAILED");
-    }
+    return runTool(bin, args, {
+      timeoutMs: timeout,
+      maxBuffer: MAX_LIST_BUFFER,
+      signal,
+      okCodes,
+      failedCode: "FIGURES_SCAN_FAILED",
+      timeoutCode: "FIGURES_SCAN_TIMEOUT",
+      logMessage: "figure inventory scan failed",
+    });
   }
 }
 
