@@ -69,7 +69,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/ext-apps": "2.0.4",
-    "@modelcontextprotocol/server": "^2.4.0",
+    "@modelcontextprotocol/server": "2.4.0",
     "open": "^11.0.1",
     "snowball-stemmers": "^0.6.0",
     "zod": "4.6.7"
@@ -78,7 +78,7 @@
     "@huggingface/transformers": "4.3.1"
   },
   "devDependencies": {
-    "@modelcontextprotocol/client": "^2.4.0",
+    "@modelcontextprotocol/client": "2.4.0",
     "@modelcontextprotocol/inspector": "2.12.0",
     "@types/node": "24.19.2",
     "@vitest/coverage-v8": "4.1.9",
