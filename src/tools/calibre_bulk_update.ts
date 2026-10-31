@@ -5,7 +5,13 @@
 
 import { z } from "zod";
 import { buildSetMetadataArgs } from "../calibre/metadata-fields.js";
-import { caseRenameNotes, isAllowedField, listReplacementNote, previewBookChanges } from "../domain/book-fields.js";
+import {
+  caseRenameNotes,
+  isAllowedField,
+  listReplacementNote,
+  previewBookChanges,
+  sameItemName,
+} from "../domain/book-fields.js";
 import type { ChangeValue } from "../domain/book-fields.js";
 import { CalibreCliTimeoutError } from "../domain/errors.js";
 import { buildScopedQuery, honestyLines, resolveFilter } from "../app/bundles.js";
@@ -42,8 +48,8 @@ export const bulkUpdateTool = defineTool({
     "Requires writes to be enabled.",
   inputSchema: {
     changes: jsonRecord(ChangeValueSchema).optional(),
-    tags_add: jsonStringList().optional(),
-    tags_remove: jsonStringList().optional(),
+    tags_add: jsonStringList(),
+    tags_remove: jsonStringList(),
     ids: jsonArray(BookId()).optional(),
     query: z.string().optional(),
     filter: z.string().trim().min(1).max(256).optional(),
@@ -59,10 +65,14 @@ export const bulkUpdateTool = defineTool({
           id: z.number(),
           title: z.string().optional(),
           changed: z.array(z.object({ field: z.string(), before: z.unknown(), after: z.unknown() })),
+          // tags_add / tags_remove calls: how many tags this book gains and loses
+          tagsAdded: z.number().optional(),
+          tagsRemoved: z.number().optional(),
         }),
       )
       .optional(),
     applied: z.array(z.number()).optional(),
+    unchanged: z.array(z.number()).optional(),
     failed: z.array(z.object({ id: z.number(), error: z.string() })).optional(),
     notAttempted: z.array(z.number()).optional(),
     retryIds: z.array(z.number()).optional(),
@@ -78,6 +88,14 @@ export const bulkUpdateTool = defineTool({
       const tagOps = tagsAdd.length > 0 || tagsRemove.length > 0;
       if (fields.length === 0 && !tagOps) {
         return toolError("invalid_input", "Provide at least one field in changes, or tags_add/tags_remove.");
+      }
+      // Calibre splits a tag value on commas, so "a,b" would preview as one tag and land as two.
+      const comma = [...tagsAdd, ...tagsRemove].find((t) => t.includes(","));
+      if (comma !== undefined) {
+        return toolError(
+          "invalid_input",
+          `Tag "${comma}" contains a comma; Calibre splits tags on commas. Pass each tag as its own entry.`,
+        );
       }
       // one tags value per book: a full replacement and a merge can't both apply
       if (tagOps && "tags" in changes) {
@@ -131,14 +149,25 @@ export const bulkUpdateTool = defineTool({
       }
 
       // An added tag takes the library's spelling: a new case would rename it on every book.
-      const added = tagOps
-        ? await resolveTagSpellings(
+      // A tag that is also removed never lands, so it needs no lookup.
+      let added: string[] = [];
+      if (tagOps) {
+        const toAdd = tagsAdd.filter((t) => !tagsRemove.some((r) => sameItemName(r, t)));
+        try {
+          added = await resolveTagSpellings(
             deps,
-            tagsAdd,
+            toAdd,
             selection.books.flatMap((b) => b.tags),
             args.library,
-          )
-        : [];
+          );
+        } catch (err) {
+          return toolError(
+            errorCodeFor(err),
+            `Couldn't check the library's existing tag spellings (${err instanceof Error ? err.message : String(err)}). ` +
+              "Nothing was written; retry the call.",
+          );
+        }
+      }
       const perBook = selection.books.map((b) => {
         const merge: TagMerge | undefined = tagOps ? mergeTags(b.tags, added, tagsRemove) : undefined;
         // per-book changes: the merged tags differ per book; verify checks this, not the raw params
@@ -196,6 +225,7 @@ export const bulkUpdateTool = defineTool({
               before: before ?? null,
               after: after ?? null,
             })),
+            ...(b.merge ? { tagsAdded: b.merge.added, tagsRemoved: b.merge.removed } : {}),
           })),
         });
       }
@@ -205,7 +235,11 @@ export const bulkUpdateTool = defineTool({
       const libId = await deps.content.resolveLibraryId(args.library);
       const applied: number[] = [];
       const failed: { id: number; error: string }[] = [];
-      for (const [i, b] of perBook.entries()) {
+      // A tags merge often leaves most books as they are (tag already there / not there):
+      // skip those instead of one pointless calibredb call each. `changes`-only calls write all.
+      const toWrite = tagOps ? perBook.filter((b) => b.diff.some((d) => d.changed)) : perBook;
+      const unchanged = tagOps ? perBook.filter((b) => !toWrite.includes(b)).map((b) => b.id) : undefined;
+      for (const [i, b] of toWrite.entries()) {
         try {
           // set_metadata is idempotent, so transient failures are retried in place (#233)
           await withTransientRetry(
@@ -220,7 +254,7 @@ export const bulkUpdateTool = defineTool({
             if (applied.length === 0) return toolError("write_refused", WRITE_REFUSED_MESSAGE);
             failed.push({ id: b.id, error: WRITE_REFUSED_MESSAGE });
             return stoppedMidLoop(
-              { matched: perBook.length, applied, failed, notAttempted: perBook.slice(i + 1).map((p) => p.id) },
+              { matched: perBook.length, applied, failed, notAttempted: toWrite.slice(i + 1).map((p) => p.id) },
               {
                 headline: "Calibre refused the write",
                 steer: `${WRITE_REFUSED_MESSAGE} After fixing the server`,
@@ -234,7 +268,7 @@ export const bulkUpdateTool = defineTool({
           if (transient === "connection") {
             failed.push({ id: b.id, error: describeTransient(err, b.id) });
             return stoppedMidLoop(
-              { matched: perBook.length, applied, failed, notAttempted: perBook.slice(i + 1).map((p) => p.id) },
+              { matched: perBook.length, applied, failed, notAttempted: toWrite.slice(i + 1).map((p) => p.id) },
               {
                 headline: "Stopped: the Calibre Content Server is unreachable",
                 steer: `${describeTransient(err, b.id)} Once it is back`,
@@ -272,7 +306,8 @@ export const bulkUpdateTool = defineTool({
       }
 
       const summary =
-        `Applied ${(tagOps ? [...fields, "tags"] : fields).join(", ")} to ${applied.length}/${perBook.length} book(s).` +
+        `Applied ${(tagOps ? [...fields, "tags"] : fields).join(", ")} to ${applied.length}/${toWrite.length} book(s).` +
+        (unchanged?.length ? ` ${unchanged.length} already up to date (skipped): ${unchanged.join(", ")}.` : "") +
         // on a partial run name the committed ids, so a retry skips them (#227)
         (failed.length > 0 && applied.length > 0 ? ` Committed: ${applied.join(", ")}.` : "") +
         (failed.length > 0 ? ` ${failed.length} failed: ${failed.map((f) => f.id).join(", ")}.` : "") +
@@ -282,6 +317,7 @@ export const bulkUpdateTool = defineTool({
         preview: false,
         matched: perBook.length,
         applied,
+        ...(unchanged ? { unchanged } : {}),
         failed,
       });
     } catch (err) {
