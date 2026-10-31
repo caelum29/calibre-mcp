@@ -31,6 +31,7 @@ import {
 } from "./bundles.js";
 import { BookId, CoercedBool, CursorParam, limitParam } from "./coerce.js";
 import { decodeCursor, pageCursor } from "./cursor.js";
+import { boardMeta } from "./board-meta.js";
 import { defineTool } from "./define.js";
 import { bookResourceLink } from "./resource-link.js";
 import { resolveNumericId } from "./resolve-id.js";
@@ -52,18 +53,6 @@ type SearchArgs = {
   filter?: string;
   include_excluded?: boolean;
 };
-
-/**
- * Feed the cover-board widget (issue #22): cache the page for the widget's re-pull
- * (Desktop strips the tool-result notification) and return the `_meta` to attach for
- * spec hosts that forward it. Library-scope results only — scope=book renders passages
- * in chat and the widget collapses itself.
- */
-function boardMeta(deps: ToolDeps, payload: Omit<BoardPayload, "tool" | "serverUrl">): Record<string, unknown> {
-  const full: BoardPayload = { tool: "calibre_search", serverUrl: deps.config.serverUrl, ...payload };
-  deps.boardCache?.set(full);
-  return { calibreBoard: full };
-}
 
 /**
  * Honesty suffix (#93): what the filter layer scoped/subtracted, appended to the TEXT
@@ -141,7 +130,7 @@ async function metaLibraryScope(
   const pg = pageCursor({ offset, fetched, total: page.total, query: effQuery, sort: args.sort });
   const text = `Found ${page.total} books, showing ${offset + 1}–${offset + fetched}.${honesty}`;
 
-  const _meta = boardMeta(deps, {
+  const _meta = boardMeta(deps, "calibre_search", {
     query: args.query,
     kind: "keyword",
     libraryId: page.libraryId,
@@ -283,7 +272,7 @@ async function ftsLibraryScope(call: FtsCall, fRes: FilterResolution): Promise<T
   }
 
   const pg = pageCursor({ offset, fetched: pageIds.length, total: bookIds.length, query: cursorKey });
-  const _meta = boardMeta(deps, {
+  const _meta = boardMeta(deps, "calibre_search", {
     query: args.query,
     kind: "keyword",
     libraryId: libId,

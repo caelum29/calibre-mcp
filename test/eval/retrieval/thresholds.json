@@ -83,7 +83,7 @@
     "$comment": "RERANK_FLOOR recalibration gates, declared + committed BEFORE any measurement (D-012 protocol). Known at declaration time (only the #140 headline, PR #168): with the reranker ON, ~18/38 positive library-scope e5 queries hit@1 with maxRerank < 0.3 (as low as 0.0003) and fixture negatives scored <= 0.001. Floors are scored OFFLINE from one fixture run + one live run at the shipped code (per-row maxRerank + maxScore recorded by the harness), so every candidate sees identical rankings. Consumed by test/eval/retrieval/rerank-floor.ts.",
     "candidates": [0.3, 0.1, 0.03, 0.01, 0.005, 0.003],
     "currentFloor": 0.3,
-    "flagRule": "flagged(F) = maxScore < semanticFloor (0.78; library/book rows only — figures have no cosine floor) OR maxRerank < F. Mirrors confidence()/figuresConfidence() in calibre_semantic_search.ts. Rows without maxRerank (reranker did not run) are excluded.",
+    "flagRule": "flagged(F) = maxScore < semanticFloor (0.78; library/book rows only — figures have no cosine floor) OR maxRerank < F. Mirrors confidence()/figuresConfidence() in src/semantic/retrieve.ts. Rows without maxRerank (reranker did not run) are excluded.",
     "population": {
       "fixture": {
         "modes": ["hybrid", "vector"],
