@@ -24,8 +24,11 @@ export const listLibrariesTool = defineTool({
         name,
         isDefault: id === info.defaultLibrary,
       }));
-      const names = libraries.map((l) => l.name).join(", ") || "(none)";
-      return toolOk([{ type: "text", text: `Libraries: ${names}` }], {
+      // Desktop shows the model only the text: the id (what tools and calibredb take) and the
+      // default marker must live here, not just in structuredContent (#227, #303).
+      const lines = libraries.map((l) => `${l.name} (id: ${l.id})${l.isDefault ? " [default]" : ""}`);
+      const text = lines.length > 0 ? `Libraries:\n${lines.join("\n")}` : "Libraries: (none)";
+      return toolOk([{ type: "text", text }], {
         libraries,
         default: info.defaultLibrary,
       });
