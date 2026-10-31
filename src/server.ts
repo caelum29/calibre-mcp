@@ -16,7 +16,7 @@ import { FigureInventoryService } from "./calibre/figure-inventory.js";
 import { TransformersEmbedder } from "./semantic/embedder.js";
 import { TransformersReranker } from "./semantic/reranker.js";
 import { SqliteIndexStore } from "./semantic/store.js";
-import { computeSemanticStatus, formatSemanticStatusLine } from "./semantic/status.js";
+import { computeSemanticStatus } from "./semantic/status.js";
 import { readBookResource } from "./resources/book.js";
 import { allTools, assertWriteClassification } from "./tools/registry.js";
 import { toolError } from "./tools/result.js";
@@ -27,7 +27,7 @@ import { BoardCache } from "./ui/board-cache.js";
 import { boardHtml, BOARD_KEYWORD_URI, BOARD_SEMANTIC_URI } from "./ui/board-html.js";
 import { cardHtml, CARD_URI } from "./ui/card-html.js";
 import { figuresHtml, FIGURES_URI } from "./ui/figures-html.js";
-import { capString, log } from "./logging.js";
+import { log } from "./logging.js";
 import { withCallLog } from "./call-log.js";
 import { VERSION } from "./version.js";
 
@@ -102,7 +102,7 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
   };
   server.server.oninitialized = tagClient;
   type Extra = RequestHandlerExtra<ServerRequest, ServerNotification>;
-  // Every tool call (registry tools and ping alike) runs inside one logged call context.
+  // Every tool call runs inside one logged call context.
   const logged = (tool: string, args: unknown, extra: Extra, run: () => Promise<CallToolResult>) => {
     tagClient();
     return withCallLog(log, { tool, args, rpcId: extra.requestId }, run);
@@ -196,64 +196,7 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
     },
   );
 
-  // Connectivity probe — proves the SUBPROCESS path (calibredb --with-library URL) works,
-  // complementary to calibre_list_libraries which proves the HTTP /ajax path. Also carries a
-  // semantic-search self-diagnosis block (#48) so "why is semantic search off" is one call.
-  server.registerTool(
-    "calibre_ping",
-    {
-      title: "Calibre ping",
-      description:
-        "Health check: confirms the MCP server can reach the running Calibre " +
-        "Content Server via calibredb, and reports semantic-search status " +
-        "(embedding model, dependency, index vector count). Returns library categories on success, " +
-        "plus the server's recent errors and its log file path for self-diagnosis.",
-      inputSchema: {},
-      annotations: { readOnlyHint: true, openWorldHint: true },
-    },
-    async (args: unknown, extra: Extra) =>
-      logged("calibre_ping", args, extra, async () => {
-        // Resolve the libId (needed for both calibredb and the index vector count) first —
-        // --with-library needs the ID, not the display name. A failure here is non-fatal to the
-        // semantic diagnosis (it reads local disk/state), so keep it and still report semantics.
-        let libId: string | undefined;
-        let listOut: string | undefined;
-        let pingError: string | undefined;
-        try {
-          libId = await deps.content.resolveLibraryId();
-          listOut = await deps.calibre.listLibraries(libId);
-        } catch (err) {
-          pingError = err instanceof Error ? err.message : String(err);
-          log.error("ping failed", { error: pingError });
-        }
-
-        const semantic = computeSemanticStatus(deps, libId);
-        const semLine = formatSemanticStatusLine(semantic);
-        // Self-diagnosis without file access (#247): the server's own recent errors + where
-        // the full log is. Text too — Desktop strips structuredContent.
-        const diag = diagnostics();
-
-        if (pingError !== undefined) {
-          return {
-            isError: true,
-            content: [{ type: "text", text: `Calibre unreachable: ${pingError}\n${semLine}\n${diag.text}` }],
-            structuredContent: {
-              ok: false,
-              error: pingError,
-              serverUrl: config.serverUrl,
-              semantic,
-              ...diag.structured,
-            },
-          };
-        }
-        return {
-          content: [{ type: "text", text: `ok\n${(listOut ?? "").slice(0, 500)}\n${semLine}\n${diag.text}` }],
-          structuredContent: { ok: true, serverUrl: config.serverUrl, semantic, ...diag.structured },
-        };
-      }),
-  );
-
-  const toolNames = [...allTools.map((t) => t.name), "calibre_ping"];
+  const toolNames = allTools.map((t) => t.name);
   log.info("server built", {
     // One string, not an array: the logger caps arrays at 20 items and we have more tools.
     toolCount: toolNames.length,
@@ -262,24 +205,6 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
     serverUrl: config.serverUrl,
   });
   return server;
-}
-
-/** ping's logging block: recent server-side errors (oldest first) + today's log file. */
-function diagnostics(): { text: string; structured: Record<string, unknown> } {
-  const recentErrors = log.recentErrors().map((r) => ({
-    ts: r.ts,
-    msg: r.msg,
-    ...(r.tool ? { tool: r.tool, call: r.call } : {}),
-    ...(r.meta === undefined ? {} : { meta: r.meta }),
-  }));
-  const logFile = log.currentFile();
-  const lines = [`log file: ${logFile ?? "off (stderr only)"}`, `recent errors: ${recentErrors.length}`];
-  // All of them, newest first — Desktop reads only this text, so it must match structuredContent.
-  for (const e of [...recentErrors].reverse()) {
-    const meta = e.meta === undefined ? "" : ` ${capString(JSON.stringify(e.meta), 200)}`;
-    lines.push(`- ${e.ts}${e.tool ? ` [${e.tool} call=${e.call}]` : ""} ${e.msg}${meta}`);
-  }
-  return { text: lines.join("\n"), structured: { logFile, recentErrors } };
 }
 
 /**
