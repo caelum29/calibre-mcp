@@ -22,10 +22,11 @@ what to require. Cite the rule's heading in findings.
 
 CI fails on them, so a finding here is noise:
 
-- oxlint: `console.*` in `src/`, `new RegExp` in `src/tools/**` (→ `compileUserRegex`),
+- oxlint: `console.*` in `src/`, `new RegExp` in `src/tools/**` and `src/app/**` (→ `compileUserRegex`),
   `child_process` outside `calibre/spawn.ts`/`extract.ts`.
 - `test/architecture.test.ts`: SDK imports outside `server.ts`/`run-stdio.ts`; layer directions
-  (domain pure, config/ui/resources/scripts); `normalize("NFKD")` outside `normalize.ts`; raw
+  (domain pure, config/ui/resources/scripts, `app/` = domain + ports — no MCP plumbing, no
+  concrete adapters in `app/` or `tools/`); `normalize("NFKD")` outside `normalize.ts`; raw
   `fetch(` outside the HTTP clients; JSDoc on exported functions and classes.
 - `test/tools/registry.test.ts`: input booleans via `CoercedBool`; numbers/arrays/objects parse
   from their JSON string; write/localWrite classification.
@@ -43,8 +44,8 @@ The most frequent root cause in this repo: a rule lives in two places and the fi
 `findBin` ×4, #276 a third `stripAccents` next to `normalize.ts`).
 
 - When the diff adds a helper, search for an existing one with the same job before accepting it.
-  Shared homes: `verifyTimedOutWrite` (write-verify.ts), `sameFieldValue` (domain/book-fields.ts),
-  `pageCursor`/`renderResult` (tools/), `compileUserRegex`, `isWriteRefused` (write-refusal.ts),
+  Shared homes: `verifyTimedOutWrite` (app/write-policy.ts), `sameFieldValue` (domain/book-fields.ts),
+  `pageCursor`/`renderResult` (tools/), `compileUserRegex`, `isWriteRefused` (app/write-policy.ts),
   `isEmptyDate`, `looksLikeRawFilename`, `stripAccents`/`similarKey` (domain/curation/normalize.ts),
   `remediation.ts`, `calibre/spawn.ts`.
 - When the diff fixes a rule, grep for its siblings and require the fix in every copy, or the

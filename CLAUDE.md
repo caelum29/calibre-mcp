@@ -66,9 +66,11 @@ search spans both via a `scope: library|book` param, not extra tools.
   `_meta.ui.visibility ["app"]`, D-017). The counts are generator-maintained from
   `docs/tool-catalog.json` (`pnpm catalog`).
 - **Never report a committed write as failed.** Routed writes commit server-side *before* `calibredb`
-  replies, so timeouts and dropped connections are verified via `src/tools/write-verify.ts` —
+  replies, so timeouts and dropped connections are verified via `src/app/write-policy.ts` —
   confirmed → success, unconfirmed → steer to `calibre_get_book`, never a plain failure. Only
   idempotent `set_metadata` writes retry; timeouts never do.
+- **`src/app/` = use-cases** (write policy, book selection, bundles, index-book, ISBN scan): domain +
+  ports only — no MCP result types, no concrete adapters (`test/architecture.test.ts`, #260).
 - **User/model-supplied regex compiles via `src/tools/user-regex.ts`**, never bare `new RegExp()`.
 - **Content cursors are opaque and bound** to `{id, format}` — invalid ones get an actionable error,
   never a silent restart at 0. The numeric `offset` param is the cursor-free jump path, mutually

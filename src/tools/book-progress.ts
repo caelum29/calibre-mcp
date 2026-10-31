@@ -3,7 +3,7 @@
 // PDF's extraction or chunking can run tens of seconds) so progress-resetting clients don't
 // time out before the first embed slice reports.
 
-import type { BookPhase } from "./index-book.js";
+import type { BookPhase } from "../app/index-book.js";
 
 /** Heartbeat period during extract/chunk — well under the ~60 s client request timeout. */
 export const HEARTBEAT_MS = 10_000;

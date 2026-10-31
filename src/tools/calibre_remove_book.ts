@@ -11,7 +11,7 @@ import { BookId, CoercedBool, jsonArray } from "./coerce.js";
 import { defineTool } from "./define.js";
 import { resolveNumericId } from "./resolve-id.js";
 import { toolError, toolOk } from "./result.js";
-import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "./write-refusal.js";
+import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "../app/write-policy.js";
 
 export const removeBookTool = defineTool({
   name: "calibre_remove_book",

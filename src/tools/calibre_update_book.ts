@@ -15,10 +15,15 @@ import type { ToolResult } from "./types.js";
 import type { ToolDeps } from "./deps.js";
 import { bookIdArg, resolveNumericId } from "./resolve-id.js";
 import { fence, toolError, toolOk } from "./result.js";
-import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "./write-refusal.js";
-import { classifyTransient, describeTransient, withTransientRetry } from "./write-retry.js";
-import { verifyTimedOutWrite } from "./write-verify.js";
-import type { TimedOutWrite } from "./write-verify.js";
+import {
+  isWriteRefused,
+  WRITE_REFUSED_MESSAGE,
+  classifyTransient,
+  describeTransient,
+  withTransientRetry,
+  verifyTimedOutWrite,
+  type TimedOutWrite,
+} from "../app/write-policy.js";
 
 // One field's new value: scalar, multi-value list, or identifiers map. -32602-hardened
 // via jsonRecord (the whole `changes` object may arrive as a JSON string).

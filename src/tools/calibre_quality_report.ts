@@ -5,11 +5,11 @@
 
 import { z } from "zod";
 import { ALL_CHECKS, type QualityCheck, runQualityChecks } from "../domain/curation/quality.js";
-import { buildScopedQuery, honestyLines, resolveFilter } from "./bundles.js";
+import { buildScopedQuery, honestyLines, resolveFilter } from "../app/bundles.js";
 import { BookId, CoercedBool, CursorParam, jsonArray, limitParam } from "./coerce.js";
 import { decodeCursor, pageCursor } from "./cursor.js";
 import { defineTool } from "./define.js";
-import { selectBooks } from "./select-books.js";
+import { selectBooks } from "../app/select-books.js";
 import { fence, renderResult, toolError } from "./result.js";
 
 const CHECK_ENUM = z.enum([

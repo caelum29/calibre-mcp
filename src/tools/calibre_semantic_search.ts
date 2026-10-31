@@ -19,7 +19,7 @@ import { RERANK_FLOOR, RERANK_POOL } from "../semantic/reranker.js";
 import { stemText } from "../semantic/stem.js";
 import type { BookHit, FigureHit, LibraryHit } from "../semantic/store.js";
 import type { BoardPayload } from "../ui/board-cache.js";
-import { type FilterResolution, honestyLines, restrictSet, resolveFilter } from "./bundles.js";
+import { type FilterResolution, honestyLines, restrictSet, resolveFilter } from "../app/bundles.js";
 import { BookId, CoercedBool, limitParam } from "./coerce.js";
 import { defineTool } from "./define.js";
 import { bookResourceLink } from "./resource-link.js";

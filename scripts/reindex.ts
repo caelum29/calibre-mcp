@@ -20,8 +20,7 @@ import { ThreadEncoder } from "../src/semantic/thread-encoder.js";
 import { SqliteIndexStore } from "../src/semantic/store.js";
 import { runBookPipeline } from "../src/semantic/book-pipeline.js";
 import { appendProgress, resolveProgressPath, resumeProgress } from "../src/semantic/build-progress.js";
-import { commitBook, commitRefresh, describeError, prepareBook, type PrepareResult } from "../src/tools/index-book.js";
-import type { ToolDeps } from "../src/tools/deps.js";
+import { commitBook, commitRefresh, describeError, prepareBook, type PrepareResult } from "../src/app/index-book.js";
 
 const { values: opt } = parseArgs({
   options: {
@@ -63,6 +62,8 @@ const config = loadRuntimeConfig({ ...process.env, CALIBRE_MCP_INDEX_DIR: indexD
 // --index-dir points at a scratch index, so every process's trail lands in one place.
 log.configure({ level: prodConfig.logLevel, dir: prodConfig.logDir });
 const figures = new FigureInventoryService(config);
+// The deps the index use-case takes, named from its own signature: scripts stay out of tools/ (#260).
+type IndexDeps = Parameters<typeof prepareBook>[0];
 const deps = {
   config,
   content: new ContentServerClient(config),
@@ -72,7 +73,7 @@ const deps = {
   embedder: new TransformersEmbedder(config),
   index: new SqliteIndexStore(config, log),
   log,
-} as unknown as ToolDeps;
+} as unknown as IndexDeps;
 
 // shared: one ONNX session (its InferenceQueue serializes forwards) and all chunking on the
 // main thread. threads: one model copy per thread — ~+300 MB each, the price of real parallelism.

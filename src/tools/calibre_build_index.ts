@@ -16,7 +16,7 @@ import {
   withBusyRetry,
   type BookDetail,
   type PrepareResult,
-} from "./index-book.js";
+} from "../app/index-book.js";
 import { resolveNumericId } from "./resolve-id.js";
 import { INSTALL_TRANSFORMERS } from "./remediation.js";
 import { toolError, toolOk } from "./result.js";

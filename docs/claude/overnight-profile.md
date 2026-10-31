@@ -15,7 +15,7 @@ Repo specifics for the `overnight-orchestrator` skill. The skill holds the proce
 - Bumps `INDEX_VERSION` / `TEXT_CACHE_VERSION`, or changes the index schema (forces users to re-index).
 - Adds, removes or renames a tool or tool param, or changes the tool count (CLAUDE.md budget ≤ ~20).
 - Adds a runtime dependency or a new `CALIBRE_MCP_*` env var.
-- Changes write-path semantics beyond the issue (write gate, preview-first, write-verify).
+- Changes write-path semantics beyond the issue (write gate, preview-first, timeout verify in `src/app/write-policy.ts`).
 - Touches ranking / chunking / fusion / rerank in `src/semantic/` without a green `pnpm eval --gate`. The gate builds a synthetic corpus, so EPUB/PDF structure changes still need Artem's eye.
 
 ## Prod and live operations (Artem's, never at night)
