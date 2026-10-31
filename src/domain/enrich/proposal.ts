@@ -7,6 +7,7 @@ import type { Book } from "../book.js";
 import type { ChangeValue } from "../../calibre/metadata-fields.js";
 import { isAllowedField } from "../../calibre/metadata-fields.js";
 import { authorSuspectReason, normalizeAuthors } from "../curation/authors.js";
+import { foldAccents } from "../curation/normalize.js";
 import { toIsbn13 } from "../curation/isbn.js";
 import { isEmptyDate } from "../merge.js";
 import { looksLikeRawFilename } from "./filename-guess.js";
@@ -54,11 +55,8 @@ export function pickBestHit(hits: ProviderHit[]): ProviderHit | undefined {
 
 /** Significant title words: accent/case/punctuation-insensitive, EN/RU stop-words dropped. */
 function titleWords(title: string): Set<string> {
-  const words = title
-    .normalize("NFKD")
-    .replace(/\p{M}/gu, "")
-    .toLowerCase()
-    .split(/[^\p{L}\p{N}]+/u)
+  const words = foldAccents(title.toLowerCase())
+    .split(/[^\p{L}\p{N}\p{M}]+/u)
     .filter((w) => w && !STOP_WORDS.has(w));
   return new Set(words);
 }

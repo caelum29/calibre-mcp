@@ -35,7 +35,7 @@ const SUFFIXES = new Set(["jr", "sr", "ii", "iii", "iv", "phd", "md"]);
  * vowel signs), so they are recomposed via NFC instead. ё → е because Russian print treats
  * them as interchangeable.
  */
-function foldAccents(s: string): string {
+export function foldAccents(s: string): string {
   return s
     .normalize("NFKD")
     .replace(/([\p{Script=Latin}\p{Script=Greek}])\p{M}+/gu, "$1")

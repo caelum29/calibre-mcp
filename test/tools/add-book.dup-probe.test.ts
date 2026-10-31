@@ -107,6 +107,16 @@ describe("calibre_add_book duplicate probe (#204)", () => {
     expect(r.structuredContent?.possibleDuplicates).toBeUndefined();
   });
 
+  // Twin of #241: stripping every combining mark folds Cyrillic й into и, so different RU titles collide.
+  it("keeps Cyrillic й distinct from и when matching titles", async () => {
+    const fx: Fx = {
+      books: [book({ id: 501, title: "Мой Python" }), book({ id: 502, title: "Мои Python" })],
+      titleHits: [501, 502],
+    };
+    const r = await addBookTool.handler({ path: file }, deps(502, fx));
+    expect(r.structuredContent?.possibleDuplicates).toBeUndefined();
+  });
+
   it("degrades to a plain success and logs a warning when the probe read fails", async () => {
     const warn = vi.fn();
     const fx: Fx = { books: [book({ id: 1270, title: "advanced-microservices" })], searchThrows: true };

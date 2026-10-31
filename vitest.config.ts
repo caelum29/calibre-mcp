@@ -4,6 +4,7 @@ export default defineConfig({
   test: {
     include: ["test/**/*.test.ts"],
     environment: "node",
+    setupFiles: ["test/setup/isolate-home.ts"],
     coverage: {
       provider: "v8",
       include: ["src/**/*.ts"],
