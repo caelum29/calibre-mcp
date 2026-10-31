@@ -16,6 +16,7 @@
 
 import { z } from "zod";
 import { type RankedHits, type RetrievalMode, retrieve } from "../semantic/retrieve.js";
+import { SNIPPET_CHARS } from "../semantic/snippet.js";
 import type { LibraryHit } from "../semantic/store/index.js";
 import { type FilterResolution, honestyLines, restrictSet, resolveFilter } from "../app/bundles.js";
 import { boardMeta } from "./board-meta.js";
@@ -27,9 +28,6 @@ import { INSTALL_TRANSFORMERS } from "./remediation.js";
 import { fence, toolError, toolOk } from "./result.js";
 import type { ContentBlock, ToolResult } from "./types.js";
 import type { ToolDeps } from "./deps.js";
-
-/** Chars of the linked context chunk shown per figure hit (mirrors the store's snippet cap). */
-const CONTEXT_SNIPPET_CHARS = 320;
 
 export const semanticSearchTool = defineTool({
   name: "calibre_semantic_search",
@@ -84,6 +82,8 @@ export const semanticSearchTool = defineTool({
           rerankScore: z.number().optional(),
           charStart: z.number(),
           charEnd: z.number(),
+          // Book offset the snippet starts at (#243) — calibre_get_content offset= jumps there.
+          snippetStart: z.number().optional(),
           snippet: z.string(),
         }),
       )
@@ -306,14 +306,23 @@ async function libraryScope(
 
   const { maxScore, lowConfidence } = rr;
   const blocks: ContentBlock[] = [
-    { type: "text", text: withNote(header("book", ranked.length, args, maxScore, lowConfidence, rr), note) },
+    {
+      type: "text",
+      text: withNote(
+        header("book", ranked.length, args, maxScore, lowConfidence, rr) +
+          // snippets are cut around the query terms (#243); say how to read on from one
+          " Snippets show the matched part of each chunk; read on via calibre_get_content id=<bookId> offset=<snippet@>.",
+        note,
+      ),
+    },
   ];
   const results: Record<string, unknown>[] = [];
   for (const r of ranked) {
     const link = bookResourceLink({ id: r.hit.bookId, title: r.hit.title, authors: r.hit.authors });
     link.description = [scoreLabel(r), r.hit.authors.join(", ")].filter(Boolean).join(" — ");
     blocks.push(link);
-    const fenced = fence(`MATCH book ${r.hit.bookId} @${r.hit.charStart}-${r.hit.charEnd}`, r.hit.snippet);
+    const at = r.hit.snippetStart !== undefined ? ` snippet@${r.hit.snippetStart}` : "";
+    const fenced = fence(`MATCH book ${r.hit.bookId} @${r.hit.charStart}-${r.hit.charEnd}${at}`, r.hit.snippet);
     blocks.push({ type: "text", text: fenced });
     results.push({
       bookId: r.hit.bookId,
@@ -323,6 +332,7 @@ async function libraryScope(
       ...(r.rerankScore !== undefined ? { rerankScore: r.rerankScore } : {}),
       charStart: r.hit.charStart,
       charEnd: r.hit.charEnd,
+      ...(r.hit.snippetStart !== undefined ? { snippetStart: r.hit.snippetStart } : {}),
       snippet: fenced,
     });
   }
@@ -502,7 +512,7 @@ async function figuresTarget(
   for (const r of ranked) {
     const h = r.hit;
     const ctx = deps.index.chunkAt(libraryId, h.bookId, h.charOffset);
-    const snippet = ctx ? ctx.body.slice(0, CONTEXT_SNIPPET_CHARS) : undefined;
+    const snippet = ctx ? ctx.body.slice(0, SNIPPET_CHARS) : undefined;
     // EPUB "page" is the spine-document ordinal — same number the get_figures listing shows,
     // flagged approximate (#105).
     const pagePart = h.format === "pdf" ? `p.${h.page},` : `~p.${h.page},`;

@@ -1,17 +1,15 @@
 // Chunk retrieval (#272): the vector half (brute-force cosine over a per-library in-memory
 // candidate cache, decoded once, invalidated on any write) and the keyword half (weighted bm25
-// over chunk_fts), plus figure → context lookup. Home for #243's snippet window.
+// over chunk_fts), plus figure → context lookup. Query-term snippet windows: ../snippet.ts.
 
 import type { DatabaseSync } from "node:sqlite";
 import type { LogSink } from "../../logging.js";
 import { EMBED_DIM } from "../model.js";
+import { SNIPPET_CHARS } from "../snippet.js";
 import { type Candidate, decodeVector, topK } from "../vector.js";
 import type { IndexConnections } from "./schema.js";
 import { type CandidateCache, cacheOf, ftsMatch, parseAuthors, restrict, type Row, WEIGHTED_BM25 } from "./shared.js";
 import type { BookHit, ChunkIndex, ChunkRef, LibraryHit } from "./types.js";
-
-/** Length of a result snippet (chars) taken from the best chunk. */
-const SNIPPET_CHARS = 320;
 
 /** ChunkIndex over the shared connections with its own per-library candidate cache. */
 export class SqliteChunkIndex implements ChunkIndex {

@@ -224,6 +224,12 @@ re-read it in context). `mode: hybrid` (the default) fuses semantic and keyword 
 best recall; `mode: vector` is semantic-only; `mode: keyword` is exact keyword matching that
 needs no model at query time.
 
+Library-scope hits show a snippet cut around your query's terms, not the head of the matched
+passage. Each hit's text label reads `MATCH book <id> @<start>-<end> snippet@<offset>`, and
+`structuredContent.results[].snippetStart` carries the same offset. Pass it to
+`calibre_get_content` as `offset` to read on from the snippet; `charStart`/`charEnd` still span
+the whole passage.
+
 `target: figures` searches **figure captions** instead of body text — use it when you're after
 a diagram, chart, or schema. Hits return the caption, page, the surrounding passage, and a
 ready-made `calibre_get_figures` call to fetch the actual image (never the pixels directly).

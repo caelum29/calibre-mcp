@@ -92,6 +92,8 @@ export interface LibraryHit {
   body: string;
   charStart: number;
   charEnd: number;
+  /** Book char offset `snippet` starts at — set by retrieve() from the query terms (#243). */
+  snippetStart?: number;
 }
 
 /** A book-scope hit: one passage within the book. */
