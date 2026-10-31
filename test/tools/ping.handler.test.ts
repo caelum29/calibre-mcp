@@ -57,21 +57,23 @@ describe("calibre_ping handler", () => {
     expect(allTools.at(-1)?.name).toBe("calibre_ping");
   });
 
-  it("should_report_ok_with_the_categories_for_the_resolved_library_id", async () => {
+  it("should_report_ok_with_the_header_for_the_resolved_library_id", async () => {
     const { d, listCalls } = deps({});
     const r = await pingTool().handler({}, d);
     expect(r.isError).toBeUndefined();
     expect(listCalls).toEqual(["Programming_Books"]);
-    expect(text(r)).toMatch(/^ok\ncategory,count\ntags,12\nSemantic search: [^\n]+\nlog file: /);
+    expect(text(r)).toMatch(
+      /^ok\ncalibre-mcp [^\n]+\ncalibredb: [^\n]+\nwrites: [^\n]+\nSemantic search: [^\n]+\nIndex: [^\n]+\nlog file: /,
+    );
     expect(r.structuredContent).toMatchObject({ ok: true, serverUrl: SERVER_URL, recentErrors: expect.any(Array) });
     expect(r.structuredContent).toHaveProperty("semantic.available");
     expect(r.structuredContent).toHaveProperty("logFile");
   });
 
-  it("should_cap_the_category_listing_at_500_chars", async () => {
+  it("should_not_echo_the_raw_category_listing", async () => {
     const { d } = deps({ listLibraries: async () => "x".repeat(600) });
     const r = await pingTool().handler({}, d);
-    expect(text(r).split("\n")[1]).toBe("x".repeat(500));
+    expect(text(r)).not.toContain("xxxxx");
   });
 
   it("should_return_isError_with_the_cause_when_the_library_id_cannot_be_resolved", async () => {
@@ -83,7 +85,9 @@ describe("calibre_ping handler", () => {
     const r = await pingTool().handler({}, d);
     expect(r.isError).toBe(true);
     expect(listCalls).toEqual([]);
-    expect(text(r)).toMatch(/^Calibre unreachable: connect ECONNREFUSED 127\.0\.0\.1:9\nSemantic search: /);
+    expect(text(r)).toMatch(
+      /^Calibre unreachable: connect ECONNREFUSED 127\.0\.0\.1:9\ncalibre-mcp [^\n]+\ncalibredb: [^\n]+\nwrites: [^\n]+\nSemantic search: /,
+    );
     expect(r.structuredContent).toMatchObject({
       ok: false,
       error: "connect ECONNREFUSED 127.0.0.1:9",
