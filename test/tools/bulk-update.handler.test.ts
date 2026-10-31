@@ -5,7 +5,9 @@ import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
 import { CalibreCliError, CalibreCliTimeoutError } from "../../src/domain/errors.js";
-import type { BaseDeps, ToolDeps } from "../../src/tools/deps.js";
+import type { BaseDeps } from "../../src/tools/deps.js";
+import { asLibId } from "../../src/calibre/lib-id.js";
+import { fakeCalibre, fakeContent, fakeEmbedder, fakeExtractor, fakeFigures } from "./fake-ports.js";
 
 const book = (over: Partial<Book> = {}): Book => ({
   id: 1,
@@ -26,11 +28,12 @@ interface FakeOpts {
   getBook?: (id: number) => Promise<Book>;
 }
 
+// Full-port fakes (#316): stubs for what the handler reads, the rest throw if reached.
 function deps(opts: FakeOpts = {}): BaseDeps {
   const fixture = opts.fixture ?? [book({ id: 1 }), book({ id: 2 })];
   const byId = new Map(fixture.map((b) => [b.id, b] as const));
-  const content = {
-    resolveLibraryId: async (name?: string): Promise<string> => name ?? "Programming_Books",
+  const content = fakeContent({
+    resolveLibraryId: async (name) => asLibId(name ?? "Programming_Books"),
     getBook: opts.getBook ?? (async (id: number): Promise<Book> => byId.get(id) ?? book({ id })),
     search: async () => ({
       bookIds: fixture.map((b) => b.id),
@@ -40,17 +43,15 @@ function deps(opts: FakeOpts = {}): BaseDeps {
       sort: "title",
       libraryId: "Lib",
     }),
-    booksByIds: async (ids: number[]) => new Map(ids.map((id) => [id, byId.get(id) ?? null] as const)),
-  };
+    booksByIds: async (ids) => new Map(ids.map((id) => [id, byId.get(id) ?? null] as const)),
+  });
   return {
     config: loadConfig({}),
-    content: content as unknown as ToolDeps["content"],
-    calibre: {
-      calibredb: opts.calibredb ?? (async () => ({ stdout: "", stderr: "" })),
-    } as unknown as ToolDeps["calibre"],
-    extractor: {} as ToolDeps["extractor"],
-    figures: {} as ToolDeps["figures"],
-    embedder: {} as ToolDeps["embedder"],
+    content,
+    calibre: fakeCalibre({ calibredb: opts.calibredb ?? (async () => ({ stdout: "", stderr: "" })) }),
+    extractor: fakeExtractor(),
+    figures: fakeFigures(),
+    embedder: fakeEmbedder(),
     log,
   };
 }
