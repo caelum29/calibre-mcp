@@ -5,6 +5,7 @@
 // when the gate is green — every dropped query needs a human explanation in the report doc.
 
 import type { EvalReport, Mode, PerQueryRow } from "./harness.js";
+import type { AggregateMetrics } from "./metrics.js";
 
 /** Shape of thresholds.json (extra $comment keys tolerated). */
 export interface Thresholds {
@@ -26,6 +27,19 @@ export interface Thresholds {
   headingFrontMatter?: {
     queryIds: string[];
     minHit1Queries: Partial<Record<Mode, number>>;
+  };
+  /**
+   * Score drift vs the baseline report (#325): Hit@1 non-regression can't see a rank or score
+   * shift that keeps every top hit, so aggregates and per-query cosine maxScore must also
+   * reproduce within an epsilon. Absent → no drift checks.
+   */
+  scoreDrift?: {
+    /** Max |Δ| on overall/ruInvolved hit1, recall5, mrr, ndcg10 (per mode). */
+    metricEpsilon: number;
+    /** Max |Δ| on a row's maxScore, matched by query id + mode. */
+    maxScoreEpsilon: number;
+    /** Modes whose maxScore is a cosine (keyword maxScore is bm25 — a different scale). */
+    maxScoreModes: Mode[];
   };
 }
 
@@ -164,7 +178,72 @@ export function evaluateGate(current: EvalReport, baseline: EvalReport, t: Thres
     }
   }
 
+  if (t.scoreDrift) checks.push(...scoreDriftChecks(current, baseline, t.scoreDrift));
+
   return { pass: checks.every((c) => !c.active || c.pass), checks, drops };
+}
+
+const AGG_KEYS = ["hit1", "recall5", "mrr", "ndcg10"] as const;
+const fmt = (n: number) => n.toFixed(4);
+
+/** Aggregate + per-query maxScore drift vs the baseline (#325). Baseline-only rows/keys count. */
+function scoreDriftChecks(
+  current: EvalReport,
+  baseline: EvalReport,
+  cfg: NonNullable<Thresholds["scoreDrift"]>,
+): GateCheck[] {
+  const moved: string[] = [];
+  const sections = [
+    ["overall", current.overall, baseline.overall],
+    ["ruInvolved", current.ruInvolved, baseline.ruInvolved],
+  ] as const;
+  for (const [label, cur, base] of sections) {
+    for (const mode of MODES) {
+      const b: AggregateMetrics | undefined = base[mode];
+      if (!b) continue;
+      const c = cur[mode];
+      if (!c) {
+        moved.push(`${label} ${mode} MISSING`);
+        continue;
+      }
+      for (const k of AGG_KEYS) {
+        if (Math.abs(c[k] - b[k]) > cfg.metricEpsilon) moved.push(`${label} ${mode} ${k} ${fmt(b[k])} → ${fmt(c[k])}`);
+      }
+    }
+  }
+
+  // A missing current row is non-regression's job (it counts as broken there), not drift's.
+  const curScore = new Map(current.perQuery.map((r) => [`${r.mode}/${r.id}`, r.maxScore]));
+  const shifts = baseline.perQuery
+    .filter((r) => cfg.maxScoreModes.includes(r.mode) && typeof r.maxScore === "number")
+    .flatMap((r) => {
+      const now = curScore.get(`${r.mode}/${r.id}`);
+      return typeof now === "number" ? [{ key: `${r.mode}/${r.id}`, was: r.maxScore!, now }] : [];
+    })
+    .map((s) => ({ ...s, delta: Math.abs(s.now - s.was) }))
+    .sort((a, b) => b.delta - a.delta);
+  const over = shifts.filter((s) => s.delta > cfg.maxScoreEpsilon);
+  const worst = shifts[0];
+
+  return [
+    {
+      name: "score drift: aggregate metrics",
+      active: true,
+      pass: moved.length === 0,
+      detail: moved.length
+        ? `${moved.length} beyond ±${cfg.metricEpsilon}: ${moved.join("; ")}`
+        : `all within ±${cfg.metricEpsilon}`,
+    },
+    {
+      name: "score drift: per-query maxScore",
+      active: true,
+      pass: over.length === 0,
+      detail:
+        over.length && worst
+          ? `${over.length} beyond ±${cfg.maxScoreEpsilon}; worst ${worst.key} ${fmt(worst.was)} → ${fmt(worst.now)}`
+          : `${shifts.length} rows within ±${cfg.maxScoreEpsilon}${worst ? ` (max |Δ| ${worst.delta.toFixed(4)})` : ""}`,
+    },
+  ];
 }
 
 /** Render the gate outcome for the CLI (stdout) — one line per check + the drop diff. */
