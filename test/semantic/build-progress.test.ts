@@ -4,7 +4,13 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { appendProgress, defaultProgressPath, resumeProgress } from "../../src/semantic/build-progress.js";
+import { readFileSync } from "node:fs";
+import {
+  appendProgress,
+  defaultProgressPath,
+  resolveProgressPath,
+  resumeProgress,
+} from "../../src/semantic/build-progress.js";
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -32,5 +38,29 @@ describe("defaultProgressPath", () => {
     for (const bookId of [1, 2, 3]) appendProgress(a, { bookId, ok: true });
     expect([...resumeProgress(a)]).toEqual([1, 2, 3]);
     expect([...resumeProgress(defaultProgressPath(dir, "Humanities", false))]).toEqual([]);
+  });
+});
+
+describe("defaultProgressPath non-ASCII ids", () => {
+  it("keeps distinct same-length Cyrillic ids apart", () => {
+    expect(defaultProgressPath("/idx", "Книги", false)).toBe(path.join("/idx", "progress-Книги.jsonl"));
+    expect(defaultProgressPath("/idx", "Мови_", false)).not.toBe(defaultProgressPath("/idx", "Книги", false));
+  });
+});
+
+describe("resolveProgressPath", () => {
+  it("lets an explicit --progress file win", () => {
+    expect(resolveProgressPath("/tmp/x.jsonl", "/idx", "Humanities", false)).toBe("/tmp/x.jsonl");
+  });
+
+  it("falls back to the per-library default", () => {
+    expect(resolveProgressPath(undefined, "/idx", "Humanities", true)).toBe(
+      path.join("/idx", "flags-progress-Humanities.jsonl"),
+    );
+  });
+
+  it("is what scripts/reindex.ts uses, fed the resolved library id", () => {
+    const src = readFileSync(path.join(import.meta.dirname, "../../scripts/reindex.ts"), "utf8");
+    expect(src).toContain("resolveProgressPath(opt.progress, indexDir, libraryId, flagsOnly)");
   });
 });

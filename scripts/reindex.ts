@@ -19,7 +19,7 @@ import { inThreadEncoder, type BookEncoder } from "../src/semantic/book-encoder.
 import { ThreadEncoder } from "../src/semantic/thread-encoder.js";
 import { SqliteIndexStore } from "../src/semantic/store.js";
 import { runBookPipeline } from "../src/semantic/book-pipeline.js";
-import { appendProgress, defaultProgressPath, resumeProgress } from "../src/semantic/build-progress.js";
+import { appendProgress, resolveProgressPath, resumeProgress } from "../src/semantic/build-progress.js";
 import { commitBook, commitRefresh, describeError, prepareBook, type PrepareResult } from "../src/tools/index-book.js";
 import type { ToolDeps } from "../src/tools/types.js";
 
@@ -85,7 +85,7 @@ const warmupMs = Date.now() - tWarm;
 const libraryId = await deps.content.resolveLibraryId(opt.library);
 // Default log is per library (book ids overlap across libraries, #285) and per mode (a full
 // re-index's "done" ids must not hide books from the flags backfill); --progress overrides.
-const progressFile = opt.progress ?? defaultProgressPath(indexDir, libraryId, flagsOnly);
+const progressFile = resolveProgressPath(opt.progress, indexDir, libraryId, flagsOnly);
 let ids: number[];
 if (opt.ids) {
   ids = opt.ids
@@ -99,7 +99,7 @@ if (opt.ids) {
 const done = resumeProgress(progressFile);
 const todo = ids.filter((id) => !done.has(id));
 say(
-  `${ids.length} selected, ${done.size} already done, ${todo.length} to index — concurrency ${concurrency}, ${threaded ? "thread-per-worker" : "shared main-thread"} encoder, warmup ${warmupMs} ms`,
+  `${ids.length} selected, ${done.size} already done (${progressFile}), ${todo.length} to index — concurrency ${concurrency}, ${threaded ? "thread-per-worker" : "shared main-thread"} encoder, warmup ${warmupMs} ms`,
 );
 
 const freeGb = (): number => {

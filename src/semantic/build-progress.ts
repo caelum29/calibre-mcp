@@ -59,6 +59,18 @@ export function resumeProgress(file: string): Set<number> {
  */
 export function defaultProgressPath(indexDir: string, libraryId: string, flagsOnly: boolean): string {
   // Library ids come from the server — keep the file inside the index dir whatever they contain.
-  const safeId = libraryId.replace(/[^\w.-]/g, "_");
-  return path.join(indexDir, `${flagsOnly ? "flags-progress" : "progress"}-${safeId}.jsonl`);
+  // Unicode-aware so distinct non-ASCII ids stay distinct; "a b" vs "a_b" can't collide in
+  // practice because Calibre already turns spaces in library ids into "_".
+  const safe = libraryId.replace(/[^\p{L}\p{N}_.-]/gu, "_");
+  return path.join(indexDir, `${flagsOnly ? "flags-progress" : "progress"}-${safe}.jsonl`);
+}
+
+/** The progress log a run uses: an explicit --progress file wins, else the per-library default. */
+export function resolveProgressPath(
+  explicit: string | undefined,
+  indexDir: string,
+  libraryId: string,
+  flagsOnly: boolean,
+): string {
+  return explicit ?? defaultProgressPath(indexDir, libraryId, flagsOnly);
 }
