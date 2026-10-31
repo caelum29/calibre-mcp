@@ -1,0 +1,143 @@
+src/tools/calibre_add_book.ts
+  s_aa002d0f29785d::t_31d88f67856f50 11
+  s_aa002d0f29785d::t_b68369ce1b0b25 65,95
+  s_aa002d0f29785d::t_1d2bff2bad7a84 50-51
+src/tools/calibre_get_content.ts
+  s_aa002d0f29785d::t_b68369ce1b0b25 76,79,233
+  s_aa002d0f29785d::t_1d2bff2bad7a84 85-88,109,120,125-128,140-143,183-186,191,197,203
+  s_aa002d0f29785d::t_31d88f67856f50 16
+  s_aa002d0f29785d::t_552024ff4c0b95 114,131,134
+  s_aa002d0f29785d::t_10af6dc602fc75 236
+src/tools/calibre_open_book.ts
+  s_aa002d0f29785d::t_31d88f67856f50 10
+  s_aa002d0f29785d::t_1d2bff2bad7a84 63-66,74
+  s_aa002d0f29785d::t_552024ff4c0b95 58
+  s_aa002d0f29785d::t_10af6dc602fc75 55
+src/tools/calibre_get_figures.ts
+  s_aa002d0f29785d::t_31d88f67856f50 17
+  s_aa002d0f29785d::t_1d2bff2bad7a84 72,200,207,214-217
+  s_aa002d0f29785d::t_b68369ce1b0b25 62,65,104,106,341
+  s_aa002d0f29785d::t_10af6dc602fc75 340
+src/tools/calibre_bulk_update.ts
+  s_aa002d0f29785d::t_b68369ce1b0b25 173,239
+  s_aa002d0f29785d::t_31d88f67856f50 26
+  s_aa002d0f29785d::t_552024ff4c0b95 70,94,105
+  s_aa002d0f29785d::t_1d2bff2bad7a84 75,88,97-98,108,283-285
+src/tools/calibre_semantic_search.ts
+  s_aa002d0f29785d::t_1d2bff2bad7a84 133,157,169-172,180-183,200-201,635
+  s_aa002d0f29785d::t_b68369ce1b0b25 178
+  s_aa002d0f29785d::t_31d88f67856f50 31
+  s_aa002d0f29785d::t_552024ff4c0b95 175,640
+  s_aa002d0f29785d::t_10af6dc602fc75 642
+src/tools/add-path.ts
+  s_aa002d0f29785d::t_10af6dc602fc75 8-11,47
+test/tools/write-retry.test.ts
+  s_aa002d0f29785d::t_e9eb37bb00af1a 158-159
+src/tools/calibre_extract_isbn.ts
+  s_aa002d0f29785d::t_b68369ce1b0b25 42,45,104,119
+  s_aa002d0f29785d::t_31d88f67856f50 16
+  s_aa002d0f29785d::t_1d2bff2bad7a84 56
+src/tools/calibre_quality_report.ts
+  s_aa002d0f29785d::t_b68369ce1b0b25 78,142
+  s_aa002d0f29785d::t_552024ff4c0b95 69
+  s_aa002d0f29785d::t_31d88f67856f50 14
+  s_aa002d0f29785d::t_1d2bff2bad7a84 82-83
+src/tools/calibre_ping.ts
+  s_aa002d0f29785d::t_721aae42a7c706 43-46
+  s_aa002d0f29785d::t_31d88f67856f50 16
+src/tools/calibre_get_book.ts
+  s_aa002d0f29785d::t_10af6dc602fc75 102
+  s_aa002d0f29785d::t_31d88f67856f50 17
+  s_aa002d0f29785d::t_b68369ce1b0b25 61,74,99
+src/tools/calibre_merge_books.ts
+  s_aa002d0f29785d::t_552024ff4c0b95 76,79
+  s_aa002d0f29785d::t_1d2bff2bad7a84 88
+  s_aa002d0f29785d::t_ab0a99b26b4903 428,430
+  s_aa002d0f29785d::t_31d88f67856f50 23
+  s_aa002d0f29785d::t_b68369ce1b0b25 149
+docs/TROUBLESHOOTING.md
+  s_aa002d0f29785d::t_ffc796a9859683 264-283
+src/tools/calibre_recover_metadata.ts
+  s_aa002d0f29785d::t_31d88f67856f50 26
+  s_aa002d0f29785d::t_b68369ce1b0b25 60,63,175,177
+  s_aa002d0f29785d::t_1d2bff2bad7a84 98,119
+src/tools/calibre_update_book.ts
+  s_aa002d0f29785d::t_b68369ce1b0b25 73,75,90,130
+  s_aa002d0f29785d::t_10af6dc602fc75 91-95,133
+  s_aa002d0f29785d::t_1d2bff2bad7a84 66,189,198
+  s_aa002d0f29785d::t_31d88f67856f50 26,28
+  s_aa002d0f29785d::t_552024ff4c0b95 61
+src/tools/calibre_search.ts
+  s_aa002d0f29785d::t_1d2bff2bad7a84 478-481,484-488,500-501,503-507
+  s_aa002d0f29785d::t_31d88f67856f50 42
+  s_aa002d0f29785d::t_b68369ce1b0b25 96,239,336,490
+  s_aa002d0f29785d::t_552024ff4c0b95 483
+  s_aa002d0f29785d::t_10af6dc602fc75 513,515
+src/tools/calibre_list_categories.ts
+  s_aa002d0f29785d::t_10af6dc602fc75 111
+  s_aa002d0f29785d::t_31d88f67856f50 12
+  s_aa002d0f29785d::t_b68369ce1b0b25 51,77
+  s_aa002d0f29785d::t_552024ff4c0b95 69,86
+src/tools/calibre_build_index.ts
+  s_aa002d0f29785d::t_31d88f67856f50 40
+  s_aa002d0f29785d::t_552024ff4c0b95 137,225
+  s_aa002d0f29785d::t_b68369ce1b0b25 144
+src/tools/calibre_find_duplicates.ts
+  s_aa002d0f29785d::t_31d88f67856f50 16
+  s_aa002d0f29785d::t_1d2bff2bad7a84 108-109
+  s_aa002d0f29785d::t_b68369ce1b0b25 63,171
+  s_aa002d0f29785d::t_552024ff4c0b95 68,72,105
+src/tools/build-index-results.ts
+  s_aa002d0f29785d::t_31d88f67856f50 158
+  s_aa002d0f29785d::t_1d2bff2bad7a84 42,47-53,155
+src/app/bundles.ts
+  s_aa002d0f29785d::t_10af6dc602fc75 187-190,222
+src/call-log.ts
+  s_aa002d0f29785d::t_721aae42a7c706 76-77,98-99,103,106,125-138
+src/server.ts
+  s_aa002d0f29785d::t_31d88f67856f50 36
+  s_aa002d0f29785d::t_2f56c7cfab6afb 167
+  s_aa002d0f29785d::t_721aae42a7c706 118-124,151,155-156,160-161
+src/tools/calibre_manage_bundles.ts
+  s_aa002d0f29785d::t_31d88f67856f50 18-19
+  s_aa002d0f29785d::t_b68369ce1b0b25 307
+  s_aa002d0f29785d::t_1d2bff2bad7a84 121-122,185,196-199,225-228,232,238,270-274,276,283
+  s_aa002d0f29785d::t_ab0a99b26b4903 46,53-54,56-57,60,107-113,123-124,216,245,262,267
+  s_aa002d0f29785d::t_552024ff4c0b95 175
+  s_aa002d0f29785d::t_aa4aaa2328007f 277-278,284
+src/logging.ts
+  s_aa002d0f29785d::t_3019c417aeb743 9
+  s_aa002d0f29785d::t_ffc796a9859683 184-186,195,199-211
+src/tools/calibre_board_data.ts
+  s_aa002d0f29785d::t_31d88f67856f50 12
+  s_aa002d0f29785d::t_1d2bff2bad7a84 59-62,69-72
+src/domain/error-codes.ts
+  s_aa002d0f29785d::t_1d2bff2bad7a84 87
+  s_aa002d0f29785d::t_bea6f87709a947 1-86,88-102
+test/tools/build-index.background.test.ts
+  s_aa002d0f29785d::t_e9eb37bb00af1a 180-184
+src/tools/calibre_remove_book.ts
+  s_aa002d0f29785d::t_b68369ce1b0b25 76,92
+  s_aa002d0f29785d::t_31d88f67856f50 15
+  s_aa002d0f29785d::t_552024ff4c0b95 39,48
+src/tools/result.ts
+  s_aa002d0f29785d::t_81091d8beb8a21 5,39-46,50-51,53-54,57
+CLAUDE.md
+  s_aa002d0f29785d::t_95e596e5cd9434 59-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ea677d344cb59a9e3fa6a7ea97399021295e25eb",
+  "prompts": {},
+  "sessions": {
+    "s_aa002d0f29785d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9858b033-3534-4580-8536-b45ea248531d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
