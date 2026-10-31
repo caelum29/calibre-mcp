@@ -7,3 +7,18 @@
 export function toLibId(displayName: string): string {
   return displayName.replace(/ /g, "_");
 }
+
+/**
+ * A Content Server library ID ("Programming_Books"), as opposed to a display name
+ * ("Programming Books"). `calibredb --with-library` 404s on the latter (D-008), so the
+ * type makes the resolve step compile-checked.
+ */
+export type LibId = string & { readonly __brand: "LibId" };
+
+/**
+ * Mint a {@link LibId}. Only `ContentServerClient.resolveLibraryId` may call this in `src/`
+ * (guarded in test/architecture.test.ts); tests mint fixtures with it.
+ */
+export function asLibId(id: string): LibId {
+  return id as LibId;
+}

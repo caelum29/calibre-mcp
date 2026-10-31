@@ -3,9 +3,7 @@
 // — NOT a translation of Calibre's GPL merge code.
 
 import type { Book } from "./book.js";
-
-/** One field's merged value, structurally compatible with metadata-fields' ChangeValue. */
-export type MergedValue = string | number | string[] | Record<string, string>;
+import type { ChangeValue } from "./book-fields.js";
 
 /** A custom column's value on one book, as read from `/ajax/book` user_metadata. */
 export interface CustomFieldValue {
@@ -71,8 +69,8 @@ function firstSource<T>(sources: Book[], pick: (b: Book) => T | undefined): T | 
  * `\n\n`-concat (comments, skipping ones identical to the target's original), identifiers
  * union with target-precedence. Returns ONLY the fields whose value actually changes.
  */
-export function mergeBuiltinMetadata(target: Book, sources: Book[]): Record<string, MergedValue> {
-  const changes: Record<string, MergedValue> = {};
+export function mergeBuiltinMetadata(target: Book, sources: Book[]): Record<string, ChangeValue> {
+  const changes: Record<string, ChangeValue> = {};
 
   if (target.title.trim() === "") {
     const t = firstSource(sources, (s) => (s.title.trim() === "" ? undefined : s.title));
@@ -156,7 +154,7 @@ function customEmpty(f: CustomFieldValue): boolean {
 }
 
 /** Encode one custom value into `--field '#label:value'` form (probe-verified encodings). */
-function encodeCustom(f: CustomFieldValue, value: unknown, extra?: number): MergedValue {
+function encodeCustom(f: CustomFieldValue, value: unknown, extra?: number): ChangeValue {
   if (f.datatype === "bool") return value ? "true" : "false";
   if (f.datatype === "series") {
     const name = String(value);
@@ -176,8 +174,8 @@ function encodeCustom(f: CustomFieldValue, value: unknown, extra?: number): Merg
 export function mergeCustomMetadata(
   targetFields: CustomFieldValue[],
   sources: CustomFieldValue[][],
-): Record<string, MergedValue> {
-  const changes: Record<string, MergedValue> = {};
+): Record<string, ChangeValue> {
+  const changes: Record<string, ChangeValue> = {};
   const bySource = sources.map((list) => new Map(list.map((f) => [f.label, f] as const)));
 
   for (const tf of targetFields) {

@@ -7,7 +7,8 @@ import { z } from "zod";
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/server";
 import type { CallToolResult, ServerContext } from "@modelcontextprotocol/server";
 import { registerAppTool, registerAppResource, RESOURCE_MIME_TYPE } from "@modelcontextprotocol/ext-apps/server";
-import { loadConfig, type Config } from "./config.js";
+import type { Config } from "./config.js";
+import { loadRuntimeConfig } from "./runtime-config.js";
 import { CalibreClient } from "./calibre/client.js";
 import { ContentServerClient } from "./calibre/content-server.js";
 import { Extractor } from "./calibre/extract.js";
@@ -65,7 +66,7 @@ export interface BuildServerOptions {
 
 /** Build the MCP server: load config, wire deps, register every tool/resource, and disable write tools when the write gate is off. */
 export function buildServer(options: BuildServerOptions = {}): McpServer {
-  const config = options.config ?? loadConfig(options.env);
+  const config = options.config ?? loadRuntimeConfig(options.env);
   const figures = new FigureInventoryService(config);
   const deps: ToolDeps = {
     config,
@@ -192,7 +193,7 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
     async (_uri, variables) => {
       const raw = Array.isArray(variables.id) ? variables.id[0] : variables.id;
       const id = Number(raw);
-      const r = await readBookResource(deps, id);
+      const r = await readBookResource(deps.content, id);
       return { contents: [{ uri: r.uri, mimeType: r.mimeType, text: r.text }] };
     },
   );

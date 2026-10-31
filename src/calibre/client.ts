@@ -16,13 +16,14 @@ import {
 import type { FtsHit } from "../domain/search.js";
 import { log } from "../logging.js";
 import { redactArgvEchoes, summarizeArgv } from "../call-log.js";
+import type { LibId } from "./lib-id.js";
 import { SpawnAbortedError, spawnCollect, SpawnTimeoutError } from "./spawn.js";
 
 export interface CalibreClientOptions {
   /** Per-call timeout in ms. macOS calibredb can hang against a busy GUI. */
   timeoutMs?: number;
-  /** Target library display name; defaults to config's library. */
-  library?: string;
+  /** Target library, resolved via content.resolveLibraryId (never a display name, D-008). */
+  library: LibId;
   /** Cancellation: kills the calibredb process group and throws OperationCancelledError. */
   signal?: AbortSignal;
 }
@@ -34,7 +35,7 @@ export interface FtsSearchOptions {
   snippets?: boolean;
   matchStartMarker?: string;
   matchEndMarker?: string;
-  library?: string;
+  library: LibId;
   timeoutMs?: number;
   signal?: AbortSignal;
 }
@@ -48,7 +49,7 @@ interface RawFtsHit {
 }
 
 /** Build the `fts_search` argv (pure — exported for testing). Options precede the expression. */
-export function buildFtsArgs(query: string, opts: FtsSearchOptions = {}): string[] {
+export function buildFtsArgs(query: string, opts: Partial<FtsSearchOptions> = {}): string[] {
   const args = ["fts_search", "--output-format=json"];
   if (opts.snippets) args.push("--include-snippets");
   if (opts.matchStartMarker) args.push(`--match-start-marker=${opts.matchStartMarker}`);
@@ -87,12 +88,8 @@ export class CalibreClient {
   constructor(private readonly cfg: Config) {}
 
   /** The `--with-library` value that routes calibredb through the live server. */
-  private libraryUrl(library?: string): string {
-    const lib = library || this.cfg.defaultLibrary;
-    // No library anywhere → fragment-less URL, letting calibredb hit the server default.
-    // Callers normally resolve the libId first (content.resolveLibraryId); this is a net.
-    if (!lib) return this.cfg.serverUrl;
-    return `${this.cfg.serverUrl}/#${encodeURIComponent(lib)}`;
+  private libraryUrl(library: LibId): string {
+    return `${this.cfg.serverUrl}/#${encodeURIComponent(library)}`;
   }
 
   /**
@@ -100,10 +97,7 @@ export class CalibreClient {
    * interpolate user input into a shell string. A non-zero exit (or spawn failure)
    * becomes a {@link CalibreCliError} carrying stderr for caller-side classification.
    */
-  async calibredb(
-    args: readonly string[],
-    opts: CalibreClientOptions = {},
-  ): Promise<{ stdout: string; stderr: string }> {
+  async calibredb(args: readonly string[], opts: CalibreClientOptions): Promise<{ stdout: string; stderr: string }> {
     const fullArgs = ["--with-library", this.libraryUrl(opts.library), ...args];
     let result;
     try {
@@ -154,7 +148,7 @@ export class CalibreClient {
    * Full-text search via `calibredb fts_search`. Returns book-level hits (FTS has no
    * page/spine location). Requires the library's FTS index to be enabled + built.
    */
-  async ftsSearch(query: string, opts: FtsSearchOptions = {}): Promise<FtsHit[]> {
+  async ftsSearch(query: string, opts: FtsSearchOptions): Promise<FtsHit[]> {
     // FTS (esp. with snippets) is slower than metadata calls — allow more headroom.
     const { stdout } = await this.calibredb(buildFtsArgs(query, opts), {
       library: opts.library,
@@ -165,7 +159,7 @@ export class CalibreClient {
   }
 
   /** Library list as JSON, proving connectivity to the live server. */
-  async listLibraries(library?: string): Promise<string> {
+  async listLibraries(library: LibId): Promise<string> {
     const { stdout } = await this.calibredb(["list_categories", "--csv"], { library });
     return stdout;
   }

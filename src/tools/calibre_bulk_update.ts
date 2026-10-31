@@ -4,8 +4,9 @@
 // Applies by looping `calibredb set_metadata` per book (no bulk CLI form; HTTP batch is LATER).
 
 import { z } from "zod";
-import { buildSetMetadataArgs, isAllowedField, previewBookChanges } from "../calibre/metadata-fields.js";
-import type { ChangeValue } from "../calibre/metadata-fields.js";
+import { buildSetMetadataArgs } from "../calibre/metadata-fields.js";
+import { isAllowedField, previewBookChanges } from "../domain/book-fields.js";
+import type { ChangeValue } from "../domain/book-fields.js";
 import { CalibreCliTimeoutError } from "../domain/errors.js";
 import { buildScopedQuery, honestyLines, resolveFilter } from "./bundles.js";
 import { BookId, CoercedBool, jsonArray, jsonRecord } from "./coerce.js";

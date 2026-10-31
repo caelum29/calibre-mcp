@@ -8,8 +8,8 @@ import type { Book, Identifiers } from "../domain/book.js";
 import type { CustomFieldValue } from "../domain/merge.js";
 import type { LibraryInfo, Category, CategoryItem, CategoryItemsPage } from "../domain/library.js";
 import type { SearchParams, SearchPage } from "../domain/search.js";
-import { getJson } from "./http.js";
-import { toLibId } from "./lib-id.js";
+import { getBytes, getJson } from "./http.js";
+import { asLibId, type LibId, toLibId } from "./lib-id.js";
 
 // --- Raw /ajax response shapes (loose; only the fields we read) ---
 
@@ -136,23 +136,23 @@ export class ContentServerClient {
    * only if the server doesn't list it (DESIGN: don't hard-code the substitution).
    * No name anywhere (no arg, empty config) → the server's own default library.
    */
-  async resolveLibraryId(display?: string): Promise<string> {
+  async resolveLibraryId(display?: string): Promise<LibId> {
     const name = display || this.cfg.defaultLibrary;
     if (!this.#libMap) await this.libraryInfo();
     const map = this.#libMap ?? {};
     if (!name) {
-      if (this.#defaultLibId) return this.#defaultLibId;
+      if (this.#defaultLibId) return asLibId(this.#defaultLibId);
       throw new Error(
         `The Content Server at ${this.cfg.serverUrl} reports no libraries; ` +
           "set CALIBRE_MCP_LIBRARY or check the server.",
       );
     }
     // If `name` already IS a libId (a key), use it directly.
-    if (map[name] !== undefined) return name;
+    if (map[name] !== undefined) return asLibId(name);
     for (const [libId, displayName] of Object.entries(map)) {
-      if (displayName === name) return libId;
+      if (displayName === name) return asLibId(libId);
     }
-    return toLibId(name);
+    return asLibId(toLibId(name));
   }
 
   /** GET /ajax/search/{libId}?query=&num=&offset=&sort=&sort_order= → SearchPage (ids only). */
@@ -177,11 +177,16 @@ export class ContentServerClient {
     };
   }
 
+  // GET /ajax/book/{id}/{libId} — the one fetch behind getBook and bookMergeFacts.
+  async #ajaxBook(id: number, library?: string): Promise<{ raw: RawBook; libId: string }> {
+    const libId = await this.resolveLibraryId(library);
+    const raw = await getJson<RawBook>(`${this.base}/ajax/book/${id}/${encodeURIComponent(libId)}`);
+    return { raw, libId };
+  }
+
   /** GET /ajax/book/{id}/{libId} → full Book. */
   async getBook(id: number, library?: string): Promise<Book> {
-    const libId = await this.resolveLibraryId(library);
-    const url = `${this.base}/ajax/book/${id}/${encodeURIComponent(libId)}`;
-    const raw = await getJson<RawBook>(url);
+    const { raw, libId } = await this.#ajaxBook(id, library);
     return this.mapBook(raw, id, libId);
   }
 
@@ -205,9 +210,7 @@ export class ContentServerClient {
    * book actually has a cover (for the fill-if-empty cover rule).
    */
   async bookMergeFacts(id: number, library?: string): Promise<{ customFields: CustomFieldValue[]; hasCover: boolean }> {
-    const libId = await this.resolveLibraryId(library);
-    const url = `${this.base}/ajax/book/${id}/${encodeURIComponent(libId)}`;
-    const raw = await getJson<RawBook>(url);
+    const { raw } = await this.#ajaxBook(id, library);
     const customFields = Object.entries(raw.user_metadata ?? {})
       .filter(([label]) => label.startsWith("#"))
       .map(([label, m]) => ({
@@ -234,17 +237,11 @@ export class ContentServerClient {
   async coverThumb(id: number, library?: string, sz = "300x400"): Promise<{ data: string; mimeType: string } | null> {
     const libId = await this.resolveLibraryId(library);
     const url = `${this.base}/get/thumb/${id}/${encodeURIComponent(libId)}?sz=${sz}`;
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10_000);
     try {
-      const res = await fetch(url, { signal: controller.signal });
-      if (!res.ok) return null;
-      const buf = Buffer.from(await res.arrayBuffer());
-      return { data: buf.toString("base64"), mimeType: res.headers.get("content-type") ?? "image/jpeg" };
+      const { data, contentType } = await getBytes(url, { timeoutMs: 10_000 });
+      return { data: data.toString("base64"), mimeType: contentType ?? "image/jpeg" };
     } catch {
       return null;
-    } finally {
-      clearTimeout(timeout);
     }
   }
 

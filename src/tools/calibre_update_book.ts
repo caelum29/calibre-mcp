@@ -4,8 +4,9 @@
 // classifies a server write-refusal into an actionable message (CAPABILITIES §2).
 
 import { z } from "zod";
-import { bookFieldValue, buildSetMetadataArgs, isAllowedField, sameFieldValue } from "../calibre/metadata-fields.js";
-import type { ChangeValue } from "../calibre/metadata-fields.js";
+import { buildSetMetadataArgs } from "../calibre/metadata-fields.js";
+import { bookFieldValue, isAllowedField, sameFieldValue } from "../domain/book-fields.js";
+import type { ChangeValue } from "../domain/book-fields.js";
 import type { Book } from "../domain/book.js";
 import { CalibreCliTimeoutError, CalibreHttpError } from "../domain/errors.js";
 import { BookId, jsonRecord } from "./coerce.js";

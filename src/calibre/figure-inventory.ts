@@ -26,6 +26,7 @@ import {
   renderPdfBand,
   type Runner,
 } from "./figure-fetch.js";
+import { FiguresError, type FiguresErrorCode } from "../domain/errors.js";
 import type { FigureEntry } from "../domain/figures/inventory.js";
 import { unzipBinary } from "./epub-toc.js";
 import { downloadToFile } from "./http.js";
@@ -65,9 +66,12 @@ export interface FetchedFigure {
   image: EncodedImage;
 }
 
+/** A figure that was not returned: prose reason, or a coded failure the tool words. */
+export type SkippedFigure = { index: number; reason: string } | { index: number; code: FiguresErrorCode };
+
 export interface FetchOutcome {
   images: FetchedFigure[];
-  skipped: Array<{ index: number; reason: string }>;
+  skipped: SkippedFigure[];
 }
 
 /** Raw bytes; base64 inflates ×4/3, so this keeps the response near the ~2 MB cap. */
@@ -110,11 +114,11 @@ export class FigureInventoryService {
   /** Cache-keyed inventory. Downloads + scans on miss; JSON round-trip on hit. */
   async getInventory(args: GetInventoryArgs): Promise<InventoryResult> {
     const format = args.format.toLowerCase();
-    if (format !== "pdf" && format !== "epub") throw new Error("FIGURES_FORMAT_UNSUPPORTED");
+    if (format !== "pdf" && format !== "epub") throw new FiguresError("FORMAT_UNSUPPORTED");
     const bins = format === "pdf" ? this.binaries() : null;
-    if (format === "pdf" && !bins) throw new Error("FIGURES_NO_POPPLER");
+    if (format === "pdf" && !bins) throw new FiguresError("NO_POPPLER");
     const unzip = format === "epub" ? this.unzipBinary() : null;
-    if (format === "epub" && !unzip) throw new Error("FIGURES_NO_UNZIP");
+    if (format === "epub" && !unzip) throw new FiguresError("NO_UNZIP");
 
     const cacheFile = path.join(CACHE_DIR, `fg-${hashKey(args.cacheKey)}.json`);
     if (!path.resolve(cacheFile).startsWith(path.resolve(CACHE_DIR) + path.sep)) {
@@ -161,7 +165,7 @@ export class FigureInventoryService {
    */
   async fetchFigures(args: FetchFiguresArgs): Promise<FetchOutcome> {
     const format = args.format.toLowerCase();
-    if (format !== "pdf" && format !== "epub") throw new Error("FIGURES_FORMAT_UNSUPPORTED");
+    if (format !== "pdf" && format !== "epub") throw new FiguresError("FORMAT_UNSUPPORTED");
     const timeout = args.timeoutMs ?? RUN_TIMEOUT_MS;
     const run: Runner = (bin, a, okCodes) => this.#run(bin, a, timeout, okCodes ?? [0]);
 
@@ -177,7 +181,7 @@ export class FigureInventoryService {
       let epubDir: string | null = null;
       if (format === "epub") {
         const unzip = this.unzipBinary();
-        if (!unzip) throw new Error("FIGURES_NO_UNZIP");
+        if (!unzip) throw new FiguresError("NO_UNZIP");
         epubDir = path.join(scratch, "ep");
         await this.#run(unzip, ["-o", "-qq", src, "-d", epubDir], timeout, [0, 1]);
       }
@@ -213,7 +217,8 @@ export class FigureInventoryService {
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           log.error("figure fetch failed", { index, msg: msg.slice(0, 300) });
-          skipped.push({ index, reason: msg.startsWith("FIGURES_") ? msg : "FIGURES_FETCH_FAILED" });
+          // anything that is not a coded figures failure (incl. cancellation) reads as a failed extraction
+          skipped.push({ index, code: err instanceof FiguresError ? err.code : "FETCH_FAILED" });
         }
       }
       return { images, skipped };
@@ -234,40 +239,40 @@ export class FigureInventoryService {
   ): Promise<string> {
     if (format === "pdf") {
       const bins = this.binaries();
-      if (!bins) throw new Error("FIGURES_NO_POPPLER");
+      if (!bins) throw new FiguresError("NO_POPPLER");
       if (entry.source === "raster") {
         return extractPdfRaster(run, bins.pdfimages, src, scratch, entry, inventory);
       }
       const pdftoppm = pdftoppmBinary();
-      if (!pdftoppm) throw new Error("FIGURES_NO_POPPLER");
+      if (!pdftoppm) throw new FiguresError("NO_POPPLER");
       return renderPdfBand(run, { pdftotext: bins.pdftotext, pdftoppm }, src, scratch, entry, inventory);
     }
     // EPUB: zip member (raster), .svg member, or inline <svg> in the spine doc
-    if (!epubDir) throw new Error("FIGURES_FETCH_FAILED");
+    if (!epubDir) throw new FiguresError("FETCH_FAILED");
     const readInside = (href: string): string => {
       const abs = path.resolve(epubDir, href);
-      if (!abs.startsWith(path.resolve(epubDir) + path.sep)) throw new Error("FIGURES_FETCH_FAILED");
+      if (!abs.startsWith(path.resolve(epubDir) + path.sep)) throw new FiguresError("FETCH_FAILED");
       return abs;
     };
     if (entry.source === "raster" && entry.imageHref) {
       const abs = readInside(entry.imageHref);
-      if (!existsSync(abs)) throw new Error("FIGURES_FETCH_FAILED");
+      if (!existsSync(abs)) throw new FiguresError("FETCH_FAILED");
       return abs;
     }
     const qlmanage = qlmanageBinary();
-    if (!qlmanage) throw new Error("FIGURES_NO_QLMANAGE");
+    if (!qlmanage) throw new FiguresError("NO_QLMANAGE");
     if (entry.imageHref) {
       const abs = readInside(entry.imageHref);
-      if (!existsSync(abs)) throw new Error("FIGURES_FETCH_FAILED");
+      if (!existsSync(abs)) throw new FiguresError("FETCH_FAILED");
       return rasterizeSvg(run, qlmanage, abs, scratch, DETAIL_MAX_SIDE.high);
     }
     // inline SVG: ordinal among this spine doc's inline-svg entries, re-scan the doc
-    if (!entry.spineHref) throw new Error("FIGURES_FETCH_FAILED");
+    if (!entry.spineHref) throw new FiguresError("FETCH_FAILED");
     const siblings = inventory.entries.filter(
       (e) => e.spineHref === entry.spineHref && e.source === "svg-render" && !e.imageHref,
     );
     const ordinal = siblings.findIndex((e) => e.index === entry.index);
-    if (ordinal < 0) throw new Error("FIGURES_FETCH_FAILED");
+    if (ordinal < 0) throw new FiguresError("FETCH_FAILED");
     const html = await readFile(readInside(entry.spineHref), "utf8");
     const svgFile = await inlineSvgToFile(html, ordinal, scratch);
     return rasterizeSvg(run, qlmanage, svgFile, scratch, DETAIL_MAX_SIDE.high);
@@ -290,11 +295,11 @@ export class FigureInventoryService {
       await this.#run(unzip, ["-o", "-qq", src, "-d", extractDir], timeoutMs ?? RUN_TIMEOUT_MS, [0, 1], signal);
       const readInside = async (href: string): Promise<string> => {
         const abs = path.resolve(extractDir, href);
-        if (!abs.startsWith(path.resolve(extractDir) + path.sep)) throw new Error("FIGURES_SCAN_FAILED");
+        if (!abs.startsWith(path.resolve(extractDir) + path.sep)) throw new FiguresError("SCAN_FAILED");
         return readFile(abs, "utf8");
       };
       const opfPath = parseContainerRootfile(await readInside("META-INF/container.xml"));
-      if (!opfPath) throw new Error("FIGURES_SCAN_FAILED");
+      if (!opfPath) throw new FiguresError("SCAN_FAILED");
       const spineHrefs = parseOpfSpine(await readInside(opfPath), opfPath);
       const docs: SpineDoc[] = [];
       for (const href of spineHrefs) {
@@ -306,7 +311,7 @@ export class FigureInventoryService {
           log.error("epub spine doc unreadable", { href });
         }
       }
-      if (docs.length === 0) throw new Error("FIGURES_SCAN_FAILED");
+      if (docs.length === 0) throw new FiguresError("SCAN_FAILED");
       return buildEpubInventory(docs);
     } finally {
       await rm(extractDir, { recursive: true, force: true }).catch(() => {});
@@ -374,8 +379,7 @@ export class FigureInventoryService {
       maxBuffer: MAX_LIST_BUFFER,
       signal,
       okCodes,
-      failedCode: "FIGURES_SCAN_FAILED",
-      timeoutCode: "FIGURES_SCAN_TIMEOUT",
+      fail: (timedOut) => new FiguresError(timedOut ? "SCAN_TIMEOUT" : "SCAN_FAILED"),
       logMessage: "figure inventory scan failed",
     });
   }

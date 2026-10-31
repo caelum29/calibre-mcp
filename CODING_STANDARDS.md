@@ -11,7 +11,7 @@ what to require. Cite the rule's heading in findings.
 
 | Diff touches                                                                             | Open                                                                         |
 | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| a tool with `write: true`, `src/calibre/*write*`, `metadata-fields.ts`, merge/remove/add | [`docs/standards/writes.md`](docs/standards/writes.md)                       |
+| a tool with `write: true`, `src/calibre/*write*`, `metadata-fields.ts`, `domain/book-fields.ts`, merge/remove/add | [`docs/standards/writes.md`](docs/standards/writes.md)                       |
 | any tool result, `catch` block, error message, log call, `remediation.ts`                | [`docs/standards/results-and-errors.md`](docs/standards/results-and-errors.md) |
 | `src/domain/**`, `src/enrich/**`, extraction, captions, keys, normalizers, scores        | [`docs/standards/heuristics.md`](docs/standards/heuristics.md)               |
 | `src/semantic/**`, caches, sqlite, subprocesses, timeouts, `Promise.race`                | [`docs/standards/state-and-concurrency.md`](docs/standards/state-and-concurrency.md) |
@@ -43,7 +43,7 @@ The most frequent root cause in this repo: a rule lives in two places and the fi
 `findBin` ×4, #276 a third `stripAccents` next to `normalize.ts`).
 
 - When the diff adds a helper, search for an existing one with the same job before accepting it.
-  Shared homes: `verifyTimedOutWrite` (write-verify.ts), `sameFieldValue` (metadata-fields.ts),
+  Shared homes: `verifyTimedOutWrite` (write-verify.ts), `sameFieldValue` (domain/book-fields.ts),
   `pageCursor`/`renderResult` (tools/), `compileUserRegex`, `isWriteRefused` (write-refusal.ts),
   `isEmptyDate`, `looksLikeRawFilename`, `stripAccents`/`similarKey` (domain/curation/normalize.ts),
   `remediation.ts`, `calibre/spawn.ts`.

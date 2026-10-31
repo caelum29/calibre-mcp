@@ -5,7 +5,7 @@
 import { readdirSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { loadConfig } from "../../src/config.js";
+import { loadRuntimeConfig } from "../../src/runtime-config.js";
 import { TransformersEmbedder } from "../../src/semantic/embedder.js";
 import { CANDIDATES } from "../../src/semantic/model.js";
 import { dot } from "../../src/semantic/vector.js";
@@ -25,7 +25,7 @@ vi.mock("../../src/semantic/model.js", async (importOriginal) => {
 });
 
 describe.skipIf(!RUN)("TransformersEmbedder — EmbeddingGemma 2 candidates (live model)", () => {
-  const cfg = loadConfig();
+  const cfg = loadRuntimeConfig();
 
   it.each(["gemma2-768", "gemma2-256"] as const)(
     "%s: unit-norm vectors at the spec dim, card example ranks Mars first",

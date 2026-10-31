@@ -11,6 +11,7 @@ import { CalibreHttpError } from "../domain/errors.js";
 import { type BundleEntry, invalidateBundleCache, isExclusionMarker, loadBundles } from "./bundles.js";
 import { CoercedBool } from "./coerce.js";
 import { defineTool } from "./define.js";
+import type { LibId } from "../calibre/lib-id.js";
 import { toolError, toolOk } from "./result.js";
 import type { ToolDeps } from "./types.js";
 import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "./write-refusal.js";
@@ -99,7 +100,7 @@ function previewText(
  * a returned reason (rather than a throw) is what lets the update path roll back and still
  * report WHY the write failed.
  */
-async function tryWrite(deps: ToolDeps, args: readonly string[], libId: string): Promise<string | undefined> {
+async function tryWrite(deps: ToolDeps, args: readonly string[], libId: LibId): Promise<string | undefined> {
   try {
     await deps.calibre.calibredb(args, { library: libId });
     // The discovery tools read bundles through a TTL cache — a committed write must be

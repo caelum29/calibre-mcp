@@ -5,7 +5,8 @@
 
 import { z } from "zod";
 import type { FigureInventory } from "../domain/figures/inventory.js";
-import { CalibreHttpError } from "../domain/errors.js";
+import type { SkippedFigure } from "../calibre/figure-inventory.js";
+import { CalibreHttpError, FiguresError, type FiguresErrorCode } from "../domain/errors.js";
 import { log } from "../logging.js";
 import { BookId, CoercedBool, CoercedInt, jsonArray } from "./coerce.js";
 import { defineTool } from "./define.js";
@@ -234,7 +235,7 @@ async function fetchFigures(
     );
   }
   for (const s of outcome.skipped) {
-    blocks.push({ type: "text", text: `Figure index ${s.index} skipped: ${skipReason(s.reason)}` });
+    blocks.push({ type: "text", text: `Figure index ${s.index} skipped: ${skipReason(s)}` });
   }
   if (outcome.images.length > 0) {
     // First-pass confabulation is the verified failure mode (#80): models answer
@@ -269,47 +270,67 @@ async function fetchFigures(
       : toolOk(blocks, {
           format: fmt,
           returned,
-          skipped: outcome.skipped.map((s) => ({ index: s.index, reason: skipReason(s.reason) })),
+          skipped: outcome.skipped.map((s) => ({ index: s.index, reason: skipReason(s) })),
           text: summary,
         });
   if (anyFailed) result.isError = true;
   return result;
 }
 
-/** Coded reasons → model-actionable prose. */
-function skipReason(reason: string): string {
-  switch (reason) {
-    case "FIGURES_NO_POPPLER":
-      return "poppler is missing (brew install poppler) — needed to extract PDF figures.";
-    case "FIGURES_NO_QLMANAGE":
-      return "this SVG figure needs macOS qlmanage to rasterize, which is unavailable here.";
-    case "FIGURES_FETCH_FAILED":
-      return "the image could not be extracted from the source file.";
-    default:
-      return reason;
-  }
+interface FigureMessages {
+  /** Whole-call error when the scan fails (`Error: ` is added by toolError). */
+  scan: (bookId: number, fmt: string) => string;
+  /** Reason shown for one skipped figure. */
+  skip: string;
+}
+
+/**
+ * The one code → model-facing wording map. Exhaustive, so a new {@link FiguresErrorCode}
+ * without wording is a compile error. Codes that never had prose keep their old raw
+ * `FIGURES_<code>` text on that path (byte-identical output).
+ */
+/** Legacy raw wording for a code that has no prose on a path: `FIGURES_<code>`. */
+const raw = (code: FiguresErrorCode) => `FIGURES_${code}`;
+
+const MESSAGES: Record<FiguresErrorCode, FigureMessages> = {
+  NO_POPPLER: {
+    scan: () =>
+      "No poppler tools found (pdfimages/pdftotext) — install with `brew install poppler` to scan PDF figures.",
+    skip: "poppler is missing (brew install poppler) — needed to extract PDF figures.",
+  },
+  NO_UNZIP: {
+    scan: () => "No unzip binary found — needed to scan EPUB figures.",
+    skip: raw("NO_UNZIP"),
+  },
+  NO_QLMANAGE: {
+    scan: () => raw("NO_QLMANAGE"),
+    skip: "this SVG figure needs macOS qlmanage to rasterize, which is unavailable here.",
+  },
+  FORMAT_UNSUPPORTED: {
+    scan: (_id, fmt) => `Figures need an EPUB or PDF source; ${fmt} is not supported.`,
+    skip: raw("FORMAT_UNSUPPORTED"),
+  },
+  SCAN_TIMEOUT: {
+    scan: (id, fmt) => `Figure scan timed out for book ${id} (${fmt}) — the file may be very large.`,
+    skip: raw("SCAN_TIMEOUT"),
+  },
+  SCAN_FAILED: {
+    scan: (id, fmt) => `Could not scan book ${id} (${fmt}) for figures — the file may be DRM-protected or corrupt.`,
+    skip: raw("SCAN_FAILED"),
+  },
+  FETCH_FAILED: {
+    scan: () => raw("FETCH_FAILED"),
+    skip: "the image could not be extracted from the source file.",
+  },
+};
+
+function skipReason(s: SkippedFigure): string {
+  return "reason" in s ? s.reason : MESSAGES[s.code].skip;
 }
 
 function figuresError(err: unknown, bookId: number, fmt: string) {
-  const m = err instanceof Error ? err.message : String(err);
-  switch (m) {
-    case "FIGURES_NO_POPPLER":
-      return toolError(
-        "No poppler tools found (pdfimages/pdftotext) — install with `brew install poppler` to scan PDF figures.",
-      );
-    case "FIGURES_NO_UNZIP":
-      return toolError("No unzip binary found — needed to scan EPUB figures.");
-    case "FIGURES_FORMAT_UNSUPPORTED":
-      return toolError(`Figures need an EPUB or PDF source; ${fmt} is not supported.`);
-    case "FIGURES_SCAN_TIMEOUT":
-      return toolError(`Figure scan timed out for book ${bookId} (${fmt}) — the file may be very large.`);
-    case "FIGURES_SCAN_FAILED":
-      return toolError(
-        `Could not scan book ${bookId} (${fmt}) for figures — the file may be DRM-protected or corrupt.`,
-      );
-    default:
-      return toolError(m);
-  }
+  if (err instanceof FiguresError) return toolError(MESSAGES[err.code].scan(bookId, fmt));
+  return toolError(err instanceof Error ? err.message : String(err));
 }
 
 function plural(n: number, word: string): string {

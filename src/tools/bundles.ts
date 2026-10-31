@@ -4,6 +4,7 @@
 // resolves through here. Honesty contract: whatever this layer subtracts or scopes is reported
 // in text content by the caller — never silent subtraction.
 
+import type { LibId } from "../calibre/lib-id.js";
 import type { ToolDeps } from "./types.js";
 
 export interface BundleEntry {
@@ -86,10 +87,10 @@ export async function loadBundles(deps: ToolDeps, library?: string): Promise<Bun
 // Bundle listing spawns calibredb (~hundreds of ms), so discovery calls read through a short
 // TTL cache; manage_bundles writes invalidate it. Process-lifetime, single stdio client.
 const CACHE_TTL_MS = 30_000;
-const cache = new Map<string, { at: number; bundles: BundleEntry[] }>();
+const cache = new Map<LibId, { at: number; bundles: BundleEntry[] }>();
 
 /** Drop cached bundle listings for one libId, or all libraries when omitted (called after bundle writes). */
-export function invalidateBundleCache(libId?: string): void {
+export function invalidateBundleCache(libId?: LibId): void {
   if (libId === undefined) cache.clear();
   else cache.delete(libId);
 }
@@ -98,7 +99,7 @@ export function invalidateBundleCache(libId?: string): void {
 export async function loadBundlesCached(
   deps: ToolDeps,
   library?: string,
-): Promise<{ libId: string; bundles: BundleEntry[] }> {
+): Promise<{ libId: LibId; bundles: BundleEntry[] }> {
   const libId = await deps.content.resolveLibraryId(library);
   const hit = cache.get(libId);
   if (hit && Date.now() - hit.at < CACHE_TTL_MS) return { libId, bundles: hit.bundles };

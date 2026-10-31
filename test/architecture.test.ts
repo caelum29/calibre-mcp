@@ -117,16 +117,12 @@ const LAYER_RULES: LayerRule[] = [
   { name: "ui does not import tools", from: /^src\/ui\//, forbidden: /^src\/tools\// },
   { name: "resources take ports, not tools", from: /^src\/resources\//, forbidden: /^src\/tools\// },
   { name: "scripts do not reach into tools", from: /^scripts\//, forbidden: /^src\/tools\// },
+  // neutral helpers both tools/ and resources/ import (#261): they may lean on domain only
+  { name: "shared imports only domain", from: /^src\/shared\//, forbidden: /^src\/(?!domain\/|shared\/)/ },
 ];
 
 // Known breaks, each owned by an open refactor issue. Shrink-only: a fixed edge must be removed.
 const LAYER_ALLOWLIST = new Set([
-  "src/domain/enrich/proposal.ts -> src/calibre/metadata-fields.ts", // #217
-  "src/domain/enrich/types.ts -> src/calibre/metadata-fields.ts", // #217
-  "src/config.ts -> src/calibre/discover.ts", // #261
-  "src/resources/book.ts -> src/tools/types.ts", // #261
-  "src/resources/book.ts -> src/tools/result.ts", // #261
-  "src/resources/book.ts -> src/tools/resource-link.ts", // #261
   "scripts/reindex.ts -> src/tools/index-book.ts", // #260
   "scripts/reindex.ts -> src/tools/types.ts", // #260
 ]);
@@ -167,6 +163,13 @@ describe("layer directions", () => {
       "scripts/x.mjs -> src/tools/index-book.ts",
     ]);
     expect(at("src/domain/x.ts", `// import { a } from "../calibre/client.js";`)).toEqual([]);
+    expect(at("src/shared/x.ts", `import { fence } from "../tools/result.js";`)).toEqual([
+      "src/shared/x.ts -> src/tools/result.ts",
+    ]);
+    expect(at("src/shared/x.ts", `import type { Book } from "../domain/book.js";`)).toEqual([]);
+    expect(at("src/config.ts", `import { discoverCalibredb } from "./calibre/discover.js";`)).toEqual([
+      "src/config.ts -> src/calibre/discover.ts",
+    ]);
   });
 });
 
@@ -188,7 +191,18 @@ const TWIN_RULES: TwinRule[] = [
   {
     name: "HTTP goes through the http clients (timeouts, abort, error wrapping)",
     pattern: /(?<![.\w])fetch\s*\(/,
-    home: ["src/calibre/http.ts", "src/enrich/http.ts", "src/calibre/content-server.ts"], // content-server: #223
+    home: ["src/calibre/http.ts", "src/enrich/http.ts"],
+  },
+  {
+    name: 'figure failures are FiguresError codes, not "FIGURES_*" strings (#220)',
+    pattern: /["'`]FIGURES_[A-Z_]+["'`]/,
+    home: [],
+  },
+  {
+    name: "a LibId is minted only by content.resolveLibraryId (D-008, #218)",
+    // any mention of asLibId (covers aliased imports) plus the `as LibId` / `<LibId>` casts
+    pattern: /\basLibId\b|\bas\s+LibId\b|<LibId>/,
+    home: ["src/calibre/content-server.ts", "src/calibre/lib-id.ts"],
   },
   {
     name: "external-binary candidate paths live in calibre/binaries.ts (#219)",
@@ -214,6 +228,13 @@ describe("one home per mechanism", () => {
     const at = (source: string) => findTwinViolations([{ path: "src/tools/x.ts", source }]);
     expect(at(`const k = s.normalize("NFKD").replace(/\\p{M}/gu, "");`)).toHaveLength(1);
     expect(at(`const r = await fetch(url);`)).toHaveLength(1);
+    expect(at(`const id = asLibId(name);`)).toHaveLength(1);
+    expect(at(`import { asLibId as mint } from "./lib-id.js";`)).toHaveLength(1);
+    expect(at(`const id = name as LibId;`)).toHaveLength(1);
+    expect(at(`const id = name as unknown as LibId;`)).toHaveLength(1);
+    expect(at(`const id = <LibId>name;`)).toHaveLength(1);
+    expect(at(`import type { LibId } from "./lib-id.js"; const x: LibId = y;`)).toEqual([]);
+    expect(at(`throw new Error("FIGURES_NO_POPPLER");`)).toHaveLength(1);
     expect(at(`const c = ["/opt/homebrew/bin/pdftotext"];`)).toHaveLength(1);
     expect(at(`const k = s.normalize("NFC");`)).toEqual([]);
     expect(at(`await deps.content.fetchBook(1); // fetch(url)`)).toEqual([]);

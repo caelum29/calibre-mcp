@@ -3,7 +3,6 @@
 
 import { homedir } from "node:os";
 import path from "node:path";
-import { discoverCalibredb } from "./calibre/discover.js";
 import { parseLevel, type Level } from "./logging.js";
 
 export interface Config {
@@ -13,7 +12,7 @@ export interface Config {
   defaultLibrary: string;
   /** Master write gate. Off unless CALIBRE_MCP_ENABLE_WRITE is truthy. */
   writeEnabled: boolean;
-  /** Path to the calibredb binary (auto-discovered per platform; see calibre/discover.ts). */
+  /** Path to the calibredb binary (auto-discovered per platform via runtime-config.ts → calibre/discover.ts). */
   calibredbPath: string;
   /**
    * Persistent dir for the semantic index (SQLite) and the transformers.js model cache.
@@ -104,8 +103,15 @@ function dataDir(env: NodeJS.ProcessEnv): string {
   return path.join(xdg, "calibre-mcp", "index");
 }
 
-/** Read the server config from environment variables, applying defaults. */
-export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
+/**
+ * Read the server config from environment variables, applying defaults. calibredb discovery
+ * is injected (#261: config imports no adapters); the default is a bare PATH lookup, and real
+ * processes get per-platform discovery via `loadRuntimeConfig` (runtime-config.ts).
+ */
+export function loadConfig(
+  env: NodeJS.ProcessEnv = process.env,
+  discoverCalibredb: (env: NodeJS.ProcessEnv) => string = () => "calibredb",
+): Config {
   const floor = Number(envStr(env.CALIBRE_MCP_SEMANTIC_FLOOR));
   const maxBytes = Number(envStr(env.CALIBRE_MCP_MAX_BOOK_BYTES));
   const busyMs = Number(envStr(env.CALIBRE_MCP_INDEX_BUSY_TIMEOUT_MS));

@@ -5,7 +5,7 @@
 
 import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
 import { buildServer } from "./server.js";
-import { loadConfig } from "./config.js";
+import { loadRuntimeConfig } from "./runtime-config.js";
 import { log } from "./logging.js";
 import { createShutdown, installShutdownHandlers } from "./shutdown.js";
 import { installWireCompat } from "./wire-compat.js";
@@ -35,7 +35,7 @@ process.on("uncaughtException", (err) => {
 
 async function main(): Promise<void> {
   // File sink is configured here, not in buildServer, so in-process test servers never write logs.
-  const config = loadConfig();
+  const config = loadRuntimeConfig();
   log.configure({ level: config.logLevel, dir: config.logDir });
   const server = buildServer({ config });
   // Client-compat rewrite of outgoing tools/list results (wire-compat.ts) — the same one the

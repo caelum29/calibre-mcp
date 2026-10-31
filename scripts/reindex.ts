@@ -8,7 +8,7 @@
 import { statfsSync } from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
-import { loadConfig } from "../src/config.js";
+import { loadRuntimeConfig } from "../src/runtime-config.js";
 import { log } from "../src/logging.js";
 import { ContentServerClient } from "../src/calibre/content-server.js";
 import { CalibreClient } from "../src/calibre/client.js";
@@ -44,7 +44,7 @@ function say(msg: string): void {
   process.stderr.write(`[${new Date().toISOString()}] ${msg}\n`);
 }
 
-const prodConfig = loadConfig({ ...process.env, CALIBRE_MCP_INDEX_DIR: "" });
+const prodConfig = loadRuntimeConfig({ ...process.env, CALIBRE_MCP_INDEX_DIR: "" });
 const prodDir = prodConfig.indexDir;
 const indexDir = path.resolve(opt["index-dir"] ?? "");
 // A benchmark that writes the production index would wipe hours of build — make it explicit.
@@ -58,7 +58,7 @@ const flagsOnly = opt["flags-only"];
 const threaded = opt.encoder === "threads" && !flagsOnly;
 const minFreeGb = Number(opt["min-free-gb"]);
 
-const config = loadConfig({ ...process.env, CALIBRE_MCP_INDEX_DIR: indexDir });
+const config = loadRuntimeConfig({ ...process.env, CALIBRE_MCP_INDEX_DIR: indexDir });
 // Same JSONL sink as the running servers (#247) — the production logs dir even when
 // --index-dir points at a scratch index, so every process's trail lands in one place.
 log.configure({ level: prodConfig.logLevel, dir: prodConfig.logDir });

@@ -7,7 +7,7 @@
 //   RUN_CALIBRE_TESTS=1 pnpm vitest run test/integration/figures.live.test.ts
 
 import { describe, expect, it } from "vitest";
-import { loadConfig } from "../../src/config.js";
+import { loadRuntimeConfig } from "../../src/runtime-config.js";
 import { ContentServerClient } from "../../src/calibre/content-server.js";
 import { FigureInventoryService } from "../../src/calibre/figure-inventory.js";
 import { log, type LogSink } from "../../src/logging.js";
@@ -21,7 +21,7 @@ const RUN = process.env.RUN_CALIBRE_TESTS === "1";
 const PDF_BOOK = 164; // Software Architecture Metrics
 const EPUB_BOOK = 755; // Learning Domain-Driven Design
 
-const config = loadConfig(process.env as Record<string, string | undefined>);
+const config = loadRuntimeConfig(process.env as Record<string, string | undefined>);
 
 let ready = false;
 if (RUN) {
