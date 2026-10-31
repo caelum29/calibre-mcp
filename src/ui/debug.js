@@ -1,28 +1,28 @@
-// Probe instrumentation for the widget iframes (issues #69/#72). Injected into every
-// widget template ONLY when CALIBRE_MCP_WIDGET_DEBUG is truthy — production builds get
-// an empty string in its place. Shows every JSON-RPC settle (the raw host reply to
-// ui/open-link / ui/message) in an on-widget <pre> AND mirrors each line to the server
-// via the debug-only calibre_widget_log tool (stderr — selecting text in a Desktop
-// iframe is flaky, the log file is the durable capture).
-// Same hygiene rules as the widgets: no console, no innerHTML, no template literals.
+/*@
+   Probe instrumentation for the widget iframes (issues #69/#72). Injected into every
+   widget template ONLY when CALIBRE_MCP_WIDGET_DEBUG is truthy — production builds get
+   an empty string in its place. Shows every JSON-RPC settle (the raw host reply to
+   ui/open-link / ui/message) in an on-widget <pre> AND mirrors each line to the server
+   via the debug-only calibre_widget_log tool (stderr — selecting text in a Desktop
+   iframe is flaky, the log file is the durable capture).
+   Same hygiene rules as the widgets: no console, no innerHTML, no template literals.
 
-/**
- * Wraps the widget's rpcRequest (must already be defined at the injection point) and
- * appends a fixed log pane. The wrapper logs `-> id method params` on send and
- * `<- id ok|ERR payload` on settle, plus a DOM snapshot 500ms after ui/open-link and
- * ui/message settle — that snapshot is the #69 evidence (does the host re-render nuke
- * the clicked button?).
- *
- * The #82 data-URI/CSP probe that used to live here is gone: the question is answered
- * (data: images pass CSP, widget tools/call returns intact ImageContent) and it cost an
- * extra calibre_get_figures round-trip plus an overlay in every dev bundle.
- *
- * The CSP/image probe at the end logs the host's effective CSP (meta tag or the
- * securitypolicyviolation report), every widget <img> load/fail, and a one-shot set of
- * img-src variants (same origin, swapped localhost/127.0.0.1, public https, data:) — the
- * evidence for why the Code tab host drops Content Server covers that Desktop Chat shows.
- */
-export const DEBUG_JS = `  /* ================= probe debug (CALIBRE_MCP_WIDGET_DEBUG, issues #69/#72) ================= */
+   Wraps the widget's rpcRequest (must already be defined at the injection point) and
+   appends a fixed log pane. The wrapper logs `-> id method params` on send and
+   `<- id ok|ERR payload` on settle, plus a DOM snapshot 500ms after ui/open-link and
+   ui/message settle — that snapshot is the #69 evidence (does the host re-render nuke
+   the clicked button?).
+
+   The #82 data-URI/CSP probe that used to live here is gone: the question is answered
+   (data: images pass CSP, widget tools/call returns intact ImageContent) and it cost an
+   extra calibre_get_figures round-trip plus an overlay in every dev bundle.
+
+   The CSP/image probe at the end logs the host's effective CSP (meta tag or the
+   securitypolicyviolation report), every widget <img> load/fail, and a one-shot set of
+   img-src variants (same origin, swapped localhost/127.0.0.1, public https, data:) — the
+   evidence for why the Code tab host drops Content Server covers that Desktop Chat shows.
+@*/
+  /* ================= probe debug (CALIBRE_MCP_WIDGET_DEBUG, issues #69/#72) ================= */
   var dbgPre = document.createElement("pre");
   dbgPre.id = "dbgLog";
   dbgPre.style.cssText = "position:fixed;left:0;right:0;bottom:0;z-index:9999;margin:0;" +
@@ -33,7 +33,7 @@ export const DEBUG_JS = `  /* ================= probe debug (CALIBRE_MCP_WIDGET_
     try { return String(JSON.stringify(v)).slice(0, 4000); } catch (e) { return String(v); }
   }
   function dbgLine(s) {
-    dbgPre.appendChild(document.createTextNode(s + "\\n"));
+    dbgPre.appendChild(document.createTextNode(s + "\n"));
     dbgPre.scrollTop = dbgPre.scrollHeight;
     // Mirror to the server log; must never recurse or break the widget.
     try {
@@ -123,4 +123,3 @@ export const DEBUG_JS = `  /* ================= probe debug (CALIBRE_MCP_WIDGET_
       });
     }).observe(document.body, { childList: true, subtree: true });
   })();
-`;

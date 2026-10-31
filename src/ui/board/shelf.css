@@ -1,0 +1,46 @@
+/*@ Shelf variant — layout only (cover dims + overlay + text + skeleton). @*/
+/* ============ shelf / carousel ============ */
+.shelf{position:relative}
+.view-shelf .arrow{top:76px}
+.strip{
+  display:flex; gap:14px; align-items:flex-start;
+  overflow-x:auto; overscroll-behavior-x:contain;
+  scroll-snap-type:x proximity; scroll-behavior:smooth; scroll-padding-inline:18px;
+  padding:6px 18px 10px; margin:0; list-style:none; scrollbar-width:none;
+}
+.strip::-webkit-scrollbar{display:none}
+.item{position:relative; flex:none; scroll-snap-align:start; width:134px;}
+.view-shelf .card{
+  display:flex; flex-direction:column; gap:8px; width:100%;
+  text-align:left; border-radius:14px; padding:0;
+}
+.item .cover{width:134px; height:178px}
+.item:hover .cover{transform:translateY(-3px); box-shadow:var(--pagestack), var(--shadow-lg)}
+.view-shelf .card[aria-pressed="true"] .cover{outline:2.5px solid var(--accent); outline-offset:2px}
+/* text under cover */
+.t{
+  font-size:12.5px; line-height:1.3; font-weight:550;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; overflow-wrap:anywhere;
+}
+.a{font-size:11.5px; color:var(--tx-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+/* per-card action overlay (Open + Search inside) */
+.ov-stack{
+  position:absolute; top:7px; right:7px; z-index:3;
+  display:flex; flex-direction:column; align-items:flex-end; gap:5px;
+  opacity:0; transform:translateY(-3px);
+  transition:opacity .15s ease, transform .15s ease;
+}
+.item:hover .ov-stack, .item:focus-within .ov-stack{opacity:1; transform:none}
+.ov{display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:600; padding:4px 10px; border-radius:999px}
+.ov.open{background:var(--accent); color:#fff}
+.ov.open:hover{background:var(--accent-deep)}
+.ov.search{background:var(--scrim); color:var(--tx); box-shadow:var(--shadow)}
+.ov.search:hover{color:var(--accent)}
+
+/* ============ shelf skeleton ============ */
+.skel .cover-s{
+  width:134px; height:178px; border-radius:11px; flex:none;
+  background:var(--skel); position:relative; overflow:hidden;
+}
+.skel .l1,.skel .l2{height:10px; border-radius:6px; background:var(--skel)}
+.skel .l1{width:80%; margin-top:9px} .skel .l2{width:55%; margin-top:6px}

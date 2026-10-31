@@ -26,3 +26,9 @@ every widget bug in this repo came from an unprobed assumption (#69, #70, #72, #
 
 - Collapse sets an explicit height of 0; pending states avoid flashing the control they replace
   (#70, cd3c9de).
+
+## Widget sources
+
+- Widget CSS/JS/HTML live as real files in `src/ui/{board,card,figures}/` and `src/ui/debug.js`;
+  `src/ui/generated/widgets.ts` is their build output (`pnpm widgets`, drift-checked in CI). A diff
+  that edits the generated file by hand, or a source file without regenerating, is a finding (#271).
