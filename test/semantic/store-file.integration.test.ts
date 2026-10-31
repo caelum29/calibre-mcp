@@ -102,6 +102,8 @@ describe("SqliteIndexStore on a temp file, two connections (#322)", () => {
     expect(ok).toBe(true);
     expect(b.searchLibraryFts(LIB, stemText("zanzibar"), 10).map((h) => h.bookId)).toEqual([3]);
     expect(b.searchLibraryFts(LIB, stemText("zanzibar"), 10)[0]?.title).toBe("Zanzibar Handbook");
+    // figure captions carry the book identity too: the new title must reach figure_fts
+    expect(b.searchFiguresFts(LIB, stemText("zanzibar"), 10).map((h) => [h.bookId, h.figIndex])).toEqual([[3, 0]]);
     expect(b.isBookIndexed(LIB, 3, "v2")).toBe(true);
     expect(b.vectorCount(LIB)).toBe(vectorsBefore);
     expect(b.chunkAt(LIB, 3, 0)?.frontMatter).toBe(true);
