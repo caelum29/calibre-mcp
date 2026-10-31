@@ -7,7 +7,7 @@ import { z } from "zod";
 import { ALL_CHECKS, type QualityCheck, runQualityChecks } from "../domain/curation/quality.js";
 import { buildScopedQuery, honestyLines, resolveFilter } from "./bundles.js";
 import { BookId, CoercedBool, CursorParam, jsonArray, limitParam } from "./coerce.js";
-import { decodeCursor, pageCursor } from "./cursor.js";
+import { pageCursor, resolveCursor } from "./cursor.js";
 import { defineTool } from "./define.js";
 import { selectBooks } from "./select-books.js";
 import { fence, renderResult, toolError } from "./result.js";
@@ -89,8 +89,11 @@ export const qualityReportTool = defineTool({
       for (const i of issues) byCheck[i.check] = (byCheck[i.check] ?? 0) + 1;
 
       const cursorKey = `qual:${checks.slice().sort().join(",")}:${args.query ?? ""}:${args.filter ?? ""}`;
-      const cur = decodeCursor(args.cursor);
-      const offset = cur && cur.query === cursorKey ? cur.offset : 0;
+      // Bound to the resolved library (#305): a cursor from another library must not page this one.
+      const bind = { libId: await deps.content.resolveLibraryId(args.library), mode: "quality", query: cursorKey };
+      const start = resolveCursor(args.cursor, bind, "calibre_quality_report");
+      if (!start.ok) return toolError(start.error);
+      const offset = start.offset;
       const page = issues.slice(offset, offset + args.limit);
 
       // The count is only the bundle's size when the bundle alone selected the set.
@@ -127,7 +130,7 @@ export const qualityReportTool = defineTool({
             message,
           })),
         },
-        page: pageCursor({ offset, fetched: page.length, total: issues.length, query: cursorKey }),
+        page: pageCursor({ offset, fetched: page.length, total: issues.length, ...bind }),
       });
     } catch (err) {
       return toolError(err instanceof Error ? err.message : String(err));

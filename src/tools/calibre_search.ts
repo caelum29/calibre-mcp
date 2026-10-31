@@ -30,7 +30,7 @@ import {
   scopeExpression,
 } from "./bundles.js";
 import { BookId, CoercedBool, CursorParam, limitParam } from "./coerce.js";
-import { decodeCursor, pageCursor } from "./cursor.js";
+import { pageCursor, resolveCursor } from "./cursor.js";
 import { defineTool } from "./define.js";
 import { bookResourceLink } from "./resource-link.js";
 import { resolveNumericId } from "./resolve-id.js";
@@ -98,8 +98,11 @@ async function metaLibraryScope(
   // The bundle scope expands into the server-side query; the cursor keys on the EFFECTIVE
   // query so a page walk that changes filter args can't silently replay a stale offset.
   const effQuery = buildScopedQuery(args.query, fRes);
-  const cur = decodeCursor(args.cursor);
-  const offset = cur && cur.query === effQuery ? cur.offset : 0;
+  const libId = await deps.content.resolveLibraryId(args.library);
+  const bind = { libId, mode: "search:meta", query: effQuery, sort: args.sort };
+  const start = resolveCursor(args.cursor, bind, "calibre_search");
+  if (!start.ok) return toolError(start.error);
+  const offset = start.offset;
 
   const page = await deps.content.search({
     query: effQuery,
@@ -139,7 +142,7 @@ async function metaLibraryScope(
   });
 
   const fetched = page.bookIds.length;
-  const pg = pageCursor({ offset, fetched, total: page.total, query: effQuery, sort: args.sort });
+  const pg = pageCursor({ offset, fetched, total: page.total, ...bind });
   const text = `Found ${page.total} books, showing ${offset + 1}–${offset + fetched}.${honesty}`;
 
   const _meta = boardMeta(deps, {
@@ -272,8 +275,10 @@ async function ftsLibraryScope(call: FtsCall, fRes: FilterResolution): Promise<T
 
   // Filter args change what an offset means — key the cursor on the scoped query.
   const cursorKey = isScoped(fRes) ? `${args.query}::${scopeExpression(fRes)}` : args.query;
-  const cur = decodeCursor(args.cursor);
-  const offset = cur && cur.query === cursorKey ? cur.offset : 0;
+  const bind = { libId, mode: "search:fts", query: cursorKey };
+  const start = resolveCursor(args.cursor, bind, "calibre_search");
+  if (!start.ok) return toolError(start.error);
+  const offset = start.offset;
   const pageIds = bookIds.slice(offset, offset + args.limit);
   // Snippets only for the visible page, one book at a time, under the call's budget.
   const batch = await fts.snippets(args.query, libId, pageIds, { deadline, signal });
@@ -298,7 +303,7 @@ async function ftsLibraryScope(call: FtsCall, fRes: FilterResolution): Promise<T
     }
   }
 
-  const pg = pageCursor({ offset, fetched: pageIds.length, total: bookIds.length, query: cursorKey });
+  const pg = pageCursor({ offset, fetched: pageIds.length, total: bookIds.length, ...bind });
   const _meta = boardMeta(deps, {
     query: args.query,
     kind: "keyword",
@@ -357,8 +362,10 @@ async function ftsBookScope(call: FtsCall, bookId: number): Promise<ToolResult> 
   }
 
   const cursorKey = `${args.query}::book:${bookId}`;
-  const cur = decodeCursor(args.cursor);
-  const offset = cur && cur.query === cursorKey ? cur.offset : 0;
+  const bind = { libId, mode: "search:book", query: cursorKey };
+  const start = resolveCursor(args.cursor, bind, "calibre_search");
+  if (!start.ok) return toolError(start.error);
+  const offset = start.offset;
   const pageSnips = snippets.slice(offset, offset + args.limit);
 
   // Calibre FTS has no in-book offsets or ranking control, so front-matter hits (TOC/praise) can
@@ -388,7 +395,7 @@ async function ftsBookScope(call: FtsCall, bookId: number): Promise<ToolResult> 
       mode: "fts",
       hits: snippetHits,
     },
-    page: pageCursor({ offset, fetched: pageSnips.length, total: snippets.length, query: cursorKey }),
+    page: pageCursor({ offset, fetched: pageSnips.length, total: snippets.length, ...bind }),
   });
 }
 

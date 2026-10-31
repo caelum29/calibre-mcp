@@ -7,7 +7,7 @@ import { z } from "zod";
 import { compareBooks, findDuplicateGroups } from "../domain/curation/duplicates.js";
 import { buildScopedQuery, honestyLines, resolveFilter } from "./bundles.js";
 import { BookId, CursorParam, jsonArray, limitParam } from "./coerce.js";
-import { decodeCursor, pageCursor } from "./cursor.js";
+import { pageCursor, resolveCursor } from "./cursor.js";
 import { defineTool } from "./define.js";
 import { bookResourceLink } from "./resource-link.js";
 import { selectBooks } from "./select-books.js";
@@ -102,10 +102,17 @@ export const findDuplicatesTool = defineTool({
       const groups = findDuplicateGroups(books, args.mode);
 
       const cursorKey = `dup:${args.mode}:${args.query ?? ""}:${args.filter ?? ""}`;
-      const cur = decodeCursor(args.cursor);
-      const offset = cur && cur.query === cursorKey ? cur.offset : 0;
+      // Bound to the resolved library (#305): a cursor from another library must not page this one.
+      const bind = {
+        libId: await deps.content.resolveLibraryId(args.library),
+        mode: `dup:${args.mode}`,
+        query: cursorKey,
+      };
+      const start = resolveCursor(args.cursor, bind, "calibre_find_duplicates");
+      if (!start.ok) return toolError(start.error);
+      const offset = start.offset;
       const pageGroups = groups.slice(offset, offset + args.limit);
-      const pg = pageCursor({ offset, fetched: pageGroups.length, total: groups.length, query: cursorKey });
+      const pg = pageCursor({ offset, fetched: pageGroups.length, total: groups.length, ...bind });
 
       const content: ContentBlock[] = [];
       // The count is only the bundle's size when the bundle alone selected the set.

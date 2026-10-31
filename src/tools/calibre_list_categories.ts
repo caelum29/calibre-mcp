@@ -5,7 +5,7 @@
 import { z } from "zod";
 import { matchCategory } from "../calibre/content-server.js";
 import { CursorParam, limitParam } from "./coerce.js";
-import { decodeCursor, pageCursor } from "./cursor.js";
+import { pageCursor, resolveCursor } from "./cursor.js";
 import { defineTool } from "./define.js";
 import { fence, renderResult, toolError, toolOk } from "./result.js";
 import { compileUserRegex } from "./user-regex.js";
@@ -60,6 +60,9 @@ export const listCategoriesTool = defineTool({
         return toolError(`Unknown category "${args.field}". Available: ${names}`);
       }
 
+      // Cursors are bound to the resolved library (#305): one minted elsewhere must not page here.
+      const libId = await deps.content.resolveLibraryId(args.library);
+
       let items: { name: string; count?: number }[];
       let total: number;
       let offset: number;
@@ -75,14 +78,24 @@ export const listCategoriesTool = defineTool({
         const page = await deps.content.categoryItemsByUrl(node.url, { num: FILTER_FETCH_NUM, offset: 0 });
         const filtered = page.items.filter((it) => re.test(it.name));
         cursorKey = `${node.name}::${args.valueFilter}`;
-        const cur = decodeCursor(args.cursor);
-        offset = cur && cur.query === cursorKey ? cur.offset : 0;
+        const start = resolveCursor(
+          args.cursor,
+          { libId, mode: "categories", query: cursorKey },
+          "calibre_list_categories",
+        );
+        if (!start.ok) return toolError(start.error);
+        offset = start.offset;
         total = filtered.length;
         items = filtered.slice(offset, offset + args.limit).map((it) => ({ name: it.name, count: it.count }));
       } else {
         cursorKey = node.name;
-        const cur = decodeCursor(args.cursor);
-        offset = cur && cur.query === cursorKey ? cur.offset : 0;
+        const start = resolveCursor(
+          args.cursor,
+          { libId, mode: "categories", query: cursorKey },
+          "calibre_list_categories",
+        );
+        if (!start.ok) return toolError(start.error);
+        offset = start.offset;
         const page = await deps.content.categoryItemsByUrl(node.url, { num: args.limit, offset });
         total = page.total;
         items = page.items.map((it) => ({ name: it.name, count: it.count }));
@@ -95,7 +108,7 @@ export const listCategoriesTool = defineTool({
       return renderResult({
         blocks: [{ type: "text", text: fence("CATEGORY VALUES", text) }],
         structured: { mode: "values", field: node.name, values: items, total, offset, count: fetched },
-        page: pageCursor({ offset, fetched, total, query: cursorKey }),
+        page: pageCursor({ offset, fetched, total, libId, mode: "categories", query: cursorKey }),
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);

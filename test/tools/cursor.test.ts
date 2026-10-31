@@ -3,7 +3,7 @@ import { decodeCursor, encodeCursor, pageCursor } from "../../src/tools/cursor.j
 
 describe("cursor codec", () => {
   it("round-trips a cursor", () => {
-    const c = { offset: 40, query: "rust", sort: "title" };
+    const c = { offset: 40, libId: "Lib", mode: "search:meta", query: "rust", sort: "title" };
     expect(decodeCursor(encodeCursor(c))).toEqual(c);
   });
   it("returns undefined for garbage", () => {
@@ -13,7 +13,9 @@ describe("cursor codec", () => {
     expect(decodeCursor(undefined)).toBeUndefined();
   });
   it("rejects a negative offset", () => {
-    const bad = Buffer.from(JSON.stringify({ offset: -1, query: "x" }), "utf8").toString("base64url");
+    const bad = Buffer.from(JSON.stringify({ v: 2, offset: -1, libId: "Lib", mode: "m", query: "x" }), "utf8").toString(
+      "base64url",
+    );
     expect(decodeCursor(bad)).toBeUndefined();
   });
 });
@@ -21,7 +23,7 @@ describe("cursor codec", () => {
 // #227 — an empty page must never mint a cursor back to the same offset (a paging loop)
 describe("pageCursor on an empty page", () => {
   it("returns no cursor when nothing was fetched even though the total is larger", () => {
-    expect(pageCursor({ offset: 2, fetched: 0, total: 5, query: "q" })).toEqual({
+    expect(pageCursor({ offset: 2, fetched: 0, total: 5, libId: "Lib", mode: "m", query: "q" })).toEqual({
       nextCursor: undefined,
       textLine: "",
     });

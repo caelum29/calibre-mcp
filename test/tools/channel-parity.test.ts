@@ -195,25 +195,25 @@ describe("parity checker (self-test)", () => {
 
 describe("pageCursor", () => {
   it("mints a cursor for the next offset and renders it as a text line", () => {
-    const p = pageCursor({ offset: 0, fetched: 2, total: 5, query: "rust" });
-    expect(decodeCursor(p.nextCursor)).toEqual({ offset: 2, query: "rust", sort: undefined });
+    const p = pageCursor({ offset: 0, fetched: 2, total: 5, libId: "Lib", mode: "m", query: "rust" });
+    expect(decodeCursor(p.nextCursor)).toEqual({ offset: 2, libId: "Lib", mode: "m", query: "rust", sort: undefined });
     expect(p.textLine).toBe(`More results — continue with cursor: ${p.nextCursor}`);
   });
 
   it("binds the sort into the cursor", () => {
-    const p = pageCursor({ offset: 20, fetched: 20, total: 50, query: "q", sort: "title" });
-    expect(decodeCursor(p.nextCursor)).toEqual({ offset: 40, query: "q", sort: "title" });
+    const p = pageCursor({ offset: 20, fetched: 20, total: 50, libId: "Lib", mode: "m", query: "q", sort: "title" });
+    expect(decodeCursor(p.nextCursor)).toEqual({ offset: 40, libId: "Lib", mode: "m", query: "q", sort: "title" });
   });
 
   it("returns no cursor and no text on the last page", () => {
-    expect(pageCursor({ offset: 3, fetched: 2, total: 5, query: "rust" })).toEqual({
+    expect(pageCursor({ offset: 3, fetched: 2, total: 5, libId: "Lib", mode: "m", query: "rust" })).toEqual({
       nextCursor: undefined,
       textLine: "",
     });
   });
 
   it("returns no cursor for an empty page", () => {
-    expect(pageCursor({ offset: 0, fetched: 0, total: 0, query: "rust" })).toEqual({
+    expect(pageCursor({ offset: 0, fetched: 0, total: 0, libId: "Lib", mode: "m", query: "rust" })).toEqual({
       nextCursor: undefined,
       textLine: "",
     });
@@ -222,7 +222,7 @@ describe("pageCursor", () => {
 
 describe("renderResult", () => {
   it("appends the cursor line as its own text block and mirrors nextCursor", () => {
-    const page = pageCursor({ offset: 0, fetched: 1, total: 2, query: "q" });
+    const page = pageCursor({ offset: 0, fetched: 1, total: 2, libId: "Lib", mode: "m", query: "q" });
     const r = renderResult({ blocks: [{ type: "text", text: "Found 2." }], structured: { total: 2 }, page });
     expect(r.content).toEqual([
       { type: "text", text: "Found 2." },
@@ -233,7 +233,7 @@ describe("renderResult", () => {
   });
 
   it("adds nothing on the last page", () => {
-    const page = pageCursor({ offset: 1, fetched: 1, total: 2, query: "q" });
+    const page = pageCursor({ offset: 1, fetched: 1, total: 2, libId: "Lib", mode: "m", query: "q" });
     const r = renderResult({ blocks: [{ type: "text", text: "Found 2." }], structured: { total: 2 }, page });
     expect(r.content).toEqual([{ type: "text", text: "Found 2." }]);
     expect(r.structuredContent).toEqual({ total: 2 });
