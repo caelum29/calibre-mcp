@@ -104,7 +104,7 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
   // Every tool call runs inside one logged call context.
   const logged = (tool: string, args: unknown, extra: Extra, run: () => Promise<CallToolResult>) => {
     tagClient();
-    return withCallLog(log, { tool, args, rpcId: extra.requestId }, run);
+    return withCallLog(log, { tool, args, rpcId: extra.mcpReq.id }, run);
   };
 
   // Fail loud at boot if any non-read-only tool is unclassified (no write / localWrite).
@@ -116,8 +116,10 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
     const toolConfig = {
       title: t.title,
       description: t.description,
-      inputSchema: t.inputSchema,
-      outputSchema: t.outputSchema,
+      // v2 takes Standard Schemas, not raw Zod shapes: wrap the descriptor's shapes here (the
+      // seam) so tool modules keep their SDK-agnostic raw shapes.
+      inputSchema: z.object(t.inputSchema),
+      outputSchema: t.outputSchema && z.object(t.outputSchema),
       annotations: t.annotations,
     };
     // ToolResult is structurally a CallToolResult minus the SDK's loose index signature;
@@ -169,7 +171,7 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
       {
         title: "Widget probe log",
         description: "Debug-only sink for widget probe lines (CALIBRE_MCP_WIDGET_DEBUG).",
-        inputSchema: { line: z.string().max(4000) },
+        inputSchema: z.object({ line: z.string().max(4000) }),
         annotations: { readOnlyHint: true },
         _meta: { ui: { visibility: ["app"] } },
       },
@@ -218,7 +220,8 @@ function toolContext(extra: ServerContext): ToolContext {
     signal: extra.mcpReq.signal,
     progress: createProgressReporter({
       progressToken,
-      send: (params) => extra.mcpReq.notify({ method: "notifications/progress", params }),
+      // spread: v2's notify params carry an index signature our ProgressNotification lacks
+      send: (params) => extra.mcpReq.notify({ method: "notifications/progress", params: { ...params } }),
       onError: (err) => log.debug("progress notification failed", { msg: String(err) }),
     }),
   };
