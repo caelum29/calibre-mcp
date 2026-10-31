@@ -4,13 +4,13 @@
 // First run downloads the ~576 MB q8 bge-reranker-v2-m3 model; later runs are offline.
 
 import { describe, expect, it } from "vitest";
-import { loadConfig } from "../../src/config.js";
+import { loadRuntimeConfig } from "../../src/runtime-config.js";
 import { TransformersReranker } from "../../src/semantic/reranker.js";
 
 const RUN = process.env.RUN_MODEL_TESTS === "1";
 
 describe.skipIf(!RUN)("TransformersReranker (live model)", () => {
-  const reranker = new TransformersReranker(loadConfig());
+  const reranker = new TransformersReranker(loadRuntimeConfig());
 
   it("returns one sigmoid score per pair, relevant above irrelevant", async () => {
     const t0 = performance.now();

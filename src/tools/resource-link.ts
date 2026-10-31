@@ -4,13 +4,7 @@
 
 import type { BookSummary } from "../domain/book.js";
 import type { ResourceLinkBlock } from "./types.js";
-
-export const BOOK_MIME = "application/json";
-
-/** Canonical resource URI for a book. */
-export function bookResourceUri(id: number | string): string {
-  return `calibre://book/${id}`;
-}
+import { BOOK_MIME, bookResourceUri } from "../shared/book-uri.js";
 
 /** A resource_link content block pointing at a book, with a one-line description. */
 export function bookResourceLink(b: BookSummary): ResourceLinkBlock {
