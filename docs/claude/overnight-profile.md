@@ -39,6 +39,14 @@ Never part of the overnight wave.
 - **Sonnet:** test-only issues, error/steer text, small handler fixes with existing tests.
 - **Opus:** semantic index and search, dedupe keys, build_index timing and progress, anything stateful across processes (SQLite locks, caches).
 
+## Standing risk questions (add to the reviewer prompt when the diff matches)
+
+- **Result shape** (`toolError`, `toolOk`, structuredContent, outputSchema): Claude Desktop shows the model only the text channel, and the Claude Code tab shows only structuredContent when it is present. Does each fact, steer and error message reach the model in both? Run one error and one success through the handler and read both channels.
+- **Tool schema or description**: was `pnpm catalog` rerun and committed? An outputSchema field alone breaks `catalog:check`.
+- **Shared types or module paths moved** (`ToolDeps`, `src/app/`, `semantic/store/`): which open PRs import them? Tell those chains to sync.
+- **Display logic over book text** (snippets, highlights): natural-language queries (stopwords), Cyrillic, short chunks, text at the chunk edge, code containing `>>`/`<<`.
+- **`src/semantic/`**: is the `pnpm eval --gate` output in the body from the current head (`git log -1` sha named), not an earlier commit? A full eval run takes ~7–8 min.
+
 ## Report
 
-Markdown copy at `docs/dev/overnight-<date>.md` (gitignored). Earlier runs: `docs/dev/overnight-2026-10-28.md`, `docs/dev/overnight-2026-10-30.md`.
+Markdown copy at `docs/dev/overnight-<date>.md` (gitignored). Earlier runs: `docs/dev/overnight-2026-10-28.md`, `docs/dev/overnight-2026-10-30.md`, `docs/dev/overnight-2026-10-31.md`, `docs/dev/overnight-2026-11-01.md`.
