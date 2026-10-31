@@ -8,7 +8,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
 import { buildSetMetadataArgs } from "../calibre/metadata-fields.js";
-import type { ChangeValue } from "../calibre/metadata-fields.js";
+import type { ChangeValue } from "../domain/book-fields.js";
 import { downloadToFile } from "../calibre/http.js";
 import type { Book } from "../domain/book.js";
 import { isSimilarMatch } from "../domain/curation/normalize.js";

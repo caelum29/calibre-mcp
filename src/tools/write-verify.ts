@@ -2,8 +2,8 @@
 // have committed before the CLI gave up, so every write tool re-reads the book and decides
 // landed / not-landed / unverifiable from that, instead of reporting the timeout as failure.
 
-import { changesSatisfied } from "../calibre/metadata-fields.js";
-import type { ChangeValue } from "../calibre/metadata-fields.js";
+import { changesSatisfied } from "../domain/book-fields.js";
+import type { ChangeValue } from "../domain/book-fields.js";
 import type { Book } from "../domain/book.js";
 import type { ToolDeps } from "./types.js";
 

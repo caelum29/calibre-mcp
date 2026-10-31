@@ -3,7 +3,7 @@
 // to the user + a ready-to-apply `changes` object shaped for calibre_update_book. Pure,
 // SDK-free, I/O-free — the provider HTTP clients live in src/enrich/ and map into these.
 
-import type { ChangeValue } from "../../calibre/metadata-fields.js";
+import type { ChangeValue } from "../book-fields.js";
 
 /** A normalized metadata candidate from one external provider. */
 export interface ProviderHit {
