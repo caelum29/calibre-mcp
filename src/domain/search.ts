@@ -18,6 +18,8 @@ export interface SearchParams {
   sortOrder?: SortOrder;
   /** Request timeout; callers under a per-call Deadline pass what is left of it. */
   timeoutMs?: number;
+  /** Read-only probes (calibre_ping): skip the busy breaker — a slow probe must not flag the library busy. */
+  noBreaker?: boolean;
 }
 
 /** Full-text indexing progress of one library: `left` of `total` book files still unindexed. */

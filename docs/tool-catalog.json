@@ -1515,7 +1515,7 @@
         "openWorldHint": true,
         "readOnlyHint": true
       },
-      "description": "Health check: confirms the MCP server can reach the running Calibre Content Server via calibredb, and reports semantic-search status (embedding model, dependency, index vector count). Returns library categories on success, plus libraries currently marked busy after a Calibre timeout, the server's recent errors and its log file path for self-diagnosis.",
+      "description": "Health check: confirms the MCP server can reach the running Calibre Content Server via calibredb, and reports semantic-search status (embedding model, dependency, per-library index coverage). Returns the server version, calibredb path and write-gate state, plus libraries currently marked busy after a Calibre timeout, the server's recent errors and its log file path for self-diagnosis.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {},
