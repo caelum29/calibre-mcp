@@ -7,14 +7,12 @@
 //   EPUB/MD/others : ebook-convert (--txt-output-formatting=markdown)
 // Calibre has no OCR — scanned PDFs extract to empty text (the tool reports that).
 
-import { execFile } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, readdir, stat, unlink, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { promisify } from "node:util";
 import type { Config } from "../config.js";
 import { type FigureMarker, injectFigureMarkers } from "../domain/figures/markers.js";
 import type { EpubToc } from "../domain/structure/epub-toc.js";
@@ -25,9 +23,7 @@ import { readEpubToc, unzipBinary } from "./epub-toc.js";
 import { downloadToFile } from "./http.js";
 import { OperationCancelledError } from "../domain/errors.js";
 import { pdftohtmlBinary, readPdfOutline } from "./pdf-outline.js";
-import { SpawnAbortedError, spawnCollect, SpawnMaxBufferError, SpawnTimeoutError } from "./spawn.js";
-
-const execFileAsync = promisify(execFile);
+import { findBin, probeTool, runTool } from "./binaries.js";
 
 export type PdfBackend = "pdftotext" | "pymupdf" | "ebook-convert";
 
@@ -98,11 +94,6 @@ const MAX_CACHE_ENTRIES = 50;
 const MAX_CACHE_BYTES = 200 * 1024 * 1024;
 const CONVERT_TIMEOUT_MS = 120_000;
 
-// Common install locations probed first — the MCP server may be spawned with a minimal
-// PATH (e.g. from Claude Desktop) that omits Homebrew.
-const PDFTOTEXT_CANDIDATES = ["/opt/homebrew/bin/pdftotext", "/usr/local/bin/pdftotext", "/usr/bin/pdftotext"];
-const PYTHON_CANDIDATES = ["/opt/homebrew/bin/python3", "/usr/local/bin/python3", "/usr/bin/python3"];
-
 /**
  * Extractable formats in preference order (best text structure first).
  * Markdown ranks above PDF: it round-trips through ebook-convert with headings intact,
@@ -161,22 +152,6 @@ export function ebookConvertArgs(src: string, dest: string, formatting: TxtForma
   return [src, dest, `--txt-output-formatting=${formatting}`];
 }
 
-/** Resolve a binary from candidate absolute paths, else fall back to the bare name (PATH). */
-function resolveBinary(candidates: string[], bareName: string): string {
-  for (const c of candidates) if (existsSync(c)) return c;
-  return bareName;
-}
-
-/** True if `python3 -c "import fitz"` succeeds (PyMuPDF importable). */
-async function python3HasFitz(python3: string): Promise<boolean> {
-  try {
-    await execFileAsync(python3, ["-c", "import fitz"], { timeout: 8_000 });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 /** Downloads a book format, converts it to text via the best detected backend, and caches the result. */
 export class Extractor {
   #report?: Promise<BackendReport>;
@@ -199,10 +174,12 @@ export class Extractor {
     const dbDir = path.dirname(this.cfg.calibredbPath);
     const convertName = process.platform === "win32" ? "ebook-convert.exe" : "ebook-convert";
     const ebookConvertPath = dbDir === "." ? "ebook-convert" : path.join(dbDir, convertName);
-    const hasEbookConvert = dbDir === "." ? await binaryExists(ebookConvertPath) : existsSync(ebookConvertPath);
+    const hasEbookConvert =
+      dbDir === "." ? (await probeTool(ebookConvertPath, ["-v"], 5_000)) !== "missing" : existsSync(ebookConvertPath);
 
-    const pdftotextPath = resolveBinary(PDFTOTEXT_CANDIDATES, "pdftotext");
-    const hasPdftotext = PDFTOTEXT_CANDIDATES.some(existsSync) || (await binaryExists(pdftotextPath));
+    const pdftotextPath = findBin("pdftotext") ?? "pdftotext";
+    // pdftotext -v exits non-zero but exists, so only ENOENT means absent
+    const hasPdftotext = findBin("pdftotext") !== null || (await probeTool(pdftotextPath, ["-v"], 5_000)) !== "missing";
 
     // pdftohtml ships beside pdftotext in every poppler build; probe the sibling for a PATH install.
     const pdftohtmlPath =
@@ -211,8 +188,8 @@ export class Extractor {
         ? path.join(path.dirname(pdftotextPath), "pdftohtml")
         : undefined);
 
-    const python3Path = resolveBinary(PYTHON_CANDIDATES, "python3");
-    const hasFitz = await python3HasFitz(python3Path);
+    const python3Path = findBin("python3") ?? "python3";
+    const hasFitz = (await probeTool(python3Path, ["-c", "import fitz"], 8_000)) === "ok"; // PyMuPDF importable
 
     let pdf: PdfBackend | null = null;
     if (hasPdftotext) pdf = "pdftotext";
@@ -416,40 +393,19 @@ export class Extractor {
 
   /**
    * Run a converter. ebook-convert spawns conversion workers as grandchildren, so we go
-   * through {@link spawnCollect} (process-group hard-kill on timeout) — not execFile,
+   * through {@link runTool} (process-group hard-kill on timeout) — not execFile,
    * whose timeout leaks the worker and never settles. Raw errors leak temp paths, so
    * re-throw a coded error.
    */
   async #run(bin: string, args: string[], timeout: number, signal?: AbortSignal): Promise<void> {
-    try {
-      const { code } = await spawnCollect(bin, args, { timeoutMs: timeout, maxBuffer: 8 * 1024 * 1024, signal });
-      if (code !== 0) throw new Error(`exit ${code}`);
-    } catch (err) {
-      if (err instanceof SpawnAbortedError) throw new OperationCancelledError();
-      const timedOut = err instanceof SpawnTimeoutError;
-      log.error("extract convert failed", {
-        bin: path.basename(bin),
-        killed: timedOut,
-        code: (err as NodeJS.ErrnoException).code,
-        msg:
-          err instanceof SpawnMaxBufferError
-            ? "maxBuffer"
-            : err instanceof Error
-              ? err.message.slice(0, 300)
-              : String(err),
-      });
-      throw new Error(timedOut ? "EXTRACT_TIMEOUT" : "EXTRACT_FAILED");
-    }
-  }
-}
-
-/** True if the binary at `bin` is runnable (non-ENOENT). pdftotext -v exits non-zero but exists. */
-async function binaryExists(bin: string): Promise<boolean> {
-  try {
-    await execFileAsync(bin, ["-v"], { timeout: 5_000 });
-    return true;
-  } catch (err) {
-    return (err as NodeJS.ErrnoException).code !== "ENOENT";
+    await runTool(bin, args, {
+      timeoutMs: timeout,
+      maxBuffer: 8 * 1024 * 1024,
+      signal,
+      failedCode: "EXTRACT_FAILED",
+      timeoutCode: "EXTRACT_TIMEOUT",
+      logMessage: "extract convert failed",
+    });
   }
 }
 
