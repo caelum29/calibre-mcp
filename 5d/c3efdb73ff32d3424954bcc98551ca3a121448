@@ -1,0 +1,42 @@
+test/integration/figures.live.test.ts
+  s_d1d2207902fc19::t_9080e81d2af49b 19
+  s_d1d2207902fc19::t_37e758525266e4 55
+test/tools/write-retry.test.ts
+  s_d1d2207902fc19::t_cdc7d33f7d9a1d 90
+  s_d1d2207902fc19::t_9080e81d2af49b 11
+  s_d1d2207902fc19::t_37e758525266e4 101
+test/tools/write-verify.test.ts
+  s_d1d2207902fc19::t_9080e81d2af49b 4
+  s_d1d2207902fc19::t_37e758525266e4 20,27
+test/integration/merge.live.test.ts
+  s_d1d2207902fc19::t_37e758525266e4 25,58
+test/tools/merge-books.handler.test.ts
+  s_d1d2207902fc19::t_37e758525266e4 17,92
+test/tools/bundle-filter.test.ts
+  s_d1d2207902fc19::t_9080e81d2af49b 61,68
+  s_d1d2207902fc19::t_cdc7d33f7d9a1d 16,70
+test/tools/write-retry-dropped.handler.test.ts
+  s_d1d2207902fc19::t_9080e81d2af49b 12
+  s_d1d2207902fc19::t_cdc7d33f7d9a1d 41
+  s_d1d2207902fc19::t_37e758525266e4 52
+test/tools/get-figures.messages.test.ts
+  s_d1d2207902fc19::t_cdc7d33f7d9a1d 31
+  s_d1d2207902fc19::t_9080e81d2af49b 12
+  s_d1d2207902fc19::t_37e758525266e4 41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5dc3efdb73ff32d3424954bcc98551ca3a121448",
+  "prompts": {},
+  "sessions": {
+    "s_d1d2207902fc19": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "586feb7c-ca39-49d5-8842-fd6dceef1845",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
