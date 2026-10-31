@@ -87,7 +87,7 @@ function fakeDeps(opts: FakeOpts = {}) {
     config: loadConfig({}),
     content: content as unknown as ToolDeps["content"],
     calibre: { calibredb: spy } as unknown as ToolDeps["calibre"],
-    extractor: {} as unknown as ToolDeps["extractor"],
+    extractor: {} as ToolDeps["extractor"],
     log: sink,
   } as ToolDeps;
   return { deps, spy, calls };

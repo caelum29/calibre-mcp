@@ -17,9 +17,9 @@ function deps(fts: ToolDeps["fts"]): ToolDeps {
     content: {
       resolveLibraryId: async (d?: string) => d || "Programming_Books",
     } as unknown as ToolDeps["content"],
-    calibre: {} as unknown as ToolDeps["calibre"],
+    calibre: {} as ToolDeps["calibre"],
     fts,
-    extractor: {} as unknown as ToolDeps["extractor"],
+    extractor: {} as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],
     index: { hasIndex: () => false } as unknown as ToolDeps["index"],

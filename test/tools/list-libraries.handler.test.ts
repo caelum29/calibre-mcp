@@ -12,9 +12,9 @@ function deps(libraryMap: Record<string, string>, defaultLibrary: string): ToolD
   const content = { libraryInfo: async () => ({ libraryMap, defaultLibrary }) };
   return {
     config: loadConfig({}),
-    content: content as unknown as ToolDeps["content"],
-    calibre: {} as unknown as ToolDeps["calibre"],
-    extractor: {} as unknown as ToolDeps["extractor"],
+    content: content satisfies Partial<ToolDeps["content"]> as ToolDeps["content"],
+    calibre: {} as ToolDeps["calibre"],
+    extractor: {} as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],
     index: {} as ToolDeps["index"],

@@ -52,7 +52,7 @@ describe.skipIf(!RUN || !ready)("calibre_get_figures (live Content Server)", () 
     content: new ContentServerClient(config),
     figures: new FigureInventoryService(config),
     log: sink,
-  } as ToolDeps;
+  } as Partial<ToolDeps> as ToolDeps;
 
   it("lists PDF figures with captions and counts", { timeout: 180_000 }, async () => {
     const r = await getFiguresTool.handler({ id: PDF_BOOK, detail: "standard", include_uncaptioned: false }, deps);

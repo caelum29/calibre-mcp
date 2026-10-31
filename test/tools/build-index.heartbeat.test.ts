@@ -58,7 +58,7 @@ function deps(getText: () => Promise<ExtractedText>): ToolDeps {
       resolveLibraryId: async () => "Programming_Books",
     } as unknown as ToolDeps["content"],
     calibre: {} as unknown as ToolDeps["calibre"],
-    extractor: { getText } as unknown as ToolDeps["extractor"],
+    extractor: { getText } satisfies Partial<ToolDeps["extractor"]> as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder,
     index: new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" })),

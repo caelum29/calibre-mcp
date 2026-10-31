@@ -309,7 +309,7 @@ function fixtureDeps(
   return {
     config: cfg,
     content: content as unknown as ToolDeps["content"],
-    calibre: {} as unknown as ToolDeps["calibre"],
+    calibre: {} as ToolDeps["calibre"],
     extractor: extractor as unknown as ToolDeps["extractor"],
     figures: figures as unknown as ToolDeps["figures"],
     embedder,

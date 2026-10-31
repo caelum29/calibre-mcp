@@ -55,7 +55,7 @@ describe.skipIf(!RUN || !serverUp)("calibre_merge_books (live Content Server)", 
     calibre,
     extractor: {} as ToolDeps["extractor"],
     log: sink,
-  } as ToolDeps;
+  } as Partial<ToolDeps> as ToolDeps;
 
   const createdIds: number[] = [];
   let scratch: string;
