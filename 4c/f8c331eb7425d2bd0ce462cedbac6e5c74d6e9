@@ -1,0 +1,58 @@
+README.md
+  h_e22d73abc85ef9 365
+docs/TOOLS.md
+  h_e22d73abc85ef9 15
+docs/tool-catalog.json
+  h_e22d73abc85ef9 1208-1210
+src/calibre/fts-highlight.ts
+  h_e22d73abc85ef9 48-50,56,58,60,62,65,75-76,84,93,101-122,149-152,168-170,175-177,182-183
+src/call-log.ts
+  h_e22d73abc85ef9 6,113-116,133-136,138-141,143-149
+src/domain/error-codes.ts
+  h_e22d73abc85ef9 41-63,100-103
+src/logging.ts
+  h_e22d73abc85ef9 9,188-193
+src/tools/calibre_list_libraries.ts
+  h_e22d73abc85ef9 18-19,33-46,49-50
+src/tools/coerce.ts
+  h_e22d73abc85ef9 67-78
+test/calibre/fixtures/fts-search.monomorphization.json
+  h_e22d73abc85ef9 1-16
+test/calibre/fts-highlight-language.test.ts
+  h_e22d73abc85ef9 1-33
+test/calibre/fts-highlight-overmatch.test.ts
+  h_e22d73abc85ef9 1-58
+test/calibre/fts-highlight-review2.test.ts
+  h_e22d73abc85ef9 1-28
+test/calibre/fts-query-contract.test.ts
+  h_e22d73abc85ef9 1-94
+test/call-log.test.ts
+  h_e22d73abc85ef9 5-6,150-265
+test/domain/error-codes.test.ts
+  h_e22d73abc85ef9 136-153
+test/integration/error-channels.test.ts
+  h_e22d73abc85ef9 1-187
+test/tools/channel-parity.test.ts
+  h_e22d73abc85ef9 41-43,51-53,79,82-84,187-198
+test/tools/cursor-library-binding.test.ts
+  h_e22d73abc85ef9 1-88
+test/tools/cursor-old-shape.test.ts
+  h_e22d73abc85ef9 1-75
+test/tools/cursor-param-edge.test.ts
+  h_e22d73abc85ef9 1-125
+test/tools/cursor-param.test.ts
+  h_e22d73abc85ef9 1-54
+test/tools/list-libraries.handler.test.ts
+  h_e22d73abc85ef9 57-70,72-73,75-99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4cf8c331eb7425d2bd0ce462cedbac6e5c74d6e9",
+  "prompts": {},
+  "humans": {
+    "h_e22d73abc85ef9": {
+      "author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
