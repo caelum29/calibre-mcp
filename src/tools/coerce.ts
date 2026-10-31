@@ -29,6 +29,23 @@ export function jsonArray<T extends z.ZodTypeAny>(item: T) {
   return z.preprocess(parseIfString, z.array(item));
 }
 
+/**
+ * Optional string-list arg that may arrive as a JSON array, a JSON string or a plain comma
+ * list (`"a, b"` → ["a","b"]); entries are trimmed, empty ones dropped, numbers stringified.
+ * null means absent, like {@link CursorParam}.
+ */
+export function jsonStringList() {
+  return z.preprocess((v) => {
+    const parsed = v === undefined || v === null ? undefined : parseIfString(v);
+    if (parsed === undefined || parsed === null) return undefined;
+    const list = typeof parsed === "string" ? parsed.split(",") : typeof parsed === "number" ? [parsed] : parsed;
+    if (!Array.isArray(list)) return list;
+    return list
+      .map((x) => (typeof x === "number" ? String(x) : typeof x === "string" ? x.trim() : x))
+      .filter((x) => x !== "");
+  }, z.array(z.string()).optional());
+}
+
 /** Open-keyed record arg that may arrive as a JSON string (`'{"a":"b"}'` → {a:"b"}). */
 export function jsonRecord<V extends z.ZodTypeAny>(value: V) {
   return z.preprocess(parseIfString, z.record(z.string(), value));

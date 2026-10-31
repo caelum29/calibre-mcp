@@ -410,11 +410,14 @@ are left untouched. Returns the applied before/after diff.
 Apply the **same** metadata change to a set of books selected by `ids`, a `query`, or a
 `filter` (bundle name). A selection is required — there is no all-books default. Preview-first:
 it returns the per-book diff without writing unless you pass `preview: false`. Capped at 500
-books per call.
+books per call. Pass `changes`, `tags_add`/`tags_remove`, or both; `changes.tags` cannot be
+combined with `tags_add`/`tags_remove`.
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `changes` | object | *(required)* | Field → new value applied to every selected book |
+| `changes` | object | — | Field → new value applied to every selected book (a list replaces the whole list) |
+| `tags_add` | array of strings | — | Tags to add to each book, keeping its other tags; an existing tag keeps the library's spelling |
+| `tags_remove` | array of strings | — | Tags to remove from each book (case-insensitive); a missing tag is a no-op |
 | `ids` | array of ids | — | Books to change (one of `ids`/`query`/`filter` required; `ids` cannot be combined with `query` or `filter`) |
 | `query` | string | — | Select books by a Calibre query |
 | `filter` | string | — | Select a bundle's books (no auto-exclusion on writes) |
