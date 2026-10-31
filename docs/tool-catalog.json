@@ -363,7 +363,7 @@
         "idempotentHint": false,
         "readOnlyHint": false
       },
-      "description": "Apply the same metadata changes (tags, series, publisher, etc.) to a set of books selected by ids, a search query, or filter (a bundle name). Preview-first: returns the per-book diff without writing unless preview is set false. A book set is required (never all books). Requires writes to be enabled.",
+      "description": "Apply the same metadata changes (tags, series, publisher, etc.) to a set of books selected by ids, a search query, or filter (a bundle name). Preview-first: returns the per-book diff without writing unless preview is set false. A book set is required (never all books). A list in changes replaces the whole list; to add or remove tags while keeping the rest, use tags_add / tags_remove (merged per book, case-insensitive, not together with changes.tags). Requires writes to be enabled.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {
@@ -427,11 +427,20 @@
           },
           "query": {
             "type": "string"
+          },
+          "tags_add": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "tags_remove": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
           }
         },
-        "required": [
-          "changes"
-        ],
         "type": "object"
       },
       "name": "calibre_bulk_update",
