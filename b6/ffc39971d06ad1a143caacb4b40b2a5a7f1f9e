@@ -1,0 +1,144 @@
+src/app/bundles.ts
+  h_e22d73abc85ef9 8,74,121,142,207,304
+src/app/index-book.ts
+  h_e22d73abc85ef9 12-22,100,222,251,280,298
+src/app/isbn-scan.ts
+  h_e22d73abc85ef9 11,47
+src/app/select-books.ts
+  h_e22d73abc85ef9 8,42,89
+src/app/write-policy.ts
+  h_e22d73abc85ef9 10,138
+src/semantic/status.ts
+  h_e22d73abc85ef9 63-68,73
+src/tools/add-dup-probe.ts
+  h_e22d73abc85ef9 8,48,58
+src/tools/board-meta.ts
+  h_e22d73abc85ef9 6,13
+src/tools/calibre_build_index.ts
+  h_e22d73abc85ef9 33-34,36,61-67,142,186,457
+src/tools/calibre_get_figures.ts
+  h_e22d73abc85ef9 16,194
+src/tools/calibre_manage_bundles.ts
+  h_e22d73abc85ef9 16,43,113
+src/tools/calibre_merge_books.ts
+  h_e22d73abc85ef9 21,226
+src/tools/calibre_ping.ts
+  h_e22d73abc85ef9 8,14,18-20,32,126,137,183
+src/tools/calibre_recover_metadata.ts
+  h_e22d73abc85ef9 25,32
+src/tools/calibre_search.ts
+  h_e22d73abc85ef9 41-42,67,85,222-226,230-231,475
+src/tools/calibre_semantic_search.ts
+  h_e22d73abc85ef9 20,30,127,251-260,269,296,382,458
+src/tools/calibre_update_book.ts
+  h_e22d73abc85ef9 15,184
+src/tools/define.ts
+  h_e22d73abc85ef9 8-9,11-18,28
+src/tools/deps.ts
+  h_e22d73abc85ef9 60-71
+src/tools/resolve-id.ts
+  h_e22d73abc85ef9 4,17
+src/tools/types.ts
+  h_e22d73abc85ef9 7,68-69,71,89,109-116
+test/calibre/fts-query-contract.test.ts
+  h_e22d73abc85ef9 15,25,35
+test/integration/figures.live.test.ts
+  h_e22d73abc85ef9 19,55
+test/integration/merge.live.test.ts
+  h_e22d73abc85ef9 25,58
+test/tools/add-book.dup-probe.test.ts
+  h_e22d73abc85ef9 11,36
+test/tools/add-book.handler.test.ts
+  h_e22d73abc85ef9 8,21
+test/tools/board-data.handler.test.ts
+  h_e22d73abc85ef9 7,30,162
+test/tools/board-meta.test.ts
+  h_e22d73abc85ef9 16-17,39,51,68,86-94,170,179-180
+test/tools/bulk-update.handler.test.ts
+  h_e22d73abc85ef9 8,29
+test/tools/bundle-filter.test.ts
+  h_e22d73abc85ef9 16,61,68,70
+test/tools/channel-parity.test.ts
+  h_e22d73abc85ef9 364-365
+test/tools/cursor-binding-review.test.ts
+  h_e22d73abc85ef9 14,31,72
+test/tools/cursor-binding.test.ts
+  h_e22d73abc85ef9 15,36,69
+test/tools/cursor-library-binding.test.ts
+  h_e22d73abc85ef9 11,52,59
+test/tools/cursor-old-shape.test.ts
+  h_e22d73abc85ef9 9,15
+test/tools/cursor-param-edge.test.ts
+  h_e22d73abc85ef9 14,63
+test/tools/cursor-param.test.ts
+  h_e22d73abc85ef9 10,35
+test/tools/extract-isbn.handler.test.ts
+  h_e22d73abc85ef9 7,20
+test/tools/find-duplicates.handler.test.ts
+  h_e22d73abc85ef9 6,13
+test/tools/get-book.handler.test.ts
+  h_e22d73abc85ef9 9,22
+test/tools/get-content.handler.test.ts
+  h_e22d73abc85ef9 7,26
+test/tools/get-figures.errors.test.ts
+  h_e22d73abc85ef9 12,32
+test/tools/get-figures.handler.test.ts
+  h_e22d73abc85ef9 12,25
+test/tools/get-figures.messages.test.ts
+  h_e22d73abc85ef9 12,31,40
+test/tools/list-categories.handler.test.ts
+  h_e22d73abc85ef9 6,22,87
+test/tools/list-libraries.handler.test.ts
+  h_e22d73abc85ef9 9,11
+test/tools/manage-bundles.handler.test.ts
+  h_e22d73abc85ef9 12,38
+test/tools/merge-books.handler.test.ts
+  h_e22d73abc85ef9 17,92
+test/tools/open-book.handler.test.ts
+  h_e22d73abc85ef9 5,7
+test/tools/ping-header.test.ts
+  h_e22d73abc85ef9 11-13,28,31,55
+test/tools/ping-review.test.ts
+  h_e22d73abc85ef9 5,11-12,28,30,34,56,58
+test/tools/ping.handler.test.ts
+  h_e22d73abc85ef9 12,38-39
+test/tools/quality-report.handler.test.ts
+  h_e22d73abc85ef9 7,26
+test/tools/recover-metadata.handler.test.ts
+  h_e22d73abc85ef9 8,26
+test/tools/remove-book.handler.test.ts
+  h_e22d73abc85ef9 6,20
+test/tools/search-deadline.test.ts
+  h_e22d73abc85ef9 13,32,67,76
+test/tools/search.fts-quoting.test.ts
+  h_e22d73abc85ef9 10,13,23
+test/tools/search.fts-syntax-steer.test.ts
+  h_e22d73abc85ef9 11,15,26
+test/tools/search.handler.test.ts
+  h_e22d73abc85ef9 11,30,49,199
+test/tools/select-books.test.ts
+  h_e22d73abc85ef9 6,31
+test/tools/steers-251.test.ts
+  h_e22d73abc85ef9 11,14,25,33
+test/tools/update-book.handler.test.ts
+  h_e22d73abc85ef9 8,28
+test/tools/write-retry-dropped.handler.test.ts
+  h_e22d73abc85ef9 12,41,52
+test/tools/write-retry.handler.test.ts
+  h_e22d73abc85ef9 13,84
+test/tools/write-retry.test.ts
+  h_e22d73abc85ef9 11,90,101
+test/tools/write-verify.test.ts
+  h_e22d73abc85ef9 4,20,27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b6ffc39971d06ad1a143caacb4b40b2a5a7f1f9e",
+  "prompts": {},
+  "humans": {
+    "h_e22d73abc85ef9": {
+      "author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
