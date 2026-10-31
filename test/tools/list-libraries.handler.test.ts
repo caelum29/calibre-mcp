@@ -61,3 +61,24 @@ describe("calibre_list_libraries text channel (#303)", () => {
     expect(text(r)).toContain("(none)");
   });
 });
+
+// Stale default (#325): defaultLibrary is not a key of libraryMap, so no line can carry [default].
+// Both channels must agree: no default is reported, and the text says why.
+describe("calibre_list_libraries with a stale defaultLibrary (#325)", () => {
+  it("marks no line [default], omits structured default, and says so in the text", async () => {
+    const r = await listLibrariesTool.handler({}, deps(MAP, "Gone_Library"));
+    const sc = r.structuredContent as { libraries: { isDefault: boolean }[]; default?: string };
+    expect(text(r)).not.toContain("[default]");
+    expect(sc.libraries.map((l) => l.isDefault)).toEqual([false, false, false]);
+    expect(sc.default).toBeUndefined();
+    expect(text(r).split("\n").at(-1)).toBe('Note: the server default "Gone_Library" is not an exposed library.');
+  });
+});
+
+describe("calibre_list_libraries with no libraries (#325)", () => {
+  it("says exactly (none) in the text and reports no default", async () => {
+    const r = await listLibrariesTool.handler({}, deps({}, ""));
+    expect(text(r)).toBe("Libraries: (none)");
+    expect(r.structuredContent).toEqual({ libraries: [] });
+  });
+});
