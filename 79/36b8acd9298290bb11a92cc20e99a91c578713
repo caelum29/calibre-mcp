@@ -1,0 +1,25 @@
+scripts/gen-tool-catalog.mjs
+  s_4a90abf8bb145b::t_375838e30f8555 41,61
+test/tools/schema-compat.test.ts
+  s_4a90abf8bb145b::t_375838e30f8555 14,38,62-64
+  s_4a90abf8bb145b::t_a1468dd6198efd 128-129
+  s_4a90abf8bb145b::t_c83a74a705364f 65
+src/wire-compat.ts
+  s_4a90abf8bb145b::t_375838e30f8555 17,25-49,51,54-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7936b8acd9298290bb11a92cc20e99a91c578713",
+  "prompts": {},
+  "sessions": {
+    "s_4a90abf8bb145b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0f97a282-8575-4fbc-b370-90d325920a31",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
