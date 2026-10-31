@@ -1,0 +1,16 @@
+docs/TOOLS.md
+  h_e22d73abc85ef9 413-414,418-420
+skills/calibre-mcp/SKILL.md
+  h_e22d73abc85ef9 53,144-146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "19f4bd0233f81606bebde445d807e89915df5b54",
+  "prompts": {},
+  "humans": {
+    "h_e22d73abc85ef9": {
+      "author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
