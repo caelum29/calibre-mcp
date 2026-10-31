@@ -10,7 +10,7 @@ import type { Embedder } from "./embedder.js";
 import { RRF_K, rrfFuse } from "./fusion.js";
 import { RERANK_FLOOR, RERANK_POOL, type Reranker } from "./reranker.js";
 import { stemText } from "./stem.js";
-import { snippetWindow } from "./store/chunks.js";
+import { snippetWindow } from "./snippet.js";
 import type { BookHit, ChunkIndex, FigureHit, FigureIndex, LibraryHit } from "./store/index.js";
 
 /** Per-half candidate pool the fuser draws from (design: vector top-50 + keyword top-50). */

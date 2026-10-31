@@ -16,6 +16,7 @@
 
 import { z } from "zod";
 import { type RankedHits, type RetrievalMode, retrieve } from "../semantic/retrieve.js";
+import { SNIPPET_CHARS } from "../semantic/snippet.js";
 import type { LibraryHit } from "../semantic/store/index.js";
 import { type FilterResolution, honestyLines, restrictSet, resolveFilter } from "../app/bundles.js";
 import { boardMeta } from "./board-meta.js";
@@ -27,9 +28,6 @@ import { INSTALL_TRANSFORMERS } from "./remediation.js";
 import { fence, toolError, toolOk } from "./result.js";
 import type { ContentBlock, ToolResult } from "./types.js";
 import type { ToolDeps } from "./deps.js";
-
-/** Chars of the linked context chunk shown per figure hit (mirrors the store's snippet cap). */
-const CONTEXT_SNIPPET_CHARS = 320;
 
 export const semanticSearchTool = defineTool({
   name: "calibre_semantic_search",
@@ -514,7 +512,7 @@ async function figuresTarget(
   for (const r of ranked) {
     const h = r.hit;
     const ctx = deps.index.chunkAt(libraryId, h.bookId, h.charOffset);
-    const snippet = ctx ? ctx.body.slice(0, CONTEXT_SNIPPET_CHARS) : undefined;
+    const snippet = ctx ? ctx.body.slice(0, SNIPPET_CHARS) : undefined;
     // EPUB "page" is the spine-document ordinal — same number the get_figures listing shows,
     // flagged approximate (#105).
     const pagePart = h.format === "pdf" ? `p.${h.page},` : `~p.${h.page},`;
