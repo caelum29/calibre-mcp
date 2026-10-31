@@ -17,6 +17,7 @@ import type { Config } from "../config.js";
 import { log as defaultLog, type LogSink } from "../logging.js";
 import { EMBED_DIM, INDEX_VERSION, MODEL_ID } from "./model.js";
 import type { ChunkSpan } from "./content-match.js";
+import { isFrontMatterSpan } from "./front-matter-flag.js";
 import { stemText } from "./stem.js";
 import { type Candidate, decodeVector, encodeVector, topK } from "./vector.js";
 
@@ -176,9 +177,10 @@ export interface IndexStore {
   /**
    * Metadata-only refresh (#244): rewrite one book's title/authors/last_modified and the
    * per-chunk/per-figure book_meta (FTS follows via the update triggers) in ONE transaction,
-   * keeping chunks and vectors. A no-op for a book that is not indexed.
+   * keeping chunks and vectors. A no-op for a book that is not indexed. With `frontMatterEnd`,
+   * also re-derives every chunk's front-matter flag from that boundary (#269 backfill).
    */
-  refreshBookMeta(libraryId: string, meta: BookMeta): void;
+  refreshBookMeta(libraryId: string, meta: BookMeta, frontMatterEnd?: number): void;
   /** One book's stored chunk spans, sorted by charStart (empty when not indexed). */
   bookChunkSpans(libraryId: string, bookId: number): ChunkSpan[];
   /** Embedded chunks of one book (0 when not indexed or for an absent index). */
@@ -540,7 +542,7 @@ export class SqliteIndexStore implements IndexStore {
     }
   }
 
-  refreshBookMeta(libraryId: string, meta: BookMeta): void {
+  refreshBookMeta(libraryId: string, meta: BookMeta, frontMatterEnd?: number): void {
     const db = this.#db(libraryId);
     const bookMeta = bookMetaStem(meta);
     // IMMEDIATE for the same reason as replaceBook (#196): wait on another writer's lock.
@@ -556,6 +558,7 @@ export class SqliteIndexStore implements IndexStore {
       // The AFTER UPDATE triggers re-sync chunk_fts / figure_fts with the new book_meta.
       db.prepare("UPDATE chunks SET book_meta = ? WHERE book_id = ?").run(bookMeta, meta.bookId);
       db.prepare("UPDATE figures SET book_meta = ? WHERE book_id = ?").run(bookMeta, meta.bookId);
+      if (frontMatterEnd !== undefined) this.#refreshFrontMatter(db, meta.bookId, frontMatterEnd);
       db.exec("COMMIT");
     } catch (err) {
       rollbackQuietly(db);
@@ -564,6 +567,18 @@ export class SqliteIndexStore implements IndexStore {
       // Same wholesale invalidation as replaceBook — correctness over cleverness.
       this.#candidateCaches.delete(libraryId);
       this.#figureCaches.delete(libraryId);
+    }
+  }
+
+  /** Flag-only backfill (#269): rewrite just the chunks whose front-matter flag changes. */
+  #refreshFrontMatter(db: DatabaseSync, bookId: number, fmEnd: number): void {
+    const rows = db
+      .prepare("SELECT id, char_start, char_end, front_matter FROM chunks WHERE book_id = ?")
+      .all(bookId) as Row[];
+    const set = db.prepare("UPDATE chunks SET front_matter = ? WHERE id = ?");
+    for (const r of rows) {
+      const want = isFrontMatterSpan({ charStart: Number(r.char_start), charEnd: Number(r.char_end) }, fmEnd) ? 1 : 0;
+      if (Number(r.front_matter ?? 0) !== want) set.run(want, Number(r.id));
     }
   }
 

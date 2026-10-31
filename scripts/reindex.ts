@@ -1,6 +1,8 @@
 // Resumable bulk (re-)index with book-level concurrency (#99) — the #87 orchestrator's
 // rebuild phase as a reusable dev script, doubling as the benchmark harness.
 // Run: pnpm reindex --index-dir <dir> [--concurrency 3] [--encoder threads|shared] [--ids 1,2,3]
+// --flags-only (#269): no model, no re-embed — refresh each indexed book's front-matter flags
+// (EPUB TOC / PDF outline) and metadata in place; books whose text changed are reported as failed.
 
 import { statfsSync } from "node:fs";
 import path from "node:path";
@@ -32,6 +34,7 @@ const { values: opt } = parseArgs({
     ids: { type: "string" },
     library: { type: "string" },
     "skip-fresh": { type: "boolean", default: false },
+    "flags-only": { type: "boolean", default: false },
     "min-free-gb": { type: "string", default: "8" },
   },
 });
@@ -49,8 +52,11 @@ if (indexDir === path.resolve(prodDir) && !opt.production) {
   throw new Error(`${indexDir} is the production index — pass --production to really rebuild it`);
 }
 const concurrency = Math.max(1, Number(opt.concurrency) || 1);
-const threaded = opt.encoder === "threads";
-const progressFile = opt.progress ?? path.join(indexDir, "progress.jsonl");
+const flagsOnly = opt["flags-only"];
+// A flag backfill never encodes — no worker threads, no model load.
+const threaded = opt.encoder === "threads" && !flagsOnly;
+// Its own log: a full re-index's "done" ids must not hide books from the backfill.
+const progressFile = opt.progress ?? path.join(indexDir, flagsOnly ? "flags-progress.jsonl" : "progress.jsonl");
 const minFreeGb = Number(opt["min-free-gb"]);
 
 const config = loadConfig({ ...process.env, CALIBRE_MCP_INDEX_DIR: indexDir });
@@ -74,7 +80,7 @@ const deps = {
 const threads = threaded ? Array.from({ length: concurrency }, () => new ThreadEncoder(config)) : [];
 const encoders: BookEncoder[] = threaded ? threads : [inThreadEncoder(deps.embedder)];
 const tWarm = Date.now();
-await Promise.all(threaded ? threads.map((t) => t.warmup()) : [deps.embedder.warmup()]);
+if (!flagsOnly) await Promise.all(threaded ? threads.map((t) => t.warmup()) : [deps.embedder.warmup()]);
 const warmupMs = Date.now() - tWarm;
 
 const libraryId = await deps.content.resolveLibraryId(opt.library);
@@ -117,12 +123,13 @@ await runBookPipeline<PrepareResult>(todo, concurrency, {
       keywordOnly: false,
       tokenBudgeted: true,
       encoder: encoders[threaded ? worker : 0],
+      flagsOnly,
     });
   },
   commit: (_bookId, prepared) => {
     if (prepared.kind === "ready") commitBook(deps, libraryId, prepared);
     // --skip-fresh after a metadata cleanup: unchanged text refreshes in place (#244).
-    else if (prepared.kind === "refreshed") commitRefresh(deps, libraryId, prepared.meta);
+    else if (prepared.kind === "refreshed") commitRefresh(deps, libraryId, prepared);
   },
   onSettled: (o) => {
     settled++;
