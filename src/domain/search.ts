@@ -16,16 +16,21 @@ export interface SearchParams {
   offset?: number;
   sort?: SearchSort;
   sortOrder?: SortOrder;
+  /** Request timeout; callers under a per-call Deadline pass what is left of it. */
+  timeoutMs?: number;
 }
 
-/** One full-text-search hit. FTS is book-level, so `location` stays reserved for now. */
-export interface FtsHit {
-  bookId: number;
-  /** Surrounding snippet of matched text (untrusted book content → fence before display). */
-  snippet?: string;
-  format?: string;
-  /** Reserved: Calibre FTS yields no page/spine position today. */
-  location?: string;
+/** Full-text indexing progress of one library: `left` of `total` book files still unindexed. */
+export interface FtsIndexing {
+  left: number;
+  total: number;
+}
+
+/** Phase-1 full-text matches: book ids in FTS rank order, plus their title/authors. */
+export interface FtsMatches {
+  bookIds: number[];
+  books: Map<number, { title: string; authors: string[] }>;
+  indexing: FtsIndexing;
 }
 
 /** One page of search results — ids only; full records are fetched on demand. */

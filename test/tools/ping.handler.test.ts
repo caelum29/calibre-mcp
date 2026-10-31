@@ -5,6 +5,8 @@ import { describe, it, expect } from "vitest";
 import { allTools } from "../../src/tools/registry.js";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
+import { LibraryBusyTracker } from "../../src/calibre/busy.js";
+import { CalibreBusyError } from "../../src/domain/errors.js";
 import type { AnyToolDescriptor, ToolDeps } from "../../src/tools/types.js";
 
 const SERVER_URL = "http://127.0.0.1:9";
@@ -102,5 +104,26 @@ describe("calibre_ping handler", () => {
     expect(text(r)).toContain("Calibre unreachable: calibredb: Library Programming_Books not found");
     const sc = r.structuredContent as { recentErrors: Array<{ msg: string }> };
     expect(sc.recentErrors.at(-1)?.msg).toBe("ping failed");
+  });
+});
+
+describe("calibre_ping busy libraries", () => {
+  it("should_report_a_busy_library_in_text_and_structured_content", async () => {
+    const busy = new LibraryBusyTracker();
+    busy.markBusy("Programming_Books", "content-server");
+    const { d } = deps({
+      listLibraries: async () => Promise.reject(new CalibreBusyError("Programming_Books", 60_000)),
+    });
+    const r = await pingTool().handler({}, { ...d, libraryBusy: busy });
+    expect(text(r)).toContain('busy: library "Programming_Books" — Calibre timed out (content-server)');
+    expect(r.structuredContent?.busyLibraries).toEqual([
+      expect.objectContaining({ libraryId: "Programming_Books", source: "content-server" }),
+    ]);
+  });
+
+  it("should_say_nothing_about_busy_when_no_library_is_busy", async () => {
+    const { d } = deps({});
+    const r = await pingTool().handler({}, { ...d, libraryBusy: new LibraryBusyTracker() });
+    expect(text(r)).not.toContain("busy:");
   });
 });

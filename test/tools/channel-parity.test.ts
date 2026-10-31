@@ -20,6 +20,7 @@ import { allTools } from "../../src/tools/registry.js";
 import { decodeCursor, pageCursor } from "../../src/tools/cursor.js";
 import { renderResult } from "../../src/tools/result.js";
 import type { AnyToolDescriptor, ToolDeps, ToolResult } from "../../src/tools/types.js";
+import { fakeFts } from "./fake-fts.js";
 
 // ── the parity checker ────────────────────────────────────────────────────────────────
 
@@ -321,7 +322,6 @@ function fakeDeps(o: FakeOpts = {}): ToolDeps {
   };
   const calibre = {
     calibredb: o.calibredb ?? (async () => ({ stdout: "", stderr: "" })),
-    ftsSearch: async () => o.ftsHits ?? [],
   };
   const extractor = {
     getText: async () => {
@@ -333,6 +333,9 @@ function fakeDeps(o: FakeOpts = {}): ToolDeps {
     config: loadConfig({ CALIBRE_MCP_ENABLE_WRITE: "1", ...o.env }),
     content: content as unknown as ToolDeps["content"],
     calibre: calibre as unknown as ToolDeps["calibre"],
+    fts: fakeFts(o.ftsHits, {
+      titleOf: (id) => ({ title: byId.get(id)?.title ?? `book ${id}`, authors: byId.get(id)?.authors ?? [] }),
+    }),
     extractor: extractor as unknown as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: o.embedder ?? ({} as ToolDeps["embedder"]),

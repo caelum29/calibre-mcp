@@ -29,7 +29,8 @@ Confirms the server can reach your running Calibre Content Server (end to end, v
 dependency are present, how many vectors the index holds, and the index generation
 (`indexVersion`, read from the index itself — flagged **stale** with a rebuild hint when it
 doesn't match the running server). On success it also returns your library's categories.
-It also lists the server's recent errors (the last 20, newest first, each with its tool and
+Libraries the server is currently failing fast after a Calibre timeout are listed as
+`busy: library "…"` (`busyLibraries`). It also lists the server's recent errors (the last 20, newest first, each with its tool and
 `call` id) and the path of today's log file — see [Troubleshooting → Logs](TROUBLESHOOTING.md#logs).
 Use it first when something isn't working, or to answer "why is semantic search off?".
 
@@ -71,6 +72,15 @@ Library-scope searches automatically subtract books in **exclusion-marker** bund
 searches whose name starts with `-`), and say so in the result: `exclusions applied: [-noise]
 (pass include_excluded=true to disable)`. There is no silent subtraction — if nothing is
 reported, nothing was subtracted.
+
+Full-text search (`mode: fts`, `scope: book`) uses Calibre's own full-text index, which you
+enable per library in Calibre (the **FT** button left of the search bar). If it is off, the call
+says so at once. Matches come back ranked; snippets are fetched only for the books on the
+current page, one book at a time, within a time budget — books whose snippets didn't fit are
+named in the lead line (`snippetsSkipped` in structured output). While the index is still being
+built, the result says how far along it is (`indexing`). Each call answers within 45 s; if
+Calibre is still busy with an earlier long request, the call fails fast with a retry time
+instead of queueing behind it.
 
 > Ask: *"find books about Rust"* · *"search my library for author:knuth"* · *"where does book 187 mention rebalancing?"* (`scope: book`) · *"search async runtimes in the Rust bundle"* (`filter`)
 

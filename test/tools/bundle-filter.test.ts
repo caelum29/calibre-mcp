@@ -4,13 +4,14 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { loadConfig } from "../../src/config.js";
 import type { Book } from "../../src/domain/book.js";
-import type { FtsHit, SearchPage } from "../../src/domain/search.js";
+import type { SearchPage } from "../../src/domain/search.js";
 import { log, type LogSink } from "../../src/logging.js";
 
 // Typed as the narrow sink ToolDeps expects (an annotation, not a cast).
 const sink: LogSink = log;
 import { buildScopedQuery, invalidateBundleCache, resolveFilter, scopeExpression } from "../../src/tools/bundles.js";
 import { searchTool } from "../../src/tools/calibre_search.js";
+import { fakeFts, type FakeFtsHit } from "./fake-fts.js";
 import type { ToolDeps } from "../../src/tools/types.js";
 
 const SAVED_SEARCHES = `Integration status: False
@@ -34,7 +35,7 @@ const book = (id: number): Book => ({
 interface FakeOpts {
   /** query → SearchPage; the LAST entry is the fallback. Captures every query received. */
   pages?: Array<{ match?: (q: string) => boolean; page: Partial<SearchPage> }>;
-  ftsHits?: FtsHit[];
+  ftsHits?: FakeFtsHit[];
   savedSearches?: string;
   vls?: Record<string, string>;
 }
@@ -55,12 +56,12 @@ function fake(opts: FakeOpts = {}) {
   };
   const calibre = {
     calibredb: async () => ({ stdout: opts.savedSearches ?? SAVED_SEARCHES, stderr: "" }),
-    ftsSearch: async (): Promise<FtsHit[]> => opts.ftsHits ?? [],
   };
   const deps = {
     config: loadConfig({}),
     content: content as unknown as ToolDeps["content"],
     calibre: calibre as unknown as ToolDeps["calibre"],
+    fts: fakeFts(opts.ftsHits),
     extractor: {} as unknown as ToolDeps["extractor"],
     log: sink,
   } as ToolDeps;
@@ -175,7 +176,7 @@ describe("calibre_search + filter", () => {
   });
 
   it("fts search restricts grouped hits to the bundle's book-id set", async () => {
-    const hit = (bookId: number): FtsHit => ({ bookId, format: "pdf", snippet: `s${bookId}` });
+    const hit = (bookId: number): FakeFtsHit => ({ bookId, snippet: `s${bookId}` });
     const { deps } = fake({
       ftsHits: [hit(1), hit(2), hit(3)],
       pages: [{ page: { bookIds: [1, 3] } }], // the scope-expression id set

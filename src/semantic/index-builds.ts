@@ -3,13 +3,10 @@
 // keeps committing in the background; the registry keeps one build per library at a time.
 
 import type { LogSink } from "../logging.js";
+import { TOOL_SOFT_DEADLINE_MS } from "../shared/deadline.js";
 
-/**
- * Soft deadline for one calibre_build_index call: under the MCP SDK client's 60 s
- * DEFAULT_REQUEST_TIMEOUT_MSEC, leaving margin for the result to travel. Guess; tune in #284
- * once the real-client timeout check is in.
- */
-export const BUILD_SOFT_DEADLINE_MS = 45_000;
+/** Soft deadline for one calibre_build_index call — the shared per-tool-call budget. */
+export const BUILD_SOFT_DEADLINE_MS = TOOL_SOFT_DEADLINE_MS;
 
 /** Finished background results kept for a re-run; bounded so unclaimed ones can't pile up. */
 const KEPT_RESULTS = 16;

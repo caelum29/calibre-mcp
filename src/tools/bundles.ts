@@ -70,12 +70,19 @@ export function mergeBundles(
 }
 
 /** Read every bundle. VLs are a nicety — a failing /interface-data must not kill the read. */
-export async function loadBundles(deps: ToolDeps, library?: string): Promise<BundleEntry[]> {
+export async function loadBundles(
+  deps: ToolDeps,
+  library?: string,
+  opts: { timeoutMs?: number } = {},
+): Promise<BundleEntry[]> {
   const libId = await deps.content.resolveLibraryId(library);
-  const { stdout } = await deps.calibre.calibredb(["saved_searches", "list"], { library: libId });
+  const { stdout } = await deps.calibre.calibredb(["saved_searches", "list"], {
+    library: libId,
+    timeoutMs: opts.timeoutMs,
+  });
   let vls: Record<string, string> = {};
   try {
-    vls = await deps.content.virtualLibraries(library);
+    vls = await deps.content.virtualLibraries(library, { timeoutMs: opts.timeoutMs });
   } catch (err) {
     deps.log.warn("virtual-library listing failed", {
       msg: err instanceof Error ? err.message : String(err),
@@ -84,27 +91,69 @@ export async function loadBundles(deps: ToolDeps, library?: string): Promise<Bun
   return mergeBundles(parseSavedSearches(stdout), vls);
 }
 
-// Bundle listing spawns calibredb (~hundreds of ms), so discovery calls read through a short
-// TTL cache; manage_bundles writes invalidate it. Process-lifetime, single stdio client.
-const CACHE_TTL_MS = 30_000;
+// Bundle listing spawns calibredb and, like every Calibre read, queues behind a running FTS
+// search (it was the first 30 s of the 90 s hang). So discovery calls read stale-while-
+// revalidate: a cached list answers at once and refreshes in the background; only a cold cache
+// waits, briefly. manage_bundles writes invalidate. Process-lifetime, single stdio client.
+const CACHE_FRESH_MS = 30_000;
+/** Cold-cache wait for the best-effort exclusion sweep. Basis: `saved_searches list` answers in 0.5–1.4 s (2026-10-31). */
+export const BUNDLES_COLD_TIMEOUT_MS = 5_000;
+/** Background refreshes don't block anyone, but must still end. */
+const BACKGROUND_TIMEOUT_MS = 15_000;
 const cache = new Map<LibId, { at: number; bundles: BundleEntry[] }>();
+const inflight = new Map<LibId, Promise<BundleEntry[]>>();
+// Bumped by every invalidation: a refresh started before a write must not re-store pre-write data.
+let generation = 0;
 
 /** Drop cached bundle listings for one libId, or all libraries when omitted (called after bundle writes). */
 export function invalidateBundleCache(libId?: LibId): void {
-  if (libId === undefined) cache.clear();
-  else cache.delete(libId);
+  generation++;
+  if (libId === undefined) {
+    cache.clear();
+    inflight.clear();
+  } else {
+    cache.delete(libId);
+    inflight.delete(libId);
+  }
 }
 
-/** loadBundles through the TTL cache, keyed by resolved libId. */
+// Single-flight load per library; stores only if no invalidation happened meanwhile.
+function refreshBundles(deps: ToolDeps, libId: LibId, library: string | undefined, timeoutMs: number) {
+  const running = inflight.get(libId);
+  if (running) return running;
+  const gen = generation;
+  const p = loadBundles(deps, library, { timeoutMs })
+    .then((bundles) => {
+      if (gen === generation) cache.set(libId, { at: Date.now(), bundles });
+      return bundles;
+    })
+    .finally(() => {
+      if (inflight.get(libId) === p) inflight.delete(libId);
+    });
+  inflight.set(libId, p);
+  return p;
+}
+
+/**
+ * loadBundles through the stale-while-revalidate cache, keyed by resolved libId. A stale hit
+ * returns immediately and refreshes in the background; a cold miss waits at most `timeoutMs`.
+ */
 export async function loadBundlesCached(
   deps: ToolDeps,
   library?: string,
+  opts: { timeoutMs?: number } = {},
 ): Promise<{ libId: LibId; bundles: BundleEntry[] }> {
   const libId = await deps.content.resolveLibraryId(library);
   const hit = cache.get(libId);
-  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return { libId, bundles: hit.bundles };
-  const bundles = await loadBundles(deps, library);
-  cache.set(libId, { at: Date.now(), bundles });
+  if (hit) {
+    if (Date.now() - hit.at >= CACHE_FRESH_MS) {
+      void refreshBundles(deps, libId, library, BACKGROUND_TIMEOUT_MS).catch((err: unknown) =>
+        deps.log.warn("background bundle refresh failed", { msg: err instanceof Error ? err.message : String(err) }),
+      );
+    }
+    return { libId, bundles: hit.bundles };
+  }
+  const bundles = await refreshBundles(deps, libId, library, opts.timeoutMs ?? BUNDLES_COLD_TIMEOUT_MS);
   return { libId, bundles };
 }
 
@@ -128,9 +177,21 @@ export interface FilterRequest {
   /** Whether this tool auto-subtracts exclusion markers (the discovery trio). */
   autoExclude: boolean;
   library?: string;
+  /**
+   * What is left of the caller's per-call deadline. A load-bearing `filter` may use all of it;
+   * the best-effort exclusion sweep waits at most {@link BUNDLES_COLD_TIMEOUT_MS}.
+   */
+  timeoutMs?: number;
 }
 
 export type FilterOutcome = { ok: true; res: FilterResolution } | { ok: false; error: string };
+
+// A load-bearing `filter` may wait out the caller's whole budget; the best-effort exclusion
+// sweep waits at most the short cold cap so a stalled Calibre can't hold the search hostage.
+function coldWait(req: FilterRequest): number | undefined {
+  if (req.filter) return req.timeoutMs;
+  return Math.min(BUNDLES_COLD_TIMEOUT_MS, req.timeoutMs ?? BUNDLES_COLD_TIMEOUT_MS);
+}
 
 /**
  * Resolve a call's filter/exclusion inputs against the library's bundles.
@@ -151,7 +212,7 @@ export async function resolveFilter(deps: ToolDeps, req: FilterRequest): Promise
 
   let bundles: BundleEntry[];
   try {
-    bundles = (await loadBundlesCached(deps, req.library)).bundles;
+    bundles = (await loadBundlesCached(deps, req.library, { timeoutMs: coldWait(req) })).bundles;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     if (req.filter) {
@@ -240,12 +301,14 @@ export async function restrictSet(
   deps: ToolDeps,
   res: FilterResolution,
   library?: string,
+  timeoutMs?: number,
 ): Promise<Set<number> | undefined> {
   if (!isScoped(res)) return undefined;
   const page = await deps.content.search({
     query: scopeExpression(res),
     library,
     num: RESTRICT_MAX,
+    timeoutMs,
   });
   return new Set(page.bookIds);
 }

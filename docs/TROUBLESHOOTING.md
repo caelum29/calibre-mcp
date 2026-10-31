@@ -40,10 +40,19 @@ serve.)
 
 ### Full-text search (`mode: fts`) returns nothing or errors
 
-Calibre's own FTS index isn't enabled for the library. In Calibre:
-**Preferences → Searching → Full text search**, enable it, and let indexing finish — it can
-take a while on large libraries. Metadata search (`mode: meta`) and semantic search are
-unaffected.
+Calibre's own FTS index isn't enabled for the library — the tool now says so right away
+(`Full-text search is not enabled for library …`). In Calibre: click the **FT** button left of
+the search bar, turn on full text indexing, and let it finish — it can take hours on large
+libraries. Metadata search (`mode: meta`) and `calibre_semantic_search` (`mode: "keyword"` needs
+no Calibre FTS at all) are unaffected.
+
+### Full-text search says Calibre is busy, or stops at its time budget
+
+Each call has one 45 s budget for all its Calibre requests. Calibre can't cancel a request once
+started, so after a timeout the server marks that library busy for a short window (60 s, doubling
+on repeat, max 5 min) and fails calls fast instead of queueing more work behind it.
+`calibre_ping` lists busy libraries. Wait for the stated retry time, or use
+`calibre_semantic_search` with `mode: "keyword"` meanwhile.
 
 ### In-book keyword hits all land in the table of contents
 

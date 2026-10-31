@@ -5,10 +5,12 @@
 
 import type { z } from "zod";
 import type { Config } from "../config.js";
+import type { BusyStatusPort } from "../calibre/busy.js";
 import type { CalibreClient } from "../calibre/client.js";
 import type { ContentServerClient } from "../calibre/content-server.js";
 import type { Extractor } from "../calibre/extract.js";
 import type { FigureInventoryService } from "../calibre/figure-inventory.js";
+import type { FtsPort } from "../calibre/fts.js";
 import type { Embedder } from "../semantic/embedder.js";
 import type { Reranker } from "../semantic/reranker.js";
 import type { IndexBuilds } from "../semantic/index-builds.js";
@@ -88,6 +90,13 @@ export interface ToolDeps {
    * injectable so tests use their own registry and a short deadline.
    */
   indexBuilds?: IndexBuilds<ToolResult>;
+  /**
+   * Full-text search over the Content Server's two-phase FTS API. Absent in tests that don't
+   * exercise FTS — calibre_search reports it unavailable rather than crash.
+   */
+  fts?: FtsPort;
+  /** Libraries currently flagged busy after a timeout (calibre_ping reports them). */
+  libraryBusy?: BusyStatusPort;
   /** Pause between transient-write retries (#233). Defaulted to setTimeout; injectable for tests. */
   sleep?: (ms: number) => Promise<void>;
   log: LogSink;

@@ -11,11 +11,10 @@ import {
   CalibreCliTimeoutError,
   CalibreNotFoundError,
   OperationCancelledError,
-  isFtsParseDiag,
 } from "../domain/errors.js";
-import type { FtsHit } from "../domain/search.js";
 import { log } from "../logging.js";
 import { redactArgvEchoes, summarizeArgv } from "../call-log.js";
+import type { LibraryBusyTracker } from "./busy.js";
 import type { LibId } from "./lib-id.js";
 import { SpawnAbortedError, spawnCollect, SpawnTimeoutError } from "./spawn.js";
 
@@ -28,64 +27,13 @@ export interface CalibreClientOptions {
   signal?: AbortSignal;
 }
 
-export interface FtsSearchOptions {
-  /** Limit the search to these book ids (`--restrict-to=ids:…`). */
-  restrictToIds?: number[];
-  /** Return surrounding snippets (slower; `--include-snippets`). */
-  snippets?: boolean;
-  matchStartMarker?: string;
-  matchEndMarker?: string;
-  library: LibId;
-  timeoutMs?: number;
-  signal?: AbortSignal;
-}
-
-interface RawFtsHit {
-  book_id?: number;
-  id?: number;
-  format?: string;
-  text?: string;
-  snippet?: string;
-}
-
-/** Build the `fts_search` argv (pure — exported for testing). Options precede the expression. */
-export function buildFtsArgs(query: string, opts: Partial<FtsSearchOptions> = {}): string[] {
-  const args = ["fts_search", "--output-format=json"];
-  if (opts.snippets) args.push("--include-snippets");
-  if (opts.matchStartMarker) args.push(`--match-start-marker=${opts.matchStartMarker}`);
-  if (opts.matchEndMarker) args.push(`--match-end-marker=${opts.matchEndMarker}`);
-  if (opts.restrictToIds && opts.restrictToIds.length > 0) {
-    args.push(`--restrict-to=ids:${opts.restrictToIds.join(",")}`);
-  }
-  args.push(query);
-  return args;
-}
-
-/**
- * Parse `fts_search --output-format=json` stdout into domain hits (pure — exported for
- * testing). calibredb prepends an `Integration status: …` line, so we slice from the
- * first `[`; a missing array means zero hits. FTS is book-level (no page/spine location).
- */
-export function parseFtsResults(stdout: string): FtsHit[] {
-  const start = stdout.indexOf("[");
-  if (start < 0) return []; // no array → zero hits
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(stdout.slice(start));
-  } catch {
-    throw new CalibreCliError(null, "Could not parse full-text search results");
-  }
-  if (!Array.isArray(parsed)) return [];
-  return (parsed as RawFtsHit[]).map((h) => ({
-    bookId: h.book_id ?? h.id ?? 0,
-    snippet: h.snippet ?? h.text,
-    format: h.format?.toLowerCase(),
-  }));
-}
-
 /** Shells out to `calibredb` (routed through the Content Server URL) and Calibre CLI tools. */
 export class CalibreClient {
-  constructor(private readonly cfg: Config) {}
+  /** `busy` is the per-library breaker shared with ContentServerClient; absent = no breaker (tests). */
+  constructor(
+    private readonly cfg: Config,
+    private readonly busy?: LibraryBusyTracker,
+  ) {}
 
   /** The `--with-library` value that routes calibredb through the live server. */
   private libraryUrl(library: LibId): string {
@@ -99,6 +47,8 @@ export class CalibreClient {
    */
   async calibredb(args: readonly string[], opts: CalibreClientOptions): Promise<{ stdout: string; stderr: string }> {
     const fullArgs = ["--with-library", this.libraryUrl(opts.library), ...args];
+    // Fail fast instead of queueing behind a stalled request (calibre/busy.ts).
+    this.busy?.assertAvailable(opts.library);
     let result;
     try {
       result = await spawnCollect(this.cfg.calibredbPath, fullArgs, {
@@ -121,6 +71,7 @@ export class CalibreClient {
       // as a settled error instead of an infinite hang (spawn.ts).
       if (err instanceof SpawnTimeoutError) {
         log.error("calibredb timed out", { argv: summarizeArgv(args), timeoutMs: opts.timeoutMs ?? 30_000 });
+        this.busy?.markBusy(opts.library, "calibredb");
         // Timeout subclass: for routed writes the server may have committed already,
         // so write tools must verify rather than assume failure (issue #33).
         throw new CalibreCliTimeoutError("calibredb command timed out");
@@ -131,31 +82,17 @@ export class CalibreClient {
     if (result.code !== 0) {
       // Forbidden/write-refused text can land on either stream; keep both for the classifier.
       const diag = [result.stdout, result.stderr].filter(Boolean).join("\n");
-      // A malformed FTS query is the caller's input, not a server fault — keep it out of
-      // calibre_ping.recentErrors (#251).
-      const level = isFtsParseDiag(diag) ? "warn" : "error";
-      log[level]("calibredb failed", {
+      // The server answered (an exit code is a reply), so the library isn't stalled.
+      this.busy?.markOk(opts.library);
+      log.error("calibredb failed", {
         argv: summarizeArgv(args),
         code: result.code,
         diag: redactArgvEchoes(diag, args).slice(0, 500),
       });
       throw new CalibreCliError(result.code, "calibredb command failed", diag);
     }
+    this.busy?.markOk(opts.library);
     return { stdout: result.stdout, stderr: result.stderr };
-  }
-
-  /**
-   * Full-text search via `calibredb fts_search`. Returns book-level hits (FTS has no
-   * page/spine location). Requires the library's FTS index to be enabled + built.
-   */
-  async ftsSearch(query: string, opts: FtsSearchOptions): Promise<FtsHit[]> {
-    // FTS (esp. with snippets) is slower than metadata calls — allow more headroom.
-    const { stdout } = await this.calibredb(buildFtsArgs(query, opts), {
-      library: opts.library,
-      timeoutMs: opts.timeoutMs ?? 60_000,
-      signal: opts.signal,
-    });
-    return parseFtsResults(stdout);
   }
 
   /** Library list as JSON, proving connectivity to the live server. */
