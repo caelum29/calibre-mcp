@@ -67,3 +67,25 @@ describe("SqliteIndexStore diagnostic counts on an unopened file (#325)", () => 
     });
   });
 });
+
+// #325 review round 2: an index built before a table existed (pre-D-018 has no `figures`) can't be
+// migrated through a read-only peek — a missing table counts as 0, never as an unreadable index.
+describe("SqliteIndexStore diagnostic counts on an older file missing a table (#325)", () => {
+  it("should_count_books_and_chunks_and_zero_figures_when_the_figures_table_is_missing", () => {
+    const { dir, file } = builtIndex();
+    const old = new DatabaseSync(file);
+    old.exec("DROP TABLE figures");
+    old.close();
+    const s = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: dir }));
+    expect(s.stats(LIB)).toEqual({ books: 1, chunks: 1, figures: 0 });
+  });
+
+  it("should_count_zero_vectors_and_every_book_as_missing_them_when_the_embeddings_table_is_missing", () => {
+    const { dir, file } = builtIndex();
+    const old = new DatabaseSync(file);
+    old.exec("DROP TABLE embeddings");
+    old.close();
+    const s = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: dir }));
+    expect({ vectors: s.vectorCount(LIB), missing: s.booksMissingVectors(LIB) }).toEqual({ vectors: 0, missing: 1 });
+  });
+});
