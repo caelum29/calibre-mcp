@@ -1,0 +1,20 @@
+test/tools/build-index.soft-deadline.test.ts
+  s_aa002d0f29785d::t_f29aa6be44cf34 274-363
+  s_aa002d0f29785d::t_97ef25b2bd00c7 364-367
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "67d15f115361752bcf2c6088b2c8c11c2417f82f",
+  "prompts": {},
+  "sessions": {
+    "s_aa002d0f29785d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9858b033-3534-4580-8536-b45ea248531d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
