@@ -1,0 +1,25 @@
+src/app/tag-spelling.ts
+  s_38ec8aae54ac1e::t_247a8a2536ae14 1-39
+src/domain/tag-ops.ts
+  s_38ec8aae54ac1e::t_247a8a2536ae14 1-29
+src/tools/coerce.ts
+  s_38ec8aae54ac1e::t_247a8a2536ae14 32-44
+src/tools/calibre_bulk_update.ts
+  s_38ec8aae54ac1e::t_689db2e2b2d0c7 12,27-28,40-41,44-46,74,76-89,133-154,159-163,165-167,169-170,172-176,212,255,275
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d49d0034f578687fc2d1924ff94bd521da0c5fa5",
+  "prompts": {},
+  "sessions": {
+    "s_38ec8aae54ac1e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "35df8d4b-23d3-49f4-aec1-7f1c00848c39",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
