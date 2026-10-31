@@ -12,14 +12,13 @@
 // clients that drop text content blocks still surface them; the mirrored text keeps the fence.
 // hybrid/vector results pass through a cross-encoder rerank stage (D-011) when the optional
 // reranker model is available; keyword mode has no semantic claim to sharpen and skips it.
+// Ranking/fusion/rerank/confidence live in semantic/retrieve.ts (#259); this file adapts + renders.
 
 import { z } from "zod";
-import { RRF_K, rrfFuse } from "../semantic/fusion.js";
-import { RERANK_FLOOR, RERANK_POOL } from "../semantic/reranker.js";
-import { stemText } from "../semantic/stem.js";
-import type { BookHit, FigureHit, LibraryHit } from "../semantic/store.js";
-import type { BoardPayload } from "../ui/board-cache.js";
+import { type RankedHits, type RetrievalMode, retrieve } from "../semantic/retrieve.js";
+import type { LibraryHit } from "../semantic/store.js";
 import { type FilterResolution, honestyLines, restrictSet, resolveFilter } from "../app/bundles.js";
+import { boardMeta } from "./board-meta.js";
 import { BookId, CoercedBool, limitParam } from "./coerce.js";
 import { defineTool } from "./define.js";
 import { bookResourceLink } from "./resource-link.js";
@@ -28,26 +27,6 @@ import { INSTALL_TRANSFORMERS } from "./remediation.js";
 import { fence, toolError, toolOk } from "./result.js";
 import type { ContentBlock, ToolResult } from "./types.js";
 import type { ToolDeps } from "./deps.js";
-
-/** Per-half candidate pool the fuser draws from (design: vector top-50 + keyword top-50). */
-const POOL = 50;
-
-// Weighted-RRF per-source weights for hybrid fusion. Both 1.0 = plain RRF; no config/env
-// surface — change them ONLY on retrieval-eval evidence (test/eval/retrieval), never by feel.
-// #142 sweep (1.0–2.0, D-021): RU flat at k=60, EN exact-identifier regresses → 1.0 stays.
-const VECTOR_RRF_WEIGHT = 1.0;
-const KEYWORD_RRF_WEIGHT = 1.0;
-const RRF_WEIGHTS = [VECTOR_RRF_WEIGHT, KEYWORD_RRF_WEIGHT];
-
-type Mode = "hybrid" | "vector" | "keyword";
-
-// Figures cosine floor (D-018/#83): the chunk-calibrated config.semanticFloor (0.78) does NOT
-// transfer to short captions — cosine scales are corpus-dependent (D-012). Disabled (null)
-// until the #85 two-tier calibration (fixture tier: flags 100% of figure-negatives, zeroes no
-// positive; live tier decides enabling). Until then only the reranker floor signals confidence.
-const FIGURES_SEMANTIC_FLOOR: number | null = null;
-
-const FIGURES_FLOOR_NOTE = "Figure-caption cosine floor not yet calibrated — lowConfidence reflects the reranker only.";
 
 /** Chars of the linked context chunk shown per figure hit (mirrors the store's snippet cap). */
 const CONTEXT_SNIPPET_CHARS = 320;
@@ -227,6 +206,8 @@ export const semanticSearchTool = defineTool({
   },
 });
 
+type Mode = RetrievalMode;
+
 type Args = {
   query: string;
   scope: "library" | "book";
@@ -263,41 +244,20 @@ interface SemStatus {
   semanticReason?: string;
 }
 
-/** A book result plus its cosine, when the vector half contributed it (absent for keyword-only). */
-interface RankedBook {
-  hit: LibraryHit;
-  cosine?: number;
-  /** Cross-encoder sigmoid score, set when the rerank stage reordered this result. */
-  rerankScore?: number;
-}
-/** A passage result plus its cosine, when the vector half contributed it. */
-interface RankedPassage {
-  hit: BookHit;
-  cosine?: number;
-  /** Cross-encoder sigmoid score, set when the rerank stage reordered this result. */
-  rerankScore?: number;
-}
-
-/**
- * Feed the cover-board widget (issue #22): cache the ranked page for the widget's
- * re-pull (Desktop strips the tool-result notification) and return the `_meta` to
- * attach for spec hosts that forward it. Library scope only.
- */
-function boardMeta(
+/** Board payload for a ranked book page (issue #22) — library scope only. */
+function semanticBoardMeta(
   deps: ToolDeps,
   args: Args,
   libraryId: string,
-  ranked: RankedBook[],
+  ranked: RankedHits<LibraryHit>["hits"],
   lowConfidence: boolean,
   scope: FilterCtx,
 ): Record<string, unknown> {
-  const payload: BoardPayload = {
-    tool: "calibre_semantic_search",
+  return boardMeta(deps, "calibre_semantic_search", {
     query: args.query,
     // keyword-degraded runs carry no scores — the widget hides the badge column then
     kind: args.mode === "keyword" ? "keyword" : "semantic",
     libraryId,
-    serverUrl: deps.config.serverUrl,
     lowConfidence,
     total: ranked.length,
     ...filterFields(scope),
@@ -307,9 +267,7 @@ function boardMeta(
       authors: r.hit.authors,
       ...(r.cosine !== undefined || r.rerankScore !== undefined ? { score: r.cosine ?? r.rerankScore } : {}),
     })),
-  };
-  deps.boardCache?.set(payload);
-  return { calibreBoard: payload };
+  });
 }
 
 /** scope=library — rank books; emit resource_links + fenced snippets. */
@@ -321,10 +279,16 @@ async function libraryScope(
   degradeNote?: string,
   scope: FilterCtx = UNSCOPED,
 ) {
-  const pool = await rankBooks(args, deps, libraryId, scope.allow);
-  const rr = await applyRerank(pool, (r) => r.hit.body, args, deps);
+  const rr = await retrieve(deps, {
+    scope: "library",
+    libraryId,
+    query: args.query,
+    mode: args.mode,
+    topK: args.topK,
+    ...(scope.allow ? { allow: scope.allow } : {}),
+  });
   const ranked = rr.hits;
-  const note = joinNotes(degradeNote, rr.note);
+  const note = joinNotes(degradeNote, ...rr.notes);
   if (ranked.length === 0) {
     // Zero results attach no board (issue #68) — an empty shelf adds nothing over the text.
     return toolOk([{ type: "text", text: withNote(`No matches for "${args.query}".`, note) }], {
@@ -340,7 +304,7 @@ async function libraryScope(
     });
   }
 
-  const { maxScore, lowConfidence } = confidence(ranked, deps, rr);
+  const { maxScore, lowConfidence } = rr;
   const blocks: ContentBlock[] = [
     { type: "text", text: withNote(header("book", ranked.length, args, maxScore, lowConfidence, rr), note) },
   ];
@@ -378,7 +342,7 @@ async function libraryScope(
       bookIds: ranked.map((r) => r.hit.bookId),
       results,
     }),
-    _meta: boardMeta(deps, args, libraryId, ranked, lowConfidence, scope),
+    _meta: semanticBoardMeta(deps, args, libraryId, ranked, lowConfidence, scope),
   };
 }
 
@@ -391,20 +355,17 @@ async function bookScope(
   sem: SemStatus,
   degradeNote?: string,
 ) {
-  const pool = await rankPassages(args, deps, libraryId, bookId);
-  const rr = await applyRerank(pool, (r) => r.hit.body, args, deps);
-  // Front-matter demotion (issue #18): TOC/praise/foreword chunks are keyword-dense but
-  // semantically empty, so they win exactly the definitional queries where body content is
-  // wanted. Stable-partition AFTER the rerank — body passages first, front matter after,
-  // internal order preserved; nothing is dropped ("what does the foreword say" still works).
-  const demoted = rr.hits.filter((r) => r.hit.frontMatter).length;
-  const ranked =
-    demoted > 0 ? [...rr.hits.filter((r) => !r.hit.frontMatter), ...rr.hits.filter((r) => r.hit.frontMatter)] : rr.hits;
-  const note = joinNotes(
-    degradeNote,
-    rr.note,
-    demoted > 0 ? `${demoted} front-matter passage(s) (TOC/praise/foreword) demoted below body matches.` : undefined,
-  );
+  // retrieve() also applies the front-matter demotion (#18) and reports it in notes.
+  const rr = await retrieve(deps, {
+    scope: "book",
+    libraryId,
+    bookId,
+    query: args.query,
+    mode: args.mode,
+    topK: args.topK,
+  });
+  const ranked = rr.hits;
+  const note = joinNotes(degradeNote, ...rr.notes);
   if (ranked.length === 0) {
     return toolOk([{ type: "text", text: withNote(`No passages in book ${bookId} matched "${args.query}".`, note) }], {
       scope: "book",
@@ -418,7 +379,7 @@ async function bookScope(
     });
   }
 
-  const { maxScore, lowConfidence } = confidence(ranked, deps, rr);
+  const { maxScore, lowConfidence } = rr;
   const head = withNote(
     header("passage", ranked.length, args, maxScore, lowConfidence, rr) +
       // name the book: text-only clients need the id to follow up (#234)
@@ -454,14 +415,6 @@ async function bookScope(
     note,
     passages,
   });
-}
-
-/** A figure-caption result plus its cosine, when the vector half contributed it. */
-interface RankedFigure {
-  hit: FigureHit;
-  cosine?: number;
-  /** Cross-encoder sigmoid score, set when the rerank stage reordered this result. */
-  rerankScore?: number;
 }
 
 /**
@@ -506,12 +459,17 @@ async function figuresTarget(
     );
   }
 
-  const pool = await rankFigures(args, deps, libraryId, bookId, scope.allow);
-  const rr = await applyRerank(pool, (r) => r.hit.caption, args, deps);
+  const rr = await retrieve(deps, {
+    scope: "figures",
+    libraryId,
+    query: args.query,
+    mode: args.mode,
+    topK: args.topK,
+    ...(bookId !== undefined ? { bookId } : {}),
+    ...(scope.allow ? { allow: scope.allow } : {}),
+  });
   const ranked = rr.hits;
-  const floorNote =
-    args.mode !== "keyword" && ranked.length > 0 && FIGURES_SEMANTIC_FLOOR === null ? FIGURES_FLOOR_NOTE : undefined;
-  const note = joinNotes(degradeNote, rr.note, floorNote);
+  const note = joinNotes(degradeNote, ...rr.notes);
   if (ranked.length === 0) {
     return toolOk(
       [{ type: "text", text: withNote(`No figure captions in this ${scopeWord} matched "${args.query}".`, note) }],
@@ -530,7 +488,7 @@ async function figuresTarget(
     );
   }
 
-  const { maxScore, lowConfidence } = figuresConfidence(ranked, rr);
+  const { maxScore, lowConfidence } = rr;
   const head = withNote(
     header("figure", ranked.length, args, maxScore, lowConfidence, rr) +
       ` Fetch pixels via calibre_get_figures { bookId, indexes: [figIndex] }.` +
@@ -591,48 +549,6 @@ async function figuresTarget(
   });
 }
 
-/** Rank figure captions per mode — the rankBooks/rankPassages mirror, fused on figureId. */
-async function rankFigures(
-  args: Args,
-  deps: ToolDeps,
-  libraryId: string,
-  bookId: number | undefined,
-  allow?: ReadonlySet<number>,
-): Promise<RankedFigure[]> {
-  if (args.mode === "keyword") {
-    return deps.index
-      .searchFiguresFts(libraryId, stemText(args.query), args.topK, bookId, allow)
-      .map((hit) => ({ hit }));
-  }
-  const k = poolK(args, deps);
-  const q = await deps.embedder.embedQuery(args.query);
-  if (args.mode === "vector") {
-    return deps.index.searchFigures(libraryId, q, k, bookId, allow).map((hit) => ({ hit, cosine: hit.score }));
-  }
-  const vec = deps.index.searchFigures(libraryId, q, POOL, bookId, allow);
-  const kw = deps.index.searchFiguresFts(libraryId, stemText(args.query), POOL, bookId, allow);
-  const vById = new Map(vec.map((h) => [h.figureId, h]));
-  const kById = new Map(kw.map((h) => [h.figureId, h]));
-  return rrfFuse([vec.map((h) => h.figureId), kw.map((h) => h.figureId)], RRF_K, RRF_WEIGHTS)
-    .slice(0, k)
-    .map((f) => {
-      const v = vById.get(f.id);
-      return { hit: (v ?? kById.get(f.id))!, cosine: v?.score };
-    });
-}
-
-/**
- * Figures confidence: the chunk cosine floor does not apply (FIGURES_SEMANTIC_FLOOR is its
- * own, currently-disabled constant), so until calibration only the reranker floor signals.
- */
-function figuresConfidence(ranked: Array<{ cosine?: number }>, rr?: RerankOutcome<unknown>) {
-  const cosines = ranked.map((r) => r.cosine).filter((c): c is number => c !== undefined);
-  const maxScore = cosines.length ? Math.max(...cosines) : undefined;
-  const cosineLow = FIGURES_SEMANTIC_FLOOR !== null && maxScore !== undefined && maxScore < FIGURES_SEMANTIC_FLOOR;
-  const rerankLow = rr?.reranked === true && rr.maxRerank !== undefined && rr.maxRerank < RERANK_FLOOR;
-  return { maxScore, lowConfidence: cosineLow || rerankLow };
-}
-
 /**
  * Stamp a success with its index generation (#136): once on the envelope, never per hit (it's
  * constant across the response), and as one compact line after the header — the text must
@@ -660,147 +576,10 @@ function joinNotes(...notes: Array<string | undefined>): string | undefined {
   return kept.length ? kept.join("\n") : undefined;
 }
 
-/** Candidates to materialize: a rerank-sized pool when the reranker can reorder, else topK. */
-function poolK(args: Args, deps: ToolDeps): number {
-  return rerankActive(args, deps) ? Math.max(args.topK, RERANK_POOL) : args.topK;
-}
-
-/** True when the rerank stage will run: a reranker is wired, not env-disabled, mode has a semantic claim. */
-function rerankActive(args: Args, deps: ToolDeps): boolean {
-  return Boolean(deps.reranker) && deps.config.rerankEnabled && args.mode !== "keyword";
-}
-
-/** The rerank stage's outcome: topK results (reordered when it ran) + honesty fields. */
-interface RerankOutcome<T> {
-  hits: T[];
-  reranked: boolean;
-  maxRerank?: number;
-  note?: string;
-}
-
-// Kept brief on purpose (#47): the reranker degrade is advisory, not a hard stop — point at the
-// same @huggingface/transformers dependency + restart rule without inlining the full 3-branch text.
-const RERANK_NOTE =
-  "Reranker unavailable — results keep the fused (pre-rerank) order. The cross-encoder model needs " +
-  "@huggingface/transformers (see calibre_build_index for install steps) and downloads on first use; " +
-  "if you just installed it, restart the MCP server, and ensure the machine is online.";
-
-// #156: concurrent searches past the reranker's queue cap skip the rerank instead of waiting
-// past the client timeout — the results are still useful, just in fused order.
-const RERANK_BUSY_NOTE =
-  "Reranker busy with other concurrent searches — results keep the fused (pre-rerank) order. " +
-  "For reranked results, issue library-scope semantic searches one at a time.";
-
-const RERANK_DISABLED_NOTE = "Reranking disabled via CALIBRE_MCP_RERANK — results keep the fused (pre-rerank) order.";
-
-/**
- * Cross-encoder rerank (D-011): score (query, chunk body) pairs over the top-RERANK_POOL fused
- * candidates and emit them by reranker score; fused candidates past the cap keep their fused
- * order after the reranked head (no rerank score claimed — the latency guard at high topK).
- * Always-on for hybrid/vector when a reranker is wired (CALIBRE_MCP_RERANK=off opts out);
- * keyword mode skips it. Degrades (never fails): errors fall back to the fused order + a note.
- */
-async function applyRerank<T extends { rerankScore?: number }>(
-  pool: T[],
-  bodyOf: (r: T) => string,
-  args: Args,
-  deps: ToolDeps,
-): Promise<RerankOutcome<T>> {
-  const fused = () => pool.slice(0, args.topK);
-  // Absent reranker = not wired in this deployment/test — silently keep the fused order.
-  if (args.mode === "keyword" || pool.length === 0 || !deps.reranker) {
-    return { hits: fused(), reranked: false };
-  }
-  // Env-disabled = a deliberate user choice — same degrade shape, but say why (D-011).
-  if (!deps.config.rerankEnabled) {
-    return { hits: fused(), reranked: false, note: RERANK_DISABLED_NOTE };
-  }
-  try {
-    const head = pool.slice(0, RERANK_POOL);
-    const t0 = performance.now();
-    const scores = await deps.reranker.rerank(
-      args.query,
-      head.map((r) => bodyOf(r)),
-    );
-    deps.log.debug("rerank stage", { pairs: head.length, ms: Math.round(performance.now() - t0) });
-    const scored = head.map((r, i) => ({ ...r, rerankScore: scores[i] ?? 0 }));
-    scored.sort((a, b) => b.rerankScore - a.rerankScore); // stable: ties keep fused order
-    const hits = [...scored, ...pool.slice(RERANK_POOL)].slice(0, args.topK);
-    return { hits, reranked: true, maxRerank: scored[0]?.rerankScore };
-  } catch (err) {
-    const reason = err instanceof Error ? err.message : String(err);
-    deps.log.warn("rerank skipped", { reason });
-    return { hits: fused(), reranked: false, note: reason === "RERANKER_BUSY" ? RERANK_BUSY_NOTE : RERANK_NOTE };
-  }
-}
-
 /** `reranked`/`maxRerank` are only claims for modes where reranking applies (hybrid/vector). */
-function rerankFields(args: Args, rr: RerankOutcome<unknown>): Record<string, unknown> {
+function rerankFields(args: Args, rr: RankedHits<unknown>): Record<string, unknown> {
   if (args.mode === "keyword") return {};
   return { reranked: rr.reranked, ...(rr.maxRerank !== undefined ? { maxRerank: rr.maxRerank } : {}) };
-}
-
-/** Rank books per mode. hybrid RRF-fuses the two halves; vector/keyword use one half each. */
-async function rankBooks(
-  args: Args,
-  deps: ToolDeps,
-  libraryId: string,
-  allow?: ReadonlySet<number>,
-): Promise<RankedBook[]> {
-  if (args.mode === "keyword") {
-    return deps.index.searchLibraryFts(libraryId, stemText(args.query), args.topK, allow).map((hit) => ({ hit }));
-  }
-  const k = poolK(args, deps);
-  const q = await deps.embedder.embedQuery(args.query);
-  if (args.mode === "vector") {
-    return deps.index.searchLibrary(libraryId, q, k, allow).map((hit) => ({ hit, cosine: hit.score }));
-  }
-  // hybrid: fuse book rankings from both halves by bookId (vector first — RRF_WEIGHTS order).
-  const vec = deps.index.searchLibrary(libraryId, q, POOL, allow);
-  const kw = deps.index.searchLibraryFts(libraryId, stemText(args.query), POOL, allow);
-  const vById = new Map(vec.map((h) => [h.bookId, h]));
-  const kById = new Map(kw.map((h) => [h.bookId, h]));
-  return rrfFuse([vec.map((h) => h.bookId), kw.map((h) => h.bookId)], RRF_K, RRF_WEIGHTS)
-    .slice(0, k)
-    .map((f) => {
-      const v = vById.get(f.id);
-      return { hit: (v ?? kById.get(f.id))!, cosine: v?.score };
-    });
-}
-
-/** Rank passages within one book per mode, mirroring rankBooks but fusing on chunkId. */
-async function rankPassages(args: Args, deps: ToolDeps, libraryId: string, bookId: number): Promise<RankedPassage[]> {
-  if (args.mode === "keyword") {
-    return deps.index.searchBookFts(libraryId, bookId, stemText(args.query), args.topK).map((hit) => ({ hit }));
-  }
-  const k = poolK(args, deps);
-  const q = await deps.embedder.embedQuery(args.query);
-  if (args.mode === "vector") {
-    return deps.index.searchBook(libraryId, bookId, q, k).map((hit) => ({ hit, cosine: hit.score }));
-  }
-  const vec = deps.index.searchBook(libraryId, bookId, q, POOL);
-  const kw = deps.index.searchBookFts(libraryId, bookId, stemText(args.query), POOL);
-  const vById = new Map(vec.map((h) => [h.chunkId, h]));
-  const kById = new Map(kw.map((h) => [h.chunkId, h]));
-  return rrfFuse([vec.map((h) => h.chunkId), kw.map((h) => h.chunkId)], RRF_K, RRF_WEIGHTS)
-    .slice(0, k)
-    .map((f) => {
-      const v = vById.get(f.id);
-      return { hit: (v ?? kById.get(f.id))!, cosine: v?.score };
-    });
-}
-
-/**
- * Two confidence signals, kept separate (not conflated): the cosine floor judges the COSINE
- * half only; the reranker's sigmoid score is its own calibrated confidence (< RERANK_FLOOR ≈
- * weak). Either signal alone marks the result set low-confidence; both raw maxima are surfaced.
- */
-function confidence(ranked: Array<{ cosine?: number }>, deps: ToolDeps, rr?: RerankOutcome<unknown>) {
-  const cosines = ranked.map((r) => r.cosine).filter((c): c is number => c !== undefined);
-  const maxScore = cosines.length ? Math.max(...cosines) : undefined;
-  const cosineLow = maxScore !== undefined && maxScore < deps.config.semanticFloor;
-  const rerankLow = rr?.reranked === true && rr.maxRerank !== undefined && rr.maxRerank < RERANK_FLOOR;
-  return { maxScore, lowConfidence: cosineLow || rerankLow };
 }
 
 /** Per-result score label: reranker score first (the emitted order), raw cosine kept alongside. */
@@ -815,7 +594,7 @@ function header(
   args: Args,
   maxScore: number | undefined,
   lowConfidence: boolean,
-  rr?: RerankOutcome<unknown>,
+  rr?: RankedHits<unknown>,
 ): string {
   const mode = rr?.reranked ? `${args.mode}+rerank` : args.mode;
   const scores: string[] = [];

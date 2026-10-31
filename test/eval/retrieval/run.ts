@@ -4,7 +4,8 @@
 //
 // Usage:
 //   pnpm eval [--modes hybrid,vector,keyword] [--topk 10] [--tag baseline]
-//             [--rerank off] [--work-dir <dir>] [--out-dir <dir>] [--live] [--gate]
+//             [--rerank off] [--rrf-weights 1.5,1.0] [--work-dir <dir>] [--out-dir <dir>]
+//             [--live] [--gate]
 //
 // --gate: after the run, compare against thresholds.json + its frozen baseline report and
 //   print mechanical PASS/FAIL per declared gate (#85, D-012). Exit 1 on a failed gate.
@@ -17,6 +18,8 @@
 // --rerank off: disables the cross-encoder rerank stage (D-011; on by default, mirroring
 //   the shipped always-on behavior). First reranked run downloads the ~576 MB q8 model into
 //   <work-dir>/models; a degraded run (model unreachable) reports 0 reranked rows.
+// --rrf-weights v,k: weighted-RRF weights (vector, keyword) for this run only — the #142 sweep
+//   seam via retrieve()'s opts.rrfWeights (#259); the shipped weights stay in retrieve.ts.
 
 import { execSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -38,6 +41,7 @@ interface CliArgs {
   tag?: string;
   /** "off" disables the rerank stage; anything else is kept as the report label. */
   rerank?: string;
+  rrfWeights?: number[];
   workDir: string;
   outDir: string;
 }
@@ -64,6 +68,7 @@ function parseArgs(argv: string[]): CliArgs {
     else if (a === "--topk") args.topK = Number(next());
     else if (a === "--tag") args.tag = next();
     else if (a === "--rerank") args.rerank = next();
+    else if (a === "--rrf-weights") args.rrfWeights = parseWeights(next());
     else if (a === "--work-dir") args.workDir = next();
     else if (a === "--out-dir") args.outDir = next();
     else if (a === "--help" || a === "-h") {
@@ -75,6 +80,15 @@ function parseArgs(argv: string[]): CliArgs {
     if (!ALL_MODES.includes(m)) throw new Error(`unknown mode "${m}"`);
   }
   return args;
+}
+
+/** `"1.5,1.0"` → [1.5, 1.0]: exactly two finite non-negative weights (vector, keyword). */
+function parseWeights(v: string): number[] {
+  const w = v.split(",").map(Number);
+  if (w.length !== 2 || w.some((x) => !Number.isFinite(x) || x < 0)) {
+    throw new Error(`--rrf-weights needs two non-negative numbers "vector,keyword", got "${v}"`);
+  }
+  return w;
 }
 
 /**
@@ -183,6 +197,7 @@ async function main(): Promise<void> {
     ...(reranker ? { reranker } : {}),
     rerank: rerankLabel,
     gitSha: sha,
+    ...(args.rrfWeights ? { rrfWeights: args.rrfWeights } : {}),
     ...(live ? { live } : {}),
     onProgress: progress,
   });

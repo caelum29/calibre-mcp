@@ -1,7 +1,8 @@
 // Golden-query retrieval eval harness (prompt 04): indexes the fixture corpus through the
 // REAL chunk→embed→store path (buildIndexTool) and runs every golden query through the real
-// calibre_semantic_search handler per mode, scoring Hit@1 / Recall@5 / MRR / nDCG@10.
-// SDK-free by construction — it drives tool handlers directly with injected ToolDeps.
+// retrieval service (semantic/retrieve.ts, #259) per mode, scoring Hit@1 / Recall@5 / MRR /
+// nDCG@10. One end-to-end calibre_semantic_search handler check per run guards the adapter.
+// SDK-free by construction — it drives retrieve()/tool handlers directly with injected ToolDeps.
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -14,6 +15,7 @@ import { type FigureMarker, injectFigureMarkers } from "../../../src/domain/figu
 import { TransformersEmbedder, type Embedder } from "../../../src/semantic/embedder.js";
 import type { Reranker } from "../../../src/semantic/reranker.js";
 import { INDEX_VERSION, MODEL_ID } from "../../../src/semantic/model.js";
+import { retrieve, type RankedHits } from "../../../src/semantic/retrieve.js";
 import { SqliteIndexStore } from "../../../src/semantic/store.js";
 import { buildIndexTool } from "../../../src/tools/calibre_build_index.js";
 import { semanticSearchTool } from "../../../src/tools/calibre_semantic_search.js";
@@ -197,6 +199,11 @@ export interface HarnessOptions {
    * or (in tests) wrap the index store to corrupt rankings and prove the harness measures.
    */
   patchDeps?: (deps: ToolDeps) => ToolDeps;
+  /**
+   * Weighted-RRF weights (vector, keyword) passed to retrieve() — the #142 sweep seam; absent =
+   * the shipped weights. Recorded in report meta when set.
+   */
+  rrfWeights?: number[];
   /** Recorded in report meta so tuning runs are distinguishable (e.g. "off", "bge-v2-m3"). */
   rerank?: string;
   gitSha?: string;
@@ -246,6 +253,8 @@ export interface EvalReport {
     rerank: string;
     /** How many per-query runs the rerank stage actually reordered — 0 on a degraded run. */
     rerankedRows: number;
+    /** Set only on sweep runs that override the shipped weighted-RRF weights (#142, #259). */
+    rrfWeights?: number[];
     gitSha: string;
   };
   /** Negatives excluded — they have no rank metrics. */
@@ -346,13 +355,8 @@ function firstText(content: Array<{ type: string }>): string {
   return t?.text ?? "";
 }
 
-/** One query in one mode → the positional relevance matches + display info. */
-async function runQuery(
-  q: GoldenQuery,
-  mode: Mode,
-  deps: ToolDeps,
-  topK: number,
-): Promise<{
+/** What one query run yields for scoring: positional relevance + confidence/rerank display info. */
+interface QueryOutcome {
   rel: RankedRelevance;
   retrieved: string[];
   count: number;
@@ -360,41 +364,49 @@ async function runQuery(
   maxScore?: number;
   maxRerank?: number;
   reranked?: boolean;
-}> {
-  const r = await semanticSearchTool.handler(
-    { query: q.query, scope: q.scope, target: q.target ?? "text", mode, bookId: q.bookId, topK },
-    deps,
-  );
-  if (r.isError) throw new Error(`${q.id} [${mode}]: tool errored: ${firstText(r.content)}`);
-  const sc = r.structuredContent ?? {};
-  const count = Number(sc.count ?? 0);
-  const lowConfidence = sc.lowConfidence as boolean | undefined;
-  const maxScore = sc.maxScore as number | undefined;
-  const maxRerank = sc.maxRerank as number | undefined;
-  const reranked = sc.reranked as boolean | undefined;
+}
+
+/** Per-run query context shared by runQuery and the handler check. */
+interface QueryCtx {
+  deps: ToolDeps;
+  libraryId: string;
+  topK: number;
+  rrfWeights?: number[];
+}
+
+/** One query in one mode → retrieve() (the ranking service the tool renders) → scored outcome. */
+async function runQuery(q: GoldenQuery, mode: Mode, ctx: QueryCtx): Promise<QueryOutcome> {
+  const { deps, libraryId, topK, rrfWeights } = ctx;
+  const base = { libraryId, query: q.query, mode, topK };
+  const opts = rrfWeights ? { rrfWeights } : {};
+  // Mirror the handler's envelope: confidence fields only on non-empty results; rerank fields
+  // only where reranking applies (hybrid/vector).
+  const display = (r: RankedHits<unknown>) => ({
+    count: r.hits.length,
+    ...(r.hits.length > 0 ? { lowConfidence: r.lowConfidence } : {}),
+    ...(r.maxScore !== undefined ? { maxScore: r.maxScore } : {}),
+    ...(mode !== "keyword" && r.maxRerank !== undefined ? { maxRerank: r.maxRerank } : {}),
+    ...(mode !== "keyword" ? { reranked: r.reranked } : {}),
+  });
 
   if (q.target === "figures") {
+    const bookId = q.scope === "book" ? requireBookId(q) : undefined;
+    const r = await retrieve(deps, { ...base, scope: "figures", ...(bookId !== undefined ? { bookId } : {}) }, opts);
     // Figure hits are identified by (bookId, figIndex) — the calibre_get_figures handle.
-    const rows = (sc.figures as Array<{ bookId: number; figIndex: number }> | undefined) ?? [];
     const labels = q.relevant.filter((x): x is FigureLabel => typeof x !== "number" && "figIndex" in x);
     const keyOf = (bookId: number, figIndex: number) => `fig-${bookId}#${figIndex}`;
     const relevantKeys = new Set(labels.map((l) => keyOf(l.bookId, l.figIndex)));
+    const keys = r.hits.map((h) => keyOf(h.hit.bookId, h.hit.figIndex));
     return {
-      rel: {
-        matches: rows.map((f) => (relevantKeys.has(keyOf(f.bookId, f.figIndex)) ? [keyOf(f.bookId, f.figIndex)] : [])),
-        relevantCount: relevantKeys.size,
-      },
-      retrieved: rows.map((f) => keyOf(f.bookId, f.figIndex)),
-      count,
-      lowConfidence,
-      maxScore,
-      maxRerank,
-      reranked,
+      rel: { matches: keys.map((k) => (relevantKeys.has(k) ? [k] : [])), relevantCount: relevantKeys.size },
+      retrieved: keys,
+      ...display(r),
     };
   }
 
   if (q.scope === "library") {
-    const bookIds = (sc.bookIds as number[] | undefined) ?? [];
+    const r = await retrieve(deps, { ...base, scope: "library" }, opts);
+    const bookIds = r.hits.map((h) => h.hit.bookId);
     const relevantIds = new Set(q.relevant.filter((x): x is number => typeof x === "number"));
     return {
       rel: {
@@ -402,21 +414,13 @@ async function runQuery(
         relevantCount: relevantIds.size,
       },
       retrieved: bookIds.map(String),
-      count,
-      lowConfidence,
-      maxScore,
-      maxRerank,
-      reranked,
+      ...display(r),
     };
   }
 
-  // Book scope: passages come back as "PASSAGE @start-end" blocks; match labels by span overlap.
-  const spans: Array<{ start: number; end: number }> = [];
-  for (const block of r.content) {
-    if (block.type !== "text") continue;
-    const m = /PASSAGE @(\d+)-(\d+)/.exec(block.text);
-    if (m) spans.push({ start: Number(m[1]), end: Number(m[2]) });
-  }
+  // Book scope: match passage spans against the labels by overlap.
+  const r = await retrieve(deps, { ...base, scope: "book", bookId: requireBookId(q) }, opts);
+  const spans = r.hits.map((h) => ({ start: h.hit.charStart, end: h.hit.charEnd }));
   const labels = q.relevant.filter((x): x is SpanLabel => typeof x !== "number");
   return {
     rel: {
@@ -428,16 +432,84 @@ async function runQuery(
       relevantCount: labels.length,
     },
     retrieved: spans.map((s) => `@${s.start}-${s.end}`),
-    count,
-    lowConfidence,
-    maxScore,
-    maxRerank,
-    reranked,
+    ...display(r),
   };
+}
+
+function requireBookId(q: GoldenQuery): number {
+  if (q.bookId === undefined) throw new Error(`${q.id}: scope=book query has no bookId`);
+  return q.bookId;
+}
+
+/**
+ * End-to-end handler check (#259): for a handful of queries the tool must emit exactly the
+ * ranking retrieve() produced — same ids, same order — so a broken adapter (wrong mode, scope or
+ * request field passed through) can't hide behind a green retrieval eval. Library scope keys on
+ * bookIds, book scope on the passage spans in structuredContent.
+ */
+async function assertHandlerMatches(q: GoldenQuery, mode: Mode, ctx: QueryCtx, out: QueryOutcome) {
+  const { deps, topK } = ctx;
+  const r = await semanticSearchTool.handler(
+    { query: q.query, scope: q.scope, target: q.target ?? "text", mode, bookId: q.bookId, topK },
+    deps,
+  );
+  if (r.isError) throw new Error(`${q.id} [${mode}]: tool errored: ${firstText(r.content)}`);
+  const sc = r.structuredContent ?? {};
+  const got =
+    q.scope === "library"
+      ? ((sc.bookIds as number[] | undefined) ?? []).map(String)
+      : ((sc.passages as Array<{ charStart: number; charEnd: number }> | undefined) ?? []).map(
+          (p) => `@${p.charStart}-${p.charEnd}`,
+        );
+  if (JSON.stringify(got) !== JSON.stringify(out.retrieved)) {
+    throw new Error(`${q.id} [${mode}]: handler ranking ${got.join(",")} ≠ retrieve() ${out.retrieved.join(",")}`);
+  }
+}
+
+/** Fail the eval when an owed handler round-trip never ran (a silently skipped check is no check). */
+function assertHandlerChecksRan(done: ReadonlySet<string>, modes: Mode[], live: boolean): void {
+  // Live runs carry library-scope queries only — no book-scope round-trip is possible there.
+  const owed = [...modes.map((m) => `library:${m}`), ...(live ? [] : ["book"])];
+  const missing = owed.filter((k) => !done.has(k));
+  if (missing.length > 0) throw new Error(`handler end-to-end check did not run for: ${missing.join(", ")}`);
+}
+
+/** Which handler round-trips a run owes: library scope in every mode, plus book scope once (fixture only). */
+function handlerCheckKey(q: GoldenQuery, mode: Mode, out: QueryOutcome, bookChecked: boolean): string | undefined {
+  // a non-empty ranking only — two empty lists would match without proving anything
+  if (q.target || q.kind === "negative" || out.count === 0) return undefined;
+  if (q.scope === "library") return `library:${mode}`;
+  return bookChecked ? undefined : "book";
 }
 
 function overlap(a: { start: number; end: number }, l: SpanLabel): number {
   return Math.max(0, Math.min(a.end, l.charEnd) - Math.max(a.start, l.charStart));
+}
+
+/** One scored per-query report row from a query outcome. */
+function toRow(q: GoldenQuery, mode: Mode, out: QueryOutcome): PerQueryRow {
+  const row: PerQueryRow = {
+    id: q.id,
+    kind: q.kind,
+    scope: q.scope,
+    ...(q.target ? { target: q.target } : {}),
+    ...(q.diagnostic ? { diagnostic: true } : {}),
+    mode,
+    ru: q.ru === true,
+    retrieved: out.retrieved,
+  };
+  if (out.maxScore !== undefined) row.maxScore = round4(out.maxScore);
+  // Rerank confidence per query — RERANK_FLOOR calibration input (#140). 4 significant
+  // digits, not 4 decimals: candidate floors go down to 1e-3 and positives sit near 1e-4.
+  if (out.maxRerank !== undefined) row.maxRerank = Number(out.maxRerank.toPrecision(4));
+  if (out.reranked !== undefined) row.reranked = out.reranked;
+  if (q.kind === "negative" || q.kind === "figure-negative") {
+    row.flagged = out.count === 0 || out.lowConfidence === true;
+  } else {
+    const m = queryMetrics(out.rel);
+    row.metrics = { hit1: m.hit1, recall5: round4(m.recall5), rr: round4(m.rr), ndcg10: round4(m.ndcg10) };
+  }
+  return row;
 }
 
 /** Run the full eval: (build +) query + score. The single entry point for CLI and tests. */
@@ -495,34 +567,23 @@ export async function runRetrievalEval(opts: HarnessOptions): Promise<EvalReport
   const stats = deps.index.stats(libraryId);
 
   const perQuery: PerQueryRow[] = [];
+  // Shipped weights only: a sweep runs retrieve() with weights the handler can't take.
+  const handlerChecks = new Set<string>();
+  const ctx: QueryCtx = { deps, libraryId, topK, ...(opts.rrfWeights ? { rrfWeights: opts.rrfWeights } : {}) };
   for (const mode of modes) {
     progress(`running ${queries.length} queries in mode=${mode}…`);
     for (const q of queries) {
-      const out = await runQuery(q, mode, deps, topK);
-      const row: PerQueryRow = {
-        id: q.id,
-        kind: q.kind,
-        scope: q.scope,
-        ...(q.target ? { target: q.target } : {}),
-        ...(q.diagnostic ? { diagnostic: true } : {}),
-        mode,
-        ru: q.ru === true,
-        retrieved: out.retrieved,
-      };
-      if (out.maxScore !== undefined) row.maxScore = round4(out.maxScore);
-      // Rerank confidence per query — RERANK_FLOOR calibration input (#140). 4 significant
-      // digits, not 4 decimals: candidate floors go down to 1e-3 and positives sit near 1e-4.
-      if (out.maxRerank !== undefined) row.maxRerank = Number(out.maxRerank.toPrecision(4));
-      if (out.reranked !== undefined) row.reranked = out.reranked;
-      if (q.kind === "negative" || q.kind === "figure-negative") {
-        row.flagged = out.count === 0 || out.lowConfidence === true;
-      } else {
-        const m = queryMetrics(out.rel);
-        row.metrics = { hit1: m.hit1, recall5: round4(m.recall5), rr: round4(m.rr), ndcg10: round4(m.ndcg10) };
+      const out = await runQuery(q, mode, ctx);
+      const key = opts.rrfWeights ? undefined : handlerCheckKey(q, mode, out, handlerChecks.has("book"));
+      if (key !== undefined && !handlerChecks.has(key)) {
+        await assertHandlerMatches(q, mode, ctx, out);
+        handlerChecks.add(key);
       }
-      perQuery.push(row);
+      perQuery.push(toRow(q, mode, out));
     }
   }
+
+  if (!opts.rrfWeights) assertHandlerChecksRan(handlerChecks, modes, opts.live !== undefined);
 
   return assemble(perQuery, {
     model: MODEL_ID,
@@ -537,6 +598,7 @@ export async function runRetrievalEval(opts: HarnessOptions): Promise<EvalReport
     rerank: opts.rerank ?? (opts.reranker ? "on (unlabeled)" : "off (no reranker wired)"),
     rerankedRows: perQuery.filter((r) => r.reranked === true).length,
     gitSha: opts.gitSha ?? "unknown",
+    ...(opts.rrfWeights ? { rrfWeights: opts.rrfWeights } : {}),
   });
 }
 
