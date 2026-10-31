@@ -7,7 +7,7 @@ import type { FigureMarker } from "../domain/figures/markers.js";
 import type { ExtractedText } from "../calibre/extract.js";
 import { frontMatterEnd } from "../domain/structure/front-matter.js";
 import { inThreadEncoder, structureOf, type BookEncoder } from "../semantic/book-encoder.js";
-import { textMatchesChunks } from "../semantic/content-match.js";
+import { textMatchesChunks, type ChunkSpan } from "../semantic/content-match.js";
 import { isFrontMatterSpan } from "../semantic/front-matter-flag.js";
 import type { BookMeta, IndexedChunk, IndexedFigure } from "../semantic/store.js";
 import type { ToolDeps } from "./types.js";
@@ -52,6 +52,8 @@ export interface RefreshedBook {
   meta: BookMeta;
   /** Front-matter boundary in the (unchanged) text — 0 = none. */
   frontMatterEnd: number;
+  /** The stored chunk spans the text was verified against — re-checked at commit. */
+  spans: ChunkSpan[];
 }
 
 export interface PrepareOptions {
@@ -243,27 +245,35 @@ function refreshOutcome(
   extracted: ExtractedText,
 ): RefreshedBook | undefined {
   const { libraryId, keywordOnly } = opts;
+  // The spans the text was verified against travel to the commit, which re-checks them (#269).
+  const spans = deps.index.bookChunkSpans(libraryId, meta.bookId);
   const refreshed = (): RefreshedBook => ({
     kind: "refreshed",
     meta,
     frontMatterEnd: frontMatterEnd(extracted.text, structureOf(extracted)),
+    spans,
   });
-  const matches = (): boolean => textMatchesChunks(extracted.text, deps.index.bookChunkSpans(libraryId, meta.bookId));
   if (opts.flagsOnly) {
     if (!deps.index.isBookIndexed(libraryId, meta.bookId)) {
       throw new Error("not indexed — a flag-only backfill only updates indexed books");
     }
-    if (!matches()) throw new Error("text changed since indexing — needs a full re-index, not a flag backfill");
+    if (!textMatchesChunks(extracted.text, spans)) throw new Error(TEXT_CHANGED);
     return refreshed();
   }
   // A complete entry for this build (every chunk embedded, unless keyword-only) is required.
   const complete = deps.index.isBookIndexed(libraryId, meta.bookId, undefined, { requireVectors: !keywordOnly });
-  return !opts.force && complete && matches() ? refreshed() : undefined;
+  return !opts.force && complete && textMatchesChunks(extracted.text, spans) ? refreshed() : undefined;
 }
+
+const TEXT_CHANGED = "text changed since indexing — needs a full re-index, not a flag backfill";
 
 /** The write for an unchanged-text book (#244/#269): metadata + flags in place, vectors kept. */
 export function commitRefresh(deps: ToolDeps, libraryId: string, book: RefreshedBook): void {
-  deps.index.refreshBookMeta(libraryId, book.meta, book.frontMatterEnd);
+  // Another writer re-chunked the book between prepare and commit: the boundary no longer
+  // applies to its rows. Nothing was written — report it like a changed-text book.
+  if (!deps.index.refreshBookMeta(libraryId, book.meta, { frontMatterEnd: book.frontMatterEnd, spans: book.spans })) {
+    throw new Error(`book re-indexed during the refresh — ${TEXT_CHANGED}`);
+  }
   deps.log.info("refreshed book in place — text unchanged, no re-embed", {
     bookId: book.meta.bookId,
     frontMatterEnd: book.frontMatterEnd,

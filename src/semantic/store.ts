@@ -141,6 +141,12 @@ export interface IndexMeta {
   createdAt?: string;
 }
 
+/** What an in-place refresh was verified against, and the front-matter boundary to apply. */
+export interface RefreshCheck {
+  frontMatterEnd: number;
+  spans: readonly ChunkSpan[];
+}
+
 /** What replaceBook did: wrote the rows, or kept an embedded book's rows untouched. */
 export type ReplaceOutcome = "written" | "preserved";
 
@@ -175,12 +181,13 @@ export interface IndexStore {
     opts?: { preserveEmbedded?: boolean },
   ): ReplaceOutcome;
   /**
-   * Metadata-only refresh (#244): rewrite one book's title/authors/last_modified and the
-   * per-chunk/per-figure book_meta (FTS follows via the update triggers) in ONE transaction,
-   * keeping chunks and vectors. A no-op for a book that is not indexed. With `frontMatterEnd`,
-   * also re-derives every chunk's front-matter flag from that boundary (#269 backfill).
+   * In-place refresh of an unchanged-text book (#244/#269): title/authors/last_modified, the
+   * per-chunk/per-figure book_meta (FTS follows via the update triggers) and the front-matter
+   * flags re-derived from `frontMatterEnd` — one transaction, chunks and vectors kept. Returns
+   * false and writes NOTHING when the book's stored spans are no longer `spans` (another
+   * writer re-chunked it after the caller verified the text).
    */
-  refreshBookMeta(libraryId: string, meta: BookMeta, frontMatterEnd?: number): void;
+  refreshBookMeta(libraryId: string, meta: BookMeta, check: RefreshCheck): boolean;
   /** One book's stored chunk spans, sorted by charStart (empty when not indexed). */
   bookChunkSpans(libraryId: string, bookId: number): ChunkSpan[];
   /** Embedded chunks of one book (0 when not indexed or for an absent index). */
@@ -542,12 +549,17 @@ export class SqliteIndexStore implements IndexStore {
     }
   }
 
-  refreshBookMeta(libraryId: string, meta: BookMeta, frontMatterEnd?: number): void {
+  refreshBookMeta(libraryId: string, meta: BookMeta, check: RefreshCheck): boolean {
     const db = this.#db(libraryId);
     const bookMeta = bookMetaStem(meta);
-    // IMMEDIATE for the same reason as replaceBook (#196): wait on another writer's lock.
+    // IMMEDIATE for the same reason as replaceBook (#196): wait on another writer's lock — and
+    // the span re-check below then sees exactly the rows this transaction updates.
     db.exec("BEGIN IMMEDIATE");
     try {
+      if (!sameSpans(this.#spans(db, meta.bookId), check.spans)) {
+        db.exec("ROLLBACK");
+        return false;
+      }
       db.prepare("UPDATE books SET title = ?, authors = ?, last_modified = ?, indexed_at = ? WHERE book_id = ?").run(
         meta.title,
         JSON.stringify(meta.authors),
@@ -558,8 +570,9 @@ export class SqliteIndexStore implements IndexStore {
       // The AFTER UPDATE triggers re-sync chunk_fts / figure_fts with the new book_meta.
       db.prepare("UPDATE chunks SET book_meta = ? WHERE book_id = ?").run(bookMeta, meta.bookId);
       db.prepare("UPDATE figures SET book_meta = ? WHERE book_id = ?").run(bookMeta, meta.bookId);
-      if (frontMatterEnd !== undefined) this.#refreshFrontMatter(db, meta.bookId, frontMatterEnd);
+      this.#refreshFrontMatter(db, meta.bookId, check.frontMatterEnd);
       db.exec("COMMIT");
+      return true;
     } catch (err) {
       rollbackQuietly(db);
       throw err;
@@ -584,7 +597,11 @@ export class SqliteIndexStore implements IndexStore {
 
   bookChunkSpans(libraryId: string, bookId: number): ChunkSpan[] {
     if (!this.hasIndex(libraryId)) return [];
-    const rows = this.#db(libraryId)
+    return this.#spans(this.#db(libraryId), bookId);
+  }
+
+  #spans(db: DatabaseSync, bookId: number): ChunkSpan[] {
+    const rows = db
       .prepare("SELECT char_start, char_end, body FROM chunks WHERE book_id = ? ORDER BY char_start, id")
       .all(bookId) as Row[];
     return rows.map((r) => ({ charStart: Number(r.char_start), charEnd: Number(r.char_end), body: String(r.body) }));
@@ -1110,4 +1127,12 @@ function parseAuthors(raw: unknown): string[] {
 /** Stemmed "title authors" repeated on every chunk/figure row, so FTS sees book identity. */
 function bookMetaStem(meta: BookMeta): string {
   return stemText(`${meta.title} ${meta.authors.join(" ")}`);
+}
+
+/** Same chunk set: count, offsets and bodies, in order. */
+function sameSpans(a: readonly ChunkSpan[], b: readonly ChunkSpan[]): boolean {
+  return (
+    a.length === b.length &&
+    a.every((s, i) => s.charStart === b[i]!.charStart && s.charEnd === b[i]!.charEnd && s.body === b[i]!.body)
+  );
 }
