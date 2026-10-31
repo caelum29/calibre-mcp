@@ -15,6 +15,9 @@ import type { BaseDeps, DepsWithIndex } from "./deps.js";
 import type { ToolResult } from "./types.js";
 import { defaultHint, errorCodeFor } from "../domain/error-codes.js";
 
+/** calibre_ping's deps (#272): its index reads are exactly the semantic-status ones. */
+export type PingDeps = DepsWithIndex<StatusIndex>;
+
 export const pingTool = defineTool({
   name: "calibre_ping",
   title: "Calibre ping",
@@ -223,5 +226,3 @@ async function libraryIndexReport(
           : `${i.name}: index unreadable`;
   return { line: `Index: ${indexes.length > 0 ? indexes.map(part).join(" · ") : "(no libraries)"}`, indexes };
 }
-/** calibre_ping's deps (#272): its index reads are exactly the semantic-status ones. */
-export type PingDeps = DepsWithIndex<StatusIndex>;

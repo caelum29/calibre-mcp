@@ -167,7 +167,7 @@ describe("calibre_semantic_search board wiring", () => {
   it("should_not_cache_or_attach_board_payload_on_zero_semantic_results", async () => {
     const cache = new BoardCache();
     const deps = semanticDeps(cache);
-    (deps.index as unknown as Record<string, unknown>).searchLibrary = () => [];
+    deps.index.searchLibrary = () => [];
     const r = await semanticSearchTool.handler({ query: "zzz", scope: "library", mode: "vector", topK: 10 }, deps);
     expect(r._meta).toBeUndefined();
     expect(cache.get("calibre_semantic_search", "zzz", "Programming_Books")).toBeUndefined();
@@ -176,8 +176,8 @@ describe("calibre_semantic_search board wiring", () => {
   it("should_not_attach_board_payload_on_book_scope", async () => {
     const cache = new BoardCache();
     const deps = semanticDeps(cache);
-    (deps.index as unknown as Record<string, unknown>).isBookIndexed = () => true;
-    (deps.index as unknown as Record<string, unknown>).searchBook = () => [];
+    deps.index.isBookIndexed = () => true;
+    deps.index.searchBook = () => [];
     const r = await semanticSearchTool.handler(
       { query: "q", scope: "book", mode: "vector", bookId: 1, topK: 10 },
       deps,

@@ -12,7 +12,7 @@ import { ContentServerClient } from "../../src/calibre/content-server.js";
 import { FullTextSearch } from "../../src/calibre/fts.js";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
-import { searchTool } from "../../src/tools/calibre_search.js";
+import { type SearchDeps, type SearchIndex, searchTool } from "../../src/tools/calibre_search.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
 
 // Recorded: GET /fts/search?query=monomorphization&library_id=Programming_Books (first 3 rows).
@@ -22,7 +22,7 @@ const RECORDED = JSON.parse(
 
 const client = new ContentServerClient(loadConfig({ CALIBRE_MCP_SERVER_URL: "http://localhost:8080" }));
 
-function deps(): ToolDeps {
+function deps(): SearchDeps {
   const content = { resolveLibraryId: async () => "Programming_Books" };
   return {
     config: loadConfig({}),
@@ -32,7 +32,7 @@ function deps(): ToolDeps {
     extractor: {} as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],
-    index: { hasIndex: () => false } as unknown as ToolDeps["index"],
+    index: { hasIndex: () => false, isBookIndexed: () => false } satisfies SearchIndex,
     log,
   };
 }

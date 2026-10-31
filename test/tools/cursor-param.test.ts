@@ -7,7 +7,7 @@ import { log } from "../../src/logging.js";
 import { CursorParam } from "../../src/tools/coerce.js";
 import { qualityReportTool } from "../../src/tools/calibre_quality_report.js";
 import { findDuplicatesTool } from "../../src/tools/calibre_find_duplicates.js";
-import type { ToolDeps } from "../../src/tools/deps.js";
+import type { BaseDeps, ToolDeps } from "../../src/tools/deps.js";
 
 describe("CursorParam coercion (#325)", () => {
   it("passes a string and undefined through unchanged", () => {
@@ -31,9 +31,8 @@ const deps = {
   extractor: {} as ToolDeps["extractor"],
   figures: {} as ToolDeps["figures"],
   embedder: {} as ToolDeps["embedder"],
-  index: {} as ToolDeps["index"],
   log,
-} satisfies ToolDeps;
+} satisfies BaseDeps;
 
 describe("non-string cursor through the real tool schema + handler (#325)", () => {
   it.each([[40], [{ offset: 40, query: "x" }]])("quality_report cursor %j → invalid_input", async (cursor) => {

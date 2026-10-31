@@ -6,13 +6,13 @@ import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import { qualityReportTool } from "../../src/tools/calibre_quality_report.js";
 import { findDuplicatesTool } from "../../src/tools/calibre_find_duplicates.js";
-import type { ToolDeps } from "../../src/tools/deps.js";
+import type { BaseDeps, ToolDeps } from "../../src/tools/deps.js";
 
 const enc = (o: unknown): string => Buffer.from(JSON.stringify(o), "utf8").toString("base64url");
 const OLD_SHAPE = enc({ offset: 2, query: "title" });
 const V1_SHAPE = enc({ v: 1, offset: 2, libId: "Lib", mode: "quality", query: "" });
 
-const deps: ToolDeps = {
+const deps: BaseDeps = {
   config: loadConfig({}),
   content: {
     resolveLibraryId: async () => "Lib",
@@ -38,7 +38,6 @@ const deps: ToolDeps = {
   extractor: {} as ToolDeps["extractor"],
   figures: {} as ToolDeps["figures"],
   embedder: {} as ToolDeps["embedder"],
-  index: {} as ToolDeps["index"],
   log,
 };
 

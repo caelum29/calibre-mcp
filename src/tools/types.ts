@@ -65,11 +65,8 @@ export interface ToolContext {
 
 /**
  * A plain, SDK-free tool definition. server.ts maps each onto registerTool and calls
- * `.disable()` on `write` tools when the write gate is off (DESIGN §4).
- */
-/**
- * Authoring-time tool shape. `D` is the deps slice the handler reads (#272): BaseDeps by default,
- * or a `DepsWithIndex<…>` for index consumers. Any D the full ToolDeps satisfies is accepted.
+ * `.disable()` on `write` tools when the write gate is off (DESIGN §4). `D` is the deps slice
+ * the handler reads (#272): BaseDeps by default, or a `DepsWithIndex<…>` for index consumers.
  */
 export interface ToolDescriptor<Shape extends z.ZodRawShape = z.ZodRawShape, D = BaseDeps> {
   /** Template-literal enforces the `calibre_` namespace (DESIGN §2). */

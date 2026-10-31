@@ -35,7 +35,6 @@ const deps = (figures: unknown): BaseDeps =>
     calibre: {},
     extractor: {},
     embedder: {},
-    index: {},
     figures,
     log,
   }) as unknown as BaseDeps;
