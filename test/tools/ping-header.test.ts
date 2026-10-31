@@ -8,7 +8,7 @@ import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import { VERSION } from "../../src/version.js";
 import { EMBED_DIM, INDEX_VERSION, MODEL_ID } from "../../src/semantic/model.js";
-import type { ToolDeps } from "../../src/tools/types.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
 
 const ping = allTools.find((t) => t.name === "calibre_ping")!;
 const sdkVersion = (

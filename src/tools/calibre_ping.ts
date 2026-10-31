@@ -12,7 +12,8 @@ import type { LibId } from "../calibre/lib-id.js";
 import { CalibreBusyError } from "../domain/errors.js";
 import { SDK_VERSION, VERSION } from "../version.js";
 import { EMBED_DIM, INDEX_VERSION, MODEL_ID } from "../semantic/model.js";
-import type { ToolDeps, ToolResult } from "./types.js";
+import type { ToolDeps } from "./deps.js";
+import type { ToolResult } from "./types.js";
 
 export const pingTool = defineTool({
   name: "calibre_ping",
