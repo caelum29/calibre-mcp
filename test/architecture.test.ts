@@ -179,7 +179,7 @@ const TWIN_RULES: TwinRule[] = [
   {
     name: "HTTP goes through the http clients (timeouts, abort, error wrapping)",
     pattern: /(?<![.\w])fetch\s*\(/,
-    home: ["src/calibre/http.ts", "src/enrich/http.ts", "src/calibre/content-server.ts"], // content-server: #223
+    home: ["src/calibre/http.ts", "src/enrich/http.ts"],
   },
   {
     name: "external-binary candidate paths live in calibre/binaries.ts (#219)",
