@@ -1,0 +1,19 @@
+test/calibre/fts-query-contract.test.ts
+  s_38ec8aae54ac1e::t_258bb841935000 4-5,40-41,45-50,73-80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1b2463815cfd1fa311fb7ebc5bd2716fd7f44052",
+  "prompts": {},
+  "sessions": {
+    "s_38ec8aae54ac1e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "35df8d4b-23d3-49f4-aec1-7f1c00848c39",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
