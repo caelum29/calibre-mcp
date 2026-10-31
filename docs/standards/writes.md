@@ -1,6 +1,6 @@
 # Standards: write paths
 
-Applies to any diff touching a `write: true` tool, a `calibredb` mutation, `metadata-fields.ts`,
+Applies to any diff touching a `write: true` tool, a `calibredb` mutation, `metadata-fields.ts`, `domain/book-fields.ts`,
 or merge/remove/add flows. The governing invariant: **never report a committed write as failed**
 (#33). Every rule below is a way that invariant broke after it was written down.
 

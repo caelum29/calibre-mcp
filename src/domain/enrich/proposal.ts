@@ -4,8 +4,8 @@
 // `changes` object can be applied as-is. Pure, SDK-free, unit-tested.
 
 import type { Book } from "../book.js";
-import type { ChangeValue } from "../../calibre/metadata-fields.js";
-import { isAllowedField } from "../../calibre/metadata-fields.js";
+import type { ChangeValue } from "../book-fields.js";
+import { isAllowedField } from "../book-fields.js";
 import { authorSuspectReason, normalizeAuthors } from "../curation/authors.js";
 import { foldAccents } from "../curation/normalize.js";
 import { toIsbn13 } from "../curation/isbn.js";

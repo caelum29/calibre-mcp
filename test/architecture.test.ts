@@ -114,8 +114,6 @@ const LAYER_RULES: LayerRule[] = [
 
 // Known breaks, each owned by an open refactor issue. Shrink-only: a fixed edge must be removed.
 const LAYER_ALLOWLIST = new Set([
-  "src/domain/enrich/proposal.ts -> src/calibre/metadata-fields.ts", // #217
-  "src/domain/enrich/types.ts -> src/calibre/metadata-fields.ts", // #217
   "src/config.ts -> src/calibre/discover.ts", // #261
   "src/resources/book.ts -> src/tools/types.ts", // #261
   "src/resources/book.ts -> src/tools/result.ts", // #261
