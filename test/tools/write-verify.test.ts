@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import type { Book } from "../../src/domain/book.js";
 import { CalibreHttpError } from "../../src/domain/errors.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
-import { verifyTimedOutWrite } from "../../src/tools/write-verify.js";
+import { verifyTimedOutWrite } from "../../src/app/write-policy.js";
 
 const book = (over: Partial<Book> = {}): Book => ({
   id: 7,

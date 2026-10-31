@@ -7,7 +7,7 @@ import { loadConfig } from "../../src/config.js";
 import { CalibreCliTimeoutError, CalibreHttpTimeoutError, FtsError } from "../../src/domain/errors.js";
 import type { FtsMatches, SearchPage } from "../../src/domain/search.js";
 import { log } from "../../src/logging.js";
-import { invalidateBundleCache } from "../../src/tools/bundles.js";
+import { invalidateBundleCache } from "../../src/app/bundles.js";
 import { searchTool } from "../../src/tools/calibre_search.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
 

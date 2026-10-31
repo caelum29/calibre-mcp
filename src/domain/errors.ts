@@ -29,7 +29,7 @@ export class CalibreHttpTimeoutError extends CalibreHttpError {
  * Fail-fast refusal while a library is flagged busy after a timeout: Calibre keeps running a
  * request after its client gives up (no cancellation), so piling more work onto it only
  * lengthens the stall. Nothing was sent to Calibre. Deliberately NOT a CalibreCliError /
- * CalibreHttpError subclass, so write-verify and transient-retry never treat it as theirs.
+ * CalibreHttpError subclass, so app/write-policy.ts (timeout verify, transient retry) never treats it as its own.
  */
 export class CalibreBusyError extends Error {
   constructor(

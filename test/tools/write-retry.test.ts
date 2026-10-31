@@ -1,9 +1,9 @@
 // Unit tests for the #233 transient-retry helper plus exact-text checks on the bulk breaker
-// result, closing gaps found by mutation testing of write-retry.ts / calibre_bulk_update.ts.
+// result, closing gaps found by mutation testing of app/write-policy.ts (retry) / calibre_bulk_update.ts.
 
 import { afterEach, describe, it, expect, vi } from "vitest";
 import { bulkUpdateTool } from "../../src/tools/calibre_bulk_update.js";
-import { classifyTransient, describeTransient, realSleep, withTransientRetry } from "../../src/tools/write-retry.js";
+import { classifyTransient, describeTransient, realSleep, withTransientRetry } from "../../src/app/write-policy.js";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";

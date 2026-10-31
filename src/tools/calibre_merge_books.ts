@@ -19,8 +19,7 @@ import { CoercedBool, CoercedInt, jsonArray } from "./coerce.js";
 import { defineTool } from "./define.js";
 import { fence, toolError, toolOk } from "./result.js";
 import type { ToolDeps } from "./deps.js";
-import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "./write-refusal.js";
-import { verifyTimedOutWrite } from "./write-verify.js";
+import { isWriteRefused, WRITE_REFUSED_MESSAGE, verifyTimedOutWrite } from "../app/write-policy.js";
 
 /** One executed (or planned) write step in the merge ledger. */
 interface Step {

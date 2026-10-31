@@ -21,6 +21,7 @@ const items: CategoryItemsPage = {
 
 function deps(): ToolDeps {
   const content = {
+    resolveLibraryId: async () => "Lib",
     categories: async (): Promise<Category[]> => cats,
     categoryItemsByUrl: async (): Promise<CategoryItemsPage> => items,
   };

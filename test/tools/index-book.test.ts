@@ -11,7 +11,7 @@ import type { Embedder } from "../../src/semantic/embedder.js";
 import { EMBED_DIM } from "../../src/semantic/model.js";
 import { SqliteIndexStore } from "../../src/semantic/store.js";
 import { l2normalize } from "../../src/semantic/vector.js";
-import { commitBook, isDbBusy, prepareBook, withBusyRetry, type PreparedBook } from "../../src/tools/index-book.js";
+import { commitBook, isDbBusy, prepareBook, withBusyRetry, type PreparedBook } from "../../src/app/index-book.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
 
 const LIB = "Programming_Books";

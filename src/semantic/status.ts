@@ -90,7 +90,7 @@ export function computeSemanticStatus(
   const meta = libraryId ? deps.index.indexMeta(libraryId) : undefined;
   const stale = meta !== undefined && staleness(meta) !== undefined;
   // A stale index is refused on open (INDEX_INCOMPATIBLE), so counting it would throw — skip.
-  if (libraryId && !stale && deps.index.hasIndex(libraryId)) {
+  if (libraryId && meta && !stale && deps.index.hasIndex(libraryId)) {
     const stats = deps.index.stats(libraryId);
     indexedBooks = stats.books;
     chunkCount = stats.chunks;
@@ -174,7 +174,7 @@ function shortModel(model: string): string {
 }
 
 /** What differs between an index's meta and this server's pipeline, or undefined if it matches. */
-function staleness(m: IndexMeta): string | undefined {
+export function staleness(m: IndexMeta): string | undefined {
   const diffs: string[] = [];
   if (m.modelId !== MODEL_ID) diffs.push(`model ${m.modelId} (server: ${MODEL_ID})`);
   if (m.dim !== EMBED_DIM) diffs.push(`dim ${m.dim} (server: ${EMBED_DIM})`);

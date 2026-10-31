@@ -28,7 +28,7 @@
       }
     },
     {
-      "files": ["src/tools/**/*.ts"],
+      "files": ["src/tools/**/*.ts", "src/app/**/*.ts"],
       "rules": {
         "no-restricted-globals": [
           "error",

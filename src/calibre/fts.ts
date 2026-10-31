@@ -14,6 +14,7 @@ import {
 import type { FtsMatches } from "../domain/search.js";
 import type { Deadline } from "../shared/deadline.js";
 import type { ContentServerClient } from "./content-server.js";
+import { repairSnippets } from "./fts-highlight.js";
 import type { LibId } from "./lib-id.js";
 
 /** Highlight markers wrapped around matched words in snippets. */
@@ -108,7 +109,8 @@ export class FullTextSearch implements FtsPort {
             size: SNIPPET_SIZE,
           }),
         );
-        byBook.set(id, got.get(id) ?? []);
+        // Calibre can misplace highlights (#308) — fix them before anyone renders them.
+        byBook.set(id, repairSnippets(query, got.get(id) ?? [], { start: FTS_MATCH_START, end: FTS_MATCH_END }));
       } catch (err) {
         const stop = snippetStop(err);
         if (stop === undefined) throw err;
