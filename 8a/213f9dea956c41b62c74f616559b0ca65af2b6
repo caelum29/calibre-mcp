@@ -1,0 +1,19 @@
+test/eval/retrieval/gate.test.ts
+  s_d1d2207902fc19::t_bc424b2b92910f 162-235
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8a213f9dea956c41b62c74f616559b0ca65af2b6",
+  "prompts": {},
+  "sessions": {
+    "s_d1d2207902fc19": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "586feb7c-ca39-49d5-8842-fd6dceef1845",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
