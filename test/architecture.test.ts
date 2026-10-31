@@ -300,6 +300,11 @@ const TWIN_RULES: TwinRule[] = [
   },
 ];
 
+/** The files the twin rules are checked against. */
+function twinScanFiles(): SourceFile[] {
+  return readSources("src", /\.ts$/);
+}
+
 function findTwinViolations(files: SourceFile[]): string[] {
   return TWIN_RULES.flatMap((r) =>
     files
@@ -310,7 +315,22 @@ function findTwinViolations(files: SourceFile[]): string[] {
 
 describe("one home per mechanism", () => {
   it("no copy of a shared mechanism outside its home", () => {
-    expect(findTwinViolations(readSources("src", /\.ts$/))).toEqual([]);
+    expect(findTwinViolations(twinScanFiles())).toEqual([]);
+  });
+
+  it("the SQLite-owner rule reaches scripts/ and namespace/aliased imports (#322)", () => {
+    // scripts/ (reindex.ts, the .mjs tooling) is scanned too, not just src/
+    expect(twinScanFiles().map((f) => f.path)).toContain("scripts/reindex.ts");
+    const inScripts = (source: string) => findTwinViolations([{ path: "scripts/x.mjs", source }]);
+    expect(inScripts(`const db = new DatabaseSync(file);`)).toEqual([
+      "scripts/x.mjs: one SQLite connection owner: only semantic/store/schema.ts opens a DatabaseSync (#272)",
+    ]);
+    // other twin rules stay src-only: tooling may legitimately name a binary path
+    expect(inScripts(`const p = "/usr/local/bin/calibredb";`)).toEqual([]);
+    const at = (source: string) => findTwinViolations([{ path: "src/tools/x.ts", source }]);
+    expect(at(`import * as sqlite from "node:sqlite"; const db = new sqlite.DatabaseSync(file);`)).toHaveLength(1);
+    expect(at(`import { DatabaseSync as Db } from "node:sqlite";`)).toHaveLength(1);
+    expect(at(`import type { DatabaseSync } from "node:sqlite"; let db: DatabaseSync;`)).toEqual([]);
   });
 
   it("detects each twin and ignores comments and method names", () => {
