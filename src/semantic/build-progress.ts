@@ -3,6 +3,7 @@
 // never matters, so a concurrent build resumes exactly like a sequential one.
 
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
+import path from "node:path";
 
 /** One settled book. Extra telemetry (bookDetails fields, ms, worker) rides alongside. */
 export interface ProgressRecord {
@@ -50,4 +51,14 @@ export function resumeProgress(file: string): Set<number> {
     if (text.length > 0 && !text.endsWith("\n")) appendFileSync(file, "\n");
   }
   return readCompletedIds(file);
+}
+
+/**
+ * Default resume-log path for one library. Book ids are per library and overlap, so a log shared
+ * across the index dir would make the second library skip books it never indexed (#285).
+ */
+export function defaultProgressPath(indexDir: string, libraryId: string, flagsOnly: boolean): string {
+  // Library ids come from the server — keep the file inside the index dir whatever they contain.
+  const safeId = libraryId.replace(/[^\w.-]/g, "_");
+  return path.join(indexDir, `${flagsOnly ? "flags-progress" : "progress"}-${safeId}.jsonl`);
 }

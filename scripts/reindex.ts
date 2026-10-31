@@ -3,6 +3,7 @@
 // Run: pnpm reindex --index-dir <dir> [--concurrency 3] [--encoder threads|shared] [--ids 1,2,3]
 // --flags-only (#269): no model, no re-embed — refresh each indexed book's front-matter flags
 // (EPUB TOC / PDF outline) and metadata in place; books whose text changed are reported as failed.
+// Resume log: <index-dir>/[flags-]progress-<libraryId>.jsonl per library (#285); --progress <file> overrides.
 
 import { statfsSync } from "node:fs";
 import path from "node:path";
@@ -18,7 +19,7 @@ import { inThreadEncoder, type BookEncoder } from "../src/semantic/book-encoder.
 import { ThreadEncoder } from "../src/semantic/thread-encoder.js";
 import { SqliteIndexStore } from "../src/semantic/store.js";
 import { runBookPipeline } from "../src/semantic/book-pipeline.js";
-import { appendProgress, resumeProgress } from "../src/semantic/build-progress.js";
+import { appendProgress, defaultProgressPath, resumeProgress } from "../src/semantic/build-progress.js";
 import { commitBook, commitRefresh, describeError, prepareBook, type PrepareResult } from "../src/tools/index-book.js";
 import type { ToolDeps } from "../src/tools/types.js";
 
@@ -55,8 +56,6 @@ const concurrency = Math.max(1, Number(opt.concurrency) || 1);
 const flagsOnly = opt["flags-only"];
 // A flag backfill never encodes — no worker threads, no model load.
 const threaded = opt.encoder === "threads" && !flagsOnly;
-// Its own log: a full re-index's "done" ids must not hide books from the backfill.
-const progressFile = opt.progress ?? path.join(indexDir, flagsOnly ? "flags-progress.jsonl" : "progress.jsonl");
 const minFreeGb = Number(opt["min-free-gb"]);
 
 const config = loadConfig({ ...process.env, CALIBRE_MCP_INDEX_DIR: indexDir });
@@ -84,6 +83,9 @@ if (!flagsOnly) await Promise.all(threaded ? threads.map((t) => t.warmup()) : [d
 const warmupMs = Date.now() - tWarm;
 
 const libraryId = await deps.content.resolveLibraryId(opt.library);
+// Default log is per library (book ids overlap across libraries, #285) and per mode (a full
+// re-index's "done" ids must not hide books from the flags backfill); --progress overrides.
+const progressFile = opt.progress ?? defaultProgressPath(indexDir, libraryId, flagsOnly);
 let ids: number[];
 if (opt.ids) {
   ids = opt.ids
