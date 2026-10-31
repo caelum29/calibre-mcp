@@ -38,7 +38,8 @@ import { resolveNumericId } from "./resolve-id.js";
 import { ENABLE_FTS_STEPS, KEYWORD_SEARCH_FALLBACK } from "./remediation.js";
 import { fence, renderResult, toolError, toolOk } from "./result.js";
 import type { ContentBlock, ToolResult } from "./types.js";
-import type { ToolDeps } from "./deps.js";
+import type { BaseDeps, DepsWithIndex } from "./deps.js";
+import type { IndexFreshness } from "../semantic/store/index.js";
 import { errorCodeFor } from "../domain/error-codes.js";
 
 type SearchArgs = {
@@ -63,7 +64,7 @@ type SearchArgs = {
  * was computed, else one cheap /ajax/search?num=0 on the scope expression.
  */
 async function filterSuffix(
-  deps: ToolDeps,
+  deps: BaseDeps,
   fRes: FilterResolution,
   deadline: Deadline,
   scope: { library?: string; size?: number } = {},
@@ -81,7 +82,7 @@ async function filterSuffix(
 /** scope=library, mode=meta — Content Server /ajax/search (the original v1 path). */
 async function metaLibraryScope(
   args: SearchArgs,
-  deps: ToolDeps,
+  deps: BaseDeps,
   fRes: FilterResolution,
   deadline: Deadline,
 ): Promise<ToolResult> {
@@ -218,11 +219,16 @@ function quotedQuery(query: string): string {
   return query.includes("`") ? `\`\` ${query} \`\`` : `\`${query}\``;
 }
 
+/** The index reads calibre_search makes (#272): only the in-book "use semantic search" tip. */
+export type SearchIndex = Pick<IndexFreshness, "hasIndex" | "isBookIndexed">;
+/** calibre_search's deps: BaseDeps plus the SearchIndex port. */
+export type SearchDeps = DepsWithIndex<SearchIndex>;
+
 /** One FTS call's inputs and shared budget, threaded through both FTS scopes. */
 interface FtsCall {
   args: SearchArgs;
-  deps: ToolDeps;
-  fts: NonNullable<ToolDeps["fts"]>;
+  deps: SearchDeps;
+  fts: NonNullable<BaseDeps["fts"]>;
   deadline: Deadline;
   signal?: AbortSignal;
 }
@@ -466,7 +472,7 @@ export const searchTool = defineTool({
     indexing: z.object({ left: z.number(), total: z.number() }).optional(),
   },
   annotations: { readOnlyHint: true, openWorldHint: true },
-  handler: async (args, deps, ctx) => {
+  handler: async (args, deps: SearchDeps, ctx) => {
     // One budget for every Calibre sub-call below (bundle listing, id resolution, FTS, snippets).
     const deadline = new Deadline();
     try {

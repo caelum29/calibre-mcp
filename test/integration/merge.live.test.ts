@@ -22,7 +22,7 @@ import { log, type LogSink } from "../../src/logging.js";
 // Typed as the narrow sink ToolDeps expects (an annotation, not a cast).
 const sink: LogSink = log;
 import { mergeBooksTool } from "../../src/tools/calibre_merge_books.js";
-import type { ToolDeps } from "../../src/tools/deps.js";
+import type { BaseDeps, ToolDeps } from "../../src/tools/deps.js";
 
 const RUN = process.env.RUN_CALIBRE_TESTS === "1";
 const TEST_LIBRARY = process.env.CALIBRE_TEST_LIBRARY; // display name or libId; default lib otherwise
@@ -55,7 +55,7 @@ describe.skipIf(!RUN || !serverUp)("calibre_merge_books (live Content Server)", 
     calibre,
     extractor: {} as ToolDeps["extractor"],
     log: sink,
-  } as Partial<ToolDeps> as ToolDeps;
+  } as Partial<BaseDeps> as BaseDeps;
 
   const createdIds: number[] = [];
   let scratch: string;

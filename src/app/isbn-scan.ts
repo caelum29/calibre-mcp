@@ -8,7 +8,7 @@ import { chooseExtractFormat } from "../calibre/extract.js";
 import { log } from "../logging.js";
 import { extractIsbns } from "../domain/enrich/extract-isbn.js";
 import type { Book } from "../domain/book.js";
-import type { ToolDeps } from "../tools/deps.js";
+import type { BaseDeps } from "../tools/deps.js";
 
 // Bare digit runs are capped to the front/tail slices (ISBN_SCAN_CHARS each) — sweeping the whole
 // book for BARE runs invites false positives. Labeled "ISBN …" tokens carry no such risk, so the
@@ -44,7 +44,7 @@ function deadline(ms: number): { race: Promise<never>; cancel: () => void } {
  * fetch), and a wall-clock race caps the summed per-layer timeouts. Never throws → the caller
  * degrades gracefully.
  */
-export async function scanForIsbn(deps: ToolDeps, book: Book, id: number, library?: string): Promise<IsbnScanResult> {
+export async function scanForIsbn(deps: BaseDeps, book: Book, id: number, library?: string): Promise<IsbnScanResult> {
   const fmt = chooseExtractFormat(book.formats);
   if (!fmt) return { outcome: "no-format" };
   const { race, cancel } = deadline(ISBN_SCAN_TIMEOUT_MS);

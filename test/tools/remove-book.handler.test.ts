@@ -3,7 +3,7 @@ import { removeBookTool } from "../../src/tools/calibre_remove_book.js";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
-import type { ToolDeps } from "../../src/tools/deps.js";
+import type { BaseDeps, ToolDeps } from "../../src/tools/deps.js";
 
 const book = (over: Partial<Book> = {}): Book => ({
   id: 1,
@@ -17,7 +17,7 @@ const book = (over: Partial<Book> = {}): Book => ({
   ...over,
 });
 
-function deps(calibredb: (args: readonly string[]) => Promise<{ stdout: string; stderr: string }>): ToolDeps {
+function deps(calibredb: (args: readonly string[]) => Promise<{ stdout: string; stderr: string }>): BaseDeps {
   const byId = new Map([1, 2].map((id) => [id, book({ id, title: `Book ${id}` })] as const));
   const content = {
     resolveLibraryId: async (name?: string): Promise<string> => name ?? "Programming_Books",
@@ -30,7 +30,6 @@ function deps(calibredb: (args: readonly string[]) => Promise<{ stdout: string; 
     extractor: {} as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],
-    index: {} as ToolDeps["index"],
     log,
   };
 }

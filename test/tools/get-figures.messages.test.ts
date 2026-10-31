@@ -9,7 +9,7 @@ import { log } from "../../src/logging.js";
 import { FiguresError } from "../../src/domain/errors.js";
 import type { Book } from "../../src/domain/book.js";
 import type { FigureInventory } from "../../src/domain/figures/inventory.js";
-import type { ToolDeps } from "../../src/tools/deps.js";
+import type { BaseDeps } from "../../src/tools/deps.js";
 
 const inventory: FigureInventory = {
   entries: [{ index: 0, page: 1, captioned: true, label: "1-1", caption: "A model", source: "raster" }],
@@ -28,17 +28,16 @@ const book: Book = {
   languages: [],
 };
 
-const deps = (figures: unknown): ToolDeps =>
+const deps = (figures: unknown): BaseDeps =>
   ({
     config: loadConfig({}),
     content: { getBook: async () => book, resolveLibraryId: async () => "Programming_Books" },
     calibre: {},
     extractor: {},
     embedder: {},
-    index: {},
     figures,
     log,
-  }) as unknown as ToolDeps;
+  }) as unknown as BaseDeps;
 
 const args = (over: Record<string, unknown> = {}) => z.object(getFiguresTool.inputSchema).parse({ id: 929, ...over });
 const texts = (r: { content: Array<{ type: string }> }) =>

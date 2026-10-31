@@ -8,10 +8,11 @@ import { log } from "../../src/logging.js";
 import { asLibId } from "../../src/calibre/lib-id.js";
 import { FtsError } from "../../src/domain/errors.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
+import type { SearchDeps, SearchIndex } from "../../src/tools/calibre_search.js";
 import { fakeFts, type FakeFtsHit } from "./fake-fts.js";
 
 // Boundary stub: only what the FTS library branch touches.
-function deps(fts: ToolDeps["fts"]): ToolDeps {
+function deps(fts: ToolDeps["fts"]): SearchDeps {
   return {
     config: loadConfig({}),
     content: {
@@ -22,7 +23,7 @@ function deps(fts: ToolDeps["fts"]): ToolDeps {
     extractor: {} as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],
-    index: { hasIndex: () => false } as unknown as ToolDeps["index"],
+    index: { hasIndex: () => false, isBookIndexed: () => false } satisfies SearchIndex,
     log,
   };
 }

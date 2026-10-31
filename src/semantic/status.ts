@@ -60,12 +60,17 @@ export interface SemanticStatus {
   reason?: string;
 }
 
+/** The coverage/provenance reads this diagnosis makes (#272) — status never searches or writes. */
+export type StatusIndex = Pick<
+  IndexFreshness,
+  "hasIndex" | "indexMeta" | "stats" | "vectorCount" | "booksMissingVectors"
+>;
+
 /** Just the pieces of ToolDeps this diagnosis touches — keeps callers/tests light. */
 interface StatusDeps {
   config: Config;
   embedder: Embedder;
-  /** Coverage/provenance reads only (#272) — status never searches or writes. */
-  index: IndexFreshness;
+  index: StatusIndex;
 }
 
 /**

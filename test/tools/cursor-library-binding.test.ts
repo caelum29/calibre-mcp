@@ -8,7 +8,7 @@ import { log } from "../../src/logging.js";
 vi.mock("../../src/calibre/http.js", () => ({ getJson: vi.fn(), getBytes: vi.fn() }));
 import { getJson } from "../../src/calibre/http.js";
 import { ContentServerClient } from "../../src/calibre/content-server.js";
-import { searchTool } from "../../src/tools/calibre_search.js";
+import { type SearchDeps, type SearchIndex, searchTool } from "../../src/tools/calibre_search.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
 import type { ToolResult } from "../../src/tools/types.js";
 
@@ -49,14 +49,14 @@ beforeEach(() => {
   }) as typeof getJson);
 });
 
-const deps = (): ToolDeps => ({
+const deps = (): SearchDeps => ({
   config: loadConfig({}),
   content: new ContentServerClient(loadConfig({})),
   calibre: {} as ToolDeps["calibre"],
   extractor: {} as ToolDeps["extractor"],
   figures: {} as ToolDeps["figures"],
   embedder: {} as ToolDeps["embedder"],
-  index: {} as ToolDeps["index"],
+  index: { hasIndex: () => false, isBookIndexed: () => false } satisfies SearchIndex,
   log,
 });
 

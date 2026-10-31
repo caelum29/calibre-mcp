@@ -9,6 +9,7 @@ import { LibraryBusyTracker } from "../../src/calibre/busy.js";
 import { CalibreBusyError } from "../../src/domain/errors.js";
 import type { AnyToolDescriptor } from "../../src/tools/types.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
+import { SqliteIndexStore } from "../../src/semantic/store/index.js";
 
 const SERVER_URL = "http://127.0.0.1:9";
 
@@ -34,7 +35,8 @@ function deps(o: { resolveLibraryId?: () => Promise<string>; listLibraries?: (li
     extractor: {} as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: { loadState: () => "not-attempted" } satisfies Partial<ToolDeps["embedder"]> as ToolDeps["embedder"],
-    index: { indexMeta: () => undefined, hasIndex: () => false } as unknown as ToolDeps["index"],
+    // empty in-memory store: no index for any library, the same answers the old stub gave
+    index: new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" })),
     log,
   };
   return { d, listCalls };

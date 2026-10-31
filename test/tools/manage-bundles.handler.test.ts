@@ -9,7 +9,7 @@ import { CalibreHttpError } from "../../src/domain/errors.js";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { ToolResult } from "../../src/tools/types.js";
-import type { ToolDeps } from "../../src/tools/deps.js";
+import type { BaseDeps, ToolDeps } from "../../src/tools/deps.js";
 
 const LIST_STDOUT = [
   "Integration status: False",
@@ -35,7 +35,7 @@ function firstText(r: ToolResult): string {
   return block?.type === "text" ? block.text : "";
 }
 
-function deps(stubs: Stubs = {}): ToolDeps {
+function deps(stubs: Stubs = {}): BaseDeps {
   const content = {
     resolveLibraryId: async (name?: string): Promise<string> => name ?? "Programming_Books",
     virtualLibraries: stubs.virtualLibraries ?? (async () => ({ Fiction: "tag:fiction" })),
@@ -50,7 +50,6 @@ function deps(stubs: Stubs = {}): ToolDeps {
     extractor: {} as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],
-    index: {} as ToolDeps["index"],
     log,
   };
 }

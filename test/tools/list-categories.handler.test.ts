@@ -3,7 +3,7 @@ import { listCategoriesTool } from "../../src/tools/calibre_list_categories.js";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Category, CategoryItemsPage } from "../../src/domain/library.js";
-import type { ToolDeps } from "../../src/tools/deps.js";
+import type { BaseDeps, ToolDeps } from "../../src/tools/deps.js";
 
 const cats: Category[] = [
   { name: "Authors", url: "/ajax/category/aaa/Lib" },
@@ -19,7 +19,7 @@ const items: CategoryItemsPage = {
   num: 2,
 };
 
-function deps(): ToolDeps {
+function deps(): BaseDeps {
   const content = {
     resolveLibraryId: async () => "Lib",
     categories: async (): Promise<Category[]> => cats,
@@ -32,7 +32,6 @@ function deps(): ToolDeps {
     extractor: {} as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],
-    index: {} as ToolDeps["index"],
     log,
   };
 }
@@ -85,7 +84,7 @@ describe("calibre_list_categories handler", () => {
 // issue #211 — the value-page cursor must reach text-only clients (Desktop), outside the fence
 describe("calibre_list_categories cursor in text (#211)", () => {
   const names = ["Alice", "Bob", "Carol", "Dave", "Eve"];
-  function pagedDeps(): ToolDeps {
+  function pagedDeps(): BaseDeps {
     const d = deps();
     (d.content as unknown as Record<string, unknown>).categoryItemsByUrl = async (
       _url: string,

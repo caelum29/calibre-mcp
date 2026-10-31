@@ -4,7 +4,7 @@ import { boardDataTool } from "../../src/tools/calibre_board_data.js";
 import { BoardCache, type BoardPayload } from "../../src/ui/board-cache.js";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
-import type { ToolDeps } from "../../src/tools/deps.js";
+import type { BaseDeps, ToolDeps } from "../../src/tools/deps.js";
 
 const payload: BoardPayload = {
   tool: "calibre_search",
@@ -27,7 +27,7 @@ const fakeContent = {
   },
 } as unknown as ToolDeps["content"];
 
-function deps(cache?: BoardCache): ToolDeps {
+function deps(cache?: BoardCache): BaseDeps {
   return {
     config: loadConfig({}),
     content: fakeContent,
@@ -35,7 +35,6 @@ function deps(cache?: BoardCache): ToolDeps {
     extractor: {} as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],
-    index: {} as ToolDeps["index"],
     boardCache: cache,
     log,
   };
@@ -160,7 +159,7 @@ describe("calibre_board_data handler — library/filter scoping (#215)", () => {
 
 describe("calibre_board_data handler — lookups without a query (#215 mutation follow-up)", () => {
   // Content Server down: library resolution throws for every input
-  const downDeps = (cache: BoardCache): ToolDeps => ({
+  const downDeps = (cache: BoardCache): BaseDeps => ({
     ...deps(cache),
     content: {
       resolveLibraryId: async (): Promise<string> => {

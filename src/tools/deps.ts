@@ -57,3 +57,15 @@ export interface ToolDeps {
   sleep?: (ms: number) => Promise<void>;
   log: LogSink;
 }
+
+/**
+ * ToolDeps minus the semantic index — what a handler or helper that never touches the index
+ * takes (#272). The default deps type of defineTool, so test fakes for those tools carry no index.
+ */
+export type BaseDeps = Omit<ToolDeps, "index">;
+
+/**
+ * BaseDeps plus only the index port(s) a consumer calls (#272) — e.g.
+ * `DepsWithIndex<Pick<IndexFreshness, "hasIndex">>`. Fakes then implement just that port.
+ */
+export type DepsWithIndex<P> = BaseDeps & { index: P };

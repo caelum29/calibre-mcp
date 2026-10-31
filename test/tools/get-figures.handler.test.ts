@@ -9,7 +9,7 @@ import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
 import type { FigureInventory } from "../../src/domain/figures/inventory.js";
-import type { ToolDeps } from "../../src/tools/deps.js";
+import type { BaseDeps, ToolDeps } from "../../src/tools/deps.js";
 
 const inventory: FigureInventory = {
   entries: [
@@ -22,7 +22,7 @@ const inventory: FigureInventory = {
   counts: { figures: 2, uncaptioned: 1, pageRender: 0 },
 };
 
-function deps(formats: string[], inv: FigureInventory = inventory): ToolDeps {
+function deps(formats: string[], inv: FigureInventory = inventory): BaseDeps {
   const book: Book = {
     id: 929,
     uuid: "u",
@@ -42,7 +42,6 @@ function deps(formats: string[], inv: FigureInventory = inventory): ToolDeps {
     calibre: {} as ToolDeps["calibre"],
     extractor: {} as ToolDeps["extractor"],
     embedder: {} as ToolDeps["embedder"],
-    index: {} as ToolDeps["index"],
     figures: { getInventory: async () => ({ inventory: inv }) } as unknown as ToolDeps["figures"],
     log,
   };

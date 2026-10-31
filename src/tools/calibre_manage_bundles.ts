@@ -13,7 +13,7 @@ import { CoercedBool } from "./coerce.js";
 import { defineTool } from "./define.js";
 import type { LibId } from "../calibre/lib-id.js";
 import { toolError, toolOk } from "./result.js";
-import type { ToolDeps } from "./deps.js";
+import type { BaseDeps } from "./deps.js";
 import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "../app/write-policy.js";
 import type { ToolResult } from "./types.js";
 import { errorCodeFor } from "../domain/error-codes.js";
@@ -40,7 +40,7 @@ export function buildSavedSearchArgs(action: "add" | "remove", name: string, exp
  * must hedge on zero rather than claim the expression is fine.
  */
 async function countMatches(
-  deps: ToolDeps,
+  deps: BaseDeps,
   expression: string,
   library?: string,
 ): Promise<{ total: number } | { failure: ToolResult }> {
@@ -110,7 +110,7 @@ interface WriteFailure {
   error: ToolResult;
 }
 
-async function tryWrite(deps: ToolDeps, args: readonly string[], libId: LibId): Promise<WriteFailure | undefined> {
+async function tryWrite(deps: BaseDeps, args: readonly string[], libId: LibId): Promise<WriteFailure | undefined> {
   try {
     await deps.calibre.calibredb(args, { library: libId });
     // The discovery tools read bundles through a TTL cache — a committed write must be

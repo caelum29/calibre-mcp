@@ -361,7 +361,8 @@ function fakeDeps(o: FakeOpts = {}): ToolDeps {
     extractor: extractor as unknown as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: o.embedder ?? ({} as ToolDeps["embedder"]),
-    index: o.index ?? ({ hasIndex: () => false, isBookIndexed: () => false } as unknown as ToolDeps["index"]),
+    // empty in-memory store: hasIndex/isBookIndexed answer false, as the old stub did
+    index: o.index ?? new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" })),
     providers: { openlibrary: provider("openlibrary"), googlebooks: provider("googlebooks") },
     log,
   };

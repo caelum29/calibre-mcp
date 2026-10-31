@@ -13,7 +13,7 @@ import { defineTool } from "./define.js";
 import { bookIdArg, resolveNumericId } from "./resolve-id.js";
 import { fence, toolError, toolOk } from "./result.js";
 import type { ContentBlock } from "./types.js";
-import type { ToolDeps } from "./deps.js";
+import type { BaseDeps } from "./deps.js";
 import { errorCodeFor } from "../domain/error-codes.js";
 
 /** Figures come from the source file, so only these formats work (D-018). */
@@ -191,7 +191,7 @@ function listFigures(
 
 async function fetchFigures(
   args: FigureCallArgs,
-  deps: ToolDeps,
+  deps: BaseDeps,
   { numericId, fmt, downloadUrl, inventory }: BookCtx & { downloadUrl: string },
 ) {
   const indexes = args.indexes ?? [];

@@ -16,7 +16,7 @@ import { log, type LogSink } from "../../src/logging.js";
 const sink: LogSink = log;
 import { getFiguresTool } from "../../src/tools/calibre_get_figures.js";
 import type { ImageBlock, TextBlock, ToolResult } from "../../src/tools/types.js";
-import type { ToolDeps } from "../../src/tools/deps.js";
+import type { BaseDeps } from "../../src/tools/deps.js";
 
 const RUN = process.env.RUN_CALIBRE_TESTS === "1";
 const PDF_BOOK = 164; // Software Architecture Metrics
@@ -52,7 +52,7 @@ describe.skipIf(!RUN || !ready)("calibre_get_figures (live Content Server)", () 
     content: new ContentServerClient(config),
     figures: new FigureInventoryService(config),
     log: sink,
-  } as Partial<ToolDeps> as ToolDeps;
+  } as Partial<BaseDeps> as BaseDeps;
 
   it("lists PDF figures with captions and counts", { timeout: 180_000 }, async () => {
     const r = await getFiguresTool.handler({ id: PDF_BOOK, detail: "standard", include_uncaptioned: false }, deps);

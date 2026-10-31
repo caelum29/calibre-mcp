@@ -8,6 +8,7 @@ import type { Book } from "../../src/domain/book.js";
 import type { SearchPage } from "../../src/domain/search.js";
 import { fakeFts, type FakeFtsHit } from "./fake-fts.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
+import type { SearchDeps, SearchIndex } from "../../src/tools/calibre_search.js";
 
 const book = (id: number): Book => ({
   id,
@@ -26,7 +27,7 @@ interface FakeOpts {
 }
 
 // Fake deps with only the methods each branch touches (boundary stub).
-function deps(opts: FakeOpts = {}): ToolDeps {
+function deps(opts: FakeOpts = {}): SearchDeps {
   const content = {
     search: async (p: { query: string }): Promise<SearchPage> => {
       if (p.query.startsWith("uuid:")) return { ...page(), bookIds: [99] };
@@ -45,7 +46,7 @@ function deps(opts: FakeOpts = {}): ToolDeps {
     extractor: {} as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],
-    index: { hasIndex: () => false } as unknown as ToolDeps["index"], // no semantic index → no tip
+    index: { hasIndex: () => false, isBookIndexed: () => false } satisfies SearchIndex, // no semantic index → no tip
     log,
   };
 }
@@ -195,7 +196,7 @@ describe("calibre_search handler — scope=book", () => {
 describe("calibre_search scope=book — semantic-search tip (issue #18)", () => {
   const hit = [{ bookId: 1, snippet: "…ownership…" }];
   const fakeIndex = (indexed: boolean) =>
-    ({ hasIndex: () => true, isBookIndexed: () => indexed }) as unknown as ToolDeps["index"];
+    ({ hasIndex: () => true, isBookIndexed: () => indexed }) satisfies SearchIndex;
 
   it("appends the calibre_semantic_search tip when the book is indexed", async () => {
     const d = { ...deps({ ftsHits: hit }), index: fakeIndex(true) };

@@ -5,7 +5,7 @@ import type { Book } from "../../src/domain/book.js";
 import type { GetTextArgs } from "../../src/calibre/extract.js";
 import type { ProviderHit } from "../../src/domain/enrich/types.js";
 import { recoverMetadataTool } from "../../src/tools/calibre_recover_metadata.js";
-import type { ToolDeps } from "../../src/tools/deps.js";
+import type { BaseDeps, ToolDeps } from "../../src/tools/deps.js";
 
 function book(over: Partial<Book> = {}): Book {
   return { id: 1, uuid: "u", title: "", authors: [], identifiers: {}, formats: [], tags: [], languages: [], ...over };
@@ -23,7 +23,7 @@ interface Fixture {
   getText?: (args: GetTextArgs) => Promise<{ text: string; backend: string; chars: number; cached: boolean }>;
 }
 
-function deps(f: Fixture): ToolDeps {
+function deps(f: Fixture): BaseDeps {
   const content = {
     resolveLibraryId: async () => "Lib",
     getBook: async () => f.book,
@@ -46,7 +46,6 @@ function deps(f: Fixture): ToolDeps {
     extractor: extractor as unknown as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],
-    index: {} as ToolDeps["index"],
     providers: { openlibrary: provider("openlibrary"), googlebooks: provider("googlebooks") },
     log,
   };

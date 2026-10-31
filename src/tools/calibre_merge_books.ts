@@ -18,7 +18,7 @@ import type { FormatMove } from "../domain/merge.js";
 import { CoercedBool, CoercedInt, jsonArray } from "./coerce.js";
 import { defineTool } from "./define.js";
 import { fence, toolError, toolOk } from "./result.js";
-import type { ToolDeps } from "./deps.js";
+import type { BaseDeps } from "./deps.js";
 import { isWriteRefused, WRITE_REFUSED_MESSAGE, verifyTimedOutWrite } from "../app/write-policy.js";
 import { errorCodeFor } from "../domain/error-codes.js";
 
@@ -223,7 +223,7 @@ interface MergeJob {
  * sources, delete ALWAYS last. Any failure aborts the remaining steps; because nothing
  * is deleted until every prior step verified, an abort never loses data (issue #33).
  */
-async function executeMerge(deps: ToolDeps, job: MergeJob) {
+async function executeMerge(deps: BaseDeps, job: MergeJob) {
   const { target, sourceIds, mode } = job;
   const libId = await deps.content.resolveLibraryId(job.library);
   const base = deps.config.serverUrl.replace(/\/+$/, "");

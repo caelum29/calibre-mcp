@@ -22,14 +22,14 @@ import type { IsbnScanResult } from "../app/isbn-scan.js";
 import { bookIdArg, resolveNumericId } from "./resolve-id.js";
 import { bookResourceLink } from "./resource-link.js";
 import { fence, toolError, toolOk } from "./result.js";
-import type { ToolDeps } from "./deps.js";
+import type { BaseDeps } from "./deps.js";
 import { errorCodeFor } from "../domain/error-codes.js";
 
 const SOURCE = z.enum(["openlibrary", "googlebooks"]);
 const DEFAULT_SOURCES: Provider["name"][] = ["openlibrary", "googlebooks"];
 
 /** Lazily construct the real providers (no network until a method is called). */
-function providersFor(deps: ToolDeps, order: Provider["name"][]): Provider[] {
+function providersFor(deps: BaseDeps, order: Provider["name"][]): Provider[] {
   const map = deps.providers ?? { openlibrary: createOpenLibrary(), googlebooks: createGoogleBooks() };
   return order.map((n) => map[n]).filter(Boolean);
 }
