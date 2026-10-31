@@ -1,0 +1,33 @@
+src/calibre/extract.ts
+  s_2748adee5ace54::t_411515fa13ce0e 26,177-178,180-182,191-192,396,401-408
+src/calibre/figure-inventory.ts
+  s_2748adee5ace54::t_411515fa13ce0e 32
+  s_2748adee5ace54::t_95f886d54e6c79 99-100,372-380
+src/calibre/binaries.ts
+  s_2748adee5ace54::t_0d388cbd0d9ca0 1-9,11,13-14,20-89,95-101
+  s_2748adee5ace54::t_95f886d54e6c79 10,12,15-19
+  s_2748adee5ace54::t_9204aae7cfa1b5 90-94
+src/calibre/epub-toc.ts
+  s_2748adee5ace54::t_0d388cbd0d9ca0 20,28
+src/calibre/figure-fetch.ts
+  s_2748adee5ace54::t_0d388cbd0d9ca0 164,189,194
+  s_2748adee5ace54::t_95f886d54e6c79 15
+src/calibre/pdf-outline.ts
+  s_2748adee5ace54::t_0d388cbd0d9ca0 7,16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6ede52735221b41141a51097f0000b2e92210573",
+  "prompts": {},
+  "sessions": {
+    "s_2748adee5ace54": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eca6633b-40b8-4fea-beac-e4ac360b8a51",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
