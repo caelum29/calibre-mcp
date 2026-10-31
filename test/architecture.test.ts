@@ -119,6 +119,12 @@ const LAYER_RULES: LayerRule[] = [
   { name: "scripts do not reach into tools", from: /^scripts\//, forbidden: /^src\/tools\// },
   // neutral helpers both tools/ and resources/ import (#261): they may lean on domain only
   { name: "shared imports only domain", from: /^src\/shared\//, forbidden: /^src\/(?!domain\/|shared\/)/ },
+  // the SDK-free protocol mirror every tool module imports stays free of infra types (#258)
+  {
+    name: "tool protocol mirror imports no adapters",
+    from: /^src\/tools\/types\.ts$/,
+    forbidden: /^src\/(calibre|semantic|enrich|ui)\//,
+  },
 ];
 
 // Known breaks, each owned by an open refactor issue. Shrink-only: a fixed edge must be removed.
@@ -167,6 +173,10 @@ describe("layer directions", () => {
       "src/shared/x.ts -> src/tools/result.ts",
     ]);
     expect(at("src/shared/x.ts", `import type { Book } from "../domain/book.js";`)).toEqual([]);
+    expect(at("src/tools/types.ts", `import type { Extractor } from "../calibre/extract.js";`)).toEqual([
+      "src/tools/types.ts -> src/calibre/extract.ts",
+    ]);
+    expect(at("src/tools/types.ts", `import type { ToolDeps } from "./deps.js";`)).toEqual([]);
     expect(at("src/config.ts", `import { discoverCalibredb } from "./calibre/discover.js";`)).toEqual([
       "src/config.ts -> src/calibre/discover.ts",
     ]);
