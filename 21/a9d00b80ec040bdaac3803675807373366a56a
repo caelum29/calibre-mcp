@@ -1,0 +1,23 @@
+test/tools/channel-parity.test.ts
+  s_8daf88438d71af::t_91cf22c7f92d01 51-53,79,82,187-193
+  s_8daf88438d71af::t_24f02f350f89b7 41-43,83
+  s_8daf88438d71af::t_c7944b096251b0 84,194-198
+src/tools/calibre_list_libraries.ts
+  s_8daf88438d71af::t_3bcad0436bb242 31-37,40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "21a9d00b80ec040bdaac3803675807373366a56a",
+  "prompts": {},
+  "sessions": {
+    "s_8daf88438d71af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e01f011e-ea43-41e7-a24e-bc2595293cf1",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
