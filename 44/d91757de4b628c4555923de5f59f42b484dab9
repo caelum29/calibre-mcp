@@ -1,0 +1,96 @@
+src/tools/bundles.ts
+  s_7f567bda30ea9f::t_6a2de7a98219fc 189-195,215
+  s_7f567bda30ea9f::t_427f2477ba9a63 73-77,79-82,85,94-102,104-106,110-134,137-140,144,148-156,180-184,304,311
+src/server.ts
+  s_7f567bda30ea9f::t_c4d01a0c1e8434 13,15,73-75,78-81
+src/calibre/busy.ts
+  s_7f567bda30ea9f::t_a8e01b7e3c7e81 1-46,48-88
+  s_7f567bda30ea9f::t_89317b32632f65 47
+src/calibre/fts.ts
+  s_7f567bda30ea9f::t_f1baab530f205e 1-11,13-54,56,64-78,80-88,90-143,145-146
+  s_7f567bda30ea9f::t_b74d7db862babb 12,144
+  s_7f567bda30ea9f::t_6a2de7a98219fc 55,57-63,79,89
+test/calibre/busy.test.ts
+  s_7f567bda30ea9f::t_5af1726cb8566e 1-57
+src/tools/calibre_search.ts
+  s_7f567bda30ea9f::t_89317b32632f65 78,80,113,213,215-223,225-226,233-234,315-316,397-401,466,478
+  s_7f567bda30ea9f::t_176b5eb3376106 3,5-6,11-21,37,77,83-84,91-96,111,186-212,224,230,232,235,237,239-246,249,253,262,264,269-271,276-277,292,304,306,319-321,348,379-396,402-410,445-448,452-453,455,463,473,476-477,480-483
+  s_7f567bda30ea9f::t_6a2de7a98219fc 231,263,318
+  s_7f567bda30ea9f::t_cbb3c2e9d2e3ab 214
+test/tools/search-deadline.test.ts
+  s_7f567bda30ea9f::t_89317b32632f65 7,20-22,34-41,45-46,49-50
+  s_7f567bda30ea9f::t_e1ada381ed69c3 1-6,8-19,23-33,42-44,47-48,51-122
+docs/tool-catalog.json
+  s_7f567bda30ea9f::t_9f523cff73eeba 1518,1959-1974,1990-1995
+test/calibre/fts-service.test.ts
+  s_7f567bda30ea9f::t_89317b32632f65 35
+  s_7f567bda30ea9f::t_05a3160cfc8efa 1-22,26,30-34,36,38,40-47,49-57,59-71,73-84,86-88
+  s_7f567bda30ea9f::t_6a2de7a98219fc 23-25,27-29,37,39,48,58,72,85
+src/calibre/client.ts
+  s_7f567bda30ea9f::t_a7dec0752a03ba 17,32-36,50-51,74,85-87,94
+test/calibre/client-busy.test.ts
+  s_7f567bda30ea9f::t_7f5d40bb31ad88 1-38,40-53
+  s_7f567bda30ea9f::t_ffe7d58cefb369 39
+test/tools/board-meta.test.ts
+  s_7f567bda30ea9f::t_a11e163b721027 14,135-138
+test/tools/ping.handler.test.ts
+  s_7f567bda30ea9f::t_7ce87d26fdce4b 8-9,109-113,117-128
+  s_7f567bda30ea9f::t_89317b32632f65 114-116
+  s_7f567bda30ea9f::t_e197d7c4ef0d79 129
+src/shared/deadline.ts
+  s_7f567bda30ea9f::t_112170db24d3ca 1-53
+test/tools/fake-fts.ts
+  s_7f567bda30ea9f::t_0466b6cf019339 1-37,39-43
+  s_7f567bda30ea9f::t_89317b32632f65 38
+test/tools/bundle-filter.test.ts
+  s_7f567bda30ea9f::t_be43657d34fd01 179
+  s_7f567bda30ea9f::t_a11e163b721027 7,14,38,64
+src/tools/calibre_ping.ts
+  s_7f567bda30ea9f::t_647bc11446f261 3-4,10,12,22-23,38-40,42,53-54,57,61,87-96
+  s_7f567bda30ea9f::t_576bf8c0ca84ee 97
+src/tools/types.ts
+  s_7f567bda30ea9f::t_c4d01a0c1e8434 8,13,93-99
+test/tools/search.handler.test.ts
+  s_7f567bda30ea9f::t_a11e163b721027 8-9,25,39,44
+  s_7f567bda30ea9f::t_2da945753e3b45 117,152,223,283
+  s_7f567bda30ea9f::t_be43657d34fd01 259,262
+src/tools/remediation.ts
+  s_7f567bda30ea9f::t_51c0955fcc218a 23-29,32
+  s_7f567bda30ea9f::t_4fca8e78351e6c 30-31,33-34
+test/tools/channel-parity.test.ts
+  s_7f567bda30ea9f::t_a11e163b721027 336-338
+  s_7f567bda30ea9f::t_7357f5b1555281 23
+test/tools/steers-251.test.ts
+  s_7f567bda30ea9f::t_be43657d34fd01 1,8-9,11,29-35,39,43,48,51-57,60-61,64,67-68,71-76
+src/calibre/content-server.ts
+  s_7f567bda30ea9f::t_982b184b173041 10-13,18-27,130-151,201,216,232,286,289,302,320-322,335-388,390-403
+  s_7f567bda30ea9f::t_89317b32632f65 389
+src/domain/search.ts
+  s_7f567bda30ea9f::t_982b184b173041 19-20,23-33
+src/domain/errors.ts
+  s_7f567bda30ea9f::t_61a1afaccecb45 17-72
+src/calibre/http.ts
+  s_7f567bda30ea9f::t_a792bf48246cb7 10,53,62,66-68,75-78
+  s_7f567bda30ea9f::t_ae20d1df9b9ce2 79-80
+src/semantic/index-builds.ts
+  s_7f567bda30ea9f::t_3fe40ea23087df 6,8-9
+test/calibre/fts-http.test.ts
+  s_7f567bda30ea9f::t_df6634159c867e 1-92,94-108
+  s_7f567bda30ea9f::t_9a0a8499b46dae 93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "44d91757de4b628c4555923de5f59f42b484dab9",
+  "prompts": {},
+  "sessions": {
+    "s_7f567bda30ea9f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1fd2b93-d788-4845-8f7d-593e13bb0509",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
