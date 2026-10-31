@@ -39,15 +39,18 @@ export function cancelledResult(c: {
   chunks: number;
 }): ToolResult {
   return toolError(
+    "cancelled",
     `Index build cancelled after ${c.done}/${c.booksRequested} book(s) (${c.booksIndexed} indexed, ` +
       `${c.booksSkipped} up-to-date). Books finished before the cancel stay indexed — re-run the same ` +
       "call to continue (finished books are skipped).",
     {
-      booksRequested: c.booksRequested,
-      booksIndexed: c.booksIndexed,
-      booksSkipped: c.booksSkipped,
-      chunks: c.chunks,
-      cancelled: true,
+      structured: {
+        booksRequested: c.booksRequested,
+        booksIndexed: c.booksIndexed,
+        booksSkipped: c.booksSkipped,
+        chunks: c.chunks,
+        cancelled: true,
+      },
     },
   );
 }
@@ -149,9 +152,10 @@ function overlapText(p: BuildProgress, caller: CallerSelection | undefined): str
 /** isError result for a background build that threw: the reason, and that a re-run retries. */
 export function backgroundFailedResult(reason: string, finishedAgoMs: number): ToolResult {
   return toolError(
+    "index_build_failed",
     `The background build an earlier call started failed ${ago(finishedAgoMs)}: ${reason}. Books it committed ` +
       "before the failure stay indexed; re-run the same call to retry (finished books are skipped).",
-    { backgroundBuildFailed: true, failures: [reason] },
+    { structured: { backgroundBuildFailed: true, failures: [reason] } },
   );
 }
 

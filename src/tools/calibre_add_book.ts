@@ -8,6 +8,7 @@ import { validateAddPath } from "./add-path.js";
 import { probeDuplicates, renderHint, type PossibleDuplicate } from "./add-dup-probe.js";
 import { toolError, toolOk } from "./result.js";
 import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "../app/write-policy.js";
+import { errorCodeFor } from "../domain/error-codes.js";
 
 /**
  * Pull the numeric ids out of calibredb's "Added book ids: 1, 2" success line. Matching is
@@ -46,7 +47,8 @@ export const addBookTool = defineTool({
   handler: async (args, deps) => {
     try {
       const check = validateAddPath(args.path, deps.config.addRoots);
-      if (!check.ok) return toolError(check.reason);
+      if (!check.ok)
+        return check.outsideRoots ? toolError("path_not_allowed", check.reason) : toolError("not_found", check.reason);
 
       // calibredb --with-library needs the library ID, not the display name (routed-write 404 fix).
       const libId = await deps.content.resolveLibraryId(args.library);
@@ -60,7 +62,7 @@ export const addBookTool = defineTool({
           timeoutMs: 120_000,
         }));
       } catch (err) {
-        if (isWriteRefused(err)) return toolError(WRITE_REFUSED_MESSAGE);
+        if (isWriteRefused(err)) return toolError("write_refused", WRITE_REFUSED_MESSAGE);
         throw err;
       }
 
@@ -90,7 +92,7 @@ export const addBookTool = defineTool({
         ...(dups.length > 0 ? { possibleDuplicates: dups } : {}),
       });
     } catch (err) {
-      return toolError(err instanceof Error ? err.message : String(err));
+      return toolError(errorCodeFor(err), err instanceof Error ? err.message : String(err));
     }
   },
 });

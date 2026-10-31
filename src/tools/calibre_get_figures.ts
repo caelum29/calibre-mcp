@@ -14,6 +14,7 @@ import { bookIdArg, resolveNumericId } from "./resolve-id.js";
 import { fence, toolError, toolOk } from "./result.js";
 import type { ContentBlock } from "./types.js";
 import type { ToolDeps } from "./deps.js";
+import { errorCodeFor } from "../domain/error-codes.js";
 
 /** Figures come from the source file, so only these formats work (D-018). */
 const FIGURE_FORMATS = ["epub", "pdf"] as const;
@@ -58,16 +59,17 @@ export const getFiguresTool = defineTool({
   annotations: { readOnlyHint: true, openWorldHint: true },
   handler: async (args, deps, ctx) => {
     const idArg = bookIdArg(args);
-    if (idArg === undefined) return toolError("Provide id (the book's db id or uuid).");
+    if (idArg === undefined) return toolError("invalid_input", "Provide id (the book's db id or uuid).");
     try {
       const numericId = await resolveNumericId(deps, idArg, args.library);
-      if (numericId === undefined) return toolError(`No book with id/uuid ${idArg}`);
+      if (numericId === undefined) return toolError("not_found", `No book with id/uuid ${idArg}`);
 
       const book = await deps.content.getBook(numericId, args.library);
       const fmt = chooseFigureFormat(book.formats, args.format);
       if (!fmt || !FIGURE_FORMATS.includes(fmt as (typeof FIGURE_FORMATS)[number])) {
         const avail = book.formats.length ? book.formats.join(", ") : "none";
         return toolError(
+          "not_found",
           `Figures need an EPUB or PDF source; book ${numericId} has: ${avail}` +
             (args.format ? ` (requested format: ${args.format})` : "") +
             ". Omit format to auto-pick, or convert the book first.",
@@ -99,9 +101,9 @@ export const getFiguresTool = defineTool({
       return listFigures(args, { numericId, fmt, inventory }, otherFormats);
     } catch (err) {
       if (err instanceof CalibreHttpError && err.status === 404) {
-        return toolError(`No book with id ${idArg} in the requested library`);
+        return toolError("not_found", `No book with id ${idArg} in the requested library`);
       }
-      return toolError(err instanceof Error ? err.message : String(err));
+      return toolError(errorCodeFor(err), err instanceof Error ? err.message : String(err));
     }
   },
 });
@@ -195,19 +197,24 @@ async function fetchFigures(
   const indexes = args.indexes ?? [];
   if (indexes.length > MAX_INDEXES_PER_CALL) {
     return toolError(
+      "invalid_input",
       `At most ${MAX_INDEXES_PER_CALL} figures per call (asked: ${indexes.length}) — split into multiple calls.`,
     );
   }
   const invalid = indexes.filter((i) => !inventory.entries[i]);
   if (invalid.length > 0) {
     return toolError(
+      "invalid_input",
       `No figure index ${invalid.join(", ")} in book ${numericId} (${fmt} has indexes 0–${inventory.entries.length - 1}). ` +
         `Indexes are per-format — re-run calibre_get_figures without indexes to list them for format=${fmt}.`,
     );
   }
   const hidden = indexes.filter((i) => !inventory.entries[i]?.captioned);
   if (hidden.length > 0 && !args.include_uncaptioned) {
-    return toolError(`Index ${hidden.join(", ")} is an uncaptioned image — pass include_uncaptioned=true to fetch it.`);
+    return toolError(
+      "invalid_input",
+      `Index ${hidden.join(", ")} is an uncaptioned image — pass include_uncaptioned=true to fetch it.`,
+    );
   }
 
   const outcome = await deps.figures.fetchFigures({
@@ -330,8 +337,8 @@ function skipReason(s: SkippedFigure): string {
 }
 
 function figuresError(err: unknown, bookId: number, fmt: string) {
-  if (err instanceof FiguresError) return toolError(MESSAGES[err.code].scan(bookId, fmt));
-  return toolError(err instanceof Error ? err.message : String(err));
+  if (err instanceof FiguresError) return toolError(errorCodeFor(err), MESSAGES[err.code].scan(bookId, fmt));
+  return toolError(errorCodeFor(err), err instanceof Error ? err.message : String(err));
 }
 
 function plural(n: number, word: string): string {

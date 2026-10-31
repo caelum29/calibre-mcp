@@ -28,6 +28,7 @@ import { INSTALL_TRANSFORMERS } from "./remediation.js";
 import { fence, toolError, toolOk } from "./result.js";
 import type { ContentBlock, ToolResult } from "./types.js";
 import type { ToolDeps } from "./deps.js";
+import { errorCodeFor } from "../domain/error-codes.js";
 
 export const semanticSearchTool = defineTool({
   name: "calibre_semantic_search",
@@ -129,6 +130,7 @@ export const semanticSearchTool = defineTool({
 
       if (!deps.index.hasIndex(libraryId)) {
         return toolError(
+          "index_missing",
           "No semantic index for this library yet. Run calibre_build_index with a bookId, ids, or query first (add keywordOnly=true to build a model-free keyword index).",
         );
       }
@@ -152,6 +154,7 @@ export const semanticSearchTool = defineTool({
       if ((mode === "vector" || mode === "hybrid") && !sem.semanticAvailable) {
         if (mode === "vector") {
           return toolError(
+            "dependency_missing",
             `This index was built keyword-only (no embeddings), so vector search is unavailable. ${INSTALL_TRANSFORMERS} Then rebuild with calibre_build_index { force: true }, or use mode:"keyword" now (no model needed).`,
           );
         }
@@ -163,15 +166,21 @@ export const semanticSearchTool = defineTool({
       if (effArgs.scope === "book") {
         // Bundles scope LIBRARY discovery; a named book is already the narrowest scope.
         if (effArgs.filter !== undefined) {
-          return toolError("filter (bundle) applies to scope=library only — scope=book already names one book.");
+          return toolError(
+            "invalid_input",
+            "filter (bundle) applies to scope=library only — scope=book already names one book.",
+          );
         }
         if (effArgs.bookId === undefined) {
-          return toolError("scope=book requires bookId (the book to search within).");
+          return toolError("invalid_input", "scope=book requires bookId (the book to search within).");
         }
         const numericId = await resolveNumericId(deps, effArgs.bookId, effArgs.library);
-        if (numericId === undefined) return toolError(`No book with id/uuid ${effArgs.bookId}`);
+        if (numericId === undefined) return toolError("not_found", `No book with id/uuid ${effArgs.bookId}`);
         if (!deps.index.isBookIndexed(libraryId, numericId)) {
-          return toolError(`Book ${numericId} is not indexed. Run calibre_build_index { bookId: ${numericId} } first.`);
+          return toolError(
+            "index_missing",
+            `Book ${numericId} is not indexed. Run calibre_build_index { bookId: ${numericId} } first.`,
+          );
         }
         if (effArgs.target === "figures") {
           return withIndexVersion(await figuresTarget(effArgs, deps, libraryId, numericId, sem, note), indexVersion);
@@ -188,7 +197,8 @@ export const semanticSearchTool = defineTool({
         autoExclude: true,
         library: effArgs.library,
       });
-      if (!fr.ok) return toolError(fr.error);
+      if (!fr.ok)
+        return fr.cause === undefined ? toolError("not_found", fr.error) : toolError(errorCodeFor(fr.cause), fr.error);
       const allow = await restrictSet(deps, fr.res, effArgs.library);
       const scope: FilterCtx = { fRes: fr.res, ...(allow ? { allow } : {}) };
       note = joinNotes(note, ...honestyLines(fr.res, allow?.size));
@@ -622,11 +632,12 @@ function mapError(err: unknown) {
   const m = err instanceof Error ? err.message : String(err);
   if (m === "EMBEDDER_UNAVAILABLE") {
     return toolError(
+      "dependency_missing",
       `Semantic (vector/hybrid) search needs the embedding model. ${INSTALL_TRANSFORMERS} Or search now without it: build a keyword-only index (calibre_build_index keywordOnly=true) and use mode:"keyword".`,
     );
   }
   if (m.startsWith("INDEX_INCOMPATIBLE")) {
-    return toolError(m.replace(/^INDEX_INCOMPATIBLE:\s*/, ""));
+    return toolError("index_incompatible", m.replace(/^INDEX_INCOMPATIBLE:\s*/, ""));
   }
-  return toolError(m);
+  return toolError(errorCodeFor(err), m);
 }

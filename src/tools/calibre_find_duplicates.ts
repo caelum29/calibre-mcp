@@ -13,6 +13,7 @@ import { bookResourceLink } from "./resource-link.js";
 import { selectBooks } from "../app/select-books.js";
 import { fence, renderResult, toolError, toolOk } from "./result.js";
 import type { ContentBlock } from "./types.js";
+import { errorCodeFor } from "../domain/error-codes.js";
 
 export const findDuplicatesTool = defineTool({
   name: "calibre_find_duplicates",
@@ -59,16 +60,16 @@ export const findDuplicatesTool = defineTool({
         query: [idsKey(args.ids), args.query ?? "", args.filter ?? ""].join(":"),
       };
       const start = resolveCursor(args.cursor, bind, "calibre_find_duplicates");
-      if (!start.ok) return toolError(start.error);
+      if (!start.ok) return toolError("invalid_input", start.error);
       const offset = start.offset;
 
       if (args.mode === "compare") {
         if (!args.ids || args.ids.length < 2) {
-          return toolError("compare mode requires ids with at least 2 book ids.");
+          return toolError("invalid_input", "compare mode requires ids with at least 2 book ids.");
         }
         const { books } = await selectBooks(deps, { ids: args.ids, library: args.library });
         if (books.length < 2) {
-          return toolError(`compare needs 2+ resolvable books; got ${books.length}.`);
+          return toolError("not_found", `compare needs 2+ resolvable books; got ${books.length}.`);
         }
         const report = compareBooks(books);
         const lines = report.diffs.map((d) => `${d.agree ? "=" : "≠"} ${d.field}: ${d.values.join(" | ")}`);
@@ -101,10 +102,11 @@ export const findDuplicatesTool = defineTool({
       // identical | similar → group the selection. Bundle filter (#93) scopes the sweep;
       // no auto-exclusion — dedupe is most needed exactly on the noise books.
       if (args.filter !== undefined && args.ids?.length) {
-        return toolError("Pass either ids or filter (a bundle name), not both.");
+        return toolError("invalid_input", "Pass either ids or filter (a bundle name), not both.");
       }
       const fr = await resolveFilter(deps, { filter: args.filter, autoExclude: false, library: args.library });
-      if (!fr.ok) return toolError(fr.error);
+      if (!fr.ok)
+        return fr.cause === undefined ? toolError("not_found", fr.error) : toolError(errorCodeFor(fr.cause), fr.error);
       const { books, total, capped } = await selectBooks(deps, {
         ids: args.ids,
         query: buildScopedQuery(args.query ?? "", fr.res) || undefined,
@@ -166,7 +168,7 @@ export const findDuplicatesTool = defineTool({
         page: pg,
       });
     } catch (err) {
-      return toolError(err instanceof Error ? err.message : String(err));
+      return toolError(errorCodeFor(err), err instanceof Error ? err.message : String(err));
     }
   },
 });

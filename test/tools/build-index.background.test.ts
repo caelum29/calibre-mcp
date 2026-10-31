@@ -177,6 +177,10 @@ describe("calibre_build_index background outcomes (#284)", () => {
       /^Error: The background build an earlier call started failed (just now|\d+ s ago): content server 503\. /,
     );
     expect(text(r)).toMatch(/re-run the same call to retry/);
-    expect(r.structuredContent).toEqual({ backgroundBuildFailed: true, failures: ["content server 503"] });
+    expect(r.structuredContent).toEqual({
+      backgroundBuildFailed: true,
+      failures: ["content server 503"],
+      errorCode: "index_build_failed",
+    });
   });
 });

@@ -13,6 +13,7 @@ import { decodeContentCursor, encodeContentCursor } from "./content-cursor.js";
 import { defineTool } from "./define.js";
 import { bookIdArg, resolveNumericId } from "./resolve-id.js";
 import { fence, toolError, toolOk } from "./result.js";
+import { errorCodeFor } from "../domain/error-codes.js";
 
 export const getContentTool = defineTool({
   name: "calibre_get_content",
@@ -72,16 +73,19 @@ export const getContentTool = defineTool({
   annotations: { readOnlyHint: true, openWorldHint: true },
   handler: async (args, deps, ctx) => {
     const idArg = bookIdArg(args);
-    if (idArg === undefined) return toolError("Provide id (the book's db id or uuid).");
+    if (idArg === undefined) return toolError("invalid_input", "Provide id (the book's db id or uuid).");
     try {
       const numericId = await resolveNumericId(deps, idArg, args.library);
-      if (numericId === undefined) return toolError(`No book with id/uuid ${idArg}`);
+      if (numericId === undefined) return toolError("not_found", `No book with id/uuid ${idArg}`);
 
       const book = await deps.content.getBook(numericId, args.library);
       const fmt = chooseExtractFormat(book.formats, args.format);
       if (!fmt) {
         const avail = book.formats.length ? book.formats.join(", ") : "none";
-        return toolError(`Book ${numericId} has no extractable text format (available: ${avail}). Add an EPUB or PDF.`);
+        return toolError(
+          "not_found",
+          `Book ${numericId} has no extractable text format (available: ${avail}). Add an EPUB or PDF.`,
+        );
       }
 
       const libId = await deps.content.resolveLibraryId(args.library);
@@ -102,33 +106,41 @@ export const getContentTool = defineTool({
         const m = err instanceof Error ? err.message : String(err);
         if (m === "NO_PDF_BACKEND") {
           return toolError(
+            "dependency_missing",
             "No PDF text extractor found (pdftotext / PyMuPDF / ebook-convert). Install poppler (brew install poppler) or PyMuPDF (pip install pymupdf).",
           );
         }
         if (m === "NO_EPUB_BACKEND") {
-          return toolError("No ebook extractor found — Calibre's ebook-convert is required.");
+          return toolError("dependency_missing", "No ebook extractor found — Calibre's ebook-convert is required.");
         }
         // A stall is the Content Server going quiet mid-transfer — retrying usually works
         // (the partially warmed page cache makes the second attempt much faster).
         if (m.includes("Download stalled")) {
           return toolError(
+            "timeout",
             `${m} while fetching book ${numericId} (${fmt}). Retry — the file is likely just very large.`,
           );
         }
         if (m === "EXTRACT_TIMEOUT" || m.toLowerCase().includes("timed out")) {
-          return toolError(`Text extraction timed out for book ${numericId} (${fmt}). The file may be very large.`);
+          return toolError(
+            "timeout",
+            `Text extraction timed out for book ${numericId} (${fmt}). The file may be very large.`,
+          );
         }
         if (m.includes("size limit")) {
-          return toolError("Book file exceeds the 64 MB extraction limit; cannot extract.");
+          return toolError("extraction_failed", "Book file exceeds the 64 MB extraction limit; cannot extract.");
         }
         if (m === "EXTRACT_FAILED") {
-          return toolError(`Could not extract text from book ${numericId} (${fmt}).`);
+          return toolError("extraction_failed", `Could not extract text from book ${numericId} (${fmt}).`);
         }
         throw err;
       }
 
       if (extracted.text.trim().length === 0) {
-        return toolError(`No extractable text found in book ${numericId} (${fmt}) — ${noTextReason(fmt)}.`);
+        return toolError(
+          "extraction_failed",
+          `No extractable text found in book ${numericId} (${fmt}) — ${noTextReason(fmt)}.`,
+        );
       }
 
       // structure mode: return a chapter map (with per-chapter cursors), not book text.
@@ -168,21 +180,27 @@ export const getContentTool = defineTool({
       // A cursor must decode AND match this book+format — anything else errors loudly.
       // Silent restart-at-0 shipped first and produced invisible pagination loops (#26).
       if (args.cursor !== undefined && args.offset !== undefined) {
-        return toolError("Pass either cursor (continuation token) or offset (char position), not both.");
+        return toolError(
+          "invalid_input",
+          "Pass either cursor (continuation token) or offset (char position), not both.",
+        );
       }
       const cur = decodeContentCursor(args.cursor);
       if (args.cursor !== undefined && !cur) {
         return toolError(
+          "invalid_input",
           "Invalid cursor — pass the exact nextCursor token from the previous calibre_get_content response (it is opaque), or use the numeric offset param to jump to a char position. Cursors minted before a server upgrade are also invalid: restart the book from the beginning.",
         );
       }
       if (cur && (cur.id !== numericId || cur.format !== fmt)) {
         return toolError(
+          "invalid_input",
           `Cursor was minted for book ${cur.id} (${cur.format}), not book ${numericId} (${fmt}) — omit cursor to start this book from the beginning.`,
         );
       }
       if (args.offset !== undefined && args.offset >= extracted.text.length) {
         return toolError(
+          "invalid_input",
           `offset ${args.offset} is past the end of book ${numericId} (${extracted.text.length} chars total).`,
         );
       }
@@ -212,10 +230,10 @@ export const getContentTool = defineTool({
       });
     } catch (err) {
       if (err instanceof CalibreHttpError && err.status === 404) {
-        return toolError(`No book with id ${args.id} in the requested library`);
+        return toolError("not_found", `No book with id ${args.id} in the requested library`);
       }
       const msg = err instanceof Error ? err.message : String(err);
-      return toolError(msg);
+      return toolError(errorCodeFor(err), msg);
     }
   },
 });

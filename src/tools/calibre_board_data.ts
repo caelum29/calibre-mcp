@@ -9,6 +9,7 @@ import { z } from "zod";
 import type { BoardPayload } from "../ui/board-cache.js";
 import { defineTool } from "./define.js";
 import { toolError, toolOk } from "./result.js";
+import { errorCodeFor } from "../domain/error-codes.js";
 
 export const boardDataTool = defineTool({
   name: "calibre_board_data",
@@ -55,14 +56,20 @@ export const boardDataTool = defineTool({
         libraryId = await deps.content.resolveLibraryId(args.library);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        return toolError(`Cannot resolve library "${args.library ?? "(default)"}" for the board: ${msg}`);
+        return toolError(
+          errorCodeFor(err),
+          `Cannot resolve library "${args.library ?? "(default)"}" for the board: ${msg}`,
+        );
       }
       payload = deps.boardCache?.get(args.tool, args.query, libraryId, args.filter);
     } else {
       payload = deps.boardCache?.get(args.tool);
     }
     if (!payload) {
-      return toolError("No cached board data for this search — run calibre_search or calibre_semantic_search first.");
+      return toolError(
+        "not_found",
+        "No cached board data for this search — run calibre_search or calibre_semantic_search first.",
+      );
     }
     return toolOk([{ type: "text", text: `Board payload: ${payload.books.length} book(s) for "${payload.query}".` }], {
       ...payload,

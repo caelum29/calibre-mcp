@@ -39,6 +39,7 @@ import { ENABLE_FTS_STEPS, KEYWORD_SEARCH_FALLBACK } from "./remediation.js";
 import { fence, renderResult, toolError, toolOk } from "./result.js";
 import type { ContentBlock, ToolResult } from "./types.js";
 import type { ToolDeps } from "./deps.js";
+import { errorCodeFor } from "../domain/error-codes.js";
 
 type SearchArgs = {
   query: string;
@@ -92,7 +93,7 @@ async function metaLibraryScope(
   const sort = [args.sort, args.sortOrder].filter(Boolean).join(":") || undefined;
   const bind = { libId, mode: "search:meta", query: effQuery, sort };
   const start = resolveCursor(args.cursor, bind, "calibre_search");
-  if (!start.ok) return toolError(start.error);
+  if (!start.ok) return toolError("invalid_input", start.error);
   const offset = start.offset;
 
   const page = await deps.content.search({
@@ -235,7 +236,7 @@ async function ftsLibraryScope(call: FtsCall, fRes: FilterResolution): Promise<T
   const cursorKey = isScoped(fRes) ? `${args.query}::${scopeExpression(fRes)}` : args.query;
   const bind = { libId, mode: "search:fts", query: cursorKey };
   const start = resolveCursor(args.cursor, bind, "calibre_search");
-  if (!start.ok) return toolError(start.error);
+  if (!start.ok) return toolError("invalid_input", start.error);
   const offset = start.offset;
   // The FTS query is raw match syntax — no Calibre grammar to expand a bundle into — so
   // the filter restricts by book-id set instead (one /ajax/search on the scope expression).
@@ -332,7 +333,7 @@ async function ftsBookScope(call: FtsCall, bookId: number): Promise<ToolResult> 
   const cursorKey = `${args.query}::book:${bookId}`;
   const bind = { libId, mode: "search:book", query: cursorKey };
   const start = resolveCursor(args.cursor, bind, "calibre_search");
-  if (!start.ok) return toolError(start.error);
+  if (!start.ok) return toolError("invalid_input", start.error);
   const offset = start.offset;
   const batch = await fts.snippets(args.query, libId, [bookId], { deadline, signal });
   // The one book's request stalled — say so rather than report "0 matches".
@@ -474,12 +475,19 @@ export const searchTool = defineTool({
       // Bundles scope LIBRARY discovery; a named book is already the narrowest scope.
       if (args.scope === "book") {
         if (args.filter !== undefined) {
-          return toolError("filter (bundle) applies to scope=library only — scope=book already names one book.");
+          return toolError(
+            "invalid_input",
+            "filter (bundle) applies to scope=library only — scope=book already names one book.",
+          );
         }
-        if (args.bookId === undefined) return toolError("scope=book requires bookId");
-        if (!fts) return toolError(`Full-text search isn't available in this server build. ${KEYWORD_SEARCH_FALLBACK}`);
+        if (args.bookId === undefined) return toolError("invalid_input", "scope=book requires bookId");
+        if (!fts)
+          return toolError(
+            "fts_unavailable",
+            `Full-text search isn't available in this server build. ${KEYWORD_SEARCH_FALLBACK}`,
+          );
         const bookId = await resolveNumericId(deps, args.bookId, args.library);
-        if (bookId === undefined) return toolError(`No book with id/uuid ${args.bookId}`);
+        if (bookId === undefined) return toolError("not_found", `No book with id/uuid ${args.bookId}`);
         return await ftsBookScope({ args, deps, fts, deadline, signal: ctx?.signal }, bookId);
       }
       const fr = await resolveFilter(deps, {
@@ -489,17 +497,22 @@ export const searchTool = defineTool({
         library: args.library,
         timeoutMs: deadline.timeoutFor(),
       });
-      if (!fr.ok) return toolError(fr.error);
+      if (!fr.ok)
+        return fr.cause === undefined ? toolError("not_found", fr.error) : toolError(errorCodeFor(fr.cause), fr.error);
       if (args.mode === "fts") {
-        if (!fts) return toolError(`Full-text search isn't available in this server build. ${KEYWORD_SEARCH_FALLBACK}`);
+        if (!fts)
+          return toolError(
+            "fts_unavailable",
+            `Full-text search isn't available in this server build. ${KEYWORD_SEARCH_FALLBACK}`,
+          );
         return await ftsLibraryScope({ args, deps, fts, deadline, signal: ctx?.signal }, fr.res);
       }
       return await metaLibraryScope(args, deps, fr.res, deadline);
     } catch (err) {
       const steer = searchErrorSteer(err, deadline);
-      if (steer !== undefined) return toolError(steer);
+      if (steer !== undefined) return toolError(errorCodeFor(err), steer);
       const msg = err instanceof Error ? err.message : String(err);
-      return toolError(msg);
+      return toolError(errorCodeFor(err), msg);
     }
   },
 });

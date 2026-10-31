@@ -33,6 +33,7 @@ import { figuresHtml, FIGURES_URI } from "./ui/figures-html.js";
 import { log } from "./logging.js";
 import { withCallLog } from "./call-log.js";
 import { VERSION } from "./version.js";
+import { defaultHint, errorCodeFor } from "./domain/error-codes.js";
 
 // Structural stand-in for ext-apps' McpUiToolMeta — the root package entry's types break
 // under NodeNext (ext-apps#704); only the /server entry resolves, and it doesn't re-export this.
@@ -114,7 +115,13 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
   // Every tool call runs inside one logged call context.
   const logged = (tool: string, args: unknown, extra: Extra, run: () => Promise<CallToolResult>) => {
     tagClient();
-    return withCallLog(log, { tool, args, rpcId: extra.mcpReq.id }, run);
+    // W3C trace context arrives unprefixed in params._meta (OTel MCP semconv, SEP-414).
+    const traceparent = extra.mcpReq._meta?.traceparent;
+    return withCallLog(
+      log,
+      { tool, args, rpcId: extra.mcpReq.id, ...(typeof traceparent === "string" ? { traceparent } : {}) },
+      run,
+    );
   };
 
   // Fail loud at boot if any non-read-only tool is unclassified (no write / localWrite).
@@ -141,21 +148,23 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
         } catch (err) {
           if (err instanceof OperationCancelledError) {
             // The client cancelled; the SDK drops this response anyway. Keep it a result.
-            return toolError(`${t.name} was cancelled.`, { errorCode: err.name }) as CallToolResult;
+            return toolError("cancelled", `${t.name} was cancelled.`) as CallToolResult;
           }
           const name = err instanceof Error ? err.name : "Error";
           const msg = err instanceof Error ? err.message : String(err);
+          const code = errorCodeFor(err);
+          const hint = defaultHint(code);
           log.error("tool threw", {
             name,
             msg,
+            errorCode: code,
+            ...(hint === undefined ? {} : { hint }),
             stack: err instanceof Error ? err.stack : undefined,
           });
           // Surface the error NAME + message to the model (issue #73): domain errors keep
           // their messages host-path-free by contract (domain/errors.ts), so this is safe
           // to show and gives the agent something actionable instead of a blind retry.
-          return toolError(`internal error in ${t.name} — ${name}: ${msg}`, {
-            errorCode: name,
-          }) as CallToolResult;
+          return toolError(errorCodeFor(err), `internal error in ${t.name} — ${name}: ${msg}`) as CallToolResult;
         }
       });
     // UI-bearing tools go through registerAppTool (normalizes _meta.ui for older hosts);

@@ -155,6 +155,7 @@ describe("calibre_bulk_update breaker text (#233)", () => {
         throw cli("Forbidden");
       }),
     );
-    expect(r.structuredContent).toBeUndefined();
+    // only the code + hint (#249), no applied/failed ledger
+    expect(Object.keys(r.structuredContent ?? {}).sort()).toEqual(["errorCode", "hint"]);
   });
 });

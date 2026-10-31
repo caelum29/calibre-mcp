@@ -15,6 +15,8 @@ import type { LibId } from "../calibre/lib-id.js";
 import { toolError, toolOk } from "./result.js";
 import type { ToolDeps } from "./deps.js";
 import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "../app/write-policy.js";
+import type { ToolResult } from "./types.js";
+import { errorCodeFor } from "../domain/error-codes.js";
 
 export { mergeBundles, parseSavedSearches } from "../app/bundles.js";
 
@@ -41,19 +43,21 @@ async function countMatches(
   deps: ToolDeps,
   expression: string,
   library?: string,
-): Promise<{ total: number } | { error: string }> {
+): Promise<{ total: number } | { failure: ToolResult }> {
   try {
     const page = await deps.content.search({ query: expression, library, num: 0 });
     return { total: page.total };
   } catch (err) {
     if (err instanceof CalibreHttpError && err.status >= 500) {
       return {
-        error:
+        failure: toolError(
+          "invalid_input",
           `Calibre rejected the search expression \`${expression}\` as invalid syntax. ` +
-          "Fix the expression (Calibre search grammar, e.g. `tag:rust and format:EPUB`) and retry.",
+            "Fix the expression (Calibre search grammar, e.g. `tag:rust and format:EPUB`) and retry.",
+        ),
       };
     }
-    return { error: err instanceof Error ? err.message : String(err) };
+    return { failure: toolError(errorCodeFor(err), err instanceof Error ? err.message : String(err)) };
   }
 }
 
@@ -100,7 +104,13 @@ function previewText(
  * a returned reason (rather than a throw) is what lets the update path roll back and still
  * report WHY the write failed.
  */
-async function tryWrite(deps: ToolDeps, args: readonly string[], libId: LibId): Promise<string | undefined> {
+/** A failed bundle write: its message (for composed steers) and the ready error result. */
+interface WriteFailure {
+  message: string;
+  error: ToolResult;
+}
+
+async function tryWrite(deps: ToolDeps, args: readonly string[], libId: LibId): Promise<WriteFailure | undefined> {
   try {
     await deps.calibre.calibredb(args, { library: libId });
     // The discovery tools read bundles through a TTL cache — a committed write must be
@@ -108,8 +118,10 @@ async function tryWrite(deps: ToolDeps, args: readonly string[], libId: LibId): 
     invalidateBundleCache(libId);
     return undefined;
   } catch (err) {
-    if (isWriteRefused(err)) return WRITE_REFUSED_MESSAGE;
-    return err instanceof Error ? err.message : String(err);
+    if (isWriteRefused(err))
+      return { message: WRITE_REFUSED_MESSAGE, error: toolError("write_refused", WRITE_REFUSED_MESSAGE) };
+    const message = err instanceof Error ? err.message : String(err);
+    return { message, error: toolError(errorCodeFor(err), message) };
   }
 }
 
@@ -160,7 +172,7 @@ export const manageBundlesTool = defineTool({
         });
       }
 
-      if (!name) return toolError(`action=${args.action} requires a bundle name.`);
+      if (!name) return toolError("invalid_input", `action=${args.action} requires a bundle name.`);
 
       const bundles = await loadBundles(deps, args.library);
       const existing = bundles.find((b) => b.name === name);
@@ -170,6 +182,7 @@ export const manageBundlesTool = defineTool({
       // silently creating a same-named saved search that would shadow it.
       if (existing?.kind === "virtual_library") {
         return toolError(
+          "invalid_input",
           `"${name}" is a virtual library, which is read-only here — calibre-mcp cannot create, ` +
             "change or delete virtual libraries. Manage it in the Calibre GUI, or use a differently " +
             "named bundle (saved search) instead.",
@@ -180,7 +193,10 @@ export const manageBundlesTool = defineTool({
 
       if (args.action === "delete") {
         if (!existing) {
-          return toolError(`No bundle named "${name}". Existing bundles: ${writableNames.join(", ") || "(none)"}.`);
+          return toolError(
+            "not_found",
+            `No bundle named "${name}". Existing bundles: ${writableNames.join(", ") || "(none)"}.`,
+          );
         }
         if (!args.confirm) {
           return toolOk(
@@ -197,7 +213,7 @@ export const manageBundlesTool = defineTool({
           );
         }
         const failure = await tryWrite(deps, buildSavedSearchArgs("remove", name), libId);
-        if (failure) return toolError(failure);
+        if (failure) return failure.error;
         return toolOk([{ type: "text", text: `Deleted the saved search "${name}". No books were touched.` }], {
           action: "delete",
           applied: true,
@@ -206,22 +222,27 @@ export const manageBundlesTool = defineTool({
 
       // create / update
       if (!expression) {
-        return toolError(`action=${args.action} requires an expression (Calibre search grammar, e.g. \`tag:rust\`).`);
+        return toolError(
+          "invalid_input",
+          `action=${args.action} requires an expression (Calibre search grammar, e.g. \`tag:rust\`).`,
+        );
       }
       if (args.action === "create" && existing) {
         return toolError(
+          "invalid_input",
           `A bundle named "${name}" already exists (\`${existing.expression}\`). ` + "Use action=update to change it.",
         );
       }
       if (args.action === "update" && !existing) {
         return toolError(
+          "not_found",
           `No bundle named "${name}" to update. Existing bundles: ` +
             `${writableNames.join(", ") || "(none)"}. Use action=create to add it.`,
         );
       }
 
       const count = await countMatches(deps, expression, args.library);
-      if ("error" in count) return toolError(count.error);
+      if ("failure" in count) return count.failure;
 
       if (!args.confirm) {
         return toolOk([{ type: "text", text: previewText(args.action, name, expression, count.total, existing) }], {
@@ -238,23 +259,29 @@ export const manageBundlesTool = defineTool({
       const oldExpression = args.action === "update" ? (existing?.expression ?? "") : undefined;
       if (args.action === "update") {
         const removeFailure = await tryWrite(deps, buildSavedSearchArgs("remove", name), libId);
-        if (removeFailure) return toolError(removeFailure);
+        if (removeFailure) return removeFailure.error;
       }
 
       const addFailure = await tryWrite(deps, buildSavedSearchArgs("add", name, expression), libId);
       if (addFailure) {
-        if (oldExpression === undefined) return toolError(addFailure);
+        if (oldExpression === undefined) return addFailure.error;
         const rollbackFailure = await tryWrite(deps, buildSavedSearchArgs("add", name, oldExpression), libId);
         if (rollbackFailure) {
-          deps.log.error("bundle update rollback failed", { name, addFailure, rollbackFailure });
+          deps.log.error("bundle update rollback failed", {
+            name,
+            addFailure: addFailure.message,
+            rollbackFailure: rollbackFailure.message,
+          });
           return toolError(
-            `Update of bundle "${name}" failed (${addFailure}), and restoring the original ` +
-              `also failed (${rollbackFailure}) — the bundle no longer exists. Recreate it with ` +
+            "write_failed",
+            `Update of bundle "${name}" failed (${addFailure.message}), and restoring the original ` +
+              `also failed (${rollbackFailure.message}) — the bundle no longer exists. Recreate it with ` +
               `action=create, name "${name}", expression \`${oldExpression}\`.`,
           );
         }
         return toolError(
-          `Update of bundle "${name}" failed (${addFailure}). The original expression ` +
+          "write_failed",
+          `Update of bundle "${name}" failed (${addFailure.message}). The original expression ` +
             `\`${oldExpression}\` was restored, so nothing was lost. Fix the new expression and retry.`,
         );
       }
@@ -277,7 +304,7 @@ export const manageBundlesTool = defineTool({
         },
       );
     } catch (err) {
-      return toolError(err instanceof Error ? err.message : String(err));
+      return toolError(errorCodeFor(err), err instanceof Error ? err.message : String(err));
     }
   },
 });

@@ -12,6 +12,7 @@ import { defineTool } from "./define.js";
 import { resolveNumericId } from "./resolve-id.js";
 import { toolError, toolOk } from "./result.js";
 import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "../app/write-policy.js";
+import { errorCodeFor } from "../domain/error-codes.js";
 
 export const removeBookTool = defineTool({
   name: "calibre_remove_book",
@@ -35,7 +36,7 @@ export const removeBookTool = defineTool({
   handler: async (args, deps) => {
     try {
       if (!Array.isArray(args.ids) || args.ids.length === 0) {
-        return toolError("Provide at least one book id to remove.");
+        return toolError("invalid_input", "Provide at least one book id to remove.");
       }
 
       // Resolve every id (uuids too); drop unknowns so a stale id can't take the batch down.
@@ -44,7 +45,7 @@ export const removeBookTool = defineTool({
         const num = await resolveNumericId(deps, id, args.library);
         if (num !== undefined) numericIds.push(num);
       }
-      if (numericIds.length === 0) return toolError("None of the given ids resolved to a book.");
+      if (numericIds.length === 0) return toolError("not_found", "None of the given ids resolved to a book.");
 
       const map = await deps.content.booksByIds(numericIds, args.library);
       const targets = numericIds.map((id) => ({ id, title: map.get(id)?.title }));
@@ -72,7 +73,7 @@ export const removeBookTool = defineTool({
       try {
         await deps.calibre.calibredb(["remove", numericIds.join(",")], { library: libId });
       } catch (err) {
-        if (isWriteRefused(err)) return toolError(WRITE_REFUSED_MESSAGE);
+        if (isWriteRefused(err)) return toolError("write_refused", WRITE_REFUSED_MESSAGE);
         throw err;
       }
 
@@ -88,7 +89,7 @@ export const removeBookTool = defineTool({
         { deleted: true, removedIds: numericIds },
       );
     } catch (err) {
-      return toolError(err instanceof Error ? err.message : String(err));
+      return toolError(errorCodeFor(err), err instanceof Error ? err.message : String(err));
     }
   },
 });

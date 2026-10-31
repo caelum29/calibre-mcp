@@ -23,7 +23,9 @@ import {
   withTransientRetry,
   verifyTimedOutWrite,
   type TimedOutWrite,
+  isDroppedMidRequest,
 } from "../app/write-policy.js";
+import { errorCodeFor } from "../domain/error-codes.js";
 
 // One field's new value: scalar, multi-value list, or identifiers map. -32602-hardened
 // via jsonRecord (the whole `changes` object may arrive as a JSON string).
@@ -56,20 +58,21 @@ export const updateBookTool = defineTool({
     try {
       const changes = args.changes as Record<string, ChangeValue>;
       const fields = Object.keys(changes);
-      if (fields.length === 0) return toolError("Provide at least one field in changes.");
+      if (fields.length === 0) return toolError("invalid_input", "Provide at least one field in changes.");
 
       const unknown = fields.filter((f) => !isAllowedField(f));
       if (unknown.length > 0) {
         return toolError(
+          "invalid_input",
           `Unknown field(s): ${unknown.join(", ")}. Allowed: title, authors, tags, series, series_index, ` +
             `rating, publisher, pubdate, languages, comments, identifiers, or any #custom column.`,
         );
       }
 
       const idArg = bookIdArg(args);
-      if (idArg === undefined) return toolError("Provide id (the book's db id or uuid).");
+      if (idArg === undefined) return toolError("invalid_input", "Provide id (the book's db id or uuid).");
       const numericId = await resolveNumericId(deps, idArg, args.library);
-      if (numericId === undefined) return toolError(`No book with id/uuid ${idArg}`);
+      if (numericId === undefined) return toolError("not_found", `No book with id/uuid ${idArg}`);
 
       const before = await deps.content.getBook(numericId, args.library);
 
@@ -84,8 +87,12 @@ export const updateBookTool = defineTool({
           deps.sleep,
         );
       } catch (err) {
-        if (isWriteRefused(err)) return toolError(WRITE_REFUSED_MESSAGE);
-        if (classifyTransient(err)) return toolError(describeTransient(err, numericId));
+        if (isWriteRefused(err)) return toolError("write_refused", WRITE_REFUSED_MESSAGE);
+        if (classifyTransient(err)) {
+          return isDroppedMidRequest(err)
+            ? toolError("write_unverified", describeTransient(err, numericId))
+            : toolError("calibre_unreachable", describeTransient(err, numericId));
+        }
         // A routed write commits server-side BEFORE calibredb replies, so a timeout is
         // ambiguous — verify against a re-read instead of reporting failure (issue #33).
         if (err instanceof CalibreCliTimeoutError) {
@@ -120,10 +127,10 @@ export const updateBookTool = defineTool({
     } catch (err) {
       // same wording as get_book — never leak the raw HTTP text (#251)
       if (err instanceof CalibreHttpError && err.status === 404) {
-        return toolError(`No book with id ${bookIdArg(args)} in the requested library`);
+        return toolError("not_found", `No book with id ${bookIdArg(args)} in the requested library`);
       }
       const msg = err instanceof Error ? err.message : String(err);
-      return toolError(msg);
+      return toolError(errorCodeFor(err), msg);
     }
   },
 });
@@ -179,6 +186,7 @@ async function confirmTimedOutWrite(deps: ToolDeps, write: TimedOutWrite): Promi
   const check = await verifyTimedOutWrite(deps, write);
   if (check.status === "unverifiable") {
     return toolError(
+      "write_unverified",
       `calibredb timed out and the book could not be re-read to verify. The write MAY ` +
         `have been applied — check with calibre_get_book id=${id} before retrying.`,
     );
@@ -187,6 +195,7 @@ async function confirmTimedOutWrite(deps: ToolDeps, write: TimedOutWrite): Promi
     return appliedResult(id, before, check.after, Object.keys(changes));
   }
   return toolError(
+    "write_unverified",
     `calibredb timed out and a re-read does not show the changes applied. Retry, or check ` +
       `with calibre_get_book id=${id} first.`,
   );

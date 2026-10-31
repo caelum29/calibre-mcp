@@ -20,6 +20,7 @@ import { defineTool } from "./define.js";
 import { fence, toolError, toolOk } from "./result.js";
 import type { ToolDeps } from "./deps.js";
 import { isWriteRefused, WRITE_REFUSED_MESSAGE, verifyTimedOutWrite } from "../app/write-policy.js";
+import { errorCodeFor } from "../domain/error-codes.js";
 
 /** One executed (or planned) write step in the merge ledger. */
 interface Step {
@@ -72,10 +73,10 @@ export const mergeBooksTool = defineTool({
     try {
       const sourceIds = [...new Set(args.sourceIds)];
       if (sourceIds.length === 0) {
-        return toolError("Provide at least one source book id in sourceIds.");
+        return toolError("invalid_input", "Provide at least one source book id in sourceIds.");
       }
       if (sourceIds.includes(args.targetId)) {
-        return toolError("sourceIds must not include targetId — the target is the surviving record.");
+        return toolError("invalid_input", "sourceIds must not include targetId — the target is the surviving record.");
       }
 
       // Fresh reads every call: the confirm run re-verifies the sources still exist.
@@ -84,6 +85,7 @@ export const mergeBooksTool = defineTool({
       const missing = allIds.filter((id) => !map.get(id));
       if (missing.length > 0) {
         return toolError(
+          "not_found",
           `No book(s) with id ${missing.join(", ")} — check with calibre_get_book ` +
             `(they may already have been merged or removed).`,
         );
@@ -144,7 +146,7 @@ export const mergeBooksTool = defineTool({
         warnings,
       });
     } catch (err) {
-      return toolError(err instanceof Error ? err.message : String(err));
+      return toolError(errorCodeFor(err), err instanceof Error ? err.message : String(err));
     }
   },
 });
@@ -423,8 +425,9 @@ function ledgerResult(job: MergeJob, steps: Step[]) {
 
   if (!committed) {
     return toolError(
+      "write_failed",
       `Merge did not start — ${failed[0]!.note ?? failed[0]!.step}. Nothing was changed.\n` + `Steps:\n${ledger}`,
-      { ...structured, status: "incomplete" },
+      { structured: { ...structured, status: "incomplete" } },
     );
   }
 

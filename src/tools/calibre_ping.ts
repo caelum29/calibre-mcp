@@ -13,6 +13,7 @@ import { CalibreBusyError } from "../domain/errors.js";
 import { SDK_VERSION, VERSION } from "../version.js";
 import type { ToolDeps } from "./deps.js";
 import type { ToolResult } from "./types.js";
+import { defaultHint, errorCodeFor } from "../domain/error-codes.js";
 
 export const pingTool = defineTool({
   name: "calibre_ping",
@@ -39,7 +40,10 @@ export const pingTool = defineTool({
       pingError = err instanceof Error ? err.message : String(err);
       // Busy is a known, self-clearing state (reported below), not a server fault.
       if (err instanceof CalibreBusyError) deps.log.warn("ping refused: library busy", { libraryId: err.libraryId });
-      else deps.log.error("ping failed", { error: pingError });
+      else {
+        const errorCode = errorCodeFor(err);
+        deps.log.error("ping failed", { error: pingError, errorCode, hint: defaultHint(errorCode) });
+      }
     }
     const busy = busyReport(deps.libraryBusy?.busyLibraries() ?? []);
 

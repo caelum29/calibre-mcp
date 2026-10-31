@@ -184,7 +184,10 @@ export interface FilterRequest {
   timeoutMs?: number;
 }
 
-export type FilterOutcome = { ok: true; res: FilterResolution } | { ok: false; error: string };
+export type FilterOutcome =
+  | { ok: true; res: FilterResolution }
+  // `cause` = the thrown listing error; absent when the filter names no bundle (#249 code)
+  | { ok: false; error: string; cause?: unknown };
 
 // A load-bearing `filter` may wait out the caller's whole budget; the best-effort exclusion
 // sweep waits at most the short cold cap so a stalled Calibre can't hold the search hostage.
@@ -216,7 +219,7 @@ export async function resolveFilter(deps: ToolDeps, req: FilterRequest): Promise
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     if (req.filter) {
-      return { ok: false, error: `Cannot resolve filter "${req.filter}" — bundle listing failed: ${msg}` };
+      return { ok: false, error: `Cannot resolve filter "${req.filter}" — bundle listing failed: ${msg}`, cause: err };
     }
     // Exclusion sweep is best-effort: degrade honestly rather than fail the search.
     return { ok: true, res: { markers: [], degradeNote: `exclusion check unavailable (${msg})` } };

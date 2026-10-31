@@ -23,6 +23,7 @@ import {
   withTransientRetry,
   verifyTimedOutWrite,
 } from "../app/write-policy.js";
+import { errorCodeFor } from "../domain/error-codes.js";
 
 /** Hard cap on books mutated in one call — a bulk write must be a deliberate, bounded set. */
 const MAX_BULK = 500;
@@ -66,11 +67,12 @@ export const bulkUpdateTool = defineTool({
     try {
       const changes = args.changes as Record<string, ChangeValue>;
       const fields = Object.keys(changes);
-      if (fields.length === 0) return toolError("Provide at least one field in changes.");
+      if (fields.length === 0) return toolError("invalid_input", "Provide at least one field in changes.");
 
       const unknown = fields.filter((f) => !isAllowedField(f));
       if (unknown.length > 0) {
         return toolError(
+          "invalid_input",
           `Unknown field(s): ${unknown.join(", ")}. Allowed: title, authors, tags, series, series_index, ` +
             `rating, publisher, pubdate, languages, comments, identifiers, or any #custom column.`,
         );
@@ -83,24 +85,27 @@ export const bulkUpdateTool = defineTool({
       const hasFilter = args.filter !== undefined;
       if (!hasIds && !hasQuery && !hasFilter) {
         return toolError(
+          "invalid_input",
           "Select a book set: pass ids, a non-empty query, or filter (a bundle name) — all-books is not allowed.",
         );
       }
       // ids are an exact set; combining them with a query/filter would silently drop one side (#214)
       if (hasIds && (hasQuery || hasFilter)) {
-        return toolError("Pass either ids or query/filter, not both.");
+        return toolError("invalid_input", "Pass either ids or query/filter, not both.");
       }
       const fr = await resolveFilter(deps, { filter: args.filter, autoExclude: false, library: args.library });
-      if (!fr.ok) return toolError(fr.error);
+      if (!fr.ok)
+        return fr.cause === undefined ? toolError("not_found", fr.error) : toolError(errorCodeFor(fr.cause), fr.error);
 
       const selection = await selectBooks(deps, {
         ids: hasIds ? args.ids : undefined,
         query: hasIds ? undefined : buildScopedQuery(hasQuery ? (args.query as string) : "", fr.res) || undefined,
         library: args.library,
       });
-      if (selection.books.length === 0) return toolError("No books matched the selection.");
+      if (selection.books.length === 0) return toolError("not_found", "No books matched the selection.");
       if (selection.capped || selection.books.length > MAX_BULK) {
         return toolError(
+          "invalid_input",
           `Selection too large (${selection.total}); the bulk write cap is ${MAX_BULK}. ` +
             `Narrow the query or pass explicit ids.`,
         );
@@ -165,7 +170,7 @@ export const bulkUpdateTool = defineTool({
           // A refusal blocks every later write too, so stop — but once books have committed,
           // they must stay visible or the model retries the whole set (#33, #213).
           if (isWriteRefused(err)) {
-            if (applied.length === 0) return toolError(WRITE_REFUSED_MESSAGE);
+            if (applied.length === 0) return toolError("write_refused", WRITE_REFUSED_MESSAGE);
             failed.push({ id: b.id, error: WRITE_REFUSED_MESSAGE });
             return stoppedMidLoop(
               { matched: perBook.length, applied, failed, notAttempted: perBook.slice(i + 1).map((p) => p.id) },
@@ -231,7 +236,7 @@ export const bulkUpdateTool = defineTool({
         failed,
       });
     } catch (err) {
-      return toolError(err instanceof Error ? err.message : String(err));
+      return toolError(errorCodeFor(err), err instanceof Error ? err.message : String(err));
     }
   },
 });
@@ -275,5 +280,7 @@ function stoppedMidLoop(
     (notAttempted.length > 0 ? `Not attempted: ${notAttempted.join(", ")}. ` : "") +
     // writes are idempotent sets, so re-running is safe; naming the ids saves the model the set math
     `${cause.steer}, re-run with ids=[${retryIds.join(",")}].`;
-  return toolError(text, { preview: false, matched, applied, failed, notAttempted, retryIds });
+  return toolError("write_failed", text, {
+    structured: { preview: false, matched, applied, failed, notAttempted, retryIds },
+  });
 }

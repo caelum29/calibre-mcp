@@ -11,6 +11,7 @@ import { idsKey, pageCursor, resolveCursor } from "./cursor.js";
 import { defineTool } from "./define.js";
 import { selectBooks } from "../app/select-books.js";
 import { fence, renderResult, toolError } from "./result.js";
+import { errorCodeFor } from "../domain/error-codes.js";
 
 const CHECK_ENUM = z.enum([
   "missing_metadata",
@@ -65,7 +66,7 @@ export const qualityReportTool = defineTool({
       // Bundle filter (#93): maintenance tools scope by filter but never auto-subtract
       // exclusion markers — quality work is most needed exactly on the noise books.
       if (args.filter !== undefined && args.ids?.length) {
-        return toolError("Pass either ids or filter (a bundle name), not both.");
+        return toolError("invalid_input", "Pass either ids or filter (a bundle name), not both.");
       }
       // Every input that shapes the issue list is in the key, and a bad cursor is refused
       // before the (expensive) book selection (#305).
@@ -74,11 +75,12 @@ export const qualityReportTool = defineTool({
       );
       const bind = { libId: await deps.content.resolveLibraryId(args.library), mode: "quality", query: cursorKey };
       const start = resolveCursor(args.cursor, bind, "calibre_quality_report");
-      if (!start.ok) return toolError(start.error);
+      if (!start.ok) return toolError("invalid_input", start.error);
       const offset = start.offset;
 
       const fr = await resolveFilter(deps, { filter: args.filter, autoExclude: false, library: args.library });
-      if (!fr.ok) return toolError(fr.error);
+      if (!fr.ok)
+        return fr.cause === undefined ? toolError("not_found", fr.error) : toolError(errorCodeFor(fr.cause), fr.error);
 
       ctx?.progress?.(0, "Selecting books…", 2);
       const {
@@ -137,7 +139,7 @@ export const qualityReportTool = defineTool({
         page: pageCursor({ offset, fetched: page.length, total: issues.length, ...bind }),
       });
     } catch (err) {
-      return toolError(err instanceof Error ? err.message : String(err));
+      return toolError(errorCodeFor(err), err instanceof Error ? err.message : String(err));
     }
   },
 });

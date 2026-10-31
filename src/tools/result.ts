@@ -2,6 +2,7 @@
 // LLM can adapt (DESIGN §3); free-text book data is fenced so it reads as data, not
 // instructions (indirect prompt-injection mitigation, DESIGN §5).
 
+import { defaultHint, type ErrorCode } from "../domain/error-codes.js";
 import type { PageCursor } from "./cursor.js";
 import type { ContentBlock, ToolResult } from "./types.js";
 
@@ -35,14 +36,25 @@ export function renderResult(m: ResultModel): ToolResult {
   return toolOk([...m.blocks, { type: "text", text: page.textLine }], { ...m.structured, nextCursor: page.nextCursor });
 }
 
+/** Optional extras on an error result. */
+export interface ToolErrorOptions {
+  /** Machine-readable next step for the log record; defaults to the code's generic hint. */
+  hint?: string;
+  /** Extra structured fields (e.g. a partial-write ledger) kept next to errorCode. */
+  structured?: Record<string, unknown>;
+}
+
 /**
  * Error result — LLM-actionable message, not a stack trace. `message` should tell the
  * model what to do next (e.g. "Writes are disabled; set CALIBRE_MCP_ENABLE_WRITE=1").
+ * `code` (closed set, #249) and the hint go to structuredContent, where the `tool call`
+ * log record picks them up; the text the model reads is unchanged.
  */
-export function toolError(message: string, structured?: Record<string, unknown>): ToolResult {
+export function toolError(code: ErrorCode, message: string, opts: ToolErrorOptions = {}): ToolResult {
+  const hint = opts.hint ?? defaultHint(code);
   return {
     content: [{ type: "text", text: `Error: ${message}` }],
-    structuredContent: structured,
+    structuredContent: { ...opts.structured, errorCode: code, ...(hint === undefined ? {} : { hint }) },
     isError: true,
   };
 }
