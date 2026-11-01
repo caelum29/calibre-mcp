@@ -37,17 +37,43 @@ export function restrict(cands: Candidate[], allow?: ReadonlySet<number>): Candi
 export interface CandidateCache {
   all: Candidate[];
   byBook: Map<number, Candidate[]>;
+  /** `PRAGMA data_version` when the cache was read: another connection's commit changes it (#337). */
+  dataVersion: number;
 }
 
 /** Group decoded candidates by book — `byBook` references the same objects as `all`. */
-export function cacheOf(all: Candidate[]): CandidateCache {
+export function cacheOf(all: Candidate[], dataVersion: number): CandidateCache {
   const byBook = new Map<number, Candidate[]>();
   for (const c of all) {
     const list = byBook.get(c.bookId);
     if (list) list.push(c);
     else byBook.set(c.bookId, [c]);
   }
-  return { all, byBook };
+  return { all, byBook, dataVersion };
+}
+
+/**
+ * `PRAGMA data_version` of this connection: it changes when ANOTHER connection (the second
+ * server sharing the index file, #196) commits, never on this connection's own commits — those
+ * drop the cache explicitly. Must be read on the connection that serves the cache.
+ */
+export function dataVersion(db: DatabaseSync): number {
+  return Number((db.prepare("PRAGMA data_version").get() as Row).data_version);
+}
+
+/**
+ * The library's cache when still current, else undefined: an entry stamped with an older
+ * data_version predates another process's commit and would serve deleted/missing books (#337).
+ */
+export function currentCache(
+  caches: Map<string, CandidateCache>,
+  libraryId: string,
+  version: number,
+): CandidateCache | undefined {
+  const cache = caches.get(libraryId);
+  if (cache?.dataVersion === version) return cache;
+  caches.delete(libraryId);
+  return undefined;
 }
 
 /**

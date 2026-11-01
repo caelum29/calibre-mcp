@@ -8,6 +8,8 @@ import type { IndexConnections } from "./schema.js";
 import {
   type CandidateCache,
   cacheOf,
+  currentCache,
+  dataVersion,
   ftsMatch,
   parseAuthors,
   restrict,
@@ -141,18 +143,17 @@ export class SqliteFigureIndex implements FigureIndex {
 
   /** Figure-caption vectors — all of a library, or one book. Mirrors #candidates. */
   #candidates(libraryId: string, bookId?: number): Candidate[] {
-    let cache = this.#caches.get(libraryId);
+    const db = this.conn.db(libraryId);
+    const version = dataVersion(db); // stamped before the read, as in chunks.ts (#337)
+    let cache = currentCache(this.#caches, libraryId, version);
     if (!cache) {
-      const rows = this.conn
-        .db(libraryId)
-        .prepare("SELECT id, book_id, vector FROM figures WHERE vector IS NOT NULL")
-        .all() as Row[];
+      const rows = db.prepare("SELECT id, book_id, vector FROM figures WHERE vector IS NOT NULL").all() as Row[];
       const all = rows.map((r) => ({
         chunkId: Number(r.id), // Candidate.chunkId doubles as the figures rowid here
         bookId: Number(r.book_id),
         vector: decodeVector(r.vector as Uint8Array),
       }));
-      cache = cacheOf(all);
+      cache = cacheOf(all, version);
       this.#caches.set(libraryId, cache);
     }
     return bookId === undefined ? cache.all : (cache.byBook.get(bookId) ?? []);

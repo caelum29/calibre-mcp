@@ -1,6 +1,6 @@
 // Chunk retrieval (#272): the vector half (brute-force cosine over a per-library in-memory
-// candidate cache, decoded once, invalidated on any write) and the keyword half (weighted bm25
-// over chunk_fts), plus figure → context lookup. Query-term snippet windows: ../snippet.ts.
+// candidate cache, decoded once, dropped on any own or other-process write) and the keyword half
+// (weighted bm25 over chunk_fts), plus figure → context lookup. Snippet windows: ../snippet.ts.
 
 import type { DatabaseSync } from "node:sqlite";
 import type { LogSink } from "../../logging.js";
@@ -8,12 +8,23 @@ import { EMBED_DIM } from "../model.js";
 import { SNIPPET_CHARS } from "../snippet.js";
 import { type Candidate, decodeVector, topK } from "../vector.js";
 import type { IndexConnections } from "./schema.js";
-import { type CandidateCache, cacheOf, ftsMatch, parseAuthors, restrict, type Row, WEIGHTED_BM25 } from "./shared.js";
+import {
+  type CandidateCache,
+  cacheOf,
+  currentCache,
+  dataVersion,
+  ftsMatch,
+  parseAuthors,
+  restrict,
+  type Row,
+  WEIGHTED_BM25,
+} from "./shared.js";
 import type { BookHit, ChunkIndex, ChunkRef, LibraryHit } from "./types.js";
 
 /** ChunkIndex over the shared connections with its own per-library candidate cache. */
 export class SqliteChunkIndex implements ChunkIndex {
-  // Per-library candidate cache; invalidated wholesale on any write (correctness > cleverness).
+  // Per-library candidate cache; invalidated wholesale on any own write, and on any other
+  // connection's commit via the data_version stamp (correctness > cleverness).
   // DEFERRED: int8-quantize this in-memory copy (~99.8% recall at 4x smaller) once full-library indexing lands.
   #caches = new Map<string, CandidateCache>();
 
@@ -188,10 +199,13 @@ export class SqliteChunkIndex implements ChunkIndex {
 
   /** Candidate vectors — all of a library, or one book (the doc's book-scope subarray). */
   #candidates(libraryId: string, bookId?: number): Candidate[] {
-    let cache = this.#caches.get(libraryId);
+    // Stamp BEFORE loading: a commit landing in between only costs one needless rebuild,
+    // whereas stamping after could pin pre-commit vectors to the post-commit version.
+    const version = dataVersion(this.conn.db(libraryId));
+    let cache = currentCache(this.#caches, libraryId, version);
     if (!cache) {
       const all = this.load(libraryId);
-      cache = cacheOf(all);
+      cache = cacheOf(all, version);
       this.#caches.set(libraryId, cache);
       // Memory honesty: vectors dominate (EMBED_DIM float32 each); ids/objects are noise.
       const mib = (all.length * EMBED_DIM * 4) / (1024 * 1024);
