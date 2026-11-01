@@ -4,6 +4,7 @@
 
 import type { LibraryReader } from "../calibre/content-server.js";
 import { staleness, type StatusIndex } from "../semantic/status.js";
+import { Deadline } from "../shared/deadline.js";
 
 /** One library's index coverage; `total` is null when the Content Server did not answer in time. */
 export interface LibraryIndex {
@@ -48,10 +49,10 @@ async function within<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
  */
 export async function libraryIndexReport(deps: LibraryIndexDeps): Promise<LibraryIndex[] | undefined> {
   // One clock for the whole section: a slow libraryInfo leaves the counts less time (#325).
-  const started = Date.now();
+  const deadline = new Deadline(INDEX_DEADLINE_MS);
   let map: Record<string, string> | undefined;
   try {
-    map = (await within(deps.content.libraryInfo(), INDEX_DEADLINE_MS, undefined))?.libraryMap;
+    map = (await within(deps.content.libraryInfo(), deadline.remainingMs(), undefined))?.libraryMap;
   } catch {
     map = undefined;
   }
@@ -67,7 +68,7 @@ export async function libraryIndexReport(deps: LibraryIndexDeps): Promise<Librar
         // reach them, so the report says how many (#325).
         const indexed = deps.index.stats(id).books;
         const withoutEmbeddings = deps.index.booksMissingVectors(id);
-        const left = Math.max(0, INDEX_DEADLINE_MS - (Date.now() - started));
+        const left = deadline.remainingMs();
         const total = await within(
           deps.content
             .search({ query: "", library: id, num: 0, timeoutMs: left, noBreaker: true })
