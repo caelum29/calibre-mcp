@@ -1,0 +1,86 @@
+src/tools/calibre_extract_isbn.ts
+  s_87a2f9049b0bce::t_463bf9487f4b04 119
+  s_87a2f9049b0bce::t_fc2cc1d3d23270 15
+src/tools/calibre_get_content.ts
+  s_87a2f9049b0bce::t_463bf9487f4b04 234
+  s_87a2f9049b0bce::t_fc2cc1d3d23270 16
+src/tools/calibre_update_book.ts
+  s_87a2f9049b0bce::t_fc2cc1d3d23270 18
+  s_87a2f9049b0bce::t_463bf9487f4b04 131
+src/tools/result.ts
+  s_87a2f9049b0bce::t_97ac31981a1b77 5,65-72,74-75,79-89
+  s_87a2f9049b0bce::t_6184c626906b38 73,76-78
+src/tools/calibre_get_figures.ts
+  s_87a2f9049b0bce::t_463bf9487f4b04 105,107,342
+  s_87a2f9049b0bce::t_fc2cc1d3d23270 15
+src/tools/calibre_list_categories.ts
+  s_87a2f9049b0bce::t_463bf9487f4b04 76-77
+  s_87a2f9049b0bce::t_2ccff0437a9c85 8,50-51
+src/tools/calibre_build_index.ts
+  s_87a2f9049b0bce::t_fc2cc1d3d23270 14
+  s_87a2f9049b0bce::t_463bf9487f4b04 117
+src/tools/calibre_recover_metadata.ts
+  s_87a2f9049b0bce::t_463bf9487f4b04 175,177
+  s_87a2f9049b0bce::t_fc2cc1d3d23270 25
+src/tools/calibre_bulk_update.ts
+  s_87a2f9049b0bce::t_fc2cc1d3d23270 20
+  s_87a2f9049b0bce::t_43982f0f9bcba5 133
+  s_87a2f9049b0bce::t_463bf9487f4b04 316
+src/tools/cursor.ts
+  s_87a2f9049b0bce::t_97ac31981a1b77 8-10,95-116,118
+src/tools/calibre_manage_bundles.ts
+  s_87a2f9049b0bce::t_fc2cc1d3d23270 15
+  s_87a2f9049b0bce::t_463bf9487f4b04 60,307
+test/domain/error-codes.test.ts
+  s_87a2f9049b0bce::t_6184c626906b38 58-59
+test/tools/shared-helpers-345.test.ts
+  s_87a2f9049b0bce::t_8a42867667a1f3 1-16,18-72
+  s_87a2f9049b0bce::t_157b97ec191fab 17
+src/tools/calibre_quality_report.ts
+  s_87a2f9049b0bce::t_463bf9487f4b04 74-75,138
+  s_87a2f9049b0bce::t_2ccff0437a9c85 10,72
+  s_87a2f9049b0bce::t_fc2cc1d3d23270 13
+  s_87a2f9049b0bce::t_43982f0f9bcba5 79
+src/tools/calibre_semantic_search.ts
+  s_87a2f9049b0bce::t_fc2cc1d3d23270 28
+  s_87a2f9049b0bce::t_43982f0f9bcba5 200
+src/tools/calibre_add_book.ts
+  s_87a2f9049b0bce::t_fc2cc1d3d23270 9
+  s_87a2f9049b0bce::t_463bf9487f4b04 94
+src/tools/calibre_get_book.ts
+  s_87a2f9049b0bce::t_463bf9487f4b04 99
+  s_87a2f9049b0bce::t_fc2cc1d3d23270 15
+src/tools/calibre_merge_books.ts
+  s_87a2f9049b0bce::t_2ccff0437a9c85 437
+  s_87a2f9049b0bce::t_463bf9487f4b04 150
+  s_87a2f9049b0bce::t_fc2cc1d3d23270 20
+src/tools/calibre_search.ts
+  s_87a2f9049b0bce::t_fc2cc1d3d23270 39
+  s_87a2f9049b0bce::t_463bf9487f4b04 96-97,244-245,341-342
+  s_87a2f9049b0bce::t_2ccff0437a9c85 33,490,504,511,515-517,522
+  s_87a2f9049b0bce::t_43982f0f9bcba5 502,518-521
+src/tools/calibre_find_duplicates.ts
+  s_87a2f9049b0bce::t_2ccff0437a9c85 10,59
+  s_87a2f9049b0bce::t_463bf9487f4b04 61-62,169
+  s_87a2f9049b0bce::t_43982f0f9bcba5 107
+  s_87a2f9049b0bce::t_fc2cc1d3d23270 14
+src/tools/calibre_remove_book.ts
+  s_87a2f9049b0bce::t_fc2cc1d3d23270 13
+  s_87a2f9049b0bce::t_463bf9487f4b04 91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "12adcdb8b8b279e034acab518cb58c6703c6eb44",
+  "prompts": {},
+  "sessions": {
+    "s_87a2f9049b0bce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2e496a4d-0841-4fa4-ae51-d369c24441fa",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
