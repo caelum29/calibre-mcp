@@ -64,3 +64,29 @@ describe("resolveProgressPath", () => {
     expect(src).toContain("resolveProgressPath(opt.progress, indexDir, libraryId, flagsOnly)");
   });
 });
+
+describe("defaultProgressPath collisions after sanitising (#344)", () => {
+  it("gives ids that sanitise to the same name different paths", () => {
+    const paths = ["a:b", "a/b", "a_b"].map((id) => defaultProgressPath("/idx", id, false));
+    expect(new Set(paths).size).toBe(3);
+  });
+
+  it("keeps flags-only paths distinct too", () => {
+    expect(defaultProgressPath("/idx", "a:b", true)).not.toBe(defaultProgressPath("/idx", "a_b", true));
+  });
+
+  it("keeps the exact file name for ids that need no sanitising", () => {
+    expect(defaultProgressPath("/idx", "Programming_Books", false)).toBe(
+      path.join("/idx", "progress-Programming_Books.jsonl"),
+    );
+    expect(defaultProgressPath("/idx", "Reaserch_Books", true)).toBe(
+      path.join("/idx", "flags-progress-Reaserch_Books.jsonl"),
+    );
+  });
+
+  it("appends an 8-hex hash of the raw id only when sanitising changed it", () => {
+    const p = defaultProgressPath("/idx", "a:b", false);
+    expect(path.dirname(p)).toBe("/idx");
+    expect(path.basename(p)).toMatch(/^progress-a_b-[0-9a-f]{8}\.jsonl$/);
+  });
+});
