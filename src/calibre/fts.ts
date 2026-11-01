@@ -1,8 +1,5 @@
 // Full-text search over the Content Server's two-phase FTS API (what Calibre's web UI uses):
 // rank matches without snippets, then fetch snippets one book at a time under a time budget.
-// Why: `calibredb fts_search --include-snippets` builds a snippet for EVERY match before replying
-// (534 rows ≈ 0.3 s each on 1.1k books) while holding the library write lock, so one query
-// stalled the whole library for minutes and could not be cancelled.
 
 import {
   CalibreBusyError,
@@ -15,6 +12,7 @@ import type { FtsMatches } from "../domain/search.js";
 import type { Deadline } from "../shared/deadline.js";
 import type { ContentServerClient } from "./content-server.js";
 import { repairSnippets } from "./fts-highlight.js";
+import { log } from "../logging.js";
 import type { LibId } from "./lib-id.js";
 
 /** Highlight markers wrapped around matched words in snippets. */
@@ -66,7 +64,13 @@ export interface FtsCallBudget {
 
 type FtsHttp = Pick<ContentServerClient, "ftsSearch" | "ftsSnippets">;
 
-/** {@link FtsPort} over the Content Server, with a per-library "FTS disabled" cache. */
+/**
+ * {@link FtsPort} over the Content Server, with a per-library "FTS disabled" cache.
+ *
+ * Why two phases: `calibredb fts_search --include-snippets` builds a snippet for EVERY match before
+ * replying (534 rows ≈ 0.3 s each on 1.1k books) while holding the library write lock, so one
+ * query stalled the whole library for minutes and could not be cancelled.
+ */
 export class FullTextSearch implements FtsPort {
   readonly #disabledAt = new Map<LibId, number>();
 
@@ -112,7 +116,7 @@ export class FullTextSearch implements FtsPort {
         // Calibre can misplace highlights (#308) — fix them before anyone renders them.
         byBook.set(id, repairSnippets(query, got.get(id) ?? [], { start: FTS_MATCH_START, end: FTS_MATCH_END }));
       } catch (err) {
-        const stop = snippetStop(err);
+        const stop = snippetStop(err, libId);
         if (stop === undefined) throw err;
         return { byBook, skipped: bookIds.slice(i), stoppedBy: stop };
       }
@@ -140,9 +144,14 @@ export class FullTextSearch implements FtsPort {
 
 // Snippets are a nicety on top of the matches: a stall ends the loop, it doesn't fail the call.
 // FTS refusals and cancellation still propagate (they change what the caller should say).
-function snippetStop(err: unknown): SnippetStop | undefined {
+function snippetStop(err: unknown, libraryId: string): SnippetStop | undefined {
   if (err instanceof CalibreHttpTimeoutError || err instanceof DeadlineExceededError) return "timeout";
   if (err instanceof CalibreBusyError) return "busy";
   if (err instanceof FtsError || err instanceof OperationCancelledError) return undefined;
+  // Anything else is unexpected (a parse/contract bug, not a stall): keep the soft stop but leave a trace.
+  log.warn("fts snippets stopped on an unexpected error", {
+    libraryId,
+    error: err instanceof Error ? err.message : String(err),
+  });
   return "error";
 }

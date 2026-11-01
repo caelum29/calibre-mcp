@@ -1,17 +1,5 @@
-// SQLite-backed vector index for semantic search. Uses node:sqlite (built in; unflagged and
-// shipping FTS5 from Node 22.16 — 22.5–22.12 need --experimental-sqlite, 22.13–22.15 lack FTS5),
-// so the npx/MCPB bundle ships with ZERO native addons — no node-gyp, no ABI lock, no macOS
-// quarantine on a prebuilt .node (the exact install failure the project avoids). Vectors are
-// L2-normalized Float32 BLOBs; retrieval is in-memory brute-force cosine (== dot product) over
-// a per-library candidate cache (decoded once, invalidated on write) — flat scan beats ANN at
-// this scale; the cost worth killing was the per-query BLOB reload, not the scan.
-//
-// The store is keyed per Calibre library: each library gets its own <indexDir>/<lib>.sqlite,
-// opened lazily so read-only sessions that never build an index create no files. The index db
-// is PERSISTENT (survives reboots) — unlike the regenerable extract cache in tmp.
-//
-// Split by concern (#272): schema.ts owns the connections + DDL, freshness/writer/chunks/
-// figures each implement one narrow port; this module composes them into the full IndexStore.
+// SQLite-backed vector index for semantic search: one <indexDir>/<lib>.sqlite per Calibre library.
+// Composes the schema/freshness/writer/chunks/figures parts (#272) into the full IndexStore.
 
 import type { Config } from "../../config.js";
 import { log as defaultLog, type LogSink } from "../../logging.js";
@@ -40,7 +28,20 @@ import { SqliteWriter } from "./writer.js";
 
 export type * from "./types.js";
 
-/** node:sqlite-backed vector + FTS5 index store with a per-library in-memory candidate cache. */
+/**
+ * node:sqlite-backed vector + FTS5 index store with a per-library in-memory candidate cache.
+ *
+ * Why node:sqlite: built in (unflagged and shipping FTS5 from Node 22.16 — 22.5–22.12 need
+ * --experimental-sqlite, 22.13–22.15 lack FTS5), so the npx/MCPB bundle ships with ZERO native
+ * addons — no node-gyp, no ABI lock, no macOS quarantine on a prebuilt .node (the exact install failure the project avoids). Vectors are
+ * L2-normalized Float32 BLOBs; retrieval is in-memory brute-force cosine (== dot product) over a
+ * per-library candidate cache (decoded once, invalidated on write) — flat scan beats ANN at this
+ * scale; the cost worth killing was the per-query BLOB reload, not the scan.
+ *
+ * Each library gets its own db file, opened lazily so read-only sessions that never build an
+ * index create no files. The db is PERSISTENT (survives reboots), unlike the regenerable
+ * extract cache in tmp.
+ */
 export class SqliteIndexStore implements IndexStore {
   readonly #conn: IndexConnections;
   readonly #freshness: SqliteFreshness;
@@ -53,6 +54,8 @@ export class SqliteIndexStore implements IndexStore {
     /** Injected stderr logger seam (tests/callers may substitute); defaults to the module logger. */
     log: LogSink = defaultLog,
   ) {
+    // Split by concern (#272): schema.ts owns the connections + DDL; freshness/writer/chunks/figures
+    // each implement one narrow port, composed here.
     this.#conn = new IndexConnections(cfg, log);
     this.#freshness = new SqliteFreshness(this.#conn);
     // Resolved per call, so a spy on this.loadCandidates sees the cache's SQL reads.

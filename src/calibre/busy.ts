@@ -1,7 +1,5 @@
-// Per-library "busy" circuit breaker. Calibre runs each Content Server / calibredb request to
-// completion even after the client gives up, and a full-text search holds the library's write
-// lock for its whole run — so after one timeout, every further call on that library just
-// queues behind the stalled one (observed: 3–10 min). Fail fast instead, per library.
+// Per-library "busy" circuit breaker: after one timeout, further calls on that library fail fast
+// instead of queueing behind the stalled Calibre request (see LibraryBusyTracker).
 
 import { CalibreBusyError } from "../domain/errors.js";
 
@@ -42,6 +40,11 @@ interface Entry {
 export type ProbeClaim = symbol;
 
 /**
+ * Why: Calibre runs each Content Server / calibredb request to completion even after the client
+ * gives up, and a full-text search holds the library's write lock for its whole run — so after one
+ * timeout, every further call on that library just queues behind the stalled one (observed: 3–10
+ * min).
+ *
  * Open after a timeout, fail fast while open, then (half-open) let exactly one call through as
  * the probe once the window ends: success closes it, another timeout reopens it with a doubled
  * window. Concurrent calls are refused until the probe settles (`markOk`/`markBusy`/`releaseProbe`).

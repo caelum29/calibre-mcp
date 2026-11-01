@@ -41,4 +41,5 @@ function readSdkVersion(): string {
   }
 }
 
+/** Installed MCP SDK version (read from its package.json), or "unknown" when it can't be found. */
 export const SDK_VERSION: string = readSdkVersion();

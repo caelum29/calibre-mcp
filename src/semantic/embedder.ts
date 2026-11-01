@@ -82,7 +82,6 @@ interface Loaded {
 
 /** Passages per model call — bounded so a large book doesn't build one giant batch. */
 export const PASSAGE_BATCH = 10;
-const BATCH = PASSAGE_BATCH;
 
 /** The optional-dep boundary, injectable so tests can simulate load failures. */
 export type TransformersLoader = () => Promise<typeof import("@huggingface/transformers")>;
@@ -95,7 +94,7 @@ export class TransformersEmbedder implements Embedder {
   // Sync snapshot of the load outcome for loadState() — updated as #loaded settles.
   #loadState: EmbedderLoadState = "not-attempted";
   // FIFO, one forward at a time (#156); never refuses — a query embed is ~tens of ms, and a
-  // build's passages queue per BATCH, so a search waits at most one batch behind a build.
+  // build's passages queue per PASSAGE_BATCH, so a search waits at most one batch behind a build.
   readonly #queue = new InferenceQueue();
 
   constructor(
@@ -125,8 +124,8 @@ export class TransformersEmbedder implements Embedder {
 
   async embedPassages(texts: string[]): Promise<Float32Array[]> {
     const out: Float32Array[] = [];
-    for (let i = 0; i < texts.length; i += BATCH) {
-      const batch = texts.slice(i, i + BATCH).map((t) => ACTIVE_MODEL.passagePrefix + t);
+    for (let i = 0; i < texts.length; i += PASSAGE_BATCH) {
+      const batch = texts.slice(i, i + PASSAGE_BATCH).map((t) => ACTIVE_MODEL.passagePrefix + t);
       out.push(...(await this.#embed(batch)));
     }
     return out;

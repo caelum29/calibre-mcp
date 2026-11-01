@@ -116,7 +116,10 @@ export function similarKey(book: Book): string | undefined {
   return similarParts(book)?.key;
 }
 
-/** Pubdates this many years apart (or more) read as different editions (#242). */
+/**
+ * Pubdates this many years apart (or more) read as different editions (#242). Basis: heuristic from
+ * #242, not measured on the library; revisit if the duplicate report splits true duplicates.
+ */
 const EDITION_YEAR_GAP = 2;
 
 /** True when two same-key parts carry no conflicting edition signal. */

@@ -1,7 +1,5 @@
 // Snippet window (#243): show the part of a chunk that matched the query, not its head. Pure
-// string logic, display only — ranking never reads it. Terms are matched on stems (the keyword
-// half's transform, so Cyrillic inflections match) and weighted by rarity within the chunk, so a
-// rare query term outweighs a generic one that is everywhere.
+// string logic, display only — ranking never reads it.
 
 import { stemmedTokens } from "./stem.js";
 
@@ -10,13 +8,16 @@ export const SNIPPET_CHARS = 320;
 
 // Query stems shorter than this are skipped (в, и, of: noise even off the stopword list).
 const MIN_TERM_CHARS = 3;
-// How far back from a term to look for the start of its sentence.
+// How far back from a term to look for the start of its sentence. Basis: heuristic, not
+// measured (#243 review) — about half a snippet width (SNIPPET_CHARS / 2); revisit if windows open mid-sentence.
 const MAX_SENTENCE_LEAD = 160;
 // Near the chunk end a window may start late (at its sentence) only while it keeps this share
 // of the width; below that it shifts back to `end - width` so the snippet isn't a sliver.
+// Basis: heuristic, not measured (#243 review) — two thirds keeps the window mostly content.
 const MIN_TAIL_SHARE = 2 / 3;
 const SENTENCE_END = /[.!?…]\s+|\n/g;
 // A hit may open a window only if its term weighs at least this share of the rarest term's.
+// Basis: heuristic, not measured (#243 review) — half the rarest weight still counts as informative.
 const ANCHOR_WEIGHT_SHARE = 0.5;
 
 // Function words that carry no topic: a natural-language query is mostly these, and without
@@ -49,8 +50,12 @@ export interface SnippetWindow {
 /**
  * Pick the `width`-char window of a chunk whose distinct query terms weigh most (each term
  * counts 1 / its occurrences in the chunk; ties → earliest), opened at the sentence of an
- * informative hit (a term near the rarest one's weight). Falls back to the chunk head when no term occurs (a semantic-only hit) or the
- * chunk fits in one snippet.
+ * informative hit (a term near the rarest one's weight). Falls back to the chunk head when no term
+ * occurs (a semantic-only hit) or the chunk fits in one snippet.
+ *
+ * Terms are matched on stems (the keyword half's transform, so Cyrillic inflections match) and
+ * weighted by rarity within the chunk, so a rare query term outweighs a generic one that is
+ * everywhere.
  */
 export function snippetWindow(body: string, query: string, width: number = SNIPPET_CHARS): SnippetWindow {
   const head = { start: 0, text: wholeSlice(body, 0, width) };

@@ -11,6 +11,7 @@ export const HEARTBEAT_MS = 10_000;
 /** Each heartbeat phase owns [start, ceiling) of the book's step; embed takes the rest. */
 const RANGES = { extract: [0.02, 0.05], chunk: [0.05, 0.1] } as const;
 
+/** Handle for one book's progress reporting: feed it phases, then stop it. */
 export interface BookProgress {
   onPhase: (p: BookPhase) => void;
   /** Clear the heartbeat — call in `finally`, whatever the book's outcome. */
