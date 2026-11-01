@@ -57,7 +57,7 @@ export class CalibreClient implements LibraryWriter {
   async calibredb(args: readonly string[], opts: CalibreClientOptions): Promise<{ stdout: string; stderr: string }> {
     const fullArgs = ["--with-library", this.libraryUrl(opts.library), ...args];
     // Fail fast instead of queueing behind a stalled request (calibre/busy.ts).
-    this.busy?.assertAvailable(opts.library);
+    const probe = this.busy?.assertAvailable(opts.library);
     let result;
     try {
       result = await spawnCollect(this.cfg.calibredbPath, fullArgs, {
@@ -66,6 +66,8 @@ export class CalibreClient implements LibraryWriter {
         signal: opts.signal,
       });
     } catch (err) {
+      // a timeout re-arms the breaker below; any other failure must not leave the probe slot taken
+      this.busy?.releaseProbe(opts.library, probe);
       if ((err as NodeJS.ErrnoException).code === "ENOENT") {
         throw new CalibreNotFoundError(
           `calibredb not found at "${this.cfg.calibredbPath}". Install Calibre ` +

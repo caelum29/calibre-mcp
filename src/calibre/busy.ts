@@ -34,11 +34,17 @@ interface Entry {
   strikes: number;
   source: string;
   since: number;
+  /** Claim of the half-open probe call in flight; everyone else keeps failing fast. */
+  probe?: ProbeClaim;
 }
 
+/** Proof that a call owns the half-open probe slot; only its holder may release it. */
+export type ProbeClaim = symbol;
+
 /**
- * Open after a timeout, fail fast while open, let calls through once the window ends
- * (half-open): success closes it, another timeout reopens it with a doubled window.
+ * Open after a timeout, fail fast while open, then (half-open) let exactly one call through as
+ * the probe once the window ends: success closes it, another timeout reopens it with a doubled
+ * window. Concurrent calls are refused until the probe settles (`markOk`/`markBusy`/`releaseProbe`).
  */
 export class LibraryBusyTracker implements BusyStatusPort {
   readonly #entries = new Map<string, Entry>();
@@ -50,12 +56,30 @@ export class LibraryBusyTracker implements BusyStatusPort {
     return (this.opts.now ?? Date.now)();
   }
 
-  /** Throws {@link CalibreBusyError} while `libraryId`'s busy window is open. */
-  assertAvailable(libraryId: string): void {
+  /**
+   * Throws {@link CalibreBusyError} while `libraryId`'s busy window is open, or while another
+   * call is already probing it. The first call after the window claims the probe slot and gets
+   * the {@link ProbeClaim} to pass to {@link releaseProbe} if it fails without a timeout.
+   */
+  assertAvailable(libraryId: string): ProbeClaim | undefined {
     const e = this.#entries.get(libraryId);
-    if (!e) return;
+    if (!e) return undefined;
     const left = e.until - this.now();
     if (left > 0) throw new CalibreBusyError(libraryId, left);
+    // one probe at a time: N queued calls would otherwise wait N × the timeout on a stalled Calibre
+    if (e.probe) throw new CalibreBusyError(libraryId, 0, true);
+    e.probe = Symbol(libraryId);
+    return e.probe;
+  }
+
+  /**
+   * The probe ended without a verdict (cancelled, spawn/HTTP error that isn't a timeout):
+   * free the slot so the breaker can't stay half-open forever. A stale call (no claim, or a claim
+   * from an earlier window) must not free a newer probe's slot, so the claim has to match.
+   */
+  releaseProbe(libraryId: string, claim: ProbeClaim | undefined): void {
+    const e = this.#entries.get(libraryId);
+    if (e && claim && e.probe === claim) e.probe = undefined;
   }
 
   /** Record a timeout on `libraryId`: opens (or, after a half-open probe failed, doubles) the window. */
@@ -76,13 +100,16 @@ export class LibraryBusyTracker implements BusyStatusPort {
   /** {@inheritDoc BusyStatusPort.busyLibraries} */
   busyLibraries(): BusyLibrary[] {
     const now = this.now();
-    return [...this.#entries]
-      .filter(([, e]) => e.until > now)
-      .map(([libraryId, e]) => ({
-        libraryId,
-        source: e.source,
-        since: new Date(e.since).toISOString(),
-        retryInMs: e.until - now,
-      }));
+    return (
+      [...this.#entries]
+        // a probing library is still busy for calibre_ping, even though its window has ended
+        .filter(([, e]) => e.until > now || e.probe)
+        .map(([libraryId, e]) => ({
+          libraryId,
+          source: e.source,
+          since: new Date(e.since).toISOString(),
+          retryInMs: Math.max(0, e.until - now),
+        }))
+    );
   }
 }

@@ -35,11 +35,16 @@ export class CalibreBusyError extends Error {
   constructor(
     readonly libraryId: string,
     readonly retryInMs: number,
+    /** The window ended and another call is checking whether Calibre answers again. */
+    readonly probing = false,
   ) {
     super(
       `Calibre is still finishing a previous long request on library "${libraryId}" (probably a ` +
         `full-text search — Calibre can't cancel one once started), so this call was not sent to ` +
-        `Calibre. Retry in ~${Math.max(1, Math.ceil(retryInMs / 1000))} s.`,
+        `Calibre. ` +
+        (probing
+          ? `Another call is checking whether it answers again; retry shortly (that check can take up to ~30 s).`
+          : `Retry in ~${Math.max(1, Math.ceil(retryInMs / 1000))} s.`),
     );
     this.name = "CalibreBusyError";
   }

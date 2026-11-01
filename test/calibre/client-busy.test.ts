@@ -8,7 +8,12 @@ import { LibraryBusyTracker } from "../../src/calibre/busy.js";
 import { CalibreClient } from "../../src/calibre/client.js";
 import { asLibId } from "../../src/calibre/lib-id.js";
 import { loadConfig } from "../../src/config.js";
-import { CalibreBusyError, CalibreCliTimeoutError } from "../../src/domain/errors.js";
+import {
+  CalibreBusyError,
+  CalibreCliTimeoutError,
+  CalibreNotFoundError,
+  OperationCancelledError,
+} from "../../src/domain/errors.js";
 
 let dir: string | undefined;
 afterEach(() => {
@@ -39,6 +44,33 @@ describe("CalibreClient busy breaker", () => {
     rmSync(spawned, { force: true }); // the first spawn may be killed before its echo runs
     await expect(c.calibredb(["list_categories", "--csv"], { library: LIB })).rejects.toBeInstanceOf(CalibreBusyError);
     expect(existsSync(spawned)).toBe(false);
+  });
+
+  it("should_free_the_probe_slot_when_the_probe_fails_without_a_timeout (#343)", async () => {
+    let t = 1_000_000;
+    const busy = new LibraryBusyTracker({ baseWindowMs: 60_000, now: () => t });
+    busy.markBusy(LIB, "calibredb");
+    t += 60_000;
+    const c = new CalibreClient(loadConfig({ CALIBRE_MCP_CALIBREDB_PATH: "/nonexistent/calibredb" }), busy);
+    // probe 1 and 2 both reach the spawn (ENOENT), neither is refused as busy
+    await expect(c.calibredb(["x"], { library: LIB })).rejects.toBeInstanceOf(CalibreNotFoundError);
+    await expect(c.calibredb(["x"], { library: LIB })).rejects.toBeInstanceOf(CalibreNotFoundError);
+  });
+
+  it("should_free_the_probe_slot_when_the_probe_is_cancelled (#343)", async () => {
+    let t = 1_000_000;
+    const busy = new LibraryBusyTracker({ baseWindowMs: 60_000, now: () => t });
+    busy.markBusy(LIB, "calibredb");
+    t += 60_000;
+    const { script } = hangingCalibredb();
+    const c = new CalibreClient(loadConfig({ CALIBRE_MCP_CALIBREDB_PATH: script }), busy);
+    const ac = new AbortController();
+    ac.abort();
+    await expect(c.calibredb(["x"], { library: LIB, signal: ac.signal })).rejects.toBeInstanceOf(
+      OperationCancelledError,
+    );
+    // slot is free again: the next call is the new probe, not refused as busy
+    await expect(c.calibredb(["x"], { library: LIB, timeoutMs: 200 })).rejects.toBeInstanceOf(CalibreCliTimeoutError);
   });
 
   it("should_leave_other_libraries_alone", async () => {

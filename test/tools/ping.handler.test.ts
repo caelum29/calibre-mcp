@@ -128,6 +128,21 @@ describe("calibre_ping busy libraries", () => {
     ]);
   });
 
+  it("should_report_a_library_whose_probe_is_in_flight_as_busy (#343)", async () => {
+    let t = 1_000_000;
+    const busy = new LibraryBusyTracker({ baseWindowMs: 60_000, now: () => t });
+    busy.markBusy("Programming_Books", "content-server");
+    t += 60_000;
+    busy.assertAvailable("Programming_Books"); // some other call is the probe
+    const { d } = deps({
+      listLibraries: async () => Promise.reject(new CalibreBusyError("Programming_Books", 0, true)),
+    });
+    const r = await pingTool().handler({}, { ...d, libraryBusy: busy });
+    expect(text(r)).toContain('busy: library "Programming_Books" — Calibre timed out (content-server)');
+    expect(text(r)).toContain("a probe call is checking whether it answers again");
+    expect(text(r)).not.toContain("~0 s");
+  });
+
   it("should_say_nothing_about_busy_when_no_library_is_busy", async () => {
     const { d } = deps({});
     const r = await pingTool().handler({}, { ...d, libraryBusy: new LibraryBusyTracker() });
