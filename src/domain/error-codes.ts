@@ -5,7 +5,9 @@
 import {
   CalibreBusyError,
   CalibreCliError,
+  CalibreCliTimeoutError,
   CalibreHttpError,
+  CalibreHttpTimeoutError,
   CalibreNotFoundError,
   DeadlineExceededError,
   FiguresError,
@@ -85,7 +87,7 @@ export function errorCodeFor(err: unknown): ErrorCode {
 // calibredb's stderr says more than the class: a refusal, a drop that may have committed, or
 // a server that never answered (patterns shared with app/write-policy.ts).
 function cliCode(err: CalibreCliError): ErrorCode {
-  if (err.name === "CalibreCliTimeoutError") return "timeout";
+  if (err instanceof CalibreCliTimeoutError) return "timeout";
   const stderr = err.stderr ?? "";
   if (WRITE_REFUSED_STDERR.test(stderr)) return "write_refused";
   if (DROPPED_MID_REQUEST_STDERR.test(stderr)) return "write_unverified";
@@ -94,7 +96,7 @@ function cliCode(err: CalibreCliError): ErrorCode {
 }
 
 function httpCode(err: CalibreHttpError): ErrorCode {
-  if (err.name === "CalibreHttpTimeoutError") return "timeout";
+  if (err instanceof CalibreHttpTimeoutError) return "timeout";
   if (err.status === 0) return "calibre_unreachable"; // transport failure, no HTTP reply
   if (err.status === 404) return "not_found";
   // Any other 4xx is the request's fault (bad query or params) — the model fixes it, so it must

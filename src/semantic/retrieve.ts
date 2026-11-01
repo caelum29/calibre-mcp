@@ -145,7 +145,7 @@ export async function retrieve(
     const rr = await applyRerank(await rankBooks(req, deps, weights), (r) => r.hit.body, req, deps);
     // Display only (#243): re-cut each snippet around the query terms after ranking is final.
     const hits = rr.hits.map((r) => ({ ...r, hit: withSnippet(r.hit, req.query) }));
-    return outcome(rr, hits, confidence(hits, deps, rr), rr.note);
+    return outcome(rr, hits, confidence(hits, deps.config.semanticFloor, rr), rr.note);
   }
   if (req.scope === "book") {
     const rr = await applyRerank(await rankPassages(req, deps, weights), (r) => r.hit.body, req, deps);
@@ -160,12 +160,12 @@ export async function retrieve(
         : rr.hits;
     const demotedNote =
       demoted > 0 ? `${demoted} front-matter passage(s) (TOC/praise/foreword) demoted below body matches.` : undefined;
-    return outcome(rr, hits, confidence(hits, deps, rr), rr.note, demotedNote);
+    return outcome(rr, hits, confidence(hits, deps.config.semanticFloor, rr), rr.note, demotedNote);
   }
   const rr = await applyRerank(await rankFigures(req, deps, weights), (r) => r.hit.caption, req, deps);
   const floorNote =
     req.mode !== "keyword" && rr.hits.length > 0 && FIGURES_SEMANTIC_FLOOR === null ? FIGURES_FLOOR_NOTE : undefined;
-  return outcome(rr, rr.hits, figuresConfidence(rr.hits, rr), rr.note, floorNote);
+  return outcome(rr, rr.hits, confidence(rr.hits, FIGURES_SEMANTIC_FLOOR, rr), rr.note, floorNote);
 }
 
 /** A library hit whose snippet is the query-term window of its chunk, with its book offset. */
@@ -330,23 +330,12 @@ async function applyRerank<T extends { rerankScore?: number }>(
  * Two confidence signals, kept separate (not conflated): the cosine floor judges the COSINE
  * half only; the reranker's sigmoid score is its own calibrated confidence (< RERANK_FLOOR ≈
  * weak). Either signal alone marks the result set low-confidence; both raw maxima are surfaced.
+ * `floor` null = no cosine floor (figures, until FIGURES_SEMANTIC_FLOOR is calibrated).
  */
-function confidence(ranked: Array<{ cosine?: number }>, deps: RetrievalDeps, rr: RerankOutcome<unknown>) {
+function confidence(ranked: Array<{ cosine?: number }>, floor: number | null, rr: RerankOutcome<unknown>) {
   const cosines = ranked.map((r) => r.cosine).filter((c): c is number => c !== undefined);
   const maxScore = cosines.length ? Math.max(...cosines) : undefined;
-  const cosineLow = maxScore !== undefined && maxScore < deps.config.semanticFloor;
-  const rerankLow = rr.reranked && rr.maxRerank !== undefined && rr.maxRerank < RERANK_FLOOR;
-  return { maxScore, lowConfidence: cosineLow || rerankLow };
-}
-
-/**
- * Figures confidence: the chunk cosine floor does not apply (FIGURES_SEMANTIC_FLOOR is its
- * own, currently-disabled constant), so until calibration only the reranker floor signals.
- */
-function figuresConfidence(ranked: Array<{ cosine?: number }>, rr: RerankOutcome<unknown>) {
-  const cosines = ranked.map((r) => r.cosine).filter((c): c is number => c !== undefined);
-  const maxScore = cosines.length ? Math.max(...cosines) : undefined;
-  const cosineLow = FIGURES_SEMANTIC_FLOOR !== null && maxScore !== undefined && maxScore < FIGURES_SEMANTIC_FLOOR;
+  const cosineLow = floor !== null && maxScore !== undefined && maxScore < floor;
   const rerankLow = rr.reranked && rr.maxRerank !== undefined && rr.maxRerank < RERANK_FLOOR;
   return { maxScore, lowConfidence: cosineLow || rerankLow };
 }
