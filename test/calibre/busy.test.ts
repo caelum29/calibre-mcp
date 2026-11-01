@@ -44,6 +44,23 @@ describe("LibraryBusyTracker", () => {
     expect(busy.busyLibraries()[0]?.retryInMs).toBe(150_000);
   });
 
+  it("admits one probe once the window expires; concurrent calls are refused (#343)", async () => {
+    const { busy, advance } = tracker();
+    busy.markBusy("L", "calibredb");
+    advance(60_000);
+    let reachedCalibre = 0;
+    const call = async () => {
+      busy.assertAvailable("L");
+      reachedCalibre++;
+      await Promise.resolve();
+    };
+    const results = await Promise.allSettled([call(), call(), call()]);
+    expect(reachedCalibre).toBe(1);
+    const rejected = results.filter((r): r is PromiseRejectedResult => r.status === "rejected");
+    expect(rejected).toHaveLength(2);
+    for (const r of rejected) expect(r.reason).toBeInstanceOf(CalibreBusyError);
+  });
+
   it("closes and forgets strikes on success", () => {
     const { busy, advance } = tracker();
     busy.markBusy("L", "calibredb");
