@@ -16,16 +16,29 @@ export interface PossibleDuplicate {
 /** Probe at most this many added ids: a bulk folder add must not fan out into hundreds of reads. */
 export const MAX_PROBED = 10;
 
+/** The added ids the probe skips past {@link MAX_PROBED}: known without any library read. */
+export function unprobedIds(addedIds: number[]): number[] {
+  return addedIds.slice(MAX_PROBED);
+}
+
 /** The book's ISBN with separators removed, or "" when it has none. */
 export function isbnKey(b: Book): string {
   return normalizeIsbn(b.identifiers.isbn ?? "");
 }
 
+// A title with no whitespace is a filename slug ("learning-go-2nd-edition"): its separators
+// stand for spaces, so the edition parser sees "learning go 2nd edition". Titles with spaces
+// keep their dots/dashes ("Node.js", "Sci-Fi"); squash drops them anyway after parsing.
+function unslug(b: Book): Book {
+  return /\s/.test(b.title) ? b : { ...b, title: b.title.replace(/[-_.]+/g, " ") };
+}
+
 // A raw import has no authors yet, so its authors are unknown rather than different:
 // compare titles alone (still edition-aware) when either side lacks authors.
 function sameWork(a: Book, b: Book): boolean {
-  if (a.authors.length > 0 && b.authors.length > 0) return isSimilarMatch(a, b);
-  return isSimilarMatch({ ...a, authors: [] }, { ...b, authors: [] });
+  const [ua, ub] = [unslug(a), unslug(b)];
+  if (a.authors.length > 0 && b.authors.length > 0) return isSimilarMatch(ua, ub);
+  return isSimilarMatch({ ...ua, authors: [] }, { ...ub, authors: [] });
 }
 
 /**

@@ -10,12 +10,6 @@ import type { BaseDeps } from "./deps.js";
 /** Candidate pool per query; a real duplicate of one title is a handful of books at most. */
 const CANDIDATES = 20;
 
-/** Probe outcome: flagged books, plus the added ids skipped past {@link MAX_PROBED}. */
-export interface ProbeResult {
-  duplicates: PossibleDuplicate[];
-  notProbed: number[];
-}
-
 async function searchIds(deps: BaseDeps, query: string, library?: string): Promise<number[]> {
   const page = await deps.content.search({ query, num: CANDIDATES, library });
   return page.bookIds;
@@ -25,7 +19,11 @@ async function searchIds(deps: BaseDeps, query: string, library?: string): Promi
  * Check each newly added id against the library (other books added in this call included).
  * Throws on read failure — the caller owns the degrade-and-log policy.
  */
-export async function probeDuplicates(deps: BaseDeps, addedIds: number[], library?: string): Promise<ProbeResult> {
+export async function probeDuplicates(
+  deps: BaseDeps,
+  addedIds: number[],
+  library?: string,
+): Promise<PossibleDuplicate[]> {
   const ids = addedIds.slice(0, MAX_PROBED);
   const fresh = await deps.content.booksByIds(ids, library);
   const duplicates: PossibleDuplicate[] = [];
@@ -46,7 +44,7 @@ export async function probeDuplicates(deps: BaseDeps, addedIds: number[], librar
     const hit = matchAddedBook(added, candidates);
     if (hit) duplicates.push(hit);
   }
-  return { duplicates, notProbed: addedIds.slice(MAX_PROBED) };
+  return duplicates;
 }
 
 /** One advisory line per flagged book, with the exact next call to compare them. */
@@ -55,6 +53,11 @@ export function renderHint(d: PossibleDuplicate): string {
   const of = d.of.map((i) => `#${i}`).join(", ");
   const why = d.reason === "isbn" ? "same ISBN" : "same normalized title";
   return `⚠ #${d.id}: possible duplicate of ${of} (${why}) — run calibre_find_duplicates mode=compare ids=[${ids.join(",")}] to review. Nothing was merged or removed.`;
+}
+
+/** Text note when the probe itself failed: the add stands, the duplicate check is on the caller. */
+export function renderProbeFailed(reason: string): string {
+  return `Duplicate probe unavailable (${reason}) — run calibre_find_duplicates to check the new book(s).`;
 }
 
 /** Text note for added ids the probe skipped, so the cap is never silent (#341). */

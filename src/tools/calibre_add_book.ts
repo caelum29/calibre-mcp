@@ -5,7 +5,8 @@
 import { z } from "zod";
 import { defineTool } from "./define.js";
 import { validateAddPath } from "./add-path.js";
-import { probeDuplicates, renderHint, renderNotProbed, type ProbeResult } from "./add-dup-probe.js";
+import { probeDuplicates, renderHint, renderNotProbed, renderProbeFailed } from "./add-dup-probe.js";
+import { unprobedIds, type PossibleDuplicate } from "../domain/curation/add-probe.js";
 import { toolError, toolOk } from "./result.js";
 import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "../app/write-policy.js";
 import { errorCodeFor } from "../domain/error-codes.js";
@@ -75,19 +76,21 @@ export const addBookTool = defineTool({
 
       // Advisory only (#204): calibredb's duplicate check misses raw-titled imports, so look again.
       // The add already committed — a failed probe must never turn it into an error.
-      let probe: ProbeResult = { duplicates: [], notProbed: [] };
+      let dups: PossibleDuplicate[] = [];
+      let failure: string | undefined;
       if (addedIds.length > 0) {
         try {
-          probe = await probeDuplicates(deps, addedIds, args.library);
+          dups = await probeDuplicates(deps, addedIds, args.library);
         } catch (err) {
-          deps.log.warn("add_book duplicate probe failed", {
-            reason: err instanceof Error ? err.message : String(err),
-          });
+          failure = err instanceof Error ? err.message : String(err);
+          deps.log.warn("add_book duplicate probe failed", { reason: failure });
         }
       }
-      const { duplicates: dups, notProbed } = probe;
-      // Hints and the cap note go in the text too: some clients surface only text blocks.
+      // the cap depends only on the ids, so its note survives a failed probe
+      const notProbed = unprobedIds(addedIds);
+      // Hints and notes go in the text too: some clients surface only text blocks.
       const lines = [summary, ...dups.map(renderHint)];
+      if (failure !== undefined) lines.push(renderProbeFailed(failure));
       if (notProbed.length > 0)
         lines.push(renderNotProbed(addedIds.length - notProbed.length, addedIds.length, notProbed));
       return toolOk([{ type: "text", text: lines.join("\n") }], {

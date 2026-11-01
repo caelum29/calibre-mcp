@@ -439,7 +439,9 @@ yet, as with a raw-filename import). Each flagged book gets an advisory line in 
 `⚠ #1270: possible duplicate of #210 (same normalized title) — run calibre_find_duplicates mode=compare ids=[210,1270] to review. Nothing was merged or removed.`,
 and an entry in `possibleDuplicates` (`{ id, of, reason: "isbn" | "title" }`). The probe checks
 at most 10 new books; the rest are listed in `notProbed` and named in the text. A failed probe
-never fails the add.
+never fails the add: the text says the probe was unavailable, and the cap note still appears.
+A filename-slug title (`learning-go-2nd-edition`, no spaces) is read with its `-`/`_`/`.`
+separators as spaces, so its edition is recognised.
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
