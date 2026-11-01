@@ -8,16 +8,16 @@ export const SNIPPET_CHARS = 320;
 
 // Query stems shorter than this are skipped (в, и, of: noise even off the stopword list).
 const MIN_TERM_CHARS = 3;
-// How far back from a term to look for the start of its sentence. Basis: heuristic from #243, not
-// measured — about one snippet width (SNIPPET_CHARS / 2); revisit if windows open mid-sentence.
+// How far back from a term to look for the start of its sentence. Basis: heuristic, not
+// measured (#243 review) — about half a snippet width (SNIPPET_CHARS / 2); revisit if windows open mid-sentence.
 const MAX_SENTENCE_LEAD = 160;
 // Near the chunk end a window may start late (at its sentence) only while it keeps this share
 // of the width; below that it shifts back to `end - width` so the snippet isn't a sliver.
-// Basis: heuristic from #243, not measured — two thirds keeps the window mostly content.
+// Basis: heuristic, not measured (#243 review) — two thirds keeps the window mostly content.
 const MIN_TAIL_SHARE = 2 / 3;
 const SENTENCE_END = /[.!?…]\s+|\n/g;
 // A hit may open a window only if its term weighs at least this share of the rarest term's.
-// Basis: heuristic from #243, not measured — half the rarest weight still counts as informative.
+// Basis: heuristic, not measured (#243 review) — half the rarest weight still counts as informative.
 const ANCHOR_WEIGHT_SHARE = 0.5;
 
 // Function words that carry no topic: a natural-language query is mostly these, and without

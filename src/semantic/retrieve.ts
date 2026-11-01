@@ -117,8 +117,9 @@ export interface RankedHits<H> {
 /**
  * Rank hits for one request. Per scope (library books / book passages / figure captions) and mode
  * it runs the vector + keyword halves, RRF-fuses them (hybrid), applies the cross-encoder rerank
- * stage (D-011), the front-matter demotion (#18) and the two confidence signals. Throws the embedder/index error codes
- * (`EMBEDDER_UNAVAILABLE`, `INDEX_INCOMPATIBLE…`) for the adapter to map; rerank failures degrade.
+ * stage (D-011), the front-matter demotion (#18) and the two confidence signals. Throws the
+ * embedder/index error codes (`EMBEDDER_UNAVAILABLE`, `INDEX_INCOMPATIBLE…`) for the adapter to map;
+ * rerank failures degrade.
  */
 export function retrieve(
   deps: RetrievalDeps,

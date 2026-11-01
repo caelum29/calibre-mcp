@@ -33,7 +33,7 @@ export type * from "./types.js";
  *
  * Why node:sqlite: built in (unflagged and shipping FTS5 from Node 22.16 — 22.5–22.12 need
  * --experimental-sqlite, 22.13–22.15 lack FTS5), so the npx/MCPB bundle ships with ZERO native
- * addons — no node-gyp, no ABI lock, no macOS quarantine on a prebuilt .node. Vectors are
+ * addons — no node-gyp, no ABI lock, no macOS quarantine on a prebuilt .node (the exact install failure the project avoids). Vectors are
  * L2-normalized Float32 BLOBs; retrieval is in-memory brute-force cosine (== dot product) over a
  * per-library candidate cache (decoded once, invalidated on write) — flat scan beats ANN at this
  * scale; the cost worth killing was the per-query BLOB reload, not the scan.

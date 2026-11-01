@@ -2,7 +2,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { FullTextSearch } from "../../src/calibre/fts.js";
 import { asLibId } from "../../src/calibre/lib-id.js";
-import { CalibreHttpTimeoutError, FtsError } from "../../src/domain/errors.js";
+import {
+  CalibreBusyError,
+  CalibreHttpTimeoutError,
+  FtsError,
+  OperationCancelledError,
+} from "../../src/domain/errors.js";
 import type { FtsMatches } from "../../src/domain/search.js";
 import { log } from "../../src/logging.js";
 import { Deadline } from "../../src/shared/deadline.js";
@@ -109,6 +114,42 @@ describe("FullTextSearch.snippets — unknown errors are logged (#348)", () => {
     const ftsSnippets = vi.fn().mockRejectedValueOnce(new CalibreHttpTimeoutError("http://x/fts/snippets/1"));
     const fts = new FullTextSearch({ ftsSearch: vi.fn(), ftsSnippets }, c.now);
     await fts.snippets("q", LIB, [1], { deadline: new Deadline(45_000, c.now) });
+    expect(warn).not.toHaveBeenCalled();
+  });
+});
+
+describe("FullTextSearch.snippets — expected stops stay silent (#348)", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("should_not_warn_when_the_library_is_busy", async () => {
+    const warn = vi.spyOn(log, "warn").mockImplementation(() => undefined);
+    const c = clock();
+    const ftsSnippets = vi.fn().mockRejectedValueOnce(new CalibreBusyError(LIB, 30_000));
+    const fts = new FullTextSearch({ ftsSearch: vi.fn(), ftsSnippets }, c.now);
+    const batch = await fts.snippets("q", LIB, [1], { deadline: new Deadline(45_000, c.now) });
+    expect(batch.stoppedBy).toBe("busy");
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("should_propagate_an_fts_refusal_without_warning", async () => {
+    const warn = vi.spyOn(log, "warn").mockImplementation(() => undefined);
+    const c = clock();
+    const ftsSnippets = vi.fn().mockRejectedValueOnce(new FtsError("FTS_DISABLED", LIB));
+    const fts = new FullTextSearch({ ftsSearch: vi.fn(), ftsSnippets }, c.now);
+    await expect(fts.snippets("q", LIB, [1], { deadline: new Deadline(45_000, c.now) })).rejects.toBeInstanceOf(
+      FtsError,
+    );
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("should_propagate_cancellation_without_warning", async () => {
+    const warn = vi.spyOn(log, "warn").mockImplementation(() => undefined);
+    const c = clock();
+    const ftsSnippets = vi.fn().mockRejectedValueOnce(new OperationCancelledError());
+    const fts = new FullTextSearch({ ftsSearch: vi.fn(), ftsSnippets }, c.now);
+    await expect(fts.snippets("q", LIB, [1], { deadline: new Deadline(45_000, c.now) })).rejects.toBeInstanceOf(
+      OperationCancelledError,
+    );
     expect(warn).not.toHaveBeenCalled();
   });
 });

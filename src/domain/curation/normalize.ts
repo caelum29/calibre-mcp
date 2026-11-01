@@ -117,9 +117,8 @@ export function similarKey(book: Book): string | undefined {
 }
 
 /**
- * Pubdates this many years apart (or more) read as different editions (#242). Basis: heuristic,
- * not measured on the library — a 2-year gap separates a revised edition from a reprint of the
- * same one; revisit if the duplicate report splits true duplicates.
+ * Pubdates this many years apart (or more) read as different editions (#242). Basis: heuristic from
+ * #242, not measured on the library; revisit if the duplicate report splits true duplicates.
  */
 const EDITION_YEAR_GAP = 2;
 
