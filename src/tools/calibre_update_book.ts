@@ -15,7 +15,7 @@ import type { ToolResult } from "./types.js";
 import type { BaseDeps } from "./deps.js";
 import { bookIdArg } from "./resolve-id.js";
 import { resolveNumericId } from "../app/resolve-id.js";
-import { fence, toolError, toolOk } from "./result.js";
+import { fence, toolError, toolOk, bookNotFound, errorFromCatch } from "./result.js";
 import {
   isWriteRefused,
   WRITE_REFUSED_MESSAGE,
@@ -26,7 +26,6 @@ import {
   type TimedOutWrite,
   isDroppedMidRequest,
 } from "../app/write-policy.js";
-import { errorCodeFor } from "../domain/error-codes.js";
 
 // One field's new value: scalar, multi-value list, or identifiers map. -32602-hardened
 // via jsonRecord (the whole `changes` object may arrive as a JSON string).
@@ -128,10 +127,9 @@ export const updateBookTool = defineTool({
     } catch (err) {
       // same wording as get_book — never leak the raw HTTP text (#251)
       if (err instanceof CalibreHttpError && err.status === 404) {
-        return toolError("not_found", `No book with id ${bookIdArg(args)} in the requested library`);
+        return bookNotFound(bookIdArg(args));
       }
-      const msg = err instanceof Error ? err.message : String(err);
-      return toolError(errorCodeFor(err), msg);
+      return errorFromCatch(err);
     }
   },
 });

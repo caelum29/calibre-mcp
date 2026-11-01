@@ -7,9 +7,8 @@ import { defineTool } from "./define.js";
 import { validateAddPath } from "./add-path.js";
 import { probeDuplicates, renderHint, renderNotProbed, renderProbeFailed } from "./add-dup-probe.js";
 import { unprobedIds, type PossibleDuplicate } from "../domain/curation/add-probe.js";
-import { toolError, toolOk } from "./result.js";
+import { toolError, toolOk, errorFromCatch } from "./result.js";
 import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "../app/write-policy.js";
-import { errorCodeFor } from "../domain/error-codes.js";
 
 /**
  * Pull the numeric ids out of calibredb's "Added book ids: 1, 2" success line. Matching is
@@ -100,7 +99,7 @@ export const addBookTool = defineTool({
         ...(notProbed.length > 0 ? { notProbed } : {}),
       });
     } catch (err) {
-      return toolError(errorCodeFor(err), err instanceof Error ? err.message : String(err));
+      return errorFromCatch(err);
     }
   },
 });

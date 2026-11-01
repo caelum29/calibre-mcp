@@ -12,9 +12,8 @@ import { BookId, CoercedBool } from "./coerce.js";
 import { bookIdArg } from "./resolve-id.js";
 import { defineTool } from "./define.js";
 import { bookResourceLink } from "./resource-link.js";
-import { fence, toolError, toolOk } from "./result.js";
+import { fence, toolError, toolOk, bookNotFound, errorFromCatch } from "./result.js";
 import type { ContentBlock } from "./types.js";
-import { errorCodeFor } from "../domain/error-codes.js";
 
 // All-optional so the SDK validates structuredContent without stripping/rejecting (permissive).
 const bookSchema = z.object({
@@ -96,10 +95,9 @@ export const getBookTool = defineTool({
       );
     } catch (err) {
       if (err instanceof CalibreHttpError && err.status === 404) {
-        return toolError("not_found", `No book with id ${idArg} in the requested library`);
+        return bookNotFound(idArg);
       }
-      const msg = err instanceof Error ? err.message : String(err);
-      return toolError(errorCodeFor(err), msg);
+      return errorFromCatch(err);
     }
   },
 });

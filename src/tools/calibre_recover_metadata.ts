@@ -22,9 +22,8 @@ import type { IsbnScanResult } from "../app/isbn-scan.js";
 import { bookIdArg } from "./resolve-id.js";
 import { resolveNumericId } from "../app/resolve-id.js";
 import { bookResourceLink } from "./resource-link.js";
-import { fence, toolError, toolOk } from "./result.js";
+import { fence, toolError, toolOk, errorFromCatch, bookNotFound } from "./result.js";
 import type { BaseDeps } from "./deps.js";
-import { errorCodeFor } from "../domain/error-codes.js";
 
 const SOURCE = z.enum(["openlibrary", "googlebooks"]);
 const DEFAULT_SOURCES: Provider["name"][] = ["openlibrary", "googlebooks"];
@@ -173,9 +172,9 @@ export const recoverMetadataTool = defineTool({
       );
     } catch (err) {
       if (err instanceof CalibreHttpError && err.status === 404) {
-        return toolError("not_found", `No book with id ${args.id} in the requested library`);
+        return bookNotFound(args.id);
       }
-      return toolError(errorCodeFor(err), err instanceof Error ? err.message : String(err));
+      return errorFromCatch(err);
     }
   },
 });

@@ -5,6 +5,9 @@
 // library, mode or query — or passing a pre-upgrade token — is an actionable error (#305),
 // never a silent restart at 0 or an offset applied to a different result set.
 
+import { toolError } from "./result.js";
+import type { ToolResult } from "./types.js";
+
 /** Bump when the token shape changes; older tokens then fail with "Invalid cursor". */
 const CURSOR_VERSION = 2;
 
@@ -89,8 +92,30 @@ export function resolveCursor(token: string | undefined, bind: CursorBinding, to
   return { ok: true, offset: c.offset };
 }
 
+/**
+ * The page start for a call's `cursor` param, or the `invalid_input` result to return as-is
+ * (the #211 shape). No cursor (undefined / "" — CursorParam maps null there too) → offset 0.
+ */
+export function pageOffset(
+  token: string | undefined,
+  bind: CursorBinding,
+  tool: string,
+): { offset: number } | ToolResult {
+  const start = resolveCursor(token, bind, tool);
+  return start.ok ? { offset: start.offset } : toolError("invalid_input", start.error);
+}
+
+/** Cursor query key for an ids/query/filter book selection (find_duplicates, quality_report). */
+export function selectionKey(a: {
+  ids?: readonly (number | string)[] | undefined;
+  query?: string | undefined;
+  filter?: string | undefined;
+}): string {
+  return [idsKey(a.ids), a.query ?? "", a.filter ?? ""].join(":");
+}
+
 /** Key part for an `ids` selection: order and repeats don't change the set, so normalise them. */
-export function idsKey(ids: readonly (number | string)[] | undefined): string {
+function idsKey(ids: readonly (number | string)[] | undefined): string {
   if (!ids?.length) return "";
   const uniq = [...new Set(ids.map(String))];
   return uniq.sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).join(",");

@@ -12,9 +12,8 @@ import { defineTool } from "./define.js";
 import { scanForIsbn, scanOutcomeHint } from "../app/isbn-scan.js";
 import { bookIdArg } from "./resolve-id.js";
 import { resolveNumericId } from "../app/resolve-id.js";
-import { toolError, toolOk } from "./result.js";
+import { toolError, toolOk, errorFromCatch } from "./result.js";
 import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "../app/write-policy.js";
-import { errorCodeFor } from "../domain/error-codes.js";
 
 export const extractIsbnTool = defineTool({
   name: "calibre_extract_isbn",
@@ -117,7 +116,7 @@ export const extractIsbnTool = defineTool({
         applied: true,
       });
     } catch (err) {
-      return toolError(errorCodeFor(err), err instanceof Error ? err.message : String(err));
+      return errorFromCatch(err);
     }
   },
 });

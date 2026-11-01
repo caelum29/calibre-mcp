@@ -12,7 +12,7 @@ import { BookId, CoercedBool, CoercedInt, jsonArray } from "./coerce.js";
 import { defineTool } from "./define.js";
 import { bookIdArg } from "./resolve-id.js";
 import { resolveNumericId } from "../app/resolve-id.js";
-import { fence, toolError, toolOk } from "./result.js";
+import { fence, toolError, toolOk, errorFromCatch, bookNotFound } from "./result.js";
 import type { ContentBlock } from "./types.js";
 import type { BaseDeps } from "./deps.js";
 import { errorCodeFor } from "../domain/error-codes.js";
@@ -102,9 +102,9 @@ export const getFiguresTool = defineTool({
       return listFigures(args, { numericId, fmt, inventory }, otherFormats);
     } catch (err) {
       if (err instanceof CalibreHttpError && err.status === 404) {
-        return toolError("not_found", `No book with id ${idArg} in the requested library`);
+        return bookNotFound(idArg);
       }
-      return toolError(errorCodeFor(err), err instanceof Error ? err.message : String(err));
+      return errorFromCatch(err);
     }
   },
 });
@@ -339,7 +339,7 @@ function skipReason(s: SkippedFigure): string {
 
 function figuresError(err: unknown, bookId: number, fmt: string) {
   if (err instanceof FiguresError) return toolError(errorCodeFor(err), MESSAGES[err.code].scan(bookId, fmt));
-  return toolError(errorCodeFor(err), err instanceof Error ? err.message : String(err));
+  return errorFromCatch(err);
 }
 
 function plural(n: number, word: string): string {

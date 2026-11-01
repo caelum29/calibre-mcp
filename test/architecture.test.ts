@@ -318,6 +318,31 @@ const TWIN_RULES: TwinRule[] = [
     home: ["src/semantic/status.ts", "src/semantic/store/index.ts", "src/app/library-index.ts"],
   },
   {
+    name: "a not-found-or-cause error goes through toolErrorFrom (#345)",
+    pattern: /\bcause\s*===\s*undefined\s*\?\s*toolError\s*\(/,
+    home: ["src/tools/result.ts"],
+  },
+  {
+    name: "a caught error becomes a result through errorFromCatch (#345)",
+    pattern: /toolError\(\s*errorCodeFor\(\s*([\w$]+)\s*\)\s*,\s*\1\s+instanceof\s+Error/,
+    home: ["src/tools/result.ts"],
+  },
+  {
+    name: "a cursor param is resolved through pageOffset (#345, the #211 shape)",
+    pattern: /\bresolveCursor\s*\(/,
+    home: ["src/tools/cursor.ts"],
+  },
+  {
+    name: "an ids/query/filter selection is keyed by selectionKey (#345)",
+    pattern: /\bidsKey\s*\(/,
+    home: ["src/tools/cursor.ts"],
+  },
+  {
+    name: 'the "not in the requested library" 404 is built by bookNotFound (#345)',
+    pattern: /in the requested library/,
+    home: ["src/tools/result.ts"],
+  },
+  {
     name: "an FTS MATCH narrowed by another column goes through a MATERIALIZED CTE (#155, #347)",
     // `x_fts MATCH ? AND col …` lets the planner drive from the column index and re-run MATCH per row
     pattern: /_fts\s+MATCH\s+\?\s+AND\b/,
@@ -413,6 +438,16 @@ describe("one home per mechanism", () => {
     expect(at(`const scores = await deps.reranker.rerank(q, bodies);`)).toHaveLength(1);
     expect(at(`const VECTOR_RRF_WEIGHT = 1.0;`)).toHaveLength(1);
     expect(at(`function boardMeta(deps, payload) {}`)).toHaveLength(1);
+    expect(at(`if (!fr.ok) return fr.cause === undefined ? toolError("not_found", m) : x;`)).toHaveLength(1);
+    expect(at(`return cause === undefined\n  ? toolError("write_failed", m)\n  : y;`)).toHaveLength(1);
+    expect(at(`return toolError(errorCodeFor(err), err instanceof Error ? err.message : String(err));`)).toHaveLength(
+      1,
+    );
+    expect(at(`return toolError(errorCodeFor(e), e instanceof Error ? e.message : String(e));`)).toHaveLength(1);
+    expect(at(`return toolError(errorCodeFor(err), steer);`)).toEqual([]);
+    expect(at(`const start = resolveCursor(args.cursor, bind, "calibre_search");`)).toHaveLength(1);
+    expect(at(`const key = [idsKey(args.ids), q].join(":");`)).toHaveLength(1);
+    expect(at("return toolError(`No book with id ${id} in the requested library`);")).toHaveLength(1);
     expect(at(`const o = await runBookPipeline<PrepareResult>(ids, 1, hooks);`)).toHaveLength(1);
     expect(at(`const n = deps.index.booksMissingVectors(id);`)).toHaveLength(1);
     expect(at(`const _meta = boardMeta(deps, payload);`)).toEqual([]);
@@ -420,6 +455,60 @@ describe("one home per mechanism", () => {
     expect(at(`import { DatabaseSync } from "node:sqlite"; let db: DatabaseSync;`)).toEqual([]);
     expect(at(`const k = s.normalize("NFC");`)).toEqual([]);
     expect(at(`await deps.content.fetchBook(1); // fetch(url)`)).toEqual([]);
+  });
+});
+
+// ── one call site per shared steer (#345) ───────────────────────────────────────────
+
+/** Matches of `pattern` across the given files, as `"<path>"` per hit. */
+function siteHits(files: SourceFile[], pattern: RegExp): string[] {
+  const g = new RegExp(pattern.source, "g");
+  return files.flatMap((f) => [...stripComments(f.source).matchAll(g)].map(() => f.path));
+}
+
+// The "FTS isn't available" refusal is one steer: two copies drift apart (#345).
+const FTS_UNAVAILABLE = /toolError\(\s*["'`]fts_unavailable["'`]/;
+
+describe("one call site per shared steer", () => {
+  it("the fts_unavailable refusal is built in exactly one place", () => {
+    expect(siteHits(readSources("src", /\.ts$/), FTS_UNAVAILABLE)).toEqual(["src/tools/calibre_search.ts"]);
+  });
+
+  it("counts every hit, across lines", () => {
+    const src = `return toolError(\n  "fts_unavailable", a);\nreturn toolError("fts_unavailable", b);`;
+    expect(siteHits([{ path: "src/tools/x.ts", source: src }], FTS_UNAVAILABLE)).toEqual([
+      "src/tools/x.ts",
+      "src/tools/x.ts",
+    ]);
+    expect(siteHits([{ path: "src/tools/x.ts", source: `// toolError("fts_unavailable")` }], FTS_UNAVAILABLE)).toEqual(
+      [],
+    );
+  });
+});
+
+// The two-line catch tail (`const msg = …; return toolError(errorCodeFor(err), msg)`) is the same
+// mechanism as errorFromCatch; a tail that adds its own text (open_book, board_data) is not (#345 review).
+const CATCH_TAIL_VIA_MSG =
+  /const\s+([\w$]+)\s*=\s*([\w$]+)\s+instanceof\s+Error\s*\?\s*\2\.message\s*:\s*String\(\s*\2\s*\)\s*;\s*return\s+toolError\(\s*errorCodeFor\(\s*\2\s*\)\s*,\s*\1\s*\)/;
+
+describe("errorFromCatch is the only pass-through catch tail (#345 review)", () => {
+  it("no module rebuilds it through a message variable", () => {
+    expect(siteHits(readSources("src", /\.ts$/), CATCH_TAIL_VIA_MSG)).toEqual([]);
+  });
+
+  it("catches the two-line form, not a tail with its own text", () => {
+    const at = (source: string) => siteHits([{ path: "src/tools/x.ts", source }], CATCH_TAIL_VIA_MSG);
+    expect(
+      at(`const msg = err instanceof Error ? err.message : String(err);\n  return toolError(errorCodeFor(err), msg);`),
+    ).toEqual(["src/tools/x.ts"]);
+    expect(at(`const m = e instanceof Error ? e.message : String(e); return toolError(errorCodeFor(e), m);`)).toEqual([
+      "src/tools/x.ts",
+    ]);
+    expect(
+      at(
+        "const msg = err instanceof Error ? err.message : String(err);\nreturn toolError(errorCodeFor(err), `Could not: ${msg}`);",
+      ),
+    ).toEqual([]);
   });
 });
 

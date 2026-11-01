@@ -7,11 +7,10 @@ import { z } from "zod";
 import { ALL_CHECKS, type QualityCheck, runQualityChecks } from "../domain/curation/quality.js";
 import { buildScopedQuery, honestyLines, resolveFilter } from "../app/bundles.js";
 import { BookId, CoercedBool, CursorParam, jsonArray, limitParam } from "./coerce.js";
-import { idsKey, pageCursor, resolveCursor } from "./cursor.js";
+import { pageCursor, pageOffset, selectionKey } from "./cursor.js";
 import { defineTool } from "./define.js";
 import { selectBooks } from "../app/select-books.js";
-import { fence, renderResult, toolError } from "./result.js";
-import { errorCodeFor } from "../domain/error-codes.js";
+import { fence, renderResult, toolError, toolErrorFrom, errorFromCatch } from "./result.js";
 
 const CHECK_ENUM = z.enum([
   "missing_metadata",
@@ -70,17 +69,14 @@ export const qualityReportTool = defineTool({
       }
       // Every input that shapes the issue list is in the key, and a bad cursor is refused
       // before the (expensive) book selection (#305).
-      const cursorKey = [checks.slice().sort().join(","), idsKey(args.ids), args.query ?? "", args.filter ?? ""].join(
-        ":",
-      );
+      const cursorKey = [checks.slice().sort().join(","), selectionKey(args)].join(":");
       const bind = { libId: await deps.content.resolveLibraryId(args.library), mode: "quality", query: cursorKey };
-      const start = resolveCursor(args.cursor, bind, "calibre_quality_report");
-      if (!start.ok) return toolError("invalid_input", start.error);
+      const start = pageOffset(args.cursor, bind, "calibre_quality_report");
+      if ("content" in start) return start;
       const offset = start.offset;
 
       const fr = await resolveFilter(deps, { filter: args.filter, autoExclude: false, library: args.library });
-      if (!fr.ok)
-        return fr.cause === undefined ? toolError("not_found", fr.error) : toolError(errorCodeFor(fr.cause), fr.error);
+      if (!fr.ok) return toolErrorFrom(fr.cause, fr.error);
 
       ctx?.progress?.(0, "Selecting books…", 2);
       const {
@@ -139,7 +135,7 @@ export const qualityReportTool = defineTool({
         page: pageCursor({ offset, fetched: page.length, total: issues.length, ...bind }),
       });
     } catch (err) {
-      return toolError(errorCodeFor(err), err instanceof Error ? err.message : String(err));
+      return errorFromCatch(err);
     }
   },
 });

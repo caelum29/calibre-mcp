@@ -17,10 +17,9 @@ import { mergeBuiltinMetadata, mergeCustomMetadata, planFormatMoves } from "../d
 import type { FormatMove } from "../domain/merge.js";
 import { CoercedBool, CoercedInt, jsonArray } from "./coerce.js";
 import { defineTool } from "./define.js";
-import { fence, toolError, toolOk } from "./result.js";
+import { fence, toolError, toolOk, toolErrorFrom, errorFromCatch } from "./result.js";
 import type { BaseDeps } from "./deps.js";
 import { isWriteRefused, WRITE_REFUSED_MESSAGE, verifyTimedOutWrite } from "../app/write-policy.js";
-import { errorCodeFor } from "../domain/error-codes.js";
 
 /** One executed (or planned) write step in the merge ledger. */
 interface Step {
@@ -148,7 +147,7 @@ export const mergeBooksTool = defineTool({
         warnings,
       });
     } catch (err) {
-      return toolError(errorCodeFor(err), err instanceof Error ? err.message : String(err));
+      return errorFromCatch(err);
     }
   },
 });
@@ -435,9 +434,7 @@ function ledgerResult(job: MergeJob, steps: Step[]) {
     const opts = { structured: { ...structured, status: "incomplete" } };
     // the failing step's own cause when it threw; a failed post-add check has none
     const cause = failed[0]!.cause;
-    return cause === undefined
-      ? toolError("write_failed", message, opts)
-      : toolError(errorCodeFor(cause), message, opts);
+    return toolErrorFrom(cause, message, "write_failed", opts);
   }
 
   // Something committed: NEVER isError (issue #33). Steer: re-running is safe.

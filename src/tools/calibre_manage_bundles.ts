@@ -12,7 +12,7 @@ import { type BundleEntry, invalidateBundleCache, isExclusionMarker, loadBundles
 import { CoercedBool } from "./coerce.js";
 import { defineTool } from "./define.js";
 import type { LibId } from "../calibre/lib-id.js";
-import { toolError, toolOk } from "./result.js";
+import { toolError, toolOk, errorFromCatch } from "./result.js";
 import type { BaseDeps } from "./deps.js";
 import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "../app/write-policy.js";
 import type { ToolResult } from "./types.js";
@@ -57,7 +57,7 @@ async function countMatches(
         ),
       };
     }
-    return { failure: toolError(errorCodeFor(err), err instanceof Error ? err.message : String(err)) };
+    return { failure: errorFromCatch(err) };
   }
 }
 
@@ -304,7 +304,7 @@ export const manageBundlesTool = defineTool({
         },
       );
     } catch (err) {
-      return toolError(errorCodeFor(err), err instanceof Error ? err.message : String(err));
+      return errorFromCatch(err);
     }
   },
 });

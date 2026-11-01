@@ -55,7 +55,8 @@ describe("toolError call sites", () => {
   });
 
   it("should_find_the_known_call_sites", () => {
-    expect(toolErrorFirstArgs().length).toBeGreaterThan(120);
+    // proves the scanner still sees the sites: 111 after #345 folded 37 duplicates (148 before) into helpers
+    expect(toolErrorFirstArgs().length).toBeGreaterThan(100);
   });
 });
 
