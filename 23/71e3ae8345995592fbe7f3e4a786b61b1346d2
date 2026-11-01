@@ -1,0 +1,25 @@
+src/semantic/store/figures.ts
+  s_86e84958b841b5::t_358fab3a0a6821 11-12,146-148,150,156
+src/semantic/store/shared.ts
+  s_86e84958b841b5::t_3618d94af87089 74-76
+  s_86e84958b841b5::t_358fab3a0a6821 40-41,45,52-73
+src/semantic/store/chunks.ts
+  s_86e84958b841b5::t_358fab3a0a6821 11-21,26-27,202-205,208
+  s_86e84958b841b5::t_3618d94af87089 2-3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2371e3ae8345995592fbe7f3e4a786b61b1346d2",
+  "prompts": {},
+  "sessions": {
+    "s_86e84958b841b5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b6c59b87-930f-4b44-9826-bb79e701b922",
+        "model": "unknown"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
