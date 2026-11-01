@@ -1,9 +1,10 @@
 // FullTextSearch: the "FTS disabled" cache and the per-book snippet loop under a time budget.
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { FullTextSearch } from "../../src/calibre/fts.js";
 import { asLibId } from "../../src/calibre/lib-id.js";
 import { CalibreHttpTimeoutError, FtsError } from "../../src/domain/errors.js";
 import type { FtsMatches } from "../../src/domain/search.js";
+import { log } from "../../src/logging.js";
 import { Deadline } from "../../src/shared/deadline.js";
 
 const LIB = asLibId("Programming_Books");
@@ -84,5 +85,30 @@ describe("FullTextSearch.snippets — per-book budget", () => {
     const fts = new FullTextSearch({ ftsSearch: vi.fn(), ftsSnippets }, c.now);
     const batch = await fts.snippets("q", LIB, [1, 2, 3], { deadline: new Deadline(45_000, c.now) });
     expect(batch).toEqual({ byBook: new Map([[1, ["s1"]]]), skipped: [2, 3], stoppedBy: "timeout" });
+  });
+});
+
+describe("FullTextSearch.snippets — unknown errors are logged (#348)", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("should_warn_with_the_cause_through_the_logger_when_a_snippet_request_fails_unexpectedly", async () => {
+    const warn = vi.spyOn(log, "warn").mockImplementation(() => undefined);
+    const c = clock();
+    const ftsSnippets = vi.fn().mockRejectedValueOnce(new TypeError("bad snippet payload"));
+    const fts = new FullTextSearch({ ftsSearch: vi.fn(), ftsSnippets }, c.now);
+    const batch = await fts.snippets("q", LIB, [1, 2], { deadline: new Deadline(45_000, c.now) });
+    expect(batch).toEqual({ byBook: new Map(), skipped: [1, 2], stoppedBy: "error" });
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0]![0]).toBe("fts snippets stopped on an unexpected error");
+    expect(warn.mock.calls[0]![1]).toMatchObject({ libraryId: "Programming_Books", error: "bad snippet payload" });
+  });
+
+  it("should_not_warn_for_the_expected_timeout_stop", async () => {
+    const warn = vi.spyOn(log, "warn").mockImplementation(() => undefined);
+    const c = clock();
+    const ftsSnippets = vi.fn().mockRejectedValueOnce(new CalibreHttpTimeoutError("http://x/fts/snippets/1"));
+    const fts = new FullTextSearch({ ftsSearch: vi.fn(), ftsSnippets }, c.now);
+    await fts.snippets("q", LIB, [1], { deadline: new Deadline(45_000, c.now) });
+    expect(warn).not.toHaveBeenCalled();
   });
 });
