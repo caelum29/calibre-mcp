@@ -111,7 +111,7 @@ function deps(o: Opts = {}): BuildIndexDeps {
   };
 }
 
-const state = (): BuildProgress => ({ total: 0, done: 0, indexedIds: [], failures: [], selectedIds: [] });
+const state = (): BuildProgress => ({ total: 0, done: 0, indexedIds: [], failures: [], selectedIds: [], mode: "" });
 
 /** The finished summary; any other outcome fails the test with its kind. */
 function done(out: BuildIndexOutcome): BuildSummary {
@@ -156,7 +156,7 @@ describe("runIndexBuild (#346)", () => {
     expect(sum.bookDetails.map((d) => d.bookId)).toEqual([2, 1]);
     expect(sum.chunks).toBe(sum.bookDetails.reduce((n, d) => n + d.chunks, 0));
     expect(sum.chunks).toBeGreaterThan(0);
-    expect(s).toEqual({ total: 2, done: 2, indexedIds: [2, 1], failures: [], selectedIds: [2, 1] });
+    expect(s).toEqual({ total: 2, done: 2, indexedIds: [2, 1], failures: [], selectedIds: [2, 1], mode: "" });
   });
 
   it("skips up-to-date books on a re-run of the same selection", async () => {

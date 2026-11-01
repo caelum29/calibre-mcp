@@ -3,7 +3,7 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { libraryIndexReport, type LibraryIndexDeps } from "../../src/app/library-index.js";
-import type { SearchParams } from "../../src/calibre/content-server.js";
+import type { SearchParams } from "../../src/domain/search.js";
 import { EMBED_DIM, INDEX_VERSION, MODEL_ID } from "../../src/semantic/model.js";
 
 const META = { modelId: MODEL_ID, dim: EMBED_DIM, indexVersion: INDEX_VERSION };
