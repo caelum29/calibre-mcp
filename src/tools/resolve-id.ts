@@ -1,7 +1,5 @@
-// Shared book-id resolution. BookId() coerces numeric strings to numbers, so a string
-// that reaches a handler is a uuid — resolve it to a numeric db id via a uuid: search.
-
-import type { BaseDeps } from "./deps.js";
+// Book-id arg picking shared by the single-book tools. The uuid → numeric resolution itself
+// lives in app/resolve-id.ts, so use cases resolve ids without reaching up into tools/ (#346).
 
 /**
  * Pick a book id from either `id` or its `bookId` alias. Single-book tools take `id`, but the
@@ -10,15 +8,4 @@ import type { BaseDeps } from "./deps.js";
  */
 export function bookIdArg(a: { id?: number | string; bookId?: number | string }): number | string | undefined {
   return a.id ?? a.bookId;
-}
-
-/** Resolve a BookId (number | uuid string) to a numeric db id, or undefined if not found. */
-export async function resolveNumericId(
-  deps: BaseDeps,
-  id: number | string,
-  library?: string,
-): Promise<number | undefined> {
-  if (typeof id === "number") return id;
-  const page = await deps.content.search({ query: `uuid:${id}`, num: 1, library });
-  return page.bookIds[0];
 }

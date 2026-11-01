@@ -10,7 +10,8 @@ import { CalibreHttpError, FiguresError, type FiguresErrorCode } from "../domain
 import { log } from "../logging.js";
 import { BookId, CoercedBool, CoercedInt, jsonArray } from "./coerce.js";
 import { defineTool } from "./define.js";
-import { bookIdArg, resolveNumericId } from "./resolve-id.js";
+import { bookIdArg } from "./resolve-id.js";
+import { resolveNumericId } from "../app/resolve-id.js";
 import { fence, toolError, toolOk } from "./result.js";
 import type { ContentBlock } from "./types.js";
 import type { BaseDeps } from "./deps.js";
