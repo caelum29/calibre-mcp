@@ -29,7 +29,10 @@ describe("defaultProgressPath", () => {
   });
 
   it("keeps a library id with path separators inside the index dir", () => {
-    expect(defaultProgressPath("/idx", "../evil/x", false)).toBe(path.join("/idx", "progress-.._evil_x.jsonl"));
+    const p = defaultProgressPath("/idx", "../evil/x", false);
+    expect(path.dirname(p)).toBe("/idx");
+    // exact name: the hash (sha256 of the raw id, first 8 hex) is a persistence contract — changing it orphans resume logs
+    expect(path.basename(p)).toBe("progress-.._evil_x-5d952ef7.jsonl");
   });
 
   it("leaves library B's resume set empty after library A completes with overlapping ids", () => {
@@ -62,5 +65,31 @@ describe("resolveProgressPath", () => {
   it("is what scripts/reindex.ts uses, fed the resolved library id", () => {
     const src = readFileSync(path.join(import.meta.dirname, "../../scripts/reindex.ts"), "utf8");
     expect(src).toContain("resolveProgressPath(opt.progress, indexDir, libraryId, flagsOnly)");
+  });
+});
+
+describe("defaultProgressPath collisions after sanitising (#344)", () => {
+  it("gives ids that sanitise to the same name different paths", () => {
+    const paths = ["a:b", "a/b", "a_b"].map((id) => defaultProgressPath("/idx", id, false));
+    expect(new Set(paths).size).toBe(3);
+  });
+
+  it("keeps flags-only paths distinct too", () => {
+    expect(defaultProgressPath("/idx", "a:b", true)).not.toBe(defaultProgressPath("/idx", "a_b", true));
+  });
+
+  it("keeps the exact file name for ids that need no sanitising", () => {
+    expect(defaultProgressPath("/idx", "Programming_Books", false)).toBe(
+      path.join("/idx", "progress-Programming_Books.jsonl"),
+    );
+    expect(defaultProgressPath("/idx", "Reaserch_Books", true)).toBe(
+      path.join("/idx", "flags-progress-Reaserch_Books.jsonl"),
+    );
+  });
+
+  it("appends an 8-hex hash of the raw id only when sanitising changed it", () => {
+    const p = defaultProgressPath("/idx", "a:b", false);
+    expect(path.dirname(p)).toBe("/idx");
+    expect(path.basename(p)).toMatch(/^progress-a_b-[0-9a-f]{8}\.jsonl$/);
   });
 });

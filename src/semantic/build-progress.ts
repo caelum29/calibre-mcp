@@ -2,6 +2,7 @@
 // SETTLED book, in completion order. Resume reads back the ids that committed ok — order
 // never matters, so a concurrent build resumes exactly like a sequential one.
 
+import { createHash } from "node:crypto";
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
@@ -55,13 +56,16 @@ export function resumeProgress(file: string): Set<number> {
 
 /**
  * Default resume-log path for one library. Book ids are per library and overlap, so a log shared
- * across the index dir would make the second library skip books it never indexed (#285).
+ * across the index dir would make the second library skip books it never indexed (#285, #344).
  */
 export function defaultProgressPath(indexDir: string, libraryId: string, flagsOnly: boolean): string {
   // Library ids come from the server — keep the file inside the index dir whatever they contain.
-  // Unicode-aware so distinct non-ASCII ids stay distinct; "a b" vs "a_b" can't collide in
-  // practice because Calibre already turns spaces in library ids into "_".
-  const safe = libraryId.replace(/[^\p{L}\p{N}_.-]/gu, "_");
+  // Unicode-aware so distinct non-ASCII ids stay distinct.
+  const clean = libraryId.replace(/[^\p{L}\p{N}_.-]/gu, "_");
+  // "a:b", "a/b" and "a_b" all sanitise to "a_b" — a shared log would skip books the second library
+  // never indexed (#285). Hash the raw id when sanitising changed it; untouched ids keep today's name.
+  const safe =
+    clean === libraryId ? clean : `${clean}-${createHash("sha256").update(libraryId).digest("hex").slice(0, 8)}`;
   return path.join(indexDir, `${flagsOnly ? "flags-progress" : "progress"}-${safe}.jsonl`);
 }
 
