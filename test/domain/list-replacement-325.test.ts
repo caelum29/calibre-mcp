@@ -29,7 +29,7 @@ describe("listReplacementNote — case-insensitive list items (#325)", () => {
   });
 
   it("should_still_flag_a_dropped_tag_next_to_a_case_change", () => {
-    expect(note("tags", ["Python", "Rust"], ["python"])).toBe("tags: 2 → 1 (replaces all existing tags)");
+    expect(note("tags", ["Python", "Rust"], ["python"])).toBe("tags: 2 → 1 (replaces the list: drops Rust)");
   });
 });
 
@@ -42,7 +42,7 @@ describe("listReplacementNote — identifier values (#325)", () => {
 
   it("should_flag_a_changed_value_next_to_kept_identifiers", () => {
     expect(note("identifiers", { isbn: "1", doi: "x" }, { isbn: "2", doi: "x" })).toBe(
-      "identifiers: 2 → 2 (replaces all existing identifiers)",
+      "identifiers: 2 → 2 (replaces the list: drops isbn:1)",
     );
   });
 
