@@ -1,0 +1,21 @@
+src/domain/curation/edition.ts
+  s_86e84958b841b5::t_3c4aac71a04006 112-118,120-123
+test/domain/curation/pub-year.test.ts
+  s_86e84958b841b5::t_decf52b1931dc4 1-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "73f094c96a0c33c9e7bedd1a3cd3cc4b6d086ba7",
+  "prompts": {},
+  "sessions": {
+    "s_86e84958b841b5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b6c59b87-930f-4b44-9826-bb79e701b922",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
