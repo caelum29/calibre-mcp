@@ -4,6 +4,8 @@
 // across suffixes while different editions can still be told apart. Title digits that are
 // not an edition ("Python 3", "Web 2.0", "C++20") are left alone.
 
+import { isEmptyDate } from "../merge.js";
+
 /** Not preceded / followed by a letter or digit — `\b` is ASCII-only, titles are not. */
 const L = String.raw`(?<![\p{L}\p{N}])`;
 const R = String.raw`(?![\p{L}\p{N}])`;
@@ -107,9 +109,16 @@ export function splitTrailingYear(title: string): YearSplit {
   return { rest: m[1]!, year: Number(m[2]) };
 }
 
-/** Publication year from a Calibre pubdate; the 0101-01-01 "no date" sentinel → undefined. */
+// Years at or below this are mangled dates, not editions: they would skew the edition-gap check.
+const MIN_PLAUSIBLE_YEAR = 1001;
+
+/**
+ * Publication year from a Calibre pubdate; the 0101-01-01 "no date" sentinel and implausible
+ * years (≤ 1000) → undefined.
+ */
 export function pubYear(pubdate: string | undefined): number | undefined {
-  const m = /^(\d{4})-/.exec(pubdate ?? "");
+  if (pubdate === undefined || isEmptyDate(pubdate)) return undefined;
+  const m = /^(\d{4})-/.exec(pubdate);
   const year = m ? Number(m[1]) : undefined;
-  return year !== undefined && year > 1000 ? year : undefined;
+  return year !== undefined && year >= MIN_PLAUSIBLE_YEAR ? year : undefined;
 }

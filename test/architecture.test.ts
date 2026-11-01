@@ -318,6 +318,27 @@ const TWIN_RULES: TwinRule[] = [
     home: ["src/semantic/status.ts", "src/semantic/store/index.ts", "src/app/library-index.ts"],
   },
   {
+    name: "an FTS MATCH narrowed by another column goes through a MATERIALIZED CTE (#155, #347)",
+    // `x_fts MATCH ? AND col …` lets the planner drive from the column index and re-run MATCH per row
+    pattern: /_fts\s+MATCH\s+\?\s+AND\b/,
+    home: [],
+  },
+  {
+    name: "Calibre's 0101-01-01 no-date sentinel is read only by isEmptyDate (#347)",
+    pattern: /["'`]0101-01-01|\byear\s*>\s*1000\b/,
+    home: ["src/domain/merge.ts"],
+  },
+  {
+    name: "domain errors are classified with instanceof, not by name string (#347)",
+    pattern: /\.name\s*===\s*["'`]Calibre\w*Error["'`]/,
+    home: [],
+  },
+  {
+    name: "a remaining-time budget is a shared/deadline.ts Deadline, not ad-hoc arithmetic (#347)",
+    pattern: /-\s*\(\s*Date\.now\(\)\s*-/,
+    home: [],
+  },
+  {
     name: "the cover-board _meta is built by one boardMeta helper (#259)",
     pattern: /\bfunction\s+boardMeta\s*\(/,
     home: ["src/tools/board-meta.ts"],
@@ -399,6 +420,26 @@ describe("one home per mechanism", () => {
     expect(at(`import { DatabaseSync } from "node:sqlite"; let db: DatabaseSync;`)).toEqual([]);
     expect(at(`const k = s.normalize("NFC");`)).toEqual([]);
     expect(at(`await deps.content.fetchBook(1); // fetch(url)`)).toEqual([]);
+  });
+});
+
+describe("one home per mechanism — #347 leftovers", () => {
+  const at = (source: string) => findTwinViolations([{ path: "src/tools/x.ts", source }]);
+
+  it("detects each #347 twin shape and ignores the fixed forms", () => {
+    expect(at("db.prepare(`SELECT 1 FROM figure_fts WHERE figure_fts MATCH ? AND f.book_id = ?`)")).toHaveLength(1);
+    expect(at("db.prepare(`SELECT 1 FROM chunk_fts WHERE chunk_fts MATCH ? ORDER BY score`)")).toEqual([]);
+    expect(at(`return year > 1000 ? year : undefined;`)).toHaveLength(1);
+    expect(at(`const empty = d.startsWith("0101-01-01");`)).toHaveLength(1);
+    expect(at(`if (err.name === "CalibreCliTimeoutError") return "timeout";`)).toHaveLength(1);
+    expect(at(`if (err instanceof CalibreCliTimeoutError) return "timeout";`)).toEqual([]);
+    expect(at(`const left = Math.max(0, LIMIT_MS - (Date.now() - started));`)).toHaveLength(1);
+    expect(at(`const secs = Math.round((Date.now() - started) / 1000);`)).toEqual([]);
+  });
+
+  it("the low-confidence rule has one body in retrieve.ts (#347)", () => {
+    const src = stripComments(readFileSync(join(ROOT, "src/semantic/retrieve.ts"), "utf8"));
+    expect(src.match(/maxRerank\s*<\s*RERANK_FLOOR/g) ?? []).toHaveLength(1);
   });
 });
 

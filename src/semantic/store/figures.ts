@@ -58,22 +58,20 @@ export class SqliteFigureIndex implements FigureIndex {
     const match = ftsMatch(stemmedQuery);
     if (!match) return [];
     let rows: Row[];
+    // Filtered branches are FTS-first, as in chunks.ts (#155): a MATERIALIZED CTE evaluates
+    // MATCH once instead of the planner re-running it per figure of the book. Same rows/scores.
+    const ftsFirst = (filter: string) =>
+      `WITH m AS MATERIALIZED (
+         SELECT rowid AS id, ${WEIGHTED_FIG_BM25} AS s FROM figure_fts WHERE figure_fts MATCH ?
+       )
+       SELECT f.id AS fig_id, m.s AS score
+       FROM m JOIN figures f ON f.id = m.id
+       WHERE ${filter} ORDER BY m.s LIMIT ?`;
     if (bookId !== undefined) {
-      rows = db
-        .prepare(
-          `SELECT f.id AS fig_id, ${WEIGHTED_FIG_BM25} AS score
-           FROM figure_fts JOIN figures f ON f.id = figure_fts.rowid
-           WHERE figure_fts MATCH ? AND f.book_id = ? ORDER BY score LIMIT ?`,
-        )
-        .all(match, bookId, k) as Row[];
+      rows = db.prepare(ftsFirst("f.book_id = ?")).all(match, bookId, k) as Row[];
     } else if (allow !== undefined) {
       rows = db
-        .prepare(
-          `SELECT f.id AS fig_id, ${WEIGHTED_FIG_BM25} AS score
-           FROM figure_fts JOIN figures f ON f.id = figure_fts.rowid
-           WHERE figure_fts MATCH ? AND f.book_id IN (SELECT value FROM json_each(?))
-           ORDER BY score LIMIT ?`,
-        )
+        .prepare(ftsFirst("f.book_id IN (SELECT value FROM json_each(?))"))
         .all(match, JSON.stringify([...allow]), k) as Row[];
     } else {
       rows = db
