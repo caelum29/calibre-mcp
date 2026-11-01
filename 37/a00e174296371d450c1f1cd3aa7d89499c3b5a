@@ -1,0 +1,43 @@
+test/calibre/client-busy.test.ts
+  s_cc8bcddd8635e4::t_79d5c59be709aa 60-73
+  s_cc8bcddd8635e4::t_1c0805cca93604 11-16
+  s_cc8bcddd8635e4::t_fb892f6598ff6c 74-75
+test/calibre/busy.test.ts
+  s_cc8bcddd8635e4::t_1c0805cca93604 123-125
+  s_cc8bcddd8635e4::t_79d5c59be709aa 68,70,74-122,126-128
+  s_cc8bcddd8635e4::t_e3111035469e92 129
+src/calibre/busy.ts
+  s_cc8bcddd8635e4::t_be7b14f97b14c2 37-38,41-43,61-62,64,66,70-72,77-78,80,82,92
+  s_cc8bcddd8635e4::t_1c0805cca93604 103-113
+src/calibre/client.ts
+  s_cc8bcddd8635e4::t_be7b14f97b14c2 60,70
+test/calibre/content-server.test.ts
+  s_cc8bcddd8635e4::t_c0d804df418550 3
+  s_cc8bcddd8635e4::t_8f2fadccb96a8e 70-86
+test/tools/ping.handler.test.ts
+  s_cc8bcddd8635e4::t_1c0805cca93604 141
+  s_cc8bcddd8635e4::t_79d5c59be709aa 131-136,138-140,142-145
+  s_cc8bcddd8635e4::t_8f2fadccb96a8e 137
+src/domain/errors.ts
+  s_cc8bcddd8635e4::t_be7b14f97b14c2 38-39,44-47
+src/tools/calibre_ping.ts
+  s_cc8bcddd8635e4::t_be7b14f97b14c2 120-122
+src/calibre/content-server.ts
+  s_cc8bcddd8635e4::t_be7b14f97b14c2 156,163
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "37a00e174296371d450c1f1cd3aa7d89499c3b5a",
+  "prompts": {},
+  "sessions": {
+    "s_cc8bcddd8635e4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d0ec3f01-bad7-4ede-b938-a5c3ca138eef",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
