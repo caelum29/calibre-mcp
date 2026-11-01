@@ -13,8 +13,7 @@ import { decodeContentCursor, encodeContentCursor } from "./content-cursor.js";
 import { defineTool } from "./define.js";
 import { bookIdArg } from "./resolve-id.js";
 import { resolveNumericId } from "../app/resolve-id.js";
-import { fence, toolError, toolOk, bookNotFound } from "./result.js";
-import { errorCodeFor } from "../domain/error-codes.js";
+import { fence, toolError, toolOk, bookNotFound, errorFromCatch } from "./result.js";
 
 export const getContentTool = defineTool({
   name: "calibre_get_content",
@@ -233,8 +232,7 @@ export const getContentTool = defineTool({
       if (err instanceof CalibreHttpError && err.status === 404) {
         return bookNotFound(args.id);
       }
-      const msg = err instanceof Error ? err.message : String(err);
-      return toolError(errorCodeFor(err), msg);
+      return errorFromCatch(err);
     }
   },
 });

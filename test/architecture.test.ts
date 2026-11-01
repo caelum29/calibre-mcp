@@ -465,6 +465,32 @@ describe("one call site per shared steer", () => {
   });
 });
 
+// The two-line catch tail (`const msg = …; return toolError(errorCodeFor(err), msg)`) is the same
+// mechanism as errorFromCatch; a tail that adds its own text (open_book, board_data) is not (#345 review).
+const CATCH_TAIL_VIA_MSG =
+  /const\s+([\w$]+)\s*=\s*([\w$]+)\s+instanceof\s+Error\s*\?\s*\2\.message\s*:\s*String\(\s*\2\s*\)\s*;\s*return\s+toolError\(\s*errorCodeFor\(\s*\2\s*\)\s*,\s*\1\s*\)/;
+
+describe("errorFromCatch is the only pass-through catch tail (#345 review)", () => {
+  it("no module rebuilds it through a message variable", () => {
+    expect(siteHits(readSources("src", /\.ts$/), CATCH_TAIL_VIA_MSG)).toEqual([]);
+  });
+
+  it("catches the two-line form, not a tail with its own text", () => {
+    const at = (source: string) => siteHits([{ path: "src/tools/x.ts", source }], CATCH_TAIL_VIA_MSG);
+    expect(
+      at(`const msg = err instanceof Error ? err.message : String(err);\n  return toolError(errorCodeFor(err), msg);`),
+    ).toEqual(["src/tools/x.ts"]);
+    expect(at(`const m = e instanceof Error ? e.message : String(e); return toolError(errorCodeFor(e), m);`)).toEqual([
+      "src/tools/x.ts",
+    ]);
+    expect(
+      at(
+        "const msg = err instanceof Error ? err.message : String(err);\nreturn toolError(errorCodeFor(err), `Could not: ${msg}`);",
+      ),
+    ).toEqual([]);
+  });
+});
+
 // ── semantic store split by concern (#272) ───────────────────────────────────────────
 
 const STORE_DIR = "src/semantic/store";

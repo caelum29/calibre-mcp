@@ -7,9 +7,8 @@ import { matchCategory } from "../calibre/content-server.js";
 import { CursorParam, limitParam } from "./coerce.js";
 import { pageCursor, pageOffset } from "./cursor.js";
 import { defineTool } from "./define.js";
-import { fence, renderResult, toolError, toolOk } from "./result.js";
+import { fence, renderResult, toolError, toolOk, errorFromCatch } from "./result.js";
 import { compileUserRegex } from "./user-regex.js";
-import { errorCodeFor } from "../domain/error-codes.js";
 
 // Pull a generous page when filtering client-side; categories above this are truncated.
 const FILTER_FETCH_NUM = 10_000;
@@ -107,8 +106,7 @@ export const listCategoriesTool = defineTool({
         page: pageCursor({ offset, fetched, total, libId, mode: "categories", query: cursorKey }),
       });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      return toolError(errorCodeFor(err), msg);
+      return errorFromCatch(err);
     }
   },
 });
