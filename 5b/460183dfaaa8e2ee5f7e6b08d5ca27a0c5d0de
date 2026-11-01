@@ -1,0 +1,43 @@
+src/calibre/busy.ts
+  s_cc8bcddd8635e4::t_48b5ffb4901077 1-2,43-47
+src/domain/curation/normalize.ts
+  s_cc8bcddd8635e4::t_48b5ffb4901077 119-123
+src/calibre/fts-highlight.ts
+  s_cc8bcddd8635e4::t_48b5ffb4901077 2,26-29
+src/semantic/store/index.ts
+  s_cc8bcddd8635e4::t_48b5ffb4901077 1-2,31-44,57-58
+src/semantic/snippet.ts
+  s_cc8bcddd8635e4::t_48b5ffb4901077 2,11-12,16,20,53-58
+src/calibre/fts.ts
+  s_cc8bcddd8635e4::t_48b5ffb4901077 15,67-73,119,147,151-155
+src/semantic/embedder.ts
+  s_cc8bcddd8635e4::t_48b5ffb4901077 97,127-128
+src/semantic/retrieve.ts
+  s_cc8bcddd8635e4::t_48b5ffb4901077 2-3,118-120
+src/server.ts
+  s_cc8bcddd8635e4::t_48b5ffb4901077 176
+src/shared/book-uri.ts
+  s_cc8bcddd8635e4::t_48b5ffb4901077 4
+src/tools/book-progress.ts
+  s_cc8bcddd8635e4::t_48b5ffb4901077 14
+src/tools/calibre_get_figures.ts
+  s_cc8bcddd8635e4::t_48b5ffb4901077 296-298
+src/version.ts
+  s_cc8bcddd8635e4::t_48b5ffb4901077 44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5b460183dfaaa8e2ee5f7e6b08d5ca27a0c5d0de",
+  "prompts": {},
+  "sessions": {
+    "s_cc8bcddd8635e4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d0ec3f01-bad7-4ede-b938-a5c3ca138eef",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
