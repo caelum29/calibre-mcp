@@ -29,7 +29,9 @@ describe("defaultProgressPath", () => {
   });
 
   it("keeps a library id with path separators inside the index dir", () => {
-    expect(defaultProgressPath("/idx", "../evil/x", false)).toBe(path.join("/idx", "progress-.._evil_x.jsonl"));
+    const p = defaultProgressPath("/idx", "../evil/x", false);
+    expect(path.dirname(p)).toBe("/idx");
+    expect(path.basename(p)).toMatch(/^progress-\.\._evil_x-[0-9a-f]{8}\.jsonl$/);
   });
 
   it("leaves library B's resume set empty after library A completes with overlapping ids", () => {
