@@ -173,8 +173,7 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
     const reg = ui
       ? registerAppTool(server, t.name, { ...toolConfig, _meta: { ui } }, handler)
       : server.registerTool(t.name, toolConfig, handler);
-    // Disable (not reject) write tools when the gate is off (DESIGN §4) — wired now so
-    // tool #11 drops in later with no change to this seam.
+    // Disable (not reject) write tools when the gate is off (DESIGN §4).
     if (t.write && !config.writeEnabled) reg.disable();
   }
 

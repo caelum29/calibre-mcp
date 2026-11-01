@@ -1,8 +1,5 @@
 // Repairs FTS snippets whose highlight markers Calibre put on the wrong words (#308).
-// Calibre's /fts/snippets sometimes shifts the markers right of the real match (suspected
-// byte-vs-char offsets after non-ASCII text). Until that is fixed upstream, highlights unrelated
-// to the query are stripped and the query re-highlighted around the valid ones; good snippets
-// pass through byte-identical.
+// Good snippets pass through byte-identical; see repairSnippets for the repair.
 
 import { foldAccents } from "../domain/curation/normalize.js";
 import { stemToken } from "../semantic/stem.js";
@@ -26,6 +23,10 @@ const WORD = /[\p{L}\p{N}]+/gu;
 /**
  * Repair snippets whose highlights don't belong to `query`. A snippet without a highlight, or
  * whose every highlight matches a query term, is returned unchanged.
+ *
+ * Why: Calibre's /fts/snippets sometimes shifts the markers right of the real match (suspected
+ * byte-vs-char offsets after non-ASCII text). Until that is fixed upstream, highlights unrelated
+ * to the query are stripped and the query re-highlighted around the valid ones.
  */
 export function repairSnippets(query: string, snippets: string[], markers: HighlightMarkers): string[] {
   const units = parseQuery(query);

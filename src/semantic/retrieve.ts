@@ -1,8 +1,6 @@
 // Retrieval application service (#259): the ranking half of calibre_semantic_search, free of
-// MCP rendering. Per scope (library books / book passages / figure captions) and mode it runs
-// the vector + keyword halves, RRF-fuses them (hybrid), applies the cross-encoder rerank stage
-// (D-011), the front-matter demotion (#18) and the two confidence signals. The tool adapter
-// only resolves args/filters, calls retrieve() and renders; the eval harness calls it directly.
+// MCP rendering. The tool adapter resolves args/filters, calls retrieve() and renders; the eval
+// harness calls it directly.
 
 import type { Config } from "../config.js";
 import type { LogSink } from "../logging.js";
@@ -117,8 +115,9 @@ export interface RankedHits<H> {
 }
 
 /**
- * Rank hits for one request: candidate pools per mode, RRF fusion (hybrid), the rerank stage,
- * scope-specific post-processing, and confidence. Throws the embedder/index error codes
+ * Rank hits for one request. Per scope (library books / book passages / figure captions) and mode
+ * it runs the vector + keyword halves, RRF-fuses them (hybrid), applies the cross-encoder rerank
+ * stage (D-011), the front-matter demotion (#18) and the two confidence signals. Throws the embedder/index error codes
  * (`EMBEDDER_UNAVAILABLE`, `INDEX_INCOMPATIBLE…`) for the adapter to map; rerank failures degrade.
  */
 export function retrieve(

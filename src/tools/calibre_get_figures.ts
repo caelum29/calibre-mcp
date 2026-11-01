@@ -293,14 +293,14 @@ interface FigureMessages {
   skip: string;
 }
 
+/** Legacy raw wording for a code that has no prose on a path: `FIGURES_<code>`. */
+const raw = (code: FiguresErrorCode) => `FIGURES_${code}`;
+
 /**
  * The one code → model-facing wording map. Exhaustive, so a new {@link FiguresErrorCode}
  * without wording is a compile error. Codes that never had prose keep their old raw
  * `FIGURES_<code>` text on that path (byte-identical output).
  */
-/** Legacy raw wording for a code that has no prose on a path: `FIGURES_<code>`. */
-const raw = (code: FiguresErrorCode) => `FIGURES_${code}`;
-
 const MESSAGES: Record<FiguresErrorCode, FigureMessages> = {
   NO_POPPLER: {
     scan: () =>
