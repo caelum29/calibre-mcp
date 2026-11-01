@@ -1,0 +1,20 @@
+test/semantic/build-progress.test.ts
+  s_cc8bcddd8635e4::t_1b61cbed67c9ab 67-90
+  s_cc8bcddd8635e4::t_dbb2f9ac9deb86 91-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b3ec93a2365069dc555714cb9f2233a38842dbf0",
+  "prompts": {},
+  "sessions": {
+    "s_cc8bcddd8635e4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d0ec3f01-bad7-4ede-b938-a5c3ca138eef",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
