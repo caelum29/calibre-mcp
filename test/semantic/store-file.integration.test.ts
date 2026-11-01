@@ -5,7 +5,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadConfig } from "../../src/config.js";
 import { EMBED_DIM } from "../../src/semantic/model.js";
 import { stemText } from "../../src/semantic/stem.js";
@@ -140,5 +140,57 @@ describe("SqliteIndexStore on a temp file, two connections (#322)", () => {
     // A book with no embeddings yet is written by the same keyword-only call.
     expect(b.replaceBook(LIB, meta(5), chunks("plain words"), [], { preserveEmbedded: true })).toBe("written");
     expect(a.indexedBookIds(LIB).sort()).toEqual([1, 2, 3, 4, 5]);
+  });
+});
+
+describe("candidate caches across two connections (#337)", () => {
+  let dir: string;
+  const open = () => new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: dir }));
+  const one = (body: string, vector: Float32Array): IndexedChunk[] => [
+    { body, charStart: 0, charEnd: body.length, vector },
+  ];
+  let a: SqliteIndexStore;
+  let b: SqliteIndexStore;
+
+  beforeEach(() => {
+    dir = mkdtempSync(path.join(tmpdir(), "calibre-mcp-store-cache-"));
+    a = open();
+    a.replaceBook(LIB, meta(1, "x"), one("x", axis(0)), [figure(0, "diagram x", axis(0))]);
+    b = open();
+  });
+
+  afterEach(() => {
+    a.close();
+    b.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("vector search on B sees A's later commits (new book in, deleted book out)", () => {
+    expect(b.searchLibrary(LIB, axis(0), 10).map((h) => h.bookId)).toEqual([1]); // warms B's cache
+    a.replaceBook(LIB, meta(2, "y"), one("y", axis(0)));
+    a.deleteBooks(LIB, [1]);
+    expect(b.searchLibrary(LIB, axis(0), 10).map((h) => h.bookId)).toEqual([2]);
+    expect(b.searchBook(LIB, 1, axis(0), 10)).toEqual([]); // book scope reads the same cache
+    expect(b.searchLibraryFts(LIB, stemText("y"), 10).map((h) => h.bookId)).toEqual([2]); // keyword was already fresh
+  });
+
+  it("figure search on B sees A's later commits (new figure in, deleted book's figure out)", () => {
+    expect(b.searchFigures(LIB, axis(0), 10).map((h) => h.bookId)).toEqual([1]); // warms B's figure cache
+    a.replaceBook(LIB, meta(2, "y"), one("y", axis(0)), [figure(0, "diagram y", axis(0))]);
+    a.deleteBooks(LIB, [1]);
+    expect(b.searchFigures(LIB, axis(0), 10).map((h) => h.bookId)).toEqual([2]);
+    expect(b.searchFigures(LIB, axis(0), 10, 1)).toEqual([]);
+  });
+
+  it("the cache still hits while nothing else commits, and rebuilds once after A commits", () => {
+    const loads = vi.spyOn(b, "loadCandidates"); // the decode seam the cache guards
+    b.searchLibrary(LIB, axis(0), 10);
+    b.searchLibrary(LIB, axis(0), 10);
+    b.searchBook(LIB, 1, axis(0), 10);
+    expect(loads).toHaveBeenCalledTimes(1);
+    a.replaceBook(LIB, meta(2, "y"), one("y", axis(0)));
+    b.searchLibrary(LIB, axis(0), 10);
+    b.searchLibrary(LIB, axis(0), 10);
+    expect(loads).toHaveBeenCalledTimes(2);
   });
 });
