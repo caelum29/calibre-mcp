@@ -117,7 +117,9 @@ function busyReport(list: BusyLibrary[]): { text: string; structured: Record<str
   const lines = list.map(
     (b) =>
       `busy: library "${b.libraryId}" — Calibre timed out (${b.source}) at ${b.since}; ` +
-      `calls fail fast for ~${Math.ceil(b.retryInMs / 1000)} s more`,
+      (b.retryInMs > 0
+        ? `calls fail fast for ~${Math.ceil(b.retryInMs / 1000)} s more`
+        : `window ended, a probe call is checking whether it answers again`),
   );
   return { text: `${lines.join("\n")}\n`, structured: { busyLibraries: list } };
 }

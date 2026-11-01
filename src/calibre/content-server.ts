@@ -153,14 +153,14 @@ export class ContentServerClient implements LibraryReader {
    * Endpoints that don't touch a library's DB lock (library-info) skip this.
    */
   async #getLib<T>(libId: string, url: string, opts: HttpOptions = {}): Promise<T> {
-    this.busy?.assertAvailable(libId);
+    const probe = this.busy?.assertAvailable(libId);
     try {
       const raw = await getJson<T>(url, opts);
       this.busy?.markOk(libId);
       return raw;
     } catch (err) {
       if (err instanceof CalibreHttpTimeoutError) this.busy?.markBusy(libId, "content-server");
-      else this.busy?.releaseProbe(libId); // non-timeout failure: free the half-open probe slot
+      else this.busy?.releaseProbe(libId, probe); // non-timeout failure: free the half-open probe slot
       throw err;
     }
   }

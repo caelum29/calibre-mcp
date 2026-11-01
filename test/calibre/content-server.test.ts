@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { loadConfig } from "../../src/config.js";
+import { LibraryBusyTracker } from "../../src/calibre/busy.js";
 
 // getJson is the system boundary (fetch); stub it so we test the JSON→domain mapping
 // against captured /ajax fixtures (testing rule: mock only at boundaries).
@@ -64,6 +65,23 @@ beforeEach(() => {
     if (url.includes("/ajax/category/")) return Promise.resolve(languageItems);
     return Promise.reject(new Error("unexpected url " + url));
   }) as typeof getJson);
+});
+
+describe("ContentServerClient busy breaker (#343)", () => {
+  it("should_free_the_probe_slot_when_the_probe_fails_without_a_timeout", async () => {
+    let t = 1_000_000;
+    const busy = new LibraryBusyTracker({ baseWindowMs: 60_000, now: () => t });
+    busy.markBusy("Programming_Books", "content-server");
+    t += 60_000;
+    const cs = new ContentServerClient(loadConfig({}), busy);
+    mocked.mockImplementation(((url: string) =>
+      url.includes("/ajax/library-info")
+        ? Promise.resolve(libInfo)
+        : Promise.reject(new Error("boom"))) as typeof getJson);
+    // two sequential probes both reach getJson: a plain failure must not leave the slot taken
+    await expect(cs.getBook(658, "Programming_Books")).rejects.toThrow("boom");
+    await expect(cs.getBook(658, "Programming_Books")).rejects.toThrow("boom");
+  });
 });
 
 describe("ContentServerClient", () => {
