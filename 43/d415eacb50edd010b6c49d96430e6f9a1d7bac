@@ -1,0 +1,19 @@
+test/architecture.test.ts
+  s_87a2f9049b0bce::t_28eeb9e9295e71 123,127,191-196,310-319,395-396
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "43d415eacb50edd010b6c49d96430e6f9a1d7bac",
+  "prompts": {},
+  "sessions": {
+    "s_87a2f9049b0bce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2e496a4d-0841-4fa4-ae51-d369c24441fa",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
