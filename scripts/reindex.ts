@@ -3,7 +3,8 @@
 // Run: pnpm reindex --index-dir <dir> [--concurrency 3] [--encoder threads|shared] [--ids 1,2,3]
 // --flags-only (#269): no model, no re-embed — refresh each indexed book's front-matter flags
 // (EPUB TOC / PDF outline) and metadata in place; books whose text changed are reported as failed.
-// Resume log: <index-dir>/[flags-]progress-<libraryId>.jsonl per library (#285); --progress <file> overrides.
+// Resume log: <index-dir>/[flags-]progress-<libraryId>.jsonl per library (#285); ids that needed sanitising get
+// a -<8 hex sha256 of the raw id> suffix (#344). --progress <file> overrides.
 
 import { statfsSync } from "node:fs";
 import path from "node:path";

@@ -31,7 +31,8 @@ describe("defaultProgressPath", () => {
   it("keeps a library id with path separators inside the index dir", () => {
     const p = defaultProgressPath("/idx", "../evil/x", false);
     expect(path.dirname(p)).toBe("/idx");
-    expect(path.basename(p)).toMatch(/^progress-\.\._evil_x-[0-9a-f]{8}\.jsonl$/);
+    // exact name: the hash (sha256 of the raw id, first 8 hex) is a persistence contract — changing it orphans resume logs
+    expect(path.basename(p)).toBe("progress-.._evil_x-5d952ef7.jsonl");
   });
 
   it("leaves library B's resume set empty after library A completes with overlapping ids", () => {

@@ -56,7 +56,7 @@ export function resumeProgress(file: string): Set<number> {
 
 /**
  * Default resume-log path for one library. Book ids are per library and overlap, so a log shared
- * across the index dir would make the second library skip books it never indexed (#285).
+ * across the index dir would make the second library skip books it never indexed (#285, #344).
  */
 export function defaultProgressPath(indexDir: string, libraryId: string, flagsOnly: boolean): string {
   // Library ids come from the server — keep the file inside the index dir whatever they contain.
