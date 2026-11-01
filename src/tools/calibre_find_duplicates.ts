@@ -7,13 +7,12 @@ import { z } from "zod";
 import { compareBooks, findDuplicateGroups } from "../domain/curation/duplicates.js";
 import { buildScopedQuery, honestyLines, resolveFilter } from "../app/bundles.js";
 import { BookId, CursorParam, jsonArray, limitParam } from "./coerce.js";
-import { idsKey, pageCursor, resolveCursor } from "./cursor.js";
+import { pageCursor, pageOffset, selectionKey } from "./cursor.js";
 import { defineTool } from "./define.js";
 import { bookResourceLink } from "./resource-link.js";
 import { selectBooks } from "../app/select-books.js";
-import { fence, renderResult, toolError, toolOk } from "./result.js";
+import { fence, renderResult, toolError, toolOk, toolErrorFrom, errorFromCatch } from "./result.js";
 import type { ContentBlock } from "./types.js";
-import { errorCodeFor } from "../domain/error-codes.js";
 
 export const findDuplicatesTool = defineTool({
   name: "calibre_find_duplicates",
@@ -57,10 +56,10 @@ export const findDuplicatesTool = defineTool({
       const bind = {
         libId: await deps.content.resolveLibraryId(args.library),
         mode: `dup:${args.mode}`,
-        query: [idsKey(args.ids), args.query ?? "", args.filter ?? ""].join(":"),
+        query: selectionKey(args),
       };
-      const start = resolveCursor(args.cursor, bind, "calibre_find_duplicates");
-      if (!start.ok) return toolError("invalid_input", start.error);
+      const start = pageOffset(args.cursor, bind, "calibre_find_duplicates");
+      if ("content" in start) return start;
       const offset = start.offset;
 
       if (args.mode === "compare") {
@@ -105,8 +104,7 @@ export const findDuplicatesTool = defineTool({
         return toolError("invalid_input", "Pass either ids or filter (a bundle name), not both.");
       }
       const fr = await resolveFilter(deps, { filter: args.filter, autoExclude: false, library: args.library });
-      if (!fr.ok)
-        return fr.cause === undefined ? toolError("not_found", fr.error) : toolError(errorCodeFor(fr.cause), fr.error);
+      if (!fr.ok) return toolErrorFrom(fr.cause, fr.error);
       const { books, total, capped } = await selectBooks(deps, {
         ids: args.ids,
         query: buildScopedQuery(args.query ?? "", fr.res) || undefined,
@@ -168,7 +166,7 @@ export const findDuplicatesTool = defineTool({
         page: pg,
       });
     } catch (err) {
-      return toolError(errorCodeFor(err), err instanceof Error ? err.message : String(err));
+      return errorFromCatch(err);
     }
   },
 });

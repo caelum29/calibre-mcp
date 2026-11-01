@@ -10,9 +10,8 @@ import { z } from "zod";
 import { BookId, CoercedBool, jsonArray } from "./coerce.js";
 import { defineTool } from "./define.js";
 import { resolveNumericId } from "../app/resolve-id.js";
-import { toolError, toolOk } from "./result.js";
+import { toolError, toolOk, errorFromCatch } from "./result.js";
 import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "../app/write-policy.js";
-import { errorCodeFor } from "../domain/error-codes.js";
 
 export const removeBookTool = defineTool({
   name: "calibre_remove_book",
@@ -89,7 +88,7 @@ export const removeBookTool = defineTool({
         { deleted: true, removedIds: numericIds },
       );
     } catch (err) {
-      return toolError(errorCodeFor(err), err instanceof Error ? err.message : String(err));
+      return errorFromCatch(err);
     }
   },
 });

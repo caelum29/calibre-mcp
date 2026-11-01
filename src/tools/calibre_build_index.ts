@@ -11,7 +11,7 @@ import { defineTool } from "./define.js";
 import { describeError } from "../app/index-book.js";
 import { runIndexBuild, type BuildIndexDeps, type BuildSummary } from "../app/build-index.js";
 import { INSTALL_TRANSFORMERS } from "./remediation.js";
-import { toolError, toolOk } from "./result.js";
+import { toolError, toolOk, errorFromCatch } from "./result.js";
 import {
   backgroundFailedResult,
   buildModeKey,
@@ -26,7 +26,6 @@ import type { ToolContext, ToolResult } from "./types.js";
 import { IndexBuildRegistry, type BuildRun } from "../semantic/index-builds.js";
 import { log } from "../logging.js";
 import { bookProgress } from "./book-progress.js";
-import { errorCodeFor } from "../domain/error-codes.js";
 
 /** calibre_build_index's deps — the build use case's (app/build-index.ts). */
 export type { BuildIndexDeps };
@@ -115,7 +114,7 @@ export const buildIndexTool = defineTool({
     try {
       libraryId = await deps.content.resolveLibraryId(args.library);
     } catch (err) {
-      return toolError(errorCodeFor(err), err instanceof Error ? err.message : String(err));
+      return errorFromCatch(err);
     }
 
     // One build per library at a time (one index file, one writer); past the soft deadline the

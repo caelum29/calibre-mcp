@@ -2,7 +2,7 @@
 // LLM can adapt (DESIGN §3); free-text book data is fenced so it reads as data, not
 // instructions (indirect prompt-injection mitigation, DESIGN §5).
 
-import { defaultHint, type ErrorCode } from "../domain/error-codes.js";
+import { defaultHint, errorCodeFor, type ErrorCode } from "../domain/error-codes.js";
 import type { PageCursor } from "./cursor.js";
 import type { ContentBlock, ToolResult } from "./types.js";
 
@@ -61,4 +61,29 @@ export function toolError(code: ErrorCode, message: string, opts: ToolErrorOptio
     structuredContent: { error: message, ...opts.structured, errorCode: code, ...(hint === undefined ? {} : { hint }) },
     isError: true,
   };
+}
+
+/**
+ * Error for a failure that may carry its cause: the cause's own code when there is one, else
+ * `fallback` (a failure found by a check, not a throw — "not found" for a missing bundle).
+ */
+export function toolErrorFrom(
+  cause: unknown,
+  message: string,
+  fallback: "not_found" | "write_failed" = "not_found",
+  opts?: ToolErrorOptions,
+): ToolResult {
+  if (cause !== undefined) return toolError(errorCodeFor(cause), message, opts);
+  // literal codes per branch: the closed-set guard checks every call site textually (#249)
+  return fallback === "write_failed" ? toolError("write_failed", message, opts) : toolError("not_found", message, opts);
+}
+
+/** The catch-all tail: a caught error's code and its own message (return-not-throw). */
+export function errorFromCatch(err: unknown): ToolResult {
+  return toolError(errorCodeFor(err), err instanceof Error ? err.message : String(err));
+}
+
+/** 404 for a book id the target library does not hold (the id may exist in another library). */
+export function bookNotFound(id: number | string | undefined): ToolResult {
+  return toolError("not_found", `No book with id ${id} in the requested library`);
 }

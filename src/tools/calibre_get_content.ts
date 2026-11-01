@@ -13,7 +13,7 @@ import { decodeContentCursor, encodeContentCursor } from "./content-cursor.js";
 import { defineTool } from "./define.js";
 import { bookIdArg } from "./resolve-id.js";
 import { resolveNumericId } from "../app/resolve-id.js";
-import { fence, toolError, toolOk } from "./result.js";
+import { fence, toolError, toolOk, bookNotFound } from "./result.js";
 import { errorCodeFor } from "../domain/error-codes.js";
 
 export const getContentTool = defineTool({
@@ -231,7 +231,7 @@ export const getContentTool = defineTool({
       });
     } catch (err) {
       if (err instanceof CalibreHttpError && err.status === 404) {
-        return toolError("not_found", `No book with id ${args.id} in the requested library`);
+        return bookNotFound(args.id);
       }
       const msg = err instanceof Error ? err.message : String(err);
       return toolError(errorCodeFor(err), msg);

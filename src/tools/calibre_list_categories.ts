@@ -5,7 +5,7 @@
 import { z } from "zod";
 import { matchCategory } from "../calibre/content-server.js";
 import { CursorParam, limitParam } from "./coerce.js";
-import { pageCursor, resolveCursor } from "./cursor.js";
+import { pageCursor, pageOffset } from "./cursor.js";
 import { defineTool } from "./define.js";
 import { fence, renderResult, toolError, toolOk } from "./result.js";
 import { compileUserRegex } from "./user-regex.js";
@@ -47,8 +47,8 @@ export const listCategoriesTool = defineTool({
       if (!args.field) {
         if (args.cursor) {
           const libId = await deps.content.resolveLibraryId(args.library);
-          const start = resolveCursor(args.cursor, { libId, mode: "categories:fields", query: "" }, TOOL);
-          if (!start.ok) return toolError("invalid_input", start.error);
+          const start = pageOffset(args.cursor, { libId, mode: "categories:fields", query: "" }, TOOL);
+          if ("content" in start) return start;
         }
         const fields = cats.filter((c) => c.name).map((c) => ({ name: c.name, count: c.count }));
         const text = "Categories: " + fields.map((f) => f.name).join(", ");
@@ -73,8 +73,8 @@ export const listCategoriesTool = defineTool({
       // fetch (#305): a cursor minted elsewhere must not page here.
       const libId = await deps.content.resolveLibraryId(args.library);
       const cursorKey = args.valueFilter ? `${node.name}::${args.valueFilter}` : node.name;
-      const start = resolveCursor(args.cursor, { libId, mode: "categories", query: cursorKey }, TOOL);
-      if (!start.ok) return toolError("invalid_input", start.error);
+      const start = pageOffset(args.cursor, { libId, mode: "categories", query: cursorKey }, TOOL);
+      if ("content" in start) return start;
       const offset = start.offset;
 
       let items: { name: string; count?: number }[];

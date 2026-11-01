@@ -17,7 +17,7 @@ import { CalibreCliTimeoutError } from "../domain/errors.js";
 import { buildScopedQuery, honestyLines, resolveFilter } from "../app/bundles.js";
 import { BookId, CoercedBool, jsonArray, jsonRecord, jsonStringList } from "./coerce.js";
 import { defineTool } from "./define.js";
-import { fence, toolError, toolOk } from "./result.js";
+import { fence, toolError, toolOk, toolErrorFrom, errorFromCatch } from "./result.js";
 import type { ToolResult } from "./types.js";
 import { selectBooks } from "../app/select-books.js";
 import { ChangeValueSchema } from "./calibre_update_book.js";
@@ -130,8 +130,7 @@ export const bulkUpdateTool = defineTool({
         return toolError("invalid_input", "Pass either ids or query/filter, not both.");
       }
       const fr = await resolveFilter(deps, { filter: args.filter, autoExclude: false, library: args.library });
-      if (!fr.ok)
-        return fr.cause === undefined ? toolError("not_found", fr.error) : toolError(errorCodeFor(fr.cause), fr.error);
+      if (!fr.ok) return toolErrorFrom(fr.cause, fr.error);
 
       const selection = await selectBooks(deps, {
         ids: hasIds ? args.ids : undefined,
@@ -314,7 +313,7 @@ export const bulkUpdateTool = defineTool({
         failed,
       });
     } catch (err) {
-      return toolError(errorCodeFor(err), err instanceof Error ? err.message : String(err));
+      return errorFromCatch(err);
     }
   },
 });

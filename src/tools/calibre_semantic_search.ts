@@ -25,7 +25,7 @@ import { defineTool } from "./define.js";
 import { bookResourceLink } from "./resource-link.js";
 import { resolveNumericId } from "../app/resolve-id.js";
 import { INSTALL_TRANSFORMERS } from "./remediation.js";
-import { fence, toolError, toolOk } from "./result.js";
+import { fence, toolError, toolOk, toolErrorFrom } from "./result.js";
 import type { ContentBlock, ToolResult } from "./types.js";
 import type { BaseDeps, DepsWithIndex } from "./deps.js";
 import { errorCodeFor } from "../domain/error-codes.js";
@@ -197,8 +197,7 @@ export const semanticSearchTool = defineTool({
         autoExclude: true,
         library: effArgs.library,
       });
-      if (!fr.ok)
-        return fr.cause === undefined ? toolError("not_found", fr.error) : toolError(errorCodeFor(fr.cause), fr.error);
+      if (!fr.ok) return toolErrorFrom(fr.cause, fr.error);
       const allow = await restrictSet(deps, fr.res, effArgs.library);
       const scope: FilterCtx = { fRes: fr.res, ...(allow ? { allow } : {}) };
       note = joinNotes(note, ...honestyLines(fr.res, allow?.size));
