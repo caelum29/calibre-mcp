@@ -11,7 +11,8 @@ import { BookId, CoercedBool, CursorParam, limitParam } from "./coerce.js";
 import { chunkText } from "./content-chunk.js";
 import { decodeContentCursor, encodeContentCursor } from "./content-cursor.js";
 import { defineTool } from "./define.js";
-import { bookIdArg, resolveNumericId } from "./resolve-id.js";
+import { bookIdArg } from "./resolve-id.js";
+import { resolveNumericId } from "../app/resolve-id.js";
 import { fence, toolError, toolOk } from "./result.js";
 import { errorCodeFor } from "../domain/error-codes.js";
 

@@ -9,7 +9,7 @@
 import { z } from "zod";
 import { BookId, CoercedBool, jsonArray } from "./coerce.js";
 import { defineTool } from "./define.js";
-import { resolveNumericId } from "./resolve-id.js";
+import { resolveNumericId } from "../app/resolve-id.js";
 import { toolError, toolOk } from "./result.js";
 import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "../app/write-policy.js";
 import { errorCodeFor } from "../domain/error-codes.js";

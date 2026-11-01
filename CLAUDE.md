@@ -71,7 +71,7 @@ search spans both via a `scope: library|book` param, not extra tools.
   replies, so timeouts and dropped connections are verified via `src/app/write-policy.ts` —
   confirmed → success, unconfirmed → steer to `calibre_get_book`, never a plain failure. Only
   idempotent `set_metadata` writes retry; timeouts never do.
-- **`src/app/` = use-cases** (write policy, book selection, bundles, index-book, ISBN scan): domain +
+- **`src/app/` = use-cases** (write policy, book selection, bundles, index-book, index build, ping index report, id resolution, ISBN scan): domain +
   ports only — no MCP result types, no concrete adapters (`test/architecture.test.ts`, #260).
 - **User/model-supplied regex compiles via `src/tools/user-regex.ts`**, never bare `new RegExp()`.
 - **Content cursors are opaque and bound** to `{id, format}` — invalid ones get an actionable error,

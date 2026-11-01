@@ -120,11 +120,11 @@ const LAYER_RULES: LayerRule[] = [
   // neutral helpers both tools/ and resources/ import (#261): they may lean on domain only
   { name: "shared imports only domain", from: /^src\/shared\//, forbidden: /^src\/(?!domain\/|shared\/)/ },
   // use-cases (#260): domain + ports only — no MCP result types, no tool modules, no UI.
-  // tools/deps.ts is the port bundle; tools/resolve-id.ts stays in tools/ per #260's table.
+  // tools/deps.ts is the port bundle — the one tools/ module app/ may import (#346).
   {
     name: "app imports no MCP plumbing",
     from: /^src\/app\//,
-    forbidden: /^src\/(tools\/(?!deps\.ts$|resolve-id\.ts$)|ui\/|server\.ts$|resources\/)/,
+    forbidden: /^src\/(tools\/(?!deps\.ts$)|ui\/|server\.ts$|resources\/)/,
   },
   // the SDK-free protocol mirror every tool module imports stays free of infra types (#258)
   {
@@ -188,6 +188,12 @@ describe("layer directions", () => {
       "src/app/x.ts -> src/tools/types.ts",
     ]);
     expect(at("src/app/x.ts", `import type { ToolDeps } from "../tools/deps.js";`)).toEqual([]);
+    expect(at("src/app/x.ts", `import { resolveNumericId } from "../tools/resolve-id.js";`)).toEqual([
+      "src/app/x.ts -> src/tools/resolve-id.ts",
+    ]);
+    expect(at("src/app/x.ts", `import { bookProgress } from "../tools/book-progress.js";`)).toEqual([
+      "src/app/x.ts -> src/tools/book-progress.ts",
+    ]);
     expect(at("src/config.ts", `import { discoverCalibredb } from "./calibre/discover.js";`)).toEqual([
       "src/config.ts -> src/calibre/discover.ts",
     ]);
@@ -302,6 +308,16 @@ const TWIN_RULES: TwinRule[] = [
     home: ["src/semantic/fusion.ts", "src/semantic/retrieve.ts"],
   },
   {
+    name: "the index-build pipeline is driven from app/build-index.ts, not a tool module (#346)",
+    pattern: /\brunBookPipeline\s*[<(]/,
+    home: ["src/semantic/book-pipeline.ts", "src/app/build-index.ts"],
+  },
+  {
+    name: "ping's per-library index report lives in app/library-index.ts (#346)",
+    pattern: /\.booksMissingVectors\s*\(/,
+    home: ["src/semantic/status.ts", "src/semantic/store/index.ts", "src/app/library-index.ts"],
+  },
+  {
     name: "the cover-board _meta is built by one boardMeta helper (#259)",
     pattern: /\bfunction\s+boardMeta\s*\(/,
     home: ["src/tools/board-meta.ts"],
@@ -376,6 +392,8 @@ describe("one home per mechanism", () => {
     expect(at(`const scores = await deps.reranker.rerank(q, bodies);`)).toHaveLength(1);
     expect(at(`const VECTOR_RRF_WEIGHT = 1.0;`)).toHaveLength(1);
     expect(at(`function boardMeta(deps, payload) {}`)).toHaveLength(1);
+    expect(at(`const o = await runBookPipeline<PrepareResult>(ids, 1, hooks);`)).toHaveLength(1);
+    expect(at(`const n = deps.index.booksMissingVectors(id);`)).toHaveLength(1);
     expect(at(`const _meta = boardMeta(deps, payload);`)).toEqual([]);
     expect(at(`const db = new DatabaseSync(file, { readOnly: true });`)).toHaveLength(1);
     expect(at(`import { DatabaseSync } from "node:sqlite"; let db: DatabaseSync;`)).toEqual([]);

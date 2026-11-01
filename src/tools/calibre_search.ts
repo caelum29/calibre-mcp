@@ -34,7 +34,7 @@ import { pageCursor, resolveCursor } from "./cursor.js";
 import { boardMeta } from "./board-meta.js";
 import { defineTool } from "./define.js";
 import { bookResourceLink } from "./resource-link.js";
-import { resolveNumericId } from "./resolve-id.js";
+import { resolveNumericId } from "../app/resolve-id.js";
 import { ENABLE_FTS_STEPS, KEYWORD_SEARCH_FALLBACK } from "./remediation.js";
 import { fence, renderResult, toolError, toolOk } from "./result.js";
 import type { ContentBlock, ToolResult } from "./types.js";

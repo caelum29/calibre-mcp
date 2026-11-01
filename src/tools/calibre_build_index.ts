@@ -8,16 +8,8 @@
 import { z } from "zod";
 import { BookId, CoercedBool, jsonArray } from "./coerce.js";
 import { defineTool } from "./define.js";
-import {
-  commitBook,
-  commitRefresh,
-  describeError,
-  prepareBook,
-  withBusyRetry,
-  type BookDetail,
-  type PrepareResult,
-} from "../app/index-book.js";
-import { resolveNumericId } from "./resolve-id.js";
+import { describeError } from "../app/index-book.js";
+import { runIndexBuild, type BuildIndexDeps, type BuildSummary } from "../app/build-index.js";
 import { INSTALL_TRANSFORMERS } from "./remediation.js";
 import { toolError, toolOk } from "./result.js";
 import {
@@ -30,40 +22,14 @@ import {
   stillRunningResult,
   type BuildSelector,
 } from "./build-index-results.js";
-import type { IndexFreshness, IndexWriter, PruneCounts } from "../semantic/store/index.js";
-import type { BookIndexPorts } from "../app/index-book.js";
 import type { ToolContext, ToolResult } from "./types.js";
-import type { BaseDeps, DepsWithIndex } from "./deps.js";
 import { IndexBuildRegistry, type BuildRun } from "../semantic/index-builds.js";
 import { log } from "../logging.js";
-import { runBookPipeline } from "../semantic/book-pipeline.js";
 import { bookProgress } from "./book-progress.js";
 import { errorCodeFor } from "../domain/error-codes.js";
 
-/** Page size when listing query matches / the whole library (ids only — the response is tiny). */
-const ID_PAGE = 1000;
-/** Runaway guard on the id paging loop (1000 × 1000 ids ≫ any real library). */
-const ID_MAX_PAGES = 1000;
-/** Above this many query-selected books, the result carries a long-build/resume note (#138). */
-const LARGE_SELECTION = 100;
-/** Progress line to stderr every N books, so a long build is observable in the server log. */
-const PROGRESS_EVERY = 25;
-
-/**
- * Books in flight per build call. 1 on purpose (#99 bench): chunking + tokenizing are
- * main-thread JS, so in-thread book concurrency bought 0-6%, while each extra in-flight book
- * makes a concurrent search's query embed wait behind one more passage batch. The real win is
- * worker threads (scripts/reindex.ts --encoder threads) — not wired into the server yet,
- * since each thread loads its own model copy (~0.9 GB) inside the long-lived server process.
- */
-const BUILD_CONCURRENCY = 1;
-
-/** calibre_build_index's index ports (#272): the per-book trip plus the orphan prune. */
-export type BuildIndexPorts = BookIndexPorts &
-  Pick<IndexFreshness, "indexedBookIds"> &
-  Pick<IndexWriter, "deleteBooks">;
-/** calibre_build_index's deps: BaseDeps plus BuildIndexPorts. */
-export type BuildIndexDeps = DepsWithIndex<BuildIndexPorts>;
+/** calibre_build_index's deps — the build use case's (app/build-index.ts). */
+export type { BuildIndexDeps };
 
 /** The process-wide registry; deps.indexBuilds overrides it only in tests. */
 const sharedBuilds = new IndexBuildRegistry<ToolResult>({ log });
@@ -177,9 +143,9 @@ export const buildIndexTool = defineTool({
 type BuildArgs = BuildSelector & { library?: string | undefined };
 
 /**
- * The build itself: resolve the selection, pick the mode, then prepare + commit book by book.
- * Progress goes to the client only while the call is still open (`run.detached()` is false);
- * `run.progress` is the snapshot other calls see while this build runs.
+ * One build: the use case does the work; this renders its outcome. Progress goes to the client
+ * only while the call is still open (`run.detached()` is false) — after the early return the
+ * request is closed and progress for it would be a protocol error.
  */
 async function runBuild(
   args: BuildArgs,
@@ -188,302 +154,111 @@ async function runBuild(
   libraryId: string,
   run: BuildRun,
 ): Promise<ToolResult> {
-  const signal = ctx?.signal;
   // Set before the first await, so a refused call always sees which mode this build runs in.
   run.progress.mode = buildModeKey(args);
-  const started = Date.now();
-  const notes: string[] = [];
-  const failures: string[] = [];
-  // After the early return the request is closed: progress for it would be a protocol error.
   const report = ctx?.progress;
   const progress = report
     ? (value: number, message: string, total?: number) => {
         if (!run.detached()) report(value, message, total);
       }
     : undefined;
-  // Resolve the target set (deduped, preserving discovery order).
-  const targets = new Set<number>();
-  if (args.bookId !== undefined) {
-    const n = await resolveNumericId(deps, args.bookId, args.library);
-    if (n === undefined) failures.push(`bookId ${args.bookId}: not found`);
-    else targets.add(n);
+  const outcome = await runIndexBuild(deps, args, libraryId, run.progress, {
+    signal: ctx?.signal,
+    progress,
+    bookPhases: bookProgress,
+  });
+  if (outcome.kind === "no-targets") {
+    return toolError("not_found", `No books resolved from the selector. ${outcome.failures.join("; ")}`.trim());
   }
-  for (const raw of args.ids ?? []) {
-    const n = await resolveNumericId(deps, raw, args.library);
-    if (n === undefined) failures.push(`id ${raw}: not found`);
-    else targets.add(n);
-  }
-  if (args.query) {
-    // Page through EVERY match (#138): a single capped page silently dropped the rest.
-    const matched = await allMatchingIds(deps, args.query, args.library);
-    for (const id of matched) targets.add(id);
-    if (matched.size > LARGE_SELECTION) {
-      // Long builds can outlive the client's request timeout; up-to-date books are skipped,
-      // so re-running the same call resumes where an interrupted build stopped.
-      notes.push(
-        `query matched ${matched.size} books — a large build; if it is interrupted, re-run the same call to resume (already-indexed books are skipped).`,
-      );
-    }
-  }
+  // Same buckets as the progress text, so the cancel summary and "Books so far" agree.
+  if (outcome.kind === "cancelled") return cancelledResult(outcome.counts);
+  return summaryResult(outcome.summary, args.enableFts);
+}
 
-  const booksRequested = targets.size;
-  run.progress.total = booksRequested;
-  run.progress.selectedIds = [...targets];
-  if (booksRequested === 0) {
-    return toolError("not_found", `No books resolved from the selector. ${failures.join("; ")}`.trim());
+/** The finished build's text summary + structuredContent. */
+function summaryResult(s: BuildSummary, enableFts: boolean): ToolResult {
+  const notes: string[] = [];
+  if (s.largeSelection !== undefined) {
+    // Up-to-date books are skipped, so re-running the same call resumes an interrupted build.
+    notes.push(
+      `query matched ${s.largeSelection} books — a large build; if it is interrupted, re-run the same call to resume (already-indexed books are skipped).`,
+    );
   }
-
-  // Decide the build mode up front. keywordOnly skips the model entirely; otherwise probe
-  // the embedder once (warmup does the lazy dynamic-import) so a no-embeddings install
-  // degrades to a keyword-only index instead of failing every book (the model-free default).
-  let keywordOnly = args.keywordOnly;
   // Why the index has no embeddings (mirrored into structuredContent as semanticReason).
   let semanticReason: string | undefined;
   // The auto-degrade warning LEADS the text block — an automatic downgrade must never
   // read as an unqualified success (issue #41: keywordOnly:true + failures:[] looked fine).
   let degradeWarning: string | undefined;
-  // Token budgeting needs a LOADED tokenizer — only true after a successful warmup.
-  let tokenBudgeted = false;
-  if (keywordOnly) {
+  if (s.keywordOnlyReason === "requested") {
     semanticReason =
       "keywordOnly=true requested — no embeddings built; vector & hybrid semantic search need an embedding rebuild.";
     // semanticReason stays short (machine-scannable); the full 3-branch fix goes in the note text.
     notes.push(
       `Keyword-only index (no embeddings): mode:"keyword" search works now. For vector & hybrid semantic search: ${INSTALL_TRANSFORMERS} Then rebuild with force=true.`,
     );
-  } else {
-    try {
-      await deps.embedder.warmup();
-      tokenBudgeted = true;
-    } catch (err) {
-      if (isEmbedderUnavailable(err)) {
-        keywordOnly = true;
-        semanticReason =
-          "embedding model (@huggingface/transformers) unavailable — automatically degraded to a keyword-only index (no vectors).";
-        // Must LEAD the text block (test-asserted at index 0) and carry the universal fix (#47).
-        degradeWarning = `Embedding model unavailable — built a KEYWORD-ONLY index instead (mode:"keyword" search works now). ${INSTALL_TRANSFORMERS} After restarting, rebuild with force=true for vector & hybrid semantic search.`;
-      }
-      // Other warmup errors (e.g. a download hiccup) fall through — the per-book embed
-      // attempt below surfaces them as collected failures (char-budget chunking applies).
-    }
+  } else if (s.keywordOnlyReason === "embedder-unavailable") {
+    semanticReason =
+      "embedding model (@huggingface/transformers) unavailable — automatically degraded to a keyword-only index (no vectors).";
+    // Must LEAD the text block (test-asserted at index 0) and carry the universal fix (#47).
+    degradeWarning = `Embedding model unavailable — built a KEYWORD-ONLY index instead (mode:"keyword" search works now). ${INSTALL_TRANSFORMERS} After restarting, rebuild with force=true for vector & hybrid semantic search.`;
   }
-
-  // Pre-warm the reranker on embedding builds (D-011): its one-time ~576 MB download lands
-  // inside the build users already expect to be slow, not on the first search. Best-effort —
-  // a failure logs to stderr + a note and NEVER fails the build. Keyword-only builds and
-  // CALIBRE_MCP_RERANK=off installs skip it (nothing would use the model).
-  if (!keywordOnly && tokenBudgeted && deps.reranker && deps.config.rerankEnabled) {
-    try {
-      await deps.reranker.warmup();
-    } catch (err) {
-      const reason = err instanceof Error ? err.message : String(err);
-      deps.log.warn("reranker pre-download failed", { reason });
-      notes.push(
-        "Reranker model could not be pre-downloaded — the first hybrid/vector search will retry (until then results keep the fused order).",
-      );
-    }
-  }
-
-  let booksIndexed = 0;
-  let booksSkipped = 0;
-  let booksRefreshed = 0;
-  let booksPreserved = 0;
-  // Books whose keyword-only write replaceBook refused at commit time (embedded meanwhile).
-  const preservedAtCommit = new Set<number>();
-  let totalChunks = 0;
-  let totalFigures = 0;
-  let totalUnplaced = 0;
-  const bookDetails: BookDetail[] = [];
-  let settled = 0;
-  // Books a cancel cut short: settled, but never processed — kept out of progress.done (#325).
-  const cutShort = new Set<number>();
-  progress?.(0, `Indexing ${booksRequested} book(s)…`, booksRequested);
-  // Book-level pipeline (#99): write-free prepare per book, one serialized writer commits —
-  // the same path the threaded bulk re-index uses, so both keep the single-writer invariant.
-  const outcomes = await runBookPipeline<PrepareResult>([...targets], BUILD_CONCURRENCY, {
-    prepare: async (bookId) => {
-      // Cancelled (client sent notifications/cancelled or went away): queued books never start.
-      // Books already committed stay indexed; the in-flight subprocess is killed by its signal.
-      signal?.throwIfAborted();
-      // One book at a time (BUILD_CONCURRENCY), so `settled` is this book's base step.
-      const sub = progress
-        ? bookProgress(
-            (value, message) => {
-              if (!signal?.aborted) progress(value, message, booksRequested);
-            },
-            settled,
-            `Book ${settled + 1}/${booksRequested} (id ${bookId})`,
-          )
-        : undefined;
-      try {
-        return await prepareBook(deps, bookId, {
-          ...(sub ? { onPhase: sub.onPhase } : {}),
-          libraryId,
-          library: args.library,
-          force: args.force,
-          keywordOnly,
-          tokenBudgeted,
-          signal,
-        });
-      } finally {
-        sub?.stop();
-      }
-    },
-    commit: async (bookId, prepared) => {
-      if (prepared.kind === "refreshed") {
-        await withBusyRetry(() => commitRefresh(deps, libraryId, prepared));
-        return;
-      }
-      if (prepared.kind !== "ready") return;
-      if ((await withBusyRetry(() => commitBook(deps, libraryId, prepared))) === undefined) {
-        preservedAtCommit.add(bookId);
-      }
-    },
-    onSettled: (o) => {
-      settled++;
-      // Only a prepare can be cut short (the extraction is killed by the signal); a commit is a
-      // synchronous SQLite write, so a commit failure is a real failure even mid-cancel.
-      if (!o.ok && o.stage === "prepare" && signal?.aborted) cutShort.add(o.bookId);
-      run.progress.done = settled - cutShort.size;
-      // A write refused at commit (embedded meanwhile) kept the old rows — not indexed (#325).
-      if (o.ok && o.prepared.kind === "ready" && !preservedAtCommit.has(o.bookId)) {
-        run.progress.indexedIds.push(o.bookId);
-      }
-      if (settled % PROGRESS_EVERY === 0) {
-        deps.log.info("build progress", { done: settled, of: booksRequested });
-      }
-      if (!o.ok && !cutShort.has(o.bookId)) {
-        const reason = describeError(o.error);
-        // Shared with "still running" reports, so a failure shows up while the build runs.
-        run.progress.failures.push(`book ${o.bookId}: ${reason}`);
-        deps.log.warn("book failed", { bookId: o.bookId, stage: o.stage, reason });
-      }
-      if (signal?.aborted) return;
-      progress?.(settled, `Indexed ${settled}/${booksRequested} book(s)`, booksRequested);
-    },
-  });
-  // Tally in selection order, so the result reads the same whatever order books finished in.
-  for (const o of outcomes) {
-    if (!o.ok) {
-      // A book cut short by the cancel did not fail — it just never finished.
-      if (!cutShort.has(o.bookId)) failures.push(`book ${o.bookId}: ${describeError(o.error)}`);
-    } else if (o.prepared.kind === "skipped") {
-      booksSkipped++;
-    } else if (o.prepared.kind === "refreshed") {
-      booksRefreshed++;
-    } else if (o.prepared.kind === "preserved" || preservedAtCommit.has(o.bookId)) {
-      booksPreserved++;
-    } else {
-      const d = o.prepared.detail;
-      booksIndexed++;
-      totalChunks += d.chunks;
-      totalFigures += d.figures;
-      totalUnplaced += d.unplaced;
-      bookDetails.push(d);
-    }
-  }
-  if (signal?.aborted) {
-    // Same buckets as the progress text, so the cancel summary and "Books so far" agree.
-    return cancelledResult({
-      booksRequested,
-      booksIndexed,
-      booksSkipped,
-      booksRefreshed,
-      booksPreserved,
-      failures,
-      chunks: totalChunks,
-    });
-  }
-  if (booksPreserved > 0) {
+  if (s.rerankerWarmupFailed) {
     notes.push(
-      `${booksPreserved} book(s) already have embeddings and were left as-is — a keyword-only build never downgrades them (run an embedding build to refresh them).`,
+      "Reranker model could not be pre-downloaded — the first hybrid/vector search will retry (until then results keep the fused order).",
     );
   }
-  if (totalUnplaced > 0) {
+  if (s.booksPreserved > 0) {
+    notes.push(
+      `${s.booksPreserved} book(s) already have embeddings and were left as-is — a keyword-only build never downgrades them (run an embedding build to refresh them).`,
+    );
+  }
+  if (s.unplaced > 0) {
     // Unplaced markers are silent figure-linkage gaps — say so instead of a clean-looking count.
     notes.push(
-      `${totalUnplaced} figure marker(s) could not be placed (caption not found in extracted text) — those figures are missing from figure search.`,
+      `${s.unplaced} figure marker(s) could not be placed (caption not found in extracted text) — those figures are missing from figure search.`,
     );
   }
-
-  // Orphan prune (#100): indexing only ever upserts, so books removed from the library (or
-  // merged away) keep searchable chunks that 404 on calibre_get_content. Reconcile the index
-  // against the CURRENT library id set. Opt-in: a narrow selector must not imply a sweep.
-  let pruned: PruneCounts | undefined;
-  if (args.prune) {
-    try {
-      // Empty query = every book: the keep-set must be complete, or live rows get deleted.
-      const live = await allMatchingIds(deps, "", args.library);
-      // An empty live set means the library listing failed or the server lied — pruning then
-      // would wipe the whole index. Refuse instead.
-      if (live.size === 0) throw new Error("the library reported 0 books");
-      const orphans = deps.index.indexedBookIds(libraryId).filter((id) => !live.has(id));
-      pruned = deps.index.deleteBooks(libraryId, orphans);
-      notes.push(
-        pruned.books > 0
-          ? `Pruned ${pruned.books} book(s) no longer in the library (${pruned.chunks} chunks, ${pruned.figures} figures).`
+  const pruned = s.prune && "pruned" in s.prune ? s.prune.pruned : undefined;
+  if (s.prune) {
+    notes.push(
+      "skipped" in s.prune
+        ? `Prune skipped — could not list the library (${s.prune.skipped}).`
+        : s.prune.pruned.books > 0
+          ? `Pruned ${s.prune.pruned.books} book(s) no longer in the library (${s.prune.pruned.chunks} chunks, ${s.prune.pruned.figures} figures).`
           : "Prune found no stale books — the index matches the library.",
-      );
-    } catch (err) {
-      // A failed prune never fails the build: the indexing above already committed.
-      notes.push(`Prune skipped — could not list the library (${describeError(err)}).`);
-    }
+    );
   }
-
-  if (args.enableFts) {
+  if (enableFts) {
     notes.push("enableFts is accepted but not yet implemented in this version (semantic-only index).");
   }
 
-  const elapsedMs = Date.now() - started;
+  const { failures, bookDetails } = s;
   // Surface the first few failure reasons in the text block — clients that ignore
   // structuredContent would otherwise only see an opaque "N failed".
   const failureLines = failures.slice(0, 3).map((f) => `\n- ${f}`);
   if (failures.length > 3) failureLines.push(`\n- …and ${failures.length - 3} more`);
   const summary =
     (degradeWarning ? `${degradeWarning}\n` : "") +
-    `${keywordOnly ? "Keyword-only indexed" : "Indexed"} ${booksIndexed}/${booksRequested} book(s) (${booksSkipped} up-to-date, ${booksRefreshed > 0 ? `${booksRefreshed} metadata-only refreshed without re-embedding, ` : ""}${totalChunks} chunks${totalFigures > 0 ? `, ${totalFigures} figure captions` : ""}) in ${elapsedMs} ms.` +
+    `${s.keywordOnly ? "Keyword-only indexed" : "Indexed"} ${s.booksIndexed}/${s.booksRequested} book(s) (${s.booksSkipped} up-to-date, ${s.booksRefreshed > 0 ? `${s.booksRefreshed} metadata-only refreshed without re-embedding, ` : ""}${s.chunks} chunks${s.figures > 0 ? `, ${s.figures} figure captions` : ""}) in ${s.elapsedMs} ms.` +
     (failures.length ? ` ${failures.length} failed:${failureLines.join("")}` : "") +
     notes.map((n) => `\n- ${n}`).join("") +
     // which books are now searchable — Desktop never sees bookDetails (#234)
     (bookDetails.length ? `\nIndexed ids: ${bookDetails.map((d) => d.bookId).join(", ")}.` : "");
 
   return toolOk([{ type: "text", text: summary }], {
-    booksRequested,
-    booksIndexed,
-    booksSkipped,
-    booksRefreshed,
-    ...(booksPreserved > 0 ? { booksPreserved } : {}),
-    chunks: totalChunks,
-    figures: totalFigures,
+    booksRequested: s.booksRequested,
+    booksIndexed: s.booksIndexed,
+    booksSkipped: s.booksSkipped,
+    booksRefreshed: s.booksRefreshed,
+    ...(s.booksPreserved > 0 ? { booksPreserved: s.booksPreserved } : {}),
+    chunks: s.chunks,
+    figures: s.figures,
     ...(pruned ? { prunedBooks: pruned.books, prunedChunks: pruned.chunks, prunedFigures: pruned.figures } : {}),
-    elapsedMs,
-    keywordOnly,
-    semanticAvailable: !keywordOnly,
+    elapsedMs: s.elapsedMs,
+    keywordOnly: s.keywordOnly,
+    semanticAvailable: !s.keywordOnly,
     ...(semanticReason !== undefined ? { semanticReason } : {}),
     ...(bookDetails.length > 0 ? { bookDetails } : {}),
     failures,
   });
-}
-
-/**
- * Every book id matching `query` (empty = the whole library), paged through the search
- * endpoint by offset. Feeds both the query selector and the orphan-prune keep-set, so it must
- * be complete — a partial walk would under-index (#138) or delete live rows (prune).
- */
-async function allMatchingIds(deps: BaseDeps, query: string, library: string | undefined): Promise<Set<number>> {
-  const ids = new Set<number>();
-  let offset = 0;
-  for (let page = 0; page < ID_MAX_PAGES; page++) {
-    const res = await deps.content.search({ query, library, num: ID_PAGE, offset });
-    for (const id of res.bookIds) ids.add(id);
-    if (res.bookIds.length === 0) break;
-    offset += res.bookIds.length;
-    if (offset >= res.total) break;
-  }
-  return ids;
-}
-
-/** True when an error is the coded "embedding model not installed" signal. */
-function isEmbedderUnavailable(err: unknown): boolean {
-  return (err instanceof Error ? err.message : String(err)) === "EMBEDDER_UNAVAILABLE";
 }
