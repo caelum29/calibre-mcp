@@ -3,7 +3,7 @@
 // — NOT a translation of Calibre's GPL merge code.
 
 import type { Book } from "./book.js";
-import type { ChangeValue } from "./book-fields.js";
+import { sameFieldValue, type ChangeValue } from "./book-fields.js";
 
 /** A custom column's value on one book, as read from `/ajax/book` user_metadata. */
 export interface CustomFieldValue {
@@ -135,7 +135,7 @@ export function mergeBuiltinMetadata(target: Book, sources: Book[]): Record<stri
   for (const [scheme, v] of Object.entries(target.identifiers)) {
     if (v !== undefined) mergedIds[scheme] = v;
   }
-  if (Object.keys(mergedIds).length > 0 && JSON.stringify(mergedIds) !== JSON.stringify(target.identifiers)) {
+  if (Object.keys(mergedIds).length > 0 && !sameFieldValue(mergedIds, target.identifiers)) {
     changes.identifiers = mergedIds;
   }
 

@@ -115,13 +115,13 @@ export interface FieldDiff {
 
 /**
  * Compute a WITHOUT-WRITING preview of what `changes` would do to a book — the diff builder
- * behind calibre_bulk_update's `preview` mode. `changed` compares the current value against
- * the proposed one structurally (JSON), so a value already current shows as a no-op.
+ * behind calibre_bulk_update's `preview` mode. `changed` uses {@link sameFieldValue}, the same
+ * equality as the applied diff, so a value already current (incl. "" vs absent) is a no-op (#342).
  */
 export function previewBookChanges(book: Book, changes: Record<string, ChangeValue>): FieldDiff[] {
   return Object.entries(changes).map(([field, after]) => {
     const before = bookFieldValue(book, field);
-    return { field, before, after, changed: JSON.stringify(before) !== JSON.stringify(after) };
+    return { field, before, after, changed: !sameFieldValue(before, after) };
   });
 }
 
@@ -148,28 +148,45 @@ function splitListString(field: string, v: ChangeValue): ChangeValue {
     : v;
 }
 
+/** Most dropped entries a replacement note names before summarising the rest. */
+const MAX_NAMED_DROPS = 5;
+
 /**
- * Preview flag for a list-field "set" that would drop existing entries, e.g.
- * `tags: 15 → 1 (replaces all existing tags)`. Sets replace the whole list, so a one-element
- * value silently wipes the rest; undefined when nothing existing would be lost.
+ * Preview flag for a list-field "set" that would drop existing entries. Sets replace the whole
+ * list, so a short value silently loses the rest: `tags: 3 → 2 (replaces the list: drops y, z)`,
+ * or `(replaces all existing tags)` when nothing is kept (#342). Kept = the same item name
+ * (case-insensitive — a case change is a rename, see {@link caseRenameNotes}); an identifier is
+ * kept only with the same value. Undefined when nothing existing would be lost.
  */
 export function listReplacementNote(d: FieldDiff): string | undefined {
   const was = listSize(d.before);
   const after = splitListString(d.field, d.after);
   const now = listSize(after);
   if (!was || now === undefined) return undefined;
+  const all = `${d.field}: ${was} → ${now} (replaces all existing ${d.field})`;
+  const dropped: string[] = [];
+  let keptAny = false;
   if (Array.isArray(d.before)) {
     const list = Array.isArray(after) ? after : [];
-    const kept = (e: unknown): boolean => list.some((x) => sameEntry(x, e));
-    if (d.before.every(kept)) return undefined;
+    for (const e of d.before) {
+      if (list.some((x) => sameEntry(x, e))) keptAny = true;
+      else if (!dropped.some((x) => sameEntry(x, e))) dropped.push(String(e));
+    }
   } else if (after && typeof after === "object" && !Array.isArray(after)) {
     // An identifier is kept only with the same value: isbn 1 → 2 replaces the old one.
     const next = Object.entries(after);
-    const kept = ([type, val]: [string, unknown]): boolean =>
-      next.some(([t, v]) => sameItemName(t, type) && String(v) === String(val));
-    if (Object.entries(d.before as Record<string, unknown>).every(kept)) return undefined;
+    for (const [type, val] of Object.entries(d.before as Record<string, unknown>)) {
+      if (next.some(([t, v]) => sameItemName(t, type) && String(v) === String(val))) keptAny = true;
+      else dropped.push(`${type}:${String(val)}`);
+    }
+  } else {
+    return all; // a non-map value for identifiers keeps nothing
   }
-  return `${d.field}: ${was} → ${now} (replaces all existing ${d.field})`;
+  if (dropped.length === 0) return undefined;
+  if (!keptAny) return all;
+  const named = dropped.slice(0, MAX_NAMED_DROPS).join(", ");
+  const more = dropped.length > MAX_NAMED_DROPS ? ` and ${dropped.length - MAX_NAMED_DROPS} more` : "";
+  return `${d.field}: ${was} → ${now} (replaces the list: drops ${named}${more})`;
 }
 
 /**

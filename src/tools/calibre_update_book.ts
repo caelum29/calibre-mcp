@@ -88,11 +88,11 @@ export const updateBookTool = defineTool({
         );
       } catch (err) {
         if (isWriteRefused(err)) return toolError("write_refused", WRITE_REFUSED_MESSAGE);
-        if (classifyTransient(err)) {
-          return isDroppedMidRequest(err)
-            ? toolError("write_unverified", describeTransient(err, numericId))
-            : toolError("calibre_unreachable", describeTransient(err, numericId));
+        // a mid-request drop may arrive after the server committed — verify it like a timeout (#342)
+        if (isDroppedMidRequest(err)) {
+          return confirmDroppedWrite(deps, { id: numericId, before, changes, library: args.library }, err);
         }
+        if (classifyTransient(err)) return toolError("calibre_unreachable", describeTransient(err, numericId));
         // A routed write commits server-side BEFORE calibredb replies, so a timeout is
         // ambiguous — verify against a re-read instead of reporting failure (issue #33).
         if (err instanceof CalibreCliTimeoutError) {
@@ -199,4 +199,15 @@ async function confirmTimedOutWrite(deps: BaseDeps, write: TimedOutWrite): Promi
     `calibredb timed out and a re-read does not show the changes applied. Retry, or check ` +
       `with calibre_get_book id=${id} first.`,
   );
+}
+
+/**
+ * The connection DROPPED mid-request (after every transient retry), so the write may have
+ * committed. Re-read like a timeout: landed → success; otherwise the "may have been committed —
+ * verify" steer. No further retry (#342).
+ */
+async function confirmDroppedWrite(deps: BaseDeps, write: TimedOutWrite, err: unknown): Promise<ToolResult> {
+  const check = await verifyTimedOutWrite(deps, write);
+  if (check.status === "landed") return appliedResult(write.id, write.before, check.after, Object.keys(write.changes));
+  return toolError("write_unverified", describeTransient(err, write.id));
 }
