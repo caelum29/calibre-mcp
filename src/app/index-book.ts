@@ -11,6 +11,7 @@ import { textMatchesChunks, type ChunkSpan } from "../semantic/content-match.js"
 import { isFrontMatterSpan } from "../semantic/front-matter-flag.js";
 import type { BookMeta, IndexedChunk, IndexedFigure, IndexFreshness, IndexWriter } from "../semantic/store/index.js";
 import type { BaseDeps, DepsWithIndex } from "../tools/deps.js";
+import type { LogSink } from "../logging.js";
 
 /**
  * The index ports one book's index trip uses (#272): its freshness/span reads and the
@@ -20,6 +21,12 @@ export type BookIndexPorts = Pick<IndexFreshness, "isBookIndexed" | "bookVectorC
   Pick<IndexWriter, "replaceBook" | "refreshBookMeta">;
 /** Deps of the index-book use case: BaseDeps plus BookIndexPorts. */
 export type IndexBookDeps = DepsWithIndex<BookIndexPorts>;
+
+/** What the unchanged-text refresh touches (#346): span/freshness reads, the in-place write, the log. */
+export interface RefreshDeps {
+  index: Pick<IndexFreshness, "isBookIndexed" | "bookChunkSpans"> & Pick<IndexWriter, "refreshBookMeta">;
+  log: LogSink;
+}
 
 /** Per-book diagnostics surfaced to structuredContent — the re-index triage record (#87). */
 export interface BookDetail {
@@ -248,7 +255,7 @@ export function commitBook(deps: IndexBookDeps, libraryId: string, book: Prepare
  * "[title › authors]" prefix — accepted; force re-embeds. flagsOnly demands this path.
  */
 function refreshOutcome(
-  deps: IndexBookDeps,
+  deps: Pick<RefreshDeps, "index">,
   opts: PrepareOptions,
   meta: BookMeta,
   extracted: ExtractedText,
@@ -277,7 +284,7 @@ function refreshOutcome(
 const TEXT_CHANGED = "text changed since indexing — needs a full re-index, not a flag backfill";
 
 /** The write for an unchanged-text book (#244/#269): metadata + flags in place, vectors kept. */
-export function commitRefresh(deps: IndexBookDeps, libraryId: string, book: RefreshedBook): void {
+export function commitRefresh(deps: RefreshDeps, libraryId: string, book: RefreshedBook): void {
   // Another writer re-chunked the book between prepare and commit: the boundary no longer
   // applies to its rows. Nothing was written — report it like a changed-text book.
   if (!deps.index.refreshBookMeta(libraryId, book.meta, { frontMatterEnd: book.frontMatterEnd, spans: book.spans })) {

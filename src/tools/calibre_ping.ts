@@ -1,11 +1,12 @@
 // calibre_ping — connectivity probe that proves the SUBPROCESS path (calibredb --with-library
 // URL) works, complementary to calibre_list_libraries (HTTP /ajax). Also carries the
-// semantic-search self-diagnosis (#48), the server's recent errors + log file (#247), and the
-// libraries the busy breaker is currently failing fast (calibre/busy.ts).
+// semantic-search self-diagnosis (#48), the server's recent errors + log file (#247), the
+// libraries the busy breaker is failing fast (calibre/busy.ts) and index coverage (app/library-index.ts).
 
 import { defineTool } from "./define.js";
 import { toolError, toolText } from "./result.js";
-import { computeSemanticStatus, formatSemanticStatusLine, staleness, type StatusIndex } from "../semantic/status.js";
+import { computeSemanticStatus, formatSemanticStatusLine, type StatusIndex } from "../semantic/status.js";
+import { libraryIndexReport, type LibraryIndex } from "../app/library-index.js";
 import { capString, log } from "../logging.js";
 import type { BusyLibrary } from "../calibre/busy.js";
 import type { LibId } from "../calibre/lib-id.js";
@@ -58,7 +59,7 @@ export const pingTool = defineTool({
     const diag = diagnostics();
     const serverUrl = deps.config.serverUrl;
     const header = serverHeader(deps);
-    const index = await libraryIndexReport(deps, pingError !== undefined);
+    const index = await indexSection(deps, pingError !== undefined);
     const facts = serverFacts(deps, index.indexes);
 
     if (pingError !== undefined) {
@@ -145,83 +146,14 @@ function serverHeader(deps: BaseDeps): string {
   ].join("\n");
 }
 
-/** One library's index coverage; `total` is null when the Content Server did not answer in time. */
-interface LibraryIndex {
-  id: string;
-  name: string;
-  state: "ok" | "none" | "stale" | "unreadable";
-  indexed?: number;
-  total?: number | null;
-  /** Books in the index with no (or partial) embeddings — keyword-only rows. */
-  withoutEmbeddings?: number;
-}
-
-/** The whole index section (libraryInfo + every count) gets one short budget, so ping stays fast. */
-const INDEX_DEADLINE_MS = 5000;
-
-/** Resolves `fallback` if `p` has not settled by `ms`; the timer never outlives the race. */
-async function within<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
-  let timer: NodeJS.Timeout | undefined;
-  try {
-    return await Promise.race([
-      p,
-      new Promise<T>((resolve) => {
-        timer = setTimeout(() => resolve(fallback), ms);
-      }),
-    ]);
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
 /**
- * Per-library index coverage (text line + structured array). Each library degrades on its own
- * (unknown total → `?`/null, store error, stale index) and ping itself never fails here. Reads
- * only existing public IndexStore methods and never opens a store that has no meta row — that
- * would initialise the file under a write lock. The count goes through `noBreaker` so a slow
- * read-only probe cannot flag the library busy for real calls.
+ * The index section as one text line + its structured array. With Calibre down the report is
+ * skipped: libraryInfo would just burn another full timeout.
  */
-async function libraryIndexReport(
-  deps: PingDeps,
-  unreachable: boolean,
-): Promise<{ line: string; indexes?: LibraryIndex[] }> {
-  // With Calibre down, libraryInfo would just burn another full timeout.
+async function indexSection(deps: PingDeps, unreachable: boolean): Promise<{ line: string; indexes?: LibraryIndex[] }> {
   if (unreachable) return { line: "Index: skipped — Calibre unreachable" };
-  // One clock for the whole section: a slow libraryInfo leaves the counts less time (#325).
-  const started = Date.now();
-  let map: Record<string, string> | undefined;
-  try {
-    map = (await within(deps.content.libraryInfo(), INDEX_DEADLINE_MS, undefined))?.libraryMap;
-  } catch {
-    map = undefined;
-  }
-  if (!map) return { line: "Index: libraries unavailable" };
-  const indexes = await Promise.all(
-    Object.entries(map).map(async ([id, name]): Promise<LibraryIndex> => {
-      try {
-        if (!deps.index.hasIndex(id)) return { id, name, state: "none" };
-        const meta = deps.index.indexMeta(id);
-        if (!meta) return { id, name, state: "unreadable" };
-        if (staleness(meta) !== undefined) return { id, name, state: "stale" };
-        // Keyword-only books are FTS-searchable, so they count as indexed; semantic search can't
-        // reach them, so the line says how many (#325).
-        const indexed = deps.index.stats(id).books;
-        const withoutEmbeddings = deps.index.booksMissingVectors(id);
-        const left = Math.max(0, INDEX_DEADLINE_MS - (Date.now() - started));
-        const total = await within(
-          deps.content
-            .search({ query: "", library: id, num: 0, timeoutMs: left, noBreaker: true })
-            .then((r) => r.total as number | null)
-            .catch(() => null),
-          left,
-          null,
-        );
-        return { id, name, state: "ok", indexed, total, withoutEmbeddings };
-      } catch {
-        return { id, name, state: "unreadable" };
-      }
-    }),
-  );
+  const indexes = await libraryIndexReport(deps);
+  if (!indexes) return { line: "Index: libraries unavailable" };
   const part = (i: LibraryIndex): string =>
     i.state === "ok"
       ? `${i.name}: ${i.indexed}/${i.total ?? "?"} indexed${i.withoutEmbeddings ? ` (${i.withoutEmbeddings} without embeddings)` : ""}`

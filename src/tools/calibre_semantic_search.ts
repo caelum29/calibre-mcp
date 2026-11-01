@@ -23,7 +23,7 @@ import { boardMeta } from "./board-meta.js";
 import { BookId, CoercedBool, limitParam } from "./coerce.js";
 import { defineTool } from "./define.js";
 import { bookResourceLink } from "./resource-link.js";
-import { resolveNumericId } from "./resolve-id.js";
+import { resolveNumericId } from "../app/resolve-id.js";
 import { INSTALL_TRANSFORMERS } from "./remediation.js";
 import { fence, toolError, toolOk } from "./result.js";
 import type { ContentBlock, ToolResult } from "./types.js";

@@ -4,7 +4,7 @@
 
 import type { Book } from "../domain/book.js";
 import { log } from "../logging.js";
-import { resolveNumericId } from "../tools/resolve-id.js";
+import { resolveNumericId } from "./resolve-id.js";
 import type { BaseDeps } from "../tools/deps.js";
 
 /** Upper bound on books pulled for one curation run (library sweep). */

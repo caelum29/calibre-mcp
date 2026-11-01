@@ -13,7 +13,8 @@ import { BookId, jsonRecord } from "./coerce.js";
 import { defineTool } from "./define.js";
 import type { ToolResult } from "./types.js";
 import type { BaseDeps } from "./deps.js";
-import { bookIdArg, resolveNumericId } from "./resolve-id.js";
+import { bookIdArg } from "./resolve-id.js";
+import { resolveNumericId } from "../app/resolve-id.js";
 import { fence, toolError, toolOk } from "./result.js";
 import {
   isWriteRefused,
