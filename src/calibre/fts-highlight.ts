@@ -5,6 +5,7 @@
 // pass through byte-identical.
 
 import { foldAccents } from "../domain/curation/normalize.js";
+import { stemToken } from "../semantic/stem.js";
 
 /** Highlight marker pair the snippets were requested with. */
 export interface HighlightMarkers {
@@ -120,27 +121,48 @@ function splitAt(matches: RegExpMatchArray[], cuts: number[]): Word[] {
   return out;
 }
 
-/** Query → match units: quoted phrases, then bare words; operators and NEAR distances dropped. */
+/**
+ * Query → match units: quoted phrases and bare words; operators and NEAR distances dropped, and
+ * NOT's operand (word, prefix, phrase or group) skipped — those words must NOT be in the match.
+ */
 function parseQuery(query: string): QueryUnit[] {
+  const tokens = query.replace(/,\s*\d+\s*\)/g, ")").match(QUERY_TOKEN) ?? [];
   const units: QueryUnit[] = [];
-  const rest = query
-    .replace(/,\s*\d+\s*\)/g, ")") // NEAR(... , 30) distance
-    .replace(/"([^"]*)"/g, (_, phrase: string) => {
-      const words = phrase.match(WORD) ?? [];
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i]!;
+    if (token === "NOT") {
+      i = operandEnd(tokens, i + 1);
+      continue;
+    }
+    if (token === "(" || token === ")" || OPERATORS.has(token)) continue;
+    if (token.startsWith('"')) {
+      const words = token.match(WORD) ?? [];
       if (words.length) units.push({ words, prefix: false });
-      return " ";
-    });
-  for (const token of rest.split(/[\s()]+/)) {
-    if (!token || OPERATORS.has(token)) continue;
+      continue;
+    }
     const prefix = token.endsWith("*");
     for (const w of token.match(WORD) ?? []) units.push({ words: [w], prefix });
   }
   return units;
 }
 
-// Case-, diacritic- and stem-tolerant, and lenient on purpose: Calibre matches stemmed
-// (porter), and a false "valid" only keeps Calibre's own output, while a false "invalid"
-// would strip a correct highlight.
+// Phrases, parens, and runs of anything else; a lone unclosed quote matches nothing (dropped).
+const QUERY_TOKEN = /"[^"]*"|[()]|[^\s()"]+/g;
+
+/** Index of the last token of the operand starting at `i`: one token, a (group) or NEAR(...). */
+function operandEnd(tokens: string[], i: number): number {
+  let j = tokens[i] === "NEAR" && tokens[i + 1] === "(" ? i + 1 : i;
+  if (tokens[j] !== "(") return i;
+  for (let depth = 0; j < tokens.length; j++) {
+    if (tokens[j] === "(") depth++;
+    else if (tokens[j] === ")" && --depth === 0) break;
+  }
+  return j;
+}
+
+// Case-, diacritic- and stem-tolerant (the keyword index's EN+RU Snowball stemmer), and lenient
+// on purpose: Calibre matches stemmed, and a false "valid" only keeps Calibre's own output, while
+// a false "invalid" would strip a correct highlight.
 function wordMatches(word: string, term: string, prefix: boolean): boolean {
   const w = fold(word);
   const t = fold(term);
@@ -150,7 +172,7 @@ function wordMatches(word: string, term: string, prefix: boolean): boolean {
   // often lands on a short common word: `us`/`on` must not pass for use/only/one. A short
   // QUERY term still matches its inflections (go → going), as porter stems those to it.
   if (w.length < 3) return false;
-  if (stem(w) === stem(t)) return true;
+  if (stemToken(w) === stemToken(t)) return true;
   const shorter = Math.min(w.length, t.length);
   const cp = commonPrefix(w, t);
   // Short words: only a short inflection ("api"→"apis"), not "the"→"theory".
@@ -161,28 +183,6 @@ function wordMatches(word: string, term: string, prefix: boolean): boolean {
 // Lowercase first: foldAccents folds only lowercase ё, so Ё must be lowered before it.
 function fold(s: string): string {
   return foldAccents(s.toLowerCase());
-}
-
-const SUFFIXES = ["ations", "ation", "ings", "ing", "edly", "ed", "ers", "er", "ly", "es", "s"];
-
-// Porter strips -ing/-ed only when a vowel stays in the stem: thing ≠ the, bring ≠ bred, using = use.
-const HAS_VOWEL = /[aeiouy]/;
-
-/** Rough English stem: strip one inflection, undouble a final consonant, drop a final e. */
-function stem(w: string): string {
-  let s = w;
-  for (const suf of SUFFIXES) {
-    const rest = s.slice(0, -suf.length);
-    if (s.endsWith(suf) && rest.length >= 2 && HAS_VOWEL.test(rest)) {
-      s = rest;
-      break;
-    }
-  }
-  if (/([b-df-hj-np-tv-z])\1$/.test(s)) s = s.slice(0, -1); // running → runn → run
-  // No vowel check here: a vowel-less e-stem (the → th) can only equal another stem that kept
-  // no vowel, which the suffix rule above already refuses (thing stays thing).
-  if (s.endsWith("e") && s.length > 2) s = s.slice(0, -1); // making → mak ← make
-  return s;
 }
 
 function commonPrefix(a: string, b: string): number {
