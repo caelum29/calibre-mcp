@@ -1,0 +1,61 @@
+src/app/select-books.ts
+  s_87a2f9049b0bce::t_dbfa7cf216e54c 7
+test/app/library-index.test.ts
+  s_87a2f9049b0bce::t_1abe52f31693b3 1-76,80-93
+  s_87a2f9049b0bce::t_e182278cf49ec9 77-79
+src/tools/calibre_semantic_search.ts
+  s_87a2f9049b0bce::t_dbfa7cf216e54c 26
+src/tools/calibre_get_figures.ts
+  s_87a2f9049b0bce::t_dbfa7cf216e54c 13-14
+src/tools/calibre_ping.ts
+  s_87a2f9049b0bce::t_e182278cf49ec9 153
+  s_87a2f9049b0bce::t_b6fbde19ede55d 3-4,8-9,62,150-151,155-156
+src/app/resolve-id.ts
+  s_87a2f9049b0bce::t_dbfa7cf216e54c 1-20
+src/app/library-index.ts
+  s_87a2f9049b0bce::t_b6fbde19ede55d 1-25,27-85
+  s_87a2f9049b0bce::t_9ffda3dec703e2 26
+src/app/index-book.ts
+  s_87a2f9049b0bce::t_06cbabf1f1e02c 14,25-30,258,287
+src/tools/calibre_get_content.ts
+  s_87a2f9049b0bce::t_dbfa7cf216e54c 14-15
+test/app/build-index.test.ts
+  s_87a2f9049b0bce::t_e182278cf49ec9 122-127,171-176
+  s_87a2f9049b0bce::t_42d5cadb04b138 1-4,12-115,128-140,142-165,167-170,178-185,187-196,198-208,212-219,221-227,229-273
+  s_87a2f9049b0bce::t_d2736165e9d5d4 5-11,116-121,141,166,177,186,197,209-211,220,228
+src/tools/calibre_build_index.ts
+  s_87a2f9049b0bce::t_03375abf042ee2 11-12,31-32,146-148,165-171,173-176,178-185,192,199-203,205-208,210,212,215,218,221-227,229,231,235,242,249-255,257-259
+src/tools/calibre_remove_book.ts
+  s_87a2f9049b0bce::t_dbfa7cf216e54c 12
+CLAUDE.md
+  s_87a2f9049b0bce::t_f99138f27c38d4 74
+src/tools/calibre_update_book.ts
+  s_87a2f9049b0bce::t_dbfa7cf216e54c 16-17
+src/tools/calibre_recover_metadata.ts
+  s_87a2f9049b0bce::t_dbfa7cf216e54c 22-23
+src/tools/calibre_extract_isbn.ts
+  s_87a2f9049b0bce::t_dbfa7cf216e54c 13-14
+src/tools/resolve-id.ts
+  s_87a2f9049b0bce::t_dbfa7cf216e54c 1-2
+src/app/build-index.ts
+  s_87a2f9049b0bce::t_9ffda3dec703e2 27,248
+  s_87a2f9049b0bce::t_4061a669b4ee97 1-26,28-247,249-360
+src/tools/calibre_search.ts
+  s_87a2f9049b0bce::t_dbfa7cf216e54c 37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a228fb987c781295f0778d2f990885e32c584f58",
+  "prompts": {},
+  "sessions": {
+    "s_87a2f9049b0bce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2e496a4d-0841-4fa4-ae51-d369c24441fa",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
