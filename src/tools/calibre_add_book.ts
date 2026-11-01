@@ -5,7 +5,7 @@
 import { z } from "zod";
 import { defineTool } from "./define.js";
 import { validateAddPath } from "./add-path.js";
-import { probeDuplicates, renderHint, type PossibleDuplicate } from "./add-dup-probe.js";
+import { probeDuplicates, renderHint, renderNotProbed, type ProbeResult } from "./add-dup-probe.js";
 import { toolError, toolOk } from "./result.js";
 import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "../app/write-policy.js";
 import { errorCodeFor } from "../domain/error-codes.js";
@@ -41,6 +41,7 @@ export const addBookTool = defineTool({
     possibleDuplicates: z
       .array(z.object({ id: z.number(), of: z.array(z.number()), reason: z.enum(["isbn", "title"]) }))
       .optional(),
+    notProbed: z.array(z.number()).optional(),
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
   write: true,
@@ -74,22 +75,26 @@ export const addBookTool = defineTool({
 
       // Advisory only (#204): calibredb's duplicate check misses raw-titled imports, so look again.
       // The add already committed — a failed probe must never turn it into an error.
-      let dups: PossibleDuplicate[] = [];
+      let probe: ProbeResult = { duplicates: [], notProbed: [] };
       if (addedIds.length > 0) {
         try {
-          dups = await probeDuplicates(deps, addedIds, args.library);
+          probe = await probeDuplicates(deps, addedIds, args.library);
         } catch (err) {
           deps.log.warn("add_book duplicate probe failed", {
             reason: err instanceof Error ? err.message : String(err),
           });
         }
       }
-      // Hint goes in the text too: some clients surface only text blocks.
-      const text = dups.length > 0 ? `${summary}\n${dups.map(renderHint).join("\n")}` : summary;
-      return toolOk([{ type: "text", text }], {
+      const { duplicates: dups, notProbed } = probe;
+      // Hints and the cap note go in the text too: some clients surface only text blocks.
+      const lines = [summary, ...dups.map(renderHint)];
+      if (notProbed.length > 0)
+        lines.push(renderNotProbed(addedIds.length - notProbed.length, addedIds.length, notProbed));
+      return toolOk([{ type: "text", text: lines.join("\n") }], {
         addedIds,
         path: check.resolved,
         ...(dups.length > 0 ? { possibleDuplicates: dups } : {}),
+        ...(notProbed.length > 0 ? { notProbed } : {}),
       });
     } catch (err) {
       return toolError(errorCodeFor(err), err instanceof Error ? err.message : String(err));

@@ -430,7 +430,16 @@ combined with `tags_add`/`tags_remove`.
 
 Import a local ebook file (EPUB/PDF/MOBI/…) into the library. The file must live under an
 allowed import root (`CALIBRE_MCP_ADD_ROOTS`) and be reachable by the Calibre server process.
-Returns the new book id(s).
+Returns the new book id(s) (`addedIds`).
+
+After the add, a read-only duplicate probe checks each new book against the library, including
+other books added in the same call. It flags a book with the same ISBN, or the same work as
+`calibre_find_duplicates mode=similar` sees it (titles alone when either book has no authors
+yet, as with a raw-filename import). Each flagged book gets an advisory line in the text, e.g.
+`⚠ #1270: possible duplicate of #210 (same normalized title) — run calibre_find_duplicates mode=compare ids=[210,1270] to review. Nothing was merged or removed.`,
+and an entry in `possibleDuplicates` (`{ id, of, reason: "isbn" | "title" }`). The probe checks
+at most 10 new books; the rest are listed in `notProbed` and named in the text. A failed probe
+never fails the add.
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
