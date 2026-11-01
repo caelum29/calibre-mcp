@@ -1,4 +1,4 @@
-// Caption-line detection for the Figure inventory (D-018, CONTEXT.md § Book images).
+// Caption-line detection for the Figure inventory (D-018, GLOSSARY.md § Book images).
 // A Figure is an image the text refers to; the caption line is its anchor. Patterns are
 // a code constant on purpose — extending them is a PR, never config or user regex (#30).
 

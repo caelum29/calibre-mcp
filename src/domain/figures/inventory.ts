@@ -17,7 +17,7 @@ export interface RasterImage {
   type: string;
 }
 
-/** One inventory entry, document-ordered. See CONTEXT.md: Figure vs Embedded image. */
+/** One inventory entry, document-ordered. See GLOSSARY.md: Figure vs Embedded image. */
 export interface FigureEntry {
   /** Stable per-(book, format) ordinal in document order — the Figure index. */
   index: number;

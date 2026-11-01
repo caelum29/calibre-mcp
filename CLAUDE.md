@@ -82,6 +82,22 @@ search spans both via a `scope: library|book` param, not extra tools.
 
 - **Cite first-party sources; flag anything unconfirmed** — don't trust memory for versions/APIs/tool lists.
 
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues on `caelum29/calibre-mcp`, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical roles under their default names (`needs-triage`, `needs-info`, `ready-for-agent`,
+`ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `GLOSSARY.md` at the root + ADRs in `docs/dev/adr/` (gitignored, local-only). See
+`docs/agents/domain.md`.
+
 ## Imported context
 
 - @docs/claude/stack-and-licensing.md — locked stack choices + GPL clean-room operating rules

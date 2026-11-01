@@ -9,7 +9,8 @@ plus this `docs/claude/` set. Everything internal lives in **`docs/dev/`, which 
 local-only, never in the public repo. The dev docs are the source of record for decisions; user docs
 must not contradict them. Start with:
 
-- `docs/dev/DECISIONS.md` — LOCKED decisions (`D-NNN`) + the consolidated Deferred/LATER registry.
+- `docs/dev/DECISIONS.md` — index of LOCKED decisions (`D-NNN`, one ADR each in `docs/dev/adr/`) + the
+  consolidated Deferred/LATER registry. Domain vocabulary: `GLOSSARY.md` (root).
 - `docs/dev/TOOLS-spec.md` — the tool build list of record.
 - `docs/dev/JOURNAL.md` — chronological build history (append-only).
 - `docs/dev/CAPABILITIES.md` — Content-Server API + write-path/auth resolution;
