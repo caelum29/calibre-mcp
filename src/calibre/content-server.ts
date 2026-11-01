@@ -160,6 +160,7 @@ export class ContentServerClient implements LibraryReader {
       return raw;
     } catch (err) {
       if (err instanceof CalibreHttpTimeoutError) this.busy?.markBusy(libId, "content-server");
+      else this.busy?.releaseProbe(libId); // non-timeout failure: free the half-open probe slot
       throw err;
     }
   }

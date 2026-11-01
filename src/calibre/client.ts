@@ -66,6 +66,8 @@ export class CalibreClient implements LibraryWriter {
         signal: opts.signal,
       });
     } catch (err) {
+      // a timeout re-arms the breaker below; any other failure must not leave the probe slot taken
+      this.busy?.releaseProbe(opts.library);
       if ((err as NodeJS.ErrnoException).code === "ENOENT") {
         throw new CalibreNotFoundError(
           `calibredb not found at "${this.cfg.calibredbPath}". Install Calibre ` +

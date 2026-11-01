@@ -61,6 +61,36 @@ describe("LibraryBusyTracker", () => {
     for (const r of rejected) expect(r.reason).toBeInstanceOf(CalibreBusyError);
   });
 
+  it("lets the next call probe after the probe is released without a verdict (#343)", () => {
+    const { busy, advance } = tracker();
+    busy.markBusy("L", "calibredb");
+    advance(60_000);
+    busy.assertAvailable("L"); // claims the probe
+    expect(() => busy.assertAvailable("L")).toThrow(CalibreBusyError);
+    busy.releaseProbe("L"); // probe died with a non-timeout error
+    expect(() => busy.assertAvailable("L")).not.toThrow();
+  });
+
+  it("a probe timeout reopens the window and frees the slot for the next probe (#343)", () => {
+    const { busy, advance } = tracker();
+    busy.markBusy("L", "calibredb");
+    advance(60_000);
+    busy.assertAvailable("L");
+    busy.markBusy("L", "calibredb");
+    advance(120_000);
+    expect(() => busy.assertAvailable("L")).not.toThrow();
+  });
+
+  it("a probe success closes the entry for everyone (#343)", () => {
+    const { busy, advance } = tracker();
+    busy.markBusy("L", "calibredb");
+    advance(60_000);
+    busy.assertAvailable("L");
+    busy.markOk("L");
+    expect(() => busy.assertAvailable("L")).not.toThrow();
+    expect(() => busy.assertAvailable("L")).not.toThrow();
+  });
+
   it("closes and forgets strikes on success", () => {
     const { busy, advance } = tracker();
     busy.markBusy("L", "calibredb");

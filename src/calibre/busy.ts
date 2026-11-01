@@ -34,11 +34,14 @@ interface Entry {
   strikes: number;
   source: string;
   since: number;
+  /** A half-open probe call is in flight; everyone else keeps failing fast. */
+  probing: boolean;
 }
 
 /**
- * Open after a timeout, fail fast while open, let calls through once the window ends
- * (half-open): success closes it, another timeout reopens it with a doubled window.
+ * Open after a timeout, fail fast while open, then (half-open) let exactly one call through as
+ * the probe once the window ends: success closes it, another timeout reopens it with a doubled
+ * window. Concurrent calls are refused until the probe settles (`markOk`/`markBusy`/`releaseProbe`).
  */
 export class LibraryBusyTracker implements BusyStatusPort {
   readonly #entries = new Map<string, Entry>();
@@ -50,12 +53,27 @@ export class LibraryBusyTracker implements BusyStatusPort {
     return (this.opts.now ?? Date.now)();
   }
 
-  /** Throws {@link CalibreBusyError} while `libraryId`'s busy window is open. */
+  /**
+   * Throws {@link CalibreBusyError} while `libraryId`'s busy window is open, or while another
+   * call is already probing it. The first call after the window claims the probe slot.
+   */
   assertAvailable(libraryId: string): void {
     const e = this.#entries.get(libraryId);
     if (!e) return;
     const left = e.until - this.now();
     if (left > 0) throw new CalibreBusyError(libraryId, left);
+    // one probe at a time: N queued calls would otherwise wait N × the timeout on a stalled Calibre
+    if (e.probing) throw new CalibreBusyError(libraryId, 0);
+    e.probing = true;
+  }
+
+  /**
+   * The probe ended without a verdict (cancelled, spawn/HTTP error that isn't a timeout):
+   * free the slot so the breaker can't stay half-open forever.
+   */
+  releaseProbe(libraryId: string): void {
+    const e = this.#entries.get(libraryId);
+    if (e) e.probing = false;
   }
 
   /** Record a timeout on `libraryId`: opens (or, after a half-open probe failed, doubles) the window. */
@@ -65,7 +83,7 @@ export class LibraryBusyTracker implements BusyStatusPort {
     const base = this.opts.baseWindowMs ?? BASE_WINDOW_MS;
     const window = Math.min(base * 2 ** (strikes - 1), this.opts.maxWindowMs ?? MAX_WINDOW_MS);
     const now = this.now();
-    this.#entries.set(libraryId, { until: now + window, strikes, source, since: now });
+    this.#entries.set(libraryId, { until: now + window, strikes, source, since: now, probing: false });
   }
 
   /** A call on `libraryId` completed: the library answers again, so forget its strikes. */
