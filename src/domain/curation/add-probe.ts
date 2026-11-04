@@ -34,11 +34,29 @@ function unslug(b: Book): Book {
 }
 
 // A raw import has no authors yet, so its authors are unknown rather than different:
-// compare titles alone (still edition-aware) when either side lacks authors.
+// compare titles alone (still edition-aware) when either side lacks authors. Its pubdate is
+// the PDF's own metadata date (often the file's creation), not the edition's, so it is
+// dropped too (#370) — the title's edition/year/subtitle signals still split editions.
 function sameWork(a: Book, b: Book): boolean {
   const [ua, ub] = [unslug(a), unslug(b)];
   if (a.authors.length > 0 && b.authors.length > 0) return isSimilarMatch(ua, ub);
-  return isSimilarMatch({ ...ua, authors: [] }, { ...ub, authors: [] });
+  return isSimilarMatch(titleOnly(ua), titleOnly(ub));
+}
+
+function titleOnly({ pubdate: _pubdate, ...b }: Book): Book {
+  return { ...b, authors: [] };
+}
+
+/**
+ * The title before its subtitle — the first `:`, `(` or `[`, where the `similar` matcher also
+ * cuts — or undefined when there is none. "Clean Code: A Handbook" → "Clean Code", so the probe
+ * can search for the shorter book too (#370). ` - ` is not a cut: the matcher keys on it.
+ */
+export function mainTitle(title: string): string | undefined {
+  const cut = title.search(/[:([]/);
+  if (cut <= 0) return undefined;
+  const main = title.slice(0, cut).trim();
+  return main || undefined;
 }
 
 /**
