@@ -118,21 +118,22 @@ export function isDroppedMidRequest(err: unknown): boolean {
 export function describeTransient(err: unknown, id: number): string {
   // the real count: a timeout or 500 after a drop ends the loop early (#370)
   const n = recordOf(err)?.retries ?? RETRY_PAUSES_MS.length;
-  const retries = n === 1 ? "after 1 retry" : `after ${n} retries`;
+  // a first-attempt failure ran no retry, so it gets no clause rather than "after 0 retries"
+  const retries = n === 0 ? "" : n === 1 ? " after 1 retry" : ` after ${n} retries`;
   if (isDroppedMidRequest(err)) {
     return (
-      `The connection to the Calibre Content Server dropped mid-request ${retries}; the write ` +
+      `The connection to the Calibre Content Server dropped mid-request${retries}; the write ` +
       `may have been committed — verify with calibre_get_book id=${id} before retrying.`
     );
   }
   if (classifyTransient(err) === "connection") {
     return (
-      `Could not reach the Calibre Content Server (connection refused or dropped) ${retries}. ` +
+      `Could not reach the Calibre Content Server (connection refused or dropped)${retries}. ` +
       `Check that Calibre / its Content Server is running, then retry.`
     );
   }
   const status = err instanceof CalibreCliError ? GATEWAY_5XX.exec(err.stderr ?? "")?.[1] : undefined;
-  return `The Calibre Content Server answered HTTP ${status ?? "5xx"} ${retries}; it may be restarting — retry shortly.`;
+  return `The Calibre Content Server answered HTTP ${status ?? "5xx"}${retries}; it may be restarting — retry shortly.`;
 }
 
 // ── timeout verification ──
