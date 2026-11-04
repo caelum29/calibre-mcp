@@ -1,0 +1,25 @@
+test/calibre/busy.test.ts
+  s_c81cb810ca8fc4::t_e4e12cb680a1fa 9,37,72,138,178,185
+test/calibre/client-busy.test.ts
+  s_c81cb810ca8fc4::t_e4e12cb680a1fa 51,63
+test/tools/ping.handler.test.ts
+  s_c81cb810ca8fc4::t_a8b1e9aa033fbc 25,52,71,131,136
+test/calibre/content-server.test.ts
+  s_c81cb810ca8fc4::t_a8b1e9aa033fbc 7,37-38,46-47,76,137,157,169,179,185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "91ca2312dc1a8f7d131f077e640805cd5cff95ae",
+  "prompts": {},
+  "sessions": {
+    "s_c81cb810ca8fc4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba7e39d6-3c43-459f-a719-2bb0e2ff24d4",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
