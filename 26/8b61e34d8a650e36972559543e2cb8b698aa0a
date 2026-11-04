@@ -1,0 +1,22 @@
+test/calibre/fts-highlight-stemmer.test.ts
+  s_47d5e04ea2bed6::t_4a93e6efa11b59 71-74
+src/calibre/fts-highlight.ts
+  s_47d5e04ea2bed6::t_a31f155347a930 153-156,158-161,169-181
+  s_47d5e04ea2bed6::t_e343e45618b265 182-183
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "268b61e34d8a650e36972559543e2cb8b698aa0a",
+  "prompts": {},
+  "sessions": {
+    "s_47d5e04ea2bed6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9de64faa-04cf-41c9-bdcb-69c1f8f940f2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
