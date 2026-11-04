@@ -77,9 +77,10 @@ describe("calibre_bulk_update — dropped connection may have committed (#233)",
     expect([failedError(r, 2)?.includes(MAY(2)), text(r).includes(MAY(2))]).toEqual([true, true]);
   });
 
-  it("should_keep_plain_wording_when_the_last_error_was_connection_refused", async () => {
+  // #370 review: an earlier drop may have committed even when the last attempt was refused
+  it("should_flag_may_have_committed_when_an_earlier_attempt_dropped_before_connection_refused", async () => {
     const r = await bulkUpdateTool.handler(apply([1, 2]), deps(scripted([RESET, RESET, REFUSED])));
-    expect(text(r)).not.toContain("may have been committed");
+    expect(text(r)).toContain(MAY(1));
   });
 
   it("should_keep_plain_wording_for_a_refused_book", async () => {

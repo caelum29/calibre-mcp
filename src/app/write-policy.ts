@@ -72,22 +72,39 @@ export function classifyTransient(err: unknown): TransientKind | undefined {
  * transient error is rethrown so the caller can classify it again.
  */
 export async function withTransientRetry<T>(fn: () => Promise<T>, sleep: Sleep = realSleep): Promise<T> {
+  let dropped = false;
   for (let attempt = 0; ; attempt++) {
     try {
       return await fn();
     } catch (err) {
+      // an earlier attempt may have committed even when a later one fails differently (#370)
+      dropped ||= droppedByStderr(err);
       const pause = RETRY_PAUSES_MS[attempt];
-      if (pause === undefined || classifyTransient(err) === undefined) throw err;
+      if (pause === undefined || classifyTransient(err) === undefined) {
+        if (dropped && typeof err === "object" && err !== null) droppedEarlier.add(err);
+        throw err;
+      }
       await sleep(pause);
     }
   }
 }
 
-/** True when the connection dropped after the request was sent, so the write may have landed. */
-export function isDroppedMidRequest(err: unknown): boolean {
+// Final errors of a retried write where SOME attempt dropped mid-request (#370). A WeakSet keeps
+// the thrown error's type intact, so refusal/timeout/error-code classification is unchanged.
+const droppedEarlier = new WeakSet<object>();
+
+function droppedByStderr(err: unknown): boolean {
   return (
     classifyTransient(err) === "connection" && DROPPED_MID_REQUEST_STDERR.test((err as CalibreCliError).stderr ?? "")
   );
+}
+
+/**
+ * True when the connection dropped after the request was sent, so the write may have landed —
+ * on this error, or on any earlier attempt of the {@link withTransientRetry} that threw it.
+ */
+export function isDroppedMidRequest(err: unknown): boolean {
+  return droppedByStderr(err) || (typeof err === "object" && err !== null && droppedEarlier.has(err));
 }
 
 /**

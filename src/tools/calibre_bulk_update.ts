@@ -19,6 +19,8 @@ import { BookId, CoercedBool, jsonArray, jsonRecord, jsonStringList } from "./co
 import { defineTool } from "./define.js";
 import { fence, toolError, toolOk, toolErrorFrom, errorFromCatch } from "./result.js";
 import type { ToolResult } from "./types.js";
+import type { BaseDeps } from "./deps.js";
+import type { Book } from "../domain/book.js";
 import { selectBooks } from "../app/select-books.js";
 import { ChangeValueSchema } from "./calibre_update_book.js";
 import {
@@ -263,41 +265,35 @@ export const bulkUpdateTool = defineTool({
               },
             );
           }
-          // Retries exhausted. A down server fails every later book the same way, so this is a
-          // circuit breaker (stop like a refusal); a gateway 5xx fails only this book (#233).
-          const transient = classifyTransient(err);
-          if (transient === "connection") {
-            const notAttempted = perBook.slice(i + 1).map((p) => p.id);
-            // a mid-request drop may arrive after the server committed — re-read it like the
-            // single-book path (#342) so a landed write is never reported as failed (#370)
-            if (isDroppedMidRequest(err)) {
-              const check = await verifyTimedOutWrite(deps, {
+          // A drop on ANY attempt may have committed: re-read it like the single-book path
+          // (#342) so a landed write is never reported as failed (#370). No retry after this.
+          const dropped = isDroppedMidRequest(err)
+            ? await settleDroppedWrite(deps, {
                 id: b.id,
                 before: b.book,
                 changes: b.changes,
                 library: args.library,
-              });
-              if (check.status === "landed") {
-                applied.push(b.id);
-                if (notAttempted.length === 0) continue; // nothing left to stop — plain summary
-                // the connection is still suspect, so the breaker stops the rest as before
-                return stoppedMidLoop(
-                  { matched: perBook.length, applied, failed, notAttempted, blockedId: undefined },
-                  {
-                    headline: "Stopped: the Calibre Content Server is unreachable",
-                    steer:
-                      `The connection dropped mid-request, but a re-read confirmed book ${b.id} was written. ` +
-                      "Once the Content Server is back",
-                    err,
-                  },
-                );
-              }
-            }
+                err,
+                run: { matched: perBook.length, applied, failed, notAttempted: perBook.slice(i + 1).map((p) => p.id) },
+              })
+            : undefined;
+          if (dropped === "next") continue;
+          if (dropped) return dropped;
+          // Retries exhausted. A down server fails every later book the same way, so this is a
+          // circuit breaker (stop like a refusal); a gateway 5xx fails only this book (#233).
+          const transient = classifyTransient(err);
+          if (transient === "connection") {
             failed.push({ id: b.id, error: describeTransient(err, b.id) });
             return stoppedMidLoop(
-              { matched: perBook.length, applied, failed, notAttempted, blockedId: b.id },
               {
-                headline: "Stopped: the Calibre Content Server is unreachable",
+                matched: perBook.length,
+                applied,
+                failed,
+                notAttempted: perBook.slice(i + 1).map((p) => p.id),
+                blockedId: b.id,
+              },
+              {
+                headline: UNREACHABLE_HEADLINE,
                 steer: `${describeTransient(err, b.id)} Once it is back`,
                 err,
               },
@@ -369,6 +365,8 @@ interface StopCause {
   steer: string;
   /** The failure that stopped the loop — its code is the result's errorCode (#249). */
   err: unknown;
+  /** Overrides the code derived from `err` when the re-read decided the outcome (#370). */
+  code?: "calibre_unreachable" | "write_unverified";
 }
 
 /** Where the loop stood when the server stopped it. */
@@ -399,7 +397,50 @@ function stoppedMidLoop(run: StoppedRun, cause: StopCause): ToolResult {
     (notAttempted.length > 0 ? `Not attempted: ${notAttempted.join(", ")}. ` : "") +
     // writes are idempotent sets, so re-running is safe; naming the ids saves the model the set math
     `${cause.steer}, re-run with ids=[${retryIds.join(",")}].`;
-  return toolError(errorCodeFor(cause.err), text, {
-    structured: { preview: false, matched, applied, failed, notAttempted, retryIds },
-  });
+  const opts = { structured: { preview: false, matched, applied, failed, notAttempted, retryIds } };
+  // literal codes per branch: the closed-set guard checks every call site textually (#249)
+  if (cause.code === "calibre_unreachable") return toolError("calibre_unreachable", text, opts);
+  if (cause.code === "write_unverified") return toolError("write_unverified", text, opts);
+  return toolError(errorCodeFor(cause.err), text, opts);
+}
+
+const UNREACHABLE_HEADLINE = "Stopped: the Calibre Content Server is unreachable";
+
+/** A book whose write dropped mid-request (on any attempt), plus the loop state so far. */
+interface DroppedWrite {
+  id: number;
+  before: Book;
+  changes: Record<string, ChangeValue>;
+  library?: string;
+  /** The final error of the retried write. */
+  err: unknown;
+  run: { matched: number; applied: number[]; failed: { id: number; error: string }[]; notAttempted: number[] };
+}
+
+/**
+ * Re-read a book whose connection dropped mid-request and record it as applied (landed) or
+ * failed with the verify steer (#370). Returns the stopped result when the breaker trips —
+ * only a connection-class final error does, as before — or "next" to keep looping.
+ */
+async function settleDroppedWrite(deps: BaseDeps, drop: DroppedWrite): Promise<ToolResult | "next"> {
+  const { id, err, run } = drop;
+  const check = await verifyTimedOutWrite(deps, drop);
+  const landed = check.status === "landed";
+  if (landed) run.applied.push(id);
+  else run.failed.push({ id, error: describeTransient(err, id) });
+  // a 5xx/500/timeout tail fails only this book; a landed last book has nothing left to stop
+  if (classifyTransient(err) !== "connection" || (landed && run.notAttempted.length === 0)) return "next";
+  if (!landed) {
+    const steer = `${describeTransient(err, id)} Once it is back`;
+    return stoppedMidLoop(
+      { ...run, blockedId: id },
+      { headline: UNREACHABLE_HEADLINE, steer, err, code: "write_unverified" },
+    );
+  }
+  // confirmed written: the stop is about the server, not this write — don't steer to a re-check
+  const steer = `The connection dropped mid-request, but a re-read confirmed book ${id} was written. Once the Content Server is back`;
+  return stoppedMidLoop(
+    { ...run, blockedId: undefined },
+    { headline: UNREACHABLE_HEADLINE, steer, err, code: "calibre_unreachable" },
+  );
 }
