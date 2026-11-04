@@ -53,6 +53,14 @@ export interface Thresholds {
     /** Kinds whose drops are listed but never fail the gate. */
     reportOnlyKinds: QueryKind[];
   };
+  /** Tier-0 hash-embedder gate inside `pnpm test` (#357): per-query rank baseline, Hit@1 rule. */
+  hashGate?: {
+    /** hash-baseline.json, relative to the retrieval dir; set by the freeze commit (D-012). */
+    baselineReport?: string;
+    nonRegression: Partial<Record<Mode, { maxBrokenHit1Queries: number }>>;
+    /** Vitest timeout for one full hash run — the "< 30 s" budget. */
+    maxDurationMs: number;
+  };
 }
 
 export interface GateCheck {

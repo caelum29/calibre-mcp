@@ -4,42 +4,13 @@
 
 import { describe, expect, it } from "vitest";
 import type { Reranker } from "../../../src/semantic/reranker.js";
-import type { IndexStore } from "../../../src/semantic/store/index.js";
 import { detectChapters } from "../../../src/domain/structure/chapters.js";
 import { frontMatterEnd, leadingFrontMatter } from "../../../src/domain/structure/front-matter.js";
+import { reversed } from "./broken-store.js";
 import { hashEmbedder } from "./hash-embedder.js";
 import { loadCorpus, loadQueries, runRetrievalEval } from "./harness.js";
 
 const base = { indexDir: ":memory:", embedder: hashEmbedder } as const;
-
-/** Wrap a store so every search comes back worst-first — a deliberately broken retriever. */
-function reversed(inner: IndexStore): IndexStore {
-  return {
-    hasIndex: (l) => inner.hasIndex(l),
-    indexMeta: (l) => inner.indexMeta(l),
-    hasVectors: (l) => inner.hasVectors(l),
-    isBookIndexed: (l, b, m, o) => inner.isBookIndexed(l, b, m, o),
-    replaceBook: (l, m, c, f, o) => inner.replaceBook(l, m, c, f, o),
-    refreshBookMeta: (l, m, c) => inner.refreshBookMeta(l, m, c),
-    bookChunkSpans: (l, b) => inner.bookChunkSpans(l, b),
-    bookVectorCount: (l, b) => inner.bookVectorCount(l, b),
-    booksMissingVectors: (l) => inner.booksMissingVectors(l),
-    indexedBookIds: (l) => inner.indexedBookIds(l),
-    deleteBooks: (l, b) => inner.deleteBooks(l, b),
-    searchLibrary: (l, q, k) => inner.searchLibrary(l, q, k).reverse(),
-    searchBook: (l, b, q, k) => inner.searchBook(l, b, q, k).reverse(),
-    searchLibraryFts: (l, q, k) => inner.searchLibraryFts(l, q, k).reverse(),
-    searchBookFts: (l, b, q, k) => inner.searchBookFts(l, b, q, k).reverse(),
-    searchFigures: (l, q, k, b) => inner.searchFigures(l, q, k, b).reverse(),
-    searchFiguresFts: (l, q, k, b) => inner.searchFiguresFts(l, q, k, b).reverse(),
-    figureCount: (l, b) => inner.figureCount(l, b),
-    chunkAt: (l, b, o) => inner.chunkAt(l, b, o),
-    figuresInSpan: (l, b, s, e) => inner.figuresInSpan(l, b, s, e),
-    stats: (l) => inner.stats(l),
-    vectorCount: (l) => inner.vectorCount(l),
-    close: () => inner.close(),
-  };
-}
 
 describe("retrieval eval harness (model-free smoke)", () => {
   it("query set holds the prompt-04 contract: 40-70 queries, ~1/3 RU-involved, all kinds", () => {

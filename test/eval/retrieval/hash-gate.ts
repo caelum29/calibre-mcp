@@ -2,6 +2,7 @@
 // embedder, frozen as per-query RANKS (hash-baseline.json) so `pnpm test` catches drift in
 // chunking/FTS/fusion/front-matter in seconds, identically on macOS and Linux CI.
 
+import type { GateResult, Thresholds } from "./gate.js";
 import { hashEmbedder } from "./hash-embedder.js";
 import {
   ALL_MODES,
@@ -66,4 +67,26 @@ export function toRankBaseline(report: EvalReport): RankBaseline {
       return { id: r.id, kind: r.kind, mode: r.mode, ...(rank !== undefined ? { rank } : {}), retrieved: r.retrieved };
     }),
   };
+}
+
+/** Stub (#357 RED). */
+export function fromRankBaseline(_b: RankBaseline): EvalReport {
+  return {
+    meta: {} as EvalReport["meta"],
+    overall: {},
+    ruInvolved: {},
+    byKind: {},
+    negatives: {},
+    figureNegatives: {},
+    perQuery: [],
+  };
+}
+
+/** Stub (#357 RED). */
+export function evaluateHashGate(
+  _current: EvalReport,
+  _baseline: RankBaseline,
+  _rule: NonNullable<Thresholds["hashGate"]>,
+): GateResult {
+  return { pass: false, checks: [], drops: [] };
 }
