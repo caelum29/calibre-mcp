@@ -150,15 +150,35 @@ function parseQuery(query: string): QueryUnit[] {
 // Phrases, parens, and runs of anything else; a lone unclosed quote matches nothing (dropped).
 const QUERY_TOKEN = /"[^"]*"|[()]|[^\s()"]+/g;
 
-/** Index of the last token of the operand starting at `i`: one token, a (group) or NEAR(...). */
+/**
+ * Index of the last token of the operand starting at `i`: one token, a (group) or NEAR(...),
+ * each optionally behind an FTS5 column filter — `NOT title:(a OR b)` negates the whole group.
+ */
 function operandEnd(tokens: string[], i: number): number {
-  let j = tokens[i] === "NEAR" && tokens[i + 1] === "(" ? i + 1 : i;
-  if (tokens[j] !== "(") return i;
+  const s = afterColumnFilter(tokens, i);
+  const near = tokens[s] === "NEAR" || tokens[s]?.endsWith(":NEAR");
+  let j = near && tokens[s + 1] === "(" ? s + 1 : s;
+  if (tokens[j] !== "(") return s;
   for (let depth = 0; j < tokens.length; j++) {
     if (tokens[j] === "(") depth++;
     else if (tokens[j] === ")" && --depth === 0) break;
   }
   return j;
+}
+
+/**
+ * Where the operand proper starts after an FTS5 column filter — `col:`, `col :`, `{a b}:` —
+ * or `i` when there is none. A colon inside a word (`std::vector`) is a term, not a filter.
+ */
+function afterColumnFilter(tokens: string[], i: number): number {
+  let j = i;
+  // `{a b}:` spans tokens up to the one closing the brace; its column names are never terms.
+  if (tokens[j]?.startsWith("{")) while (j < tokens.length - 1 && !tokens[j]!.includes("}")) j++;
+  if (tokens[j]?.endsWith(":")) return j + 1; // `title:` / `authors}:` → operand follows
+  const next = tokens[j + 1];
+  if (next === ":") return j + 2; // `title : (…)`
+  if (next?.startsWith(":")) return j + 1; // `title :swarm` → the `:swarm` token is the operand
+  return j; // `{a b}:word` ends inside this token; a plain word has no filter
 }
 
 // Case-, diacritic- and stem-tolerant (the keyword index's EN+RU Snowball stemmer), and lenient

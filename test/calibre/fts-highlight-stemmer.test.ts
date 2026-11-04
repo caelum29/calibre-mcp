@@ -68,4 +68,8 @@ describe("FTS highlight repair — NOT operands are never terms (#340)", () => {
   it("should_never_mark_a_negated_cyrillic_word", () => {
     expect(repair("контейнер NOT сеть", ">>контейнеры<< без >>сетями<<")).toBe(">>контейнеры<< без сетями");
   });
+
+  it("should_never_mark_a_word_negated_through_a_spaced_column_filter (#370)", () => {
+    expect(repair("docker NOT title :swarm", ">>docker<< and >>swarm<<")).toBe(">>docker<< and swarm");
+  });
 });
