@@ -1,0 +1,20 @@
+test/tools/ping.recent-errors-burst.test.ts
+  s_47d5e04ea2bed6::t_067b06ea097e25 1-91,100-176,178-179
+  s_47d5e04ea2bed6::t_f4ea17b2ecc772 92-99,177
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "aaaa20f72e707c6c9d5c2e970b985ae6d076609b",
+  "prompts": {},
+  "sessions": {
+    "s_47d5e04ea2bed6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9de64faa-04cf-41c9-bdcb-69c1f8f940f2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
