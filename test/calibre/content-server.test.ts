@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { loadConfig } from "../../src/config.js";
 import { LibraryBusyTracker } from "../../src/calibre/busy.js";
 
@@ -54,6 +54,10 @@ function client(): ContentServerClient {
   return new ContentServerClient(loadConfig({}));
 }
 
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 beforeEach(() => {
   mocked.mockReset();
   mocked.mockImplementation(((url: string) => {
@@ -69,10 +73,11 @@ beforeEach(() => {
 
 describe("ContentServerClient busy breaker (#343)", () => {
   it("should_free_the_probe_slot_when_the_probe_fails_without_a_timeout", async () => {
-    let t = 1_000_000;
-    const busy = new LibraryBusyTracker({ baseWindowMs: 60_000, now: () => t });
+    vi.useFakeTimers({ toFake: ["Date"] }); // only the clock moves; nothing else in this test is timer-driven
+    vi.setSystemTime(1_000_000);
+    const busy = new LibraryBusyTracker({ baseWindowMs: 60_000 });
     busy.markBusy("Programming_Books", "content-server");
-    t += 60_000;
+    vi.advanceTimersByTime(60_000);
     const cs = new ContentServerClient(loadConfig({}), busy);
     mocked.mockImplementation(((url: string) =>
       url.includes("/ajax/library-info")

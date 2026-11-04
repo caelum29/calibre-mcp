@@ -1,7 +1,7 @@
 // calibre_ping as a registry descriptor (#222): health check over the calibredb subprocess
 // path plus the semantic-status and self-diagnosis blocks, unit-tested with fakes.
 
-import { describe, it, expect } from "vitest";
+import { afterEach, describe, it, expect, vi } from "vitest";
 import { allTools } from "../../src/tools/registry.js";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
@@ -115,6 +115,10 @@ describe("calibre_ping handler", () => {
 });
 
 describe("calibre_ping busy libraries", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("should_report_a_busy_library_in_text_and_structured_content", async () => {
     const busy = new LibraryBusyTracker();
     busy.markBusy("Programming_Books", "content-server");
@@ -129,10 +133,11 @@ describe("calibre_ping busy libraries", () => {
   });
 
   it("should_report_a_library_whose_probe_is_in_flight_as_busy (#343)", async () => {
-    let t = 1_000_000;
-    const busy = new LibraryBusyTracker({ baseWindowMs: 60_000, now: () => t });
+    vi.useFakeTimers({ toFake: ["Date"] }); // only the clock moves; nothing else in this test is timer-driven
+    vi.setSystemTime(1_000_000);
+    const busy = new LibraryBusyTracker({ baseWindowMs: 60_000 });
     busy.markBusy("Programming_Books", "content-server");
-    t += 60_000;
+    vi.advanceTimersByTime(60_000);
     busy.assertAvailable("Programming_Books"); // some other call is the probe
     const { d } = deps({
       listLibraries: async () => Promise.reject(new CalibreBusyError("Programming_Books", 0, true)),
