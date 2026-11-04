@@ -43,6 +43,100 @@ function toolErrorFirstArgs(): Array<{ at: string; arg: string }> {
   return out;
 }
 
+/** Source with whole-line comments dropped, so a name in a doc comment is not a call site. */
+function codeOnly(source: string): string {
+  return source
+    .split("\n")
+    .filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l))
+    .join("\n");
+}
+
+/** Top-level, comma-separated arguments of the call whose `(` is at `open` (strings opaque). */
+function splitArgs(code: string, open: number): string[] {
+  const args: string[] = [];
+  let depth = 0;
+  let quote: string | undefined;
+  let start = open + 1;
+  for (let i = open + 1; i < code.length; i++) {
+    const c = code[i]!;
+    if (quote) {
+      if (c === "\\") i++;
+      else if (c === quote) quote = undefined;
+    } else if (c === '"' || c === "'" || c === "`") quote = c;
+    else if ("([{".includes(c)) depth++;
+    else if (")]}".includes(c) && depth-- === 0) {
+      const last = code.slice(start, i).trim();
+      if (last !== "") args.push(last);
+      return args;
+    } else if (c === "," && depth === 0) {
+      args.push(code.slice(start, i).trim());
+      start = i + 1;
+    }
+  }
+  return args;
+}
+
+/** Every call of helper `name` in `source` (its definition excluded) with its arguments. */
+function helperCalls(source: string, name: "toolErrorFrom" | "errorFromCatch", file = "<source>") {
+  const code = codeOnly(source);
+  return [...code.matchAll(new RegExp(`(?<!function )\\b${name}\\(`, "g"))].map((m) => ({
+    at: `${file}:${code.slice(0, m.index).split("\n").length}`,
+    args: splitArgs(code, m.index + m[0].length - 1),
+  }));
+}
+
+/**
+ * Helper calls that break the closed set (#249/#367): toolErrorFrom's fallback code (3rd arg) must
+ * be absent or one of its two literal codes, both in ERROR_CODES; errorFromCatch takes exactly the
+ * caught value. These helpers hide the code from the `toolError(` scan above, so check them here.
+ */
+function helperViolations(source: string, file?: string): string[] {
+  const codes = new Set<string>(ERROR_CODES);
+  const bad: string[] = [];
+  for (const { at, args } of helperCalls(source, "toolErrorFrom", file)) {
+    const fallback = args[2];
+    const literal = fallback === undefined ? "not_found" : /^"([a-z_]+)"$/.exec(fallback)?.[1];
+    if (args.length < 2 || args.length > 4 || literal === undefined || !codes.has(literal)) {
+      bad.push(`${at}: toolErrorFrom(${args.join(", ")})`);
+    }
+  }
+  for (const { at, args } of helperCalls(source, "errorFromCatch", file)) {
+    if (args.length !== 1 || !/^[A-Za-z_$][\w$]*$/.test(args[0]!))
+      bad.push(`${at}: errorFromCatch(${args.join(", ")})`);
+  }
+  return bad;
+}
+
+describe("toolErrorFrom / errorFromCatch call sites (#367)", () => {
+  it("should_pass_a_closed_set_fallback_at_every_helper_site", () => {
+    const bad = sourceFiles("src").flatMap((f) => helperViolations(readFileSync(f, "utf8"), f));
+    expect(bad).toEqual([]);
+  });
+
+  it("should_find_the_known_helper_sites", () => {
+    // proves the scanner still sees them: 6 filter resolutions + merge_books, and the per-tool catch tails
+    const all = sourceFiles("src").map((f) => readFileSync(f, "utf8"));
+    const count = (name: "toolErrorFrom" | "errorFromCatch") =>
+      all.reduce((n, src) => n + helperCalls(src, name).length, 0);
+    expect(count("toolErrorFrom")).toBeGreaterThanOrEqual(6);
+    expect(count("errorFromCatch")).toBeGreaterThanOrEqual(12);
+  });
+
+  it("should_flag_a_bad_code_and_accept_the_real_shapes", () => {
+    expect(helperViolations(`return toolErrorFrom(cause, message, "bogus_code", opts);`)).toHaveLength(1);
+    expect(helperViolations(`return toolErrorFrom(cause, message, "internal");`)).toEqual([]);
+    expect(helperViolations(`return toolErrorFrom(cause, message, fallbackCode);`)).toHaveLength(1);
+    expect(helperViolations(`if (!fr.ok) return toolErrorFrom(fr.cause, fr.error);`)).toEqual([]);
+    expect(helperViolations(`return toolErrorFrom(cause, \`a, b \${x}\`, "write_failed", opts);`)).toEqual([]);
+    expect(helperViolations(`return errorFromCatch(err);`)).toEqual([]);
+    expect(helperViolations(`return errorFromCatch("not_found");`)).toHaveLength(1);
+    expect(helperViolations(`return errorFromCatch(errorCodeFor(err), err);`)).toHaveLength(1);
+    // comments and the definitions are not call sites
+    expect(helperViolations(`// toolErrorFrom(a, b, "bogus")\n * errorFromCatch(1, 2)`)).toEqual([]);
+    expect(helperViolations(`export function errorFromCatch(err: unknown): ToolResult {}`)).toEqual([]);
+  });
+});
+
 describe("toolError call sites", () => {
   it("should_pass_a_code_from_the_closed_set_at_every_site", () => {
     const codes = new Set<string>(ERROR_CODES);

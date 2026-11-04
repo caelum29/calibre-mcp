@@ -1,4 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
+import { invalidateBundleCache } from "../../src/app/bundles.js";
+import { CalibreHttpTimeoutError } from "../../src/domain/errors.js";
 import { semanticSearchTool } from "../../src/tools/calibre_semantic_search.js";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
@@ -705,5 +707,28 @@ describe("target=figures (D-018/#83/#86)", () => {
     expect(figs[0]!.bookId).toBe(2);
     expect(figs[0]!.rerankScore).toBe(0.9);
     expect(r.structuredContent?.reranked).toBe(true);
+  });
+});
+
+// #367: a filter naming no bundle fails by a check (no cause) → not_found; a listing that throws
+// keeps its own cause's code. Same contract as the other filter-taking tools.
+describe("calibre_semantic_search unknown bundle filter (#367)", () => {
+  beforeEach(() => invalidateBundleCache());
+
+  it("should_fail_as_not_found_when_no_bundle_has_that_name", async () => {
+    const r = await semanticSearchTool.handler(args({ filter: "Golang" }), deps(preloaded()));
+    expect({ isError: r.isError, code: r.structuredContent?.errorCode }).toEqual({ isError: true, code: "not_found" });
+    expect(r.structuredContent?.error).toContain('Unknown bundle "Golang".');
+  });
+
+  it("should_keep_the_listing_failures_own_code_when_the_listing_throws", async () => {
+    const d = deps(preloaded());
+    d.calibre = fakeCalibre({
+      calibredb: async () => {
+        throw new CalibreHttpTimeoutError("http://localhost:8080/cdb/cmd/saved_searches");
+      },
+    });
+    const r = await semanticSearchTool.handler(args({ filter: "Golang" }), d);
+    expect({ isError: r.isError, code: r.structuredContent?.errorCode }).toEqual({ isError: true, code: "timeout" });
   });
 });
