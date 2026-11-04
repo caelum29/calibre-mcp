@@ -1,0 +1,30 @@
+src/semantic/status.ts
+  s_c81cb810ca8fc4::t_44b9e540661ee9 15
+  s_c81cb810ca8fc4::t_e0cbe218a44404 17
+src/app/library-index.ts
+  s_c81cb810ca8fc4::t_e0cbe218a44404 6-7
+test/architecture.test.ts
+  s_c81cb810ca8fc4::t_ec04e42eab9dfc 277-282,285-295,298,302,306
+  s_c81cb810ca8fc4::t_78783d17d4cf88 313-314,321-322,422-425
+  s_c81cb810ca8fc4::t_44b9e540661ee9 369,376-387
+  s_c81cb810ca8fc4::t_c3bc604ae48506 283-284,316,323,326,393
+  s_c81cb810ca8fc4::t_18cd5dafb74f36 258-261,296-297,303-305,388
+src/semantic/staleness.ts
+  s_c81cb810ca8fc4::t_e0cbe218a44404 1-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1b92878594a16250525b545c794964a0ea5ba996",
+  "prompts": {},
+  "sessions": {
+    "s_c81cb810ca8fc4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba7e39d6-3c43-459f-a719-2bb0e2ff24d4",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
