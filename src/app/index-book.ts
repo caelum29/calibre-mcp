@@ -2,7 +2,7 @@
 // does every slow, write-free step (download, extract, chunk, embed) and may run on several
 // books at once; commitBook is the single SQLite write and must only run serialized.
 
-import { chooseExtractFormat, noTextReason } from "../calibre/extract.js";
+import { chooseExtractFormat, noTextReason } from "../domain/extract-format.js";
 import type { FigureMarker } from "../domain/figures/markers.js";
 import type { ExtractedText } from "../calibre/extract.js";
 import { frontMatterEnd } from "../domain/structure/front-matter.js";

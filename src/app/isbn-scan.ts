@@ -4,7 +4,7 @@
 // never hang the stdio server: the budget threads into download+convert (kills the subprocess /
 // aborts the fetch) AND caps the summed per-layer timeouts via a wall-clock race. Never throws.
 
-import { chooseExtractFormat } from "../calibre/extract.js";
+import { chooseExtractFormat } from "../domain/extract-format.js";
 import { log } from "../logging.js";
 import { extractIsbns } from "../domain/enrich/extract-isbn.js";
 import type { Book } from "../domain/book.js";

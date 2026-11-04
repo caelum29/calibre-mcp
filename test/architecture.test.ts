@@ -253,6 +253,151 @@ describe("ToolDeps on ports", () => {
   });
 });
 
+// ── use-cases take ports, not adapters (#354) ────────────────────────────────────────
+
+/** Directories whose modules are infrastructure; one that exports a class is a concrete adapter module. */
+const ADAPTER_DIRS = ["src/calibre/", "src/semantic/", "src/enrich/", "src/ui/"];
+
+function parseTs(source: string): ts.SourceFile {
+  return ts.createSourceFile("x.ts", source, ts.ScriptTarget.ES2022, true);
+}
+
+/** Exported non-Error classes: ContentServerClient, SqliteIndexStore, TransformersEmbedder, … */
+function exportsAdapterClass(source: string): boolean {
+  return parseTs(source).statements.some(
+    (st) =>
+      ts.isClassDeclaration(st) &&
+      st.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword) === true &&
+      !st.heritageClauses?.some((h) => h.types.some((t) => t.expression.getText().endsWith("Error"))),
+  );
+}
+
+/** Concrete adapter modules, found rather than listed so a new adapter is covered the day it lands. */
+function adapterModules(files: SourceFile[]): Set<string> {
+  return new Set(
+    files
+      .filter((f) => ADAPTER_DIRS.some((d) => f.path.startsWith(d)) && exportsAdapterClass(f.source))
+      .map((f) => f.path),
+  );
+}
+
+/**
+ * Module specifiers a file pulls in as a VALUE: `import x|{ a }|* as n from`, `import "m"`, `export … from`,
+ * `export * from`, dynamic `import("m")`, `import x = require("m")`, `require("m")`. Type-only forms
+ * (`import type`, `export type … from`, and a clause whose every specifier is `type`) are skipped.
+ */
+function valueImports(source: string): string[] {
+  const out: string[] = [];
+  const isLiteral = (n: ts.Node | undefined): n is ts.StringLiteralLike => n !== undefined && ts.isStringLiteralLike(n);
+  const allTypeSpecifiers = (named: ts.NamedImportsOrExports): boolean =>
+    named.elements.length > 0 && named.elements.every((e) => e.isTypeOnly);
+  const visit = (n: ts.Node): void => {
+    if (ts.isImportDeclaration(n) && isLiteral(n.moduleSpecifier)) {
+      const c = n.importClause;
+      const bindings = c?.namedBindings;
+      const typeOnly =
+        c !== undefined &&
+        (c.isTypeOnly ||
+          (!c.name && bindings !== undefined && ts.isNamedImports(bindings) && allTypeSpecifiers(bindings)));
+      if (!typeOnly) out.push(n.moduleSpecifier.text);
+    } else if (ts.isExportDeclaration(n) && isLiteral(n.moduleSpecifier)) {
+      const typeOnly =
+        n.isTypeOnly ||
+        (n.exportClause !== undefined && ts.isNamedExports(n.exportClause) && allTypeSpecifiers(n.exportClause));
+      if (!typeOnly) out.push(n.moduleSpecifier.text);
+    } else if (
+      ts.isImportEqualsDeclaration(n) &&
+      ts.isExternalModuleReference(n.moduleReference) &&
+      isLiteral(n.moduleReference.expression)
+    ) {
+      if (!n.isTypeOnly) out.push(n.moduleReference.expression.text);
+    } else if (ts.isCallExpression(n) && isLiteral(n.arguments[0])) {
+      const callee = n.expression;
+      if (callee.kind === ts.SyntaxKind.ImportKeyword || (ts.isIdentifier(callee) && callee.text === "require")) {
+        out.push((n.arguments[0] as ts.StringLiteralLike).text);
+      }
+    }
+    ts.forEachChild(n, visit);
+  };
+  visit(parseTs(source));
+  return out;
+}
+
+/** `"<file> -> <adapter module>"` for every value import of a concrete adapter module from src/app/. */
+function findAppAdapterImports(files: SourceFile[], adapters: ReadonlySet<string>): string[] {
+  const out = new Set<string>();
+  for (const f of files.filter((x) => x.path.startsWith("src/app/"))) {
+    const dir = f.path.split("/").slice(0, -1).join("/");
+    for (const spec of valueImports(f.source)) {
+      if (!spec.startsWith(".")) continue;
+      const target = relative(ROOT, join(ROOT, dir, spec))
+        .split("\\")
+        .join("/")
+        .replace(/\.js$/, ".ts");
+      if (adapters.has(target)) out.add(`${f.path} -> ${target}`);
+    }
+  }
+  return [...out].sort();
+}
+
+describe("use-cases take ports, not adapters (#354)", () => {
+  const all = readSources("src", /\.ts$/);
+  const adapters = adapterModules(all);
+
+  it("finds the concrete adapter modules (the rule can't go blind)", () => {
+    for (const known of [
+      "src/calibre/content-server.ts",
+      "src/calibre/client.ts",
+      "src/calibre/extract.ts",
+      "src/semantic/store/index.ts",
+      "src/semantic/embedder.ts",
+      "src/ui/board-cache.ts",
+    ]) {
+      expect(adapters.has(known), known).toBe(true);
+    }
+    // pure modules the use-cases legitimately import by value are not adapters
+    for (const pure of ["src/semantic/book-pipeline.ts", "src/semantic/status.ts", "src/calibre/lib-id.ts"]) {
+      expect(adapters.has(pure), pure).toBe(false);
+    }
+  });
+
+  it("src/app value-imports no concrete adapter module (type-only port imports are fine)", () => {
+    expect(findAppAdapterImports(all, adapters)).toEqual([]);
+  });
+
+  it("flags every value-import form and lets type-only imports through", () => {
+    const A = new Set(["src/calibre/content-server.ts", "src/semantic/store/index.ts"]);
+    const at = (source: string) => findAppAdapterImports([{ path: "src/app/x.ts", source }], A);
+    const cs = "src/app/x.ts -> src/calibre/content-server.ts";
+    expect(at(`import { ContentServerClient } from "../calibre/content-server.js";`)).toEqual([cs]);
+    expect(at(`import { matchCategory } from "../calibre/content-server.js";`)).toEqual([cs]); // any value, not only the class
+    expect(at(`import cs from "../calibre/content-server.js";`)).toEqual([cs]);
+    expect(at(`import * as cs from "../calibre/content-server.js";`)).toEqual([cs]);
+    expect(at(`import "../calibre/content-server.js";`)).toEqual([cs]);
+    expect(at(`import { type LibraryReader, ContentServerClient } from "../calibre/content-server.js";`)).toEqual([cs]);
+    expect(at(`export { ContentServerClient } from "../calibre/content-server.js";`)).toEqual([cs]);
+    expect(at(`export * from "../calibre/content-server.js";`)).toEqual([cs]);
+    expect(at(`const m = await import("../calibre/content-server.js");`)).toEqual([cs]);
+    expect(at(`const m = require("../calibre/content-server.js");`)).toEqual([cs]);
+    expect(at(`import cs = require("../calibre/content-server.js");`)).toEqual([cs]);
+    expect(at(`import { SqliteIndexStore } from "../semantic/store/index.js";`)).toEqual([
+      "src/app/x.ts -> src/semantic/store/index.ts",
+    ]);
+    expect(at(`import type { LibraryReader } from "../calibre/content-server.js";`)).toEqual([]);
+    expect(at(`import type * as cs from "../calibre/content-server.js";`)).toEqual([]);
+    expect(at(`import { type LibraryReader } from "../calibre/content-server.js";`)).toEqual([]);
+    expect(at(`import { type LibraryReader, type Page } from "../calibre/content-server.js";`)).toEqual([]);
+    expect(at(`export type { LibraryReader } from "../calibre/content-server.js";`)).toEqual([]);
+    expect(at(`let r: import("../calibre/content-server.js").LibraryReader;`)).toEqual([]);
+    expect(at(`// import { ContentServerClient } from "../calibre/content-server.js";`)).toEqual([]);
+    expect(at(`import { z } from "zod"; import { x } from "../domain/book.js";`)).toEqual([]);
+    // only src/app is checked
+    expect(
+      findAppAdapterImports([{ path: "src/tools/x.ts", source: `import "../calibre/content-server.js";` }], A),
+    ).toEqual([]);
+  });
+});
+
 // ── one home per mechanism (twin paths: #219, #221, #223, #241) ──────────────────────
 
 interface TwinRule {
