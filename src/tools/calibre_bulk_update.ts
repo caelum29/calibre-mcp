@@ -33,6 +33,7 @@ import {
   isDroppedMidRequest,
   type TimedOutWriteCheck,
   foreignNote,
+  type ReReadCause,
 } from "../app/write-policy.js";
 import { errorCodeFor } from "../domain/error-codes.js";
 import { mergeTags, type TagMerge } from "../domain/tag-ops.js";
@@ -81,6 +82,8 @@ export const bulkUpdateTool = defineTool({
     applied: z.array(z.number()).optional(),
     // tags_add / tags_remove calls: books skipped because the merge changed nothing (#333)
     unchanged: z.array(z.number()).optional(),
+    // books whose write only a re-read confirmed (connection dropped / calibredb timed out) (#370)
+    confirmedByReRead: z.array(z.object({ id: z.number(), cause: z.enum(["dropped", "timeout"]) })).optional(),
     failed: z.array(z.object({ id: z.number(), error: z.string() })).optional(),
     notAttempted: z.array(z.number()).optional(),
     retryIds: z.array(z.number()).optional(),
@@ -239,6 +242,8 @@ export const bulkUpdateTool = defineTool({
       const failed: { id: number; error: string }[] = [];
       // tags-ops calls only: books whose merge changes nothing are skipped, not written (#333)
       const unchanged: number[] | undefined = tagOps ? [] : undefined;
+      // books we only know landed because a re-read confirmed them (#370)
+      const confirmed: Confirmed[] = [];
       for (const [i, b] of perBook.entries()) {
         // a no-op merge needs no set_metadata; list it so neither channel reads it as missing
         if (unchanged && b.diff.every((d) => !d.changed)) {
@@ -257,6 +262,7 @@ export const bulkUpdateTool = defineTool({
             matched: perBook.length,
             applied,
             unchanged,
+            confirmed,
             failed,
             notAttempted: perBook.slice(i + 1).map((p) => p.id),
           };
@@ -304,6 +310,7 @@ export const bulkUpdateTool = defineTool({
             });
             if (check.status === "landed") {
               applied.push(b.id);
+              confirmed.push({ id: b.id, cause: "timeout" });
               continue;
             }
             failed.push({
@@ -321,6 +328,7 @@ export const bulkUpdateTool = defineTool({
       const summary =
         `Applied ${(tagOps ? [...fields, "tags"] : fields).join(", ")} to ${applied.length}/${perBook.length} book(s).` +
         unchangedText(unchanged) +
+        confirmedText(confirmed) +
         // on a partial run name the committed ids, so a retry skips them (#227)
         (failed.length > 0 && applied.length > 0 ? ` Committed: ${applied.join(", ")}.` : "") +
         (failed.length > 0 ? ` ${failed.length} failed: ${failed.map((f) => f.id).join(", ")}.` : "") +
@@ -331,6 +339,7 @@ export const bulkUpdateTool = defineTool({
         matched: perBook.length,
         applied,
         ...(unchanged ? { unchanged } : {}),
+        ...(confirmed.length > 0 ? { confirmedByReRead: confirmed } : {}),
         failed,
       });
     } catch (err) {
@@ -350,6 +359,20 @@ function previewWarnings(diff: FieldDiff[], tagsMerged: boolean): string[] {
       (n): n is string => !!n,
     ),
   );
+}
+
+/** A book a re-read confirmed, and why a re-read was needed. */
+interface Confirmed {
+  id: number;
+  cause: ReReadCause;
+}
+
+const CAUSE_TEXT: Record<ReReadCause, string> = { dropped: "connection dropped", timeout: "timed out" };
+
+/** ` Confirmed by a re-read: 2 (connection dropped), 4 (timed out).` — "" when there are none. */
+function confirmedText(confirmed: Confirmed[]): string {
+  if (confirmed.length === 0) return "";
+  return ` Confirmed by a re-read: ${confirmed.map((c) => `${c.id} (${CAUSE_TEXT[c.cause]})`).join(", ")}.`;
 }
 
 /** ` Already current (nothing written): 2, 5.` — the books a tags merge left as they were (#333). */
@@ -385,10 +408,13 @@ interface StoppedRun {
   applied: number[];
   /** Tags-ops calls: books skipped because their merge changed nothing (#333). */
   unchanged?: number[];
+  confirmed: Confirmed[];
   failed: { id: number; error: string }[];
   notAttempted: number[];
   /** The book the server blocked, re-run with the rest; undefined when it was confirmed written. */
   blockedId: number | undefined;
+  /** A confirmed book the stop's steer already names, so the text doesn't name it twice. */
+  namedInSteer?: number;
 }
 
 /**
@@ -397,7 +423,7 @@ interface StoppedRun {
  * text so the model retries only the rest.
  */
 function stoppedMidLoop(run: StoppedRun, cause: StopCause): ToolResult {
-  const { matched, applied, unchanged, failed, notAttempted, blockedId } = run;
+  const { matched, applied, unchanged, confirmed, failed, notAttempted, blockedId } = run;
   // The blocked book and the unattempted ones are held up only by the server; earlier
   // per-book failures had their own reasons, so they aren't part of the re-run.
   const retryIds = blockedId === undefined ? notAttempted : [blockedId, ...notAttempted];
@@ -405,6 +431,8 @@ function stoppedMidLoop(run: StoppedRun, cause: StopCause): ToolResult {
     `${cause.headline} after ${applied.length}/${matched} book(s) were already updated. ` +
     (applied.length > 0 ? `Already committed: ${applied.join(", ")}. ` : "") +
     (unchanged?.length ? `${unchangedText(unchanged).trim()} ` : "") +
+    confirmedText(confirmed.filter((c) => c.id !== run.namedInSteer)).trimStart() +
+    (confirmed.some((c) => c.id !== run.namedInSteer) ? " " : "") +
     // a confirmed drop can stop the loop with nothing failed yet
     (failed.length > 0 ? `Failed: ${failed.map((f) => f.id).join(", ")}. ` : "") +
     (notAttempted.length > 0 ? `Not attempted: ${notAttempted.join(", ")}. ` : "") +
@@ -416,6 +444,7 @@ function stoppedMidLoop(run: StoppedRun, cause: StopCause): ToolResult {
       matched,
       applied,
       ...(unchanged ? { unchanged } : {}),
+      ...(confirmed.length > 0 ? { confirmedByReRead: confirmed } : {}),
       failed,
       notAttempted,
       retryIds,
@@ -437,7 +466,7 @@ interface DroppedWrite {
   library?: string;
   /** The final error of the retried write. */
   err: unknown;
-  run: Omit<StoppedRun, "blockedId">;
+  run: Omit<StoppedRun, "blockedId" | "namedInSteer">;
 }
 
 /**
@@ -450,8 +479,10 @@ async function settleDroppedWrite(deps: BaseDeps, drop: DroppedWrite): Promise<T
   const check = await verifyTimedOutWrite(deps, drop);
   if (isWriteRefused(err)) return settleRefusedAfterDrop(check, drop);
   const landed = check.status === "landed";
-  if (landed) run.applied.push(id);
-  else run.failed.push({ id, error: describeTransient(err, id) + foreignNote(check) });
+  if (landed) {
+    run.applied.push(id);
+    run.confirmed.push({ id, cause: "dropped" });
+  } else run.failed.push({ id, error: describeTransient(err, id) + foreignNote(check) });
   // a 5xx/500/timeout tail fails only this book; a landed last book has nothing left to stop
   if (classifyTransient(err) !== "connection" || (landed && run.notAttempted.length === 0)) return "next";
   if (!landed) {
@@ -464,7 +495,7 @@ async function settleDroppedWrite(deps: BaseDeps, drop: DroppedWrite): Promise<T
   // confirmed written: the stop is about the server, not this write — don't steer to a re-check
   const steer = `The connection dropped mid-request, but a re-read confirmed book ${id} was written. Once the Content Server is back`;
   return stoppedMidLoop(
-    { ...run, blockedId: undefined },
+    { ...run, blockedId: undefined, namedInSteer: id },
     { headline: UNREACHABLE_HEADLINE, steer, err, code: "calibre_unreachable" },
   );
 }
@@ -498,7 +529,8 @@ function settleRefusedAfterDrop(check: TimedOutWriteCheck, drop: DroppedWrite): 
     );
   }
   run.applied.push(id);
+  run.confirmed.push({ id, cause: "dropped" });
   if (run.notAttempted.length === 0) return "next"; // nothing left for the refusal to block
   const steer = `A re-read confirmed book ${id} was written before the refusal. ${REFUSED_STEER}`;
-  return stoppedMidLoop({ ...run, blockedId: undefined }, { headline: REFUSED_HEADLINE, steer, err });
+  return stoppedMidLoop({ ...run, blockedId: undefined, namedInSteer: id }, { headline: REFUSED_HEADLINE, steer, err });
 }

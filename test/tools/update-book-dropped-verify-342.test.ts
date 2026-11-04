@@ -54,7 +54,13 @@ describe("calibre_update_book — dropped connection is verified by re-read (#34
     const r = await run(deps);
     expect([r.isError, r.structuredContent]).toEqual([
       undefined,
-      { id: 1, changed: [{ field: "tags", before: ["old"], after: ["new"] }], noop: false },
+      // #370: a dropped write's success says it came from a re-read
+      {
+        id: 1,
+        changed: [{ field: "tags", before: ["old"], after: ["new"] }],
+        noop: false,
+        confirmedByReRead: "dropped",
+      },
     ]);
   });
 

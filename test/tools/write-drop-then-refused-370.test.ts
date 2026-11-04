@@ -139,7 +139,8 @@ describe("calibre_bulk_update — drop then refused on book 1 of 3 (#370)", () =
     expect([r.isError ?? false, r.structuredContent?.applied, text(r)]).toEqual([
       false,
       [1],
-      "Applied tags to 1/1 book(s).",
+      // #370 §Write path box 1: the success names the re-read that confirmed it
+      "Applied tags to 1/1 book(s). Confirmed by a re-read: 1 (connection dropped).",
     ]);
   });
 });

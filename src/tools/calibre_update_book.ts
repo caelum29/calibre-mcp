@@ -26,6 +26,8 @@ import {
   type TimedOutWrite,
   isDroppedMidRequest,
   foreignNote,
+  reReadNote,
+  type ReReadCause,
 } from "../app/write-policy.js";
 
 // One field's new value: scalar, multi-value list, or identifiers map. -32602-hardened
@@ -52,6 +54,8 @@ export const updateBookTool = defineTool({
     id: z.number().optional(),
     changed: z.array(z.object({ field: z.string(), before: z.unknown(), after: z.unknown() })).optional(),
     noop: z.boolean().optional(),
+    // set only when a re-read, not calibredb's reply, confirmed the write (#370)
+    confirmedByReRead: z.enum(["dropped", "timeout"]).optional(),
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
   write: true,
@@ -138,8 +142,11 @@ export const updateBookTool = defineTool({
   },
 });
 
-/** Build the normal success result: per-field before/after diff + noop detection. */
-function appliedResult(id: number, before: Book, after: Book, fields: string[]): ToolResult {
+/**
+ * Build the normal success result: per-field before/after diff + noop detection. `confirmedBy`
+ * marks a write only a re-read confirmed (dropped / timed out), in both channels (#370).
+ */
+function appliedResult(id: number, before: Book, after: Book, fields: string[], confirmedBy?: ReReadCause): ToolResult {
   // empty fields read back as undefined, which JSON drops — emit null so the required
   // `before`/`after` keys survive and the committed write isn't rejected by outputSchema
   const changed = fields
@@ -154,7 +161,13 @@ function appliedResult(id: number, before: Book, after: Book, fields: string[]):
   const summary = noop
     ? `No changes applied to book ${id} (values already current).`
     : `Updated book ${id}: ${changedNames(changed)}.`;
-  return toolOk([{ type: "text", text: summary + diffText(changed) }], { id, changed, noop });
+  const note = confirmedBy ? reReadNote(confirmedBy) : "";
+  return toolOk([{ type: "text", text: summary + note + diffText(changed) }], {
+    id,
+    changed,
+    noop,
+    ...(confirmedBy ? { confirmedByReRead: confirmedBy } : {}),
+  });
 }
 
 // already-current fields are dropped from the diff, so the summary must not name them either (#235)
@@ -202,7 +215,7 @@ async function confirmTimedOutWrite(deps: BaseDeps, write: TimedOutWrite): Promi
     );
   }
   if (check.status === "landed") {
-    return appliedResult(id, before, check.after, Object.keys(changes));
+    return appliedResult(id, before, check.after, Object.keys(changes), "timeout");
   }
   return toolError(
     "write_unverified",
@@ -218,7 +231,9 @@ async function confirmTimedOutWrite(deps: BaseDeps, write: TimedOutWrite): Promi
  */
 async function confirmDroppedWrite(deps: BaseDeps, write: TimedOutWrite, err: unknown): Promise<ToolResult> {
   const check = await verifyTimedOutWrite(deps, write);
-  if (check.status === "landed") return appliedResult(write.id, write.before, check.after, Object.keys(write.changes));
+  if (check.status === "landed") {
+    return appliedResult(write.id, write.before, check.after, Object.keys(write.changes), "dropped");
+  }
   return toolError("write_unverified", describeTransient(err, write.id) + foreignNote(check));
 }
 
@@ -228,7 +243,9 @@ async function confirmDroppedWrite(deps: BaseDeps, write: TimedOutWrite, err: un
  */
 async function confirmRefusedAfterDrop(deps: BaseDeps, write: TimedOutWrite, err: unknown): Promise<ToolResult> {
   const check = await verifyTimedOutWrite(deps, write);
-  if (check.status === "landed") return appliedResult(write.id, write.before, check.after, Object.keys(write.changes));
+  if (check.status === "landed") {
+    return appliedResult(write.id, write.before, check.after, Object.keys(write.changes), "dropped");
+  }
   if (check.status === "unverifiable") {
     return toolError("write_unverified", describeTransient(err, write.id) + foreignNote(check));
   }

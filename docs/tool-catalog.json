@@ -509,6 +509,29 @@
             },
             "type": "array"
           },
+          "confirmedByReRead": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "cause": {
+                  "enum": [
+                    "dropped",
+                    "timeout"
+                  ],
+                  "type": "string"
+                },
+                "id": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "id",
+                "cause"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
           "failed": {
             "items": {
               "additionalProperties": false,
@@ -2421,6 +2444,13 @@
               "type": "object"
             },
             "type": "array"
+          },
+          "confirmedByReRead": {
+            "enum": [
+              "dropped",
+              "timeout"
+            ],
+            "type": "string"
           },
           "id": {
             "type": "number"

@@ -110,11 +110,19 @@ describe("calibre_bulk_update — dropped write is verified by re-read (#370)", 
 
   it("should_report_success_when_the_last_book_dropped_and_landed", async () => {
     const r = await bulkUpdateTool.handler(apply([1, 2]), deps(scripted([null, RESET, RESET, RESET]), landed));
-    expect([r.isError ?? false, r.structuredContent?.applied, failedIds(r), text(r)]).toEqual([
+    // #370 §Write path box 1 (approved by orchestrator): the success names its re-read
+    expect([
+      r.isError ?? false,
+      r.structuredContent?.applied,
+      failedIds(r),
+      text(r),
+      r.structuredContent?.confirmedByReRead,
+    ]).toEqual([
       false,
       [1, 2],
       [],
-      "Applied tags to 2/2 book(s).",
+      "Applied tags to 2/2 book(s). Confirmed by a re-read: 2 (connection dropped).",
+      [{ id: 2, cause: "dropped" }],
     ]);
   });
 

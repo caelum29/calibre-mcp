@@ -175,6 +175,16 @@ export async function verifyTimedOutWrite(deps: BaseDeps, write: TimedOutWrite):
   return foreign.length > 0 ? { status: "unverifiable", foreign } : { status: "not-landed" };
 }
 
+/** Why a write's success comes from a re-read, not from calibredb's reply (#370). */
+export type ReReadCause = "dropped" | "timeout";
+
+/** Text for a write a re-read confirmed, e.g. ` Confirmed by a re-read after calibredb timed out.` */
+export function reReadNote(cause: ReReadCause): string {
+  return cause === "dropped"
+    ? " Confirmed by a re-read after the connection dropped mid-request."
+    : " Confirmed by a re-read after calibredb timed out.";
+}
+
 /** Longest value shown per side in a {@link foreignNote}. */
 const MAX_NOTE_VALUE = 60;
 
