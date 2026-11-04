@@ -19,6 +19,8 @@ import { BookId, CoercedBool, jsonArray, jsonRecord, jsonStringList } from "./co
 import { defineTool } from "./define.js";
 import { fence, toolError, toolOk, toolErrorFrom, errorFromCatch } from "./result.js";
 import type { ToolResult } from "./types.js";
+import type { BaseDeps } from "./deps.js";
+import type { Book } from "../domain/book.js";
 import { selectBooks } from "../app/select-books.js";
 import { ChangeValueSchema } from "./calibre_update_book.js";
 import {
@@ -28,6 +30,8 @@ import {
   describeTransient,
   withTransientRetry,
   verifyTimedOutWrite,
+  isDroppedMidRequest,
+  type TimedOutWriteCheck,
 } from "../app/write-policy.js";
 import { errorCodeFor } from "../domain/error-codes.js";
 import { mergeTags, type TagMerge } from "../domain/tag-ops.js";
@@ -242,29 +246,37 @@ export const bulkUpdateTool = defineTool({
           );
           applied.push(b.id);
         } catch (err) {
-          // A refusal blocks every later write too, so stop — but once books have committed,
-          // they must stay visible or the model retries the whole set (#33, #213).
-          if (isWriteRefused(err)) {
-            if (applied.length === 0) return toolError("write_refused", WRITE_REFUSED_MESSAGE);
-            failed.push({ id: b.id, error: WRITE_REFUSED_MESSAGE });
-            return stoppedMidLoop(
-              { matched: perBook.length, applied, failed, notAttempted: perBook.slice(i + 1).map((p) => p.id) },
-              {
-                headline: "Calibre refused the write",
-                steer: `${WRITE_REFUSED_MESSAGE} After fixing the server`,
+          const run = { matched: perBook.length, applied, failed, notAttempted: perBook.slice(i + 1).map((p) => p.id) };
+          // A drop on ANY attempt may have committed — even one a refusal followed: re-read it
+          // like the single-book path (#342) so a landed write is never reported failed (#370).
+          const dropped = isDroppedMidRequest(err)
+            ? await settleDroppedWrite(deps, {
+                id: b.id,
+                before: b.book,
+                changes: b.changes,
+                library: args.library,
                 err,
-              },
-            );
-          }
+                run,
+              })
+            : undefined;
+          if (dropped === "next") continue;
+          if (dropped) return dropped;
+          if (isWriteRefused(err)) return refusedStop(run, b.id, err);
           // Retries exhausted. A down server fails every later book the same way, so this is a
           // circuit breaker (stop like a refusal); a gateway 5xx fails only this book (#233).
           const transient = classifyTransient(err);
           if (transient === "connection") {
             failed.push({ id: b.id, error: describeTransient(err, b.id) });
             return stoppedMidLoop(
-              { matched: perBook.length, applied, failed, notAttempted: perBook.slice(i + 1).map((p) => p.id) },
               {
-                headline: "Stopped: the Calibre Content Server is unreachable",
+                matched: perBook.length,
+                applied,
+                failed,
+                notAttempted: perBook.slice(i + 1).map((p) => p.id),
+                blockedId: b.id,
+              },
+              {
+                headline: UNREACHABLE_HEADLINE,
                 steer: `${describeTransient(err, b.id)} Once it is back`,
                 err,
               },
@@ -336,6 +348,18 @@ interface StopCause {
   steer: string;
   /** The failure that stopped the loop — its code is the result's errorCode (#249). */
   err: unknown;
+  /** Overrides the code derived from `err` when the re-read decided the outcome (#370). */
+  code?: "calibre_unreachable" | "write_unverified";
+}
+
+/** Where the loop stood when the server stopped it. */
+interface StoppedRun {
+  matched: number;
+  applied: number[];
+  failed: { id: number; error: string }[];
+  notAttempted: number[];
+  /** The book the server blocked, re-run with the rest; undefined when it was confirmed written. */
+  blockedId: number | undefined;
 }
 
 /**
@@ -343,23 +367,98 @@ interface StopCause {
  * circuit breaker): still `isError` (the run did not finish), but the committed ids lead the
  * text so the model retries only the rest.
  */
-function stoppedMidLoop(
-  run: { matched: number; applied: number[]; failed: { id: number; error: string }[]; notAttempted: number[] },
-  cause: StopCause,
-): ToolResult {
-  const { matched, applied, failed, notAttempted } = run;
-  // The refused book (last in `failed`) and the unattempted ones are blocked only by the server;
-  // earlier per-book failures had their own reasons, so they aren't part of the re-run.
-  const refusedId = failed.at(-1)?.id;
-  const retryIds = refusedId === undefined ? notAttempted : [refusedId, ...notAttempted];
+function stoppedMidLoop(run: StoppedRun, cause: StopCause): ToolResult {
+  const { matched, applied, failed, notAttempted, blockedId } = run;
+  // The blocked book and the unattempted ones are held up only by the server; earlier
+  // per-book failures had their own reasons, so they aren't part of the re-run.
+  const retryIds = blockedId === undefined ? notAttempted : [blockedId, ...notAttempted];
   const text =
     `${cause.headline} after ${applied.length}/${matched} book(s) were already updated. ` +
     (applied.length > 0 ? `Already committed: ${applied.join(", ")}. ` : "") +
-    `Failed: ${failed.map((f) => f.id).join(", ")}. ` +
+    // a confirmed drop can stop the loop with nothing failed yet
+    (failed.length > 0 ? `Failed: ${failed.map((f) => f.id).join(", ")}. ` : "") +
     (notAttempted.length > 0 ? `Not attempted: ${notAttempted.join(", ")}. ` : "") +
     // writes are idempotent sets, so re-running is safe; naming the ids saves the model the set math
     `${cause.steer}, re-run with ids=[${retryIds.join(",")}].`;
-  return toolError(errorCodeFor(cause.err), text, {
-    structured: { preview: false, matched, applied, failed, notAttempted, retryIds },
-  });
+  const opts = { structured: { preview: false, matched, applied, failed, notAttempted, retryIds } };
+  // literal codes per branch: the closed-set guard checks every call site textually (#249)
+  if (cause.code === "calibre_unreachable") return toolError("calibre_unreachable", text, opts);
+  if (cause.code === "write_unverified") return toolError("write_unverified", text, opts);
+  return toolError(errorCodeFor(cause.err), text, opts);
+}
+
+const UNREACHABLE_HEADLINE = "Stopped: the Calibre Content Server is unreachable";
+
+/** A book whose write dropped mid-request (on any attempt), plus the loop state so far. */
+interface DroppedWrite {
+  id: number;
+  before: Book;
+  changes: Record<string, ChangeValue>;
+  library?: string;
+  /** The final error of the retried write. */
+  err: unknown;
+  run: { matched: number; applied: number[]; failed: { id: number; error: string }[]; notAttempted: number[] };
+}
+
+/**
+ * Re-read a book whose connection dropped mid-request and record it as applied (landed) or
+ * failed with the verify steer (#370). Returns the stopped result when the breaker trips —
+ * only a connection-class final error does, as before — or "next" to keep looping.
+ */
+async function settleDroppedWrite(deps: BaseDeps, drop: DroppedWrite): Promise<ToolResult | "next"> {
+  const { id, err, run } = drop;
+  const check = await verifyTimedOutWrite(deps, drop);
+  if (isWriteRefused(err)) return settleRefusedAfterDrop(check, drop);
+  const landed = check.status === "landed";
+  if (landed) run.applied.push(id);
+  else run.failed.push({ id, error: describeTransient(err, id) });
+  // a 5xx/500/timeout tail fails only this book; a landed last book has nothing left to stop
+  if (classifyTransient(err) !== "connection" || (landed && run.notAttempted.length === 0)) return "next";
+  if (!landed) {
+    const steer = `${describeTransient(err, id)} Once it is back`;
+    return stoppedMidLoop(
+      { ...run, blockedId: id },
+      { headline: UNREACHABLE_HEADLINE, steer, err, code: "write_unverified" },
+    );
+  }
+  // confirmed written: the stop is about the server, not this write — don't steer to a re-check
+  const steer = `The connection dropped mid-request, but a re-read confirmed book ${id} was written. Once the Content Server is back`;
+  return stoppedMidLoop(
+    { ...run, blockedId: undefined },
+    { headline: UNREACHABLE_HEADLINE, steer, err, code: "calibre_unreachable" },
+  );
+}
+
+const REFUSED_HEADLINE = "Calibre refused the write";
+const REFUSED_STEER = `${WRITE_REFUSED_MESSAGE} After fixing the server`;
+
+/**
+ * A refusal blocks every later write too, so stop — but once books have committed, they must
+ * stay visible or the model retries the whole set (#33, #213). Records `id` as failed.
+ */
+function refusedStop(run: DroppedWrite["run"], id: number, err: unknown): ToolResult {
+  if (run.applied.length === 0) return toolError("write_refused", WRITE_REFUSED_MESSAGE);
+  run.failed.push({ id, error: WRITE_REFUSED_MESSAGE });
+  return stoppedMidLoop({ ...run, blockedId: id }, { headline: REFUSED_HEADLINE, steer: REFUSED_STEER, err });
+}
+
+/**
+ * A retry that dropped and was then refused (#370): landed → applied, and the refusal still
+ * stops the rest; not landed → the plain refusal; re-read failed → the "verify" steer.
+ */
+function settleRefusedAfterDrop(check: TimedOutWriteCheck, drop: DroppedWrite): ToolResult | "next" {
+  const { id, err, run } = drop;
+  if (check.status === "not-landed") return refusedStop(run, id, err);
+  if (check.status === "unverifiable") {
+    run.failed.push({ id, error: describeTransient(err, id) });
+    const steer = `${describeTransient(err, id)} ${REFUSED_STEER}`;
+    return stoppedMidLoop(
+      { ...run, blockedId: id },
+      { headline: REFUSED_HEADLINE, steer, err, code: "write_unverified" },
+    );
+  }
+  run.applied.push(id);
+  if (run.notAttempted.length === 0) return "next"; // nothing left for the refusal to block
+  const steer = `A re-read confirmed book ${id} was written before the refusal. ${REFUSED_STEER}`;
+  return stoppedMidLoop({ ...run, blockedId: undefined }, { headline: REFUSED_HEADLINE, steer, err });
 }

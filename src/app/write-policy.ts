@@ -72,22 +72,43 @@ export function classifyTransient(err: unknown): TransientKind | undefined {
  * transient error is rethrown so the caller can classify it again.
  */
 export async function withTransientRetry<T>(fn: () => Promise<T>, sleep: Sleep = realSleep): Promise<T> {
+  let dropped = false;
   for (let attempt = 0; ; attempt++) {
     try {
       return await fn();
     } catch (err) {
+      // an earlier attempt may have committed even when a later one fails differently (#370)
+      dropped ||= droppedByStderr(err);
       const pause = RETRY_PAUSES_MS[attempt];
-      if (pause === undefined || classifyTransient(err) === undefined) throw err;
+      if (pause === undefined || classifyTransient(err) === undefined) {
+        if (typeof err === "object" && err !== null) retryRecord.set(err, { dropped, retries: attempt });
+        throw err;
+      }
       await sleep(pause);
     }
   }
 }
 
-/** True when the connection dropped after the request was sent, so the write may have landed. */
-export function isDroppedMidRequest(err: unknown): boolean {
+// What the retry loop saw before throwing this error: whether SOME attempt dropped mid-request
+// (#370) and how many retries ran. A WeakMap keeps the error's type, so classification is unchanged.
+const retryRecord = new WeakMap<object, { dropped: boolean; retries: number }>();
+
+function recordOf(err: unknown): { dropped: boolean; retries: number } | undefined {
+  return typeof err === "object" && err !== null ? retryRecord.get(err) : undefined;
+}
+
+function droppedByStderr(err: unknown): boolean {
   return (
     classifyTransient(err) === "connection" && DROPPED_MID_REQUEST_STDERR.test((err as CalibreCliError).stderr ?? "")
   );
+}
+
+/**
+ * True when the connection dropped after the request was sent, so the write may have landed —
+ * on this error, or on any earlier attempt of the {@link withTransientRetry} that threw it.
+ */
+export function isDroppedMidRequest(err: unknown): boolean {
+  return droppedByStderr(err) || recordOf(err)?.dropped === true;
 }
 
 /**
@@ -95,7 +116,9 @@ export function isDroppedMidRequest(err: unknown): boolean {
  * mid-request drop is never reported as a plain failure — it may have committed (#33).
  */
 export function describeTransient(err: unknown, id: number): string {
-  const retries = `after ${RETRY_PAUSES_MS.length} retries`;
+  // the real count: a timeout or 500 after a drop ends the loop early (#370)
+  const n = recordOf(err)?.retries ?? RETRY_PAUSES_MS.length;
+  const retries = n === 1 ? "after 1 retry" : `after ${n} retries`;
   if (isDroppedMidRequest(err)) {
     return (
       `The connection to the Calibre Content Server dropped mid-request ${retries}; the write ` +
