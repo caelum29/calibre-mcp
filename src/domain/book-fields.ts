@@ -62,20 +62,80 @@ export function bookFieldValue(book: Book, field: string): unknown {
 }
 
 /**
- * After an AMBIGUOUS write (calibredb timed out — the routed server may have committed),
- * decide from a re-read whether every requested change landed. A field counts as applied
- * when the re-read equals the intended value OR moved away from the before-snapshot (covers
- * fields Calibre normalizes on write, e.g. pubdate). Values compare via {@link sameFieldValue},
- * so a landed clear read back as absent and a reordered identifiers map both count as applied.
- * Custom #columns aren't carried on Book → unverifiable → false, so callers stay cautious
- * rather than claim success (issue #33).
+ * After an AMBIGUOUS write (calibredb timed out or the connection dropped — the routed server
+ * may have committed), decide from a re-read whether every requested change landed. A field
+ * counts only when the re-read shows the INTENDED value ({@link matchesIntended}); "moved away
+ * from before" is not enough — a concurrent GUI edit or a stale selection snapshot moves it too
+ * (#370). Custom #columns aren't carried on Book → unverifiable → false (issue #33).
  */
-export function changesSatisfied(before: Book, after: Book, changes: Record<string, ChangeValue>): boolean {
-  return Object.entries(changes).every(([field, intended]) => {
-    if (field.startsWith("#")) return false;
-    const a = bookFieldValue(after, field);
-    return sameFieldValue(a, intended) || !sameFieldValue(a, bookFieldValue(before, field));
-  });
+export function changesSatisfied(_before: Book, after: Book, changes: Record<string, ChangeValue>): boolean {
+  return Object.entries(changes).every(
+    ([field, intended]) => !field.startsWith("#") && matchesIntended(field, bookFieldValue(after, field), intended),
+  );
+}
+
+/** A re-read value that is neither the before-snapshot nor the requested one. */
+export interface ForeignValue {
+  field: string;
+  after: unknown;
+  intended: ChangeValue;
+}
+
+/**
+ * Fields whose re-read shows a third value — neither `before` nor ours: someone else's edit (or a
+ * Calibre normalization we don't model), so the write is unverified rather than not-landed (#370).
+ */
+export function foreignValues(before: Book, after: Book, changes: Record<string, ChangeValue>): ForeignValue[] {
+  return Object.entries(changes)
+    .filter(([field]) => !field.startsWith("#"))
+    .map(([field, intended]) => ({ field, after: bookFieldValue(after, field), intended }))
+    .filter(
+      (v) =>
+        !matchesIntended(v.field, v.after, v.intended) && !sameFieldValue(v.after, bookFieldValue(before, v.field)),
+    );
+}
+
+/**
+ * Whether a re-read value is the value we asked for, allowing only for how Calibre stores it:
+ * list strings split like calibredb does, tags/languages as case-insensitive sets (Calibre sorts
+ * them and keeps the library's spelling), authors in order, a pubdate on the same day (it adds a
+ * time and may shift by the timezone), and numeric strings for series_index/rating.
+ */
+export function matchesIntended(field: string, after: unknown, intended: ChangeValue): boolean {
+  const want = splitListString(field, intended);
+  if (sameFieldValue(after, want)) return true;
+  if (field === "tags" || field === "languages") return sameNameSet(after, want);
+  if (field === "authors") return sameNameList(after, want);
+  if (field === "pubdate") return sameDay(after, want);
+  if (field === "series_index" || field === "rating") return sameNumber(after, want);
+  return false;
+}
+
+function sameNameList(a: unknown, b: unknown): boolean {
+  return (
+    Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((x, i) => sameEntry(x, b[i] as unknown))
+  );
+}
+
+function sameNameSet(a: unknown, b: unknown): boolean {
+  if (!Array.isArray(a) || !Array.isArray(b)) return false;
+  const has = (list: unknown[], x: unknown) => list.some((y) => sameEntry(x, y));
+  return a.every((x) => has(b, x)) && b.every((x) => has(a, x));
+}
+
+const DAY_MS = 86_400_000;
+
+// ±1 day: Calibre stores a date-only pubdate as a local midnight, read back in UTC
+function sameDay(a: unknown, b: unknown): boolean {
+  const day = (v: unknown) => (typeof v === "string" ? Date.parse(v.slice(0, 10)) : Number.NaN);
+  const da = day(a);
+  const db = day(b);
+  return Number.isFinite(da) && Number.isFinite(db) && Math.abs(da - db) <= DAY_MS;
+}
+
+function sameNumber(a: unknown, b: unknown): boolean {
+  const num = (v: unknown) => (typeof v === "number" || (typeof v === "string" && v.trim() !== "") ? Number(v) : NaN);
+  return Number.isFinite(num(a)) && num(a) === num(b);
 }
 
 // Calibre reads a cleared field back as absent, "", [] or {} depending on the field, so

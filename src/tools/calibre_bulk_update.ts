@@ -32,6 +32,7 @@ import {
   verifyTimedOutWrite,
   isDroppedMidRequest,
   type TimedOutWriteCheck,
+  foreignNote,
 } from "../app/write-policy.js";
 import { errorCodeFor } from "../domain/error-codes.js";
 import { mergeTags, type TagMerge } from "../domain/tag-ops.js";
@@ -303,7 +304,7 @@ export const bulkUpdateTool = defineTool({
               id: b.id,
               error:
                 "calibredb timed out and a re-read does not confirm the change — " +
-                `verify with calibre_get_book id=${b.id} before retrying`,
+                `verify with calibre_get_book id=${b.id} before retrying.${foreignNote(check)}`,
             });
             continue;
           }
@@ -411,11 +412,11 @@ async function settleDroppedWrite(deps: BaseDeps, drop: DroppedWrite): Promise<T
   if (isWriteRefused(err)) return settleRefusedAfterDrop(check, drop);
   const landed = check.status === "landed";
   if (landed) run.applied.push(id);
-  else run.failed.push({ id, error: describeTransient(err, id) });
+  else run.failed.push({ id, error: describeTransient(err, id) + foreignNote(check) });
   // a 5xx/500/timeout tail fails only this book; a landed last book has nothing left to stop
   if (classifyTransient(err) !== "connection" || (landed && run.notAttempted.length === 0)) return "next";
   if (!landed) {
-    const steer = `${describeTransient(err, id)} Once it is back`;
+    const steer = `${describeTransient(err, id)}${foreignNote(check)} Once it is back`;
     return stoppedMidLoop(
       { ...run, blockedId: id },
       { headline: UNREACHABLE_HEADLINE, steer, err, code: "write_unverified" },
@@ -450,8 +451,8 @@ function settleRefusedAfterDrop(check: TimedOutWriteCheck, drop: DroppedWrite): 
   const { id, err, run } = drop;
   if (check.status === "not-landed") return refusedStop(run, id, err);
   if (check.status === "unverifiable") {
-    run.failed.push({ id, error: describeTransient(err, id) });
-    const steer = `${describeTransient(err, id)} ${REFUSED_STEER}`;
+    run.failed.push({ id, error: describeTransient(err, id) + foreignNote(check) });
+    const steer = `${describeTransient(err, id)}${foreignNote(check)} ${REFUSED_STEER}`;
     return stoppedMidLoop(
       { ...run, blockedId: id },
       { headline: REFUSED_HEADLINE, steer, err, code: "write_unverified" },

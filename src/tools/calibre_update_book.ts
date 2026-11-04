@@ -25,6 +25,7 @@ import {
   verifyTimedOutWrite,
   type TimedOutWrite,
   isDroppedMidRequest,
+  foreignNote,
 } from "../app/write-policy.js";
 
 // One field's new value: scalar, multi-value list, or identifiers map. -32602-hardened
@@ -186,6 +187,13 @@ function diffText(changed: { field: string; before: unknown; after: unknown }[])
 async function confirmTimedOutWrite(deps: BaseDeps, write: TimedOutWrite): Promise<ToolResult> {
   const { id, before, changes } = write;
   const check = await verifyTimedOutWrite(deps, write);
+  if (check.status === "unverifiable" && check.foreign) {
+    return toolError(
+      "write_unverified",
+      `calibredb timed out and the write can't be confirmed.${foreignNote(check)} ` +
+        `Check with calibre_get_book id=${id} before retrying.`,
+    );
+  }
   if (check.status === "unverifiable") {
     return toolError(
       "write_unverified",
@@ -211,7 +219,7 @@ async function confirmTimedOutWrite(deps: BaseDeps, write: TimedOutWrite): Promi
 async function confirmDroppedWrite(deps: BaseDeps, write: TimedOutWrite, err: unknown): Promise<ToolResult> {
   const check = await verifyTimedOutWrite(deps, write);
   if (check.status === "landed") return appliedResult(write.id, write.before, check.after, Object.keys(write.changes));
-  return toolError("write_unverified", describeTransient(err, write.id));
+  return toolError("write_unverified", describeTransient(err, write.id) + foreignNote(check));
 }
 
 /**
@@ -221,6 +229,8 @@ async function confirmDroppedWrite(deps: BaseDeps, write: TimedOutWrite, err: un
 async function confirmRefusedAfterDrop(deps: BaseDeps, write: TimedOutWrite, err: unknown): Promise<ToolResult> {
   const check = await verifyTimedOutWrite(deps, write);
   if (check.status === "landed") return appliedResult(write.id, write.before, check.after, Object.keys(write.changes));
-  if (check.status === "unverifiable") return toolError("write_unverified", describeTransient(err, write.id));
+  if (check.status === "unverifiable") {
+    return toolError("write_unverified", describeTransient(err, write.id) + foreignNote(check));
+  }
   return toolError("write_refused", WRITE_REFUSED_MESSAGE);
 }

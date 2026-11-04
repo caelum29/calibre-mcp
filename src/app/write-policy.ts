@@ -4,7 +4,7 @@
 
 import { CalibreCliError, CalibreCliTimeoutError } from "../domain/errors.js";
 import { CONNECTION_STDERR, DROPPED_MID_REQUEST_STDERR, WRITE_REFUSED_STDERR } from "../domain/calibredb-stderr.js";
-import { changesSatisfied } from "../domain/book-fields.js";
+import { changesSatisfied, foreignValues, type ForeignValue } from "../domain/book-fields.js";
 import type { ChangeValue } from "../domain/book-fields.js";
 import type { Book } from "../domain/book.js";
 import type { BaseDeps } from "../tools/deps.js";
@@ -144,7 +144,8 @@ export function describeTransient(err: unknown, id: number): string {
 export type TimedOutWriteCheck =
   | { status: "landed"; after: Book }
   | { status: "not-landed" }
-  | { status: "unverifiable" };
+  /** `foreign`: the re-read shows values that are neither the old nor ours (#370). */
+  | { status: "unverifiable"; foreign?: ForeignValue[] };
 
 /** The write being verified: target book, its pre-write snapshot, and the requested changes. */
 export interface TimedOutWrite {
@@ -167,5 +168,30 @@ export async function verifyTimedOutWrite(deps: BaseDeps, write: TimedOutWrite):
   } catch {
     return { status: "unverifiable" };
   }
-  return changesSatisfied(write.before, after, write.changes) ? { status: "landed", after } : { status: "not-landed" };
+  if (changesSatisfied(write.before, after, write.changes)) return { status: "landed", after };
+  // a third value (GUI edit, stale snapshot) may hide our write — never call that "not landed"
+  const foreign = foreignValues(write.before, after, write.changes);
+  return foreign.length > 0 ? { status: "unverifiable", foreign } : { status: "not-landed" };
+}
+
+/** Longest value shown per side in a {@link foreignNote}. */
+const MAX_NOTE_VALUE = 60;
+
+/**
+ * Text naming the third values a re-read found, e.g. ` A re-read shows publisher reads back
+ * "GUI", not the requested "New" — …`; "" when the check found none. Same in both channels.
+ */
+export function foreignNote(check: TimedOutWriteCheck): string {
+  if (check.status !== "unverifiable" || !check.foreign?.length) return "";
+  const show = (v: unknown): string => {
+    const s = JSON.stringify(v ?? null);
+    return s.length > MAX_NOTE_VALUE ? `${s.slice(0, MAX_NOTE_VALUE - 1)}…` : s;
+  };
+  const fields = check.foreign.map(
+    (f) => `${f.field} reads back ${show(f.after)}, not the requested ${show(f.intended)}`,
+  );
+  return (
+    ` A re-read shows ${fields.join("; ")} — another edit (e.g. the Calibre GUI) or Calibre's own ` +
+    "normalization may explain it."
+  );
 }
