@@ -4,7 +4,13 @@
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import type { Thresholds } from "./gate.js";
-import { baselinePaths, checkGateArgs, loadGateBaselines, refuseBaselineOverwrite } from "./gate-guards.js";
+import {
+  baselinePaths,
+  checkGateArgs,
+  loadAllowEntries,
+  loadGateBaselines,
+  refuseBaselineOverwrite,
+} from "./gate-guards.js";
 
 const t = {
   baselineReport: "reports/on.json",
@@ -95,5 +101,28 @@ describe("refuseBaselineOverwrite", () => {
     expect(() =>
       refuseBaselineOverwrite(path.join(dir, "reports", "2026-11-05-abc1234-rerankoff.json"), guarded),
     ).not.toThrow();
+  });
+});
+
+describe("loadAllowEntries (#358)", () => {
+  const cfg = { topK: 10, allowFile: "list-diff-allow.json" };
+  it("returns the entries array", () => {
+    const entries = loadAllowEntries(
+      cfg,
+      () => '{"entries":[{"tier":"on","mode":"hybrid","id":"sp-01","retrieved":[],"reason":"x"}]}',
+    );
+    expect(entries.map((e) => e.id)).toEqual(["sp-01"]);
+  });
+  it("fails up front on a file without an entries array", () => {
+    expect(() => loadAllowEntries(cfg, () => '{"entry":[]}')).toThrow(
+      'thresholds.listDiff.allowFile "list-diff-allow.json" needs an "entries" array',
+    );
+  });
+  it("fails up front on an unreadable file", () => {
+    expect(() =>
+      loadAllowEntries(cfg, () => {
+        throw new Error("ENOENT");
+      }),
+    ).toThrow('thresholds.listDiff.allowFile "list-diff-allow.json" is unreadable: ENOENT');
   });
 });

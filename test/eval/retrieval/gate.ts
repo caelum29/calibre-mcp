@@ -5,7 +5,6 @@
 // when the gate is green — every dropped query needs a human explanation in the report doc.
 
 import type { EvalReport, Mode, PerQueryRow, QueryKind } from "./harness.js";
-import type { AggregateMetrics } from "./metrics.js";
 
 /** Shape of thresholds.json (extra $comment keys tolerated). */
 export interface Thresholds {
@@ -30,14 +29,11 @@ export interface Thresholds {
     minHit1Queries: Partial<Record<Mode, number>>;
   };
   /**
-   * Score drift vs the baseline report (#325): Hit@1 non-regression can't see a rank or score
-   * shift that keeps every top hit, so aggregates and per-query cosine maxScore must also
-   * reproduce within an epsilon. Absent → no drift checks.
+   * Score drift vs the baseline report (#325): per-query cosine maxScore must reproduce within an
+   * epsilon. The aggregate ε was replaced by listDiff (#358). Absent → no drift check.
    */
   scoreDrift?: {
-    /** Max |Δ| on overall/ruInvolved hit1, recall5, mrr, ndcg10 (per mode). */
-    metricEpsilon?: number;
-    /** Max |Δ| on a row's maxScore, matched by query id + mode. */
+    /** Max |Δ| on a row's maxScore, matched by query id + mode (unmeasured ε, #364). */
     maxScoreEpsilon: number;
     /** Modes whose maxScore is a cosine (keyword maxScore is bm25 — a different scale). */
     maxScoreModes: Mode[];
@@ -54,8 +50,12 @@ export interface Thresholds {
     /** Kinds whose drops are listed but never fail the gate. */
     reportOnlyKinds: QueryKind[];
   };
-  /** Top-k list diff (#358). */
-  listDiff?: { topK: number; allowFile: string };
+  /** Top-k list diff vs each tier's baseline (#358); entries in allowFile permit exact new lists. */
+  listDiff?: {
+    topK: number;
+    /** Relative to the retrieval dir; JSON `{ entries: AllowEntry[] }`. */
+    allowFile: string;
+  };
   /** Tier-0 hash-embedder gate inside `pnpm test` (#357): per-query rank baseline, Hit@1 rule. */
   hashGate?: {
     /** hash-baseline.json, relative to the retrieval dir; set by the freeze commit (D-012). */
@@ -285,36 +285,14 @@ function figureNegativeChecks(
   return checks;
 }
 
-const AGG_KEYS = ["hit1", "recall5", "mrr", "ndcg10"] as const;
 const fmt = (n: number) => n.toFixed(4);
 
-/** Aggregate + per-query maxScore drift vs the baseline (#325). Baseline-only rows/keys count. */
+/** Per-query maxScore drift vs the baseline (#325); every baseline cosine row must be matched. */
 function scoreDriftChecks(
   current: EvalReport,
   baseline: EvalReport,
   cfg: NonNullable<Thresholds["scoreDrift"]>,
 ): GateCheck[] {
-  const moved: string[] = [];
-  const sections = [
-    ["overall", current.overall, baseline.overall],
-    ["ruInvolved", current.ruInvolved, baseline.ruInvolved],
-  ] as const;
-  for (const [label, cur, base] of sections) {
-    for (const mode of MODES) {
-      const b: AggregateMetrics | undefined = base[mode];
-      if (!b) continue;
-      const c = cur[mode];
-      if (!c) {
-        moved.push(`${label} ${mode} MISSING`);
-        continue;
-      }
-      for (const k of AGG_KEYS) {
-        if (Math.abs(c[k] - b[k]) > (cfg.metricEpsilon ?? 0))
-          moved.push(`${label} ${mode} ${k} ${fmt(b[k])} → ${fmt(c[k])}`);
-      }
-    }
-  }
-
   // Every baseline cosine row must be matched: an empty or partial compare would pass while
   // seeing nothing (a renamed query, a run that stopped recording maxScore).
   const curScore = new Map(current.perQuery.map((r) => [`${r.mode}/${r.id}`, r.maxScore]));
@@ -338,14 +316,6 @@ function scoreDriftChecks(
 
   return [
     {
-      name: "score drift: aggregate metrics",
-      active: true,
-      pass: moved.length === 0,
-      detail: moved.length
-        ? `${moved.length} beyond ±${cfg.metricEpsilon}: ${moved.join("; ")}`
-        : `all within ±${cfg.metricEpsilon}`,
-    },
-    {
       name: "score drift: per-query maxScore",
       active: true,
       pass: complete && over.length === 0,
@@ -356,6 +326,88 @@ function scoreDriftChecks(
           : `${shifts.length} rows within ±${cfg.maxScoreEpsilon}${worst ? ` (max |Δ| ${worst.delta.toFixed(4)})` : ""}`,
     },
   ];
+}
+
+/** Which gate tier an allow entry belongs to: ON pass, OFF fusion pass, or the tier-0 hash gate. */
+export type ListDiffTier = "on" | "fusionOnly" | "hash";
+
+/** One intended list change: exactly this new top-k list for this (tier, mode, id), with a reason. */
+export interface AllowEntry {
+  tier: ListDiffTier;
+  mode: Mode;
+  id: string;
+  retrieved: string[];
+  reason: string;
+}
+
+const sameList = (a: string[], b: string[]) => a.length === b.length && a.every((k, i) => k === b[i]);
+
+/** "changed at rank r: was → now" for the first differing position of two lists. */
+function firstDiff(was: string[], now: string[], topK: number): string {
+  const i = was.findIndex((k, j) => k !== now[j]);
+  const at = i === -1 ? was.length : i;
+  return `top-${topK} changed at rank ${at + 1}: ${was[at] ?? "(end)"} → ${now[at] ?? "(end)"}`;
+}
+
+/**
+ * Top-k list diff (#358): every baseline row must reproduce its top-k `retrieved` list exactly,
+ * or match an allow entry naming that exact new list. Catches rank moves Hit@1 can't see
+ * (a 2→3 shift) and makes gains ratchet. Missing rows count as changed.
+ */
+export function evaluateListDiff(
+  current: EvalReport,
+  baseline: EvalReport,
+  opts: { tier: ListDiffTier; topK: number; allow: AllowEntry[] },
+): GateResult {
+  const key = (mode: Mode, id: string) => `${mode}/${id}`;
+  const entries = opts.allow.filter((e) => e.tier === opts.tier);
+  const allowBy = new Map(entries.map((e) => [key(e.mode, e.id), e]));
+  const used = new Set<string>();
+  const curBy = new Map(current.perQuery.map((r) => [key(r.mode, r.id), r]));
+  const drops: string[] = [];
+  const unallowed: string[] = [];
+  let changed = 0;
+  for (const b of baseline.perQuery) {
+    const k = key(b.mode, b.id);
+    const was = b.retrieved.slice(0, opts.topK);
+    const cur = curBy.get(k);
+    const now = cur?.retrieved.slice(0, opts.topK);
+    if (now && sameList(was, now)) continue;
+    changed++;
+    const entry = allowBy.get(k);
+    if (now && entry && entry.reason.trim() !== "" && sameList(entry.retrieved.slice(0, opts.topK), now)) {
+      used.add(k);
+      continue;
+    }
+    unallowed.push(k);
+    drops.push(`${k} (${b.kind}): ${now ? firstDiff(was, now, opts.topK) : "MISSING"}`);
+  }
+  const noReason = entries.filter((e) => e.reason.trim() === "").map((e) => key(e.mode, e.id));
+  const unused = entries.map((e) => key(e.mode, e.id)).filter((k) => !used.has(k));
+  const checks: GateCheck[] = [
+    {
+      name: `top-${opts.topK} list diff (${opts.tier})`,
+      active: true,
+      pass: unallowed.length === 0,
+      detail: `${changed} changed, ${used.size} allowed (of ${baseline.perQuery.length} rows)${unallowed.length ? `: ${unallowed.join(", ")}` : ""}`,
+    },
+    {
+      name: `allow-file entries (${opts.tier})`,
+      active: true,
+      pass: noReason.length === 0,
+      detail: noReason.length
+        ? `${entries.length} entries, ${noReason.length} without a reason: ${noReason.join(", ")}`
+        : `${entries.length} entries, all with a reason`,
+    },
+    {
+      // an entry that allows nothing is stale (re-frozen baseline, or the change never happened)
+      name: `allow-file unused entries (${opts.tier})`,
+      active: false,
+      pass: true,
+      detail: `${unused.length} unused${unused.length ? `: ${unused.join(", ")}` : ""}`,
+    },
+  ];
+  return { pass: checks.every((c) => !c.active || c.pass), checks, drops };
 }
 
 /** Render the gate outcome for the CLI (stdout) — one line per check + the drop diff. */
@@ -373,25 +425,4 @@ export function renderGate(result: GateResult): string {
   lines.push("");
   lines.push(result.pass ? "GATE: PASS" : "GATE: FAIL");
   return lines.join("\n");
-}
-
-/** #358 RED stub. */
-export type ListDiffTier = "on" | "fusionOnly" | "hash";
-
-/** #358 RED stub. */
-export interface AllowEntry {
-  tier: ListDiffTier;
-  mode: Mode;
-  id: string;
-  retrieved: string[];
-  reason: string;
-}
-
-/** #358 RED stub. */
-export function evaluateListDiff(
-  _current: EvalReport,
-  _baseline: EvalReport,
-  _opts: { tier: ListDiffTier; topK: number; allow: AllowEntry[] },
-): GateResult {
-  return { pass: true, checks: [], drops: [] };
 }

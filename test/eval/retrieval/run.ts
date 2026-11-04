@@ -6,10 +6,14 @@
 //   pnpm eval [--modes hybrid,vector,keyword] [--topk 10] [--tag baseline]
 //             [--rerank off] [--rrf-weights 1.5,1.0] [--work-dir <dir>] [--out-dir <dir>]
 //             [--live] [--gate]
+//   pnpm eval --compare a.json b.json
 //
+// --compare: paired per-mode/per-kind stats of two existing reports (Δ nDCG@10, bootstrap CI,
+//   permutation p, Hit@1 flip sign test, MDE, UNDERPOWERED flag; stats.ts, #358). No eval run.
 // --gate: after the run, compare against thresholds.json + its frozen baseline report and
 //   print mechanical PASS/FAIL per declared gate (#85, D-012). Then a second, fusion-only pass
-//   with --rerank off vs thresholds.fusionOnly + its own frozen baseline (#356); both passes
+//   with --rerank off vs thresholds.fusionOnly + its own frozen baseline (#356). Each pass also
+//   runs the top-10 list diff vs its baseline + list-diff-allow.json (#358); both passes
 //   print, exit 1 if either fails. Fixture-only (the live diff is a triage artifact, not a
 //   gate — thresholds.liveEval); rejects --rerank (the gate sets it per pass).
 //
@@ -31,10 +35,24 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadConfig } from "../../../src/config.js";
 import { RERANKER_MODEL_ID, TransformersReranker } from "../../../src/semantic/reranker.js";
-import { baselinePaths, checkGateArgs, loadGateBaselines, refuseBaselineOverwrite } from "./gate-guards.js";
-import { evaluateFusionOnlyGate, evaluateGate, renderGate, type Thresholds } from "./gate.js";
+import {
+  baselinePaths,
+  checkGateArgs,
+  loadAllowEntries,
+  loadGateBaselines,
+  refuseBaselineOverwrite,
+} from "./gate-guards.js";
+import {
+  evaluateFusionOnlyGate,
+  evaluateGate,
+  evaluateListDiff,
+  renderGate,
+  type GateResult,
+  type Thresholds,
+} from "./gate.js";
 import { ALL_MODES, renderMarkdown, runRetrievalEval, type EvalReport, type Mode } from "./harness.js";
 import { saturationLines } from "./saturation.js";
+import { compareReports, renderCompare } from "./stats.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const progress = (msg: string) => process.stderr.write(`[eval] ${msg}\n`);
@@ -42,6 +60,8 @@ const progress = (msg: string) => process.stderr.write(`[eval] ${msg}\n`);
 interface CliArgs {
   live: boolean;
   gate: boolean;
+  /** `--compare a.json b.json`: paired stats of two existing reports, no eval run (#358). */
+  compare?: [string, string];
   modes: Mode[];
   topK: number;
   tag?: string;
@@ -70,6 +90,7 @@ function parseArgs(argv: string[]): CliArgs {
     };
     if (a === "--live") args.live = true;
     else if (a === "--gate") args.gate = true;
+    else if (a === "--compare") args.compare = [next(), next()];
     else if (a === "--modes") args.modes = next().split(",") as Mode[];
     else if (a === "--topk") args.topK = Number(next());
     else if (a === "--tag") args.tag = next();
@@ -242,22 +263,46 @@ async function runPass(
   return { report, mdPath, jsonPath };
 }
 
+/** Concatenate two gate outcomes into one pass section (gate checks + list diff). */
+function mergeGates(a: GateResult, b: GateResult): GateResult {
+  return { pass: a.pass && b.pass, checks: [...a.checks, ...b.checks], drops: [...a.drops, ...b.drops] };
+}
+
+/** `--compare`: paired per-kind stats of two reports already on disk; never runs an eval. */
+function compareFiles([a, b]: [string, string]): void {
+  const read = (f: string) => JSON.parse(readFileSync(f, "utf8")) as EvalReport;
+  process.stdout.write(`${renderCompare(compareReports(read(a), read(b)), path.basename(a), path.basename(b))}\n`);
+}
+
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
+  if (args.compare) {
+    if (args.gate || args.live)
+      throw new Error("--compare reads two existing reports; it can't combine with --gate/--live.");
+    compareFiles(args.compare);
+    return;
+  }
   checkGateArgs(args);
   const thresholds = JSON.parse(readFileSync(path.join(HERE, "thresholds.json"), "utf8")) as Thresholds;
   const protectedPaths = baselinePaths(thresholds, HERE);
-  // load baselines before the ~8 min ON pass, so a missing one fails in seconds
-  const baselines = args.gate
-    ? loadGateBaselines(thresholds, (rel) => readFileSync(path.join(HERE, rel), "utf8"))
-    : undefined;
+  const read = (rel: string) => readFileSync(path.join(HERE, rel), "utf8");
+  // load baselines + allow-file before the ~8 min ON pass, so a missing one fails in seconds
+  const baselines = args.gate ? loadGateBaselines(thresholds, read) : undefined;
+  const listDiff =
+    args.gate && thresholds.listDiff
+      ? { ...thresholds.listDiff, allow: loadAllowEntries(thresholds.listDiff, read) }
+      : undefined;
   mkdirSync(args.workDir, { recursive: true });
   ensureModelCache(args.workDir);
 
   const on = await runPass(args, args.rerank === "off", args.tag, protectedPaths);
   if (!baselines) return;
 
-  const onResult = evaluateGate(on.report, baselines.on, thresholds);
+  // #358: the top-10 list diff runs beside each tier's own gate, against the same baseline
+  const withList = (r: GateResult, cur: EvalReport, base: EvalReport, tier: "on" | "fusionOnly") =>
+    listDiff ? mergeGates(r, evaluateListDiff(cur, base, { tier, topK: listDiff.topK, allow: listDiff.allow })) : r;
+
+  const onResult = withList(evaluateGate(on.report, baselines.on, thresholds), on.report, baselines.on, "on");
   const sections = [`== ON pass (rerank on) vs ${thresholds.baselineReport} ==\n${renderGate(onResult)}`];
   let pass = onResult.pass;
 
@@ -266,7 +311,12 @@ async function main(): Promise<void> {
   if (fusion && baselines.off) {
     process.stdout.write("\n");
     const off = await runPass(args, true, [args.tag, "rerankoff"].filter(Boolean).join("-"), protectedPaths);
-    const offResult = evaluateFusionOnlyGate(off.report, baselines.off, fusion);
+    const offResult = withList(
+      evaluateFusionOnlyGate(off.report, baselines.off, fusion),
+      off.report,
+      baselines.off,
+      "fusionOnly",
+    );
     sections.push(`== OFF pass (fusion-only, rerank off) vs ${fusion.baselineReport} ==\n${renderGate(offResult)}`);
     pass &&= offResult.pass;
   }

@@ -2,7 +2,7 @@
 // before the ~8 min ON pass, and no run may overwrite a frozen baseline report.
 
 import path from "node:path";
-import type { Thresholds } from "./gate.js";
+import type { AllowEntry, Thresholds } from "./gate.js";
 import type { EvalReport } from "./harness.js";
 
 /** Flag combinations the gate refuses, checked before any pass runs. */
@@ -55,4 +55,26 @@ export function refuseBaselineOverwrite(target: string, protectedPaths: string[]
   if (guarded.has(abs)) {
     throw new Error(`refusing to overwrite frozen baseline ${abs} — pass --out-dir or --tag to write elsewhere`);
   }
+}
+
+/**
+ * Read the listDiff allow-file up front; a malformed one fails before any pass. Entry reasons
+ * are checked by the gate itself (an empty reason is a failed check, not a crash).
+ */
+export function loadAllowEntries(
+  cfg: NonNullable<Thresholds["listDiff"]>,
+  read: (rel: string) => string,
+): AllowEntry[] {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(read(cfg.allowFile));
+  } catch (err) {
+    throw new Error(
+      `thresholds.listDiff.allowFile "${cfg.allowFile}" is unreadable: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+  const entries = (parsed as { entries?: unknown }).entries;
+  if (!Array.isArray(entries))
+    throw new Error(`thresholds.listDiff.allowFile "${cfg.allowFile}" needs an "entries" array`);
+  return entries as AllowEntry[];
 }
