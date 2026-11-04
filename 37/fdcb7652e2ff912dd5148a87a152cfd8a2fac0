@@ -1,0 +1,25 @@
+docs/tool-catalog.json
+  s_0fe737495ddd73::t_4a48b044eb89f1 542-547
+src/tools/calibre_bulk_update.ts
+  s_0fe737495ddd73::t_81b48d6f6c92c2 80-81,243-244,246-250,259-265,287,326,336,345-349,376-377,390,397,403-413,430
+test/tools/bulk-update.tags-ops-review.test.ts
+  s_0fe737495ddd73::t_4a48b044eb89f1 14-15
+test/tools/bulk-update.tags-ops.test.ts
+  s_0fe737495ddd73::t_3940a208cca84f 95-96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "37fdcb7652e2ff912dd5148a87a152cfd8a2fac0",
+  "prompts": {},
+  "sessions": {
+    "s_0fe737495ddd73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "657126b7-d6dc-4a50-bfed-f6007aa3f3a6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
