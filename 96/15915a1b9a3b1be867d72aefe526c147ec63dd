@@ -1,0 +1,19 @@
+scripts/reindex.ts
+  s_c81cb810ca8fc4::t_24a0608659a4ee 77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9615915a1b9a3b1be867d72aefe526c147ec63dd",
+  "prompts": {},
+  "sessions": {
+    "s_c81cb810ca8fc4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba7e39d6-3c43-459f-a719-2bb0e2ff24d4",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
