@@ -4,7 +4,7 @@
 // this module only mechanizes them. The per-query drop diff is a mandatory artifact even
 // when the gate is green — every dropped query needs a human explanation in the report doc.
 
-import type { EvalReport, Mode, PerQueryRow } from "./harness.js";
+import type { EvalReport, Mode, PerQueryRow, QueryKind } from "./harness.js";
 import type { AggregateMetrics } from "./metrics.js";
 
 /** Shape of thresholds.json (extra $comment keys tolerated). */
@@ -41,6 +41,18 @@ export interface Thresholds {
     /** Modes whose maxScore is a cosine (keyword maxScore is bm25 — a different scale). */
     maxScoreModes: Mode[];
   };
+  /**
+   * Fusion-only tier (#356): a --rerank off run vs its own frozen baseline, because with rerank
+   * ON the cross-encoder re-sorts the whole fixture and hides fusion. Absent → no OFF pass.
+   */
+  fusionOnly?: {
+    /** Frozen --rerank off report; set by the freeze commit after the rule commit (D-012). */
+    baselineReport?: string;
+    rerank: "off";
+    nonRegression: Partial<Record<Mode, { maxBrokenHit1Queries: number }>>;
+    /** Kinds whose drops are listed but never fail the gate. */
+    reportOnlyKinds: QueryKind[];
+  };
 }
 
 export interface GateCheck {
@@ -65,6 +77,26 @@ function rowsOf(report: EvalReport, mode: Mode): PerQueryRow[] {
   return report.perQuery.filter((r) => r.mode === mode);
 }
 
+/** A baseline row with Hit@1=1 that now misses, plus the current row (absent = MISSING). */
+interface BrokenRow {
+  base: PerQueryRow;
+  cur: PerQueryRow | undefined;
+  id: string;
+}
+
+/** Baseline Hit@1=1 queries in `mode` that miss (or are missing) in the current run. */
+function brokenHit1(current: EvalReport, baseline: EvalReport, mode: Mode): BrokenRow[] {
+  const curById = new Map(rowsOf(current, mode).map((r) => [r.id, r]));
+  return rowsOf(baseline, mode)
+    .filter((b) => b.metrics?.hit1 === 1 && curById.get(b.id)?.metrics?.hit1 !== 1)
+    .map((base) => ({ base, cur: curById.get(base.id), id: base.id }));
+}
+
+function dropLine(mode: Mode, { base, cur }: BrokenRow, tag = ""): string {
+  const now = cur ? `Hit@1=${cur.metrics?.hit1 ?? "?"} top3=[${cur.retrieved.slice(0, 3).join(", ")}]` : "MISSING";
+  return `${mode}/${base.id} (${base.kind})${tag}: baseline Hit@1=1 → now ${now}`;
+}
+
 function avg(nums: number[]): number {
   return nums.length === 0 ? 0 : nums.reduce((a, b) => a + b, 0) / nums.length;
 }
@@ -79,15 +111,8 @@ export function evaluateGate(current: EvalReport, baseline: EvalReport, t: Thres
   for (const mode of MODES) {
     const cfg = t.nonRegression[mode];
     if (!cfg) continue;
-    const curById = new Map(rowsOf(current, mode).map((r) => [r.id, r]));
-    const passedInBaseline = rowsOf(baseline, mode).filter((r) => r.metrics?.hit1 === 1);
-    const broken = passedInBaseline.filter((b) => curById.get(b.id)?.metrics?.hit1 !== 1);
-    for (const b of broken) {
-      const cur = curById.get(b.id);
-      drops.push(
-        `${mode}/${b.id} (${b.kind}): baseline Hit@1=1 → now ${cur ? `Hit@1=${cur.metrics?.hit1 ?? "?"} top3=[${cur.retrieved.slice(0, 3).join(", ")}]` : "MISSING"}`,
-      );
-    }
+    const broken = brokenHit1(current, baseline, mode);
+    for (const b of broken) drops.push(dropLine(mode, b));
     checks.push({
       name: `non-regression ${mode}: broken Hit@1 queries`,
       active: true,
@@ -180,6 +205,53 @@ export function evaluateGate(current: EvalReport, baseline: EvalReport, t: Thres
 
   if (t.scoreDrift) checks.push(...scoreDriftChecks(current, baseline, t.scoreDrift));
 
+  return { pass: checks.every((c) => !c.active || c.pass), checks, drops };
+}
+
+/**
+ * Fusion-only tier (#356): per-query Hit@1 non-regression of a --rerank off run against the
+ * frozen OFF baseline. Report-only kinds (cross-lingual) are listed, never failed.
+ */
+export function evaluateFusionOnlyGate(
+  current: EvalReport,
+  baseline: EvalReport,
+  cfg: NonNullable<Thresholds["fusionOnly"]>,
+): GateResult {
+  const checks: GateCheck[] = [];
+  const drops: string[] = [];
+  // an ON run here would re-sort away the fusion order this tier exists to see
+  const isOff = current.meta.rerank.startsWith("off") && current.meta.rerankedRows === 0;
+  checks.push({
+    name: "fusion-only: run is rerank-off",
+    active: true,
+    pass: isOff,
+    detail: `rerank ${current.meta.rerank}, ${current.meta.rerankedRows} reranked rows`,
+  });
+  const reportOnly = new Set<string>(cfg.reportOnlyKinds);
+  const ids = (rows: BrokenRow[]) => (rows.length ? `: ${rows.map((r) => r.id).join(", ")}` : "");
+  for (const mode of MODES) {
+    const limit = cfg.nonRegression[mode];
+    if (!limit) continue;
+    const broken = brokenHit1(current, baseline, mode);
+    const gated = broken.filter((b) => !reportOnly.has(b.base.kind));
+    const noted = broken.filter((b) => reportOnly.has(b.base.kind));
+    for (const b of broken) drops.push(dropLine(mode, b, reportOnly.has(b.base.kind) ? " [report-only]" : ""));
+    checks.push({
+      name: `fusion-only ${mode}: broken Hit@1 queries`,
+      active: true,
+      pass: gated.length <= limit.maxBrokenHit1Queries,
+      detail: `${gated.length} broken (allowed ${limit.maxBrokenHit1Queries})${ids(gated)}`,
+    });
+    for (const kind of cfg.reportOnlyKinds) {
+      const ofKind = noted.filter((b) => b.base.kind === kind);
+      checks.push({
+        name: `fusion-only ${mode}: ${kind} (report-only)`,
+        active: false,
+        pass: true,
+        detail: `${ofKind.length} broken${ids(ofKind)}`,
+      });
+    }
+  }
   return { pass: checks.every((c) => !c.active || c.pass), checks, drops };
 }
 

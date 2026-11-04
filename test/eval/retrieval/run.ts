@@ -8,8 +8,10 @@
 //             [--live] [--gate]
 //
 // --gate: after the run, compare against thresholds.json + its frozen baseline report and
-//   print mechanical PASS/FAIL per declared gate (#85, D-012). Exit 1 on a failed gate.
-//   Fixture-only (the live diff is a triage artifact, not a gate — thresholds.liveEval).
+//   print mechanical PASS/FAIL per declared gate (#85, D-012). Then a second, fusion-only pass
+//   with --rerank off vs thresholds.fusionOnly + its own frozen baseline (#356); both passes
+//   print, exit 1 if either fails. Fixture-only (the live diff is a triage artifact, not a
+//   gate — thresholds.liveEval); rejects --rerank (the gate sets it per pass).
 //
 // Every run prints the headroom share and, when rerank-ON hybrid Hit@1 >= 0.95, a saturation
 //   warning (#365, saturation.ts); both are skipped on --live (unverified labels).
@@ -29,7 +31,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadConfig } from "../../../src/config.js";
 import { RERANKER_MODEL_ID, TransformersReranker } from "../../../src/semantic/reranker.js";
-import { evaluateGate, renderGate, type Thresholds } from "./gate.js";
+import { baselinePaths, checkGateArgs, loadGateBaselines, refuseBaselineOverwrite } from "./gate-guards.js";
+import { evaluateFusionOnlyGate, evaluateGate, renderGate, type Thresholds } from "./gate.js";
 import { ALL_MODES, renderMarkdown, runRetrievalEval, type EvalReport, type Mode } from "./harness.js";
 import { saturationLines } from "./saturation.js";
 
@@ -168,15 +171,27 @@ function headline(report: EvalReport): string {
   return lines.join("\n");
 }
 
-async function main(): Promise<void> {
-  const args = parseArgs(process.argv.slice(2));
-  if (args.gate && args.live) {
-    throw new Error("--gate is fixture-only: the live diff is a triage artifact, never a gate (#85).");
-  }
-  const started = Date.now();
-  mkdirSync(args.workDir, { recursive: true });
-  ensureModelCache(args.workDir);
+interface PassResult {
+  report: EvalReport;
+  mdPath: string;
+  jsonPath: string;
+}
 
+/** One eval run (fresh fixture index or live copy) → report written to outDir + stdout summary. */
+async function runPass(
+  args: CliArgs,
+  rerankOff: boolean,
+  tag: string | undefined,
+  protectedPaths: string[],
+): Promise<PassResult> {
+  const started = Date.now();
+  const sha = gitSha();
+  const date = new Date().toISOString().slice(0, 10);
+  const base = [date, sha, tag, args.live ? "live" : undefined].filter(Boolean).join("-");
+  const jsonPath = path.join(args.outDir, `${base}.json`);
+  const mdPath = path.join(args.outDir, `${base}.md`);
+  // checked before the run: a pass at a baseline's own date+sha would replace it at the end
+  refuseBaselineOverwrite(jsonPath, protectedPaths);
   let live: LiveRelevance | undefined;
   // Fixture runs build into their own temp dir under the work dir, so two concurrent evals (or a
   // killed run's -wal/-shm leftovers) never share one sqlite file (#325: "disk I/O error").
@@ -191,13 +206,11 @@ async function main(): Promise<void> {
     if (existsSync(models)) symlinkSync(models, path.join(indexDir, "models"), "dir");
   }
 
-  const sha = gitSha();
   // Rerank stage mirrors the shipped default: ON for hybrid/vector unless --rerank off.
-  const rerankOff = args.rerank === "off";
   const reranker = rerankOff
     ? undefined
     : new TransformersReranker(loadConfig({ CALIBRE_MCP_INDEX_DIR: args.workDir } as NodeJS.ProcessEnv));
-  const rerankLabel = args.rerank ?? `${RERANKER_MODEL_ID} q8`;
+  const rerankLabel = rerankOff ? "off" : (args.rerank ?? `${RERANKER_MODEL_ID} q8`);
 
   const report = await runRetrievalEval({
     indexDir,
@@ -218,26 +231,48 @@ async function main(): Promise<void> {
   }
 
   mkdirSync(args.outDir, { recursive: true });
-  const date = new Date().toISOString().slice(0, 10);
-  const base = [date, sha, args.tag, args.live ? "live" : undefined].filter(Boolean).join("-");
-  const jsonPath = path.join(args.outDir, `${base}.json`);
-  const mdPath = path.join(args.outDir, `${base}.md`);
   writeFileSync(jsonPath, JSON.stringify(report, null, 2) + "\n");
   writeFileSync(mdPath, renderMarkdown(report, base) + "\n");
 
-  progress(`done in ${((Date.now() - started) / 1000).toFixed(1)}s`);
+  progress(`${rerankOff ? "rerank-off " : ""}pass done in ${((Date.now() - started) / 1000).toFixed(1)}s`);
   // CLI summary on stdout (this is a script, not the stdio MCP server).
   process.stdout.write(
     `${headline(report)}\n${saturationLines(report).join("\n")}\n` + `report: ${mdPath}\njson:   ${jsonPath}\n`,
   );
+  return { report, mdPath, jsonPath };
+}
 
-  if (args.gate) {
-    const thresholds = JSON.parse(readFileSync(path.join(HERE, "thresholds.json"), "utf8")) as Thresholds;
-    const baseline = JSON.parse(readFileSync(path.join(HERE, thresholds.baselineReport), "utf8")) as EvalReport;
-    const result = evaluateGate(report, baseline, thresholds);
-    process.stdout.write(`\n${renderGate(result)}\n`);
-    if (!result.pass) process.exit(1);
+async function main(): Promise<void> {
+  const args = parseArgs(process.argv.slice(2));
+  checkGateArgs(args);
+  const thresholds = JSON.parse(readFileSync(path.join(HERE, "thresholds.json"), "utf8")) as Thresholds;
+  const protectedPaths = baselinePaths(thresholds, HERE);
+  // load baselines before the ~8 min ON pass, so a missing one fails in seconds
+  const baselines = args.gate
+    ? loadGateBaselines(thresholds, (rel) => readFileSync(path.join(HERE, rel), "utf8"))
+    : undefined;
+  mkdirSync(args.workDir, { recursive: true });
+  ensureModelCache(args.workDir);
+
+  const on = await runPass(args, args.rerank === "off", args.tag, protectedPaths);
+  if (!baselines) return;
+
+  const onResult = evaluateGate(on.report, baselines.on, thresholds);
+  const sections = [`== ON pass (rerank on) vs ${thresholds.baselineReport} ==\n${renderGate(onResult)}`];
+  let pass = onResult.pass;
+
+  // #356: the reranker re-sorts the whole fixture, so fusion is gated on its own OFF pass
+  const fusion = thresholds.fusionOnly;
+  if (fusion && baselines.off) {
+    process.stdout.write("\n");
+    const off = await runPass(args, true, [args.tag, "rerankoff"].filter(Boolean).join("-"), protectedPaths);
+    const offResult = evaluateFusionOnlyGate(off.report, baselines.off, fusion);
+    sections.push(`== OFF pass (fusion-only, rerank off) vs ${fusion.baselineReport} ==\n${renderGate(offResult)}`);
+    pass &&= offResult.pass;
   }
+
+  process.stdout.write(`\n${sections.join("\n\n")}\n\nOVERALL GATE: ${pass ? "PASS" : "FAIL"}\n`);
+  if (!pass) process.exit(1);
 }
 
 main().catch((err: unknown) => {

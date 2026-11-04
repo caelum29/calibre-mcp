@@ -38,6 +38,18 @@
     "maxScoreEpsilon": 0.01,
     "maxScoreModes": ["hybrid", "vector"]
   },
+  "fusionOnly": {
+    "$comment": "#356 fusion-only tier, declared + committed BEFORE the run that freezes its baseline (D-012). With rerank ON, RERANK_POOL (30) covers the whole fixture, so the cross-encoder re-sorts every candidate and a fusion regression is invisible (ON hybrid == vector on all 59 positives). This tier re-runs the suite with --rerank off and compares per-query Hit@1 against a second frozen baseline (fusionOnly.baselineReport, a --rerank off run at the rule commit): no query with Hit@1 = 1 in that baseline may break, in any mode. Cross-lingual queries are report-only (OFF hybrid gets 0/8 today; no floor until fusion is fixed) — their drops are listed but never fail the gate. A query missing from the current run counts as broken. `pnpm eval --gate` runs and prints both passes (ON = the blocks above, OFF = this block).",
+    "baselineReport": "reports/2026-11-04-b1c8ce2-rerankoff.json",
+    "$baselineComment": "Frozen from `pnpm eval --rerank off --tag rerankoff` at b1c8ce2, the rule commit (D-012). OFF Hit@1 hybrid 46/59, vector 47/59, keyword 47/59; cross-lingual hit@1 hybrid 0/8, vector 2/8.",
+    "rerank": "off",
+    "nonRegression": {
+      "hybrid": { "maxBrokenHit1Queries": 0 },
+      "vector": { "maxBrokenHit1Queries": 0 },
+      "keyword": { "maxBrokenHit1Queries": 0 }
+    },
+    "reportOnlyKinds": ["cross-lingual"]
+  },
   "liveEval": {
     "$comment": "Before/after diff on the real library is a mandatory triage artifact, NOT a gate — live-relevance.json labels are unverified and the re-index mixes markers + figures + D-016 demotion.",
     "gate": false
