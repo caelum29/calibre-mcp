@@ -12,8 +12,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Config } from "../config.js";
 import type { Embedder, EmbedderLoadState } from "./embedder.js";
-import type { IndexFreshness, IndexMeta } from "./store/index.js";
+import type { IndexFreshness } from "./store/index.js";
 import { EMBED_DIM, INDEX_VERSION, MODEL_ID } from "./model.js";
+import { staleness } from "./staleness.js";
 
 /** The semantic block mirrored onto calibre_ping's structuredContent. */
 export interface SemanticStatus {
@@ -181,15 +182,6 @@ function formatIndexCounts(s: SemanticStatus): string | undefined {
 /** `owner/name` → `name` for display. */
 function shortModel(model: string): string {
   return model.includes("/") ? model.slice(model.lastIndexOf("/") + 1) : model;
-}
-
-/** What differs between an index's meta and this server's pipeline, or undefined if it matches. */
-export function staleness(m: IndexMeta): string | undefined {
-  const diffs: string[] = [];
-  if (m.modelId !== MODEL_ID) diffs.push(`model ${m.modelId} (server: ${MODEL_ID})`);
-  if (m.dim !== EMBED_DIM) diffs.push(`dim ${m.dim} (server: ${EMBED_DIM})`);
-  if (m.indexVersion !== INDEX_VERSION) diffs.push(`indexVersion ${m.indexVersion} (server: ${INDEX_VERSION})`);
-  return diffs.length ? diffs.join(", ") : undefined;
 }
 
 /**
