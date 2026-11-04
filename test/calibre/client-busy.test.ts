@@ -48,7 +48,7 @@ describe("CalibreClient busy breaker", () => {
   });
 
   it("should_free_the_probe_slot_when_the_probe_fails_without_a_timeout (#343)", async () => {
-    vi.useFakeTimers({ toFake: ["Date"] }); // Date only: real child-process timeouts must keep running
+    vi.useFakeTimers({ toFake: ["Date"] }); // Date only: the spawned calibredb timeouts must stay real
     vi.setSystemTime(1_000_000);
     const busy = new LibraryBusyTracker({ baseWindowMs: 60_000 });
     busy.markBusy(LIB, "calibredb");
@@ -60,7 +60,7 @@ describe("CalibreClient busy breaker", () => {
   });
 
   it("should_free_the_probe_slot_when_the_probe_is_cancelled (#343)", async () => {
-    vi.useFakeTimers({ toFake: ["Date"] }); // Date only: real child-process timeouts must keep running
+    vi.useFakeTimers({ toFake: ["Date"] }); // Date only: the spawned calibredb timeouts must stay real
     vi.setSystemTime(1_000_000);
     const busy = new LibraryBusyTracker({ baseWindowMs: 60_000 });
     busy.markBusy(LIB, "calibredb");

@@ -22,10 +22,7 @@ function pingTool(): AnyToolDescriptor {
 function deps(o: { resolveLibraryId?: () => Promise<string>; listLibraries?: (lib?: string) => Promise<string> }) {
   const listCalls: Array<string | undefined> = [];
   const d: ToolDeps = {
-    config: loadConfig({
-      CALIBRE_MCP_SERVER_URL: SERVER_URL,
-      CALIBRE_MCP_INDEX_DIR: ":memory:",
-    }),
+    config: loadConfig({ CALIBRE_MCP_SERVER_URL: SERVER_URL, CALIBRE_MCP_INDEX_DIR: ":memory:" }),
     content: {
       resolveLibraryId: o.resolveLibraryId ?? (async () => "Programming_Books"),
     } as unknown as ToolDeps["content"],
@@ -52,11 +49,7 @@ function text(r: { content: Array<{ type: string; text?: string }> }): string {
 describe("calibre_ping handler", () => {
   it("should_be_registered_read_only_with_an_empty_input_schema", () => {
     const t = pingTool();
-    expect({
-      inputSchema: t.inputSchema,
-      annotations: t.annotations,
-      write: t.write,
-    }).toEqual({
+    expect({ inputSchema: t.inputSchema, annotations: t.annotations, write: t.write }).toEqual({
       inputSchema: {},
       annotations: { readOnlyHint: true, openWorldHint: true },
       write: undefined,
@@ -75,11 +68,7 @@ describe("calibre_ping handler", () => {
     expect(text(r)).toMatch(
       /^ok\ncalibre-mcp [^\n]+\ncalibredb: [^\n]+\nwrites: [^\n]+\nSemantic search: [^\n]+\nIndex: [^\n]+\nlog file: /,
     );
-    expect(r.structuredContent).toMatchObject({
-      ok: true,
-      serverUrl: SERVER_URL,
-      recentErrors: expect.any(Array),
-    });
+    expect(r.structuredContent).toMatchObject({ ok: true, serverUrl: SERVER_URL, recentErrors: expect.any(Array) });
     expect(r.structuredContent).toHaveProperty("semantic.available");
     expect(r.structuredContent).toHaveProperty("logFile");
   });
@@ -139,15 +128,12 @@ describe("calibre_ping busy libraries", () => {
     const r = await pingTool().handler({}, { ...d, libraryBusy: busy });
     expect(text(r)).toContain('busy: library "Programming_Books" — Calibre timed out (content-server)');
     expect(r.structuredContent?.busyLibraries).toEqual([
-      expect.objectContaining({
-        libraryId: "Programming_Books",
-        source: "content-server",
-      }),
+      expect.objectContaining({ libraryId: "Programming_Books", source: "content-server" }),
     ]);
   });
 
   it("should_report_a_library_whose_probe_is_in_flight_as_busy (#343)", async () => {
-    vi.useFakeTimers({ toFake: ["Date"] }); // Date only: real child-process timeouts must keep running
+    vi.useFakeTimers({ toFake: ["Date"] }); // only the clock moves; nothing else in this test is timer-driven
     vi.setSystemTime(1_000_000);
     const busy = new LibraryBusyTracker({ baseWindowMs: 60_000 });
     busy.markBusy("Programming_Books", "content-server");
