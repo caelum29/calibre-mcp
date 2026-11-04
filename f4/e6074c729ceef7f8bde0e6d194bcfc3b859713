@@ -1,0 +1,52 @@
+docs/tool-catalog.json
+  h_e22d73abc85ef9 496-501,512-534,571-576,2448-2454
+scripts/reindex.ts
+  h_e22d73abc85ef9 6-7
+src/app/write-policy.ts
+  h_e22d73abc85ef9 7,121-122,125,131,136,148-149,172-207
+src/domain/book-fields.ts
+  h_e22d73abc85ef9 65-69,71-123,127-153
+src/semantic/build-progress.ts
+  h_e22d73abc85ef9 57-61,67-68,72-91
+src/tools/calibre_bulk_update.ts
+  h_e22d73abc85ef9 15,35-36,77-78,83-86,181,185,191-192,195-196,210,233-234,244-261,270-277,299,322,329,339-340,350-351,360-391,418-420,425-426,435,442-444,450-461,478,491-494,498,507,533-534,541,544
+src/tools/calibre_update_book.ts
+  h_e22d73abc85ef9 28-30,57-58,145-149,164-170,203-209,218,234-237,246-251
+test/app/write-policy-retry-wording-370.test.ts
+  h_e22d73abc85ef9 1-43
+test/semantic/build-progress-names.test.ts
+  h_e22d73abc85ef9 1-93
+test/semantic/build-progress.test.ts
+  h_e22d73abc85ef9 35,93
+test/tools/bulk-update-dropped-verify-370.test.ts
+  h_e22d73abc85ef9 113-120,124-125
+test/tools/bulk-update-preview-warnings-370.test.ts
+  h_e22d73abc85ef9 1-55
+test/tools/bulk-update-tags-noop-370.test.ts
+  h_e22d73abc85ef9 1-79
+test/tools/bulk-update.tags-ops-review.test.ts
+  h_e22d73abc85ef9 14-15
+test/tools/bulk-update.tags-ops.test.ts
+  h_e22d73abc85ef9 95-96
+test/tools/update-book-dropped-verify-342.test.ts
+  h_e22d73abc85ef9 57-63
+test/tools/write-drop-then-refused-370.test.ts
+  h_e22d73abc85ef9 142-143
+test/tools/write-path-review-370.test.ts
+  h_e22d73abc85ef9 1-57
+test/tools/write-reread-provenance-370.test.ts
+  h_e22d73abc85ef9 1-150
+test/tools/write-verify-intended-370.test.ts
+  h_e22d73abc85ef9 1-165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f4e6074c729ceef7f8bde0e6d194bcfc3b859713",
+  "prompts": {},
+  "humans": {
+    "h_e22d73abc85ef9": {
+      "author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
