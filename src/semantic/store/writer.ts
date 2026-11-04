@@ -1,5 +1,5 @@
 // The index write side (#272): whole-book replace, in-place meta refresh, prune. Every write
-// takes the lock up front (BEGIN IMMEDIATE, #196) and invalidates the library's candidate
+// takes the lock up front (BEGIN IMMEDIATE, #196) and marks the written books stale in the candidate
 // caches through the injected callback, even when it rolls back.
 
 import type { DatabaseSync } from "node:sqlite";
@@ -20,11 +20,11 @@ import type {
   ReplaceOutcome,
 } from "./types.js";
 
-/** IndexWriter over the shared connections; `invalidate` drops a library's candidate caches. */
+/** IndexWriter over the shared connections; `invalidate` marks written books stale in the candidate caches. */
 export class SqliteWriter implements IndexWriter {
   constructor(
     private readonly conn: IndexConnections,
-    private readonly invalidate: (libraryId: string) => void,
+    private readonly invalidate: (libraryId: string, bookIds: readonly number[]) => void,
   ) {}
 
   replaceBook(
@@ -114,9 +114,9 @@ export class SqliteWriter implements IndexWriter {
       rollbackQuietly(db);
       throw err;
     } finally {
-      // Any write (even a rolled-back one — a needless rebuild is harmless) drops the
-      // library's candidate caches; the next vector query rebuilds them from SQLite.
-      this.invalidate(libraryId);
+      // Any write (even a rolled-back one — a needless reload is harmless) marks the book
+      // stale; the next vector query re-reads just its vectors from SQLite (#370).
+      this.invalidate(libraryId, [meta.bookId]);
     }
   }
 
@@ -148,8 +148,8 @@ export class SqliteWriter implements IndexWriter {
       rollbackQuietly(db);
       throw err;
     } finally {
-      // Same wholesale invalidation as replaceBook — correctness over cleverness.
-      this.invalidate(libraryId);
+      // Same per-book invalidation as replaceBook (vectors are unchanged; one book's reload is cheap).
+      this.invalidate(libraryId, [meta.bookId]);
     }
   }
 
@@ -190,7 +190,7 @@ export class SqliteWriter implements IndexWriter {
       rollbackQuietly(db);
       throw err;
     } finally {
-      this.invalidate(libraryId);
+      this.invalidate(libraryId, bookIds);
     }
   }
 }

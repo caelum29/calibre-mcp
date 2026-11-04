@@ -1,5 +1,5 @@
 // Chunk retrieval (#272): the vector half (brute-force cosine over a per-library in-memory
-// candidate cache, decoded once, dropped on any own or other-process write) and the keyword half
+// candidate cache, decoded once, refreshed per changed book on any write) and the keyword half
 // (weighted bm25 over chunk_fts), plus figure → context lookup. Snippet windows: ../snippet.ts.
 
 import type { DatabaseSync } from "node:sqlite";
@@ -10,11 +10,10 @@ import { type Candidate, decodeVector, topK } from "../vector.js";
 import type { IndexConnections } from "./schema.js";
 import {
   type CandidateCache,
-  cacheOf,
-  currentCache,
-  dataVersion,
   ftsMatch,
+  markDirty,
   parseAuthors,
+  refreshedCache,
   restrict,
   type Row,
   WEIGHTED_BM25,
@@ -23,8 +22,8 @@ import type { BookHit, ChunkIndex, ChunkRef, LibraryHit } from "./types.js";
 
 /** ChunkIndex over the shared connections with its own per-library candidate cache. */
 export class SqliteChunkIndex implements ChunkIndex {
-  // Per-library candidate cache; invalidated wholesale on any own write, and on any other
-  // connection's commit via the data_version stamp (correctness > cleverness).
+  // Per-library candidate cache; an own write or another connection's commit (data_version)
+  // reloads only the books whose `books` row changed (#370).
   // DEFERRED: int8-quantize this in-memory copy (~99.8% recall at 4x smaller) once full-library indexing lands.
   #caches = new Map<string, CandidateCache>();
 
@@ -35,9 +34,9 @@ export class SqliteChunkIndex implements ChunkIndex {
     private readonly load: (libraryId: string) => Candidate[] = (l) => loadChunkCandidates(conn.db(l)),
   ) {}
 
-  /** Drop one library's cache (after any write). */
-  invalidate(libraryId: string): void {
-    this.#caches.delete(libraryId);
+  /** Mark books this connection just wrote; the next read reloads exactly them. */
+  invalidate(libraryId: string, bookIds: readonly number[]): void {
+    markDirty(this.#caches, libraryId, bookIds);
   }
 
   /** Drop every cache (store close). */
@@ -199,19 +198,17 @@ export class SqliteChunkIndex implements ChunkIndex {
 
   /** Candidate vectors — all of a library, or one book (the doc's book-scope subarray). */
   #candidates(libraryId: string, bookId?: number): Candidate[] {
-    // Stamp BEFORE loading: a commit landing in between only costs one needless rebuild,
-    // whereas stamping after could pin pre-commit vectors to the post-commit version.
-    const version = dataVersion(this.conn.db(libraryId));
-    let cache = currentCache(this.#caches, libraryId, version);
-    if (!cache) {
-      const all = this.load(libraryId);
-      cache = cacheOf(all, version);
-      this.#caches.set(libraryId, cache);
+    const db = this.conn.db(libraryId);
+    const { cache, built } = refreshedCache(db, this.#caches, libraryId, {
+      all: () => this.load(libraryId),
+      books: (ids) => loadChunkCandidates(db, ids),
+    });
+    if (built) {
       // Memory honesty: vectors dominate (EMBED_DIM float32 each); ids/objects are noise.
-      const mib = (all.length * EMBED_DIM * 4) / (1024 * 1024);
+      const mib = (cache.all.length * EMBED_DIM * 4) / (1024 * 1024);
       this.log.info("semantic candidate cache built", {
         library: libraryId,
-        chunks: all.length,
+        chunks: cache.all.length,
         approxMiB: Number(mib.toFixed(1)),
       });
     }
@@ -220,12 +217,19 @@ export class SqliteChunkIndex implements ChunkIndex {
 }
 
 /**
- * Read + decode ALL embedding BLOBs of a library from SQLite — the expensive path the
- * candidate cache exists to avoid. `decodeVector` copies each BLOB into a fresh
- * Float32Array, so cached vectors never alias sqlite's pooled buffers.
+ * Read + decode the embedding BLOBs of a library (or of `bookIds` only) from SQLite — the
+ * expensive path the candidate cache exists to avoid. `decodeVector` copies each BLOB into a
+ * fresh Float32Array, so cached vectors never alias sqlite's pooled buffers.
  */
-export function loadChunkCandidates(db: DatabaseSync): Candidate[] {
-  const rows = db.prepare("SELECT chunk_id, book_id, vector FROM embeddings").all() as Row[];
+export function loadChunkCandidates(db: DatabaseSync, bookIds?: readonly number[]): Candidate[] {
+  if (bookIds?.length === 0) return [];
+  const rows = (
+    bookIds === undefined
+      ? db.prepare("SELECT chunk_id, book_id, vector FROM embeddings").all()
+      : db
+          .prepare("SELECT chunk_id, book_id, vector FROM embeddings WHERE book_id IN (SELECT value FROM json_each(?))")
+          .all(JSON.stringify(bookIds))
+  ) as Row[];
   return rows.map((r) => ({
     chunkId: Number(r.chunk_id),
     bookId: Number(r.book_id),

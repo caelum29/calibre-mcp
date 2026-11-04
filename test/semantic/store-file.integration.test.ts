@@ -182,15 +182,15 @@ describe("candidate caches across two connections (#337)", () => {
     expect(b.searchFigures(LIB, axis(0), 10, 1)).toEqual([]);
   });
 
-  it("the cache still hits while nothing else commits, and rebuilds once after A commits", () => {
-    const loads = vi.spyOn(b, "loadCandidates"); // the decode seam the cache guards
+  it("the cache still hits while nothing else commits; A's commit reloads one book, not the library (#370)", () => {
+    const loads = vi.spyOn(b, "loadCandidates"); // the full-library decode seam the cache guards
     b.searchLibrary(LIB, axis(0), 10);
     b.searchLibrary(LIB, axis(0), 10);
     b.searchBook(LIB, 1, axis(0), 10);
     expect(loads).toHaveBeenCalledTimes(1);
     a.replaceBook(LIB, meta(2, "y"), one("y", axis(0)));
+    expect(b.searchLibrary(LIB, axis(0), 10).map((h) => h.bookId)).toEqual([1, 2]);
     b.searchLibrary(LIB, axis(0), 10);
-    b.searchLibrary(LIB, axis(0), 10);
-    expect(loads).toHaveBeenCalledTimes(2);
+    expect(loads).toHaveBeenCalledTimes(1); // per-book counts: store-cache-decodes.test.ts
   });
 });
