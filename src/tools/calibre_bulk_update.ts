@@ -28,6 +28,7 @@ import {
   describeTransient,
   withTransientRetry,
   verifyTimedOutWrite,
+  isDroppedMidRequest,
 } from "../app/write-policy.js";
 import { errorCodeFor } from "../domain/error-codes.js";
 import { mergeTags, type TagMerge } from "../domain/tag-ops.js";
@@ -248,7 +249,13 @@ export const bulkUpdateTool = defineTool({
             if (applied.length === 0) return toolError("write_refused", WRITE_REFUSED_MESSAGE);
             failed.push({ id: b.id, error: WRITE_REFUSED_MESSAGE });
             return stoppedMidLoop(
-              { matched: perBook.length, applied, failed, notAttempted: perBook.slice(i + 1).map((p) => p.id) },
+              {
+                matched: perBook.length,
+                applied,
+                failed,
+                notAttempted: perBook.slice(i + 1).map((p) => p.id),
+                blockedId: b.id,
+              },
               {
                 headline: "Calibre refused the write",
                 steer: `${WRITE_REFUSED_MESSAGE} After fixing the server`,
@@ -260,9 +267,35 @@ export const bulkUpdateTool = defineTool({
           // circuit breaker (stop like a refusal); a gateway 5xx fails only this book (#233).
           const transient = classifyTransient(err);
           if (transient === "connection") {
+            const notAttempted = perBook.slice(i + 1).map((p) => p.id);
+            // a mid-request drop may arrive after the server committed — re-read it like the
+            // single-book path (#342) so a landed write is never reported as failed (#370)
+            if (isDroppedMidRequest(err)) {
+              const check = await verifyTimedOutWrite(deps, {
+                id: b.id,
+                before: b.book,
+                changes: b.changes,
+                library: args.library,
+              });
+              if (check.status === "landed") {
+                applied.push(b.id);
+                if (notAttempted.length === 0) continue; // nothing left to stop — plain summary
+                // the connection is still suspect, so the breaker stops the rest as before
+                return stoppedMidLoop(
+                  { matched: perBook.length, applied, failed, notAttempted, blockedId: undefined },
+                  {
+                    headline: "Stopped: the Calibre Content Server is unreachable",
+                    steer:
+                      `The connection dropped mid-request, but a re-read confirmed book ${b.id} was written. ` +
+                      "Once the Content Server is back",
+                    err,
+                  },
+                );
+              }
+            }
             failed.push({ id: b.id, error: describeTransient(err, b.id) });
             return stoppedMidLoop(
-              { matched: perBook.length, applied, failed, notAttempted: perBook.slice(i + 1).map((p) => p.id) },
+              { matched: perBook.length, applied, failed, notAttempted, blockedId: b.id },
               {
                 headline: "Stopped: the Calibre Content Server is unreachable",
                 steer: `${describeTransient(err, b.id)} Once it is back`,
@@ -338,24 +371,31 @@ interface StopCause {
   err: unknown;
 }
 
+/** Where the loop stood when the server stopped it. */
+interface StoppedRun {
+  matched: number;
+  applied: number[];
+  failed: { id: number; error: string }[];
+  notAttempted: number[];
+  /** The book the server blocked, re-run with the rest; undefined when it was confirmed written. */
+  blockedId: number | undefined;
+}
+
 /**
  * Partial result for a loop stopped by the server (a refusal after ≥1 commit, or the #233
  * circuit breaker): still `isError` (the run did not finish), but the committed ids lead the
  * text so the model retries only the rest.
  */
-function stoppedMidLoop(
-  run: { matched: number; applied: number[]; failed: { id: number; error: string }[]; notAttempted: number[] },
-  cause: StopCause,
-): ToolResult {
-  const { matched, applied, failed, notAttempted } = run;
-  // The refused book (last in `failed`) and the unattempted ones are blocked only by the server;
-  // earlier per-book failures had their own reasons, so they aren't part of the re-run.
-  const refusedId = failed.at(-1)?.id;
-  const retryIds = refusedId === undefined ? notAttempted : [refusedId, ...notAttempted];
+function stoppedMidLoop(run: StoppedRun, cause: StopCause): ToolResult {
+  const { matched, applied, failed, notAttempted, blockedId } = run;
+  // The blocked book and the unattempted ones are held up only by the server; earlier
+  // per-book failures had their own reasons, so they aren't part of the re-run.
+  const retryIds = blockedId === undefined ? notAttempted : [blockedId, ...notAttempted];
   const text =
     `${cause.headline} after ${applied.length}/${matched} book(s) were already updated. ` +
     (applied.length > 0 ? `Already committed: ${applied.join(", ")}. ` : "") +
-    `Failed: ${failed.map((f) => f.id).join(", ")}. ` +
+    // a confirmed drop can stop the loop with nothing failed yet
+    (failed.length > 0 ? `Failed: ${failed.map((f) => f.id).join(", ")}. ` : "") +
     (notAttempted.length > 0 ? `Not attempted: ${notAttempted.join(", ")}. ` : "") +
     // writes are idempotent sets, so re-running is safe; naming the ids saves the model the set math
     `${cause.steer}, re-run with ids=[${retryIds.join(",")}].`;
