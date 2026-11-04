@@ -1,0 +1,20 @@
+test/tools/bulk-update-dropped-verify-370.test.ts
+  s_0fe737495ddd73::t_19a7f98669b50f 93
+  s_0fe737495ddd73::t_b9e2382cb3040e 1-92,94-160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "79b16798a2be62062c39ccf6355cfc79d7c3e76c",
+  "prompts": {},
+  "sessions": {
+    "s_0fe737495ddd73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "657126b7-d6dc-4a50-bfed-f6007aa3f3a6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
