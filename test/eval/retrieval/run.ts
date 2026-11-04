@@ -12,7 +12,7 @@
 //   Fixture-only (the live diff is a triage artifact, not a gate — thresholds.liveEval).
 //
 // Every run prints the headroom share and, when rerank-ON hybrid Hit@1 >= 0.95, a saturation
-//   warning (#365, saturation.ts).
+//   warning (#365, saturation.ts); both are skipped on --live (unverified labels).
 // Offline path: deterministic — two runs at the same commit produce identical JSON.
 // --live: runs library-scope queries against a COPY of the real library index using
 //   live-relevance.json labels (UNVERIFIED until Artem confirms). Never touches the
@@ -31,7 +31,7 @@ import { loadConfig } from "../../../src/config.js";
 import { RERANKER_MODEL_ID, TransformersReranker } from "../../../src/semantic/reranker.js";
 import { evaluateGate, renderGate, type Thresholds } from "./gate.js";
 import { ALL_MODES, renderMarkdown, runRetrievalEval, type EvalReport, type Mode } from "./harness.js";
-import { headroom, saturationWarning } from "./saturation.js";
+import { saturationLines } from "./saturation.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const progress = (msg: string) => process.stderr.write(`[eval] ${msg}\n`);
@@ -227,14 +227,8 @@ async function main(): Promise<void> {
 
   progress(`done in ${((Date.now() - started) / 1000).toFixed(1)}s`);
   // CLI summary on stdout (this is a script, not the stdio MCP server).
-  const hr = headroom(report);
-  const warning = saturationWarning(report);
   process.stdout.write(
-    `${headline(report)}\n` +
-      `headroom: ${hr.solvedByAll}/${hr.positives} positives solved at Hit@1 by every mode ` +
-      `(${(hr.share * 100).toFixed(1)}%)\n` +
-      (warning ? `${warning}\n` : "") +
-      `report: ${mdPath}\njson:   ${jsonPath}\n`,
+    `${headline(report)}\n${saturationLines(report).join("\n")}\n` + `report: ${mdPath}\njson:   ${jsonPath}\n`,
   );
 
   if (args.gate) {

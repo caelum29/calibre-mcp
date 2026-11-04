@@ -24,8 +24,13 @@ pnpm eval --modes hybrid       # subset of modes
 pnpm eval --live               # UNVERIFIED spot check against the real library index (skip in CI)
 pnpm eval --rerank off         # disable the shipped D-011 rerank stage (on by default)
 pnpm eval --rrf-weights 1.5,1.0  # weighted-RRF (vector,keyword) override for this run only (#142 sweep seam)
-pnpm eval --gate              # PASS/FAIL vs thresholds.json + its frozen baseline; exit 1 on a failed gate (~8 min)
+pnpm eval --gate              # PASS/FAIL vs thresholds.json + its frozen baseline; exit 1 on a failed gate (~8 min standalone)
 ```
+
+`--gate` checks, per `thresholds.json`: per-query Hit@1 non-regression per mode, negatives
+flagged (6/6 hybrid+vector), figure-caption query count + hybrid floors, figure-negative query
+count (its flagged rate stays informational until the figures floor is calibrated), the
+heading front-matter block, and score drift (aggregates ±0.005, per-query maxScore ±0.01).
 
 Every run also prints, after the per-mode headline:
 
@@ -35,7 +40,9 @@ Every run also prints, after the per-mode headline:
   hybrid/vector/keyword).
 - **saturation warning** — when rerank-ON hybrid Hit@1 ≥ 0.95. Anthropic's eval guidance: a
   baseline near 95% means optimise cost/latency, or add harder queries, rather than chase
-  quality. `--rerank off` runs never warn (they isolate fusion, which still has headroom).
+  quality. Fusion-only runs never warn: `--rerank off`, or an ON run where the reranker
+  failed to load (0 reranked rows). A query missing from a mode counts as not solved.
+- Both lines are skipped on `--live` runs (unverified labels).
 
 ### Layout
 
