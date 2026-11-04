@@ -1,0 +1,21 @@
+test/semantic/store-cache-decodes.test.ts
+  s_47d5e04ea2bed6::t_a58957ebeea0e3 1-11,13-171,173-184,186-191,193-195
+  s_47d5e04ea2bed6::t_3bf279f1f06faf 12,172,185,192
+  s_47d5e04ea2bed6::t_cd5505bdfa4e35 196-200
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "db30ae595391d48ec5b53869c1e3c2423863c9cf",
+  "prompts": {},
+  "sessions": {
+    "s_47d5e04ea2bed6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9de64faa-04cf-41c9-bdcb-69c1f8f940f2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
