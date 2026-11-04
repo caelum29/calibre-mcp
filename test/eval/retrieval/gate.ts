@@ -36,7 +36,7 @@ export interface Thresholds {
    */
   scoreDrift?: {
     /** Max |Δ| on overall/ruInvolved hit1, recall5, mrr, ndcg10 (per mode). */
-    metricEpsilon: number;
+    metricEpsilon?: number;
     /** Max |Δ| on a row's maxScore, matched by query id + mode. */
     maxScoreEpsilon: number;
     /** Modes whose maxScore is a cosine (keyword maxScore is bm25 — a different scale). */
@@ -54,6 +54,8 @@ export interface Thresholds {
     /** Kinds whose drops are listed but never fail the gate. */
     reportOnlyKinds: QueryKind[];
   };
+  /** Top-k list diff (#358). */
+  listDiff?: { topK: number; allowFile: string };
   /** Tier-0 hash-embedder gate inside `pnpm test` (#357): per-query rank baseline, Hit@1 rule. */
   hashGate?: {
     /** hash-baseline.json, relative to the retrieval dir; set by the freeze commit (D-012). */
@@ -307,7 +309,8 @@ function scoreDriftChecks(
         continue;
       }
       for (const k of AGG_KEYS) {
-        if (Math.abs(c[k] - b[k]) > cfg.metricEpsilon) moved.push(`${label} ${mode} ${k} ${fmt(b[k])} → ${fmt(c[k])}`);
+        if (Math.abs(c[k] - b[k]) > (cfg.metricEpsilon ?? 0))
+          moved.push(`${label} ${mode} ${k} ${fmt(b[k])} → ${fmt(c[k])}`);
       }
     }
   }
@@ -370,4 +373,25 @@ export function renderGate(result: GateResult): string {
   lines.push("");
   lines.push(result.pass ? "GATE: PASS" : "GATE: FAIL");
   return lines.join("\n");
+}
+
+/** #358 RED stub. */
+export type ListDiffTier = "on" | "fusionOnly" | "hash";
+
+/** #358 RED stub. */
+export interface AllowEntry {
+  tier: ListDiffTier;
+  mode: Mode;
+  id: string;
+  retrieved: string[];
+  reason: string;
+}
+
+/** #358 RED stub. */
+export function evaluateListDiff(
+  _current: EvalReport,
+  _baseline: EvalReport,
+  _opts: { tier: ListDiffTier; topK: number; allow: AllowEntry[] },
+): GateResult {
+  return { pass: true, checks: [], drops: [] };
 }
