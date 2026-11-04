@@ -4,7 +4,7 @@
 
 import { CalibreCliError, CalibreCliTimeoutError } from "../domain/errors.js";
 import { CONNECTION_STDERR, DROPPED_MID_REQUEST_STDERR, WRITE_REFUSED_STDERR } from "../domain/calibredb-stderr.js";
-import { changesSatisfied } from "../domain/book-fields.js";
+import { changesSatisfied, foreignValues, type ForeignValue } from "../domain/book-fields.js";
 import type { ChangeValue } from "../domain/book-fields.js";
 import type { Book } from "../domain/book.js";
 import type { BaseDeps } from "../tools/deps.js";
@@ -118,21 +118,22 @@ export function isDroppedMidRequest(err: unknown): boolean {
 export function describeTransient(err: unknown, id: number): string {
   // the real count: a timeout or 500 after a drop ends the loop early (#370)
   const n = recordOf(err)?.retries ?? RETRY_PAUSES_MS.length;
-  const retries = n === 1 ? "after 1 retry" : `after ${n} retries`;
+  // a first-attempt failure ran no retry, so it gets no clause rather than "after 0 retries"
+  const retries = n === 0 ? "" : n === 1 ? " after 1 retry" : ` after ${n} retries`;
   if (isDroppedMidRequest(err)) {
     return (
-      `The connection to the Calibre Content Server dropped mid-request ${retries}; the write ` +
+      `The connection to the Calibre Content Server dropped mid-request${retries}; the write ` +
       `may have been committed — verify with calibre_get_book id=${id} before retrying.`
     );
   }
   if (classifyTransient(err) === "connection") {
     return (
-      `Could not reach the Calibre Content Server (connection refused or dropped) ${retries}. ` +
+      `Could not reach the Calibre Content Server (connection refused or dropped)${retries}. ` +
       `Check that Calibre / its Content Server is running, then retry.`
     );
   }
   const status = err instanceof CalibreCliError ? GATEWAY_5XX.exec(err.stderr ?? "")?.[1] : undefined;
-  return `The Calibre Content Server answered HTTP ${status ?? "5xx"} ${retries}; it may be restarting — retry shortly.`;
+  return `The Calibre Content Server answered HTTP ${status ?? "5xx"}${retries}; it may be restarting — retry shortly.`;
 }
 
 // ── timeout verification ──
@@ -144,7 +145,8 @@ export function describeTransient(err: unknown, id: number): string {
 export type TimedOutWriteCheck =
   | { status: "landed"; after: Book }
   | { status: "not-landed" }
-  | { status: "unverifiable" };
+  /** `foreign`: the re-read shows values that are neither the old nor ours (#370). */
+  | { status: "unverifiable"; foreign?: ForeignValue[] };
 
 /** The write being verified: target book, its pre-write snapshot, and the requested changes. */
 export interface TimedOutWrite {
@@ -167,5 +169,40 @@ export async function verifyTimedOutWrite(deps: BaseDeps, write: TimedOutWrite):
   } catch {
     return { status: "unverifiable" };
   }
-  return changesSatisfied(write.before, after, write.changes) ? { status: "landed", after } : { status: "not-landed" };
+  if (changesSatisfied(write.before, after, write.changes)) return { status: "landed", after };
+  // a third value (GUI edit, stale snapshot) may hide our write — never call that "not landed"
+  const foreign = foreignValues(write.before, after, write.changes);
+  return foreign.length > 0 ? { status: "unverifiable", foreign } : { status: "not-landed" };
+}
+
+/** Why a write's success comes from a re-read, not from calibredb's reply (#370). */
+export type ReReadCause = "dropped" | "timeout";
+
+/** Text for a write a re-read confirmed, e.g. ` Confirmed by a re-read after calibredb timed out.` */
+export function reReadNote(cause: ReReadCause): string {
+  return cause === "dropped"
+    ? " Confirmed by a re-read after the connection dropped mid-request."
+    : " Confirmed by a re-read after calibredb timed out.";
+}
+
+/** Longest value shown per side in a {@link foreignNote}. */
+const MAX_NOTE_VALUE = 60;
+
+/**
+ * Text naming the third values a re-read found, e.g. ` A re-read shows publisher reads back
+ * "GUI", not the requested "New" — …`; "" when the check found none. Same in both channels.
+ */
+export function foreignNote(check: TimedOutWriteCheck): string {
+  if (check.status !== "unverifiable" || !check.foreign?.length) return "";
+  const show = (v: unknown): string => {
+    const s = JSON.stringify(v ?? null);
+    return s.length > MAX_NOTE_VALUE ? `${s.slice(0, MAX_NOTE_VALUE - 1)}…` : s;
+  };
+  const fields = check.foreign.map(
+    (f) => `${f.field} reads back ${show(f.after)}, not the requested ${show(f.intended)}`,
+  );
+  return (
+    ` A re-read shows ${fields.join("; ")} — another edit (e.g. the Calibre GUI) or Calibre's own ` +
+    "normalization may explain it."
+  );
 }

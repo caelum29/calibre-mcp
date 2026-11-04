@@ -493,11 +493,40 @@
                 },
                 "title": {
                   "type": "string"
+                },
+                "warnings": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
                 }
               },
               "required": [
                 "id",
                 "changed"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "confirmedByReRead": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "cause": {
+                  "enum": [
+                    "dropped",
+                    "timeout"
+                  ],
+                  "type": "string"
+                },
+                "id": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "id",
+                "cause"
               ],
               "type": "object"
             },
@@ -535,6 +564,12 @@
             "type": "boolean"
           },
           "retryIds": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          },
+          "unchanged": {
             "items": {
               "type": "number"
             },
@@ -2409,6 +2444,13 @@
               "type": "object"
             },
             "type": "array"
+          },
+          "confirmedByReRead": {
+            "enum": [
+              "dropped",
+              "timeout"
+            ],
+            "type": "string"
           },
           "id": {
             "type": "number"
