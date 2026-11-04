@@ -24,13 +24,23 @@ pnpm eval --modes hybrid       # subset of modes
 pnpm eval --live               # UNVERIFIED spot check against the real library index (skip in CI)
 pnpm eval --rerank off         # disable the shipped D-011 rerank stage (on by default)
 pnpm eval --rrf-weights 1.5,1.0  # weighted-RRF (vector,keyword) override for this run only (#142 sweep seam)
-pnpm eval --gate              # PASS/FAIL vs thresholds.json + its frozen baseline; exit 1 on a failed gate (~8 min standalone)
+pnpm eval --gate              # two passes (rerank ON, then OFF) vs their frozen baselines; exit 1 if either fails (~8 min standalone)
 ```
 
 `--gate` checks, per `thresholds.json`: per-query Hit@1 non-regression per mode, negatives
 flagged (6/6 hybrid+vector), figure-caption query count + hybrid floors, figure-negative query
 count (its flagged rate stays informational until the figures floor is calibrated), the
 heading front-matter block, and score drift (aggregates ±0.005, per-query maxScore ±0.01).
+
+It then runs a second, **fusion-only pass** with the reranker off (`thresholds.fusionOnly`,
+#356). With rerank ON, `RERANK_POOL` (30) covers the whole fixture, so the cross-encoder
+re-sorts every candidate and a fusion regression can't show (ON hybrid = vector on every
+positive). The OFF pass compares per-query Hit@1 to its own frozen baseline
+(`reports/2026-11-04-b1c8ce2-rerankoff.json`): no query solved there may break, in any mode.
+Cross-lingual drops are listed as report-only (OFF hybrid solves 0/8 today). Both passes
+print, then `OVERALL GATE`. The OFF pass skips the reranker, so it adds only seconds.
+`--gate` rejects `--rerank` (it sets rerank per pass) but honours `--rrf-weights`, which is
+how the tier was proven to see fusion: `--rrf-weights 0,1` turns OFF red while ON stays green.
 
 Every run also prints, after the per-mode headline:
 
@@ -78,9 +88,11 @@ Every run also prints, after the per-mode headline:
   until Artem confirms them.
 - `thresholds.json` — every eval gate rule, each declared and committed BEFORE the run that
   measures it (D-012 protocol; Phase B record = issue #85 verdict comment). `baselineReport`
-  names the frozen report the gates compare against.
+  names the frozen report the gates compare against; `fusionOnly.baselineReport` names the
+  OFF pass's own.
 - `gate.ts` — the mechanical PASS/FAIL behind `pnpm eval --gate`: per-query Hit@1
-  non-regression, figure-caption floors, front-matter block, score drift.
+  non-regression, figure-caption floors, front-matter block, score drift; plus
+  `evaluateFusionOnlyGate` for the OFF pass.
 - `saturation.ts` — headroom share + saturation warning printed by every run (#365).
 - `rrf-sweep.sh` + `rrf-sweep.ts`, `rerank-floor.ts` — one-off tuning scorers (#142 RRF
   weights, RERANK_FLOOR) over committed reports, gated by their `thresholds.json` blocks.
