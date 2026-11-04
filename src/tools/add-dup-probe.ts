@@ -4,7 +4,13 @@
 // advisory: callers treat any failure as "no hint", never as an add failure.
 
 import { foldAccents } from "../domain/curation/normalize.js";
-import { isbnKey, matchAddedBook, MAX_PROBED, type PossibleDuplicate } from "../domain/curation/add-probe.js";
+import {
+  isbnKey,
+  mainTitle,
+  matchAddedBook,
+  MAX_PROBED,
+  type PossibleDuplicate,
+} from "../domain/curation/add-probe.js";
 import type { BaseDeps } from "./deps.js";
 
 /** Candidate pool per query; a real duplicate of one title is a handful of books at most. */
@@ -38,13 +44,27 @@ export async function probeDuplicates(
       .filter(Boolean)
       .slice(0, 8);
     const titleIds = words.length > 0 ? await searchIds(deps, `title:"${words.join(" ")}"`, library) : [];
+    // `title:"…"` is a contains match: "Clean Code A Handbook" never finds "Clean Code" (#370).
+    const main = searchable(mainTitle(added.title) ?? "");
+    const mainIds = main ? await searchIds(deps, `title:"${escapeQuoted(main)}"`, library) : [];
 
-    const pool = await deps.content.booksByIds([...new Set([...isbnIds, ...titleIds])], library);
+    const pool = await deps.content.booksByIds([...new Set([...isbnIds, ...titleIds, ...mainIds])], library);
     const candidates = [...pool.values()].filter((b) => b !== null && b !== undefined);
     const hit = matchAddedBook(added, candidates);
     if (hit) duplicates.push(hit);
   }
   return duplicates;
+}
+
+// A leading `=` (exact) / `~` (regex) / `^` turns Calibre's `title:` into another match kind; an
+// invalid regex throws and degrades the whole probe. The words query can't start with one.
+function searchable(main: string): string {
+  return main.replace(/^[\s=~^]+/, "");
+}
+
+// Calibre's quoted search string escapes `\` and `"` with a backslash.
+function escapeQuoted(s: string): string {
+  return s.replace(/[\\"]/g, "\\$&");
 }
 
 /** One advisory line per flagged book, with the exact next call to compare them. */
