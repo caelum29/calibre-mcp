@@ -1,0 +1,20 @@
+test/semantic/build-progress-names.test.ts
+  s_47d5e04ea2bed6::t_257ebd686c952a 66-67,86-87,89
+  s_47d5e04ea2bed6::t_b44bbfbccd8cf8 1-65,68-85,88,90-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "20bbf4846c0939842f93d68b1fdbc2dbbeb02614",
+  "prompts": {},
+  "sessions": {
+    "s_47d5e04ea2bed6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9de64faa-04cf-41c9-bdcb-69c1f8f940f2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
