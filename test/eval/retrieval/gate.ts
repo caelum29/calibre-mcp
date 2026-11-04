@@ -4,7 +4,7 @@
 // this module only mechanizes them. The per-query drop diff is a mandatory artifact even
 // when the gate is green — every dropped query needs a human explanation in the report doc.
 
-import type { EvalReport, Mode, PerQueryRow } from "./harness.js";
+import type { EvalReport, Mode, PerQueryRow, QueryKind } from "./harness.js";
 import type { AggregateMetrics } from "./metrics.js";
 
 /** Shape of thresholds.json (extra $comment keys tolerated). */
@@ -40,6 +40,18 @@ export interface Thresholds {
     maxScoreEpsilon: number;
     /** Modes whose maxScore is a cosine (keyword maxScore is bm25 — a different scale). */
     maxScoreModes: Mode[];
+  };
+  /**
+   * Fusion-only tier (#356): a --rerank off run vs its own frozen baseline, because with rerank
+   * ON the cross-encoder re-sorts the whole fixture and hides fusion. Absent → no OFF pass.
+   */
+  fusionOnly?: {
+    /** Frozen --rerank off report; set by the freeze commit after the rule commit (D-012). */
+    baselineReport?: string;
+    rerank: "off";
+    nonRegression: Partial<Record<Mode, { maxBrokenHit1Queries: number }>>;
+    /** Kinds whose drops are listed but never fail the gate. */
+    reportOnlyKinds: QueryKind[];
   };
 }
 
@@ -181,6 +193,15 @@ export function evaluateGate(current: EvalReport, baseline: EvalReport, t: Thres
   if (t.scoreDrift) checks.push(...scoreDriftChecks(current, baseline, t.scoreDrift));
 
   return { pass: checks.every((c) => !c.active || c.pass), checks, drops };
+}
+
+/** Stub (#356 RED). */
+export function evaluateFusionOnlyGate(
+  _current: EvalReport,
+  _baseline: EvalReport,
+  _cfg: NonNullable<Thresholds["fusionOnly"]>,
+): GateResult {
+  return { pass: true, checks: [], drops: [] };
 }
 
 const AGG_KEYS = ["hit1", "recall5", "mrr", "ndcg10"] as const;
