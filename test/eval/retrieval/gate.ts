@@ -384,6 +384,13 @@ export function evaluateListDiff(
   }
   const noReason = entries.filter((e) => e.reason.trim() === "").map((e) => key(e.mode, e.id));
   const unused = entries.map((e) => key(e.mode, e.id)).filter((k) => !used.has(k));
+  // a stale entry stays armed: a later regression to exactly that list would pass silently
+  const stale = unused.filter((k) => !noReason.includes(k));
+  const entriesDetail = noReason.length
+    ? `${entries.length} entries, ${noReason.length} without a reason: ${noReason.join(", ")}`
+    : stale.length
+      ? `${entries.length} entries, ${stale.length} stale (allow no current change — delete them): ${stale.join(", ")}`
+      : `${entries.length} entries, all with a reason`;
   const checks: GateCheck[] = [
     {
       name: `top-${opts.topK} list diff (${opts.tier})`,
@@ -394,10 +401,8 @@ export function evaluateListDiff(
     {
       name: `allow-file entries (${opts.tier})`,
       active: true,
-      pass: noReason.length === 0,
-      detail: noReason.length
-        ? `${entries.length} entries, ${noReason.length} without a reason: ${noReason.join(", ")}`
-        : `${entries.length} entries, all with a reason`,
+      pass: noReason.length === 0 && stale.length === 0,
+      detail: entriesDetail,
     },
     {
       // an entry that allows nothing is stale (re-frozen baseline, or the change never happened)

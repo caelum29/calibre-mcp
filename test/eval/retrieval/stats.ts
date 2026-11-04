@@ -198,6 +198,26 @@ export function compareReports(a: EvalReport, b: EvalReport): CompareRow[] {
   return rows;
 }
 
+/**
+ * Warnings for modes where fewer queries paired than either report holds — e.g. fixture vs live
+ * would otherwise compare a silent 24-query subset as if it were the whole set.
+ */
+export function pairingWarnings(a: EvalReport, b: EvalReport, labelA = "a", labelB = "b"): string[] {
+  const scored = (r: EvalReport, mode: Mode) => r.perQuery.filter((q) => q.mode === mode && q.metrics);
+  const out: string[] = [];
+  for (const mode of a.meta.modes.filter((m) => b.meta.modes.includes(m))) {
+    const aIds = new Set(scored(a, mode).map((q) => q.id));
+    const bIds = scored(b, mode).map((q) => q.id);
+    const paired = bIds.filter((id) => aIds.has(id)).length;
+    if (paired < aIds.size || paired < bIds.length) {
+      out.push(
+        `WARNING: ${mode} pairs only ${paired} queries — ${labelA} has ${aIds.size}, ${labelB} has ${bIds.length} with rank metrics; the rest are not compared`,
+      );
+    }
+  }
+  return out;
+}
+
 const signed = (x: number) => `${x >= 0 ? "+" : "-"}${Math.abs(x).toFixed(3)}`;
 
 /** Fixed-width text table for the CLI (stdout). */

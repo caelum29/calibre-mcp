@@ -52,7 +52,7 @@ import {
 } from "./gate.js";
 import { ALL_MODES, renderMarkdown, runRetrievalEval, type EvalReport, type Mode } from "./harness.js";
 import { saturationLines } from "./saturation.js";
-import { compareReports, renderCompare } from "./stats.js";
+import { compareReports, pairingWarnings, renderCompare } from "./stats.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const progress = (msg: string) => process.stderr.write(`[eval] ${msg}\n`);
@@ -271,7 +271,12 @@ function mergeGates(a: GateResult, b: GateResult): GateResult {
 /** `--compare`: paired per-kind stats of two reports already on disk; never runs an eval. */
 function compareFiles([a, b]: [string, string]): void {
   const read = (f: string) => JSON.parse(readFileSync(f, "utf8")) as EvalReport;
-  process.stdout.write(`${renderCompare(compareReports(read(a), read(b)), path.basename(a), path.basename(b))}\n`);
+  const [ra, rb] = [read(a), read(b)];
+  const [la, lb] = [path.basename(a), path.basename(b)];
+  const warnings = pairingWarnings(ra, rb, la, lb);
+  for (const w of warnings) progress(w);
+  // warnings also follow the table, so a pasted table can't lose them
+  process.stdout.write(`${[renderCompare(compareReports(ra, rb), la, lb), ...warnings].join("\n")}\n`);
 }
 
 async function main(): Promise<void> {
