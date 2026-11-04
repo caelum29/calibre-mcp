@@ -1,0 +1,30 @@
+src/app/write-policy.ts
+  s_0fe737495ddd73::t_05b6751a57623c 75,80-81,83-86,92-96,102-107
+  s_0fe737495ddd73::t_31348a2813d1f2 108-109
+test/tools/write-drop-any-attempt-370.test.ts
+  s_0fe737495ddd73::t_02a15fdfef2b8e 1-44,47-51,53-63,66-171
+  s_0fe737495ddd73::t_317b0060c3cb80 45-46,52,64-65
+test/tools/write-retry-dropped.handler.test.ts
+  s_0fe737495ddd73::t_58e59a3c24afaa 80-81,83
+src/tools/calibre_bulk_update.ts
+  s_0fe737495ddd73::t_087d49bbdcaf5d 369,400-404
+  s_0fe737495ddd73::t_8313140dbe59ed 270-271,276-281,423,425,432
+  s_0fe737495ddd73::t_a230b519d70740 22-23,268-269,289-296,368,405-422,424,426-431,433-445
+  s_0fe737495ddd73::t_9a69adef3d7ee9 282-285
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "555f69f282ab9de458090af95945d20581fc6350",
+  "prompts": {},
+  "sessions": {
+    "s_0fe737495ddd73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "657126b7-d6dc-4a50-bfed-f6007aa3f3a6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
