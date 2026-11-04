@@ -24,6 +24,14 @@ export interface LogRecord {
   meta?: unknown;
 }
 
+/** A recentErrors entry: the newest occurrence of one error and how often it repeated (#370). */
+export interface RecentError extends LogRecord {
+  /** Occurrences while it stayed in the ring; 1 = once. */
+  count: number;
+  /** First occurrence, only when count > 1 — `ts` is the newest. */
+  firstTs?: string;
+}
+
 /** The four level methods — all that handlers and services need (and what tests fake). */
 export interface LogSink {
   debug(msg: string, meta?: unknown): void;
@@ -60,8 +68,8 @@ export interface Logger extends LogSink {
   setClient(name: string | undefined): void;
   /** Run `fn` with every log line inside it tagged {tool, call}. */
   withContext<T>(c: LogContext, fn: () => T): T;
-  /** Last error-level records, oldest first (for calibre_ping self-diagnosis). */
-  recentErrors(): LogRecord[];
+  /** Last distinct error-level records, oldest first, repeats collapsed (for calibre_ping self-diagnosis). */
+  recentErrors(): RecentError[];
   /** Today's log file, or null when the file sink is off. */
   currentFile(): string | null;
 }
@@ -71,6 +79,9 @@ const FILE_RE = new RegExp(`^${FILE_PREFIX}(\\d{4}-\\d{2}-\\d{2})\\.jsonl$`);
 /** Daily files kept, today included. */
 export const RETENTION_DAYS = 7;
 export const RECENT_ERRORS_MAX = 20;
+// Per-call timing/correlation fields: two otherwise identical errors always differ in these,
+// so they are left out of the repeat key. Book ids, messages and args stay in it.
+const VOLATILE_META = new Set(["durationMs", "rpcId", "traceId", "parentSpanId"]);
 const STRING_MAX = 500;
 const ARRAY_MAX = 20;
 const DEPTH_MAX = 4;
@@ -189,7 +200,9 @@ isError results log at warn (the model fixes them by changing its call) — exce
 errorCode ${SERVER_FAULT_CODES.join(", ")}. Every error-level line (those faults, \`tool threw\`,
 inner failures such as \`calibredb failed\`) is what calibre_ping.recentErrors shows, so one fault may appear twice there
 (the inner line with its details, then the closing \`tool call\` line with errorCode + hint).
-Per-book faults (\`extraction_failed\` on a scanned PDF, \`timeout\` on a huge book) repeat across a batch and can fill the
+Repeats collapse into one entry with count (+ firstTs; ts is the newest), keyed on msg + tool + meta without the per-call
+fields ${[...VOLATILE_META].join(", ")} — so a burst of one error never evicts older distinct ones.
+Per-book faults (\`extraction_failed\` on a scanned PDF, \`timeout\` on a huge book) differ by book and still fill the
 ${RECENT_ERRORS_MAX}-slot ring on their own — read the daily file for older errors.
 The home dir is written as \`~\`. Lines may contain book titles, ids and search queries — never book text.
 
@@ -221,7 +234,8 @@ export function createLogger(io: LoggerIo = {}): Logger {
   const writeStderr = io.stderr ?? ((s: string) => void process.stderr.write(s));
   const now = io.now ?? (() => new Date());
   const ctx = new AsyncLocalStorage<LogContext>();
-  const recent: LogRecord[] = [];
+  // Insertion order = recency (a repeat is re-inserted), so the first key is the eviction victim.
+  const recent = new Map<string, RecentError>();
   let minRank = LEVEL_RANK.info;
   let dir: string | null = null;
   let fileDay = "";
@@ -269,10 +283,16 @@ export function createLogger(io: LoggerIo = {}): Logger {
     // Prefix keeps our lines greppable inside host logs (Desktop main.log mixes every server).
     writeStderr(`[calibre-mcp] ${json}\n`);
     fileWrite(`${json}\n`, at);
-    if (lvl === "error") {
-      recent.push(rec);
-      if (recent.length > RECENT_ERRORS_MAX) recent.shift();
-    }
+    if (lvl === "error") remember(rec);
+  }
+
+  // Collapse a repeat into its existing entry so a burst can't evict older distinct errors (#370).
+  function remember(rec: LogRecord): void {
+    const key = repeatKey(rec);
+    const prev = recent.get(key);
+    recent.delete(key);
+    recent.set(key, prev ? { ...rec, count: prev.count + 1, firstTs: prev.firstTs ?? prev.ts } : { ...rec, count: 1 });
+    if (recent.size > RECENT_ERRORS_MAX) recent.delete(recent.keys().next().value!);
   }
 
   return {
@@ -305,13 +325,27 @@ export function createLogger(io: LoggerIo = {}): Logger {
     },
 
     recentErrors() {
-      return [...recent];
+      return [...recent.values()];
     },
 
     currentFile() {
       return dir && !fileBroken ? logFilePath(dir, now()) : null;
     },
   };
+}
+
+/** Repeat identity of an error record: msg + tool + meta without the per-call fields. */
+function repeatKey(rec: LogRecord): string {
+  const m = rec.meta;
+  const meta =
+    m !== null && typeof m === "object" && !Array.isArray(m)
+      ? Object.fromEntries(Object.entries(m).filter(([k]) => !VOLATILE_META.has(k)))
+      : m;
+  try {
+    return JSON.stringify([rec.msg, rec.tool ?? null, meta ?? null]);
+  } catch {
+    return JSON.stringify([rec.msg, rec.tool ?? null, "[unserializable]"]);
+  }
 }
 
 /** Process-wide logger. Unconfigured = info level, stderr only (tests, catalog generator). */

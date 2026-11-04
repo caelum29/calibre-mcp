@@ -30,8 +30,8 @@ dependency are present, how many vectors the index holds, and the index generati
 (`indexVersion`, read from the index itself — flagged **stale** with a rebuild hint when it
 doesn't match the running server). It also prints the server version, MCP SDK version, `calibredb` path, Content Server URL and write-gate state, plus a per-library index line (`Programming Books: 1064/1092 indexed · … · Reaserch Books: none`) so unindexed books are visible; books indexed keyword-only (FTS-searchable, out of semantic search's reach) are labelled, e.g. `1064/1092 indexed (40 without embeddings)`.
 Libraries the server is currently failing fast after a Calibre timeout are listed as
-`busy: library "…"` (`busyLibraries`). It also lists the server's recent errors (the last 20, newest first, each with its tool and
-`call` id) and the path of today's log file — see [Troubleshooting → Logs](TROUBLESHOOTING.md#logs).
+`busy: library "…"` (`busyLibraries`). It also lists the server's recent errors (the last 20 distinct ones, newest first, each with its tool and
+`call` id; a repeated error is one entry with `count` and `firstTs`, shown as `(×N since …)`) and the path of today's log file — see [Troubleshooting → Logs](TROUBLESHOOTING.md#logs).
 Use it first when something isn't working, or to answer "why is semantic search off?".
 
 No parameters.
