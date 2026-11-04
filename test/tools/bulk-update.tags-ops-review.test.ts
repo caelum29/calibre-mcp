@@ -11,8 +11,8 @@ import { book, fakeBulkDeps, textOf } from "./fake-bulk-tags.js";
 const schema = z.object(bulkUpdateTool.inputSchema);
 const run = (args: Record<string, unknown>, d: BaseDeps) => bulkUpdateTool.handler(schema.parse(args), d);
 
-// Skipping no-op books was dropped (orchestrator, round 1): the frozen #321 RED test pins a
-// write for them. These two cases still hold.
+// No-op tags merges are skipped since #370 (bulk-update-tags-noop-370.test.ts); a book with
+// other changes, and the changes-only path, are still written.
 describe("tags ops — books with other changes are written (PR #333 review)", () => {
   it("should_still_write_a_book_whose_other_changes_differ", async () => {
     const f = fakeBulkDeps({ selected: [book({ id: 1, tags: ["old"] })] });

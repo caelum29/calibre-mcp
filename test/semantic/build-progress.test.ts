@@ -32,7 +32,7 @@ describe("defaultProgressPath", () => {
     const p = defaultProgressPath("/idx", "../evil/x", false);
     expect(path.dirname(p)).toBe("/idx");
     // exact name: the hash (sha256 of the raw id, first 8 hex) is a persistence contract — changing it orphans resume logs
-    expect(path.basename(p)).toBe("progress-.._evil_x-5d952ef7.jsonl");
+    expect(path.basename(p)).toBe("progress-.._evil_x~5d952ef7.jsonl");
   });
 
   it("leaves library B's resume set empty after library A completes with overlapping ids", () => {
@@ -90,6 +90,6 @@ describe("defaultProgressPath collisions after sanitising (#344)", () => {
   it("appends an 8-hex hash of the raw id only when sanitising changed it", () => {
     const p = defaultProgressPath("/idx", "a:b", false);
     expect(path.dirname(p)).toBe("/idx");
-    expect(path.basename(p)).toMatch(/^progress-a_b-[0-9a-f]{8}\.jsonl$/);
+    expect(path.basename(p)).toMatch(/^progress-a_b~[0-9a-f]{8}\.jsonl$/);
   });
 });
