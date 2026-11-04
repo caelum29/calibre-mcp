@@ -2,7 +2,7 @@
 // embedder, frozen as per-query RANKS (hash-baseline.json) so `pnpm test` catches drift in
 // chunking/FTS/fusion/front-matter in seconds, identically on macOS and Linux CI.
 
-import type { GateResult, Thresholds } from "./gate.js";
+import { evaluateGate, type GateResult, type Thresholds } from "./gate.js";
 import { hashEmbedder } from "./hash-embedder.js";
 import {
   ALL_MODES,
@@ -69,24 +69,53 @@ export function toRankBaseline(report: EvalReport): RankBaseline {
   };
 }
 
-/** Stub (#357 RED). */
-export function fromRankBaseline(_b: RankBaseline): EvalReport {
+/**
+ * Rebuild a report-shaped view of a rank baseline for evaluateGate. Only rank-derived metrics are
+ * exact: hit1 and rr. recall5/ndcg10 need the labels, which the baseline doesn't keep, so they are
+ * NaN — the gate reads hit1 only, and NaN poisons any accidental aggregate.
+ */
+export function fromRankBaseline(b: RankBaseline): EvalReport {
+  const perQuery: PerQueryRow[] = b.perQuery.map((r) => ({
+    id: r.id,
+    kind: r.kind,
+    scope: "library",
+    mode: r.mode,
+    ru: false,
+    retrieved: r.retrieved,
+    ...(r.rank === undefined
+      ? {}
+      : {
+          metrics: {
+            hit1: r.rank === 1 ? 1 : 0,
+            rr: r.rank === null ? 0 : 1 / r.rank,
+            recall5: Number.NaN,
+            ndcg10: Number.NaN,
+          },
+        }),
+  }));
   return {
-    meta: {} as EvalReport["meta"],
+    meta: { modes: b.modes, gitSha: b.gitSha, queryCount: b.queryCount } as EvalReport["meta"],
     overall: {},
     ruInvolved: {},
     byKind: {},
     negatives: {},
     figureNegatives: {},
-    perQuery: [],
+    perQuery,
   };
 }
 
-/** Stub (#357 RED). */
+/**
+ * The tier-0 gate: evaluateGate with only the per-query Hit@1 non-regression rule, current hash
+ * run vs the frozen rank baseline. Both sides go through ranks, so float noise can't flip it.
+ */
 export function evaluateHashGate(
-  _current: EvalReport,
-  _baseline: RankBaseline,
-  _rule: NonNullable<Thresholds["hashGate"]>,
+  current: EvalReport,
+  baseline: RankBaseline,
+  rule: NonNullable<Thresholds["hashGate"]>,
 ): GateResult {
-  return { pass: false, checks: [], drops: [] };
+  const ranked = fromRankBaseline(toRankBaseline(current));
+  return evaluateGate(ranked, fromRankBaseline(baseline), {
+    baselineReport: rule.baselineReport ?? "hash-baseline.json",
+    nonRegression: rule.nonRegression,
+  });
 }

@@ -102,11 +102,22 @@ Every run also prints, after the per-mode headline:
 - `hash-embedder.ts` + `harness.test.ts` — model-free smoke tests that run in the normal
   `pnpm test` suite (seconds): plumbing, query-set contract, determinism, and the
   "deliberately broken ranking degrades the metrics" proof that the harness measures.
+- `hash-gate.ts` + `hash-gate.test.ts` + `hash-baseline.json` — the **tier-0 gate** inside
+  `pnpm test` (#357, `thresholds.hashGate`). The full golden set runs through the real
+  pipeline with the hash embedder (reranker off, all three modes), and every query that had
+  Hit@1 = 1 in the frozen `hash-baseline.json` must still have it — same rule as
+  `nonRegression`, via `evaluateGate`. The baseline stores per-query **ranks**, never float
+  scores, so a macOS-frozen baseline holds on Linux CI (Node 22.16 / 22 / 24). It runs in ~3 s
+  and catches drift in chunking, FTS, stemming, fusion and front-matter demotion. It does not
+  measure quality: the hash embedder is lexical-only. A reversed-ranking store
+  (`broken-store.ts`) fails it in every mode. After a deliberate pipeline change, commit any
+  rule change first, then re-freeze with `pnpm eval:hash-freeze` (D-012). A rank that differs
+  between platforms is a nondeterminism bug to fix, never a reason to loosen the rule.
 
 ### Rules
 
 - `pnpm eval` is NOT part of `pnpm test` (it needs the embedding model and real minutes);
-  the smoke tests are.
+  the smoke tests and the tier-0 hash gate are.
 - Offline determinism: fixed model (`Xenova/multilingual-e5-small` q8), no network after
   the first model download, identical JSON on re-run.
 - Reports are committed. Baseline first, then one report per tuning change, so every
