@@ -45,7 +45,7 @@ export async function probeDuplicates(
       .slice(0, 8);
     const titleIds = words.length > 0 ? await searchIds(deps, `title:"${words.join(" ")}"`, library) : [];
     // `title:"…"` is a contains match: "Clean Code A Handbook" never finds "Clean Code" (#370).
-    const main = mainTitle(added.title);
+    const main = searchable(mainTitle(added.title) ?? "");
     const mainIds = main ? await searchIds(deps, `title:"${escapeQuoted(main)}"`, library) : [];
 
     const pool = await deps.content.booksByIds([...new Set([...isbnIds, ...titleIds, ...mainIds])], library);
@@ -54,6 +54,12 @@ export async function probeDuplicates(
     if (hit) duplicates.push(hit);
   }
   return duplicates;
+}
+
+// A leading `=` (exact) / `~` (regex) / `^` turns Calibre's `title:` into another match kind; an
+// invalid regex throws and degrades the whole probe. The words query can't start with one.
+function searchable(main: string): string {
+  return main.replace(/^[\s=~^]+/, "");
 }
 
 // Calibre's quoted search string escapes `\` and `"` with a backslash.
