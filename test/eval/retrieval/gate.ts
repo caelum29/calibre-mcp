@@ -11,12 +11,13 @@ import type { AggregateMetrics } from "./metrics.js";
 export interface Thresholds {
   baselineReport: string;
   nonRegression: Partial<Record<Mode, { maxBrokenHit1Queries: number; negativesFlagged?: number }>>;
-  figureCaption: {
+  /** Absent → no figure-caption checks (the #357 hash gate reuses evaluateGate without them). */
+  figureCaption?: {
     queryCount: { min: number; max: number };
     gatedModes: Mode[];
     measuredUngatedModes?: Mode[];
   } & Partial<Record<Mode, { hit1Min: number; ndcg10Min: number }>>;
-  figureNegative: {
+  figureNegative?: {
     /** Flips to true once the figures cosine floor is calibrated (#85 two-tier protocol). */
     active?: boolean;
     queryCount: { min: number; max: number };
@@ -52,6 +53,14 @@ export interface Thresholds {
     nonRegression: Partial<Record<Mode, { maxBrokenHit1Queries: number }>>;
     /** Kinds whose drops are listed but never fail the gate. */
     reportOnlyKinds: QueryKind[];
+  };
+  /** Tier-0 hash-embedder gate inside `pnpm test` (#357): per-query rank baseline, Hit@1 rule. */
+  hashGate?: {
+    /** hash-baseline.json, relative to the retrieval dir; set by the freeze commit (D-012). */
+    baselineReport?: string;
+    nonRegression: Partial<Record<Mode, { maxBrokenHit1Queries: number }>>;
+    /** Vitest timeout for one full hash run — the "< 30 s" budget. */
+    maxDurationMs: number;
   };
 }
 
@@ -131,58 +140,10 @@ export function evaluateGate(current: EvalReport, baseline: EvalReport, t: Thres
     }
   }
 
-  // 2. figure-caption kind: gated modes vs declared floors; diagnostics excluded (#85 item 4).
-  const gatedFig = (mode: Mode) =>
-    rowsOf(current, mode).filter((r) => r.kind === "figure-caption" && r.diagnostic !== true);
-  const figCount = gatedFig(current.meta.modes[0] ?? "hybrid").length;
-  checks.push({
-    name: "figure-caption: gated query count",
-    active: true,
-    pass: figCount >= t.figureCaption.queryCount.min && figCount <= t.figureCaption.queryCount.max,
-    detail: `${figCount} gated queries (want ${t.figureCaption.queryCount.min}-${t.figureCaption.queryCount.max})`,
-  });
-  for (const mode of t.figureCaption.gatedModes) {
-    const floors = t.figureCaption[mode];
-    const rows = gatedFig(mode);
-    const hit1 = avg(rows.map((r) => r.metrics?.hit1 ?? 0));
-    const ndcg = avg(rows.map((r) => r.metrics?.ndcg10 ?? 0));
-    checks.push({
-      name: `figure-caption ${mode}`,
-      active: true,
-      pass: floors !== undefined && hit1 >= floors.hit1Min && ndcg >= floors.ndcg10Min,
-      detail: `Hit@1 ${hit1.toFixed(3)} (≥${floors?.hit1Min}), nDCG@10 ${ndcg.toFixed(3)} (≥${floors?.ndcg10Min})`,
-    });
+  if (t.figureCaption) checks.push(...figureCaptionChecks(current, t.figureCaption));
+  if (t.figureNegative) {
+    checks.push(...figureNegativeChecks(current, t.figureNegative, t.figureCaption?.gatedModes[0] ?? "hybrid"));
   }
-  for (const mode of t.figureCaption.measuredUngatedModes ?? []) {
-    const rows = gatedFig(mode);
-    if (rows.length === 0) continue;
-    checks.push({
-      name: `figure-caption ${mode} (measured, ungated)`,
-      active: false,
-      pass: true,
-      detail: `Hit@1 ${avg(rows.map((r) => r.metrics?.hit1 ?? 0)).toFixed(3)}, nDCG@10 ${avg(rows.map((r) => r.metrics?.ndcg10 ?? 0)).toFixed(3)}`,
-    });
-  }
-
-  // 3. figure-negative kind: structural count is active now; the flagged-rate gate arms only
-  //    once the figures cosine floor is calibrated (thresholds.figureNegative.active).
-  const figNegs = rowsOf(current, t.figureCaption.gatedModes[0] ?? "hybrid").filter(
-    (r) => r.kind === "figure-negative",
-  );
-  checks.push({
-    name: "figure-negative: query count",
-    active: true,
-    pass: figNegs.length >= t.figureNegative.queryCount.min && figNegs.length <= t.figureNegative.queryCount.max,
-    detail: `${figNegs.length} queries (want ${t.figureNegative.queryCount.min}-${t.figureNegative.queryCount.max})`,
-  });
-  const negActive = t.figureNegative.active === true;
-  const flaggedRate = figNegs.length === 0 ? 0 : figNegs.filter((r) => r.flagged === true).length / figNegs.length;
-  checks.push({
-    name: `figure-negative: flagged rate${negActive ? "" : " (inactive — floor uncalibrated)"}`,
-    active: negActive,
-    pass: flaggedRate >= t.figureNegative.flaggedRate,
-    detail: `flagged ${flaggedRate.toFixed(2)} (need ${t.figureNegative.flaggedRate})`,
-  });
 
   // 4. heading front-matter trap (#102): new queries the baseline predates, so the
   //    non-regression diff above can't see them. Missing rows count as misses.
@@ -253,6 +214,73 @@ export function evaluateFusionOnlyGate(
     }
   }
   return { pass: checks.every((c) => !c.active || c.pass), checks, drops };
+}
+
+/** figure-caption kind: gated modes vs declared floors; diagnostics excluded (#85 item 4). */
+function figureCaptionChecks(current: EvalReport, fig: NonNullable<Thresholds["figureCaption"]>): GateCheck[] {
+  const checks: GateCheck[] = [];
+  const gatedFig = (mode: Mode) =>
+    rowsOf(current, mode).filter((r) => r.kind === "figure-caption" && r.diagnostic !== true);
+  const figCount = gatedFig(current.meta.modes[0] ?? "hybrid").length;
+  checks.push({
+    name: "figure-caption: gated query count",
+    active: true,
+    pass: figCount >= fig.queryCount.min && figCount <= fig.queryCount.max,
+    detail: `${figCount} gated queries (want ${fig.queryCount.min}-${fig.queryCount.max})`,
+  });
+  for (const mode of fig.gatedModes) {
+    const floors = fig[mode];
+    const rows = gatedFig(mode);
+    const hit1 = avg(rows.map((r) => r.metrics?.hit1 ?? 0));
+    const ndcg = avg(rows.map((r) => r.metrics?.ndcg10 ?? 0));
+    checks.push({
+      name: `figure-caption ${mode}`,
+      active: true,
+      pass: floors !== undefined && hit1 >= floors.hit1Min && ndcg >= floors.ndcg10Min,
+      detail: `Hit@1 ${hit1.toFixed(3)} (≥${floors?.hit1Min}), nDCG@10 ${ndcg.toFixed(3)} (≥${floors?.ndcg10Min})`,
+    });
+  }
+  for (const mode of fig.measuredUngatedModes ?? []) {
+    const rows = gatedFig(mode);
+    if (rows.length === 0) continue;
+    checks.push({
+      name: `figure-caption ${mode} (measured, ungated)`,
+      active: false,
+      pass: true,
+      detail: `Hit@1 ${avg(rows.map((r) => r.metrics?.hit1 ?? 0)).toFixed(3)}, nDCG@10 ${avg(rows.map((r) => r.metrics?.ndcg10 ?? 0)).toFixed(3)}`,
+    });
+  }
+
+  return checks;
+}
+
+/**
+ * figure-negative kind: structural count is active now; the flagged-rate gate arms only once
+ * the figures cosine floor is calibrated (figureNegative.active).
+ */
+function figureNegativeChecks(
+  current: EvalReport,
+  neg: NonNullable<Thresholds["figureNegative"]>,
+  mode: Mode,
+): GateCheck[] {
+  const checks: GateCheck[] = [];
+  const figNegs = rowsOf(current, mode).filter((r) => r.kind === "figure-negative");
+  checks.push({
+    name: "figure-negative: query count",
+    active: true,
+    pass: figNegs.length >= neg.queryCount.min && figNegs.length <= neg.queryCount.max,
+    detail: `${figNegs.length} queries (want ${neg.queryCount.min}-${neg.queryCount.max})`,
+  });
+  const negActive = neg.active === true;
+  const flaggedRate = figNegs.length === 0 ? 0 : figNegs.filter((r) => r.flagged === true).length / figNegs.length;
+  checks.push({
+    name: `figure-negative: flagged rate${negActive ? "" : " (inactive — floor uncalibrated)"}`,
+    active: negActive,
+    pass: flaggedRate >= neg.flaggedRate,
+    detail: `flagged ${flaggedRate.toFixed(2)} (need ${neg.flaggedRate})`,
+  });
+
+  return checks;
 }
 
 const AGG_KEYS = ["hit1", "recall5", "mrr", "ndcg10"] as const;

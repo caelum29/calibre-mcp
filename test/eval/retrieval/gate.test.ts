@@ -123,7 +123,7 @@ describe("evaluateGate", () => {
     expect(check?.active).toBe(false); // …but it is still measured and printed
     expect(check?.pass).toBe(false);
     // flipping active arms it
-    const armed = { ...thresholds, figureNegative: { ...thresholds.figureNegative, active: true } };
+    const armed = { ...thresholds, figureNegative: { ...thresholds.figureNegative!, active: true } };
     expect(evaluateGate(report(rows), baseline, armed).pass).toBe(false);
   });
 
