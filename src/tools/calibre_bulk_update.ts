@@ -178,7 +178,7 @@ export const bulkUpdateTool = defineTool({
           );
         }
       }
-      const perBook = selection.books.map((b) => {
+      const planBook = (b: Book) => {
         const merge: TagMerge | undefined = tagOps ? mergeTags(b.tags, added, tagsRemove) : undefined;
         // per-book changes: the merged tags differ per book; verify checks this, not the raw params
         const bookChanges = merge ? { ...changes, tags: merge.tags } : changes;
@@ -192,7 +192,8 @@ export const bulkUpdateTool = defineTool({
           warnings: previewWarnings(diff, merge !== undefined),
           book: b, // before-snapshot, needed to verify an ambiguous (timed-out) write
         };
-      });
+      };
+      const perBook = selection.books.map(planBook);
 
       // Preview (default): show the diff, write nothing.
       if (args.preview) {
@@ -244,11 +245,19 @@ export const bulkUpdateTool = defineTool({
       const unchanged: number[] | undefined = tagOps ? [] : undefined;
       // books we only know landed because a re-read confirmed them (#370)
       const confirmed: Confirmed[] = [];
-      for (const [i, b] of perBook.entries()) {
-        // a no-op merge needs no set_metadata; list it so neither channel reads it as missing
-        if (unchanged && b.diff.every((d) => !d.changed)) {
-          unchanged.push(b.id);
-          continue;
+      const isNoop = (p: { diff: FieldDiff[] }) => p.diff.every((d) => !d.changed);
+      for (const [i, planned] of perBook.entries()) {
+        let b = planned;
+        // a no-op merge needs no set_metadata — but the selection snapshot may be stale (a GUI
+        // edit since), so decide on a fresh read; if that fails, write as before (#380 review)
+        if (unchanged && isNoop(b)) {
+          const fresh = await deps.content.getBook(b.id, args.library).catch(() => undefined);
+          const replanned = fresh ? planBook(fresh) : b;
+          if (fresh && isNoop(replanned)) {
+            unchanged.push(b.id);
+            continue;
+          }
+          b = replanned;
         }
         try {
           // set_metadata is idempotent, so transient failures are retried in place (#233)

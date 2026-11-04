@@ -102,13 +102,26 @@ export function foreignValues(before: Book, after: Book, changes: Record<string,
  * time and may shift by the timezone), and numeric strings for series_index/rating.
  */
 export function matchesIntended(field: string, after: unknown, intended: ChangeValue): boolean {
-  const want = splitListString(field, intended);
-  if (sameFieldValue(after, want)) return true;
-  if (field === "tags" || field === "languages") return sameNameSet(after, want);
-  if (field === "authors") return sameNameList(after, want);
-  if (field === "pubdate") return sameDay(after, want);
-  if (field === "series_index" || field === "rating") return sameNumber(after, want);
+  const want = tidy(field, intended);
+  const got = tidy(field, after);
+  if (sameFieldValue(got, want)) return true;
+  if (field === "tags" || field === "languages") return sameNameSet(got, want);
+  if (field === "authors") return sameNameList(got, want);
+  if (field === "pubdate") return sameDay(got, want);
+  if (field === "series_index" || field === "rating") return sameNumber(got, want);
   return false;
+}
+
+// Calibre strips surrounding whitespace and splits an "A & B" author entry, so compare
+// both sides that way: a landed write must not read as unverified over a space (#380 review).
+function tidy(field: string, v: unknown): unknown {
+  if (typeof v === "string") return splitListString(field, v.trim());
+  if (!Array.isArray(v)) return v;
+  return v.flatMap((x: unknown) => {
+    if (typeof x !== "string") return [x];
+    const parts = field === "authors" ? x.split(" & ") : [x];
+    return parts.map((t) => t.trim()).filter(Boolean);
+  });
 }
 
 function sameNameList(a: unknown, b: unknown): boolean {
