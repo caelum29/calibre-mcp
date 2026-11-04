@@ -12,7 +12,7 @@ import {
   previewBookChanges,
   sameItemName,
 } from "../domain/book-fields.js";
-import type { ChangeValue } from "../domain/book-fields.js";
+import type { ChangeValue, FieldDiff } from "../domain/book-fields.js";
 import { CalibreCliTimeoutError } from "../domain/errors.js";
 import { buildScopedQuery, honestyLines, resolveFilter } from "../app/bundles.js";
 import { BookId, CoercedBool, jsonArray, jsonRecord, jsonStringList } from "./coerce.js";
@@ -73,6 +73,8 @@ export const bulkUpdateTool = defineTool({
           // tags_add / tags_remove calls: how many tags this book gains and loses
           tagsAdded: z.number().optional(),
           tagsRemoved: z.number().optional(),
+          // preview: list-replacement and case-rename warnings, same strings as the ⚠ text lines
+          warnings: z.array(z.string()).optional(),
         }),
       )
       .optional(),
@@ -177,12 +179,14 @@ export const bulkUpdateTool = defineTool({
         const merge: TagMerge | undefined = tagOps ? mergeTags(b.tags, added, tagsRemove) : undefined;
         // per-book changes: the merged tags differ per book; verify checks this, not the raw params
         const bookChanges = merge ? { ...changes, tags: merge.tags } : changes;
+        const diff = previewBookChanges(b, bookChanges);
         return {
           id: b.id,
           title: b.title,
           changes: bookChanges,
           merge,
-          diff: previewBookChanges(b, bookChanges),
+          diff,
+          warnings: previewWarnings(diff, merge !== undefined),
           book: b, // before-snapshot, needed to verify an ambiguous (timed-out) write
         };
       });
@@ -199,16 +203,7 @@ export const bulkUpdateTool = defineTool({
               (d.changed ? counts : " (no change)")
             );
           });
-          // a list set replaces the whole list — say so in text, where a one-item set is easy to miss
-          // (not for a tags merge, which keeps what it doesn't remove) — and a case-only edit of a
-          // tag/author renames the shared item on every book
-          const flags = b.diff
-            .flatMap((d) =>
-              [merged(d.field) ? undefined : listReplacementNote(d), ...caseRenameNotes(d)].filter(
-                (n): n is string => !!n,
-              ),
-            )
-            .map((n) => `  ⚠ ${n}`);
+          const flags = b.warnings.map((n) => `  ⚠ ${n}`);
           return `#${b.id} ${b.title}\n${[...parts, ...flags].join("\n")}`;
         });
         const changing = perBook.filter((b) => b.diff.some((d) => d.changed)).length;
@@ -231,6 +226,8 @@ export const bulkUpdateTool = defineTool({
               after: after ?? null,
             })),
             ...(b.merge ? { tagsAdded: b.merge.added, tagsRemoved: b.merge.removed } : {}),
+            // the ⚠ lines of the text, for clients that read only structuredContent (#370)
+            ...(b.warnings.length > 0 ? { warnings: b.warnings } : {}),
           })),
         });
       }
@@ -341,6 +338,19 @@ export const bulkUpdateTool = defineTool({
     }
   },
 });
+
+/**
+ * A book's preview warnings. A list set replaces the whole list — easy to miss for a one-item set
+ * (not for a tags merge, which keeps what it doesn't remove) — and a case-only edit of a
+ * tag/author renames the shared item on every book.
+ */
+function previewWarnings(diff: FieldDiff[], tagsMerged: boolean): string[] {
+  return diff.flatMap((d) =>
+    [tagsMerged && d.field === "tags" ? undefined : listReplacementNote(d), ...caseRenameNotes(d)].filter(
+      (n): n is string => !!n,
+    ),
+  );
+}
 
 /** ` Already current (nothing written): 2, 5.` — the books a tags merge left as they were (#333). */
 function unchangedText(unchanged: number[] | undefined): string {

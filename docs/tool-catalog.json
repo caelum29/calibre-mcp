@@ -493,6 +493,12 @@
                 },
                 "title": {
                   "type": "string"
+                },
+                "warnings": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
                 }
               },
               "required": [
