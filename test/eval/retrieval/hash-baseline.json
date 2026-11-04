@@ -1,0 +1,3139 @@
+{
+  "$comment": "Frozen tier-0 hash-embedder ranks (#357) — see thresholds.json hashGate. Regenerate only via `pnpm eval:hash-freeze`, after committing any rule change (D-012).",
+  "embedder": "hash-fnv1a (test/eval/retrieval/hash-embedder.ts)",
+  "gitSha": "0c9c763",
+  "queryCount": 68,
+  "modes": [
+    "hybrid",
+    "vector",
+    "keyword"
+  ],
+  "perQuery": [
+    {
+      "id": "sp-01",
+      "kind": "semantic-paraphrase",
+      "mode": "hybrid",
+      "rank": 2,
+      "retrieved": [
+        "105",
+        "101",
+        "117",
+        "116",
+        "106",
+        "109",
+        "107",
+        "103",
+        "108",
+        "102"
+      ]
+    },
+    {
+      "id": "sp-02",
+      "kind": "semantic-paraphrase",
+      "mode": "hybrid",
+      "rank": 1,
+      "retrieved": [
+        "102",
+        "107",
+        "116",
+        "104",
+        "101",
+        "108",
+        "117",
+        "105",
+        "103",
+        "110"
+      ]
+    },
+    {
+      "id": "sp-03",
+      "kind": "semantic-paraphrase",
+      "mode": "hybrid",
+      "rank": 2,
+      "retrieved": [
+        "117",
+        "103",
+        "105",
+        "106",
+        "116",
+        "107",
+        "109",
+        "102",
+        "108",
+        "110"
+      ]
+    },
+    {
+      "id": "sp-04",
+      "kind": "semantic-paraphrase",
+      "mode": "hybrid",
+      "rank": 3,
+      "retrieved": [
+        "117",
+        "116",
+        "104",
+        "102",
+        "106",
+        "105",
+        "108",
+        "101",
+        "109",
+        "107"
+      ]
+    },
+    {
+      "id": "sp-05",
+      "kind": "semantic-paraphrase",
+      "mode": "hybrid",
+      "rank": 3,
+      "retrieved": [
+        "116",
+        "107",
+        "105",
+        "102",
+        "117",
+        "106",
+        "110",
+        "104",
+        "101",
+        "108"
+      ]
+    },
+    {
+      "id": "sp-06",
+      "kind": "semantic-paraphrase",
+      "mode": "hybrid",
+      "rank": 1,
+      "retrieved": [
+        "106",
+        "117",
+        "105",
+        "107",
+        "109",
+        "116",
+        "102",
+        "103",
+        "108",
+        "104"
+      ]
+    },
+    {
+      "id": "sp-07",
+      "kind": "semantic-paraphrase",
+      "mode": "hybrid",
+      "rank": 1,
+      "retrieved": [
+        "107",
+        "104",
+        "110",
+        "109",
+        "105",
+        "117",
+        "116",
+        "101",
+        "108",
+        "102"
+      ]
+    },
+    {
+      "id": "sp-08",
+      "kind": "semantic-paraphrase",
+      "mode": "hybrid",
+      "rank": 2,
+      "retrieved": [
+        "117",
+        "108",
+        "106",
+        "101",
+        "105",
+        "109",
+        "103",
+        "102",
+        "116",
+        "104"
+      ]
+    },
+    {
+      "id": "sp-09",
+      "kind": "semantic-paraphrase",
+      "mode": "hybrid",
+      "rank": 2,
+      "retrieved": [
+        "103",
+        "109",
+        "116",
+        "117",
+        "105",
+        "101",
+        "108",
+        "110",
+        "106",
+        "104"
+      ]
+    },
+    {
+      "id": "sp-10",
+      "kind": "semantic-paraphrase",
+      "mode": "hybrid",
+      "rank": 4,
+      "retrieved": [
+        "117",
+        "116",
+        "109",
+        "110",
+        "101",
+        "106",
+        "102",
+        "104",
+        "108",
+        "105"
+      ]
+    },
+    {
+      "id": "sp-11",
+      "kind": "semantic-paraphrase",
+      "mode": "hybrid",
+      "rank": 1,
+      "retrieved": [
+        "101",
+        "107",
+        "117",
+        "106",
+        "116",
+        "104",
+        "103",
+        "109",
+        "108",
+        "102"
+      ]
+    },
+    {
+      "id": "sp-12",
+      "kind": "semantic-paraphrase",
+      "mode": "hybrid",
+      "rank": 1,
+      "retrieved": [
+        "104",
+        "117",
+        "107",
+        "116",
+        "102",
+        "105",
+        "110",
+        "103",
+        "108",
+        "101"
+      ]
+    },
+    {
+      "id": "sp-13",
+      "kind": "semantic-paraphrase",
+      "mode": "hybrid",
+      "rank": 2,
+      "retrieved": [
+        "117",
+        "106",
+        "116",
+        "102",
+        "103",
+        "105",
+        "108",
+        "104",
+        "109",
+        "107"
+      ]
+    },
+    {
+      "id": "sp-14",
+      "kind": "semantic-paraphrase",
+      "mode": "hybrid",
+      "rank": 1,
+      "retrieved": [
+        "103",
+        "117",
+        "116",
+        "104",
+        "105",
+        "109",
+        "102",
+        "108",
+        "110",
+        "106"
+      ]
+    },
+    {
+      "id": "spb-01",
+      "kind": "semantic-paraphrase",
+      "mode": "hybrid",
+      "rank": 1,
+      "retrieved": [
+        "@0-2851"
+      ]
+    },
+    {
+      "id": "spb-02",
+      "kind": "semantic-paraphrase",
+      "mode": "hybrid",
+      "rank": 1,
+      "retrieved": [
+        "@0-2686"
+      ]
+    },
+    {
+      "id": "id-01",
+      "kind": "exact-identifier",
+      "mode": "hybrid",
+      "rank": 1,
+      "retrieved": [
+        "109",
+        "105",
+        "117",
+        "103",
+        "116",
+        "107",
+        "102",
+        "115",
+        "106",
+        "108"
+      ]
+    },
+    {
+      "id": "id-02",
+      "kind": "exact-identifier",
+      "mode": "hybrid",
+      "rank": 1,
+      "retrieved": [
+        "110",
+        "116",
+        "102",
+        "114",
+        "115",
+        "117",
+        "104",
+        "109",
+        "101",
+        "103"
+      ]
+    },
+    {
+      "id": "id-03",
+      "kind": "exact-identifier",
+      "mode": "hybrid",
+      "rank": 3,
+      "retrieved": [
+        "110",
+        "109",
+        "107",
+        "101",
+        "117",
+        "102",
+        "104",
+        "108",
+        "115",
+        "111"
+      ]
+    },
+    {
+      "id": "id-04",
+      "kind": "exact-identifier",
+      "mode": "hybrid",
+      "rank": 1,
+      "retrieved": [
+        "105",
+        "114",
+        "113",
+        "102",
+        "107",
+        "112",
+        "117",
+        "108",
+        "101",
+        "103"
+      ]
+    },
+    {
+      "id": "id-05",
+      "kind": "exact-identifier",
+      "mode": "hybrid",
+      "rank": 2,
+      "retrieved": [
+        "110",
+        "107",
+        "104",
+        "116",
+        "117",
+        "109",
+        "101",
+        "103",
+        "113",
+        "112"
+      ]
+    },
+    {
+      "id": "id-06",
+      "kind": "exact-identifier",
+      "mode": "hybrid",
+      "rank": 1,
+      "retrieved": [
+        "106",
+        "114",
+        "110",
+        "109",
+        "116",
+        "113",
+        "108",
+        "111",
+        "115",
+        "117"
+      ]
+    },
+    {
+      "id": "id-07",
+      "kind": "exact-identifier",
+      "mode": "hybrid",
+      "rank": 2,
+      "retrieved": [
+        "110",
+        "101",
+        "113",
+        "115",
+        "106",
+        "117",
+        "111",
+        "116",
+        "107",
+        "108"
+      ]
+    },
+    {
+      "id": "id-08",
+      "kind": "exact-identifier",
+      "mode": "hybrid",
+      "rank": 4,
+      "retrieved": [
+        "116",
+        "117",
+        "109",
+        "111",
+        "113",
+        "105",
+        "103",
+        "108",
+        "110",
+        "106"
+      ]
+    },
+    {
+      "id": "id-09",
+      "kind": "exact-identifier",
+      "mode": "hybrid",
+      "rank": 1,
+      "retrieved": [
+        "105",
+        "103",
+        "101",
+        "117",
+        "116",
+        "102",
+        "108",
+        "110",
+        "104",
+        "109"
+      ]
+    },
+    {
+      "id": "id-10",
+      "kind": "exact-identifier",
+      "mode": "hybrid",
+      "rank": 1,
+      "retrieved": [
+        "110",
+        "116",
+        "113",
+        "102",
+        "107",
+        "108",
+        "114",
+        "106",
+        "104",
+        "117"
+      ]
+    },
+    {
+      "id": "idb-01",
+      "kind": "exact-identifier",
+      "mode": "hybrid",
+      "rank": 1,
+      "retrieved": [
+        "@0-2692"
+      ]
+    },
+    {
+      "id": "idb-02",
+      "kind": "exact-identifier",
+      "mode": "hybrid",
+      "rank": 1,
+      "retrieved": [
+        "@0-2604"
+      ]
+    },
+    {
+      "id": "xl-01",
+      "kind": "cross-lingual",
+      "mode": "hybrid",
+      "rank": 7,
+      "retrieved": [
+        "113",
+        "114",
+        "115",
+        "111",
+        "112",
+        "117",
+        "108",
+        "109",
+        "103",
+        "106"
+      ]
+    },
+    {
+      "id": "xl-02",
+      "kind": "cross-lingual",
+      "mode": "hybrid",
+      "rank": null,
+      "retrieved": [
+        "113",
+        "114",
+        "115",
+        "112",
+        "111",
+        "103",
+        "106",
+        "117",
+        "116",
+        "105"
+      ]
+    },
+    {
+      "id": "xl-03",
+      "kind": "cross-lingual",
+      "mode": "hybrid",
+      "rank": null,
+      "retrieved": [
+        "112",
+        "114",
+        "113",
+        "111",
+        "115",
+        "109",
+        "117",
+        "116",
+        "110",
+        "104"
+      ]
+    },
+    {
+      "id": "xl-04",
+      "kind": "cross-lingual",
+      "mode": "hybrid",
+      "rank": null,
+      "retrieved": [
+        "113",
+        "114",
+        "115",
+        "112",
+        "111",
+        "117",
+        "116",
+        "108",
+        "106",
+        "104"
+      ]
+    },
+    {
+      "id": "xl-05",
+      "kind": "cross-lingual",
+      "mode": "hybrid",
+      "rank": null,
+      "retrieved": [
+        "117",
+        "116",
+        "108",
+        "105",
+        "106",
+        "109",
+        "107",
+        "101",
+        "104",
+        "103"
+      ]
+    },
+    {
+      "id": "xl-06",
+      "kind": "cross-lingual",
+      "mode": "hybrid",
+      "rank": null,
+      "retrieved": [
+        "107",
+        "116",
+        "117",
+        "105",
+        "103",
+        "106",
+        "110",
+        "102",
+        "109",
+        "101"
+      ]
+    },
+    {
+      "id": "xl-07",
+      "kind": "cross-lingual",
+      "mode": "hybrid",
+      "rank": null,
+      "retrieved": [
+        "117",
+        "102",
+        "116",
+        "105",
+        "106",
+        "104",
+        "103",
+        "107",
+        "108",
+        "109"
+      ]
+    },
+    {
+      "id": "xl-08",
+      "kind": "cross-lingual",
+      "mode": "hybrid",
+      "rank": null,
+      "retrieved": [
+        "107",
+        "116",
+        "117",
+        "106",
+        "103",
+        "102",
+        "101",
+        "109",
+        "108",
+        "110"
+      ]
+    },
+    {
+      "id": "ru-01",
+      "kind": "ru-monolingual",
+      "mode": "hybrid",
+      "rank": 1,
+      "retrieved": [
+        "112",
+        "114",
+        "113",
+        "115",
+        "111",
+        "117",
+        "116",
+        "102",
+        "110",
+        "104"
+      ]
+    },
+    {
+      "id": "ru-02",
+      "kind": "ru-monolingual",
+      "mode": "hybrid",
+      "rank": 1,
+      "retrieved": [
+        "111",
+        "115",
+        "113",
+        "112",
+        "114",
+        "108",
+        "106",
+        "103",
+        "105",
+        "116"
+      ]
+    },
+    {
+      "id": "ru-03",
+      "kind": "ru-monolingual",
+      "mode": "hybrid",
+      "rank": 1,
+      "retrieved": [
+        "114",
+        "112",
+        "113",
+        "115",
+        "111",
+        "117",
+        "116",
+        "110",
+        "108",
+        "101"
+      ]
+    },
+    {
+      "id": "ru-04",
+      "kind": "ru-monolingual",
+      "mode": "hybrid",
+      "rank": 1,
+      "retrieved": [
+        "113",
+        "112",
+        "111",
+        "114",
+        "115",
+        "103",
+        "107",
+        "104",
+        "117",
+        "110"
+      ]
+    },
+    {
+      "id": "ru-05",
+      "kind": "ru-monolingual",
+      "mode": "hybrid",
+      "rank": 1,
+      "retrieved": [
+        "114",
+        "113",
+        "112",
+        "107",
+        "102",
+        "116",
+        "111",
+        "117",
+        "109",
+        "103"
+      ]
+    },
+    {
+      "id": "ru-06",
+      "kind": "ru-monolingual",
+      "mode": "hybrid",
+      "rank": 1,
+      "retrieved": [
+        "115",
+        "113",
+        "114",
+        "111",
+        "112",
+        "117",
+        "102",
+        "116",
+        "110",
+        "109"
+      ]
+    },
+    {
+      "id": "rub-01",
+      "kind": "ru-monolingual",
+      "mode": "hybrid",
+      "rank": 1,
+      "retrieved": [
+        "@0-2307"
+      ]
+    },
+    {
+      "id": "rub-02",
+      "kind": "ru-monolingual",
+      "mode": "hybrid",
+      "rank": 1,
+      "retrieved": [
+        "@0-2795"
+      ]
+    },
+    {
+      "id": "fmt-01",
+      "kind": "front-matter-trap",
+      "mode": "hybrid",
+      "rank": 1,
+      "retrieved": [
+        "@3055-6153",
+        "@6153-8331",
+        "@0-3055"
+      ]
+    },
+    {
+      "id": "fmt-02",
+      "kind": "front-matter-trap",
+      "mode": "hybrid",
+      "rank": 1,
+      "retrieved": [
+        "@0-3055",
+        "@6153-8331",
+        "@3055-6153"
+      ]
+    },
+    {
+      "id": "fmt-03",
+      "kind": "front-matter-trap",
+      "mode": "hybrid",
+      "rank": 1,
+      "retrieved": [
+        "@6153-8331",
+        "@3055-6153",
+        "@0-3055"
+      ]
+    },
+    {
+      "id": "fmt-04",
+      "kind": "front-matter-trap",
+      "mode": "hybrid",
+      "rank": 2,
+      "retrieved": [
+        "@10293-12407",
+        "@3059-5688",
+        "@7977-10293",
+        "@5688-7977",
+        "@0-3059"
+      ]
+    },
+    {
+      "id": "fmt-05",
+      "kind": "front-matter-trap",
+      "mode": "hybrid",
+      "rank": 1,
+      "retrieved": [
+        "@7977-10293",
+        "@5688-7977",
+        "@10293-12407",
+        "@3059-5688",
+        "@0-3059"
+      ]
+    },
+    {
+      "id": "fmt-06",
+      "kind": "front-matter-trap",
+      "mode": "hybrid",
+      "rank": 1,
+      "retrieved": [
+        "@10293-12407",
+        "@7977-10293",
+        "@3059-5688",
+        "@5688-7977",
+        "@0-3059"
+      ]
+    },
+    {
+      "id": "neg-01",
+      "kind": "negative",
+      "mode": "hybrid",
+      "retrieved": [
+        "116",
+        "117",
+        "106",
+        "105",
+        "103",
+        "102",
+        "110",
+        "108",
+        "101",
+        "104"
+      ]
+    },
+    {
+      "id": "neg-02",
+      "kind": "negative",
+      "mode": "hybrid",
+      "retrieved": [
+        "106",
+        "117",
+        "104",
+        "109",
+        "105",
+        "116",
+        "108",
+        "107",
+        "103",
+        "102"
+      ]
+    },
+    {
+      "id": "neg-03",
+      "kind": "negative",
+      "mode": "hybrid",
+      "retrieved": [
+        "117",
+        "104",
+        "116",
+        "106",
+        "105",
+        "114",
+        "102",
+        "111",
+        "112",
+        "108"
+      ]
+    },
+    {
+      "id": "neg-04",
+      "kind": "negative",
+      "mode": "hybrid",
+      "retrieved": [
+        "111",
+        "113",
+        "115",
+        "112",
+        "114",
+        "117",
+        "104",
+        "103",
+        "101",
+        "110"
+      ]
+    },
+    {
+      "id": "neg-05",
+      "kind": "negative",
+      "mode": "hybrid",
+      "retrieved": [
+        "115",
+        "113",
+        "110",
+        "105",
+        "111",
+        "117",
+        "102",
+        "103",
+        "109",
+        "116"
+      ]
+    },
+    {
+      "id": "neg-06",
+      "kind": "negative",
+      "mode": "hybrid",
+      "retrieved": [
+        "117",
+        "116",
+        "101",
+        "104",
+        "107",
+        "106",
+        "108",
+        "103",
+        "109",
+        "102"
+      ]
+    },
+    {
+      "id": "fig-01",
+      "kind": "figure-caption",
+      "mode": "hybrid",
+      "rank": 1,
+      "retrieved": [
+        "fig-103#0",
+        "fig-105#0",
+        "fig-103#1",
+        "fig-108#0",
+        "fig-105#1",
+        "fig-113#1",
+        "fig-106#0",
+        "fig-112#0",
+        "fig-113#0"
+      ]
+    },
+    {
+      "id": "fig-02",
+      "kind": "figure-caption",
+      "mode": "hybrid",
+      "rank": 1,
+      "retrieved": [
+        "fig-103#1",
+        "fig-103#0",
+        "fig-106#0",
+        "fig-105#0",
+        "fig-108#0",
+        "fig-112#0",
+        "fig-113#0",
+        "fig-113#1",
+        "fig-105#1"
+      ]
+    },
+    {
+      "id": "fig-03",
+      "kind": "figure-caption",
+      "mode": "hybrid",
+      "rank": 1,
+      "retrieved": [
+        "fig-105#0",
+        "fig-105#1",
+        "fig-103#0",
+        "fig-103#1",
+        "fig-113#0",
+        "fig-106#0",
+        "fig-108#0",
+        "fig-112#0",
+        "fig-113#1"
+      ]
+    },
+    {
+      "id": "fig-04",
+      "kind": "figure-caption",
+      "mode": "hybrid",
+      "rank": 1,
+      "retrieved": [
+        "fig-106#0",
+        "fig-103#0",
+        "fig-108#0",
+        "fig-105#0",
+        "fig-103#1",
+        "fig-105#1",
+        "fig-112#0",
+        "fig-113#0",
+        "fig-113#1"
+      ]
+    },
+    {
+      "id": "fig-05",
+      "kind": "figure-caption",
+      "mode": "hybrid",
+      "rank": 1,
+      "retrieved": [
+        "fig-108#0",
+        "fig-103#0",
+        "fig-105#0",
+        "fig-103#1",
+        "fig-105#1",
+        "fig-106#0",
+        "fig-112#0",
+        "fig-113#0",
+        "fig-113#1"
+      ]
+    },
+    {
+      "id": "fig-ru-01",
+      "kind": "figure-caption",
+      "mode": "hybrid",
+      "rank": 1,
+      "retrieved": [
+        "fig-112#0",
+        "fig-103#1",
+        "fig-103#0",
+        "fig-105#0",
+        "fig-105#1",
+        "fig-106#0",
+        "fig-108#0",
+        "fig-113#0",
+        "fig-113#1"
+      ]
+    },
+    {
+      "id": "fig-ru-02",
+      "kind": "figure-caption",
+      "mode": "hybrid",
+      "rank": 1,
+      "retrieved": [
+        "fig-113#0",
+        "fig-113#1",
+        "fig-103#1",
+        "fig-103#0",
+        "fig-105#1",
+        "fig-105#0",
+        "fig-106#0",
+        "fig-108#0",
+        "fig-112#0"
+      ]
+    },
+    {
+      "id": "fig-xl-01",
+      "kind": "figure-caption",
+      "mode": "hybrid",
+      "rank": 1,
+      "retrieved": [
+        "fig-105#0",
+        "fig-108#0",
+        "fig-103#0",
+        "fig-103#1",
+        "fig-105#1",
+        "fig-106#0",
+        "fig-112#0",
+        "fig-113#0",
+        "fig-113#1"
+      ]
+    },
+    {
+      "id": "fig-xl-02",
+      "kind": "figure-caption",
+      "mode": "hybrid",
+      "rank": 8,
+      "retrieved": [
+        "fig-103#1",
+        "fig-106#0",
+        "fig-103#0",
+        "fig-108#0",
+        "fig-112#0",
+        "fig-105#0",
+        "fig-113#1",
+        "fig-113#0",
+        "fig-105#1"
+      ]
+    },
+    {
+      "id": "figneg-01",
+      "kind": "figure-negative",
+      "mode": "hybrid",
+      "retrieved": [
+        "fig-108#0",
+        "fig-103#0",
+        "fig-105#0",
+        "fig-103#1",
+        "fig-105#1",
+        "fig-106#0",
+        "fig-112#0",
+        "fig-113#0",
+        "fig-113#1"
+      ]
+    },
+    {
+      "id": "figneg-02",
+      "kind": "figure-negative",
+      "mode": "hybrid",
+      "retrieved": [
+        "fig-108#0",
+        "fig-103#0",
+        "fig-105#0",
+        "fig-113#0",
+        "fig-105#1",
+        "fig-103#1",
+        "fig-106#0",
+        "fig-112#0",
+        "fig-113#1"
+      ]
+    },
+    {
+      "id": "figneg-03",
+      "kind": "figure-negative",
+      "mode": "hybrid",
+      "retrieved": [
+        "fig-103#1",
+        "fig-112#0",
+        "fig-103#0",
+        "fig-106#0",
+        "fig-105#0",
+        "fig-113#1",
+        "fig-113#0",
+        "fig-108#0",
+        "fig-105#1"
+      ]
+    },
+    {
+      "id": "sp-01",
+      "kind": "semantic-paraphrase",
+      "mode": "vector",
+      "rank": 4,
+      "retrieved": [
+        "117",
+        "105",
+        "116",
+        "101",
+        "106",
+        "109",
+        "108",
+        "102",
+        "103",
+        "107"
+      ]
+    },
+    {
+      "id": "sp-02",
+      "kind": "semantic-paraphrase",
+      "mode": "vector",
+      "rank": 1,
+      "retrieved": [
+        "102",
+        "107",
+        "104",
+        "108",
+        "116",
+        "110",
+        "117",
+        "103",
+        "105",
+        "101"
+      ]
+    },
+    {
+      "id": "sp-03",
+      "kind": "semantic-paraphrase",
+      "mode": "vector",
+      "rank": 3,
+      "retrieved": [
+        "117",
+        "105",
+        "103",
+        "109",
+        "116",
+        "106",
+        "102",
+        "108",
+        "110",
+        "101"
+      ]
+    },
+    {
+      "id": "sp-04",
+      "kind": "semantic-paraphrase",
+      "mode": "vector",
+      "rank": 6,
+      "retrieved": [
+        "117",
+        "116",
+        "106",
+        "105",
+        "102",
+        "104",
+        "101",
+        "108",
+        "109",
+        "103"
+      ]
+    },
+    {
+      "id": "sp-05",
+      "kind": "semantic-paraphrase",
+      "mode": "vector",
+      "rank": 9,
+      "retrieved": [
+        "107",
+        "104",
+        "116",
+        "117",
+        "101",
+        "106",
+        "102",
+        "110",
+        "105",
+        "108"
+      ]
+    },
+    {
+      "id": "sp-06",
+      "kind": "semantic-paraphrase",
+      "mode": "vector",
+      "rank": 2,
+      "retrieved": [
+        "117",
+        "106",
+        "102",
+        "116",
+        "109",
+        "105",
+        "103",
+        "108",
+        "107",
+        "101"
+      ]
+    },
+    {
+      "id": "sp-07",
+      "kind": "semantic-paraphrase",
+      "mode": "vector",
+      "rank": 7,
+      "retrieved": [
+        "115",
+        "113",
+        "104",
+        "112",
+        "114",
+        "117",
+        "107",
+        "116",
+        "111",
+        "108"
+      ]
+    },
+    {
+      "id": "sp-08",
+      "kind": "semantic-paraphrase",
+      "mode": "vector",
+      "rank": 3,
+      "retrieved": [
+        "117",
+        "109",
+        "108",
+        "101",
+        "106",
+        "105",
+        "103",
+        "116",
+        "102",
+        "107"
+      ]
+    },
+    {
+      "id": "sp-09",
+      "kind": "semantic-paraphrase",
+      "mode": "vector",
+      "rank": 5,
+      "retrieved": [
+        "103",
+        "105",
+        "117",
+        "116",
+        "109",
+        "108",
+        "106",
+        "101",
+        "102",
+        "107"
+      ]
+    },
+    {
+      "id": "sp-10",
+      "kind": "semantic-paraphrase",
+      "mode": "vector",
+      "rank": null,
+      "retrieved": [
+        "117",
+        "116",
+        "109",
+        "101",
+        "106",
+        "105",
+        "103",
+        "107",
+        "108",
+        "102"
+      ]
+    },
+    {
+      "id": "sp-11",
+      "kind": "semantic-paraphrase",
+      "mode": "vector",
+      "rank": 3,
+      "retrieved": [
+        "117",
+        "107",
+        "101",
+        "104",
+        "106",
+        "108",
+        "116",
+        "103",
+        "102",
+        "105"
+      ]
+    },
+    {
+      "id": "sp-12",
+      "kind": "semantic-paraphrase",
+      "mode": "vector",
+      "rank": 1,
+      "retrieved": [
+        "104",
+        "117",
+        "110",
+        "116",
+        "102",
+        "107",
+        "103",
+        "108",
+        "109",
+        "105"
+      ]
+    },
+    {
+      "id": "sp-13",
+      "kind": "semantic-paraphrase",
+      "mode": "vector",
+      "rank": 4,
+      "retrieved": [
+        "102",
+        "117",
+        "116",
+        "106",
+        "103",
+        "107",
+        "101",
+        "108",
+        "105",
+        "110"
+      ]
+    },
+    {
+      "id": "sp-14",
+      "kind": "semantic-paraphrase",
+      "mode": "vector",
+      "rank": 2,
+      "retrieved": [
+        "117",
+        "103",
+        "116",
+        "105",
+        "102",
+        "108",
+        "110",
+        "104",
+        "101",
+        "114"
+      ]
+    },
+    {
+      "id": "spb-01",
+      "kind": "semantic-paraphrase",
+      "mode": "vector",
+      "rank": 1,
+      "retrieved": [
+        "@0-2851"
+      ]
+    },
+    {
+      "id": "spb-02",
+      "kind": "semantic-paraphrase",
+      "mode": "vector",
+      "rank": 1,
+      "retrieved": [
+        "@0-2686"
+      ]
+    },
+    {
+      "id": "id-01",
+      "kind": "exact-identifier",
+      "mode": "vector",
+      "rank": 9,
+      "retrieved": [
+        "105",
+        "117",
+        "103",
+        "116",
+        "107",
+        "102",
+        "115",
+        "106",
+        "109",
+        "108"
+      ]
+    },
+    {
+      "id": "id-02",
+      "kind": "exact-identifier",
+      "mode": "vector",
+      "rank": 5,
+      "retrieved": [
+        "116",
+        "102",
+        "114",
+        "115",
+        "110",
+        "117",
+        "104",
+        "109",
+        "101",
+        "103"
+      ]
+    },
+    {
+      "id": "id-03",
+      "kind": "exact-identifier",
+      "mode": "vector",
+      "rank": 6,
+      "retrieved": [
+        "110",
+        "115",
+        "109",
+        "111",
+        "112",
+        "107",
+        "101",
+        "114",
+        "113",
+        "104"
+      ]
+    },
+    {
+      "id": "id-04",
+      "kind": "exact-identifier",
+      "mode": "vector",
+      "rank": 2,
+      "retrieved": [
+        "114",
+        "105",
+        "113",
+        "102",
+        "107",
+        "112",
+        "117",
+        "108",
+        "101",
+        "103"
+      ]
+    },
+    {
+      "id": "id-05",
+      "kind": "exact-identifier",
+      "mode": "vector",
+      "rank": 7,
+      "retrieved": [
+        "113",
+        "110",
+        "112",
+        "114",
+        "104",
+        "117",
+        "107",
+        "109",
+        "116",
+        "101"
+      ]
+    },
+    {
+      "id": "id-06",
+      "kind": "exact-identifier",
+      "mode": "vector",
+      "rank": 1,
+      "retrieved": [
+        "106",
+        "114",
+        "110",
+        "109",
+        "116",
+        "113",
+        "108",
+        "111",
+        "115",
+        "117"
+      ]
+    },
+    {
+      "id": "id-07",
+      "kind": "exact-identifier",
+      "mode": "vector",
+      "rank": 2,
+      "retrieved": [
+        "110",
+        "101",
+        "113",
+        "115",
+        "106",
+        "117",
+        "111",
+        "116",
+        "107",
+        "108"
+      ]
+    },
+    {
+      "id": "id-08",
+      "kind": "exact-identifier",
+      "mode": "vector",
+      "rank": null,
+      "retrieved": [
+        "116",
+        "107",
+        "117",
+        "104",
+        "108",
+        "102",
+        "101",
+        "106",
+        "103",
+        "109"
+      ]
+    },
+    {
+      "id": "id-09",
+      "kind": "exact-identifier",
+      "mode": "vector",
+      "rank": null,
+      "retrieved": [
+        "103",
+        "101",
+        "117",
+        "116",
+        "102",
+        "108",
+        "110",
+        "104",
+        "109",
+        "106"
+      ]
+    },
+    {
+      "id": "id-10",
+      "kind": "exact-identifier",
+      "mode": "vector",
+      "rank": 6,
+      "retrieved": [
+        "116",
+        "113",
+        "102",
+        "107",
+        "108",
+        "110",
+        "114",
+        "106",
+        "104",
+        "117"
+      ]
+    },
+    {
+      "id": "idb-01",
+      "kind": "exact-identifier",
+      "mode": "vector",
+      "rank": 1,
+      "retrieved": [
+        "@0-2692"
+      ]
+    },
+    {
+      "id": "idb-02",
+      "kind": "exact-identifier",
+      "mode": "vector",
+      "rank": 1,
+      "retrieved": [
+        "@0-2604"
+      ]
+    },
+    {
+      "id": "xl-01",
+      "kind": "cross-lingual",
+      "mode": "vector",
+      "rank": 7,
+      "retrieved": [
+        "115",
+        "114",
+        "113",
+        "112",
+        "111",
+        "117",
+        "108",
+        "109",
+        "103",
+        "106"
+      ]
+    },
+    {
+      "id": "xl-02",
+      "kind": "cross-lingual",
+      "mode": "vector",
+      "rank": null,
+      "retrieved": [
+        "113",
+        "111",
+        "112",
+        "115",
+        "114",
+        "103",
+        "106",
+        "117",
+        "116",
+        "105"
+      ]
+    },
+    {
+      "id": "xl-03",
+      "kind": "cross-lingual",
+      "mode": "vector",
+      "rank": null,
+      "retrieved": [
+        "112",
+        "109",
+        "114",
+        "111",
+        "115",
+        "113",
+        "117",
+        "116",
+        "110",
+        "104"
+      ]
+    },
+    {
+      "id": "xl-04",
+      "kind": "cross-lingual",
+      "mode": "vector",
+      "rank": null,
+      "retrieved": [
+        "113",
+        "114",
+        "112",
+        "115",
+        "111",
+        "117",
+        "116",
+        "108",
+        "106",
+        "104"
+      ]
+    },
+    {
+      "id": "xl-05",
+      "kind": "cross-lingual",
+      "mode": "vector",
+      "rank": null,
+      "retrieved": [
+        "109",
+        "117",
+        "116",
+        "105",
+        "106",
+        "108",
+        "101",
+        "107",
+        "103",
+        "102"
+      ]
+    },
+    {
+      "id": "xl-06",
+      "kind": "cross-lingual",
+      "mode": "vector",
+      "rank": null,
+      "retrieved": [
+        "106",
+        "110",
+        "107",
+        "105",
+        "103",
+        "111",
+        "116",
+        "101",
+        "117",
+        "104"
+      ]
+    },
+    {
+      "id": "xl-07",
+      "kind": "cross-lingual",
+      "mode": "vector",
+      "rank": null,
+      "retrieved": [
+        "102",
+        "117",
+        "116",
+        "105",
+        "107",
+        "108",
+        "103",
+        "106",
+        "104",
+        "101"
+      ]
+    },
+    {
+      "id": "xl-08",
+      "kind": "cross-lingual",
+      "mode": "vector",
+      "rank": null,
+      "retrieved": [
+        "107",
+        "116",
+        "104",
+        "117",
+        "108",
+        "102",
+        "106",
+        "109",
+        "103",
+        "101"
+      ]
+    },
+    {
+      "id": "ru-01",
+      "kind": "ru-monolingual",
+      "mode": "vector",
+      "rank": 2,
+      "retrieved": [
+        "114",
+        "112",
+        "115",
+        "117",
+        "113",
+        "111",
+        "116",
+        "102",
+        "110",
+        "104"
+      ]
+    },
+    {
+      "id": "ru-02",
+      "kind": "ru-monolingual",
+      "mode": "vector",
+      "rank": 1,
+      "retrieved": [
+        "111",
+        "115",
+        "113",
+        "112",
+        "114",
+        "108",
+        "106",
+        "103",
+        "105",
+        "116"
+      ]
+    },
+    {
+      "id": "ru-03",
+      "kind": "ru-monolingual",
+      "mode": "vector",
+      "rank": 1,
+      "retrieved": [
+        "114",
+        "112",
+        "113",
+        "115",
+        "111",
+        "117",
+        "116",
+        "110",
+        "108",
+        "101"
+      ]
+    },
+    {
+      "id": "ru-04",
+      "kind": "ru-monolingual",
+      "mode": "vector",
+      "rank": 1,
+      "retrieved": [
+        "113",
+        "112",
+        "111",
+        "103",
+        "114",
+        "107",
+        "104",
+        "117",
+        "110",
+        "116"
+      ]
+    },
+    {
+      "id": "ru-05",
+      "kind": "ru-monolingual",
+      "mode": "vector",
+      "rank": 1,
+      "retrieved": [
+        "114",
+        "113",
+        "107",
+        "102",
+        "116",
+        "111",
+        "117",
+        "109",
+        "112",
+        "103"
+      ]
+    },
+    {
+      "id": "ru-06",
+      "kind": "ru-monolingual",
+      "mode": "vector",
+      "rank": 2,
+      "retrieved": [
+        "112",
+        "115",
+        "117",
+        "102",
+        "116",
+        "110",
+        "114",
+        "113",
+        "109",
+        "111"
+      ]
+    },
+    {
+      "id": "rub-01",
+      "kind": "ru-monolingual",
+      "mode": "vector",
+      "rank": 1,
+      "retrieved": [
+        "@0-2307"
+      ]
+    },
+    {
+      "id": "rub-02",
+      "kind": "ru-monolingual",
+      "mode": "vector",
+      "rank": 1,
+      "retrieved": [
+        "@0-2795"
+      ]
+    },
+    {
+      "id": "fmt-01",
+      "kind": "front-matter-trap",
+      "mode": "vector",
+      "rank": 1,
+      "retrieved": [
+        "@3055-6153",
+        "@6153-8331",
+        "@0-3055"
+      ]
+    },
+    {
+      "id": "fmt-02",
+      "kind": "front-matter-trap",
+      "mode": "vector",
+      "rank": 1,
+      "retrieved": [
+        "@0-3055",
+        "@6153-8331",
+        "@3055-6153"
+      ]
+    },
+    {
+      "id": "fmt-03",
+      "kind": "front-matter-trap",
+      "mode": "vector",
+      "rank": 1,
+      "retrieved": [
+        "@6153-8331",
+        "@3055-6153",
+        "@0-3055"
+      ]
+    },
+    {
+      "id": "fmt-04",
+      "kind": "front-matter-trap",
+      "mode": "vector",
+      "rank": 2,
+      "retrieved": [
+        "@10293-12407",
+        "@3059-5688",
+        "@7977-10293",
+        "@5688-7977",
+        "@0-3059"
+      ]
+    },
+    {
+      "id": "fmt-05",
+      "kind": "front-matter-trap",
+      "mode": "vector",
+      "rank": 1,
+      "retrieved": [
+        "@7977-10293",
+        "@5688-7977",
+        "@10293-12407",
+        "@3059-5688",
+        "@0-3059"
+      ]
+    },
+    {
+      "id": "fmt-06",
+      "kind": "front-matter-trap",
+      "mode": "vector",
+      "rank": 1,
+      "retrieved": [
+        "@10293-12407",
+        "@3059-5688",
+        "@7977-10293",
+        "@5688-7977",
+        "@0-3059"
+      ]
+    },
+    {
+      "id": "neg-01",
+      "kind": "negative",
+      "mode": "vector",
+      "retrieved": [
+        "116",
+        "117",
+        "106",
+        "105",
+        "102",
+        "101",
+        "108",
+        "103",
+        "104",
+        "107"
+      ]
+    },
+    {
+      "id": "neg-02",
+      "kind": "negative",
+      "mode": "vector",
+      "retrieved": [
+        "106",
+        "117",
+        "109",
+        "105",
+        "116",
+        "104",
+        "108",
+        "103",
+        "102",
+        "107"
+      ]
+    },
+    {
+      "id": "neg-03",
+      "kind": "negative",
+      "mode": "vector",
+      "retrieved": [
+        "114",
+        "102",
+        "111",
+        "117",
+        "112",
+        "104",
+        "108",
+        "116",
+        "113",
+        "115"
+      ]
+    },
+    {
+      "id": "neg-04",
+      "kind": "negative",
+      "mode": "vector",
+      "retrieved": [
+        "111",
+        "113",
+        "117",
+        "115",
+        "112",
+        "104",
+        "103",
+        "114",
+        "101",
+        "110"
+      ]
+    },
+    {
+      "id": "neg-05",
+      "kind": "negative",
+      "mode": "vector",
+      "retrieved": [
+        "110",
+        "105",
+        "111",
+        "117",
+        "102",
+        "103",
+        "109",
+        "115",
+        "116",
+        "106"
+      ]
+    },
+    {
+      "id": "neg-06",
+      "kind": "negative",
+      "mode": "vector",
+      "retrieved": [
+        "117",
+        "116",
+        "104",
+        "107",
+        "101",
+        "106",
+        "103",
+        "108",
+        "102",
+        "109"
+      ]
+    },
+    {
+      "id": "fig-01",
+      "kind": "figure-caption",
+      "mode": "vector",
+      "rank": 1,
+      "retrieved": [
+        "fig-103#0",
+        "fig-105#0",
+        "fig-103#1",
+        "fig-108#0",
+        "fig-113#1",
+        "fig-105#1",
+        "fig-106#0",
+        "fig-112#0",
+        "fig-113#0"
+      ]
+    },
+    {
+      "id": "fig-02",
+      "kind": "figure-caption",
+      "mode": "vector",
+      "rank": 1,
+      "retrieved": [
+        "fig-103#1",
+        "fig-103#0",
+        "fig-112#0",
+        "fig-105#0",
+        "fig-108#0",
+        "fig-106#0",
+        "fig-113#0",
+        "fig-113#1",
+        "fig-105#1"
+      ]
+    },
+    {
+      "id": "fig-03",
+      "kind": "figure-caption",
+      "mode": "vector",
+      "rank": 1,
+      "retrieved": [
+        "fig-105#0",
+        "fig-105#1",
+        "fig-113#0",
+        "fig-103#0",
+        "fig-103#1",
+        "fig-106#0",
+        "fig-108#0",
+        "fig-112#0",
+        "fig-113#1"
+      ]
+    },
+    {
+      "id": "fig-04",
+      "kind": "figure-caption",
+      "mode": "vector",
+      "rank": 1,
+      "retrieved": [
+        "fig-106#0",
+        "fig-108#0",
+        "fig-103#0",
+        "fig-105#0",
+        "fig-103#1",
+        "fig-105#1",
+        "fig-112#0",
+        "fig-113#0",
+        "fig-113#1"
+      ]
+    },
+    {
+      "id": "fig-05",
+      "kind": "figure-caption",
+      "mode": "vector",
+      "rank": 1,
+      "retrieved": [
+        "fig-108#0",
+        "fig-103#0",
+        "fig-105#0",
+        "fig-103#1",
+        "fig-105#1",
+        "fig-106#0",
+        "fig-112#0",
+        "fig-113#0",
+        "fig-113#1"
+      ]
+    },
+    {
+      "id": "fig-ru-01",
+      "kind": "figure-caption",
+      "mode": "vector",
+      "rank": 1,
+      "retrieved": [
+        "fig-112#0",
+        "fig-103#1",
+        "fig-103#0",
+        "fig-105#0",
+        "fig-105#1",
+        "fig-106#0",
+        "fig-108#0",
+        "fig-113#0",
+        "fig-113#1"
+      ]
+    },
+    {
+      "id": "fig-ru-02",
+      "kind": "figure-caption",
+      "mode": "vector",
+      "rank": 1,
+      "retrieved": [
+        "fig-113#0",
+        "fig-103#1",
+        "fig-103#0",
+        "fig-105#1",
+        "fig-105#0",
+        "fig-106#0",
+        "fig-108#0",
+        "fig-112#0",
+        "fig-113#1"
+      ]
+    },
+    {
+      "id": "fig-xl-01",
+      "kind": "figure-caption",
+      "mode": "vector",
+      "rank": 1,
+      "retrieved": [
+        "fig-105#0",
+        "fig-108#0",
+        "fig-103#0",
+        "fig-103#1",
+        "fig-105#1",
+        "fig-106#0",
+        "fig-112#0",
+        "fig-113#0",
+        "fig-113#1"
+      ]
+    },
+    {
+      "id": "fig-xl-02",
+      "kind": "figure-caption",
+      "mode": "vector",
+      "rank": 8,
+      "retrieved": [
+        "fig-112#0",
+        "fig-103#1",
+        "fig-103#0",
+        "fig-106#0",
+        "fig-105#0",
+        "fig-108#0",
+        "fig-113#1",
+        "fig-113#0",
+        "fig-105#1"
+      ]
+    },
+    {
+      "id": "figneg-01",
+      "kind": "figure-negative",
+      "mode": "vector",
+      "retrieved": [
+        "fig-108#0",
+        "fig-103#0",
+        "fig-105#0",
+        "fig-103#1",
+        "fig-105#1",
+        "fig-106#0",
+        "fig-112#0",
+        "fig-113#0",
+        "fig-113#1"
+      ]
+    },
+    {
+      "id": "figneg-02",
+      "kind": "figure-negative",
+      "mode": "vector",
+      "retrieved": [
+        "fig-108#0",
+        "fig-113#0",
+        "fig-105#1",
+        "fig-103#0",
+        "fig-105#0",
+        "fig-103#1",
+        "fig-106#0",
+        "fig-112#0",
+        "fig-113#1"
+      ]
+    },
+    {
+      "id": "figneg-03",
+      "kind": "figure-negative",
+      "mode": "vector",
+      "retrieved": [
+        "fig-103#1",
+        "fig-112#0",
+        "fig-103#0",
+        "fig-106#0",
+        "fig-105#0",
+        "fig-113#1",
+        "fig-113#0",
+        "fig-108#0",
+        "fig-105#1"
+      ]
+    },
+    {
+      "id": "sp-01",
+      "kind": "semantic-paraphrase",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "101",
+        "105",
+        "106",
+        "116",
+        "117",
+        "107",
+        "103",
+        "110",
+        "109",
+        "102"
+      ]
+    },
+    {
+      "id": "sp-02",
+      "kind": "semantic-paraphrase",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "102",
+        "107",
+        "101",
+        "116",
+        "105",
+        "117",
+        "104",
+        "103",
+        "108",
+        "106"
+      ]
+    },
+    {
+      "id": "sp-03",
+      "kind": "semantic-paraphrase",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "103",
+        "107",
+        "117",
+        "106",
+        "116",
+        "102",
+        "105",
+        "108",
+        "109",
+        "104"
+      ]
+    },
+    {
+      "id": "sp-04",
+      "kind": "semantic-paraphrase",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "104",
+        "117",
+        "116",
+        "102",
+        "108",
+        "105",
+        "106",
+        "101",
+        "110",
+        "107"
+      ]
+    },
+    {
+      "id": "sp-05",
+      "kind": "semantic-paraphrase",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "105",
+        "116",
+        "102",
+        "110",
+        "106",
+        "117",
+        "107",
+        "108",
+        "109",
+        "101"
+      ]
+    },
+    {
+      "id": "sp-06",
+      "kind": "semantic-paraphrase",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "106",
+        "107",
+        "117",
+        "105",
+        "104",
+        "109",
+        "108",
+        "103",
+        "116",
+        "101"
+      ]
+    },
+    {
+      "id": "sp-07",
+      "kind": "semantic-paraphrase",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "107",
+        "105",
+        "110",
+        "109",
+        "104",
+        "101",
+        "102",
+        "116",
+        "108",
+        "117"
+      ]
+    },
+    {
+      "id": "sp-08",
+      "kind": "semantic-paraphrase",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "108",
+        "117",
+        "106",
+        "105",
+        "101",
+        "102",
+        "103",
+        "104",
+        "116",
+        "109"
+      ]
+    },
+    {
+      "id": "sp-09",
+      "kind": "semantic-paraphrase",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "109",
+        "103",
+        "116",
+        "101",
+        "110",
+        "104",
+        "117",
+        "108",
+        "105",
+        "106"
+      ]
+    },
+    {
+      "id": "sp-10",
+      "kind": "semantic-paraphrase",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "110",
+        "116",
+        "117",
+        "104",
+        "102",
+        "109",
+        "108",
+        "101",
+        "106",
+        "107"
+      ]
+    },
+    {
+      "id": "sp-11",
+      "kind": "semantic-paraphrase",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "101",
+        "107",
+        "116",
+        "106",
+        "109",
+        "117",
+        "103",
+        "102",
+        "104",
+        "105"
+      ]
+    },
+    {
+      "id": "sp-12",
+      "kind": "semantic-paraphrase",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "104",
+        "105",
+        "107",
+        "117",
+        "102",
+        "116",
+        "108",
+        "103",
+        "101",
+        "110"
+      ]
+    },
+    {
+      "id": "sp-13",
+      "kind": "semantic-paraphrase",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "106",
+        "117",
+        "116",
+        "104",
+        "109",
+        "105",
+        "108",
+        "103",
+        "102",
+        "110"
+      ]
+    },
+    {
+      "id": "sp-14",
+      "kind": "semantic-paraphrase",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "103",
+        "109",
+        "104",
+        "117",
+        "116",
+        "106",
+        "105",
+        "107",
+        "110",
+        "108"
+      ]
+    },
+    {
+      "id": "spb-01",
+      "kind": "semantic-paraphrase",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "@0-2851"
+      ]
+    },
+    {
+      "id": "spb-02",
+      "kind": "semantic-paraphrase",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "@0-2686"
+      ]
+    },
+    {
+      "id": "id-01",
+      "kind": "exact-identifier",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "109"
+      ]
+    },
+    {
+      "id": "id-02",
+      "kind": "exact-identifier",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "110"
+      ]
+    },
+    {
+      "id": "id-03",
+      "kind": "exact-identifier",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "107",
+        "109",
+        "110",
+        "117",
+        "102",
+        "104",
+        "108",
+        "101"
+      ]
+    },
+    {
+      "id": "id-04",
+      "kind": "exact-identifier",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "105"
+      ]
+    },
+    {
+      "id": "id-05",
+      "kind": "exact-identifier",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "107",
+        "116",
+        "104",
+        "103",
+        "110",
+        "109",
+        "117",
+        "101"
+      ]
+    },
+    {
+      "id": "id-06",
+      "kind": "exact-identifier",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "106"
+      ]
+    },
+    {
+      "id": "id-07",
+      "kind": "exact-identifier",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "101",
+        "110"
+      ]
+    },
+    {
+      "id": "id-08",
+      "kind": "exact-identifier",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "111",
+        "113",
+        "109",
+        "105",
+        "110",
+        "103",
+        "112",
+        "116",
+        "106",
+        "117"
+      ]
+    },
+    {
+      "id": "id-09",
+      "kind": "exact-identifier",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "105"
+      ]
+    },
+    {
+      "id": "id-10",
+      "kind": "exact-identifier",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "110"
+      ]
+    },
+    {
+      "id": "idb-01",
+      "kind": "exact-identifier",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "@0-2692"
+      ]
+    },
+    {
+      "id": "idb-02",
+      "kind": "exact-identifier",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "@0-2604"
+      ]
+    },
+    {
+      "id": "xl-01",
+      "kind": "cross-lingual",
+      "mode": "keyword",
+      "rank": null,
+      "retrieved": [
+        "113",
+        "114",
+        "111",
+        "115",
+        "112"
+      ]
+    },
+    {
+      "id": "xl-02",
+      "kind": "cross-lingual",
+      "mode": "keyword",
+      "rank": null,
+      "retrieved": [
+        "114",
+        "115",
+        "112",
+        "113",
+        "111"
+      ]
+    },
+    {
+      "id": "xl-03",
+      "kind": "cross-lingual",
+      "mode": "keyword",
+      "rank": null,
+      "retrieved": [
+        "114",
+        "113",
+        "112",
+        "111",
+        "115"
+      ]
+    },
+    {
+      "id": "xl-04",
+      "kind": "cross-lingual",
+      "mode": "keyword",
+      "rank": null,
+      "retrieved": [
+        "113",
+        "115",
+        "114",
+        "112",
+        "111"
+      ]
+    },
+    {
+      "id": "xl-05",
+      "kind": "cross-lingual",
+      "mode": "keyword",
+      "rank": null,
+      "retrieved": [
+        "108",
+        "116",
+        "117",
+        "107",
+        "106",
+        "105",
+        "101",
+        "104",
+        "102",
+        "103"
+      ]
+    },
+    {
+      "id": "xl-06",
+      "kind": "cross-lingual",
+      "mode": "keyword",
+      "rank": null,
+      "retrieved": [
+        "116",
+        "117",
+        "107",
+        "109",
+        "102",
+        "103",
+        "105",
+        "104",
+        "108",
+        "101"
+      ]
+    },
+    {
+      "id": "xl-07",
+      "kind": "cross-lingual",
+      "mode": "keyword",
+      "rank": null,
+      "retrieved": [
+        "117",
+        "106",
+        "105",
+        "116",
+        "104",
+        "102",
+        "109",
+        "103",
+        "110",
+        "101"
+      ]
+    },
+    {
+      "id": "xl-08",
+      "kind": "cross-lingual",
+      "mode": "keyword",
+      "rank": null,
+      "retrieved": [
+        "107",
+        "106",
+        "103",
+        "117",
+        "101",
+        "116",
+        "109",
+        "102",
+        "110",
+        "105"
+      ]
+    },
+    {
+      "id": "ru-01",
+      "kind": "ru-monolingual",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "112",
+        "113",
+        "114",
+        "115",
+        "111"
+      ]
+    },
+    {
+      "id": "ru-02",
+      "kind": "ru-monolingual",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "111",
+        "115",
+        "113",
+        "114",
+        "112"
+      ]
+    },
+    {
+      "id": "ru-03",
+      "kind": "ru-monolingual",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "114",
+        "112",
+        "115",
+        "113",
+        "111"
+      ]
+    },
+    {
+      "id": "ru-04",
+      "kind": "ru-monolingual",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "113",
+        "115",
+        "112",
+        "114",
+        "111"
+      ]
+    },
+    {
+      "id": "ru-05",
+      "kind": "ru-monolingual",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "114",
+        "113",
+        "112"
+      ]
+    },
+    {
+      "id": "ru-06",
+      "kind": "ru-monolingual",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "115",
+        "111",
+        "113",
+        "114"
+      ]
+    },
+    {
+      "id": "rub-01",
+      "kind": "ru-monolingual",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "@0-2307"
+      ]
+    },
+    {
+      "id": "rub-02",
+      "kind": "ru-monolingual",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "@0-2795"
+      ]
+    },
+    {
+      "id": "fmt-01",
+      "kind": "front-matter-trap",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "@3055-6153",
+        "@0-3055",
+        "@6153-8331"
+      ]
+    },
+    {
+      "id": "fmt-02",
+      "kind": "front-matter-trap",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "@0-3055",
+        "@3055-6153",
+        "@6153-8331"
+      ]
+    },
+    {
+      "id": "fmt-03",
+      "kind": "front-matter-trap",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "@6153-8331",
+        "@3055-6153",
+        "@0-3055"
+      ]
+    },
+    {
+      "id": "fmt-04",
+      "kind": "front-matter-trap",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "@3059-5688",
+        "@10293-12407",
+        "@5688-7977",
+        "@7977-10293",
+        "@0-3059"
+      ]
+    },
+    {
+      "id": "fmt-05",
+      "kind": "front-matter-trap",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "@7977-10293",
+        "@5688-7977",
+        "@3059-5688",
+        "@10293-12407",
+        "@0-3059"
+      ]
+    },
+    {
+      "id": "fmt-06",
+      "kind": "front-matter-trap",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "@10293-12407",
+        "@7977-10293",
+        "@5688-7977",
+        "@3059-5688",
+        "@0-3059"
+      ]
+    },
+    {
+      "id": "neg-01",
+      "kind": "negative",
+      "mode": "keyword",
+      "retrieved": [
+        "116",
+        "117",
+        "110",
+        "103",
+        "105",
+        "106",
+        "108",
+        "102",
+        "104",
+        "101"
+      ]
+    },
+    {
+      "id": "neg-02",
+      "kind": "negative",
+      "mode": "keyword",
+      "retrieved": [
+        "104",
+        "106",
+        "117",
+        "105",
+        "109",
+        "116",
+        "107",
+        "102",
+        "103",
+        "108"
+      ]
+    },
+    {
+      "id": "neg-03",
+      "kind": "negative",
+      "mode": "keyword",
+      "retrieved": [
+        "117",
+        "105",
+        "106",
+        "116",
+        "104"
+      ]
+    },
+    {
+      "id": "neg-04",
+      "kind": "negative",
+      "mode": "keyword",
+      "retrieved": [
+        "111",
+        "115",
+        "113",
+        "112",
+        "114"
+      ]
+    },
+    {
+      "id": "neg-05",
+      "kind": "negative",
+      "mode": "keyword",
+      "retrieved": [
+        "113",
+        "115"
+      ]
+    },
+    {
+      "id": "neg-06",
+      "kind": "negative",
+      "mode": "keyword",
+      "retrieved": [
+        "101",
+        "117",
+        "116",
+        "107",
+        "104",
+        "106",
+        "109",
+        "108",
+        "105",
+        "103"
+      ]
+    },
+    {
+      "id": "fig-01",
+      "kind": "figure-caption",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "fig-103#0",
+        "fig-105#0",
+        "fig-103#1",
+        "fig-108#0",
+        "fig-105#1"
+      ]
+    },
+    {
+      "id": "fig-02",
+      "kind": "figure-caption",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "fig-103#1",
+        "fig-103#0",
+        "fig-106#0",
+        "fig-108#0",
+        "fig-105#0"
+      ]
+    },
+    {
+      "id": "fig-03",
+      "kind": "figure-caption",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "fig-105#0",
+        "fig-105#1",
+        "fig-103#0",
+        "fig-103#1"
+      ]
+    },
+    {
+      "id": "fig-04",
+      "kind": "figure-caption",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "fig-106#0",
+        "fig-103#0",
+        "fig-105#0",
+        "fig-108#0"
+      ]
+    },
+    {
+      "id": "fig-05",
+      "kind": "figure-caption",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "fig-108#0",
+        "fig-103#0",
+        "fig-105#0"
+      ]
+    },
+    {
+      "id": "fig-ru-01",
+      "kind": "figure-caption",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "fig-112#0"
+      ]
+    },
+    {
+      "id": "fig-ru-02",
+      "kind": "figure-caption",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "fig-113#0",
+        "fig-113#1"
+      ]
+    },
+    {
+      "id": "fig-xl-01",
+      "kind": "figure-caption",
+      "mode": "keyword",
+      "rank": null,
+      "retrieved": []
+    },
+    {
+      "id": "fig-xl-02",
+      "kind": "figure-caption",
+      "mode": "keyword",
+      "rank": null,
+      "retrieved": [
+        "fig-103#1",
+        "fig-106#0",
+        "fig-108#0",
+        "fig-103#0"
+      ]
+    },
+    {
+      "id": "figneg-01",
+      "kind": "figure-negative",
+      "mode": "keyword",
+      "retrieved": [
+        "fig-108#0",
+        "fig-103#0",
+        "fig-105#0"
+      ]
+    },
+    {
+      "id": "figneg-02",
+      "kind": "figure-negative",
+      "mode": "keyword",
+      "retrieved": [
+        "fig-108#0",
+        "fig-103#0",
+        "fig-105#0"
+      ]
+    },
+    {
+      "id": "figneg-03",
+      "kind": "figure-negative",
+      "mode": "keyword",
+      "retrieved": []
+    }
+  ]
+}
