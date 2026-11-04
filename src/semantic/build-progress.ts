@@ -54,19 +54,41 @@ export function resumeProgress(file: string): Set<number> {
   return readCompletedIds(file);
 }
 
+// One file name is capped at 255 — bytes on ext4, characters on APFS — so count bytes, the stricter.
+const NAME_MAX_BYTES = 255;
+// Never emitted by the sanitiser below, so a plain id ("a_b-6783a31e") can't equal a hashed name (#370).
+const HASH_SEP = "~";
+
 /**
  * Default resume-log path for one library. Book ids are per library and overlap, so a log shared
  * across the index dir would make the second library skip books it never indexed (#285, #344).
  */
 export function defaultProgressPath(indexDir: string, libraryId: string, flagsOnly: boolean): string {
+  const prefix = `${flagsOnly ? "flags-progress" : "progress"}-`;
+  const ext = ".jsonl";
   // Library ids come from the server — keep the file inside the index dir whatever they contain.
   // Unicode-aware so distinct non-ASCII ids stay distinct.
   const clean = libraryId.replace(/[^\p{L}\p{N}_.-]/gu, "_");
-  // "a:b", "a/b" and "a_b" all sanitise to "a_b" — a shared log would skip books the second library
-  // never indexed (#285). Hash the raw id when sanitising changed it; untouched ids keep today's name.
-  const safe =
-    clean === libraryId ? clean : `${clean}-${createHash("sha256").update(libraryId).digest("hex").slice(0, 8)}`;
-  return path.join(indexDir, `${flagsOnly ? "flags-progress" : "progress"}-${safe}.jsonl`);
+  // Untouched ids that fit keep today's name: renaming one would orphan its resume log.
+  const plain = `${prefix}${clean}${ext}`;
+  if (clean === libraryId && Buffer.byteLength(plain) <= NAME_MAX_BYTES) return path.join(indexDir, plain);
+  // "a:b", "a/b" and "a_b" all sanitise to "a_b" (#285), and a long id would fail with ENAMETOOLONG:
+  // hash the raw id and cut the readable part to whatever the name budget leaves.
+  const hash = `${HASH_SEP}${createHash("sha256").update(libraryId).digest("hex").slice(0, 8)}`;
+  const budget = NAME_MAX_BYTES - Buffer.byteLength(prefix + hash + ext);
+  return path.join(indexDir, `${prefix}${truncateBytes(clean, budget)}${hash}${ext}`);
+}
+
+// Longest prefix of `s` within `max` UTF-8 bytes, cut on a code point (never mid surrogate pair).
+function truncateBytes(s: string, max: number): string {
+  let out = "";
+  let n = 0;
+  for (const ch of s) {
+    n += Buffer.byteLength(ch);
+    if (n > max) break;
+    out += ch;
+  }
+  return out;
 }
 
 /** The progress log a run uses: an explicit --progress file wins, else the per-library default. */
