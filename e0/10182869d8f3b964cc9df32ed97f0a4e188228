@@ -1,0 +1,25 @@
+test/domain/error-codes.test.ts
+  s_c81cb810ca8fc4::t_0fa41363d18b15 46-139
+test/tools/semantic-search.handler.test.ts
+  s_c81cb810ca8fc4::t_9f0b05dc52e4bb 712-715,718-734
+  s_c81cb810ca8fc4::t_1d622c7d396ded 1-3,716-717
+test/tools/unknown-bundle-error-code.test.ts
+  s_c81cb810ca8fc4::t_1c168ce6a63232 35
+  s_c81cb810ca8fc4::t_6cedc5abf318e4 1-34,36-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e010182869d8f3b964cc9df32ed97f0a4e188228",
+  "prompts": {},
+  "sessions": {
+    "s_c81cb810ca8fc4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba7e39d6-3c43-459f-a719-2bb0e2ff24d4",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
