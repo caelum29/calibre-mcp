@@ -77,6 +77,8 @@ export const bulkUpdateTool = defineTool({
       )
       .optional(),
     applied: z.array(z.number()).optional(),
+    // tags_add / tags_remove calls: books skipped because the merge changed nothing (#333)
+    unchanged: z.array(z.number()).optional(),
     failed: z.array(z.object({ id: z.number(), error: z.string() })).optional(),
     notAttempted: z.array(z.number()).optional(),
     retryIds: z.array(z.number()).optional(),
@@ -238,7 +240,14 @@ export const bulkUpdateTool = defineTool({
       const libId = await deps.content.resolveLibraryId(args.library);
       const applied: number[] = [];
       const failed: { id: number; error: string }[] = [];
+      // tags-ops calls only: books whose merge changes nothing are skipped, not written (#333)
+      const unchanged: number[] | undefined = tagOps ? [] : undefined;
       for (const [i, b] of perBook.entries()) {
+        // a no-op merge needs no set_metadata; list it so neither channel reads it as missing
+        if (unchanged && b.diff.every((d) => !d.changed)) {
+          unchanged.push(b.id);
+          continue;
+        }
         try {
           // set_metadata is idempotent, so transient failures are retried in place (#233)
           await withTransientRetry(
@@ -247,7 +256,13 @@ export const bulkUpdateTool = defineTool({
           );
           applied.push(b.id);
         } catch (err) {
-          const run = { matched: perBook.length, applied, failed, notAttempted: perBook.slice(i + 1).map((p) => p.id) };
+          const run = {
+            matched: perBook.length,
+            applied,
+            unchanged,
+            failed,
+            notAttempted: perBook.slice(i + 1).map((p) => p.id),
+          };
           // A drop on ANY attempt may have committed — even one a refusal followed: re-read it
           // like the single-book path (#342) so a landed write is never reported failed (#370).
           const dropped = isDroppedMidRequest(err)
@@ -269,13 +284,7 @@ export const bulkUpdateTool = defineTool({
           if (transient === "connection") {
             failed.push({ id: b.id, error: describeTransient(err, b.id) });
             return stoppedMidLoop(
-              {
-                matched: perBook.length,
-                applied,
-                failed,
-                notAttempted: perBook.slice(i + 1).map((p) => p.id),
-                blockedId: b.id,
-              },
+              { ...run, blockedId: b.id },
               {
                 headline: UNREACHABLE_HEADLINE,
                 steer: `${describeTransient(err, b.id)} Once it is back`,
@@ -314,6 +323,7 @@ export const bulkUpdateTool = defineTool({
 
       const summary =
         `Applied ${(tagOps ? [...fields, "tags"] : fields).join(", ")} to ${applied.length}/${perBook.length} book(s).` +
+        unchangedText(unchanged) +
         // on a partial run name the committed ids, so a retry skips them (#227)
         (failed.length > 0 && applied.length > 0 ? ` Committed: ${applied.join(", ")}.` : "") +
         (failed.length > 0 ? ` ${failed.length} failed: ${failed.map((f) => f.id).join(", ")}.` : "") +
@@ -323,6 +333,7 @@ export const bulkUpdateTool = defineTool({
         preview: false,
         matched: perBook.length,
         applied,
+        ...(unchanged ? { unchanged } : {}),
         failed,
       });
     } catch (err) {
@@ -330,6 +341,11 @@ export const bulkUpdateTool = defineTool({
     }
   },
 });
+
+/** ` Already current (nothing written): 2, 5.` — the books a tags merge left as they were (#333). */
+function unchangedText(unchanged: number[] | undefined): string {
+  return unchanged?.length ? ` Already current (nothing written): ${unchanged.join(", ")}.` : "";
+}
 
 /** Longest per-id error shown in text; the full message stays in structuredContent. */
 const MAX_ERROR_TEXT = 200;
@@ -357,6 +373,8 @@ interface StopCause {
 interface StoppedRun {
   matched: number;
   applied: number[];
+  /** Tags-ops calls: books skipped because their merge changed nothing (#333). */
+  unchanged?: number[];
   failed: { id: number; error: string }[];
   notAttempted: number[];
   /** The book the server blocked, re-run with the rest; undefined when it was confirmed written. */
@@ -369,19 +387,30 @@ interface StoppedRun {
  * text so the model retries only the rest.
  */
 function stoppedMidLoop(run: StoppedRun, cause: StopCause): ToolResult {
-  const { matched, applied, failed, notAttempted, blockedId } = run;
+  const { matched, applied, unchanged, failed, notAttempted, blockedId } = run;
   // The blocked book and the unattempted ones are held up only by the server; earlier
   // per-book failures had their own reasons, so they aren't part of the re-run.
   const retryIds = blockedId === undefined ? notAttempted : [blockedId, ...notAttempted];
   const text =
     `${cause.headline} after ${applied.length}/${matched} book(s) were already updated. ` +
     (applied.length > 0 ? `Already committed: ${applied.join(", ")}. ` : "") +
+    (unchanged?.length ? `${unchangedText(unchanged).trim()} ` : "") +
     // a confirmed drop can stop the loop with nothing failed yet
     (failed.length > 0 ? `Failed: ${failed.map((f) => f.id).join(", ")}. ` : "") +
     (notAttempted.length > 0 ? `Not attempted: ${notAttempted.join(", ")}. ` : "") +
     // writes are idempotent sets, so re-running is safe; naming the ids saves the model the set math
     `${cause.steer}, re-run with ids=[${retryIds.join(",")}].`;
-  const opts = { structured: { preview: false, matched, applied, failed, notAttempted, retryIds } };
+  const opts = {
+    structured: {
+      preview: false,
+      matched,
+      applied,
+      ...(unchanged ? { unchanged } : {}),
+      failed,
+      notAttempted,
+      retryIds,
+    },
+  };
   // literal codes per branch: the closed-set guard checks every call site textually (#249)
   if (cause.code === "calibre_unreachable") return toolError("calibre_unreachable", text, opts);
   if (cause.code === "write_unverified") return toolError("write_unverified", text, opts);
@@ -398,7 +427,7 @@ interface DroppedWrite {
   library?: string;
   /** The final error of the retried write. */
   err: unknown;
-  run: { matched: number; applied: number[]; failed: { id: number; error: string }[]; notAttempted: number[] };
+  run: Omit<StoppedRun, "blockedId">;
 }
 
 /**

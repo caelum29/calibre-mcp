@@ -92,7 +92,8 @@ describe("calibre_bulk_update tags_add / tags_remove — merge (#321)", () => {
   it("should_merge_per_book", async () => {
     const f = deps({ selected: [book({ id: 1, tags: ["a"] }), book({ id: 2, tags: ["b", "DDD"] })] });
     await run({ ids: [1, 2], tags_add: ["DDD"], preview: false }, f.deps);
-    expect(f.cli.mock.calls.map(([a]) => a[3])).toEqual(["tags:a,DDD", "tags:b,DDD"]);
+    // #370: book 2 already has DDD, so its no-op set_metadata is skipped
+    expect(f.cli.mock.calls.map(([a]) => a[3])).toEqual(["tags:a,DDD"]);
   });
 
   it("should_treat_removing_a_missing_tag_as_a_no_op", async () => {
