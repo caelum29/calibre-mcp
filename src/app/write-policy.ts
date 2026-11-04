@@ -81,7 +81,7 @@ export async function withTransientRetry<T>(fn: () => Promise<T>, sleep: Sleep =
       dropped ||= droppedByStderr(err);
       const pause = RETRY_PAUSES_MS[attempt];
       if (pause === undefined || classifyTransient(err) === undefined) {
-        if (dropped && typeof err === "object" && err !== null) droppedEarlier.add(err);
+        if (typeof err === "object" && err !== null) retryRecord.set(err, { dropped, retries: attempt });
         throw err;
       }
       await sleep(pause);
@@ -89,9 +89,13 @@ export async function withTransientRetry<T>(fn: () => Promise<T>, sleep: Sleep =
   }
 }
 
-// Final errors of a retried write where SOME attempt dropped mid-request (#370). A WeakSet keeps
-// the thrown error's type intact, so refusal/timeout/error-code classification is unchanged.
-const droppedEarlier = new WeakSet<object>();
+// What the retry loop saw before throwing this error: whether SOME attempt dropped mid-request
+// (#370) and how many retries ran. A WeakMap keeps the error's type, so classification is unchanged.
+const retryRecord = new WeakMap<object, { dropped: boolean; retries: number }>();
+
+function recordOf(err: unknown): { dropped: boolean; retries: number } | undefined {
+  return typeof err === "object" && err !== null ? retryRecord.get(err) : undefined;
+}
 
 function droppedByStderr(err: unknown): boolean {
   return (
@@ -104,7 +108,7 @@ function droppedByStderr(err: unknown): boolean {
  * on this error, or on any earlier attempt of the {@link withTransientRetry} that threw it.
  */
 export function isDroppedMidRequest(err: unknown): boolean {
-  return droppedByStderr(err) || (typeof err === "object" && err !== null && droppedEarlier.has(err));
+  return droppedByStderr(err) || recordOf(err)?.dropped === true;
 }
 
 /**
@@ -112,7 +116,9 @@ export function isDroppedMidRequest(err: unknown): boolean {
  * mid-request drop is never reported as a plain failure — it may have committed (#33).
  */
 export function describeTransient(err: unknown, id: number): string {
-  const retries = `after ${RETRY_PAUSES_MS.length} retries`;
+  // the real count: a timeout or 500 after a drop ends the loop early (#370)
+  const n = recordOf(err)?.retries ?? RETRY_PAUSES_MS.length;
+  const retries = n === 1 ? "after 1 retry" : `after ${n} retries`;
   if (isDroppedMidRequest(err)) {
     return (
       `The connection to the Calibre Content Server dropped mid-request ${retries}; the write ` +

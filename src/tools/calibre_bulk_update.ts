@@ -31,6 +31,7 @@ import {
   withTransientRetry,
   verifyTimedOutWrite,
   isDroppedMidRequest,
+  type TimedOutWriteCheck,
 } from "../app/write-policy.js";
 import { errorCodeFor } from "../domain/error-codes.js";
 import { mergeTags, type TagMerge } from "../domain/tag-ops.js";
@@ -245,28 +246,9 @@ export const bulkUpdateTool = defineTool({
           );
           applied.push(b.id);
         } catch (err) {
-          // A refusal blocks every later write too, so stop — but once books have committed,
-          // they must stay visible or the model retries the whole set (#33, #213).
-          if (isWriteRefused(err)) {
-            if (applied.length === 0) return toolError("write_refused", WRITE_REFUSED_MESSAGE);
-            failed.push({ id: b.id, error: WRITE_REFUSED_MESSAGE });
-            return stoppedMidLoop(
-              {
-                matched: perBook.length,
-                applied,
-                failed,
-                notAttempted: perBook.slice(i + 1).map((p) => p.id),
-                blockedId: b.id,
-              },
-              {
-                headline: "Calibre refused the write",
-                steer: `${WRITE_REFUSED_MESSAGE} After fixing the server`,
-                err,
-              },
-            );
-          }
-          // A drop on ANY attempt may have committed: re-read it like the single-book path
-          // (#342) so a landed write is never reported as failed (#370). No retry after this.
+          const run = { matched: perBook.length, applied, failed, notAttempted: perBook.slice(i + 1).map((p) => p.id) };
+          // A drop on ANY attempt may have committed — even one a refusal followed: re-read it
+          // like the single-book path (#342) so a landed write is never reported failed (#370).
           const dropped = isDroppedMidRequest(err)
             ? await settleDroppedWrite(deps, {
                 id: b.id,
@@ -274,11 +256,12 @@ export const bulkUpdateTool = defineTool({
                 changes: b.changes,
                 library: args.library,
                 err,
-                run: { matched: perBook.length, applied, failed, notAttempted: perBook.slice(i + 1).map((p) => p.id) },
+                run,
               })
             : undefined;
           if (dropped === "next") continue;
           if (dropped) return dropped;
+          if (isWriteRefused(err)) return refusedStop(run, b.id, err);
           // Retries exhausted. A down server fails every later book the same way, so this is a
           // circuit breaker (stop like a refusal); a gateway 5xx fails only this book (#233).
           const transient = classifyTransient(err);
@@ -425,6 +408,7 @@ interface DroppedWrite {
 async function settleDroppedWrite(deps: BaseDeps, drop: DroppedWrite): Promise<ToolResult | "next"> {
   const { id, err, run } = drop;
   const check = await verifyTimedOutWrite(deps, drop);
+  if (isWriteRefused(err)) return settleRefusedAfterDrop(check, drop);
   const landed = check.status === "landed";
   if (landed) run.applied.push(id);
   else run.failed.push({ id, error: describeTransient(err, id) });
@@ -443,4 +427,38 @@ async function settleDroppedWrite(deps: BaseDeps, drop: DroppedWrite): Promise<T
     { ...run, blockedId: undefined },
     { headline: UNREACHABLE_HEADLINE, steer, err, code: "calibre_unreachable" },
   );
+}
+
+const REFUSED_HEADLINE = "Calibre refused the write";
+const REFUSED_STEER = `${WRITE_REFUSED_MESSAGE} After fixing the server`;
+
+/**
+ * A refusal blocks every later write too, so stop — but once books have committed, they must
+ * stay visible or the model retries the whole set (#33, #213). Records `id` as failed.
+ */
+function refusedStop(run: DroppedWrite["run"], id: number, err: unknown): ToolResult {
+  if (run.applied.length === 0) return toolError("write_refused", WRITE_REFUSED_MESSAGE);
+  run.failed.push({ id, error: WRITE_REFUSED_MESSAGE });
+  return stoppedMidLoop({ ...run, blockedId: id }, { headline: REFUSED_HEADLINE, steer: REFUSED_STEER, err });
+}
+
+/**
+ * A retry that dropped and was then refused (#370): landed → applied, and the refusal still
+ * stops the rest; not landed → the plain refusal; re-read failed → the "verify" steer.
+ */
+function settleRefusedAfterDrop(check: TimedOutWriteCheck, drop: DroppedWrite): ToolResult | "next" {
+  const { id, err, run } = drop;
+  if (check.status === "not-landed") return refusedStop(run, id, err);
+  if (check.status === "unverifiable") {
+    run.failed.push({ id, error: describeTransient(err, id) });
+    const steer = `${describeTransient(err, id)} ${REFUSED_STEER}`;
+    return stoppedMidLoop(
+      { ...run, blockedId: id },
+      { headline: REFUSED_HEADLINE, steer, err, code: "write_unverified" },
+    );
+  }
+  run.applied.push(id);
+  if (run.notAttempted.length === 0) return "next"; // nothing left for the refusal to block
+  const steer = `A re-read confirmed book ${id} was written before the refusal. ${REFUSED_STEER}`;
+  return stoppedMidLoop({ ...run, blockedId: undefined }, { headline: REFUSED_HEADLINE, steer, err });
 }

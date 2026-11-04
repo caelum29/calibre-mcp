@@ -87,16 +87,19 @@ export const updateBookTool = defineTool({
           deps.sleep,
         );
       } catch (err) {
+        const write = { id: numericId, before, changes, library: args.library };
+        // an earlier attempt that dropped may have committed before the refusal — re-read first (#370)
+        if (isWriteRefused(err) && isDroppedMidRequest(err)) return confirmRefusedAfterDrop(deps, write, err);
         if (isWriteRefused(err)) return toolError("write_refused", WRITE_REFUSED_MESSAGE);
         // a mid-request drop may arrive after the server committed — verify it like a timeout (#342)
         if (isDroppedMidRequest(err)) {
-          return confirmDroppedWrite(deps, { id: numericId, before, changes, library: args.library }, err);
+          return confirmDroppedWrite(deps, write, err);
         }
         if (classifyTransient(err)) return toolError("calibre_unreachable", describeTransient(err, numericId));
         // A routed write commits server-side BEFORE calibredb replies, so a timeout is
         // ambiguous — verify against a re-read instead of reporting failure (issue #33).
         if (err instanceof CalibreCliTimeoutError) {
-          return confirmTimedOutWrite(deps, { id: numericId, before, changes, library: args.library });
+          return confirmTimedOutWrite(deps, write);
         }
         throw err;
       }
@@ -209,4 +212,15 @@ async function confirmDroppedWrite(deps: BaseDeps, write: TimedOutWrite, err: un
   const check = await verifyTimedOutWrite(deps, write);
   if (check.status === "landed") return appliedResult(write.id, write.before, check.after, Object.keys(write.changes));
   return toolError("write_unverified", describeTransient(err, write.id));
+}
+
+/**
+ * A retry that DROPPED and was then REFUSED: the dropped attempt may have committed. Landed →
+ * success; not landed → the plain refusal; re-read failed → the "verify" steer (#370).
+ */
+async function confirmRefusedAfterDrop(deps: BaseDeps, write: TimedOutWrite, err: unknown): Promise<ToolResult> {
+  const check = await verifyTimedOutWrite(deps, write);
+  if (check.status === "landed") return appliedResult(write.id, write.before, check.after, Object.keys(write.changes));
+  if (check.status === "unverifiable") return toolError("write_unverified", describeTransient(err, write.id));
+  return toolError("write_refused", WRITE_REFUSED_MESSAGE);
 }
