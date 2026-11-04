@@ -74,7 +74,7 @@ const deps = {
   embedder: new TransformersEmbedder(config),
   index: new SqliteIndexStore(config, log),
   log,
-} as unknown as IndexDeps;
+} satisfies IndexDeps;
 
 // shared: one ONNX session (its InferenceQueue serializes forwards) and all chunking on the
 // main thread. threads: one model copy per thread — ~+300 MB each, the price of real parallelism.
