@@ -1,0 +1,21 @@
+test/eval/retrieval/list-diff-allow.json
+  s_a1a7dcf0ca1d61::t_2391d2aeb02e60 1-4
+test/eval/retrieval/thresholds.json
+  s_a1a7dcf0ca1d61::t_8fd8299523aa98 36,38,41-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "704865530faa31e2586578a761f38ca7cb25d7bc",
+  "prompts": {},
+  "sessions": {
+    "s_a1a7dcf0ca1d61": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ead00391-4db4-4cc8-ad70-42a9368b96fb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
