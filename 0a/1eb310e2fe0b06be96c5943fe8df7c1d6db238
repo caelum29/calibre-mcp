@@ -1,0 +1,26 @@
+test/eval/retrieval/gate.test.ts
+  s_a1a7dcf0ca1d61::t_c14ed64d1b80eb 126
+test/eval/retrieval/hash-gate.ts
+  s_a1a7dcf0ca1d61::t_cfa693a3b4e3cb 5,72-95,97,103,107-110,112-114,116-120
+test/eval/retrieval/gate.ts
+  s_a1a7dcf0ca1d61::t_4f89a2ca40133a 14-15,20,143-145,219-284
+  s_a1a7dcf0ca1d61::t_b9989cdbe26a10 285
+test/eval/README.md
+  s_a1a7dcf0ca1d61::t_c92bb82142e306 105-115,120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0a1eb310e2fe0b06be96c5943fe8df7c1d6db238",
+  "prompts": {},
+  "sessions": {
+    "s_a1a7dcf0ca1d61": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ead00391-4db4-4cc8-ad70-42a9368b96fb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
