@@ -92,7 +92,7 @@ export const pingTool = defineTool({
 });
 
 /**
- * Recent server-side errors (oldest first) + today's log file. Reads the process logger,
+ * Recent server-side errors (oldest first, repeats collapsed with a count) + today's log file. Reads the process logger,
  * not deps.log: the ring buffer and file sink live only there (deps.log is the narrow sink).
  */
 function diagnostics(): { text: string; structured: Record<string, unknown> } {
@@ -101,13 +101,20 @@ function diagnostics(): { text: string; structured: Record<string, unknown> } {
     msg: r.msg,
     ...(r.tool ? { tool: r.tool, call: r.call } : {}),
     ...(r.meta === undefined ? {} : { meta: r.meta }),
+    count: r.count,
+    ...(r.firstTs ? { firstTs: r.firstTs } : {}),
   }));
   const logFile = log.currentFile();
-  const lines = [`log file: ${logFile ?? "off (stderr only)"}`, `recent errors: ${recentErrors.length}`];
+  const total = recentErrors.reduce((n, e) => n + e.count, 0);
+  const lines = [
+    `log file: ${logFile ?? "off (stderr only)"}`,
+    `recent errors: ${recentErrors.length}${total > recentErrors.length ? ` (${total} occurrences)` : ""}`,
+  ];
   // All of them, newest first — Desktop reads only this text, so it must match structuredContent.
   for (const e of [...recentErrors].reverse()) {
     const meta = e.meta === undefined ? "" : ` ${capString(JSON.stringify(e.meta), 200)}`;
-    lines.push(`- ${e.ts}${e.tool ? ` [${e.tool} call=${e.call}]` : ""} ${e.msg}${meta}`);
+    const repeats = e.firstTs ? ` (×${e.count} since ${e.firstTs})` : "";
+    lines.push(`- ${e.ts}${e.tool ? ` [${e.tool} call=${e.call}]` : ""} ${e.msg}${meta}${repeats}`);
   }
   return { text: lines.join("\n"), structured: { logFile, recentErrors } };
 }
