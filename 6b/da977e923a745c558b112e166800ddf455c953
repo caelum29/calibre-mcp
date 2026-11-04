@@ -1,0 +1,24 @@
+test/semantic/retrieve-confidence-parity.test.ts
+  s_c81cb810ca8fc4::t_5b46506e457482 11,58-59,61-63,94
+  s_c81cb810ca8fc4::t_f33c1f24cc5ef0 1-5,7-10,12-57,60,64-80,87-88,110
+  s_c81cb810ca8fc4::t_6fba1f0977dcd1 6,81-86
+  s_c81cb810ca8fc4::t_347ecb3c54734e 89-93,95-109
+test/app/library-index.test.ts
+  s_c81cb810ca8fc4::t_9344b1c5d9856c 93-126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6bda977e923a745c558b112e166800ddf455c953",
+  "prompts": {},
+  "sessions": {
+    "s_c81cb810ca8fc4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba7e39d6-3c43-459f-a719-2bb0e2ff24d4",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
