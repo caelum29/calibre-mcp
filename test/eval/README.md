@@ -40,7 +40,10 @@ positive). The OFF pass compares per-query Hit@1 to its own frozen baseline
 Cross-lingual drops are listed as report-only (OFF hybrid solves 0/8 today). Both passes
 print, then `OVERALL GATE`. The OFF pass skips the reranker, so it adds only seconds.
 `--gate` rejects `--rerank` (it sets rerank per pass) but honours `--rrf-weights`, which is
-how the tier was proven to see fusion: `--rrf-weights 0,1` turns OFF red while ON stays green.
+how the tier was proven to see fusion: `--rrf-weights 0.1,1` turns OFF red while ON stays green
+(PR #383). `0,1` turns both red — weight 0 drops vector-only hits from the candidate set before
+rerank, so it breaks more than the fused order. Any run (gate or not) refuses to write over a
+report `thresholds.json` names as a baseline (same date + sha + tag); use `--out-dir` or `--tag`.
 
 Every run also prints, after the per-mode headline:
 

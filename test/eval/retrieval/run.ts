@@ -31,6 +31,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadConfig } from "../../../src/config.js";
 import { RERANKER_MODEL_ID, TransformersReranker } from "../../../src/semantic/reranker.js";
+import { baselinePaths, checkGateArgs, loadGateBaselines, refuseBaselineOverwrite } from "./gate-guards.js";
 import { evaluateFusionOnlyGate, evaluateGate, renderGate, type Thresholds } from "./gate.js";
 import { ALL_MODES, renderMarkdown, runRetrievalEval, type EvalReport, type Mode } from "./harness.js";
 import { saturationLines } from "./saturation.js";
@@ -177,8 +178,20 @@ interface PassResult {
 }
 
 /** One eval run (fresh fixture index or live copy) → report written to outDir + stdout summary. */
-async function runPass(args: CliArgs, rerankOff: boolean, tag: string | undefined): Promise<PassResult> {
+async function runPass(
+  args: CliArgs,
+  rerankOff: boolean,
+  tag: string | undefined,
+  protectedPaths: string[],
+): Promise<PassResult> {
   const started = Date.now();
+  const sha = gitSha();
+  const date = new Date().toISOString().slice(0, 10);
+  const base = [date, sha, tag, args.live ? "live" : undefined].filter(Boolean).join("-");
+  const jsonPath = path.join(args.outDir, `${base}.json`);
+  const mdPath = path.join(args.outDir, `${base}.md`);
+  // checked before the run: a pass at a baseline's own date+sha would replace it at the end
+  refuseBaselineOverwrite(jsonPath, protectedPaths);
   let live: LiveRelevance | undefined;
   // Fixture runs build into their own temp dir under the work dir, so two concurrent evals (or a
   // killed run's -wal/-shm leftovers) never share one sqlite file (#325: "disk I/O error").
@@ -193,7 +206,6 @@ async function runPass(args: CliArgs, rerankOff: boolean, tag: string | undefine
     if (existsSync(models)) symlinkSync(models, path.join(indexDir, "models"), "dir");
   }
 
-  const sha = gitSha();
   // Rerank stage mirrors the shipped default: ON for hybrid/vector unless --rerank off.
   const reranker = rerankOff
     ? undefined
@@ -219,10 +231,6 @@ async function runPass(args: CliArgs, rerankOff: boolean, tag: string | undefine
   }
 
   mkdirSync(args.outDir, { recursive: true });
-  const date = new Date().toISOString().slice(0, 10);
-  const base = [date, sha, tag, args.live ? "live" : undefined].filter(Boolean).join("-");
-  const jsonPath = path.join(args.outDir, `${base}.json`);
-  const mdPath = path.join(args.outDir, `${base}.md`);
   writeFileSync(jsonPath, JSON.stringify(report, null, 2) + "\n");
   writeFileSync(mdPath, renderMarkdown(report, base) + "\n");
 
@@ -234,37 +242,31 @@ async function runPass(args: CliArgs, rerankOff: boolean, tag: string | undefine
   return { report, mdPath, jsonPath };
 }
 
-function readReport(rel: string): EvalReport {
-  return JSON.parse(readFileSync(path.join(HERE, rel), "utf8")) as EvalReport;
-}
-
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
-  if (args.gate && args.live) {
-    throw new Error("--gate is fixture-only: the live diff is a triage artifact, never a gate (#85).");
-  }
-  // the gate picks the rerank setting per pass (ON, then OFF), so a user override would be ignored
-  if (args.gate && args.rerank !== undefined) {
-    throw new Error("--gate runs both rerank ON and OFF passes itself; drop --rerank.");
-  }
+  checkGateArgs(args);
+  const thresholds = JSON.parse(readFileSync(path.join(HERE, "thresholds.json"), "utf8")) as Thresholds;
+  const protectedPaths = baselinePaths(thresholds, HERE);
+  // load baselines before the ~8 min ON pass, so a missing one fails in seconds
+  const baselines = args.gate
+    ? loadGateBaselines(thresholds, (rel) => readFileSync(path.join(HERE, rel), "utf8"))
+    : undefined;
   mkdirSync(args.workDir, { recursive: true });
   ensureModelCache(args.workDir);
 
-  const on = await runPass(args, args.rerank === "off", args.tag);
-  if (!args.gate) return;
+  const on = await runPass(args, args.rerank === "off", args.tag, protectedPaths);
+  if (!baselines) return;
 
-  const thresholds = JSON.parse(readFileSync(path.join(HERE, "thresholds.json"), "utf8")) as Thresholds;
-  const onResult = evaluateGate(on.report, readReport(thresholds.baselineReport), thresholds);
+  const onResult = evaluateGate(on.report, baselines.on, thresholds);
   const sections = [`== ON pass (rerank on) vs ${thresholds.baselineReport} ==\n${renderGate(onResult)}`];
   let pass = onResult.pass;
 
   // #356: the reranker re-sorts the whole fixture, so fusion is gated on its own OFF pass
   const fusion = thresholds.fusionOnly;
-  if (fusion) {
-    if (!fusion.baselineReport) throw new Error("thresholds.fusionOnly has no baselineReport — freeze one first.");
+  if (fusion && baselines.off) {
     process.stdout.write("\n");
-    const off = await runPass(args, true, [args.tag, "rerankoff"].filter(Boolean).join("-"));
-    const offResult = evaluateFusionOnlyGate(off.report, readReport(fusion.baselineReport), fusion);
+    const off = await runPass(args, true, [args.tag, "rerankoff"].filter(Boolean).join("-"), protectedPaths);
+    const offResult = evaluateFusionOnlyGate(off.report, baselines.off, fusion);
     sections.push(`== OFF pass (fusion-only, rerank off) vs ${fusion.baselineReport} ==\n${renderGate(offResult)}`);
     pass &&= offResult.pass;
   }
