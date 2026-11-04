@@ -3,7 +3,8 @@
 // must never initialise a store file (that would take a write lock).
 
 import type { LibraryReader } from "../calibre/content-server.js";
-import { staleness, type StatusIndex } from "../semantic/status.js";
+import type { StatusIndex } from "../semantic/status.js";
+import { staleness } from "../semantic/staleness.js";
 import { Deadline } from "../shared/deadline.js";
 
 /** One library's index coverage; `total` is null when the Content Server did not answer in time. */

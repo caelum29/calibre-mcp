@@ -253,6 +253,187 @@ describe("ToolDeps on ports", () => {
   });
 });
 
+// ── use-cases take ports, not adapters (#354) ────────────────────────────────────────
+
+/** Infrastructure trees: every module is an adapter (class-less helpers like http.ts reach I/O via spawn/binaries). */
+const ADAPTER_TREES = ["src/calibre/", "src/enrich/", "src/ui/"];
+/** Mixed tree (ranking/pure logic beside the store and model adapters): a module is an adapter only if it shows it. */
+const MIXED_TREES = ["src/semantic/"];
+
+function parseTs(source: string): ts.SourceFile {
+  return ts.createSourceFile("x.ts", source, ts.ScriptTarget.ES2022, true);
+}
+
+/** Exported non-Error classes: ContentServerClient, SqliteIndexStore, TransformersEmbedder, … */
+function exportsAdapterClass(source: string): boolean {
+  return parseTs(source).statements.some(
+    (st) =>
+      ts.isClassDeclaration(st) &&
+      st.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword) === true &&
+      !st.heritageClauses?.some((h) => h.types.some((t) => t.expression.getText().endsWith("Error"))),
+  );
+}
+
+/** Node modules that mean real I/O: filesystem, subprocess, SQLite, network. */
+const IO_MODULE = /^(?:node:)?(?:fs|fs\/promises|child_process|sqlite|net|http|https|http2|tls|dns|dgram)$/;
+
+/** True if the module value-imports Node I/O or calls the global `fetch(` — it does its own I/O. */
+function doesIo(source: string): boolean {
+  if (valueImports(source).some((spec) => IO_MODULE.test(spec))) return true;
+  // a module typed against the SQLite handle (store/shared.ts) is store code even if it only names the type
+  if (valueImports(source, true).some((spec) => /^(?:node:)?sqlite$/.test(spec))) return true;
+  let found = false;
+  const visit = (n: ts.Node): void => {
+    if (ts.isCallExpression(n) && ts.isIdentifier(n.expression) && n.expression.text === "fetch") found = true;
+    if (!found) ts.forEachChild(n, visit);
+  };
+  visit(parseTs(source));
+  return found;
+}
+
+/**
+ * Concrete adapter modules, found rather than listed so a new adapter is covered the day it lands:
+ * every module under calibre/, enrich/, ui/, plus any semantic/ module that exports a class OR
+ * value-imports Node I/O (fs, child_process, sqlite, net, http…) OR calls `fetch(` itself.
+ */
+function adapterModules(files: SourceFile[]): Set<string> {
+  return new Set(
+    files
+      .filter(
+        (f) =>
+          ADAPTER_TREES.some((d) => f.path.startsWith(d)) ||
+          (MIXED_TREES.some((d) => f.path.startsWith(d)) && (exportsAdapterClass(f.source) || doesIo(f.source))),
+      )
+      .map((f) => f.path),
+  );
+}
+
+/**
+ * Module specifiers a file pulls in as a VALUE: `import x|{ a }|* as n from`, `import "m"`, `export … from`,
+ * `export * from`, dynamic `import("m")`, `import x = require("m")`, `require("m")`. Only `import type` /
+ * `export type … from` is skipped: under verbatimModuleSyntax an inline-`type` clause still emits an import.
+ */
+function valueImports(source: string, includeTypes = false): string[] {
+  const out: string[] = [];
+  const isLiteral = (n: ts.Node | undefined): n is ts.StringLiteralLike => n !== undefined && ts.isStringLiteralLike(n);
+  const visit = (n: ts.Node): void => {
+    if (ts.isImportDeclaration(n) && isLiteral(n.moduleSpecifier)) {
+      // verbatimModuleSyntax keeps `import { type A } from "m"` as a side-effect `import {} from "m"`,
+      // so only `import type …` is erased
+      const typeOnly = !includeTypes && n.importClause?.isTypeOnly === true;
+      if (!typeOnly) out.push(n.moduleSpecifier.text);
+    } else if (ts.isExportDeclaration(n) && isLiteral(n.moduleSpecifier)) {
+      const typeOnly = !includeTypes && n.isTypeOnly; // `export { type A } from "m"` stays a runtime re-export
+      if (!typeOnly) out.push(n.moduleSpecifier.text);
+    } else if (
+      ts.isImportEqualsDeclaration(n) &&
+      ts.isExternalModuleReference(n.moduleReference) &&
+      isLiteral(n.moduleReference.expression)
+    ) {
+      if (!n.isTypeOnly) out.push(n.moduleReference.expression.text);
+    } else if (ts.isCallExpression(n) && isLiteral(n.arguments[0])) {
+      const callee = n.expression;
+      if (callee.kind === ts.SyntaxKind.ImportKeyword || (ts.isIdentifier(callee) && callee.text === "require")) {
+        out.push((n.arguments[0] as ts.StringLiteralLike).text);
+      }
+    }
+    ts.forEachChild(n, visit);
+  };
+  visit(parseTs(source));
+  return out;
+}
+
+/** `"<file> -> <adapter module>"` for every value import of a concrete adapter module from src/app/. */
+function findAppAdapterImports(files: SourceFile[], adapters: ReadonlySet<string>): string[] {
+  const out = new Set<string>();
+  for (const f of files.filter((x) => x.path.startsWith("src/app/"))) {
+    const dir = f.path.split("/").slice(0, -1).join("/");
+    for (const spec of valueImports(f.source)) {
+      if (!spec.startsWith(".")) continue;
+      const target = relative(ROOT, join(ROOT, dir, spec))
+        .split("\\")
+        .join("/")
+        .replace(/\.js$/, ".ts");
+      if (adapters.has(target)) out.add(`${f.path} -> ${target}`);
+    }
+  }
+  return [...out].sort();
+}
+
+describe("use-cases take ports, not adapters (#354)", () => {
+  const all = readSources("src", /\.ts$/);
+  const adapters = adapterModules(all);
+
+  it("finds the concrete adapter modules (the rule can't go blind)", () => {
+    for (const known of [
+      // exports a class
+      "src/calibre/content-server.ts",
+      "src/calibre/client.ts",
+      "src/calibre/extract.ts",
+      "src/semantic/store/index.ts",
+      "src/semantic/embedder.ts",
+      "src/ui/board-cache.ts",
+      // class-less, does Node I/O or fetch itself
+      "src/calibre/http.ts",
+      "src/calibre/binaries.ts",
+      "src/calibre/spawn.ts",
+      "src/calibre/pdf-outline.ts",
+      "src/calibre/epub-toc.ts",
+      "src/calibre/figure-fetch.ts",
+      "src/calibre/discover.ts",
+      "src/enrich/http.ts",
+      "src/semantic/build-progress.ts",
+      "src/semantic/store/shared.ts",
+      "src/semantic/status.ts",
+      "src/calibre/lib-id.ts", // whole tree: pure helpers here belong in domain, not behind app
+    ]) {
+      expect(adapters.has(known), known).toBe(true);
+    }
+    // pure modules the use-cases legitimately import by value are not adapters
+    for (const pure of ["src/semantic/book-pipeline.ts", "src/semantic/staleness.ts", "src/semantic/model.ts"]) {
+      expect(adapters.has(pure), pure).toBe(false);
+    }
+  });
+
+  it("src/app value-imports no concrete adapter module (type-only port imports are fine)", () => {
+    expect(findAppAdapterImports(all, adapters)).toEqual([]);
+  });
+
+  it("flags every value-import form and lets type-only imports through", () => {
+    const A = new Set(["src/calibre/content-server.ts", "src/semantic/store/index.ts"]);
+    const at = (source: string) => findAppAdapterImports([{ path: "src/app/x.ts", source }], A);
+    const cs = "src/app/x.ts -> src/calibre/content-server.ts";
+    expect(at(`import { ContentServerClient } from "../calibre/content-server.js";`)).toEqual([cs]);
+    expect(at(`import { matchCategory } from "../calibre/content-server.js";`)).toEqual([cs]); // any value, not only the class
+    expect(at(`import cs from "../calibre/content-server.js";`)).toEqual([cs]);
+    expect(at(`import * as cs from "../calibre/content-server.js";`)).toEqual([cs]);
+    expect(at(`import "../calibre/content-server.js";`)).toEqual([cs]);
+    expect(at(`import { type LibraryReader, ContentServerClient } from "../calibre/content-server.js";`)).toEqual([cs]);
+    expect(at(`export { ContentServerClient } from "../calibre/content-server.js";`)).toEqual([cs]);
+    expect(at(`export * from "../calibre/content-server.js";`)).toEqual([cs]);
+    expect(at(`const m = await import("../calibre/content-server.js");`)).toEqual([cs]);
+    expect(at(`const m = require("../calibre/content-server.js");`)).toEqual([cs]);
+    expect(at(`import cs = require("../calibre/content-server.js");`)).toEqual([cs]);
+    expect(at(`import { SqliteIndexStore } from "../semantic/store/index.js";`)).toEqual([
+      "src/app/x.ts -> src/semantic/store/index.ts",
+    ]);
+    expect(at(`import type { LibraryReader } from "../calibre/content-server.js";`)).toEqual([]);
+    expect(at(`import type * as cs from "../calibre/content-server.js";`)).toEqual([]);
+    // verbatimModuleSyntax emits these as `import {} from "…"` — a runtime side-effect import
+    expect(at(`import { type LibraryReader } from "../calibre/content-server.js";`)).toEqual([cs]);
+    expect(at(`import { type LibraryReader, type Page } from "../calibre/content-server.js";`)).toEqual([cs]);
+    expect(at(`export { type LibraryReader } from "../calibre/content-server.js";`)).toEqual([cs]);
+    expect(at(`export type { LibraryReader } from "../calibre/content-server.js";`)).toEqual([]);
+    expect(at(`let r: import("../calibre/content-server.js").LibraryReader;`)).toEqual([]);
+    expect(at(`// import { ContentServerClient } from "../calibre/content-server.js";`)).toEqual([]);
+    expect(at(`import { z } from "zod"; import { x } from "../domain/book.js";`)).toEqual([]);
+    // only src/app is checked
+    expect(
+      findAppAdapterImports([{ path: "src/tools/x.ts", source: `import "../calibre/content-server.js";` }], A),
+    ).toEqual([]);
+  });
+});
+
 // ── one home per mechanism (twin paths: #219, #221, #223, #241) ──────────────────────
 
 interface TwinRule {
