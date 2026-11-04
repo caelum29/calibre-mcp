@@ -11,6 +11,8 @@
 //   print mechanical PASS/FAIL per declared gate (#85, D-012). Exit 1 on a failed gate.
 //   Fixture-only (the live diff is a triage artifact, not a gate — thresholds.liveEval).
 //
+// Every run prints the headroom share and, when rerank-ON hybrid Hit@1 >= 0.95, a saturation
+//   warning (#365, saturation.ts); both are skipped on --live (unverified labels).
 // Offline path: deterministic — two runs at the same commit produce identical JSON.
 // --live: runs library-scope queries against a COPY of the real library index using
 //   live-relevance.json labels (UNVERIFIED until Artem confirms). Never touches the
@@ -29,6 +31,7 @@ import { loadConfig } from "../../../src/config.js";
 import { RERANKER_MODEL_ID, TransformersReranker } from "../../../src/semantic/reranker.js";
 import { evaluateGate, renderGate, type Thresholds } from "./gate.js";
 import { ALL_MODES, renderMarkdown, runRetrievalEval, type EvalReport, type Mode } from "./harness.js";
+import { saturationLines } from "./saturation.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const progress = (msg: string) => process.stderr.write(`[eval] ${msg}\n`);
@@ -224,7 +227,9 @@ async function main(): Promise<void> {
 
   progress(`done in ${((Date.now() - started) / 1000).toFixed(1)}s`);
   // CLI summary on stdout (this is a script, not the stdio MCP server).
-  process.stdout.write(`${headline(report)}\nreport: ${mdPath}\njson:   ${jsonPath}\n`);
+  process.stdout.write(
+    `${headline(report)}\n${saturationLines(report).join("\n")}\n` + `report: ${mdPath}\njson:   ${jsonPath}\n`,
+  );
 
   if (args.gate) {
     const thresholds = JSON.parse(readFileSync(path.join(HERE, "thresholds.json"), "utf8")) as Thresholds;
