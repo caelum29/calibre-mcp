@@ -90,4 +90,38 @@ describe("libraryIndexReport (#346)", () => {
     await vi.advanceTimersByTimeAsync(1);
     expect(settled).toEqual([{ id: "A", name: "Alpha", state: "ok", indexed: 40, total: null, withoutEmbeddings: 3 }]);
   });
+
+  it("gives up on a hanging libraryInfo at exactly the 5 s budget, not before", async () => {
+    vi.useFakeTimers();
+    const searches: SearchParams[] = [];
+    let settled: unknown = "pending";
+    void libraryIndexReport(deps({ libraryInfo: () => new Promise(() => {}) }, searches)).then((r) => (settled = r));
+    await vi.advanceTimersByTimeAsync(4999);
+    expect(settled).toBe("pending");
+    await vi.advanceTimersByTimeAsync(1);
+    expect([settled, searches]).toEqual([undefined, []]); // no map → no counts were attempted
+  });
+
+  it("a count started with the budget nearly spent is still cut off at 5 s with total null", async () => {
+    vi.useFakeTimers();
+    const searches: SearchParams[] = [];
+    const lateInfo = deps(
+      {
+        libraryInfo: () =>
+          new Promise((resolve) =>
+            setTimeout(() => resolve({ libraryMap: { A: "Alpha" }, defaultLibrary: "A" }), 4900),
+          ),
+        search: () => new Promise(() => {}),
+      },
+      searches,
+    );
+    let settled: unknown = "pending";
+    void libraryIndexReport(lateInfo).then((r) => (settled = r));
+    await vi.advanceTimersByTimeAsync(4900);
+    expect(searches[0]?.timeoutMs).toBe(100);
+    await vi.advanceTimersByTimeAsync(99);
+    expect(settled).toBe("pending");
+    await vi.advanceTimersByTimeAsync(1);
+    expect(settled).toEqual([{ id: "A", name: "Alpha", state: "ok", indexed: 40, total: null, withoutEmbeddings: 3 }]);
+  });
 });
