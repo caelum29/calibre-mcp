@@ -1,0 +1,22 @@
+test/eval/retrieval/saturation.test.ts
+  s_a1a7dcf0ca1d61::t_cbb5c242ad8526 1-102
+  s_a1a7dcf0ca1d61::t_812134ab72ade9 103-104
+test/eval/retrieval/saturation.ts
+  s_a1a7dcf0ca1d61::t_41704b0877e0f0 1-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "25826b21e252e4d9fc6b84dd95122489def5628e",
+  "prompts": {},
+  "sessions": {
+    "s_a1a7dcf0ca1d61": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ead00391-4db4-4cc8-ad70-42a9368b96fb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
