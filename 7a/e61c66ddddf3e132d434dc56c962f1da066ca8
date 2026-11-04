@@ -1,0 +1,26 @@
+test/eval/retrieval/gate-guards.test.ts
+  s_a1a7dcf0ca1d61::t_7e138565f9588f 1-94,98-99
+  s_a1a7dcf0ca1d61::t_f9e0e6687e32e2 95-97
+test/eval/README.md
+  s_a1a7dcf0ca1d61::t_f9e0e6687e32e2 43-46
+test/eval/retrieval/run.ts
+  s_a1a7dcf0ca1d61::t_f9e0e6687e32e2 34,181-186,188-194,247-253,257-258,260,266,268-269
+test/eval/retrieval/gate-guards.ts
+  s_a1a7dcf0ca1d61::t_15526d398f6f25 1-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7ae61c66ddddf3e132d434dc56c962f1da066ca8",
+  "prompts": {},
+  "sessions": {
+    "s_a1a7dcf0ca1d61": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ead00391-4db4-4cc8-ad70-42a9368b96fb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
