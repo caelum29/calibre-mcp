@@ -12,7 +12,7 @@ Two eval axes live (or will live) here — they measure different things:
 ## Retrieval eval (`retrieval/`) — the measurement gate for tuning
 
 Every tuning decision downstream (reranker on/off, fusion weights, embedding-model swap,
-chunk sizes) is guesswork without labels. This harness runs 50 labeled golden queries over
+chunk sizes) is guesswork without labels. This harness runs 68 labeled golden queries over
 a committed fixture corpus through the REAL pipeline — `calibre_build_index`'s
 chunk→embed→store path, then the real `calibre_semantic_search` handler per mode
 (hybrid / vector / keyword) — and scores Hit@1, Recall@5, MRR, nDCG@10 per kind and overall.
@@ -23,21 +23,35 @@ pnpm eval --tag baseline       # label the report filename
 pnpm eval --modes hybrid       # subset of modes
 pnpm eval --live               # UNVERIFIED spot check against the real library index (skip in CI)
 pnpm eval --rerank off         # disable the shipped D-011 rerank stage (on by default)
+pnpm eval --rrf-weights 1.5,1.0  # weighted-RRF (vector,keyword) override for this run only (#142 sweep seam)
+pnpm eval --gate              # PASS/FAIL vs thresholds.json + its frozen baseline; exit 1 on a failed gate (~8 min)
 ```
+
+Every run also prints, after the per-mode headline:
+
+- **headroom** — how many positive queries every mode in the run solves at Hit@1
+  (`saturation.ts`). Those queries can't tell configs apart, so a high share means the suite
+  has little room to show a tuning win (baseline f8bb617: 45/59 = 76.3% across
+  hybrid/vector/keyword).
+- **saturation warning** — when rerank-ON hybrid Hit@1 ≥ 0.95. Anthropic's eval guidance: a
+  baseline near 95% means optimise cost/latency, or add harder queries, rather than chase
+  quality. `--rerank off` runs never warn (they isolate fusion, which still has headroom).
 
 ### Layout
 
-- `queries.json` — 50 golden queries `{ id, kind, scope, query, ru?, relevant }`. Kinds:
-  `semantic-paraphrase`, `exact-identifier`, `cross-lingual` (RU↔EN), `ru-monolingual`,
-  `negative` (no right answer exists — measures the low-confidence signal). 19/50 are
-  RU-involved (`ru: true`): RU is the known weak axis (memory: "RU=0 chapters=RU-gap")
+- `queries.json` — 68 golden queries `{ id, kind, scope, query, ru?, relevant }`. Kinds
+  (count): `semantic-paraphrase` (16), `exact-identifier` (12), `figure-caption` (9),
+  `cross-lingual` RU↔EN (8), `ru-monolingual` (8), `front-matter-trap` (6), `negative` (6)
+  and `figure-negative` (3) — the two negative kinds have no right answer and measure the
+  low-confidence signal, leaving 59 positives. 24/68 are RU-involved (`ru: true`): RU is the known weak axis (memory: "RU=0 chapters=RU-gap")
   and is first-class here, not an afterthought. `scope: "book"` queries label relevant
   passages as char spans + a `marker` substring (the harness fails loudly if a fixture
   edit invalidates a span).
 - `corpus/` + `corpus.json` — 17 self-authored fixture "books" (12 EN incl. 2 code-heavy,
   5 RU), committed as text. Two are front-matter traps: 116 (plain-text praise/TOC,
   D-016's chapter detector) and 117 (`headingStructured`, EPUB→Markdown-shaped — only the
-  #102 `leadingFrontMatter` rule finds its boundary; a smoke test pins that); **embeddings are built at eval time** (decision: committing a
+  #102 `leadingFrontMatter` rule finds its boundary; a smoke test pins that). `corpus/figures/`
+  holds caption inventories for 6 books (the figure-caption kinds); **embeddings are built at eval time** (decision: committing a
   prebuilt index would rot on every INDEX_VERSION bump; the model is cached after the
   first run so CI/offline cost is seconds). Don't casually edit fixtures — span labels
   point into them.
@@ -55,9 +69,14 @@ pnpm eval --rerank off         # disable the shipped D-011 rerank stage (on by d
   The JSON is deterministic: two runs at the same commit are byte-identical.
 - `live-relevance.json` — live-mode labels keyed to real library bookIds, **unverified**
   until Artem confirms them.
-- `thresholds.json` — Phase B pass/fail gates declared BEFORE the atomic re-index
-  (D-012 protocol; human record = issue #85 verdict comment). `pnpm eval --gate`
-  (to be built with the Phase B fixture work) prints mechanical PASS/FAIL against it.
+- `thresholds.json` — every eval gate rule, each declared and committed BEFORE the run that
+  measures it (D-012 protocol; Phase B record = issue #85 verdict comment). `baselineReport`
+  names the frozen report the gates compare against.
+- `gate.ts` — the mechanical PASS/FAIL behind `pnpm eval --gate`: per-query Hit@1
+  non-regression, figure-caption floors, front-matter block, score drift.
+- `saturation.ts` — headroom share + saturation warning printed by every run (#365).
+- `rrf-sweep.sh` + `rrf-sweep.ts`, `rerank-floor.ts` — one-off tuning scorers (#142 RRF
+  weights, RERANK_FLOOR) over committed reports, gated by their `thresholds.json` blocks.
 - `hash-embedder.ts` + `harness.test.ts` — model-free smoke tests that run in the normal
   `pnpm test` suite (seconds): plumbing, query-set contract, determinism, and the
   "deliberately broken ranking degrades the metrics" proof that the harness measures.
@@ -70,3 +89,6 @@ pnpm eval --rerank off         # disable the shipped D-011 rerank stage (on by d
   the first model download, identical JSON on re-run.
 - Reports are committed. Baseline first, then one report per tuning change, so every
   fusion/reranker/model decision cites numbers, not vibes.
+- No held-out set yet: every query has been used for tuning (model bake-off, RRF sweep,
+  floor calibration), so fixture numbers are optimistic. Tagging a held-out subset that
+  tuning scripts skip is an open call for Artem (#365).
