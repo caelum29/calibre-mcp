@@ -25,12 +25,23 @@ pnpm eval --live               # UNVERIFIED spot check against the real library 
 pnpm eval --rerank off         # disable the shipped D-011 rerank stage (on by default)
 pnpm eval --rrf-weights 1.5,1.0  # weighted-RRF (vector,keyword) override for this run only (#142 sweep seam)
 pnpm eval --gate              # two passes (rerank ON, then OFF) vs their frozen baselines; exit 1 if either fails (~8 min standalone)
+pnpm eval --compare a.json b.json  # paired stats of two existing reports (no eval run, seconds)
 ```
 
 `--gate` checks, per `thresholds.json`: per-query Hit@1 non-regression per mode, negatives
 flagged (6/6 hybrid+vector), figure-caption query count + hybrid floors, figure-negative query
 count (its flagged rate stays informational until the figures floor is calibrated), the
-heading front-matter block, and score drift (aggregates ±0.005, per-query maxScore ±0.01).
+heading front-matter block, per-query maxScore drift (±0.01 — an unmeasured cross-platform
+allowance, tracked in #364), and the **top-10 list diff** (#358, `thresholds.listDiff`).
+
+The list diff requires every baseline row (every kind and mode, negatives included) to
+reproduce its top-10 `retrieved` list exactly; a missing row counts as changed. It replaced the
+#325 aggregate ε (±0.005), which a rank 2→3 move (Δ nDCG@10 0.0022 over 59 positives) passed
+unseen. Gains change lists too, so improvements ratchet: an intended change either re-freezes
+the baseline (rule first, D-012) or goes into `list-diff-allow.json` as
+`{tier, mode, id, retrieved, reason}`. An entry allows exactly that new list, and needs a
+reason. It runs on the ON pass (`on`), the OFF pass (`fusionOnly`) and the tier-0 hash gate in
+`pnpm test` (`hash`, `list-diff.test.ts`).
 
 It then runs a second, **fusion-only pass** with the reranker off (`thresholds.fusionOnly`,
 #356). With rerank ON, `RERANK_POOL` (30) covers the whole fixture, so the cross-encoder
@@ -44,6 +55,13 @@ how the tier was proven to see fusion: `--rrf-weights 0.1,1` turns OFF red while
 (PR #383). `0,1` turns both red — weight 0 drops vector-only hits from the candidate set before
 rerank, so it breaks more than the fused order. Any run (gate or not) refuses to write over a
 report `thresholds.json` names as a baseline (same date + sha + tag); use `--out-dir` or `--tag`.
+
+`--compare a.json b.json` (`stats.ts`) pairs the two reports by query id, per mode, overall and
+per kind. It prints Δ nDCG@10 (b − a), a percentile bootstrap 95% CI, a sign-flip permutation
+p (exact for small n, fixed-seed Monte Carlo otherwise), Hit@1 flips with an exact sign test,
+the MDE at 80% power, headroom, and `UNDERPOWERED` when p ≥ 0.05 and |Δ| < MDE. The same
+two files always print the same numbers. At n = 59 the MDE is ~0.09–0.12 nDCG, so most
+single-kind tuning deltas come out underpowered; cite this table, not a bare Δ.
 
 Every run also prints, after the per-mode headline:
 
@@ -94,8 +112,10 @@ Every run also prints, after the per-mode headline:
   names the frozen report the gates compare against; `fusionOnly.baselineReport` names the
   OFF pass's own.
 - `gate.ts` — the mechanical PASS/FAIL behind `pnpm eval --gate`: per-query Hit@1
-  non-regression, figure-caption floors, front-matter block, score drift; plus
-  `evaluateFusionOnlyGate` for the OFF pass.
+  non-regression, figure-caption floors, front-matter block, maxScore drift; plus
+  `evaluateFusionOnlyGate` for the OFF pass and `evaluateListDiff` for every tier.
+- `stats.ts` — paired permutation test, bootstrap CI, sign test, MDE; `--compare`.
+- `list-diff-allow.json` — intended top-10 list changes (empty while the baselines hold).
 - `saturation.ts` — headroom share + saturation warning printed by every run (#365).
 - `rrf-sweep.sh` + `rrf-sweep.ts`, `rerank-floor.ts` — one-off tuning scorers (#142 RRF
   weights, RERANK_FLOOR) over committed reports, gated by their `thresholds.json` blocks.

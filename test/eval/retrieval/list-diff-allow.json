@@ -1,0 +1,4 @@
+{
+  "$comment": "Intended top-10 list changes vs the frozen baselines (#358, thresholds.json listDiff). Each entry allows exactly one new list for one (tier, mode, id): {tier: on|fusionOnly|hash, mode, id, retrieved: the new top-10 keys, reason}. Prefer re-freezing the baseline for a broad intended change; use entries for a few deliberate moves. Remove entries when the baseline is re-frozen.",
+  "entries": []
+}

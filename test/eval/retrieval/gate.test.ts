@@ -160,10 +160,10 @@ describe("evaluateGate", () => {
   });
 });
 
-// Score drift (#325, from #317/#322/#323): non-regression only sees Hit@1 flips, so small
-// ranking/score shifts vs the frozen baseline pass unseen. These pin the drift check.
+// Score drift (#325, from #317/#322/#323): per-query maxScore vs the frozen baseline. The
+// aggregate part was replaced by the #358 top-10 list diff (list-diff.test.ts).
 describe("evaluateGate score drift (#325)", () => {
-  const drift = { metricEpsilon: 0.005, maxScoreEpsilon: 0.01, maxScoreModes: ["hybrid", "vector"] as Mode[] };
+  const drift = { maxScoreEpsilon: 0.01, maxScoreModes: ["hybrid", "vector"] as Mode[] };
   const withDrift: Thresholds = { ...thresholds, scoreDrift: drift };
   const agg = (ndcg10: number) => ({ n: 2, hit1: 1, recall5: 1, mrr: 1, ndcg10 });
 
@@ -191,30 +191,15 @@ describe("evaluateGate score drift (#325)", () => {
 
   it("passes when the run reproduces the baseline scores", () => {
     const res = evaluateGate(withFigures(scored(0.9705)), base, withDrift);
-    expect(check(res, "score drift: aggregate metrics")).toMatchObject({ active: true, pass: true });
     expect(check(res, "score drift: per-query maxScore")).toMatchObject({ active: true, pass: true });
     expect(res.pass).toBe(true);
   });
 
-  it("tolerates aggregate drift within the epsilon", () => {
-    const res = evaluateGate(withFigures(scored(0.9665)), base, withDrift); // |Δ| = 0.004
-    expect(check(res, "score drift: aggregate metrics")?.pass).toBe(true);
-  });
-
-  it("fails on aggregate drift beyond the epsilon and names the metric", () => {
-    const res = evaluateGate(withFigures(scored(0.9645)), base, withDrift); // |Δ| = 0.006
-    expect(res.pass).toBe(false);
-    expect(check(res, "score drift: aggregate metrics")?.detail).toBe(
-      "1 beyond ±0.005: overall hybrid ndcg10 0.9705 → 0.9645",
-    );
-  });
-
-  it("fails when a baseline aggregate is missing from the run", () => {
-    const cur = withFigures(scored(0.9705));
-    const { keyword: _dropped, ...overall } = cur.overall;
-    const res = evaluateGate({ ...cur, overall }, base, withDrift);
-    expect(check(res, "score drift: aggregate metrics")?.detail).toContain("overall keyword MISSING");
-    expect(res.pass).toBe(false);
+  // #358 removed the aggregate ε (a 2→3 rank move slipped under it); listDiff gates rank moves now
+  it("no longer gates aggregate drift", () => {
+    const res = evaluateGate(withFigures(scored(0.9645)), base, withDrift); // |Δ| = 0.006 used to fail
+    expect(check(res, "score drift: aggregate metrics")).toBeUndefined();
+    expect(res.pass).toBe(true);
   });
 
   it("fails on a per-query maxScore shift beyond the epsilon in a gated mode only", () => {

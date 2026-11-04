@@ -33,10 +33,15 @@
     "minHit1Queries": { "keyword": 2, "hybrid": 3, "vector": 3 }
   },
   "scoreDrift": {
-    "$comment": "#325 (from #317/#322/#323), declared BEFORE measuring the current run against the baseline (D-012). nonRegression only sees Hit@1 flips; this catches small rank/score shifts. Aggregates: overall + ruInvolved hit1/recall5/mrr/ndcg10 per mode, |delta| <= metricEpsilon (0.005 is below one rank-1->2 swap over the 59 positive queries, ~0.006 nDCG). Per-query maxScore: cosine modes only (keyword maxScore is bm25), |delta| <= maxScoreEpsilon. A deliberate model/ranking change re-baselines (baselineReport) instead of widening these.",
-    "metricEpsilon": 0.005,
+    "$comment": "#325 per-query maxScore drift (cosine modes only; keyword maxScore is bm25), |delta| <= maxScoreEpsilon vs the baseline, every baseline row must be matched. The #325 aggregate metricEpsilon (0.005) was REMOVED by #358: a rank 2->3 move shifts nDCG@10 by only 0.0022 over 59 positives and passed it. Rank changes are now caught exactly by listDiff. A deliberate model/ranking change re-baselines (baselineReport) instead of widening this.",
     "maxScoreEpsilon": 0.01,
+    "$maxScoreEpsilonComment": "unmeasured, tracked in #364: same-platform runs are bit-identical (max |delta| 0.0000 over 136 rows), so this is a cross-platform / ORT-drift allowance that needs a Linux model run to measure. Do not tune it without that measurement.",
     "maxScoreModes": ["hybrid", "vector"]
+  },
+  "listDiff": {
+    "$comment": "#358, declared BEFORE the measuring run (D-012); it reuses the existing frozen baselines, which already hold every row's top-10 `retrieved` list. Every baseline row (all kinds, all modes, negatives included) must reproduce its top-topK list exactly — same keys, same order; a missing row counts as changed. Applies to all three tiers: `on` (baselineReport), `fusionOnly` (fusionOnly.baselineReport) and `hash` (hashGate.baselineReport). This makes gains ratchet too: an improvement also changes a list, so it fails until it is either re-frozen or listed in allowFile. allowFile entries are {tier, mode, id, retrieved, reason}: an entry allows exactly that new top-topK list (not 'any change') and needs a non-empty reason. Ties are not broken by id in the store, so a list that differs only across platforms is a nondeterminism bug to fix, never an allow entry.",
+    "topK": 10,
+    "allowFile": "list-diff-allow.json"
   },
   "fusionOnly": {
     "$comment": "#356 fusion-only tier, declared + committed BEFORE the run that freezes its baseline (D-012). With rerank ON, RERANK_POOL (30) covers the whole fixture, so the cross-encoder re-sorts every candidate and a fusion regression is invisible (ON hybrid == vector on all 59 positives). This tier re-runs the suite with --rerank off and compares per-query Hit@1 against a second frozen baseline (fusionOnly.baselineReport, a --rerank off run at the rule commit): no query with Hit@1 = 1 in that baseline may break, in any mode. Cross-lingual queries are report-only (OFF hybrid gets 0/8 today; no floor until fusion is fixed) — their drops are listed but never fail the gate. A query missing from the current run counts as broken. `pnpm eval --gate` runs and prints both passes (ON = the blocks above, OFF = this block).",
