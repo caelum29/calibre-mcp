@@ -1,0 +1,31 @@
+src/semantic/store/shared.ts
+  s_47d5e04ea2bed6::t_d84a1b7e2b6968 42-45,49,56,62,69-72,74-92,95-126,128
+src/semantic/store/figures.ts
+  s_47d5e04ea2bed6::t_5ff8995e16505f 11,13,27-29,141,144-147,151-168
+  s_47d5e04ea2bed6::t_ac178790db316a 169
+src/semantic/store/writer.ts
+  s_47d5e04ea2bed6::t_9fcdf26cbfeceb 2,23,27,117-119,151-152,193
+src/semantic/store/chunks.ts
+  s_47d5e04ea2bed6::t_9fcdf26cbfeceb 2
+  s_47d5e04ea2bed6::t_5ff8995e16505f 14,16,25-26,37-39,201-206,208,211,220-222,224-232
+src/semantic/store/index.ts
+  s_47d5e04ea2bed6::t_9fcdf26cbfeceb 38,64-68
+test/semantic/store-file.integration.test.ts
+  s_47d5e04ea2bed6::t_9665cef88aa3b0 185-186,192,194
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cb83d555c7410d91734f46be4e5f496374ceb1bc",
+  "prompts": {},
+  "sessions": {
+    "s_47d5e04ea2bed6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9de64faa-04cf-41c9-bdcb-69c1f8f940f2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
