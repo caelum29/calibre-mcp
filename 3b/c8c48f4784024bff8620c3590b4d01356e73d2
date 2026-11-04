@@ -1,0 +1,19 @@
+test/semantic/retrieve-confidence-parity.test.ts
+  s_c81cb810ca8fc4::t_45ed38bec3edfe 19-20,22-32,34-35,38-40,44,49-50,56-64,75-76,83-101,118-119,121-155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3bc8c48f4784024bff8620c3590b4d01356e73d2",
+  "prompts": {},
+  "sessions": {
+    "s_c81cb810ca8fc4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba7e39d6-3c43-459f-a719-2bb0e2ff24d4",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
