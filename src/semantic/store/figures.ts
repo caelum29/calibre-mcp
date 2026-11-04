@@ -7,11 +7,10 @@ import { decodeVector, topK, type Candidate } from "../vector.js";
 import type { IndexConnections } from "./schema.js";
 import {
   type CandidateCache,
-  cacheOf,
-  currentCache,
-  dataVersion,
   ftsMatch,
+  markDirty,
   parseAuthors,
+  refreshedCache,
   restrict,
   type Row,
   WEIGHTED_FIG_BM25,
@@ -25,9 +24,9 @@ export class SqliteFigureIndex implements FigureIndex {
 
   constructor(private readonly conn: IndexConnections) {}
 
-  /** Drop one library's cache (after any write). */
-  invalidate(libraryId: string): void {
-    this.#caches.delete(libraryId);
+  /** Mark books this connection just wrote; the next read reloads exactly them. */
+  invalidate(libraryId: string, bookIds: readonly number[]): void {
+    markDirty(this.#caches, libraryId, bookIds);
   }
 
   /** Drop every cache (store close). */
@@ -139,21 +138,32 @@ export class SqliteFigureIndex implements FigureIndex {
     };
   }
 
-  /** Figure-caption vectors — all of a library, or one book. Mirrors #candidates. */
+  /** Figure-caption vectors — all of a library, or one book. Same per-book refresh as chunks (#370). */
   #candidates(libraryId: string, bookId?: number): Candidate[] {
     const db = this.conn.db(libraryId);
-    const version = dataVersion(db); // stamped before the read, as in chunks.ts (#337)
-    let cache = currentCache(this.#caches, libraryId, version);
-    if (!cache) {
-      const rows = db.prepare("SELECT id, book_id, vector FROM figures WHERE vector IS NOT NULL").all() as Row[];
-      const all = rows.map((r) => ({
-        chunkId: Number(r.id), // Candidate.chunkId doubles as the figures rowid here
-        bookId: Number(r.book_id),
-        vector: decodeVector(r.vector as Uint8Array),
-      }));
-      cache = cacheOf(all, version);
-      this.#caches.set(libraryId, cache);
-    }
+    const { cache } = refreshedCache(db, this.#caches, libraryId, {
+      all: () => loadFigureCandidates(db),
+      books: (ids) => loadFigureCandidates(db, ids),
+    });
     return bookId === undefined ? cache.all : (cache.byBook.get(bookId) ?? []);
   }
+}
+
+/** Read + decode figure-caption vectors — all of a library, or of `bookIds` only. */
+function loadFigureCandidates(db: DatabaseSync, bookIds?: readonly number[]): Candidate[] {
+  if (bookIds?.length === 0) return [];
+  const rows = (
+    bookIds === undefined
+      ? db.prepare("SELECT id, book_id, vector FROM figures WHERE vector IS NOT NULL").all()
+      : db
+          .prepare(
+            "SELECT id, book_id, vector FROM figures WHERE vector IS NOT NULL AND book_id IN (SELECT value FROM json_each(?))",
+          )
+          .all(JSON.stringify(bookIds))
+  ) as Row[];
+  return rows.map((r) => ({
+    chunkId: Number(r.id), // Candidate.chunkId doubles as the figures rowid here
+    bookId: Number(r.book_id),
+    vector: decodeVector(r.vector as Uint8Array),
+  }));
 }

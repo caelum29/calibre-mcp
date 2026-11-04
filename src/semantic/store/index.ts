@@ -35,7 +35,7 @@ export type * from "./types.js";
  * --experimental-sqlite, 22.13–22.15 lack FTS5), so the npx/MCPB bundle ships with ZERO native
  * addons — no node-gyp, no ABI lock, no macOS quarantine on a prebuilt .node (the exact install failure the project avoids). Vectors are
  * L2-normalized Float32 BLOBs; retrieval is in-memory brute-force cosine (== dot product) over a
- * per-library candidate cache (decoded once, invalidated on write) — flat scan beats ANN at this
+ * per-library candidate cache (decoded once, refreshed per changed book) — flat scan beats ANN at this
  * scale; the cost worth killing was the per-query BLOB reload, not the scan.
  *
  * Each library gets its own db file, opened lazily so read-only sessions that never build an
@@ -61,11 +61,11 @@ export class SqliteIndexStore implements IndexStore {
     // Resolved per call, so a spy on this.loadCandidates sees the cache's SQL reads.
     this.#chunks = new SqliteChunkIndex(this.#conn, log, (l) => this.loadCandidates(l));
     this.#figures = new SqliteFigureIndex(this.#conn);
-    // Any write (even a rolled-back one — a needless rebuild is harmless) drops the
-    // library's candidate caches; the next vector query rebuilds them from SQLite.
-    this.#writer = new SqliteWriter(this.#conn, (l) => {
-      this.#chunks.invalidate(l);
-      this.#figures.invalidate(l);
+    // Any write (even a rolled-back one — a needless reload is harmless) marks its books stale
+    // in both candidate caches; the next vector query re-reads just those books (#370).
+    this.#writer = new SqliteWriter(this.#conn, (l, ids) => {
+      this.#chunks.invalidate(l, ids);
+      this.#figures.invalidate(l, ids);
     });
   }
 
