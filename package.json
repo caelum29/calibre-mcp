@@ -49,6 +49,7 @@
     "test:model": "RUN_MODEL_TESTS=1 vitest run test/semantic/embedder.integration.test.ts",
     "test:calibre": "RUN_CALIBRE_TESTS=1 vitest run test/integration/merge.live.test.ts",
     "eval": "node --import tsx test/eval/retrieval/run.ts",
+    "eval:hash-freeze": "node --import tsx test/eval/retrieval/hash-freeze.ts",
     "reindex": "node --import tsx scripts/reindex.ts",
     "versions:check": "node scripts/check-versions.mjs",
     "catalog": "pnpm build && node scripts/gen-tool-catalog.mjs",
