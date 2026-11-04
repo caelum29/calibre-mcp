@@ -1,6 +1,6 @@
 // CalibreClient + busy breaker: a calibredb timeout flags the library, and the next call is
 // refused without spawning anything (no new work piled onto a stalled Calibre).
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { chmodSync, existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -17,6 +17,7 @@ import {
 
 let dir: string | undefined;
 afterEach(() => {
+  vi.useRealTimers();
   if (dir) rmSync(dir, { recursive: true, force: true });
   dir = undefined;
 });
@@ -47,10 +48,11 @@ describe("CalibreClient busy breaker", () => {
   });
 
   it("should_free_the_probe_slot_when_the_probe_fails_without_a_timeout (#343)", async () => {
-    let t = 1_000_000;
-    const busy = new LibraryBusyTracker({ baseWindowMs: 60_000, now: () => t });
+    vi.useFakeTimers({ toFake: ["Date"] }); // Date only: real child-process timeouts must keep running
+    vi.setSystemTime(1_000_000);
+    const busy = new LibraryBusyTracker({ baseWindowMs: 60_000 });
     busy.markBusy(LIB, "calibredb");
-    t += 60_000;
+    vi.advanceTimersByTime(60_000);
     const c = new CalibreClient(loadConfig({ CALIBRE_MCP_CALIBREDB_PATH: "/nonexistent/calibredb" }), busy);
     // probe 1 and 2 both reach the spawn (ENOENT), neither is refused as busy
     await expect(c.calibredb(["x"], { library: LIB })).rejects.toBeInstanceOf(CalibreNotFoundError);
@@ -58,10 +60,11 @@ describe("CalibreClient busy breaker", () => {
   });
 
   it("should_free_the_probe_slot_when_the_probe_is_cancelled (#343)", async () => {
-    let t = 1_000_000;
-    const busy = new LibraryBusyTracker({ baseWindowMs: 60_000, now: () => t });
+    vi.useFakeTimers({ toFake: ["Date"] }); // Date only: real child-process timeouts must keep running
+    vi.setSystemTime(1_000_000);
+    const busy = new LibraryBusyTracker({ baseWindowMs: 60_000 });
     busy.markBusy(LIB, "calibredb");
-    t += 60_000;
+    vi.advanceTimersByTime(60_000);
     const { script } = hangingCalibredb();
     const c = new CalibreClient(loadConfig({ CALIBRE_MCP_CALIBREDB_PATH: script }), busy);
     const ac = new AbortController();

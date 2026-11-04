@@ -1,16 +1,27 @@
 // Busy circuit breaker: after a timeout a library fails fast for a window, re-opens with a
 // doubled window when the half-open probe also times out, and closes on any success.
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LibraryBusyTracker } from "../../src/calibre/busy.js";
 import { CalibreBusyError } from "../../src/domain/errors.js";
 
+// Real Date.now under vitest fake timers: the tracker's default clock is what ships.
 function tracker() {
-  let t = 1_000_000;
-  const busy = new LibraryBusyTracker({ baseWindowMs: 60_000, maxWindowMs: 150_000, now: () => t });
-  return { busy, advance: (ms: number) => (t += ms) };
+  const busy = new LibraryBusyTracker({
+    baseWindowMs: 60_000,
+    maxWindowMs: 150_000,
+  });
+  return { busy, advance: (ms: number) => vi.advanceTimersByTime(ms) };
 }
 
 describe("LibraryBusyTracker", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1_000_000);
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("is closed until a timeout is recorded", () => {
     const { busy } = tracker();
     expect(() => busy.assertAvailable("Programming_Books")).not.toThrow();
@@ -26,7 +37,11 @@ describe("LibraryBusyTracker", () => {
     // other libraries have their own DB lock in Calibre — unaffected
     expect(() => busy.assertAvailable("Humanities")).not.toThrow();
     expect(busy.busyLibraries()).toEqual([
-      expect.objectContaining({ libraryId: "Programming_Books", source: "content-server", retryInMs: 42_000 }),
+      expect.objectContaining({
+        libraryId: "Programming_Books",
+        source: "content-server",
+        retryInMs: 42_000,
+      }),
     ]);
   });
 
@@ -49,13 +64,18 @@ describe("LibraryBusyTracker", () => {
     busy.markBusy("L", "calibredb");
     advance(60_000);
     let reachedCalibre = 0;
+    let releaseCalibre!: () => void;
+    const calibreAnswers = new Promise<void>((resolve) => (releaseCalibre = resolve));
     const call = async () => {
       busy.assertAvailable("L");
       reachedCalibre++;
-      await Promise.resolve();
+      await calibreAnswers; // the probe stays in flight while the others arrive
     };
-    const results = await Promise.allSettled([call(), call(), call()]);
+    // start all three before awaiting any: the other two arrive while the probe is mid-flight
+    const calls = [call(), call(), call()];
     expect(reachedCalibre).toBe(1);
+    releaseCalibre();
+    const results = await Promise.allSettled(calls);
     const rejected = results.filter((r): r is PromiseRejectedResult => r.status === "rejected");
     expect(rejected).toHaveLength(2);
     for (const r of rejected) expect(r.reason).toBeInstanceOf(CalibreBusyError);
@@ -121,7 +141,11 @@ describe("LibraryBusyTracker", () => {
     expect(busy.busyLibraries()).toEqual([]); // window over, nobody probing yet
     const claim = busy.assertAvailable("L");
     expect(busy.busyLibraries()).toEqual([
-      expect.objectContaining({ libraryId: "L", source: "calibredb", retryInMs: 0 }),
+      expect.objectContaining({
+        libraryId: "L",
+        source: "calibredb",
+        retryInMs: 0,
+      }),
     ]);
     busy.releaseProbe("L", claim);
     expect(busy.busyLibraries()).toEqual([]);
@@ -145,6 +169,44 @@ describe("LibraryBusyTracker", () => {
     busy.markOk("L");
     expect(() => busy.assertAvailable("L")).not.toThrow();
     expect(() => busy.assertAvailable("L")).not.toThrow();
+  });
+
+  it("a stale markOk (no claim) closes the breaker; the old probe's release is then harmless", () => {
+    const { busy, advance } = tracker();
+    busy.markBusy("L", "calibredb");
+    advance(60_000);
+    const probe = busy.assertAvailable("L");
+    busy.markOk("L"); // a stale call from before the timeout completes: the library did answer
+    expect(busy.busyLibraries()).toEqual([]);
+    const next = busy.assertAvailable("L"); // closed again, no entry to claim
+    expect(next).toBeUndefined();
+    busy.releaseProbe("L", probe); // the displaced probe fails later: must be a no-op
+    expect(busy.busyLibraries()).toEqual([]);
+    expect(() => busy.assertAvailable("L")).not.toThrow();
+  });
+
+  it("a stale markBusy (no claim) reopens with a doubled window and drops the probe slot cleanly", () => {
+    const { busy, advance } = tracker();
+    busy.markBusy("L", "calibredb");
+    advance(60_000);
+    const probe = busy.assertAvailable("L");
+    busy.markBusy("L", "content-server"); // a stale call from before the timeout times out late
+    expect(busy.busyLibraries()).toEqual([
+      expect.objectContaining({
+        libraryId: "L",
+        source: "content-server",
+        retryInMs: 120_000,
+      }),
+    ]);
+    expect(() => busy.assertAvailable("L")).toThrow("Retry in ~120 s");
+    advance(119_000);
+    expect(() => busy.assertAvailable("L")).toThrow(CalibreBusyError);
+    advance(1_000);
+    const reprobe = busy.assertAvailable("L"); // window over: exactly one new probe
+    expect(reprobe).toBeDefined();
+    expect(() => busy.assertAvailable("L")).toThrow(CalibreBusyError);
+    busy.releaseProbe("L", probe); // the displaced probe's late release must not free the new probe's slot
+    expect(() => busy.assertAvailable("L")).toThrow(CalibreBusyError);
   });
 
   it("closes and forgets strikes on success", () => {

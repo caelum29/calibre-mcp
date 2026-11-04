@@ -1,10 +1,13 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { loadConfig } from "../../src/config.js";
 import { LibraryBusyTracker } from "../../src/calibre/busy.js";
 
 // getJson is the system boundary (fetch); stub it so we test the JSON→domain mapping
 // against captured /ajax fixtures (testing rule: mock only at boundaries).
-vi.mock("../../src/calibre/http.js", () => ({ getJson: vi.fn(), getBytes: vi.fn() }));
+vi.mock("../../src/calibre/http.js", () => ({
+  getJson: vi.fn(),
+  getBytes: vi.fn(),
+}));
 import { getBytes, getJson } from "../../src/calibre/http.js";
 import { ContentServerClient, matchCategory } from "../../src/calibre/content-server.js";
 import type { Category } from "../../src/domain/library.js";
@@ -34,8 +37,16 @@ const book658 = {
 };
 
 const categories = [
-  { name: "Authors", url: "/ajax/category/617574686f7273/Programming_Books", is_category: true },
-  { name: "Languages", url: "/ajax/category/6c616e677561676573/Programming_Books", is_category: true },
+  {
+    name: "Authors",
+    url: "/ajax/category/617574686f7273/Programming_Books",
+    is_category: true,
+  },
+  {
+    name: "Languages",
+    url: "/ajax/category/6c616e677561676573/Programming_Books",
+    is_category: true,
+  },
 ];
 const languageItems = {
   category_name: "Languages",
@@ -43,8 +54,18 @@ const languageItems = {
   offset: 0,
   num: 3,
   items: [
-    { name: "English", average_rating: 3.6875, count: 658, url: "/ajax/books_in/x/31/Programming_Books" },
-    { name: "Russian", average_rating: 3.0, count: 126, url: "/ajax/books_in/x/32/Programming_Books" },
+    {
+      name: "English",
+      average_rating: 3.6875,
+      count: 658,
+      url: "/ajax/books_in/x/31/Programming_Books",
+    },
+    {
+      name: "Russian",
+      average_rating: 3.0,
+      count: 126,
+      url: "/ajax/books_in/x/32/Programming_Books",
+    },
   ],
 };
 
@@ -53,6 +74,10 @@ const mocked = vi.mocked(getJson);
 function client(): ContentServerClient {
   return new ContentServerClient(loadConfig({}));
 }
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 beforeEach(() => {
   mocked.mockReset();
@@ -69,10 +94,11 @@ beforeEach(() => {
 
 describe("ContentServerClient busy breaker (#343)", () => {
   it("should_free_the_probe_slot_when_the_probe_fails_without_a_timeout", async () => {
-    let t = 1_000_000;
-    const busy = new LibraryBusyTracker({ baseWindowMs: 60_000, now: () => t });
+    vi.useFakeTimers({ toFake: ["Date"] }); // Date only: real child-process timeouts must keep running
+    vi.setSystemTime(1_000_000);
+    const busy = new LibraryBusyTracker({ baseWindowMs: 60_000 });
     busy.markBusy("Programming_Books", "content-server");
-    t += 60_000;
+    vi.advanceTimersByTime(60_000);
     const cs = new ContentServerClient(loadConfig({}), busy);
     mocked.mockImplementation(((url: string) =>
       url.includes("/ajax/library-info")
@@ -129,7 +155,11 @@ describe("ContentServerClient", () => {
   it("maps a category's values to a CategoryItemsPage", async () => {
     const page = await client().categoryItemsByUrl(categories[1]!.url);
     expect(page.total).toBe(3);
-    expect(page.items[0]).toEqual({ name: "English", count: 658, averageRating: 3.6875 });
+    expect(page.items[0]).toEqual({
+      name: "English",
+      count: 658,
+      averageRating: 3.6875,
+    });
   });
 });
 
@@ -149,7 +179,10 @@ describe("matchCategory", () => {
   });
 
   it("coverThumb base64-encodes the thumbnail through getBytes with a 10 s timeout", async () => {
-    vi.mocked(getBytes).mockResolvedValueOnce({ data: Buffer.from("abc"), contentType: "image/png" });
+    vi.mocked(getBytes).mockResolvedValueOnce({
+      data: Buffer.from("abc"),
+      contentType: "image/png",
+    });
     const thumb = await client().coverThumb(658, undefined, "10x20");
     expect(thumb).toEqual({ data: "YWJj", mimeType: "image/png" });
     expect(vi.mocked(getBytes)).toHaveBeenCalledWith(
@@ -161,7 +194,10 @@ describe("matchCategory", () => {
   });
 
   it("coverThumb defaults the mime type to image/jpeg and degrades to null on any failure", async () => {
-    vi.mocked(getBytes).mockResolvedValueOnce({ data: Buffer.from("abc"), contentType: null });
+    vi.mocked(getBytes).mockResolvedValueOnce({
+      data: Buffer.from("abc"),
+      contentType: null,
+    });
     expect((await client().coverThumb(658))?.mimeType).toBe("image/jpeg");
     vi.mocked(getBytes).mockRejectedValueOnce(new Error("timed out"));
     expect(await client().coverThumb(658)).toBeNull();
@@ -171,13 +207,24 @@ describe("matchCategory", () => {
     const withCustom = {
       ...book658,
       cover: "/get/cover/658",
-      user_metadata: { "#read": { datatype: "bool", "#value#": true }, plain: {} },
+      user_metadata: {
+        "#read": { datatype: "bool", "#value#": true },
+        plain: {},
+      },
     };
     mocked.mockImplementation(((url: string) =>
       Promise.resolve(url.includes("/ajax/library-info") ? libInfo : withCustom)) as typeof getJson);
     const facts = await client().bookMergeFacts(658);
     expect(facts).toEqual({
-      customFields: [{ label: "#read", datatype: "bool", isMultiple: false, value: true, extra: undefined }],
+      customFields: [
+        {
+          label: "#read",
+          datatype: "bool",
+          isMultiple: false,
+          value: true,
+          extra: undefined,
+        },
+      ],
       hasCover: true,
     });
   });
