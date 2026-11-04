@@ -1,0 +1,23 @@
+test/semantic/build-progress.test.ts
+  s_47d5e04ea2bed6::t_b84fd76d335005 35,93
+src/semantic/build-progress.ts
+  s_47d5e04ea2bed6::t_b84fd76d335005 57-61,67-68,72-91
+scripts/reindex.ts
+  s_47d5e04ea2bed6::t_8fabf92c13280e 6-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4b31ccbbeafea7e7c7aa0ffa3b6ed60a0c45bf19",
+  "prompts": {},
+  "sessions": {
+    "s_47d5e04ea2bed6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9de64faa-04cf-41c9-bdcb-69c1f8f940f2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
