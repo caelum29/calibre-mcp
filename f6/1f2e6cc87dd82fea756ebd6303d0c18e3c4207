@@ -1,0 +1,21 @@
+test/tools/ping.recent-errors-capped-meta.test.ts
+  s_34f8c895b845ca::t_29fe6042849ef6 1-70
+test/tools/ping.recent-errors-eviction.test.ts
+  s_34f8c895b845ca::t_29fe6042849ef6 64-68,70-71,79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f61f2e6cc87dd82fea756ebd6303d0c18e3c4207",
+  "prompts": {},
+  "sessions": {
+    "s_34f8c895b845ca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "acde0812-c8ad-458d-b52e-46dc5cd004a4",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
