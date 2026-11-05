@@ -10,7 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadConfig } from "../../src/config.js";
 import { EMBED_DIM } from "../../src/semantic/model.js";
 import { type BookMeta, type IndexedChunk, SqliteIndexStore } from "../../src/semantic/store/index.js";
-import { l2normalize } from "../../src/semantic/vector.js";
+import { encodeVector, l2normalize } from "../../src/semantic/vector.js";
 
 // Count every BLOB → Float32Array decode: the expensive step the cache exists to avoid.
 const decodes = vi.hoisted(() => ({ n: 0 }));
@@ -94,5 +94,52 @@ describe("vector cache with a legacy embedded_chunks NULL row (#389 §Vector cac
       ids = ranked();
     });
     expect({ n, ids }).toEqual({ n: 2, ids: [2, 1] });
+  });
+
+  // An older-version writer leaves the row NULL: it bumps indexed_at and swaps the vectors, never
+  // filling embedded_chunks. The stamp still changes, so the cache must not keep the old vectors.
+  it("should_re_decode_the_legacy_book_when_an_older_writer_rewrites_it_and_leaves_it_NULL", () => {
+    ranked(); // warm
+    const raw = new DatabaseSync(path.join(dir, `${LIB}.sqlite`));
+    raw.prepare("UPDATE embeddings SET vector = ? WHERE book_id = 1").run(encodeVector(axis(0.6)));
+    raw.exec("UPDATE books SET indexed_at = '2099-01-01T00:00:00.000Z' WHERE book_id = 1");
+    const stillNull = raw.prepare("SELECT embedded_chunks FROM books WHERE book_id = 1").get();
+    raw.close();
+    let ids: number[] = [];
+    const n = decoded(() => {
+      ids = ranked();
+    });
+    expect({ stillNull, n, ids }).toEqual({ stillNull: { embedded_chunks: null }, n: 2, ids: [2, 1] });
+  });
+});
+
+// A pre-#197 FILE (no embedded_chunks column at all), peeked read-only so nothing migrates it:
+// booksMissingVectors must fall back to counting each book's embeddings.
+describe("booksMissingVectors on a file without the embedded_chunks column (#389 §Vector cache)", () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(path.join(tmpdir(), "calibre-mcp-pre197-"));
+    const w = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: dir }));
+    w.replaceBook(LIB, meta(1), chunks(0.9)); // 2 chunks, 2 vectors
+    w.replaceBook(LIB, meta(2), [
+      { body: "keyword only", charStart: 0, charEnd: 12 },
+      { body: "no vectors", charStart: 12, charEnd: 22 },
+    ]);
+    w.close();
+    const raw = new DatabaseSync(path.join(dir, `${LIB}.sqlite`));
+    raw.exec("ALTER TABLE books DROP COLUMN embedded_chunks"); // the older DDL
+    raw.close();
+  });
+
+  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+  it("should_count_only_the_book_without_embeddings", () => {
+    const r = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: dir }));
+    try {
+      expect(r.booksMissingVectors(LIB)).toBe(1);
+    } finally {
+      r.close();
+    }
   });
 });

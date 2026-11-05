@@ -41,7 +41,8 @@ describe("progress log names for `~`, `--` and dot-only ids (#389 §Build-progre
   });
 
   it("should_keep_every_log_directly_inside_the_index_dir", () => {
-    const dirs = CASES.flatMap(([id]) => [file(id), file(id, true)]).map((f) => path.dirname(f));
-    expect(new Set(dirs)).toEqual(new Set([DIR]));
+    const files = CASES.flatMap(([id]) => [file(id), file(id, true)]);
+    const outside = files.filter((f) => !path.resolve(f).startsWith(path.resolve(DIR) + path.sep));
+    expect([outside, new Set(files.map((f) => path.dirname(f)))]).toEqual([[], new Set([DIR])]);
   });
 });
