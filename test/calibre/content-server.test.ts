@@ -92,23 +92,33 @@ describe("ContentServerClient busy breaker (#343)", () => {
 
 // #389: calls in flight at the same time share one breaker entry (current behaviour pinned).
 describe("ContentServerClient busy breaker with overlapping calls (#389)", () => {
+  interface Parked {
+    ok(): void;
+    timeout(): void;
+    fail(): void;
+  }
+
   /** library-info answers at once; every /ajax/books/ GET parks until the test settles it. */
   function parkedBookFetches() {
-    const handles: { ok(): void; timeout(): void }[] = [];
+    const handles: Parked[] = [];
+    let waiters: { n: number; resolve: () => void }[] = [];
     mocked.mockImplementation(((url: string) => {
       if (url.includes("/ajax/library-info")) return Promise.resolve(libInfo);
       return new Promise<unknown>((resolve, reject) => {
         handles.push({
           ok: () => resolve({ "658": book658 }),
           timeout: () => reject(new CalibreHttpTimeoutError(url)),
+          fail: () => reject(new Error("boom")),
         });
+        for (const w of waiters) if (handles.length >= w.n) w.resolve();
+        waiters = waiters.filter((w) => handles.length < w.n);
       });
     }) as typeof getJson);
-    return handles;
+    // resolves once the n-th fetch has parked; getBook awaits library resolution before getJson
+    const reached = (n: number) =>
+      handles.length >= n ? Promise.resolve() : new Promise<void>((resolve) => waiters.push({ n, resolve }));
+    return { handles, reached };
   }
-
-  // getBook awaits library resolution before it reaches getJson, so wait for the fetch to park
-  const reached = (handles: unknown[], n: number) => vi.waitFor(() => expect(handles).toHaveLength(n));
 
   async function setup() {
     vi.useFakeTimers({ toFake: ["Date"] });
@@ -116,15 +126,24 @@ describe("ContentServerClient busy breaker with overlapping calls (#389)", () =>
     const busy = new LibraryBusyTracker({ baseWindowMs: 60_000, maxWindowMs: 300_000 });
     const cs = new ContentServerClient(loadConfig({}), busy);
     await cs.libraryInfo(); // warm the libId map so getBook goes straight to the parked fetch
-    return { busy, get: () => cs.getBook(658, "Programming_Books") };
+    return { busy, get: () => cs.getBook(658, "Programming_Books"), ...parkedBookFetches() };
+  }
+
+  /** Two calls start closed; the second times out (strike 1, 60 s); the first stays in flight as the stale call. */
+  async function staleAndTrigger(ctx: Awaited<ReturnType<typeof setup>>) {
+    const stale = ctx.get();
+    const trigger = ctx.get();
+    await ctx.reached(2);
+    ctx.handles[1]!.timeout();
+    await expect(trigger).rejects.toBeInstanceOf(CalibreHttpTimeoutError);
+    return { stale };
   }
 
   it("should_close_the_breaker_when_a_call_started_before_the_timeout_succeeds_after_it", async () => {
-    const { busy, get } = await setup();
-    const handles = parkedBookFetches();
+    const { busy, get, handles, reached } = await setup();
     const timedOut = get();
     const answered = get();
-    await reached(handles, 2);
+    await reached(2);
     handles[0]!.timeout();
     await expect(timedOut).rejects.toBeInstanceOf(CalibreHttpTimeoutError);
     expect(busy.busyLibraries()).toEqual([
@@ -135,17 +154,26 @@ describe("ContentServerClient busy breaker with overlapping calls (#389)", () =>
     expect(busy.busyLibraries()).toEqual([]);
   });
 
-  it("should_reopen_with_a_doubled_window_when_a_pre_timeout_call_times_out_during_the_probe", async () => {
-    const { busy, get } = await setup();
-    const handles = parkedBookFetches();
-    const stale = get();
-    const trigger = get();
-    await reached(handles, 2);
+  it("should_escalate_to_strike_two_when_a_second_overlapping_call_times_out_inside_the_open_window", async () => {
+    const { busy, get, handles, reached } = await setup();
+    const first = get();
+    const second = get();
+    await reached(2);
+    handles[0]!.timeout();
+    await expect(first).rejects.toBeInstanceOf(CalibreHttpTimeoutError);
+    vi.advanceTimersByTime(10_000);
     handles[1]!.timeout();
-    await expect(trigger).rejects.toBeInstanceOf(CalibreHttpTimeoutError);
+    await expect(second).rejects.toBeInstanceOf(CalibreHttpTimeoutError);
+    expect(busy.busyLibraries()).toEqual([expect.objectContaining({ retryInMs: 120_000 })]);
+  });
+
+  it("should_reopen_with_a_doubled_window_when_a_pre_timeout_call_times_out_during_the_probe", async () => {
+    const ctx = await setup();
+    const { busy, get, handles, reached } = ctx;
+    const { stale } = await staleAndTrigger(ctx);
     vi.advanceTimersByTime(60_000);
     const probe = get();
-    await reached(handles, 3);
+    await reached(3);
     handles[0]!.timeout(); // stale call times out while the probe is in flight
     await expect(stale).rejects.toBeInstanceOf(CalibreHttpTimeoutError);
     expect(busy.busyLibraries()).toEqual([expect.objectContaining({ retryInMs: 120_000 })]);
@@ -154,6 +182,46 @@ describe("ContentServerClient busy breaker with overlapping calls (#389)", () =>
     handles[2]!.ok();
     await probe;
     expect(busy.busyLibraries()).toEqual([]);
+  });
+
+  it("should_admit_a_fresh_probe_after_the_doubled_window_and_keep_the_displaced_probe_from_freeing_it", async () => {
+    const ctx = await setup();
+    const { get, handles, reached } = ctx;
+    const { stale } = await staleAndTrigger(ctx);
+    vi.advanceTimersByTime(60_000);
+    const displaced = get(); // probe 1
+    await reached(3);
+    handles[0]!.timeout(); // stale timeout wipes probe 1's slot: 120 s window
+    await expect(stale).rejects.toBeInstanceOf(CalibreHttpTimeoutError);
+    vi.advanceTimersByTime(120_000);
+    const fresh = get(); // window over: probe 2 goes out while probe 1 never settled
+    await reached(4);
+    await expect(get()).rejects.toThrow("Another call is checking");
+    handles[2]!.fail(); // probe 1 dies with a plain error: its old claim must not free probe 2's slot
+    await expect(displaced).rejects.toThrow("boom");
+    await expect(get()).rejects.toBeInstanceOf(CalibreBusyError);
+    expect(handles).toHaveLength(4);
+    handles[3]!.ok();
+    await fresh;
+  });
+
+  it("should_not_refuse_the_next_call_when_a_stale_success_lands_while_the_probe_is_in_flight", async () => {
+    const ctx = await setup();
+    const { busy, get, handles, reached } = ctx;
+    const { stale } = await staleAndTrigger(ctx);
+    vi.advanceTimersByTime(60_000);
+    const probe = get();
+    await reached(3);
+    handles[0]!.ok(); // stale call answers: markOk drops the entry, probe claim and all
+    await stale;
+    expect(busy.busyLibraries()).toEqual([]);
+    const next = get(); // closed again: no probe slot to be refused on
+    await reached(4);
+    handles[2]!.timeout(); // the displaced probe then times out: a fresh strike 1, not strike 2
+    await expect(probe).rejects.toBeInstanceOf(CalibreHttpTimeoutError);
+    expect(busy.busyLibraries()).toEqual([expect.objectContaining({ retryInMs: 60_000 })]);
+    handles[3]!.ok();
+    await next;
   });
 });
 
