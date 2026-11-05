@@ -8,6 +8,7 @@ vi.mock("../../src/calibre/http.js", () => ({ getJson: vi.fn(), getBytes: vi.fn(
 import { getBytes, getJson } from "../../src/calibre/http.js";
 import { ContentServerClient, matchCategory } from "../../src/calibre/content-server.js";
 import type { Category } from "../../src/domain/library.js";
+import { CalibreBusyError, CalibreHttpTimeoutError } from "../../src/domain/errors.js";
 
 const libInfo = {
   library_map: { Programming_Books: "Programming Books", lib_42: "My Books" },
@@ -86,6 +87,73 @@ describe("ContentServerClient busy breaker (#343)", () => {
     // two sequential probes both reach getJson: a plain failure must not leave the slot taken
     await expect(cs.getBook(658, "Programming_Books")).rejects.toThrow("boom");
     await expect(cs.getBook(658, "Programming_Books")).rejects.toThrow("boom");
+  });
+});
+
+// #389: calls in flight at the same time share one breaker entry (current behaviour pinned).
+describe("ContentServerClient busy breaker with overlapping calls (#389)", () => {
+  /** library-info answers at once; every /ajax/books/ GET parks until the test settles it. */
+  function parkedBookFetches() {
+    const handles: { ok(): void; timeout(): void }[] = [];
+    mocked.mockImplementation(((url: string) => {
+      if (url.includes("/ajax/library-info")) return Promise.resolve(libInfo);
+      return new Promise<unknown>((resolve, reject) => {
+        handles.push({
+          ok: () => resolve({ "658": book658 }),
+          timeout: () => reject(new CalibreHttpTimeoutError(url)),
+        });
+      });
+    }) as typeof getJson);
+    return handles;
+  }
+
+  // getBook awaits library resolution before it reaches getJson, so wait for the fetch to park
+  const reached = (handles: unknown[], n: number) => vi.waitFor(() => expect(handles).toHaveLength(n));
+
+  async function setup() {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(1_000_000);
+    const busy = new LibraryBusyTracker({ baseWindowMs: 60_000, maxWindowMs: 300_000 });
+    const cs = new ContentServerClient(loadConfig({}), busy);
+    await cs.libraryInfo(); // warm the libId map so getBook goes straight to the parked fetch
+    return { busy, get: () => cs.getBook(658, "Programming_Books") };
+  }
+
+  it("should_close_the_breaker_when_a_call_started_before_the_timeout_succeeds_after_it", async () => {
+    const { busy, get } = await setup();
+    const handles = parkedBookFetches();
+    const timedOut = get();
+    const answered = get();
+    await reached(handles, 2);
+    handles[0]!.timeout();
+    await expect(timedOut).rejects.toBeInstanceOf(CalibreHttpTimeoutError);
+    expect(busy.busyLibraries()).toEqual([
+      expect.objectContaining({ libraryId: "Programming_Books", source: "content-server", retryInMs: 60_000 }),
+    ]);
+    handles[1]!.ok();
+    await answered;
+    expect(busy.busyLibraries()).toEqual([]);
+  });
+
+  it("should_reopen_with_a_doubled_window_when_a_pre_timeout_call_times_out_during_the_probe", async () => {
+    const { busy, get } = await setup();
+    const handles = parkedBookFetches();
+    const stale = get();
+    const trigger = get();
+    await reached(handles, 2);
+    handles[1]!.timeout();
+    await expect(trigger).rejects.toBeInstanceOf(CalibreHttpTimeoutError);
+    vi.advanceTimersByTime(60_000);
+    const probe = get();
+    await reached(handles, 3);
+    handles[0]!.timeout(); // stale call times out while the probe is in flight
+    await expect(stale).rejects.toBeInstanceOf(CalibreHttpTimeoutError);
+    expect(busy.busyLibraries()).toEqual([expect.objectContaining({ retryInMs: 120_000 })]);
+    await expect(get()).rejects.toBeInstanceOf(CalibreBusyError);
+    expect(handles).toHaveLength(3); // the refused call never reached getJson
+    handles[2]!.ok();
+    await probe;
+    expect(busy.busyLibraries()).toEqual([]);
   });
 });
 
