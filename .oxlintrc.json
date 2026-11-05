@@ -89,9 +89,10 @@
         "no-useless-escape": "off"
       }
     },
-    // Board JS files are fragments of one IIFE (board.html), so functions are used across files.
+    // Board JS files and shared/ fragments are pieces of one IIFE (board.html, card, figures), so
+    // functions are used across files.
     {
-      "files": ["src/ui/board/*.js"],
+      "files": ["src/ui/board/*.js", "src/ui/shared/*.js"],
       "rules": {
         "no-unused-vars": "off"
       }

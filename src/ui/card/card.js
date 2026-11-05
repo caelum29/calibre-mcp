@@ -2,22 +2,7 @@
    No template literals, no innerHTML, no console; every book field lands via textContent. @*/
 "use strict";
 (function () {
-  /* ================= JSON-RPC over postMessage ================= */
-  var pending = {};
-  var nextId = 1;
-  function rpcRequest(method, params) {
-    return new Promise(function (resolve, reject) {
-      var id = nextId++;
-      pending[id] = { resolve: resolve, reject: reject };
-      window.parent.postMessage({ jsonrpc: "2.0", id: id, method: method, params: params }, "*");
-    });
-  }
-  function rpcNotify(method, params) {
-    window.parent.postMessage({ jsonrpc: "2.0", method: method, params: params }, "*");
-  }
-  function rpcRespond(id, result) {
-    window.parent.postMessage({ jsonrpc: "2.0", id: id, result: result }, "*");
-  }
+// {{include ../shared/rpc.js}}
 __DEBUG__
   var w = document.getElementById("w");
   var ready = false, afterReady = [], toolArgs = null, sawResult = false;
@@ -50,13 +35,6 @@ __DEBUG__
       return;
     }
   });
-
-  function applyHostContext(ctx) {
-    if (!ctx) return;
-    var t = ctx.theme;
-    if (t === "dark" || t === "light") document.documentElement.dataset.theme = t;
-    else if (t) delete document.documentElement.dataset.theme;
-  }
 
   /* ================= data flow =================
      Spec hosts keep structuredContent on the tool-result notification; Claude Desktop
