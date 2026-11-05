@@ -6,12 +6,15 @@ import type { LibraryReader } from "../calibre/content-server.js";
 import type { StatusIndex } from "../semantic/status.js";
 import { staleness } from "../semantic/staleness.js";
 import { Deadline } from "../shared/deadline.js";
+import { LibraryIdCollisionError } from "../domain/library-id-collision.js";
 
 /** One library's index coverage; `total` is null when the Content Server did not answer in time. */
 export interface LibraryIndex {
   id: string;
   name: string;
-  state: "ok" | "none" | "stale" | "unreadable";
+  state: "ok" | "none" | "stale" | "unreadable" | "conflict";
+  /** state "conflict" (#388): the library whose id equals this one case-insensitively and owns the index file. */
+  conflictsWith?: string;
   indexed?: number;
   total?: number | null;
   /** Books in the index with no (or partial) embeddings — keyword-only rows. */
@@ -79,7 +82,8 @@ export async function libraryIndexReport(deps: LibraryIndexDeps): Promise<Librar
           null,
         );
         return { id, name, state: "ok", indexed, total, withoutEmbeddings };
-      } catch {
+      } catch (err) {
+        if (err instanceof LibraryIdCollisionError) return { id, name, state: "conflict", conflictsWith: err.owner };
         return { id, name, state: "unreadable" };
       }
     }),

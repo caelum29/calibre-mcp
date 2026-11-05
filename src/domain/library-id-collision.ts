@@ -25,8 +25,11 @@ export class LibraryIdCollisionError extends Error {
     super(
       `Library "${refused}" can't be indexed: its id differs only in letter case from library "${owner}", ` +
         "and on a case-insensitive disk (the macOS default) both would share one index file and one progress log. " +
-        `Rename one of the two library folders (e.g. "${refused}" → "${refused}-2") and restart Calibre's Content Server; ` +
-        `library "${owner}" keeps working meanwhile.`,
+        `Rename one of the two library folders (e.g. "${refused}" → "${refused}-2"), restart Calibre's Content Server, ` +
+        "then call calibre_list_libraries so this server re-reads the library ids (calibre_build_index re-reads them itself); " +
+        `library "${owner}" keeps working meanwhile. ` +
+        `If an index for this pair existed before, it may hold the other library's books: after renaming, rebuild "${owner}" ` +
+        "with calibre_build_index { force: true }.",
     );
     this.name = "LibraryIdCollisionError";
   }

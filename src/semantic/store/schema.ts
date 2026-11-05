@@ -117,8 +117,10 @@ export class IndexConnections {
     private readonly libraryIds?: () => readonly string[] | undefined,
   ) {}
 
-  /** Cheap, side-effect-free check for an existing index (no db file is created). */
+  /** Cheap, side-effect-free check for an existing index (no db file is created); throws on a #388 clash. */
   has(libraryId: string): boolean {
+    // A refused id must not report the owner's file as its own index (#388).
+    this.#assertOwnFile(libraryId);
     if (this.#dbs.has(libraryId)) return true;
     if (this.cfg.indexDir === ":memory:") return false;
     return existsSync(this.#file(libraryId));

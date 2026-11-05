@@ -12,7 +12,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Config } from "../config.js";
 import type { Embedder, EmbedderLoadState } from "./embedder.js";
-import type { IndexFreshness } from "./store/index.js";
+import type { IndexFreshness, IndexMeta } from "./store/index.js";
+import { LibraryIdCollisionError } from "../domain/library-id-collision.js";
 import { EMBED_DIM, INDEX_VERSION, MODEL_ID } from "./model.js";
 import { staleness } from "./staleness.js";
 
@@ -94,10 +95,18 @@ export function computeSemanticStatus(
   let chunkCount: number | undefined;
   let figureCount: number | undefined;
   let booksWithoutVectors: number | undefined;
-  const meta = libraryId ? deps.index.indexMeta(libraryId) : undefined;
+  // A #388 case clash refuses this library's index: report it as the reason, never throw.
+  let clash: LibraryIdCollisionError | undefined;
+  let meta: IndexMeta | undefined;
+  try {
+    meta = libraryId ? deps.index.indexMeta(libraryId) : undefined;
+  } catch (err) {
+    if (!(err instanceof LibraryIdCollisionError)) throw err;
+    clash = err;
+  }
   const stale = meta !== undefined && staleness(meta) !== undefined;
   // A stale index is refused on open (INDEX_INCOMPATIBLE), so counting it would throw — skip.
-  if (libraryId && meta && !stale && deps.index.hasIndex(libraryId)) {
+  if (libraryId && meta && !stale && !clash && deps.index.hasIndex(libraryId)) {
     try {
       const stats = deps.index.stats(libraryId);
       indexedBooks = stats.books;
@@ -122,6 +131,8 @@ export function computeSemanticStatus(
       "the embedding model failed to load in this process, though @huggingface/transformers is installed on disk — restart the server to recover.";
   } else if (stale) {
     reason = `the index was built with ${staleness(meta!)} — rebuild it with calibre_build_index force=true (search refuses it until then).`;
+  } else if (clash) {
+    reason = clash.message;
   }
 
   return {
@@ -131,7 +142,7 @@ export function computeSemanticStatus(
     ...(meta ? { indexVersion: meta.indexVersion } : {}),
     serverIndexVersion: INDEX_VERSION,
     ...(stale ? { indexStale: true } : {}),
-    ...(libraryId ? { indexPresent: deps.index.hasIndex(libraryId) } : {}),
+    ...(libraryId ? { indexPresent: !clash && deps.index.hasIndex(libraryId) } : {}),
     dependencyInstalled,
     loaded,
     modelCached,

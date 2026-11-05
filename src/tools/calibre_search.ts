@@ -41,6 +41,7 @@ import type { ContentBlock, ToolResult } from "./types.js";
 import type { BaseDeps, DepsWithIndex } from "./deps.js";
 import type { IndexFreshness } from "../semantic/store/index.js";
 import { errorCodeFor } from "../domain/error-codes.js";
+import { LibraryIdCollisionError } from "../domain/library-id-collision.js";
 
 type SearchArgs = {
   query: string;
@@ -370,10 +371,7 @@ async function ftsBookScope(call: FtsCall, bookId: number): Promise<ToolResult> 
 
   // Calibre FTS has no in-book offsets or ranking control, so front-matter hits (TOC/praise) can
   // top the list. When a better path exists for this book, say so (issue #18).
-  const tip =
-    deps.index?.hasIndex(libId) && deps.index.isBookIndexed(libId, bookId)
-      ? ` Tip: for definitional/topic queries, calibre_semantic_search { scope: "book", bookId: ${bookId} } returns ranked passages with char offsets and demotes front matter.`
-      : "";
+  const tip = semanticTipFor(deps.index, libId, bookId);
 
   const snippetHits = pageSnips.map((s) => ({ snippet: fence("FTS SNIPPET", s) }));
   const blocks: ContentBlock[] = [
@@ -519,4 +517,21 @@ function ftsUnavailable(): ToolResult {
     "fts_unavailable",
     `Full-text search isn't available in this server build. ${KEYWORD_SEARCH_FALLBACK}`,
   );
+}
+
+/**
+ * The optional "try calibre_semantic_search" tip for an indexed book. A library refused for a
+ * case-only id clash (#388) just gets no tip: the FTS answer must not fail over an index hint.
+ */
+function semanticTipFor(index: SearchIndex | undefined, libId: string, bookId: number): string {
+  let indexed: boolean;
+  try {
+    indexed = Boolean(index?.hasIndex(libId) && index.isBookIndexed(libId, bookId));
+  } catch (err) {
+    if (err instanceof LibraryIdCollisionError) return "";
+    throw err;
+  }
+  return indexed
+    ? ` Tip: for definitional/topic queries, calibre_semantic_search { scope: "book", bookId: ${bookId} } returns ranked passages with char offsets and demotes front matter.`
+    : "";
 }

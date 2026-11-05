@@ -78,6 +78,12 @@ const deps = {
   log,
 } satisfies IndexDeps;
 
+const libraryId = await deps.content.resolveLibraryId(opt.library);
+// Case-only id clash (#388): refuse before the model warmup, the progress log or the index file.
+// libraryIdCollision re-reads library-info, so a folder renamed since the last run is seen.
+const clash = await libraryIdCollision(deps.content, libraryId);
+if (clash) throw clash;
+
 // shared: one ONNX session (its InferenceQueue serializes forwards) and all chunking on the
 // main thread. threads: one model copy per thread — ~+300 MB each, the price of real parallelism.
 const threads = threaded ? Array.from({ length: concurrency }, () => new ThreadEncoder(config)) : [];
@@ -86,10 +92,6 @@ const tWarm = Date.now();
 if (!flagsOnly) await Promise.all(threaded ? threads.map((t) => t.warmup()) : [deps.embedder.warmup()]);
 const warmupMs = Date.now() - tWarm;
 
-const libraryId = await deps.content.resolveLibraryId(opt.library);
-// Case-only id clash (#388): refuse before the progress log or the index file is touched.
-const clash = await libraryIdCollision(deps.content, libraryId);
-if (clash) throw clash;
 // Default log is per library (book ids overlap across libraries, #285) and per mode (a full
 // re-index's "done" ids must not hide books from the flags backfill); --progress overrides.
 const progressFile = resolveProgressPath(opt.progress, indexDir, libraryId, flagsOnly);
