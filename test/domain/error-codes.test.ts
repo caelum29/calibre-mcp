@@ -99,19 +99,19 @@ function helperCalls(source: string, name: Helper, file = "<source>") {
   }));
 }
 
+/** String and template literals, blanked so `"as before"` in a code expression is not a cast. */
+const STRING_LITERAL = /"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`/g;
+
+/** A TS cast: `x as T` (not `as const`, which keeps the literal type) or a leading `<T>x`. */
+const CAST = /\bas\s+(?!const\b)[A-Za-z_$({[]|(?:^|[(?:,=&|!])\s*<\s*[A-Za-z_$]/;
+
 /**
- * `toolError` sites whose code is not from the closed set (#249). The code param is typed
- * `ErrorCode`, so the compiler rejects stray strings; this scan rejects what the compiler cannot.
+ * `toolError` sites that cast their code (#249, #348). The code param is typed `ErrorCode`, so the
+ * compiler already rejects strings outside the closed set; a cast is the one way around it.
  */
 function toolErrorViolations(source: string, file?: string): string[] {
-  const codes = new Set<string>(ERROR_CODES);
   return helperCalls(source, "toolError", file)
-    .filter(({ args }) => {
-      const arg = args[0] ?? "";
-      const literal = /^"([a-z_]+)"$/.exec(arg);
-      if (literal) return !codes.has(literal[1]!);
-      return !arg.startsWith("errorCodeFor(");
-    })
+    .filter(({ args }) => CAST.test((args[0] ?? "").replace(STRING_LITERAL, '""')))
     .map(({ at, args }) => `${at}: toolError(${args[0] ?? ""}, …)`);
 }
 

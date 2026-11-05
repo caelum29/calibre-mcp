@@ -164,7 +164,7 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
           // Surface the error NAME + message to the model (issue #73): domain errors keep
           // their messages host-path-free by contract (domain/errors.ts), so this is safe
           // to show and gives the agent something actionable instead of a blind retry.
-          return toolError(errorCodeFor(err), `internal error in ${t.name} — ${name}: ${msg}`) as CallToolResult;
+          return toolError(code, `internal error in ${t.name} — ${name}: ${msg}`) as CallToolResult;
         }
       });
     // UI-bearing tools go through registerAppTool (normalizes _meta.ui for older hosts);
