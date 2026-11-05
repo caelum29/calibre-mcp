@@ -1,0 +1,19 @@
+test/domain/pubdate-same-day-390.test.ts
+  s_16cb784f55ae69::t_3ac7e608765607 1-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "488cae5ca5849d8ee8b568b5ceceb170ad8577f7",
+  "prompts": {},
+  "sessions": {
+    "s_16cb784f55ae69": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1ca5065-5531-4ad8-b360-ecda53c209a8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
