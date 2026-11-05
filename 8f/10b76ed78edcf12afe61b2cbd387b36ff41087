@@ -1,0 +1,21 @@
+test/eval/retrieval/gate-guards.ts
+  s_4ba34c72a1f257::t_f3e4453e15cf4b 101-128
+test/eval/retrieval/run.ts
+  s_4ba34c72a1f257::t_53be6b26b6fd8f 36,260-261,274-290,292-293,393-399
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8f10b76ed78edcf12afe61b2cbd387b36ff41087",
+  "prompts": {},
+  "sessions": {
+    "s_4ba34c72a1f257": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c53829ca-e425-43bf-b4aa-48cbb05e9525",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
