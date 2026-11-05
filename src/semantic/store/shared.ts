@@ -115,7 +115,8 @@ export function refreshedCache(
     if (list) list.push(c);
     else byBook.set(c.bookId, [c]);
   }
-  // Rowid order, as a cold load scans it, so tie-breaking in topK matches a fresh cache.
+  // Rowid order, as a cold load scans it: topK's tie-break is total since #392, so this no longer
+  // decides any ranking; it keeps a refreshed cache identical to a fresh one (cheap, predictable).
   const all = [...byBook.values()].flat().sort((x, y) => x.chunkId - y.chunkId);
   const cache: CandidateCache = { all, byBook, dataVersion: version, stamps, dirty: new Set() };
   caches.set(libraryId, cache);

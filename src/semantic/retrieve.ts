@@ -142,13 +142,19 @@ export async function retrieve(
 ): Promise<RankedHits<LibraryHit> | RankedHits<BookHit> | RankedHits<FigureHit>> {
   const weights = opts.rrfWeights ?? RRF_WEIGHTS;
   if (req.scope === "library") {
-    const rr = await applyRerank(await rankBooks(req, deps, weights), (r) => r.hit.body, req, deps);
+    const rr = await applyRerank(await rankBooks(req, deps, weights), req, deps, {
+      body: (r) => r.hit.body,
+      tie: (r) => [r.hit.bookId, r.hit.bookId],
+    });
     // Display only (#243): re-cut each snippet around the query terms after ranking is final.
     const hits = rr.hits.map((r) => ({ ...r, hit: withSnippet(r.hit, req.query) }));
     return outcome(rr, hits, confidence(hits, deps.config.semanticFloor, rr), rr.note);
   }
   if (req.scope === "book") {
-    const rr = await applyRerank(await rankPassages(req, deps, weights), (r) => r.hit.body, req, deps);
+    const rr = await applyRerank(await rankPassages(req, deps, weights), req, deps, {
+      body: (r) => r.hit.body,
+      tie: (r) => [0, r.hit.chunkId], // one book: passages tie-break on chunk id alone
+    });
     // Front-matter demotion (issue #18): TOC/praise/foreword chunks are keyword-dense but
     // semantically empty, so they win exactly the definitional queries where body content is
     // wanted. Stable-partition AFTER the rerank — body passages first, front matter after,
@@ -162,7 +168,10 @@ export async function retrieve(
       demoted > 0 ? `${demoted} front-matter passage(s) (TOC/praise/foreword) demoted below body matches.` : undefined;
     return outcome(rr, hits, confidence(hits, deps.config.semanticFloor, rr), rr.note, demotedNote);
   }
-  const rr = await applyRerank(await rankFigures(req, deps, weights), (r) => r.hit.caption, req, deps);
+  const rr = await applyRerank(await rankFigures(req, deps, weights), req, deps, {
+    body: (r) => r.hit.caption,
+    tie: (r) => [r.hit.bookId, r.hit.figureId],
+  });
   const floorNote =
     req.mode !== "keyword" && rr.hits.length > 0 && FIGURES_SEMANTIC_FLOOR === null ? FIGURES_FLOOR_NOTE : undefined;
   return outcome(rr, rr.hits, confidence(rr.hits, FIGURES_SEMANTIC_FLOOR, rr), rr.note, floorNote);
@@ -294,9 +303,11 @@ interface RerankOutcome<T> {
  */
 async function applyRerank<T extends { rerankScore?: number }>(
   pool: T[],
-  bodyOf: (r: T) => string,
   req: BaseRequest,
   deps: RetrievalDeps,
+  // body: the text the cross-encoder scores; tie: (book id, unit id), the ascending order for
+  // equal rerank scores (#392) instead of the fused order
+  keys: { body: (r: T) => string; tie: (r: T) => readonly [number, number] },
 ): Promise<RerankOutcome<T>> {
   const fused = () => pool.slice(0, req.topK);
   // Absent reranker = not wired in this deployment/test — silently keep the fused order.
@@ -312,11 +323,15 @@ async function applyRerank<T extends { rerankScore?: number }>(
     const t0 = performance.now();
     const scores = await deps.reranker.rerank(
       req.query,
-      head.map((r) => bodyOf(r)),
+      head.map((r) => keys.body(r)),
     );
     deps.log.debug("rerank stage", { pairs: head.length, ms: Math.round(performance.now() - t0) });
     const scored = head.map((r, i) => ({ ...r, rerankScore: scores[i] ?? 0 }));
-    scored.sort((a, b) => b.rerankScore - a.rerankScore); // stable: ties keep fused order
+    scored.sort((a, b) => {
+      const [ab, au] = keys.tie(a);
+      const [bb, bu] = keys.tie(b);
+      return b.rerankScore - a.rerankScore || ab - bb || au - bu;
+    });
     const hits = [...scored, ...pool.slice(RERANK_POOL)].slice(0, req.topK);
     return { hits, reranked: true, maxRerank: scored[0]?.rerankScore };
   } catch (err) {

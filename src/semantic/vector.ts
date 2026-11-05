@@ -60,13 +60,16 @@ export interface ScoredHit {
   score: number;
 }
 
-/** Brute-force top-k by cosine (dot). Ties keep insertion order; k clamps to length. */
+/**
+ * Brute-force top-k by cosine (dot); k clamps to length. Equal cosines order by book id, then
+ * chunk id (#392): a total order, so the ranking never depends on candidate insertion order.
+ */
 export function topK(query: Float32Array, candidates: Candidate[], k: number): ScoredHit[] {
   const scored = candidates.map((c) => ({
     chunkId: c.chunkId,
     bookId: c.bookId,
     score: dot(query, c.vector),
   }));
-  scored.sort((a, b) => b.score - a.score);
+  scored.sort((a, b) => b.score - a.score || a.bookId - b.bookId || a.chunkId - b.chunkId);
   return scored.slice(0, Math.max(0, k));
 }

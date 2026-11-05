@@ -57,6 +57,7 @@ export class SqliteFigureIndex implements FigureIndex {
     const match = ftsMatch(stemmedQuery);
     if (!match) return [];
     let rows: Row[];
+    // Equal bm25 orders by book id, then figure id (#392), on every branch.
     // Filtered branches are FTS-first, as in chunks.ts (#155): a MATERIALIZED CTE evaluates
     // MATCH once instead of the planner re-running it per figure of the book. Same rows/scores.
     const ftsFirst = (filter: string) =>
@@ -65,7 +66,7 @@ export class SqliteFigureIndex implements FigureIndex {
        )
        SELECT f.id AS fig_id, m.s AS score
        FROM m JOIN figures f ON f.id = m.id
-       WHERE ${filter} ORDER BY m.s LIMIT ?`;
+       WHERE ${filter} ORDER BY m.s, f.book_id, f.id LIMIT ?`;
     if (bookId !== undefined) {
       rows = db.prepare(ftsFirst("f.book_id = ?")).all(match, bookId, k) as Row[];
     } else if (allow !== undefined) {
@@ -77,7 +78,7 @@ export class SqliteFigureIndex implements FigureIndex {
         .prepare(
           `SELECT f.id AS fig_id, ${WEIGHTED_FIG_BM25} AS score
            FROM figure_fts JOIN figures f ON f.id = figure_fts.rowid
-           WHERE figure_fts MATCH ? ORDER BY score LIMIT ?`,
+           WHERE figure_fts MATCH ? ORDER BY score, f.book_id, f.id LIMIT ?`,
         )
         .all(match, k) as Row[];
     }

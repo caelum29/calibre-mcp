@@ -98,6 +98,7 @@ export class SqliteChunkIndex implements ChunkIndex {
     const match = ftsMatch(stemmedQuery);
     if (!match) return [];
     // Pull a generous pool of chunk hits, then keep the best (first, since bm25-ranked) per book.
+    // Equal bm25 orders by book id, then chunk id (#392): SQLite's scan order is no contract.
     const pool = Math.max(k * 20, 200);
     // The allow filter lives in SQL (json_each keeps it to one variable) so a small bundle
     // can't be starved by the pool cap eating unfiltered hits first. It uses the same FTS-first
@@ -109,7 +110,7 @@ export class SqliteChunkIndex implements ChunkIndex {
             .prepare(
               `SELECT c.id AS chunk_id, c.book_id, c.char_start, c.char_end, c.body, ${WEIGHTED_BM25} AS score
                FROM chunk_fts JOIN chunks c ON c.id = chunk_fts.rowid
-               WHERE chunk_fts MATCH ? ORDER BY score LIMIT ?`,
+               WHERE chunk_fts MATCH ? ORDER BY score, c.book_id, c.id LIMIT ?`,
             )
             .all(match, pool)
         : db
@@ -120,7 +121,7 @@ export class SqliteChunkIndex implements ChunkIndex {
                SELECT c.id AS chunk_id, c.book_id, c.char_start, c.char_end, c.body, m.s AS score
                FROM m JOIN chunks c ON c.id = m.id
                WHERE c.book_id IN (SELECT value FROM json_each(?))
-               ORDER BY m.s LIMIT ?`,
+               ORDER BY m.s, c.book_id, c.id LIMIT ?`,
             )
             .all(match, JSON.stringify([...allow]), pool)
     ) as Row[];
@@ -162,7 +163,7 @@ export class SqliteChunkIndex implements ChunkIndex {
          )
          SELECT c.id AS chunk_id, c.char_start, c.char_end, c.body, c.front_matter, m.s AS score
          FROM m JOIN chunks c ON c.id = m.id
-         WHERE c.book_id = ? ORDER BY m.s LIMIT ?`,
+         WHERE c.book_id = ? ORDER BY m.s, c.id LIMIT ?`,
       )
       .all(match, bookId, k) as Row[];
     return rows.map((r) => ({
