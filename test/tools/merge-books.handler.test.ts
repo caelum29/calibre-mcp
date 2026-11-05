@@ -445,6 +445,46 @@ describe("calibre_merge_books — timed-out metadata merge verifies the intended
     });
   });
 
+  it("should_not_confirm_a_merge_whose_tags_match_but_another_field_reads_back_a_third_value", async () => {
+    // every field must land: tags and comments are the merged values, identifiers.doi is not
+    const d = timedOut(async (id) =>
+      book({
+        id,
+        formats: ["epub", "pdf"],
+        tags: ["t1", "t2"],
+        identifiers: { isbn: "111", doi: "GUI" },
+        comments: "dest c\n\nsrc c",
+      }),
+    );
+    const r = await run({ targetId: 10, sourceIds: [12], confirm: true }, d);
+    expect(d.calls.map((c) => c[0])).toEqual(["add_format", "set_metadata"]);
+    expect(r).toEqual({
+      content: [
+        {
+          type: "text",
+          text:
+            `Merge incomplete — some steps committed, then "merge metadata into #10" failed (${NOTE}). ` +
+            "No data was lost: sources are deleted only after every other step verifies. Re-run the same " +
+            "call to finish — completed steps are idempotent (already-moved formats skip, metadata re-merge " +
+            "is a no-op).\nSteps:\n  ✓ move pdf from #12 to #10\n" +
+            `  ✗ merge metadata into #10 — ${NOTE}\n  - trash sources #12`,
+        },
+      ],
+      structuredContent: {
+        targetId: 10,
+        sourceIds: [12],
+        mode: "merge",
+        warnings: [],
+        steps: [
+          { step: "move pdf from #12 to #10", status: "done" },
+          { step: "merge metadata into #10", status: "failed", note: NOTE },
+          { step: "trash sources #12", status: "not-run" },
+        ],
+        status: "incomplete",
+      },
+    });
+  });
+
   it("should_confirm_a_merge_whose_re_read_differs_only_by_calibre_normalization", async () => {
     // Calibre keeps the library's tag spelling and sorts them: still the intended set
     const d = timedOut(reread(["T2", "T1"]));

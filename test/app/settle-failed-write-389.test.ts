@@ -124,6 +124,26 @@ describe("settleFailedWrite — outcome table (#389)", () => {
     });
   });
 
+  it("should_leave_a_timed_out_write_unverified_when_the_re_read_shows_the_old_value", async () => {
+    const { deps: d } = deps(NOT_LANDED);
+    expect(await settleFailedWrite(d, WRITE, new CalibreCliTimeoutError("t"))).toEqual({
+      kind: "unverified",
+      cause: "timeout",
+      check: { status: "not-landed" },
+      refused: false,
+    });
+  });
+
+  it("should_leave_a_timed_out_write_unverified_when_the_re_read_shows_a_third_value", async () => {
+    const { deps: d } = deps(FOREIGN);
+    expect(await settleFailedWrite(d, WRITE, new CalibreCliTimeoutError("t"))).toEqual({
+      kind: "unverified",
+      cause: "timeout",
+      check: { status: "unverifiable", foreign: [{ field: "publisher", after: "GUI", intended: "New" }] },
+      refused: false,
+    });
+  });
+
   it("should_leave_a_timed_out_write_unverifiable_when_the_re_read_fails", async () => {
     const { deps: d } = deps(new Error("server gone"));
     expect(await settleFailedWrite(d, WRITE, new CalibreCliTimeoutError("t"))).toEqual({
