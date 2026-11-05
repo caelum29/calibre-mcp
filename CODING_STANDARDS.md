@@ -81,6 +81,26 @@ Results describe what happened, never what was requested or hoped for.
 - When a tool's params or behaviour change, `docs/TOOLS.md` and the tool description change in the
   same PR (#226).
 
+### Decision reversals
+
+A PR can quietly undo a choice an earlier PR made on purpose. Two examples: #236 "dropped write → steer, no re-read", then #350/#372 added the re-read. #254 "moved away from before counts as landed", then #380 dropped it.
+
+- When the diff changes behaviour, check the `git log` / PR bodies of the touched lines for words like
+  "deliberate", "on purpose", "stays as is", or a `D-NNN` reference.
+- If it reverses one, require the PR body to cite the earlier PR or ADR and say why the premise
+  changed. Also require a new or updated `D-NNN` in `docs/dev/DECISIONS.md`. Without both, it is a finding.
+
+### Proportional findings
+
+Findings on a fix tend to become the next fix's issue, so each one has to earn its place.
+
+- A finding names an input a real library, client or model produces. A finding that needs a
+  constructed input (an id with `~`, an id over 255 bytes, `NOT title:NEAR(…)`) is marked
+  **optional**. The author may answer it with a known-limit comment instead of code.
+- If the touched file already had 3 or more fix PRs in the last 3 weeks, say so in the review. The
+  orchestrator then routes new findings to Artem, not to a follow-up box
+  (`docs/claude/overnight-profile.md` § Churn guard).
+
 ### Documentation
 
 - Every new file has a 1–3 line header with its business context. Exported interfaces and types
