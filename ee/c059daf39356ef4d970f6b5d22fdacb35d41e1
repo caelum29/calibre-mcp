@@ -1,0 +1,21 @@
+test/eval/retrieval/hash-baseline.json
+  s_4ba34c72a1f257::t_5d3e90cc6714cb 4,53,56,395,398,417,560,568,598,758-759,769-770,788,791,793,806,852-854
+test/eval/retrieval/thresholds.json
+  s_4ba34c72a1f257::t_51b9b6578cfc20 66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eec059daf39356ef4d970f6b5d22fdacb35d41e1",
+  "prompts": {},
+  "sessions": {
+    "s_4ba34c72a1f257": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c53829ca-e425-43bf-b4aa-48cbb05e9525",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
