@@ -21,6 +21,7 @@ import { ThreadEncoder } from "../src/semantic/thread-encoder.js";
 import { SqliteIndexStore } from "../src/semantic/store/index.js";
 import { runBookPipeline } from "../src/semantic/book-pipeline.js";
 import { appendProgress, resolveProgressPath, resumeProgress } from "../src/semantic/build-progress.js";
+import { libraryIdCollision } from "../src/app/library-id-guard.js";
 import { commitBook, commitRefresh, describeError, prepareBook, type PrepareResult } from "../src/app/index-book.js";
 
 const { values: opt } = parseArgs({
@@ -65,14 +66,15 @@ log.configure({ level: prodConfig.logLevel, dir: prodConfig.logDir });
 const figures = new FigureInventoryService(config);
 // The deps the index use-case takes, named from its own signature: scripts stay out of tools/ (#260).
 type IndexDeps = Parameters<typeof prepareBook>[0];
+const content = new ContentServerClient(config);
 const deps = {
   config,
-  content: new ContentServerClient(config),
+  content,
   calibre: new CalibreClient(config),
   extractor: new Extractor(config, figures),
   figures,
   embedder: new TransformersEmbedder(config),
-  index: new SqliteIndexStore(config, log),
+  index: new SqliteIndexStore(config, log, () => content.knownLibraryIds()),
   log,
 } satisfies IndexDeps;
 
@@ -85,6 +87,9 @@ if (!flagsOnly) await Promise.all(threaded ? threads.map((t) => t.warmup()) : [d
 const warmupMs = Date.now() - tWarm;
 
 const libraryId = await deps.content.resolveLibraryId(opt.library);
+// Case-only id clash (#388): refuse before the progress log or the index file is touched.
+const clash = await libraryIdCollision(deps.content, libraryId);
+if (clash) throw clash;
 // Default log is per library (book ids overlap across libraries, #285) and per mode (a full
 // re-index's "done" ids must not hide books from the flags backfill); --progress overrides.
 const progressFile = resolveProgressPath(opt.progress, indexDir, libraryId, flagsOnly);

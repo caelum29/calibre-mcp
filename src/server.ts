@@ -86,7 +86,8 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
     figures,
     embedder: new TransformersEmbedder(config), // lazy: no model load until first embed
     reranker: new TransformersReranker(config), // lazy: no model load until first rerank
-    index: new SqliteIndexStore(config, log), // lazy: no db file until first index op
+    // lazy: no db file until first index op; the id list (cached by every library resolve) feeds the #388 guard
+    index: new SqliteIndexStore(config, log, () => content.knownLibraryIds()),
     boardCache: new BoardCache(), // cover-board widget re-pull cache (issue #22)
     log,
   };

@@ -8,6 +8,7 @@ import { existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import type { Config } from "../../config.js";
 import type { LogSink } from "../../logging.js";
+import { caseCollisionOwner, LibraryIdCollisionError } from "../../domain/library-id-collision.js";
 import { EMBED_DIM, INDEX_VERSION, MODEL_ID } from "../model.js";
 import { type Row, WEIGHTED_BM25 } from "./shared.js";
 import type { IndexMeta } from "./types.js";
@@ -109,9 +110,11 @@ END;
 export class IndexConnections {
   #dbs = new Map<string, DatabaseSync>();
 
+  /** `libraryIds` lists the known library ids (absent/undefined = unknown: no #388 guard). */
   constructor(
     private readonly cfg: Config,
     private readonly log: LogSink,
+    private readonly libraryIds?: () => readonly string[] | undefined,
   ) {}
 
   /** Cheap, side-effect-free check for an existing index (no db file is created). */
@@ -157,6 +160,7 @@ export class IndexConnections {
    * meta, missing tables or not a sqlite file throws to the caller — nothing is repaired here.
    */
   read<T>(libraryId: string, fn: (db: DatabaseSync) => T, absent: T): T {
+    this.#assertOwnFile(libraryId);
     const open = this.#dbs.get(libraryId);
     if (open) return fn(open);
     if (!this.has(libraryId)) return absent;
@@ -192,6 +196,7 @@ export class IndexConnections {
   db(libraryId: string): DatabaseSync {
     let db = this.#dbs.get(libraryId);
     if (db) return db;
+    this.#assertOwnFile(libraryId);
     const file = this.#file(libraryId);
     if (file !== ":memory:") mkdirSync(this.cfg.indexDir, { recursive: true });
     db = new DatabaseSync(file);
@@ -237,6 +242,17 @@ export class IndexConnections {
       return;
     }
     assertCompatible(existing);
+  }
+
+  /**
+   * Refuse a library whose id equals another's case-insensitively (#388): on a case-insensitive
+   * volume both ids name one file, so opening it would mix two libraries' books in one index.
+   * Checked before the file is created, so a refused library leaves nothing on disk.
+   */
+  #assertOwnFile(libraryId: string): void {
+    const ids = this.libraryIds?.();
+    const owner = ids && caseCollisionOwner(libraryId, ids);
+    if (owner !== undefined) throw new LibraryIdCollisionError(libraryId, owner);
   }
 
   /** Db path for a library (no fs side effects). ":memory:" when the index dir is in-memory. */

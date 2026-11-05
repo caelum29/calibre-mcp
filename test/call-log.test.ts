@@ -168,6 +168,7 @@ describe("withCallLog — #325 recentErrors rule", () => {
     index_missing: "warn",
     index_incompatible: "warn",
     index_build_failed: "error",
+    library_id_collision: "error",
     dependency_missing: "error",
     extraction_failed: "error",
     internal: "error",

@@ -9,6 +9,7 @@ import { z } from "zod";
 import { BookId, CoercedBool, jsonArray } from "./coerce.js";
 import { defineTool } from "./define.js";
 import { describeError } from "../app/index-book.js";
+import { libraryIdCollision } from "../app/library-id-guard.js";
 import { runIndexBuild, type BuildIndexDeps, type BuildSummary } from "../app/build-index.js";
 import { INSTALL_TRANSFORMERS } from "./remediation.js";
 import { toolError, toolOk, errorFromCatch } from "./result.js";
@@ -116,6 +117,9 @@ export const buildIndexTool = defineTool({
     } catch (err) {
       return errorFromCatch(err);
     }
+    // Case-only id clash (#388): refuse before the build touches the shared index file.
+    const clash = await libraryIdCollision(deps.content, libraryId);
+    if (clash) return toolError("library_id_collision", clash.message);
 
     // One build per library at a time (one index file, one writer); past the soft deadline the
     // call returns a "still running" status and the build keeps committing in the background.
