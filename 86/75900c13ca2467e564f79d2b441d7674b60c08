@@ -1,0 +1,20 @@
+test/eval/retrieval/sweep-stats.test.ts
+  s_4ba34c72a1f257::t_698041d9b90117 1-38,49-193
+  s_4ba34c72a1f257::t_e20f9eae002459 39-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8675900c13ca2467e564f79d2b441d7674b60c08",
+  "prompts": {},
+  "sessions": {
+    "s_4ba34c72a1f257": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c53829ca-e425-43bf-b4aa-48cbb05e9525",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
