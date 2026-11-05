@@ -33,7 +33,7 @@
 import { execSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { loadConfig } from "../../../src/config.js";
 import { RERANKER_MODEL_ID, TransformersReranker } from "../../../src/semantic/reranker.js";
 import {
@@ -257,9 +257,8 @@ async function runPass(args: CliArgs, { rerankOff, tag, protectedPaths, axesCfg 
     // rmSync never follows the models symlink; it only unlinks it
     if (indexDir !== args.workDir) rmSync(indexDir, { recursive: true, force: true });
   });
-  if (reranker && report.meta.rerankedRows === 0) {
-    progress("WARNING: rerank was ON but 0 rows reranked — model unavailable, run is reranker-degraded");
-  }
+  const degraded = degradedWarning(report, reranker !== undefined);
+  if (degraded) progress(degraded);
 
   mkdirSync(args.outDir, { recursive: true });
   writeFileSync(jsonPath, JSON.stringify(report, null, 2) + "\n");
@@ -272,12 +271,27 @@ async function runPass(args: CliArgs, { rerankOff, tag, protectedPaths, axesCfg 
 
   progress(`${rerankOff ? "rerank-off " : ""}pass done in ${((Date.now() - started) / 1000).toFixed(1)}s`);
   // CLI summary on stdout (this is a script, not the stdio MCP server).
-  process.stdout.write(
-    `${headline(report)}\n${saturationLines(report).join("\n")}\n` +
-      (axes.length ? `${axes.join("\n")}\n` : "") +
-      `report: ${mdPath}\njson:   ${jsonPath}\n`,
-  );
+  process.stdout.write(passSummary(report, axes, { md: mdPath, json: jsonPath }));
   return { report, mdPath, jsonPath };
+}
+
+/**
+ * stderr warning for a run that wired the reranker but reranked nothing (model failed to load):
+ * its numbers are fusion-only although labelled ON. Exported for the #389 test.
+ */
+export function degradedWarning(report: EvalReport, rerankerWired: boolean): string | undefined {
+  return rerankerWired && report.meta.rerankedRows === 0
+    ? "WARNING: rerank was ON but 0 rows reranked — model unavailable, run is reranker-degraded"
+    : undefined;
+}
+
+/** A pass's stdout summary: headline, saturation lines, #363 axes, report paths (#389 test seam). */
+export function passSummary(report: EvalReport, axes: string[], paths: { md: string; json: string }): string {
+  return (
+    `${headline(report)}\n${saturationLines(report).join("\n")}\n` +
+    (axes.length ? `${axes.join("\n")}\n` : "") +
+    `report: ${paths.md}\njson:   ${paths.json}\n`
+  );
 }
 
 /** Concatenate two gate outcomes into one pass section (gate checks + list diff). */
@@ -376,7 +390,10 @@ async function main(): Promise<void> {
   if (!pass) process.exit(1);
 }
 
-main().catch((err: unknown) => {
-  process.stderr.write(`[eval] FAILED: ${err instanceof Error ? err.message : String(err)}\n`);
-  process.exit(1);
-});
+// run only as the CLI entry, so tests can import the print helpers without starting an eval
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((err: unknown) => {
+    process.stderr.write(`[eval] FAILED: ${err instanceof Error ? err.message : String(err)}\n`);
+    process.exit(1);
+  });
+}

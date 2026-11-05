@@ -98,3 +98,31 @@ export function loadAllowEntries(
   });
   return entries as AllowEntry[];
 }
+
+/**
+ * Consistency of allow entries against the frozen baselines, cheap enough for `pnpm test`
+ * (#389): the model gate would otherwise be the first to notice an entry for a row that doesn't
+ * exist or one that allows the baseline's own list (stale). Returns one problem per bad entry.
+ */
+export function checkAllowEntries(
+  entries: AllowEntry[],
+  baselines: Partial<Record<ListDiffTier, EvalReport>>,
+  topK: number,
+): string[] {
+  const problems: string[] = [];
+  for (const e of entries) {
+    const at = `${e.tier}/${rowKey(e.mode, e.id)}`;
+    const base = baselines[e.tier];
+    if (!base) {
+      problems.push(`${at}: no baseline loaded for tier ${e.tier}`);
+      continue;
+    }
+    const row = base.perQuery.find((r) => r.mode === e.mode && r.id === e.id);
+    if (!row) problems.push(`${at}: no such row in the ${e.tier} baseline`);
+    else if (row.retrieved.slice(0, topK).join(",") === e.retrieved.slice(0, topK).join(",")) {
+      problems.push(`${at}: allows the baseline's own top-${topK} list (stale entry)`);
+    }
+    if (e.reason.trim() === "") problems.push(`${at}: empty reason`);
+  }
+  return problems;
+}
