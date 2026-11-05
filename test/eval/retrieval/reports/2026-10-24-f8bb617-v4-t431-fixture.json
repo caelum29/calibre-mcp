@@ -18,7 +18,8 @@
     "live": false,
     "rerank": "onnx-community/bge-reranker-v2-m3-ONNX q8",
     "rerankedRows": 136,
-    "gitSha": "f8bb617"
+    "gitSha": "f8bb617",
+    "goldenSetHash": "sha256:d77d10680a0c26532365dc055087f557c7e7823f5052e51d323d22ba40364253"
   },
   "overall": {
     "hybrid": {
