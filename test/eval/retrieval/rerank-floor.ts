@@ -1,7 +1,9 @@
 // RERANK_FLOOR recalibration scorer: replays the lowConfidence rule offline over the per-row
 // maxRerank/maxScore of one fixture report (+ optional live report) for every candidate floor,
 // and prints mechanical PASS/FAIL against thresholds.json `rerankFloor` (declared BEFORE the
-// measurement, D-012 protocol). Pure scoring is exported for the unit test.
+// measurement, D-012 protocol). Each candidate is also compared with the current floor through
+// stats.ts's exact sign test (#358), paired per query: a query's modes count once. Pure scoring
+// is exported for the unit test.
 //
 // Usage: node --import tsx test/eval/retrieval/rerank-floor.ts --fixture <report.json> [--live <report.json>]
 
@@ -10,6 +12,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { evaluateGate, type Thresholds } from "./gate.js";
 import type { EvalReport, Mode, PerQueryRow } from "./harness.js";
+import { signTest } from "./stats.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 // Mirrors config.ts's default semanticFloor — the cosine half of confidence().
@@ -23,14 +26,25 @@ export interface FloorThresholds {
   negativeSeparation: { kinds: string[]; marginFactor: number };
 }
 
+/** Hit@1-positive queries a candidate floor treats differently from the current floor (paired). */
+export interface FloorVsCurrent {
+  /** Queries false-flagged at the current floor, not at this one (in any mode, none the other way). */
+  unflagged: number;
+  /** Queries not flagged at the current floor, false-flagged at this one. */
+  newlyFlagged: number;
+  /** Exact two-sided sign test on those discordant rows (stats.ts). */
+  signP: number;
+}
+
 export interface FloorVerdict {
   floor: number;
+  vsCurrent: FloorVsCurrent;
   /** Max negative maxRerank vs F * marginFactor. */
   separationPass: boolean;
   falseFlagged: number;
   hit1Positives: number;
   falseFlagRate: number;
-  live?: { falseFlagRate: number; negativesUnflagged: string[] };
+  live?: { falseFlagRate: number; negativesUnflagged: string[]; vsCurrent: FloorVsCurrent };
 }
 
 export interface FloorResult {
@@ -68,6 +82,26 @@ function falseFlags(rows: PerQueryRow[], floor: number, t: FloorThresholds) {
   };
 }
 
+/**
+ * Paired comparison of `floor` vs the current floor, per QUERY: one query's rows in several modes
+ * aren't independent, so a query counts once. It is un-flagged when some Hit@1-positive mode
+ * loses its false flag and none gains one (and the reverse); a query moving both ways is a tie.
+ */
+function vsCurrent(rows: PerQueryRow[], floor: number, t: FloorThresholds): FloorVsCurrent {
+  const byQuery = new Map<string, { gain: boolean; loss: boolean }>();
+  for (const r of rows) {
+    if (isNegative(r.kind, t) || r.metrics?.hit1 !== 1) continue;
+    const q = byQuery.get(r.id) ?? { gain: false, loss: false };
+    q.gain ||= flagged(r, t.currentFloor) && !flagged(r, floor);
+    q.loss ||= !flagged(r, t.currentFloor) && flagged(r, floor);
+    byQuery.set(r.id, q);
+  }
+  const qs = [...byQuery.values()];
+  const unflagged = qs.filter((q) => q.gain && !q.loss).length;
+  const newlyFlagged = qs.filter((q) => q.loss && !q.gain).length;
+  return { unflagged, newlyFlagged, signP: signTest(unflagged, newlyFlagged) };
+}
+
 export function scoreFloors(
   t: FloorThresholds,
   fixture: EvalReport,
@@ -86,6 +120,7 @@ export function scoreFloors(
       floor,
       separationPass: maxNegative <= floor * t.negativeSeparation.marginFactor,
       ...falseFlags(fx, floor, t),
+      vsCurrent: vsCurrent(fx, floor, t),
     };
     if (lv) {
       v.live = {
@@ -93,6 +128,7 @@ export function scoreFloors(
         negativesUnflagged: lv
           .filter((r) => isNegative(r.kind, t) && !flagged(r, floor))
           .map((r) => `${r.id}/${r.mode}`),
+        vsCurrent: vsCurrent(lv, floor, t),
       };
     }
     return v;
@@ -122,13 +158,15 @@ export function scoreFloors(
 
 export function renderFloors(res: FloorResult): string {
   const pct = (n: number) => `${(n * 100).toFixed(1)}%`;
+  const vs = (c: FloorVsCurrent) => `${c.unflagged}/${c.newlyFlagged}, p ${c.signP.toFixed(4)}`;
   const lines = [
-    "| floor | negative separation | fixture false flags | live false-flag rate | live negatives unflagged |",
-    "|---|---|---|---|---|",
+    "| floor | negative separation | fixture false flags (rows, not queries) | fixture vs current (queries un-/newly flagged, sign p) | live false-flag rate (rows) | live vs current (queries) | live negatives unflagged |",
+    "|---|---|---|---|---|---|---|",
     ...res.verdicts.map(
       (v) =>
         `| ${v.floor} | ${v.separationPass ? "PASS" : "FAIL"} | ${v.falseFlagged}/${v.hit1Positives} (${pct(v.falseFlagRate)}) | ` +
-        `${v.live ? pct(v.live.falseFlagRate) : "—"} | ${v.live ? v.live.negativesUnflagged.join(", ") || "none" : "—"} |`,
+        `${vs(v.vsCurrent)} | ${v.live ? pct(v.live.falseFlagRate) : "—"} | ${v.live ? vs(v.live.vsCurrent) : "—"} | ` +
+        `${v.live ? v.live.negativesUnflagged.join(", ") || "none" : "—"} |`,
     ),
     "",
     `max fixture negative maxRerank: ${res.maxNegative}; min fixture Hit@1-positive maxRerank: ${res.minHit1Positive}; ` +

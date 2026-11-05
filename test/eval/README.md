@@ -128,7 +128,11 @@ Every run also prints, after the per-mode headline:
 - `golden-set.ts` + `golden-set.test.ts` — the golden-set hash and its per-tier check (#392).
 - `saturation.ts` — headroom share + saturation warning printed by every run (#365).
 - `rrf-sweep.sh` + `rrf-sweep.ts`, `rerank-floor.ts` — one-off tuning scorers (#142 RRF
-  weights, RERANK_FLOOR) over committed reports, gated by their `thresholds.json` blocks.
+  weights, RERANK_FLOOR) over committed reports, gated by their `thresholds.json` blocks. Both
+  print paired stats from `stats.ts` next to each gate check (#358): `rrf-sweep.ts` the same
+  per-group Δ / CI / p / MDE / `UNDERPOWERED` line `--compare` computes, `rerank-floor.ts` an
+  exact sign test of each floor vs the current one over the same rows. Information only: the
+  declared gates and selection rules decide.
 - `hash-embedder.ts` + `harness.test.ts` — model-free smoke tests that run in the normal
   `pnpm test` suite (seconds): plumbing, query-set contract, determinism, and the
   "deliberately broken ranking degrades the metrics" proof that the harness measures.
