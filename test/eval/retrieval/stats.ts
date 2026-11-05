@@ -174,10 +174,16 @@ function compareRows(mode: Mode, group: string, pairs: [PerQueryRow, PerQueryRow
 }
 
 /**
- * Paired per-mode comparison of two reports: an "overall" row, then one row per query kind
- * (alphabetical). Only queries with rank metrics in both reports pair; negatives drop out.
+ * Paired per-mode comparison of two reports: an "overall" row, then one row per non-empty
+ * `extraGroups` subset (in key order; e.g. the sweep's RU-involved slice, which isn't a kind),
+ * then one row per query kind (alphabetical). Only queries with rank metrics in both reports
+ * pair; negatives drop out.
  */
-export function compareReports(a: EvalReport, b: EvalReport): CompareRow[] {
+export function compareReports(
+  a: EvalReport,
+  b: EvalReport,
+  extraGroups: Record<string, (r: PerQueryRow) => boolean> = {},
+): CompareRow[] {
   const rows: CompareRow[] = [];
   const modes = a.meta.modes.filter((m) => b.meta.modes.includes(m));
   for (const mode of modes) {
@@ -186,6 +192,10 @@ export function compareReports(a: EvalReport, b: EvalReport): CompareRow[] {
       .filter((r) => r.mode === mode && r.metrics && bById.has(r.id))
       .map((r): [PerQueryRow, PerQueryRow] => [r, bById.get(r.id)!]);
     rows.push(compareRows(mode, "overall", pairs));
+    for (const [group, pick] of Object.entries(extraGroups)) {
+      const sub = pairs.filter(([r]) => pick(r));
+      if (sub.length) rows.push(compareRows(mode, group, sub));
+    }
     const kinds = [...new Set(pairs.map(([r]) => r.kind))].sort();
     for (const kind of kinds)
       rows.push(
@@ -220,6 +230,15 @@ export function pairingWarnings(a: EvalReport, b: EvalReport, labelA = "a", labe
 }
 
 const signed = (x: number) => `${x >= 0 ? "+" : "-"}${Math.abs(x).toFixed(3)}`;
+
+/** One-line paired verdict for a scorer check: n, Δ nDCG@10, CI, both p values, MDE, flag. */
+export function formatPaired(r: CompareRow): string {
+  return (
+    `${r.group} paired n=${r.n} Δ ${signed(r.delta)} 95% CI [${signed(r.ci[0])}, ${signed(r.ci[1])}] ` +
+    `perm p ${r.p.toFixed(4)} flips ${r.hit1Wins}/${r.hit1Losses} sign p ${r.signP.toFixed(4)} MDE ${r.mde.toFixed(3)}` +
+    (r.underpowered ? " UNDERPOWERED" : "")
+  );
+}
 
 /** Fixed-width text table for the CLI (stdout). */
 export function renderCompare(rows: CompareRow[], labelA: string, labelB: string): string {

@@ -1,6 +1,8 @@
 // #142 weighted-RRF sweep scorer: reads the reports rrf-sweep.sh wrote and prints mechanical
 // PASS/FAIL per weight against thresholds.json `rrfWeightSweep` (gates declared BEFORE the sweep,
-// D-012 protocol), plus the selected weight. Pure scoring is exported for the unit test.
+// D-012 protocol), plus the selected weight. Every gate check also carries the paired stats of
+// its query group from stats.ts (#358): a declared delta can pass while the paired test says the
+// fixture is too small to tell it from noise. Pure scoring is exported for the unit test.
 //
 // Usage: node --import tsx test/eval/retrieval/rrf-sweep.ts [--reports <dir>]
 
@@ -9,6 +11,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { evaluateGate, type Thresholds } from "./gate.js";
 import type { EvalReport, Mode } from "./harness.js";
+import { compareReports, formatPaired, pairingWarnings, type CompareRow } from "./stats.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const HYBRID: Mode = "hybrid";
@@ -34,6 +37,8 @@ export interface SweepCheck {
   name: string;
   pass: boolean;
   detail: string;
+  /** Paired stats.ts rows for the queries this check reads (information only, never gates). */
+  paired?: CompareRow[];
 }
 
 export interface WeightVerdict {
@@ -45,7 +50,12 @@ export interface WeightVerdict {
   pass: boolean;
   /** Headline numbers for the results table. */
   numbers: Record<Measurement, { ru: number; xl: number } & Record<string, number | undefined>>;
+  /** Hybrid paired comparison vs the baseline weight, per measurement (the `--compare` table). */
+  stats: Record<Measurement, CompareRow[]>;
 }
+
+/** RU-involved is a query flag, not a kind, so it rides in as an extra compare group. */
+const RU_GROUP = { "ru-involved": (r: { ru: boolean }) => r.ru };
 
 const fmt = (n: number) => n.toFixed(4);
 const signed = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(4)}`;
@@ -77,6 +87,7 @@ export function scoreWeight(
 ): WeightVerdict {
   const checks: SweepCheck[] = [];
   const numbers = {} as WeightVerdict["numbers"];
+  const stats = {} as WeightVerdict["stats"];
   let ruPass = true;
   let enPass = true;
 
@@ -86,6 +97,8 @@ export function scoreWeight(
     const ru = ndcg(c, undefined) ?? 0;
     const xl = ndcg(c, "cross-lingual") ?? 0;
     numbers[m] = { ru, xl };
+    stats[m] = compareReports(b, c, RU_GROUP).filter((r) => r.mode === HYBRID);
+    const pairedOf = (...groups: string[]) => stats[m].filter((r) => groups.includes(r.group));
 
     // RU-up: deltas vs the same measurement at the baseline weight.
     const g = t.ruUp[m];
@@ -97,6 +110,7 @@ export function scoreWeight(
       name: `${m} RU-up`,
       pass: ruOk,
       detail: `RU-involved ${fmt(ru)} (${signed(dRu)}, need ≥${signed(g.ruInvolvedNdcg10MinDelta)}), cross-lingual ${fmt(xl)} (${signed(dXl)}, need ≥${signed(g.crossLingualNdcg10MinDelta)})`,
+      paired: pairedOf("ru-involved", "cross-lingual"),
     });
 
     // EN non-regression on the keyword-favoured kinds present in this measurement.
@@ -113,6 +127,7 @@ export function scoreWeight(
         name: `${m} EN ${k}`,
         pass: ok,
         detail: `nDCG@10 ${fmt(now)} (drop ${fmt(drop)}, allowed ${e.maxNdcg10Drop}); broken Hit@1 ${broken.length}${broken.length ? ` [${broken.join(", ")}]` : ""} (allowed ${e.maxBrokenHit1Queries})`,
+        paired: pairedOf(k),
       });
     }
   }
@@ -126,6 +141,7 @@ export function scoreWeight(
     zeroBrokenPass: zeroBroken.pass,
     pass: ruPass && enPass && zeroBroken.pass,
     numbers,
+    stats,
   };
 }
 
@@ -188,8 +204,12 @@ function main(): void {
   ) as Thresholds["nonRegression"];
 
   const base = loadWeight(dir, t.baselineWeight);
+  const warnings: string[] = [];
   const verdicts = t.candidates.map((w) => {
     const cur = loadWeight(dir, w);
+    for (const m of MEASUREMENTS) {
+      warnings.push(...pairingWarnings(base[m], cur[m], `w=${t.baselineWeight} ${m}`, `w=${w} ${m}`));
+    }
     const g = evaluateGate(cur.fixtureOn, gateBaseline, { ...all, nonRegression });
     const failed = g.checks.filter((c) => c.active && !c.pass).map((c) => c.name);
     return scoreWeight(w, base, cur, t, {
@@ -219,7 +239,10 @@ function main(): void {
   out.push("");
   for (const v of verdicts.filter((x) => x.weight !== t.baselineWeight)) {
     out.push(`### w=${v.weight} — ${pf(v.pass)}`);
-    for (const c of v.checks) out.push(`- [${pf(c.pass)}] ${c.name} — ${c.detail}`);
+    for (const c of v.checks) {
+      out.push(`- [${pf(c.pass)}] ${c.name} — ${c.detail}`);
+      for (const r of c.paired ?? []) out.push(`  - ${formatPaired(r)}`);
+    }
     out.push("");
   }
   const s = select(verdicts, t.baselineWeight);
@@ -230,6 +253,8 @@ function main(): void {
         ? `SELECTION: ${t.baselineWeight} stays — ${s.reason}`
         : `SELECTION: query-adaptive weighting needed (NOT built, non-goal) — ${s.reason}`,
   );
+  // a measurement that pairs only a subset would otherwise read as the whole set
+  out.push(...warnings);
   // CLI output on stdout (a script, not the stdio MCP server).
   process.stdout.write(out.join("\n") + "\n");
 }
