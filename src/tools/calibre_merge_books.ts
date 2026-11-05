@@ -47,7 +47,7 @@ export const mergeBooksTool = defineTool({
   name: "calibre_merge_books",
   title: "Merge duplicate books",
   description:
-    "Merge duplicate book records: moves formats from the sourceIds books into targetId (the target's copy " +
+    "Merge duplicate book records: moves formats from the `sourceIds` books into `targetId` (the target's copy " +
     "wins conflicts), merges metadata per Calibre's rules, then trashes the sources. mode=safe " +
     "keeps sources; mode=formatsOnly moves formats only. Dry-run unless confirm=true. Requires " +
     "writes to be enabled.",

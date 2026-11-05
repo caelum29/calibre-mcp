@@ -17,11 +17,15 @@ export interface CatalogTool {
   [k: string]: unknown;
 }
 
-/** One finding; `tools` is empty for skill-level rules, `arg` names an undocumented arg. */
+/**
+ * One finding; `tools` is empty for skill-level rules, `arg` names an undocumented arg, `score`
+ * is the pair's overlap for the two overlap rules.
+ */
 export interface Violation {
   rule: "description-overlap" | "lead-overlap" | "preview-first" | "undocumented-arg" | "triggers-en" | "triggers-ru";
   tools: string[];
   arg?: string;
+  score?: number;
 }
 
 /** Pairwise word overlap (Jaccard) of two tools' whole descriptions and of their lead sentences. */
@@ -59,6 +63,11 @@ function modelFacing(t: CatalogTool): boolean {
   return !vis || vis.includes("model");
 }
 
+/** The tools the lint checks: every tool the model sees. */
+export function modelFacingTools(tools: readonly CatalogTool[]): CatalogTool[] {
+  return tools.filter(modelFacing);
+}
+
 /** Content words: tool-name cross-references removed, lowercased, crude plural fold. */
 function words(text: string): Set<string> {
   return new Set(
@@ -84,6 +93,16 @@ function jaccard(a: Set<string>, b: Set<string>): number {
 }
 
 const mentions = (text: string, word: string): boolean => new RegExp(`\\b${word}\\b`).test(text);
+const escape = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * The arg is named AS a parameter (`name`, name=, or (name)), so a prose coincidence ("Calibre
+ * query syntax", "at query time") doesn't count as documenting a required `query`.
+ */
+function namesParam(text: string, arg: string): boolean {
+  const a = escape(arg);
+  return new RegExp(`\`${a}\`|\\b${a}=|\\(${a}\\)`).test(text);
+}
 
 /** Overlap scores for every pair of model-facing tools, in catalog order. */
 export function overlapScores(tools: readonly CatalogTool[]): OverlapScore[] {
@@ -108,20 +127,24 @@ export function overlapScores(tools: readonly CatalogTool[]): OverlapScore[] {
 export function lintCatalog(tools: readonly CatalogTool[]): Violation[] {
   const out: Violation[] = [];
   for (const s of overlapScores(tools)) {
-    if (s.full >= MAX_DESCRIPTION_OVERLAP) out.push({ rule: "description-overlap", tools: [s.a, s.b] });
-    if (s.lead >= MAX_LEAD_OVERLAP) out.push({ rule: "lead-overlap", tools: [s.a, s.b] });
+    if (s.full >= MAX_DESCRIPTION_OVERLAP) out.push({ rule: "description-overlap", tools: [s.a, s.b], score: s.full });
+    if (s.lead >= MAX_LEAD_OVERLAP) out.push({ rule: "lead-overlap", tools: [s.a, s.b], score: s.lead });
   }
   for (const t of tools.filter(modelFacing)) {
     const props = t.inputSchema.properties ?? {};
     // A destructive write must say it previews first AND name the param that applies (D-003).
-    if (t.annotations?.readOnlyHint === false && t.annotations.destructiveHint === true) {
+    // MCP's hint defaults (readOnlyHint false, destructiveHint true): a write tool that sets no
+    // hints is treated as destructive, never skipped.
+    const readOnly = t.annotations?.readOnlyHint ?? false;
+    const destructive = t.annotations?.destructiveHint ?? true;
+    if (!readOnly && destructive) {
       const says = /\b(preview|dry-run)/i.test(t.description);
       const names = APPLY_PARAMS.some((p) => p in props && mentions(t.description, p));
       if (!says || !names) out.push({ rule: "preview-first", tools: [t.name] });
     }
     // A required arg the model can't learn about from the description or the schema.
     for (const arg of t.inputSchema.required ?? []) {
-      if (!props[arg]?.description && !mentions(t.description, arg)) {
+      if (!props[arg]?.description && !namesParam(t.description, arg)) {
         out.push({ rule: "undocumented-arg", tools: [t.name], arg });
       }
     }
@@ -139,4 +162,24 @@ export function lintSkillTriggers(description: string): Violation[] {
   if (latin < MIN_TRIGGERS_PER_SCRIPT) out.push({ rule: "triggers-en", tools: [] });
   if (cyrillic < MIN_TRIGGERS_PER_SCRIPT) out.push({ rule: "triggers-ru", tools: [] });
   return out;
+}
+
+/** One line per finding saying how to fix it — the assertion message when the lint fails. */
+export function hint(v: Violation): string {
+  const [a, b] = v.tools;
+  const score = v.score?.toFixed(2);
+  switch (v.rule) {
+    case "description-overlap":
+      return `make the descriptions of ${a} and ${b} distinguishable: overlap ${score} ≥ ${MAX_DESCRIPTION_OVERLAP}`;
+    case "lead-overlap":
+      return `reword the first sentence of ${a} or ${b}: lead overlap ${score} ≥ ${MAX_LEAD_OVERLAP}`;
+    case "preview-first":
+      return `${a} is a destructive write: say it previews first (preview/dry-run) and name its confirm/preview/apply param`;
+    case "undocumented-arg":
+      return `${a}: name the required arg as \`${v.arg}\`, ${v.arg}= or (${v.arg}) in the description, or give it a schema description`;
+    case "triggers-en":
+      return `add at least ${MIN_TRIGGERS_PER_SCRIPT} English trigger to the skill's "Triggers on '…'" list`;
+    case "triggers-ru":
+      return `add at least ${MIN_TRIGGERS_PER_SCRIPT} Cyrillic (RU/UK) trigger to the skill's "Triggers on '…'" list`;
+  }
 }

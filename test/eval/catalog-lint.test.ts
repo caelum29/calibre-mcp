@@ -12,6 +12,7 @@ import {
   MAX_LEAD_OVERLAP,
   overlapScores,
 } from "./catalog-lint.js";
+import { hint, modelFacingTools } from "./catalog-lint.js";
 
 const write = { readOnlyHint: false, destructiveHint: true };
 const read = { readOnlyHint: true };
@@ -133,5 +134,69 @@ describe("the shipped catalog passes the lint (#362 Layer A)", () => {
       { full: 0, lead: 0 },
     );
     expect([worst.full < MAX_DESCRIPTION_OVERLAP, worst.lead < MAX_LEAD_OVERLAP]).toEqual([true, true]);
+  });
+
+  // #407 review round 1: no vacuous pass, prose doesn't document an arg, hint-less writes are
+  // linted, and a failure says how to fix each finding.
+  describe("catalog lint review round 1 (#362 Layer A)", () => {
+    const shipped = JSON.parse(readFileSync("docs/tool-catalog.json", "utf8")) as {
+      counts: { modelFacing: number };
+      tools: CatalogTool[];
+    };
+
+    it("should_lint_every_model_facing_tool_of_the_shipped_catalog", () => {
+      expect([modelFacingTools(shipped.tools).length, shipped.counts.modelFacing > 0]).toEqual([
+        shipped.counts.modelFacing,
+        true,
+      ]);
+    });
+
+    it("should_pass_the_shipped_catalog_with_a_fix_hint_per_finding_on_failure", () => {
+      const found = lintCatalog(shipped.tools);
+      expect(found, found.map(hint).join("\n")).toEqual([]);
+    });
+
+    const queryTool = (description: string): CatalogTool => ({
+      name: "fx_q",
+      description,
+      annotations: read,
+      inputSchema: schema(["query"], ["query"]),
+    });
+
+    it("should_not_count_a_prose_coincidence_as_documenting_a_required_arg", () => {
+      expect(lintCatalog([queryTool("Search with Calibre query syntax; no model at query time.")])).toEqual([
+        { rule: "undocumented-arg", tools: ["fx_q"], arg: "query" },
+      ]);
+    });
+
+    it("should_accept_the_arg_named_as_backticked_assignment_or_parenthesised", () => {
+      const named = ["Search by `query`.", "Search with query=terms.", "Search by words (query)."];
+      expect(named.map((d) => lintCatalog([queryTool(d)]))).toEqual([[], [], []]);
+    });
+
+    it("should_treat_a_tool_without_hints_as_a_destructive_write", () => {
+      const bare: CatalogTool = {
+        name: "fx_bare",
+        description: "Delete the given ids (ids) right away.",
+        inputSchema: schema(["ids", "confirm"], ["ids"]),
+      };
+      expect(lintCatalog([bare])).toEqual([{ rule: "preview-first", tools: ["fx_bare"] }]);
+    });
+
+    it("should_give_a_one_line_fix_hint_for_each_rule", () => {
+      expect([
+        hint({ rule: "description-overlap", tools: ["a", "b"], score: 0.4123 }),
+        hint({ rule: "lead-overlap", tools: ["a", "b"], score: 0.5 }),
+        hint({ rule: "preview-first", tools: ["a"] }),
+        hint({ rule: "undocumented-arg", tools: ["a"], arg: "path" }),
+        hint({ rule: "triggers-ru", tools: [] }),
+      ]).toEqual([
+        "make the descriptions of a and b distinguishable: overlap 0.41 ≥ 0.35",
+        "reword the first sentence of a or b: lead overlap 0.50 ≥ 0.45",
+        "a is a destructive write: say it previews first (preview/dry-run) and name its confirm/preview/apply param",
+        "a: name the required arg as `path`, path= or (path) in the description, or give it a schema description",
+        "add at least 1 Cyrillic (RU/UK) trigger to the skill's \"Triggers on '…'\" list",
+      ]);
+    });
   });
 });
