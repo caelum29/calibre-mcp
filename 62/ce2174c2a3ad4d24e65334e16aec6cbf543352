@@ -1,0 +1,23 @@
+test/eval/retrieval/hash-freeze-lib.test.ts
+  s_4ba34c72a1f257::t_0e2c91ebd61243 1-38
+test/eval/retrieval/hash-freeze-lib.ts
+  s_4ba34c72a1f257::t_0e2c91ebd61243 22-46
+test/eval/retrieval/hash-freeze.ts
+  s_4ba34c72a1f257::t_0e2c91ebd61243 4-5,14,19-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "62ce2174c2a3ad4d24e65334e16aec6cbf543352",
+  "prompts": {},
+  "sessions": {
+    "s_4ba34c72a1f257": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c53829ca-e425-43bf-b4aa-48cbb05e9525",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
