@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { LibraryIdCollisionError } from "../../src/domain/library-id-collision.js";
 import { z } from "zod";
 import { searchTool } from "../../src/tools/calibre_search.js";
 import { fence } from "../../src/tools/result.js";
@@ -213,6 +214,21 @@ describe("calibre_search scope=book — semantic-search tip (issue #18)", () => 
     const r = await searchTool.handler({ query: "x", mode: "fts", scope: "book", bookId: 1, limit: 20 }, d);
     const head = r.content[0] as { type: "text"; text: string };
     expect(head.text).not.toContain("calibre_semantic_search");
+  });
+
+  // #388 review: a library refused for a case-only id clash throws on the index peek; the tip is
+  // optional, so the in-book FTS answer must still succeed (just without the tip).
+  it("should_answer_without_the_tip_when_the_index_peek_refuses_a_case_clash", async () => {
+    const refusing = {
+      hasIndex: (): boolean => {
+        throw new LibraryIdCollisionError("books", "Books");
+      },
+      isBookIndexed: () => true,
+    } satisfies SearchIndex;
+    const d = { ...deps({ ftsHits: hit }), index: refusing };
+    const r = await searchTool.handler({ query: "x", mode: "fts", scope: "book", bookId: 1, limit: 20 }, d);
+    const head = r.content[0] as { type: "text"; text: string };
+    expect([r.isError, head.text]).toEqual([undefined, '1 in-book matches for "x" in book 1, showing 1–1.']);
   });
 });
 

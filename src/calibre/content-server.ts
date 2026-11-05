@@ -169,6 +169,11 @@ export class ContentServerClient implements LibraryReader {
     return this.cfg.serverUrl.replace(/\/+$/, "");
   }
 
+  /** Library ids from the last library-info read (no request); undefined before the first one. */
+  knownLibraryIds(): string[] | undefined {
+    return this.#libMap && Object.keys(this.#libMap);
+  }
+
   /** GET /ajax/library-info → {libraryMap, defaultLibrary}; caches map + default. */
   async libraryInfo(): Promise<LibraryInfo> {
     const raw = await getJson<RawLibraryInfo>(`${this.base}/ajax/library-info`);

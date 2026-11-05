@@ -53,10 +53,12 @@ export class SqliteIndexStore implements IndexStore {
     cfg: Config,
     /** Injected stderr logger seam (tests/callers may substitute); defaults to the module logger. */
     log: LogSink = defaultLog,
+    /** Known library ids for the #388 case-clash guard on open; absent = no guard. */
+    libraryIds?: () => readonly string[] | undefined,
   ) {
     // Split by concern (#272): schema.ts owns the connections + DDL; freshness/writer/chunks/figures
     // each implement one narrow port, composed here.
-    this.#conn = new IndexConnections(cfg, log);
+    this.#conn = new IndexConnections(cfg, log, libraryIds);
     this.#freshness = new SqliteFreshness(this.#conn);
     // Resolved per call, so a spy on this.loadCandidates sees the cache's SQL reads.
     this.#chunks = new SqliteChunkIndex(this.#conn, log, (l) => this.loadCandidates(l));

@@ -21,6 +21,7 @@ import { ThreadEncoder } from "../src/semantic/thread-encoder.js";
 import { SqliteIndexStore } from "../src/semantic/store/index.js";
 import { runBookPipeline } from "../src/semantic/book-pipeline.js";
 import { appendProgress, resolveProgressPath, resumeProgress } from "../src/semantic/build-progress.js";
+import { libraryIdCollision } from "../src/app/library-id-guard.js";
 import { commitBook, commitRefresh, describeError, prepareBook, type PrepareResult } from "../src/app/index-book.js";
 
 const { values: opt } = parseArgs({
@@ -65,16 +66,23 @@ log.configure({ level: prodConfig.logLevel, dir: prodConfig.logDir });
 const figures = new FigureInventoryService(config);
 // The deps the index use-case takes, named from its own signature: scripts stay out of tools/ (#260).
 type IndexDeps = Parameters<typeof prepareBook>[0];
+const content = new ContentServerClient(config);
 const deps = {
   config,
-  content: new ContentServerClient(config),
+  content,
   calibre: new CalibreClient(config),
   extractor: new Extractor(config, figures),
   figures,
   embedder: new TransformersEmbedder(config),
-  index: new SqliteIndexStore(config, log),
+  index: new SqliteIndexStore(config, log, () => content.knownLibraryIds()),
   log,
 } satisfies IndexDeps;
+
+const libraryId = await deps.content.resolveLibraryId(opt.library);
+// Case-only id clash (#388): refuse before the model warmup, the progress log or the index file.
+// libraryIdCollision re-reads library-info, so a folder renamed since the last run is seen.
+const clash = await libraryIdCollision(deps.content, libraryId);
+if (clash) throw clash;
 
 // shared: one ONNX session (its InferenceQueue serializes forwards) and all chunking on the
 // main thread. threads: one model copy per thread — ~+300 MB each, the price of real parallelism.
@@ -84,7 +92,6 @@ const tWarm = Date.now();
 if (!flagsOnly) await Promise.all(threaded ? threads.map((t) => t.warmup()) : [deps.embedder.warmup()]);
 const warmupMs = Date.now() - tWarm;
 
-const libraryId = await deps.content.resolveLibraryId(opt.library);
 // Default log is per library (book ids overlap across libraries, #285) and per mode (a full
 // re-index's "done" ids must not hide books from the flags backfill); --progress overrides.
 const progressFile = resolveProgressPath(opt.progress, indexDir, libraryId, flagsOnly);

@@ -170,6 +170,8 @@ async function indexSection(deps: PingDeps, unreachable: boolean): Promise<{ lin
         ? `${i.name}: none`
         : i.state === "stale"
           ? `${i.name}: stale index (rebuild)`
-          : `${i.name}: index unreadable`;
+          : i.state === "conflict"
+            ? `${i.name}: not indexable — id "${i.id}" differs from "${i.conflictsWith}" only in case; rename one of the two library folders`
+            : `${i.name}: index unreadable`;
   return { line: `Index: ${indexes.length > 0 ? indexes.map(part).join(" · ") : "(no libraries)"}`, indexes };
 }

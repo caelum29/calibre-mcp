@@ -28,7 +28,10 @@ Confirms the server can reach your running Calibre Content Server (end to end, v
 `calibredb`) and reports semantic-search status — whether the embedding model and its
 dependency are present, how many vectors the index holds, and the index generation
 (`indexVersion`, read from the index itself — flagged **stale** with a rebuild hint when it
-doesn't match the running server). It also prints the server version, MCP SDK version, `calibredb` path, Content Server URL and write-gate state, plus a per-library index line (`Programming Books: 1064/1092 indexed · … · Reaserch Books: none`) so unindexed books are visible; books indexed keyword-only (FTS-searchable, out of semantic search's reach) are labelled, e.g. `1064/1092 indexed (40 without embeddings)`.
+doesn't match the running server). It also prints the server version, MCP SDK version, `calibredb` path, Content Server URL and write-gate state, plus a per-library index line (`Programming Books: 1064/1092 indexed · … · Reaserch Books: none`) so unindexed books are visible; books indexed keyword-only (FTS-searchable, out of semantic search's reach) are labelled, e.g. `1064/1092 indexed (40 without embeddings)`. A library refused for a
+[case-only id clash](#case-clashing-library-ids) shows as `not indexable` (`state: "conflict"`,
+with `conflictsWith` naming the other id), and the semantic-search line prints the refusal
+instead of a build hint.
 Libraries the server is currently failing fast after a Calibre timeout are listed as
 `busy: library "…"` (`busyLibraries`). It also lists the server's recent errors (the last 20 distinct ones, newest first, each with its tool and
 `call` id; a repeated error is one entry with `count` and `firstTs`, shown as `(×N since …)`) and the path of today's log file — see [Troubleshooting → Logs](TROUBLESHOOTING.md#logs).
@@ -230,6 +233,9 @@ passage. Each hit's text label reads `MATCH book <id> @<start>-<end> snippet@<of
 `calibre_get_content` as `offset` to read on from the snippet; `charStart`/`charEnd` still span
 the whole passage.
 
+On a library refused for a [case-only id clash](#case-clashing-library-ids) it fails with error
+code `library_id_collision` instead of "no index yet".
+
 `target: figures` searches **figure captions** instead of body text — use it when you're after
 a diagram, chart, or schema. Hits return the caption, page, the surrounding passage, and a
 ready-made `calibre_get_figures` call to fetch the actual image (never the pixels directly).
@@ -288,6 +294,17 @@ index entries for every book that is no longer in the library and reports how ma
 
 This writes only to the server's own local index directory — not to your Calibre library — so
 it's safe to run without enabling library writes.
+
+#### Case-clashing library ids
+
+Calibre ids are case-sensitive, but on a case-insensitive disk (the macOS default) two libraries
+whose ids differ only in letter case, such as `Books` and `books`, would share one index file and
+one progress log. The server keeps the id that sorts first by code point (`Books` before `books`)
+and refuses the other on every index path (build, `pnpm reindex`, search, `calibre_ping`) with
+error code `library_id_collision`; nothing is written for the refused library. To fix it, rename
+one of the two library folders, restart Calibre's Content Server, then call
+`calibre_list_libraries` so the server re-reads the ids. If an index for the pair existed before,
+it may hold the other library's books: rebuild the kept library with `force: true`.
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|

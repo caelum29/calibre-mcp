@@ -14,6 +14,7 @@ import {
   FtsError,
   OperationCancelledError,
 } from "./errors.js";
+import { LibraryIdCollisionError } from "./library-id-collision.js";
 import { CONNECTION_STDERR, DROPPED_MID_REQUEST_STDERR, WRITE_REFUSED_STDERR } from "./calibredb-stderr.js";
 
 /** Every code a tool error may carry. Adding one = update the log README table too. */
@@ -33,6 +34,7 @@ export const ERROR_CODES = [
   "index_missing",
   "index_incompatible",
   "index_build_failed",
+  "library_id_collision",
   "dependency_missing",
   "extraction_failed",
   "internal",
@@ -52,6 +54,7 @@ export const SERVER_FAULT_CODES: readonly ErrorCode[] = [
   "calibre_error",
   "timeout",
   "index_build_failed",
+  "library_id_collision",
   "dependency_missing",
   "extraction_failed",
   "internal",
@@ -74,6 +77,7 @@ export function errorCodeFor(err: unknown): ErrorCode {
   if (err instanceof OperationCancelledError) return "cancelled";
   if (err instanceof CalibreBusyError) return "calibre_busy";
   if (err instanceof DeadlineExceededError) return "timeout";
+  if (err instanceof LibraryIdCollisionError) return "library_id_collision";
   if (err instanceof FtsError) return err.code === "FTS_DISABLED" ? "fts_unavailable" : "invalid_input";
   if (err instanceof FiguresError) return figuresCode(err);
   if (err instanceof CalibreHttpError) return httpCode(err);
@@ -132,6 +136,7 @@ const DEFAULT_HINTS: Partial<Record<ErrorCode, string>> = {
   path_not_allowed: "add the folder to CALIBRE_MCP_ADD_ROOTS",
   index_missing: "run calibre_build_index first",
   index_incompatible: "rebuild with calibre_build_index { force: true }",
+  library_id_collision: "rename one of the two library folders the error names (ids differ only in case)",
   dependency_missing: "install the tool the error names, then retry",
   fts_unavailable: "enable full-text indexing in Calibre, or use calibre_search mode=meta",
   timeout: "retry, or narrow the request",
