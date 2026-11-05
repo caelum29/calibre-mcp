@@ -143,7 +143,18 @@ then drill into a hit: `calibre_search scope:book bookId:N` or
 **Batch tag by search:**
 `calibre_bulk_update` with `query: "title:SQL"` and `tags_add: ["SQL"]` (keeps each book's other
 tags; `changes: {tags: [...]}` would replace them) — review the preview, then re-call with
-`preview:false`.
+`preview:false`. Show the user any preview `⚠` lines (`books[].warnings`): a list that
+replaces the whole list, or a case-only rename that renames a tag on every book.
+
+**Read a write result before reporting it:**
+- `applied` = written. `unchanged` (tags merges only) = the merge changed nothing, so the book
+  was skipped, not written. Report these as "already tagged", not as failures.
+- `confirmedByReRead` (`{id, cause: "dropped" | "timeout"}` in bulk, `"dropped" | "timeout"` on
+  `calibre_update_book`) = the call timed out or lost its connection, but a re-read showed every
+  requested value. It is a success; the text says "Confirmed by a re-read".
+- `failed` entries, or a `write_unverified` error, that say "verify with calibre_get_book" may
+  have committed. Check the book with `calibre_get_book` before any retry. Never re-run blindly.
+- A stopped bulk run (refused / server unreachable) lists `retryIds`: re-run with exactly those ids.
 
 **Fix a raw-filename book (e.g. `795731065.pdf`):**
 `calibre_extract_isbn` (preview) → `calibre_recover_metadata` → confirm with user →
