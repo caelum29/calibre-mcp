@@ -61,7 +61,14 @@ function pingTool(): AnyToolDescriptor {
   return t;
 }
 
+const stores: SqliteIndexStore[] = [];
+afterEach(() => {
+  for (const st of stores.splice(0)) st.close();
+});
+
 function pingDeps(): ToolDeps {
+  const index = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
+  stores.push(index);
   return {
     config: loadConfig({ CALIBRE_MCP_SERVER_URL: "http://127.0.0.1:9", CALIBRE_MCP_INDEX_DIR: ":memory:" }),
     content: { resolveLibraryId: async () => "Programming_Books" } as unknown as ToolDeps["content"],
@@ -69,7 +76,7 @@ function pingDeps(): ToolDeps {
     extractor: {} as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: { loadState: () => "not-attempted" } satisfies Partial<ToolDeps["embedder"]> as ToolDeps["embedder"],
-    index: new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" })),
+    index,
     log,
   };
 }
