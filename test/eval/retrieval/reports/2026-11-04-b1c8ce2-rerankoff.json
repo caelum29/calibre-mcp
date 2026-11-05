@@ -18,7 +18,8 @@
     "live": false,
     "rerank": "off",
     "rerankedRows": 0,
-    "gitSha": "b1c8ce2"
+    "gitSha": "b1c8ce2",
+    "goldenSetHash": "sha256:d77d10680a0c26532365dc055087f557c7e7823f5052e51d323d22ba40364253"
   },
   "overall": {
     "hybrid": {

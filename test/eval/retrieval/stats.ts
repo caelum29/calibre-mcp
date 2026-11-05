@@ -24,7 +24,8 @@ function mulberry32(seed: number): () => number {
 }
 
 const sum = (xs: number[]) => xs.reduce((s, x) => s + x, 0);
-const mean = (xs: number[]) => (xs.length === 0 ? 0 : sum(xs) / xs.length);
+/** Arithmetic mean; 0 for an empty list. */
+export const mean = (xs: number[]): number => (xs.length === 0 ? 0 : sum(xs) / xs.length);
 
 /** Sample standard deviation (n − 1); 0 for fewer than two values. */
 function sampleSd(xs: number[]): number {

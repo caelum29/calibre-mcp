@@ -1,7 +1,7 @@
 {
   "$comment": "Phase B eval gates, declared BEFORE the atomic re-index build (D-012 protocol). Human record: issue #85 verdict comment (2026-07-22). Consumed by `pnpm eval --gate`.",
   "baselineReport": "reports/2026-10-24-f8bb617-v4-t431-fixture.json",
-  "$baselineComment": "Re-baselined 2026-10-24 (#139, INDEX_VERSION 4): transformers.js 4.3.1 / onnxruntime-node 1.30 reranker drift flips fixture sp-11 (101 vs 116, both maxRerank ~0.015 — cross-encoder noise on short fixture passages). Live eval on the v4 index shows no real regression (drops are post-July books absent from live labels). Rationale: reports/2026-10-24-v4-reindex-gate.md. Previous baseline: reports/2026-07-15-9725d1e-issue18-after.json.",
+  "$baselineComment": "Re-baselined 2026-10-24 (#139, INDEX_VERSION 4): transformers.js 4.3.1 / onnxruntime-node 1.30 reranker drift flips fixture sp-11 (101 vs 116, both maxRerank ~0.015 — cross-encoder noise on short fixture passages). Live eval on the v4 index shows no real regression (drops are post-July books absent from live labels). Rationale: reports/2026-10-24-v4-reindex-gate.md. Previous baseline: reports/2026-07-15-9725d1e-issue18-after.json. 2026-11-05 (#392): meta.goldenSetHash stamped (queries.json at f8bb617, unchanged since 2380568); no other byte changed.",
   "nonRegression": {
     "$comment": "Existing kinds with markers now inside chunk text. Gate compares per-query Hit@1 vs the baseline report; every dropped query must be explained in the report regardless of gate color.",
     "hybrid": { "maxBrokenHit1Queries": 0, "negativesFlagged": 6 },
@@ -41,12 +41,17 @@
   "listDiff": {
     "$comment": "#358, declared BEFORE the measuring run (D-012); it reuses the existing frozen baselines, which already hold every row's top-10 `retrieved` list. Every baseline row (all kinds, all modes, negatives included) must reproduce its top-topK list exactly — same keys, same order; a missing row counts as changed. Applies to all three tiers: `on` (baselineReport), `fusionOnly` (fusionOnly.baselineReport) and `hash` (hashGate.baselineReport). This makes gains ratchet too: an improvement also changes a list, so it fails until it is either re-frozen or listed in allowFile. allowFile entries are {tier, mode, id, retrieved, reason}: an entry allows exactly that new top-topK list (not 'any change') and needs a non-empty reason. Ties are not broken by id in the store, so a list that differs only across platforms is a nondeterminism bug to fix, never an allow entry.",
     "topK": 10,
-    "allowFile": "list-diff-allow.json"
+    "allowFile": "list-diff-allow.json",
+    "$decisionsComment": "#392 decisions (Artem, 2026-11-05). (1) Keep the ratchet on all three tiers, hash tier included; a deliberate hash-tier change re-freezes in one command, `pnpm eval:hash-freeze` (it also drops the now-stale hash-tier allow-file entries), and the hash-tier list-diff failure names that command. (3) Ties get a total tie-break by id; that is a ranking change, so it lands in its own PR with a full `pnpm eval --gate` and a re-freeze (parks for Artem)."
+  },
+  "goldenSet": {
+    "$comment": "#392 decision 2 (Artem, 2026-11-05), declared + committed BEFORE the baselines are stamped/re-frozen (D-012). Replaces what the removed #325 aggregate ε used to catch: a queries.json relevance-label edit that leaves every top-10 list identical. Every baseline records goldenSetHash = sha256 of the canonical (parsed, re-serialized) queries.json it was measured on: queries, kinds and relevance labels; formatting does not count. A run whose hash differs from its baseline's, or a baseline with no hash, fails that tier. Fix = re-freeze the baseline (rule first): `pnpm eval:hash-freeze` for hash, a new `pnpm eval` run for on/fusionOnly. Fixture corpus edits are not hashed: span labels already fail the harness loudly when a fixture edit moves them.",
+    "tiers": ["on", "fusionOnly", "hash"]
   },
   "fusionOnly": {
     "$comment": "#356 fusion-only tier, declared + committed BEFORE the run that freezes its baseline (D-012). With rerank ON, RERANK_POOL (30) covers the whole fixture, so the cross-encoder re-sorts every candidate and a fusion regression is invisible (ON hybrid == vector on all 59 positives). This tier re-runs the suite with --rerank off and compares per-query Hit@1 against a second frozen baseline (fusionOnly.baselineReport, a --rerank off run at the rule commit): no query with Hit@1 = 1 in that baseline may break, in any mode. Cross-lingual queries are report-only (OFF hybrid gets 0/8 today; no floor until fusion is fixed) — their drops are listed but never fail the gate. A query missing from the current run counts as broken. `pnpm eval --gate` runs and prints both passes (ON = the blocks above, OFF = this block).",
     "baselineReport": "reports/2026-11-04-b1c8ce2-rerankoff.json",
-    "$baselineComment": "Frozen from `pnpm eval --rerank off --tag rerankoff` at b1c8ce2, the rule commit (D-012). OFF Hit@1 hybrid 46/59, vector 47/59, keyword 47/59; cross-lingual hit@1 hybrid 0/8, vector 2/8.",
+    "$baselineComment": "Frozen from `pnpm eval --rerank off --tag rerankoff` at b1c8ce2, the rule commit (D-012). OFF Hit@1 hybrid 46/59, vector 47/59, keyword 47/59; cross-lingual hit@1 hybrid 0/8, vector 2/8. 2026-11-05 (#392): meta.goldenSetHash stamped (queries.json at b1c8ce2, unchanged since 2380568); no other byte changed.",
     "rerank": "off",
     "nonRegression": {
       "hybrid": { "maxBrokenHit1Queries": 0 },
@@ -58,7 +63,7 @@
   "hashGate": {
     "$comment": "#357 tier-0 model-free gate, declared + committed BEFORE the run that freezes its baseline (D-012). Runs inside `pnpm test` (vitest): the full golden set through the real pipeline with the hash embedder (hash-embedder.ts, FNV-1a bag-of-words — no model, no network), reranker off, all three modes. Compared against hashGate.baselineReport (per-query RANKS, never float scores, so it holds across macOS/Linux and Node 22/24) with the same per-query Hit@1 non-regression rule as nonRegression: no query with Hit@1 = 1 in the baseline may break, in any mode; a missing query counts as broken. The hash embedder is lexical-only, so its absolute numbers are low (no cross-lingual power) — it gates drift in chunking, FTS, stemming, fusion and front-matter demotion, not quality. A deliberate change to that pipeline re-freezes the baseline (rule first); a platform-dependent rank is a nondeterminism bug to fix, never a reason to loosen this.",
     "baselineReport": "hash-baseline.json",
-    "$baselineComment": "Frozen by `pnpm eval:hash-freeze` at 0c9c763 (rule 44b012c + freeze tooling), macOS / Node 24. Hit@1: hybrid 37/59, vector 26/59, keyword 49/59.",
+    "$baselineComment": "Frozen by `pnpm eval:hash-freeze` at 0c9c763 (rule 44b012c + freeze tooling), macOS / Node 24. Hit@1: hybrid 37/59, vector 26/59, keyword 49/59. Re-frozen 2026-11-05 at edf91cb (#392 golden-set rule 875f7ad): adds goldenSetHash, every rank and top-10 list identical.",
     "nonRegression": {
       "hybrid": { "maxBrokenHit1Queries": 0 },
       "vector": { "maxBrokenHit1Queries": 0 },

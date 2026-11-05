@@ -39,6 +39,7 @@ import {
   baselinePaths,
   checkGateArgs,
   loadAllowEntries,
+  type GateBaselines,
   loadGateBaselines,
   refuseBaselineOverwrite,
 } from "./gate-guards.js";
@@ -48,8 +49,10 @@ import {
   evaluateListDiff,
   renderGate,
   type GateResult,
+  type ListDiffTier,
   type Thresholds,
 } from "./gate.js";
+import { currentGoldenSetHash, evaluateGoldenSet } from "./golden-set.js";
 import { ALL_MODES, renderMarkdown, runRetrievalEval, type EvalReport, type Mode } from "./harness.js";
 import { saturationLines } from "./saturation.js";
 import { compareReports, pairingWarnings, renderCompare } from "./stats.js";
@@ -268,6 +271,25 @@ function mergeGates(a: GateResult, b: GateResult): GateResult {
   return { pass: a.pass && b.pass, checks: [...a.checks, ...b.checks], drops: [...a.drops, ...b.drops] };
 }
 
+/**
+ * Exit before the ~8 min ON pass when a baseline was frozen on another queries.json (#392):
+ * the per-pass golden-set check would fail anyway, after the whole run.
+ */
+function failFastOnGoldenSet(baselines: GateBaselines, tiers: ListDiffTier[]): void {
+  const now = { meta: { goldenSetHash: currentGoldenSetHash() } } as EvalReport;
+  const pairs: Array<[ListDiffTier, EvalReport | undefined]> = [
+    ["on", baselines.on],
+    ["fusionOnly", baselines.off],
+  ];
+  const failed = pairs
+    .filter(([tier, base]) => base && tiers.includes(tier))
+    .map(([tier, base]) => evaluateGoldenSet(now, base!, tier))
+    .filter((r) => !r.pass);
+  if (failed.length === 0) return;
+  process.stdout.write(`${failed.map(renderGate).join("\n\n")}\n\nOVERALL GATE: FAIL\n`);
+  process.exit(1);
+}
+
 /** `--compare`: paired per-kind stats of two reports already on disk; never runs an eval. */
 function compareFiles([a, b]: [string, string]): void {
   const read = (f: string) => JSON.parse(readFileSync(f, "utf8")) as EvalReport;
@@ -297,15 +319,21 @@ async function main(): Promise<void> {
     args.gate && thresholds.listDiff
       ? { ...thresholds.listDiff, allow: loadAllowEntries(thresholds.listDiff, read) }
       : undefined;
+  const goldenTiers: ListDiffTier[] = thresholds.goldenSet?.tiers ?? [];
+  if (baselines) failFastOnGoldenSet(baselines, goldenTiers);
   mkdirSync(args.workDir, { recursive: true });
   ensureModelCache(args.workDir);
 
   const on = await runPass(args, args.rerank === "off", args.tag, protectedPaths);
   if (!baselines) return;
 
-  // #358: the top-10 list diff runs beside each tier's own gate, against the same baseline
-  const withList = (r: GateResult, cur: EvalReport, base: EvalReport, tier: "on" | "fusionOnly") =>
-    listDiff ? mergeGates(r, evaluateListDiff(cur, base, { tier, topK: listDiff.topK, allow: listDiff.allow })) : r;
+  // #358 list diff + #392 golden-set hash run beside each tier's own gate, vs the same baseline
+  const withList = (r: GateResult, cur: EvalReport, base: EvalReport, tier: "on" | "fusionOnly") => {
+    let out = goldenTiers.includes(tier) ? mergeGates(r, evaluateGoldenSet(cur, base, tier)) : r;
+    if (listDiff)
+      out = mergeGates(out, evaluateListDiff(cur, base, { tier, topK: listDiff.topK, allow: listDiff.allow }));
+    return out;
+  };
 
   const onResult = withList(evaluateGate(on.report, baselines.on, thresholds), on.report, baselines.on, "on");
   const sections = [`== ON pass (rerank on) vs ${thresholds.baselineReport} ==\n${renderGate(onResult)}`];

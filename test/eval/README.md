@@ -41,7 +41,16 @@ unseen. Gains change lists too, so improvements ratchet: an intended change eith
 the baseline (rule first, D-012) or goes into `list-diff-allow.json` as
 `{tier, mode, id, retrieved, reason}`. An entry allows exactly that new list, and needs a
 reason. It runs on the ON pass (`on`), the OFF pass (`fusionOnly`) and the tier-0 hash gate in
-`pnpm test` (`hash`, `list-diff.test.ts`).
+`pnpm test` (`hash`, `list-diff.test.ts`). A hash-tier failure names the one-command re-freeze,
+`pnpm eval:hash-freeze`, which also drops the hash-tier allow entries the new baseline makes
+stale (#392 decision 1).
+
+Every baseline also records `goldenSetHash`, the sha256 of the canonical `queries.json` it was
+measured on (#392 decision 2, `thresholds.goldenSet`). A run on a different golden set fails
+that tier, so a relevance-label edit that leaves every top-10 list identical can't pass
+unseen; a reformat keeps the hash. `--gate` checks it before the ON pass, so a mismatch fails
+in seconds. The fix is a re-freeze (rule first): `pnpm eval:hash-freeze` for the hash tier, a
+new `pnpm eval` run for ON/OFF.
 
 It then runs a second, **fusion-only pass** with the reranker off (`thresholds.fusionOnly`,
 #356). With rerank ON, `RERANK_POOL` (30) covers the whole fixture, so the cross-encoder
@@ -116,6 +125,7 @@ Every run also prints, after the per-mode headline:
   `evaluateFusionOnlyGate` for the OFF pass and `evaluateListDiff` for every tier.
 - `stats.ts` — paired permutation test, bootstrap CI, sign test, MDE; `--compare`.
 - `list-diff-allow.json` — intended top-10 list changes (empty while the baselines hold).
+- `golden-set.ts` + `golden-set.test.ts` — the golden-set hash and its per-tier check (#392).
 - `saturation.ts` — headroom share + saturation warning printed by every run (#365).
 - `rrf-sweep.sh` + `rrf-sweep.ts`, `rerank-floor.ts` — one-off tuning scorers (#142 RRF
   weights, RERANK_FLOOR) over committed reports, gated by their `thresholds.json` blocks.

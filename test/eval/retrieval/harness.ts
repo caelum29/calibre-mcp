@@ -20,6 +20,7 @@ import { SqliteIndexStore } from "../../../src/semantic/store/index.js";
 import { buildIndexTool } from "../../../src/tools/calibre_build_index.js";
 import { semanticSearchTool } from "../../../src/tools/calibre_semantic_search.js";
 import type { ToolDeps } from "../../../src/tools/deps.js";
+import { currentGoldenSetHash } from "./golden-set.js";
 import {
   aggregate,
   queryMetrics,
@@ -256,6 +257,8 @@ export interface EvalReport {
     /** Set only on sweep runs that override the shipped weighted-RRF weights (#142, #259). */
     rrfWeights?: number[];
     gitSha: string;
+    /** sha256 of the queries.json this fixture run scored against (#392); absent on live runs. */
+    goldenSetHash?: string;
   };
   /** Negatives excluded — they have no rank metrics. */
   overall: Partial<Record<Mode, AggregateMetrics>>;
@@ -598,6 +601,8 @@ export async function runRetrievalEval(opts: HarnessOptions): Promise<EvalReport
     rerank: opts.rerank ?? (opts.reranker ? "on (unlabeled)" : "off (no reranker wired)"),
     rerankedRows: perQuery.filter((r) => r.reranked === true).length,
     gitSha: opts.gitSha ?? "unknown",
+    // live runs swap in live-relevance labels, so the fixture golden set doesn't describe them
+    ...(opts.live ? {} : { goldenSetHash: currentGoldenSetHash() }),
     ...(opts.rrfWeights ? { rrfWeights: opts.rrfWeights } : {}),
   });
 }
