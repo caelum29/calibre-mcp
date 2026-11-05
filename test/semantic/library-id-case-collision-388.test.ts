@@ -104,7 +104,7 @@ describe("index open refuses the colliding id (#388)", () => {
   it("should_throw_LibraryIdCollisionError_on_a_write_open_of_books", () => {
     const s = store(scratch());
     try {
-      expect(() => s.indexedBookIds("books")).toThrow(LibraryIdCollisionError);
+      expect(() => s.searchLibraryFts("books", "ownership", 5)).toThrow(LibraryIdCollisionError);
     } finally {
       s.close();
     }
@@ -114,7 +114,7 @@ describe("index open refuses the colliding id (#388)", () => {
     const dir = scratch();
     const s = store(dir);
     try {
-      s.indexedBookIds("books");
+      s.searchLibraryFts("books", "ownership", 5);
     } catch {
       /* the refusal itself is asserted above; here only the disk matters */
     }
@@ -135,7 +135,7 @@ describe("index open refuses the colliding id (#388)", () => {
     const dir = scratch();
     const s = store(dir);
     try {
-      expect(s.indexedBookIds("Books")).toEqual([]);
+      expect(s.searchLibraryFts("Books", "ownership", 5)).toEqual([]);
     } finally {
       s.close();
     }
