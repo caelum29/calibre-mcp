@@ -393,6 +393,33 @@ describe("calibre_merge_books failure semantics (#33)", () => {
     const r = await run({ targetId: 10, sourceIds: [12], confirm: true }, d);
     expect(r.structuredContent?.errorCode).toBe("calibre_unreachable");
   });
+
+  // #389: a failed post-add check is a failure found by a check, not a throw — there is no
+  // cause to take the code from, so the result falls back to write_failed.
+  it("codes a merge whose moved format is missing after the add as write_failed, in both channels (#389)", async () => {
+    const d = fakeDeps({
+      // the add is accepted, but the verify re-read never shows the pdf on the target
+      getBook: async (id) => book({ id, formats: ["epub"] }),
+    });
+    const r = await run({ targetId: 10, sourceIds: [12], confirm: true }, d);
+    expect(d.calls.map((c) => c[0])).toEqual(["add_format"]); // aborted before set_metadata and remove
+    const steer =
+      "Merge did not start — format not present on target after add. Nothing was changed.\n" +
+      "Steps:\n" +
+      "  ✗ move pdf from #12 to #10 — format not present on target after add\n" +
+      "  - merge metadata into #10\n" +
+      "  - trash sources #12";
+    expect(r.isError).toBe(true);
+    expect((r.content[0] as { text: string }).text).toBe(`Error: ${steer}`);
+    expect(r.structuredContent).toMatchObject({
+      error: steer,
+      errorCode: "write_failed",
+      status: "incomplete",
+      targetId: 10,
+      sourceIds: [12],
+    });
+    expect(r.structuredContent).not.toHaveProperty("hint"); // write_failed has no generic hint: the steer is the text
+  });
 });
 
 describe("calibre_merge_books schema coercion", () => {
