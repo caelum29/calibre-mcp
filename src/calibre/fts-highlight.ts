@@ -136,19 +136,30 @@ function parseQuery(query: string): QueryUnit[] {
       continue;
     }
     if (token === "(" || token === ")" || OPERATORS.has(token)) continue;
+    // a column filter names a column, not a term: skip its own tokens, keep its operand
+    const operand = afterColumnFilter(tokens, i);
+    if (operand > i) {
+      i = operand - 1;
+      continue;
+    }
     if (token.startsWith('"')) {
       const words = token.match(WORD) ?? [];
       if (words.length) units.push({ words, prefix: false });
       continue;
     }
-    const prefix = token.endsWith("*");
-    for (const w of token.match(WORD) ?? []) units.push({ words: [w], prefix });
+    const bare = token.replace(COLUMN_PREFIX, ""); // `title:docker` / `authors}:docker` → docker
+    if (OPERATORS.has(bare)) continue; // `title:NEAR(` is the operator, not the word NEAR
+    const prefix = bare.endsWith("*");
+    for (const w of bare.match(WORD) ?? []) units.push({ words: [w], prefix });
   }
   return units;
 }
 
 // Phrases, parens, and runs of anything else; a lone unclosed quote matches nothing (dropped).
 const QUERY_TOKEN = /"[^"]*"|[()]|[^\s()"]+/g;
+
+// `col:` or `{a b}:` glued to its word; `::` (std::vector) is a term, not a filter.
+const COLUMN_PREFIX = /^(?:[\p{L}\p{N}_]+|[^\s:]*\}):(?!:)/u;
 
 /**
  * Index of the last token of the operand starting at `i`: one token, a (group) or NEAR(...),
