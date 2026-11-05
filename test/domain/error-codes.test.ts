@@ -102,8 +102,11 @@ function helperCalls(source: string, name: Helper, file = "<source>") {
 /** String and template literals, blanked so `"as before"` in a code expression is not a cast. */
 const STRING_LITERAL = /"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`/g;
 
-/** A TS cast: `x as T` (not `as const`, which keeps the literal type) or a leading `<T>x`. */
-const CAST = /\bas\s+(?!const\b)[A-Za-z_$({[]|(?:^|[(?:,=&|!])\s*<\s*[A-Za-z_$]/;
+/**
+ * A TS cast: `x as T` (not `as const`, which keeps the literal type) or a leading `<T>x`. A quote
+ * after `as` is a string-literal type (`as "internal"`), blanked to `""` before this runs.
+ */
+const CAST = /\bas\s+(?!const\b)[A-Za-z_$({["'`]|(?:^|[(?:,=&|!])\s*<\s*[A-Za-z_$]/;
 
 /**
  * `toolError` sites that cast their code (#249, #348). The code param is typed `ErrorCode`, so the
@@ -229,7 +232,7 @@ describe("toolError call sites", () => {
   });
 
   it("should_find_the_known_call_sites", () => {
-    // proves the scanner still sees the sites: 111 after #345 folded 37 duplicates (148 before) into helpers
+    // proves the scanner still sees the sites (116 on 2026-11-05)
     const all = sourceFiles("src").map((f) => readFileSync(f, "utf8"));
     const parsed = all.reduce((n, src) => n + helperCalls(src, "toolError").length, 0);
     expect(parsed).toBeGreaterThan(100);
@@ -271,6 +274,16 @@ describe("toolError call sites", () => {
     const raw = all.reduce((n, src) => n + rawCallLike(src, "toolError"), 0);
     const parsed = all.reduce((n, src) => n + helperCalls(src, "toolError").length, 0);
     expect(parsed).toBe(raw);
+  });
+
+  it("should_flag_a_cast_to_a_string_literal_type", () => {
+    // #397 review: `as "internal"` compiles without errorCodeFor, so it is a way around the type too
+    expect(toolErrorViolations(`return toolError(raw as "internal", m);`)).toHaveLength(1);
+    expect(toolErrorViolations(`return toolError(raw as "internal" | "timeout", m);`)).toHaveLength(1);
+    expect(toolErrorViolations("return toolError(raw as `internal`, m);")).toHaveLength(1);
+    // `as const` and "as" inside a string are still not casts
+    expect(toolErrorViolations(`return toolError("internal" as const, m);`)).toEqual([]);
+    expect(toolErrorViolations(`return toolError(ok ? "as before" : "internal", m);`)).toEqual([]);
   });
 
   it("should_reject_a_bare_string_outside_the_set_at_compile_time", () => {
