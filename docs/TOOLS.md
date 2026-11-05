@@ -34,7 +34,7 @@ with `conflictsWith` naming the other id), and the semantic-search line prints t
 instead of a build hint.
 Libraries the server is currently failing fast after a Calibre timeout are listed as
 `busy: library "…"` (`busyLibraries`). It also lists the server's recent errors (the last 20 distinct ones, newest first, each with its tool and
-`call` id; a repeated error is one entry with `count` and `firstTs`, shown as `(×N since …)`) and the path of today's log file — see [Troubleshooting → Logs](TROUBLESHOOTING.md#logs).
+`call` id; a repeated error is one entry with `count` and `firstTs`, shown as `(×N since …)`, and the header reads `recent errors: N (M occurrences)` when any repeat) and the path of today's log file — see [Troubleshooting → Logs](TROUBLESHOOTING.md#logs).
 Use it first when something isn't working, or to answer "why is semantic search off?".
 
 No parameters.
@@ -422,6 +422,18 @@ are left untouched. Returns the applied before/after diff.
 
 > Ask: *"tag book 187 as kafka and add a 5-star rating"* · *"set the author of book 512 to Donald Knuth"*
 
+**Result.** structuredContent holds `id`, `changed` (`{ field, before, after }` per field that
+actually changed) and `noop` (`true` when every value was already current). A timed-out write,
+or one whose connection dropped mid-request, may still have committed, so the tool re-reads the
+book. When the re-read shows every requested value, the call succeeds, `confirmedByReRead` is
+`"timeout"` or `"dropped"`, and the text says so (e.g. `Updated book 187: tags. Confirmed by a
+re-read after calibredb timed out.`). If the re-read can't confirm it (some fields landed, others
+didn't, or another edit changed them), the result is a `write_unverified` error. Its text says
+what the re-read showed: a re-read that failed, or one that shows another edit's value, steers you
+to check with `calibre_get_book` before retrying; a timed-out write the re-read shows did not
+land says "Retry, or check with `calibre_get_book` first". A transient-failure message names
+the real number of retries (`… after 2 retries`).
+
 ### `calibre_bulk_update`
 
 Apply the **same** metadata change to a set of books selected by `ids`, a `query`, or a
@@ -440,6 +452,30 @@ combined with `tags_add`/`tags_remove`.
 | `filter` | string | — | Select a bundle's books (no auto-exclusion on writes) |
 | `preview` | boolean | `true` | Preview the diff; set `false` to write |
 | `library` | string | *(default)* | Library name or id |
+
+**Preview.** Each entry in `books` carries `id`, `title`, `changed` (`{ field, before, after }`),
+`tagsAdded` / `tagsRemoved` for a tags merge, and `warnings` when the edit needs a second look.
+The same warnings appear as `⚠` lines in the text:
+- a list value replaces the whole list, e.g. `tags: 3 → 1 (replaces the list: drops a, b)`
+  (never for a `tags_add` / `tags_remove` merge, which keeps the tags it doesn't remove);
+- a case-only rename of a tag or author renames it on every book, e.g.
+  `tags: python → Python renames it on every book in the library (Calibre keeps one case-insensitive item)`.
+
+**Apply** (`preview: false`). structuredContent holds `matched`, `applied` (ids written),
+`failed` (`{ id, error }`) and, when they apply:
+- `unchanged`: for a `tags_add` / `tags_remove` call, the books where nothing would change: the
+  tag merge AND any `changes` fields sent with it are already current. They get no
+  `set_metadata`. A book whose tags are already current but whose other field (e.g. `series`)
+  changes is written and listed in `applied`. The tool decides this on a fresh re-read of the
+  book (the selection may be stale), and lists skipped books in `unchanged`, not in `applied`. Text: `Already current (nothing
+  written): 2, 5.`
+- `confirmedByReRead`: `{ id, cause: "dropped" | "timeout" }` for each book whose write timed
+  out or lost its connection mid-request but a re-read showed every requested value. The book is
+  also in `applied`. Text: `Confirmed by a re-read: 2 (connection dropped), 4 (timed out).` A book
+  the re-read can't confirm is in `failed` with a "verify with `calibre_get_book`" steer.
+- `notAttempted` and `retryIds`: when a refusal or an unreachable server stops the run partway,
+  the result is an error that still lists the committed ids. `retryIds` is the exact set to
+  re-run.
 
 > Ask: *"tag every book matching series:SICP as classic — preview first"* then *"apply it"*
 
