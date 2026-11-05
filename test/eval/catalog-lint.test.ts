@@ -24,21 +24,21 @@ const schema = (props: string[], required: string[] = []) => ({
 const FIXTURE: CatalogTool[] = [
   {
     name: "fx_find",
-    description: "Find books by exact title, author or ISBN query in the library catalog. Returns matching book ids.",
+    description: "Find books by exact title, author or ISBN (query) in the library catalog. Returns matching book ids.",
     annotations: read,
     inputSchema: schema(["query"], ["query"]),
   },
   {
     // a near copy of fx_find: a model can't tell which one to pick
     name: "fx_lookup",
-    description: "Find books by title, author or ISBN query in the library catalog. Returns the matching book ids.",
+    description: "Find books by title, author or ISBN (query) in the library catalog. Returns the matching book ids.",
     annotations: read,
     inputSchema: schema(["query"], ["query"]),
   },
   {
     // destructive write with no preview / dry-run wording and no confirm param named
     name: "fx_purge",
-    description: "Permanently purge the given ids from the trash folder of the Calibre instance.",
+    description: "Permanently purge the given (ids) from the trash folder of the Calibre instance.",
     annotations: write,
     inputSchema: schema(["ids", "confirm"], ["ids"]),
   },
@@ -82,7 +82,8 @@ describe("catalog lint on a fixture catalog (#362 Layer A)", () => {
   it("should_accept_a_destructive_tool_that_says_dry_run_and_names_its_confirm_param", () => {
     const ok: CatalogTool = {
       ...FIXTURE[2]!,
-      description: "Purge the given ids from the trash. Dry-run unless confirm=true; the dry-run lists what would go.",
+      description:
+        "Purge the given (ids) from the trash. Dry-run unless confirm=true; the dry-run lists what would go.",
     };
     expect(lintCatalog([ok])).toEqual([]);
   });
