@@ -1,0 +1,28 @@
+test/eval/retrieval/rerank-floor.ts
+  s_4ba34c72a1f257::t_c58fb64cd34c92 149
+  s_4ba34c72a1f257::t_aba5f5c3ed0b03 4-6,15,29-38,41,47,85-92,111,119,151-152
+  s_4ba34c72a1f257::t_b7c1207a95a648 156-157
+test/eval/retrieval/stats.ts
+  s_4ba34c72a1f257::t_9c198ac6a65ff3 177-180,182-186,195-198,234-241
+  s_4ba34c72a1f257::t_2d0ef536f4fd7c 242
+test/eval/retrieval/rrf-sweep.ts
+  s_4ba34c72a1f257::t_f02bff317a2616 3-5,14,40-41,53-54,57-59,90,100-101,113,130,144,207,210-212,242-245,256-257
+test/eval/README.md
+  s_4ba34c72a1f257::t_081ac8c2f1f521 131-135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8bde6b61bf931e9752ea6b5ca8cb5c2243484366",
+  "prompts": {},
+  "sessions": {
+    "s_4ba34c72a1f257": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c53829ca-e425-43bf-b4aa-48cbb05e9525",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
