@@ -1,0 +1,19 @@
+test/eval/catalog-lint.test.ts
+  s_7c21352ace8b6c::t_4309fa25d085a6 1-132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9c941e3b96166d3674a0ae2d95216a05326ed1ed",
+  "prompts": {},
+  "sessions": {
+    "s_7c21352ace8b6c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ea3bd83-747d-4aab-91fc-cf5abd8fc2de",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
