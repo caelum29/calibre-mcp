@@ -1,0 +1,19 @@
+test/eval/README.md
+  s_4ba34c72a1f257::t_a9422fc299c35d 44-53,128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a83c2ff692eb7062c9743af4d72240de07aefe90",
+  "prompts": {},
+  "sessions": {
+    "s_4ba34c72a1f257": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c53829ca-e425-43bf-b4aa-48cbb05e9525",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
