@@ -35,6 +35,11 @@ export interface SemanticStatus {
   serverIndexVersion: number;
   /** True when the index was built by a different model/dim/generation → rebuild needed. */
   indexStale?: boolean;
+  /**
+   * The #388 refusal when the resolved library's id differs from another's only in case: its
+   * index can't be opened or built, so the text line must show this instead of "run build_index".
+   */
+  indexRefused?: string;
   /** Does the resolved library have an index? Omitted when no library was resolved. */
   indexPresent?: boolean;
   /** Is @huggingface/transformers resolvable on disk from the server install? (never imported) */
@@ -143,6 +148,7 @@ export function computeSemanticStatus(
     serverIndexVersion: INDEX_VERSION,
     ...(stale ? { indexStale: true } : {}),
     ...(libraryId ? { indexPresent: !clash && deps.index.hasIndex(libraryId) } : {}),
+    ...(clash ? { indexRefused: clash.message } : {}),
     dependencyInstalled,
     loaded,
     modelCached,
@@ -184,6 +190,8 @@ export function formatSemanticStatusLine(s: SemanticStatus): string {
 
 /** `index vN: B books / C chunks / F figures, V vectors`, a no-index hint, or undefined when no library was resolved. */
 function formatIndexCounts(s: SemanticStatus): string | undefined {
+  // A refused library (#388): calibre_build_index would be refused too, so steer to the rename.
+  if (s.indexRefused) return `index refused — ${s.indexRefused}`;
   if (s.indexPresent === false) return "no index yet — run calibre_build_index";
   if (s.indexedBooks === undefined) return undefined;
   const gen = s.indexVersion !== undefined ? ` v${s.indexVersion}` : "";

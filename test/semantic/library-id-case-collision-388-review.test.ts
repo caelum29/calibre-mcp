@@ -109,6 +109,38 @@ describe("ping reports the clash (#388 review)", () => {
       [],
     ]);
   });
+
+  // Round 2: text-only clients (Claude Desktop) must not be steered to a build that is refused.
+  it("should_print_the_refusal_on_the_semantic_line_instead_of_the_build_steer", async () => {
+    const dir = scratch();
+    const config = loadConfig({ CALIBRE_MCP_SERVER_URL: "http://127.0.0.1:9", CALIBRE_MCP_INDEX_DIR: dir });
+    const r = await pingTool.handler(
+      {},
+      {
+        config,
+        content: {
+          resolveLibraryId: async () => "books",
+          libraryInfo: async () => ({ libraryMap: MAP, defaultLibrary: "books" }),
+          search: async () => ({ total: 3 }),
+        } as unknown as ToolDeps["content"],
+        calibre: { listLibraries: async () => "" } as unknown as ToolDeps["calibre"],
+        extractor: {} as ToolDeps["extractor"],
+        figures: {} as ToolDeps["figures"],
+        embedder: { loadState: () => "not-attempted" } as unknown as ToolDeps["embedder"],
+        index: store(dir),
+        log,
+      },
+    );
+    const line =
+      textOf(r)
+        .split("\n")
+        .find((l) => l.startsWith("Semantic search:")) ?? "";
+    const refusal = `index refused — ${new LibraryIdCollisionError("books", "Books").message}`;
+    expect({ refused: line.includes(refusal), buildSteer: line.includes("run calibre_build_index") }).toEqual({
+      refused: true,
+      buildSteer: false,
+    });
+  });
 });
 
 describe("semantic status gives the clash as its reason (#388 review)", () => {
