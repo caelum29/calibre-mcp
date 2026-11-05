@@ -84,6 +84,15 @@ Every run also prints, after the per-mode headline:
   failed to load (0 reranked rows). A query missing from a mode counts as not solved.
 - Both lines are skipped on `--live` runs (unverified labels).
 
+Every fixture run also prints the **report-only axes** (#363, `thresholds.reportOnlyAxes`, each
+`gate: false` with a stated trend; also appended to the md report): book-scope snippet-marker
+rate and span-hit@1/3/5, confidence calibration (false-flag rate on Hit@1 positives, AUC of
+`maxRerank` and of the top1−top2 rerank margin), and p50/p95 per-query latency. `--gate` adds
+the ablation matrix (overall Hit@1 / nDCG@10 per mode × rerank on/off). The highlight invariant
+is declared but not measured here: highlights belong to `calibre_search`'s FTS path. Latency
+comes from `durationMs`, which only the `pnpm eval` CLI records (`HarnessOptions.timing`), so
+`pnpm test` reports stay byte-identical. No gate, hash tier or list diff reads the new fields.
+
 ### Layout
 
 - `queries.json` — 68 golden queries `{ id, kind, scope, query, ru?, relevant }`. Kinds
@@ -113,7 +122,8 @@ Every run also prints, after the per-mode headline:
   re-downloads, and rebuilds the fixture index fresh each run. It never writes to the
   production index dir.
 - `reports/` — committed md+json reports, the decision record for tuning prompts 05/06.
-  The JSON is deterministic: two runs at the same commit are byte-identical.
+  The JSON is deterministic apart from the per-row `durationMs` timings: two runs at the same
+  commit match on every other field.
 - `live-relevance.json` — live-mode labels keyed to real library bookIds, **unverified**
   until Artem confirms them.
 - `thresholds.json` — every eval gate rule, each declared and committed BEFORE the run that
@@ -127,6 +137,7 @@ Every run also prints, after the per-mode headline:
 - `list-diff-allow.json` — intended top-10 list changes (empty while the baselines hold).
 - `golden-set.ts` + `golden-set.test.ts` — the golden-set hash and its per-tier check (#392).
 - `saturation.ts` — headroom share + saturation warning printed by every run (#365).
+- `axes.ts` — the #363 report-only axes and the rerank on/off ablation matrix.
 - `rrf-sweep.sh` + `rrf-sweep.ts`, `rerank-floor.ts` — one-off tuning scorers (#142 RRF
   weights, RERANK_FLOOR) over committed reports, gated by their `thresholds.json` blocks. Both
   print paired stats from `stats.ts` next to each gate check (#358): `rrf-sweep.ts` the same

@@ -16,6 +16,7 @@ import { TransformersEmbedder, type Embedder } from "../../../src/semantic/embed
 import type { Reranker } from "../../../src/semantic/reranker.js";
 import { INDEX_VERSION, MODEL_ID } from "../../../src/semantic/model.js";
 import { retrieve, type RankedHits } from "../../../src/semantic/retrieve.js";
+import { snippetWindow } from "../../../src/semantic/snippet.js";
 import { SqliteIndexStore } from "../../../src/semantic/store/index.js";
 import { buildIndexTool } from "../../../src/tools/calibre_build_index.js";
 import { semanticSearchTool } from "../../../src/tools/calibre_semantic_search.js";
@@ -215,6 +216,11 @@ export interface HarnessOptions {
   live?: { libraryId: string; labels: Record<string, number[]> };
   /** Progress sink (stderr in the CLI); silent by default. */
   onProgress?: (msg: string) => void;
+  /**
+   * Record per-row wall-clock `durationMs` (#363 latency axis). Off by default: timings make the
+   * report JSON non-deterministic, so only the `pnpm eval` CLI turns it on, never `pnpm test`.
+   */
+  timing?: boolean;
 }
 
 export interface PerQueryRow {
@@ -236,6 +242,19 @@ export interface PerQueryRow {
   maxRerank?: number;
   /** Whether the cross-encoder rerank stage actually ran for this query (hybrid/vector only). */
   reranked?: boolean;
+  /** Second-highest cross-encoder score (#363): the top1-top2 margin is a confidence signal. */
+  top2Rerank?: number;
+  /** Positives with results: whether the tool flagged low confidence (#363 false-flag rate). */
+  lowConfidence?: boolean;
+  /**
+   * Book scope (#363): 1-based rank of the first passage that holds a labelled marker and
+   * overlaps its span; null = none in the top k. Absent on other scopes.
+   */
+  spanHit?: number | null;
+  /** Book scope, set when spanHit is: does that passage's snippet window show the marker? */
+  snippetHasMarker?: boolean;
+  /** Wall-clock ms of the retrieve() call — only with HarnessOptions.timing (non-deterministic). */
+  durationMs?: number;
   retrieved: string[];
 }
 
@@ -367,6 +386,9 @@ interface QueryOutcome {
   maxScore?: number;
   maxRerank?: number;
   reranked?: boolean;
+  top2Rerank?: number;
+  spanHit?: number | null;
+  snippetHasMarker?: boolean;
 }
 
 /** Per-run query context shared by runQuery and the handler check. */
@@ -390,6 +412,7 @@ async function runQuery(q: GoldenQuery, mode: Mode, ctx: QueryCtx): Promise<Quer
     ...(r.maxScore !== undefined ? { maxScore: r.maxScore } : {}),
     ...(mode !== "keyword" && r.maxRerank !== undefined ? { maxRerank: r.maxRerank } : {}),
     ...(mode !== "keyword" ? { reranked: r.reranked } : {}),
+    ...(mode !== "keyword" && top2Rerank(r) !== undefined ? { top2Rerank: top2Rerank(r) } : {}),
   });
 
   if (q.target === "figures") {
@@ -425,7 +448,9 @@ async function runQuery(q: GoldenQuery, mode: Mode, ctx: QueryCtx): Promise<Quer
   const r = await retrieve(deps, { ...base, scope: "book", bookId: requireBookId(q) }, opts);
   const spans = r.hits.map((h) => ({ start: h.hit.charStart, end: h.hit.charEnd }));
   const labels = q.relevant.filter((x): x is SpanLabel => typeof x !== "number");
+  const loc = q.kind === "negative" ? {} : localise(r.hits, labels, q.query);
   return {
+    ...loc,
     rel: {
       matches: spans.map((s) =>
         labels
@@ -437,6 +462,31 @@ async function runQuery(q: GoldenQuery, mode: Mode, ctx: QueryCtx): Promise<Quer
     retrieved: spans.map((s) => `@${s.start}-${s.end}`),
     ...display(r),
   };
+}
+
+/** Second-highest rerank score among the hits — order-free, so front-matter demotion can't move it. */
+function top2Rerank(r: RankedHits<unknown>): number | undefined {
+  const scores = r.hits.map((h) => h.rerankScore).filter((x): x is number => x !== undefined);
+  return scores.length >= 2 ? scores.sort((a, b) => b - a)[1] : undefined;
+}
+
+/**
+ * #363 passage localisation: the first passage that holds a label's marker text and overlaps
+ * that label's span, and whether the #243 snippet window (what library scope displays) of that
+ * passage still shows the marker.
+ */
+function localise(
+  hits: Array<{ hit: { charStart: number; charEnd: number; body: string } }>,
+  labels: SpanLabel[],
+  query: string,
+): { spanHit: number | null; snippetHasMarker?: boolean } {
+  for (const [i, h] of hits.entries()) {
+    const span = { start: h.hit.charStart, end: h.hit.charEnd };
+    const label = labels.find((l) => h.hit.body.includes(l.marker) && overlap(span, l) > 0);
+    if (label)
+      return { spanHit: i + 1, snippetHasMarker: snippetWindow(h.hit.body, query).text.includes(label.marker) };
+  }
+  return { spanHit: null };
 }
 
 function requireBookId(q: GoldenQuery): number {
@@ -506,9 +556,13 @@ function toRow(q: GoldenQuery, mode: Mode, out: QueryOutcome): PerQueryRow {
   // digits, not 4 decimals: candidate floors go down to 1e-3 and positives sit near 1e-4.
   if (out.maxRerank !== undefined) row.maxRerank = Number(out.maxRerank.toPrecision(4));
   if (out.reranked !== undefined) row.reranked = out.reranked;
+  if (out.top2Rerank !== undefined) row.top2Rerank = Number(out.top2Rerank.toPrecision(4));
+  if (out.spanHit !== undefined) row.spanHit = out.spanHit;
+  if (out.snippetHasMarker !== undefined) row.snippetHasMarker = out.snippetHasMarker;
   if (q.kind === "negative" || q.kind === "figure-negative") {
     row.flagged = out.count === 0 || out.lowConfidence === true;
   } else {
+    if (out.count > 0) row.lowConfidence = out.lowConfidence === true;
     const m = queryMetrics(out.rel);
     row.metrics = { hit1: m.hit1, recall5: round4(m.recall5), rr: round4(m.rr), ndcg10: round4(m.ndcg10) };
   }
@@ -576,13 +630,17 @@ export async function runRetrievalEval(opts: HarnessOptions): Promise<EvalReport
   for (const mode of modes) {
     progress(`running ${queries.length} queries in mode=${mode}…`);
     for (const q of queries) {
+      const started = performance.now();
       const out = await runQuery(q, mode, ctx);
+      const durationMs = Math.round(performance.now() - started);
       const key = opts.rrfWeights ? undefined : handlerCheckKey(q, mode, out, handlerChecks.has("book"));
       if (key !== undefined && !handlerChecks.has(key)) {
         await assertHandlerMatches(q, mode, ctx, out);
         handlerChecks.add(key);
       }
-      perQuery.push(toRow(q, mode, out));
+      const row = toRow(q, mode, out);
+      if (opts.timing) row.durationMs = durationMs;
+      perQuery.push(row);
     }
   }
 

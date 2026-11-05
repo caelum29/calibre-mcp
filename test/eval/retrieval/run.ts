@@ -54,6 +54,7 @@ import {
 } from "./gate.js";
 import { currentGoldenSetHash, evaluateGoldenSet } from "./golden-set.js";
 import { ALL_MODES, renderMarkdown, runRetrievalEval, type EvalReport, type Mode } from "./harness.js";
+import { ablationMatrix, computeAxes, renderAxes } from "./axes.js";
 import { saturationLines } from "./saturation.js";
 import { compareReports, pairingWarnings, renderCompare } from "./stats.js";
 
@@ -207,6 +208,7 @@ async function runPass(
   rerankOff: boolean,
   tag: string | undefined,
   protectedPaths: string[],
+  axesCfg?: Thresholds["reportOnlyAxes"],
 ): Promise<PassResult> {
   const started = Date.now();
   const sha = gitSha();
@@ -243,6 +245,8 @@ async function runPass(
     ...(reranker ? { reranker } : {}),
     rerank: rerankLabel,
     gitSha: sha,
+    // #363 latency axis; the CLI is the only caller that records wall-clock timings
+    timing: true,
     ...(args.rrfWeights ? { rrfWeights: args.rrfWeights } : {}),
     ...(live ? { live } : {}),
     onProgress: progress,
@@ -256,12 +260,19 @@ async function runPass(
 
   mkdirSync(args.outDir, { recursive: true });
   writeFileSync(jsonPath, JSON.stringify(report, null, 2) + "\n");
-  writeFileSync(mdPath, renderMarkdown(report, base) + "\n");
+  // #363: report-only axes, skipped on --live like saturation (unverified labels)
+  const axes = axesCfg && !args.live ? renderAxes(computeAxes(report), axesCfg) : [];
+  writeFileSync(
+    mdPath,
+    renderMarkdown(report, base) + (axes.length ? `\n\n\`\`\`text\n${axes.join("\n")}\n\`\`\`` : "") + "\n",
+  );
 
   progress(`${rerankOff ? "rerank-off " : ""}pass done in ${((Date.now() - started) / 1000).toFixed(1)}s`);
   // CLI summary on stdout (this is a script, not the stdio MCP server).
   process.stdout.write(
-    `${headline(report)}\n${saturationLines(report).join("\n")}\n` + `report: ${mdPath}\njson:   ${jsonPath}\n`,
+    `${headline(report)}\n${saturationLines(report).join("\n")}\n` +
+      (axes.length ? `${axes.join("\n")}\n` : "") +
+      `report: ${mdPath}\njson:   ${jsonPath}\n`,
   );
   return { report, mdPath, jsonPath };
 }
@@ -324,7 +335,7 @@ async function main(): Promise<void> {
   mkdirSync(args.workDir, { recursive: true });
   ensureModelCache(args.workDir);
 
-  const on = await runPass(args, args.rerank === "off", args.tag, protectedPaths);
+  const on = await runPass(args, args.rerank === "off", args.tag, protectedPaths, thresholds.reportOnlyAxes);
   if (!baselines) return;
 
   // #358 list diff + #392 golden-set hash run beside each tier's own gate, vs the same baseline
@@ -343,7 +354,15 @@ async function main(): Promise<void> {
   const fusion = thresholds.fusionOnly;
   if (fusion && baselines.off) {
     process.stdout.write("\n");
-    const off = await runPass(args, true, [args.tag, "rerankoff"].filter(Boolean).join("-"), protectedPaths);
+    const off = await runPass(
+      args,
+      true,
+      [args.tag, "rerankoff"].filter(Boolean).join("-"),
+      protectedPaths,
+      thresholds.reportOnlyAxes,
+    );
+    // #363 ablation axis (report-only): needs both passes, so it prints here
+    process.stdout.write(`\n${ablationMatrix(on.report, off.report).join("\n")}\n`);
     const offResult = withList(
       evaluateFusionOnlyGate(off.report, baselines.off, fusion),
       off.report,

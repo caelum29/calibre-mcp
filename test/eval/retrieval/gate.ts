@@ -61,6 +61,8 @@ export interface Thresholds {
   goldenSet?: {
     tiers: ListDiffTier[];
   };
+  /** #363 report-only axes: each states a trend; `gate: false` — printed, never read by a gate. */
+  reportOnlyAxes?: Record<string, { gate: false; trend: string; measured?: boolean }>;
   /** Tier-0 hash-embedder gate inside `pnpm test` (#357): per-query rank baseline, Hit@1 rule. */
   hashGate?: {
     /** hash-baseline.json, relative to the retrieval dir; set by the freeze commit (D-012). */
