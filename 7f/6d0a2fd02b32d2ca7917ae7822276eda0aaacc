@@ -1,0 +1,20 @@
+test/domain/error-codes.test.ts
+  s_16cb784f55ae69::t_eda3eccb6e3123 93,102-117,227-228,233-280
+  s_16cb784f55ae69::t_7315dac9448196 281-283
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7f6d0a2fd02b32d2ca7917ae7822276eda0aaacc",
+  "prompts": {},
+  "sessions": {
+    "s_16cb784f55ae69": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1ca5065-5531-4ad8-b360-ecda53c209a8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
