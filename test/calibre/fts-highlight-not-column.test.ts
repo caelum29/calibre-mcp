@@ -75,3 +75,29 @@ describe("FTS highlight repair — NOT over a column filter negates the whole op
     );
   });
 });
+
+// #389: `NOT col:NEAR(…)` — the filtered NEAR group is negated whole, NEAR and its distance included.
+describe("FTS highlight repair — NOT over a column-filtered NEAR group (#389)", () => {
+  it("should_unmark_every_word_of_a_title_NEAR_group_after_NOT", () => {
+    expect(repair('docker NOT title:NEAR("swarm" "mode", 5)', ">>docker<< >>swarm<< >>mode<<")).toBe(
+      ">>docker<< swarm mode",
+    );
+  });
+
+  it("should_still_highlight_terms_after_the_negated_NEAR_group", () => {
+    expect(repair("docker NOT title:NEAR(swarm mode, 5) OR kubernetes", ">>docker<< >>swarm<< >>kubernetes<<")).toBe(
+      ">>docker<< swarm >>kubernetes<<",
+    );
+  });
+
+  it("should_treat_the_NEAR_distance_as_part_of_the_negated_operand", () => {
+    // "5" is NEAR's distance, not a term: a highlighted 5 is unmarked, as for an unfiltered NEAR
+    expect(repair("docker NOT title:NEAR(swarm mode, 5)", ">>docker<< >>5<< swarm")).toBe(">>docker<< 5 swarm");
+  });
+
+  it("should_unmark_a_NEAR_group_behind_a_spaced_column_filter", () => {
+    expect(repair("docker NOT title : NEAR(swarm mode, 5)", ">>docker<< >>swarm<< >>mode<<")).toBe(
+      ">>docker<< swarm mode",
+    );
+  });
+});
