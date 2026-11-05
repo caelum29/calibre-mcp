@@ -203,14 +203,16 @@ interface PassResult {
   jsonPath: string;
 }
 
+/** Per-pass settings: rerank on/off, filename tag, the guarded baselines, the #363 axes block. */
+interface PassOptions {
+  rerankOff: boolean;
+  tag: string | undefined;
+  protectedPaths: string[];
+  axesCfg?: Thresholds["reportOnlyAxes"];
+}
+
 /** One eval run (fresh fixture index or live copy) → report written to outDir + stdout summary. */
-async function runPass(
-  args: CliArgs,
-  rerankOff: boolean,
-  tag: string | undefined,
-  protectedPaths: string[],
-  axesCfg?: Thresholds["reportOnlyAxes"],
-): Promise<PassResult> {
+async function runPass(args: CliArgs, { rerankOff, tag, protectedPaths, axesCfg }: PassOptions): Promise<PassResult> {
   const started = Date.now();
   const sha = gitSha();
   const date = new Date().toISOString().slice(0, 10);
@@ -336,7 +338,8 @@ async function main(): Promise<void> {
   mkdirSync(args.workDir, { recursive: true });
   ensureModelCache(args.workDir);
 
-  const on = await runPass(args, args.rerank === "off", args.tag, protectedPaths, thresholds.reportOnlyAxes);
+  const axesCfg = thresholds.reportOnlyAxes;
+  const on = await runPass(args, { rerankOff: args.rerank === "off", tag: args.tag, protectedPaths, axesCfg });
   if (!baselines) return;
 
   // #358 list diff + #392 golden-set hash run beside each tier's own gate, vs the same baseline
@@ -355,13 +358,8 @@ async function main(): Promise<void> {
   const fusion = thresholds.fusionOnly;
   if (fusion && baselines.off) {
     process.stdout.write("\n");
-    const off = await runPass(
-      args,
-      true,
-      [args.tag, "rerankoff"].filter(Boolean).join("-"),
-      protectedPaths,
-      thresholds.reportOnlyAxes,
-    );
+    const tag = [args.tag, "rerankoff"].filter(Boolean).join("-");
+    const off = await runPass(args, { rerankOff: true, tag, protectedPaths, axesCfg });
     // #363 ablation axis (report-only): needs both passes, so it prints here
     process.stdout.write(`\n${ablationMatrix(on.report, off.report).join("\n")}\n`);
     const offResult = withList(

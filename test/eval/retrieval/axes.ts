@@ -13,11 +13,15 @@ export interface ModeAxes {
   confidence?: {
     /** Reranked rows (maxRerank set): positives with metrics + negatives. */
     n: number;
+    /** Hit@1 = 1 positives that carry lowConfidence (pre-#363 reports have none). */
     hit1Positives: number;
-    /** Hit@1 = 1 positives the tool still flagged low-confidence. */
+    /** Of those, the ones the tool still flagged low-confidence. */
     falseFlagged: number;
     aucMaxRerank: number;
+    /** NaN when no row on one side has top2Rerank. */
     aucMargin: number;
+    /** Rows with top2Rerank: the margin AUC's population (single-hit rows have no top-2). */
+    marginN: number;
   };
   latency?: { n: number; p50: number; p95: number };
 }
@@ -45,16 +49,20 @@ function confidenceAxis(rows: PerQueryRow[]): ModeAxes["confidence"] {
   // "right" = the top hit is correct; misses and negatives are what the flag should catch
   const right = ranked.filter((r) => r.metrics?.hit1 === 1);
   const wrong = ranked.filter((r) => r.metrics?.hit1 !== 1);
-  const margin = (r: PerQueryRow) => r.maxRerank! - (r.top2Rerank ?? 0);
+  // a missing field is unknown, not "false"/0: count only rows that carry it (pre-#363 reports)
+  const flaggable = right.filter((r) => r.lowConfidence !== undefined);
+  const hasTop2 = (r: PerQueryRow) => r.top2Rerank !== undefined;
+  const margin = (r: PerQueryRow) => r.maxRerank! - r.top2Rerank!;
   return {
     n: ranked.length,
-    hit1Positives: right.length,
-    falseFlagged: right.filter((r) => r.lowConfidence === true).length,
+    hit1Positives: flaggable.length,
+    falseFlagged: flaggable.filter((r) => r.lowConfidence === true).length,
     aucMaxRerank: auc(
       right.map((r) => r.maxRerank!),
       wrong.map((r) => r.maxRerank!),
     ),
-    aucMargin: auc(right.map(margin), wrong.map(margin)),
+    aucMargin: auc(right.filter(hasTop2).map(margin), wrong.filter(hasTop2).map(margin)),
+    marginN: ranked.filter(hasTop2).length,
   };
 }
 
@@ -79,6 +87,13 @@ export function computeAxes(report: EvalReport): Partial<Record<Mode, ModeAxes>>
   return out;
 }
 
+/** The margin AUC, saying when it covers fewer rows than the maxRerank one. */
+function marginCell(c: NonNullable<ModeAxes["confidence"]>): string {
+  if (c.marginN === 0) return "n/a (no top2Rerank)";
+  const v = Number.isNaN(c.aucMargin) ? "n/a" : c.aucMargin.toFixed(3);
+  return c.marginN === c.n ? v : `${v} (m=${c.marginN})`;
+}
+
 const ratio = (k: number, n: number) => `${k}/${n} (${n === 0 ? "n/a" : (k / n).toFixed(3)})`;
 
 /** Lines for every declared axis: its trend from thresholds.json, then the numbers per mode. */
@@ -93,8 +108,8 @@ export function renderAxes(
       `    ${m}: @1 ${ratio(s.at1, s.n)}, @3 ${ratio(s.at3, s.n)}, @5 ${ratio(s.at5, s.n)}`,
     confidence: (m, { confidence: c }) =>
       c
-        ? `    ${m}: false-flag ${ratio(c.falseFlagged, c.hit1Positives)}, AUC maxRerank ${c.aucMaxRerank.toFixed(3)}, ` +
-          `AUC margin ${c.aucMargin.toFixed(3)} (n=${c.n})`
+        ? `    ${m}: false-flag ${c.hit1Positives ? ratio(c.falseFlagged, c.hit1Positives) : "n/a (no lowConfidence)"}, ` +
+          `AUC maxRerank ${c.aucMaxRerank.toFixed(3)}, AUC margin ${marginCell(c)} (n=${c.n})`
         : `    ${m}: n/a (no reranked rows)`,
     latency: (m, { latency: l }) =>
       l ? `    ${m}: p50 ${l.p50} ms, p95 ${l.p95} ms (n=${l.n})` : `    ${m}: n/a (no timings)`,

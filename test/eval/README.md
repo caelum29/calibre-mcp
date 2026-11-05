@@ -90,7 +90,9 @@ rate and span-hit@1/3/5, confidence calibration (false-flag rate on Hit@1 positi
 `maxRerank` and of the top1−top2 rerank margin), and p50/p95 per-query latency. `--gate` adds
 the ablation matrix (overall Hit@1 / nDCG@10 per mode × rerank on/off). The highlight invariant
 is declared but not measured here: highlights belong to `calibre_search`'s FTS path. Latency
-comes from `durationMs`, which only the `pnpm eval` CLI records (`HarnessOptions.timing`), so
+comes from `durationMs` (the whole per-query step: retrieve() plus scoring; the first query
+of a pass also pays the model warm-up, so p95 carries it), which only the `pnpm eval` CLI
+records (`HarnessOptions.timing`), so
 `pnpm test` reports stay byte-identical. No gate, hash tier or list diff reads the new fields.
 
 ### Layout

@@ -253,7 +253,10 @@ export interface PerQueryRow {
   spanHit?: number | null;
   /** Book scope, set when spanHit is: does that passage's snippet window show the marker? */
   snippetHasMarker?: boolean;
-  /** Wall-clock ms of the retrieve() call — only with HarnessOptions.timing (non-deterministic). */
+  /**
+   * Wall-clock ms of the whole per-query step (retrieve() + scoring/localisation), first-call
+   * model warm-up included — only with HarnessOptions.timing (non-deterministic).
+   */
   durationMs?: number;
   retrieved: string[];
 }
@@ -378,7 +381,7 @@ function firstText(content: Array<{ type: string }>): string {
 }
 
 /** What one query run yields for scoring: positional relevance + confidence/rerank display info. */
-interface QueryOutcome {
+export interface QueryOutcome {
   rel: RankedRelevance;
   retrieved: string[];
   count: number;
@@ -464,6 +467,18 @@ async function runQuery(q: GoldenQuery, mode: Mode, ctx: QueryCtx): Promise<Quer
   };
 }
 
+/** runQuery plus, when `timing` is on, its wall-clock `durationMs` row field (#363 latency axis). */
+async function timedQuery(
+  q: GoldenQuery,
+  mode: Mode,
+  ctx: QueryCtx,
+  timing: boolean,
+): Promise<{ out: QueryOutcome; timed: { durationMs?: number } }> {
+  const started = performance.now();
+  const out = await runQuery(q, mode, ctx);
+  return { out, timed: timing ? { durationMs: Math.round(performance.now() - started) } : {} };
+}
+
 /** Second-highest rerank score among the hits — order-free, so front-matter demotion can't move it. */
 function top2Rerank(r: RankedHits<unknown>): number | undefined {
   const scores = r.hits.map((h) => h.rerankScore).filter((x): x is number => x !== undefined);
@@ -473,9 +488,9 @@ function top2Rerank(r: RankedHits<unknown>): number | undefined {
 /**
  * #363 passage localisation: the first passage that holds a label's marker text and overlaps
  * that label's span, and whether the #243 snippet window (what library scope displays) of that
- * passage still shows the marker.
+ * passage still shows the marker. Exported for the literal-fixture test.
  */
-function localise(
+export function localise(
   hits: Array<{ hit: { charStart: number; charEnd: number; body: string } }>,
   labels: SpanLabel[],
   query: string,
@@ -539,8 +554,8 @@ function overlap(a: { start: number; end: number }, l: SpanLabel): number {
   return Math.max(0, Math.min(a.end, l.charEnd) - Math.max(a.start, l.charStart));
 }
 
-/** One scored per-query report row from a query outcome. */
-function toRow(q: GoldenQuery, mode: Mode, out: QueryOutcome): PerQueryRow {
+/** One scored per-query report row from a query outcome (exported for the literal-fixture test). */
+export function toRow(q: GoldenQuery, mode: Mode, out: QueryOutcome): PerQueryRow {
   const row: PerQueryRow = {
     id: q.id,
     kind: q.kind,
@@ -630,17 +645,13 @@ export async function runRetrievalEval(opts: HarnessOptions): Promise<EvalReport
   for (const mode of modes) {
     progress(`running ${queries.length} queries in mode=${mode}…`);
     for (const q of queries) {
-      const started = performance.now();
-      const out = await runQuery(q, mode, ctx);
-      const durationMs = Math.round(performance.now() - started);
+      const { out, timed } = await timedQuery(q, mode, ctx, opts.timing === true);
       const key = opts.rrfWeights ? undefined : handlerCheckKey(q, mode, out, handlerChecks.has("book"));
       if (key !== undefined && !handlerChecks.has(key)) {
         await assertHandlerMatches(q, mode, ctx, out);
         handlerChecks.add(key);
       }
-      const row = toRow(q, mode, out);
-      if (opts.timing) row.durationMs = durationMs;
-      perQuery.push(row);
+      perQuery.push({ ...toRow(q, mode, out), ...timed });
     }
   }
 
