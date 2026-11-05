@@ -1,0 +1,20 @@
+test/eval/retrieval/axes.test.ts
+  s_4ba34c72a1f257::t_ae88c1331ad35a 1-188,192-193
+  s_4ba34c72a1f257::t_e1e68dc51bb345 189-191
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6b84e1475d0645fdf9d9f37de0008c377c55adeb",
+  "prompts": {},
+  "sessions": {
+    "s_4ba34c72a1f257": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c53829ca-e425-43bf-b4aa-48cbb05e9525",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
