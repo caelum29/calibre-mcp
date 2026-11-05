@@ -1,0 +1,66 @@
+src/ui/card/card.css
+  s_34f8c895b845ca::t_ca0ce08649e054 1-2
+src/ui/generated/widgets.ts
+  s_34f8c895b845ca::t_2b0db42be47824 5,7,9
+src/ui/shared/tokens.css
+  s_34f8c895b845ca::t_0ca909a3e29b42 1-33,35-52
+  s_34f8c895b845ca::t_0c4853399e7e2d 34
+src/ui/board/core.js
+  s_34f8c895b845ca::t_eb0a9154637e77 6
+.oxlintrc.json
+  s_34f8c895b845ca::t_eb0a9154637e77 92-93,95
+src/ui/figures/figures.css
+  s_34f8c895b845ca::t_0ca909a3e29b42 1-2
+src/ui/board/shell.css
+  s_34f8c895b845ca::t_0ca909a3e29b42 1-4
+src/ui/card/card.js
+  s_34f8c895b845ca::t_eb0a9154637e77 5
+src/ui/figures/figures.js
+  s_34f8c895b845ca::t_eb0a9154637e77 5
+src/ui/shared/rpc.js
+  s_34f8c895b845ca::t_ca0ce08649e054 1-28
+.oxfmtrc.json
+  s_34f8c895b845ca::t_eb0a9154637e77 20
+scripts/gen-widgets.mjs
+  s_34f8c895b845ca::t_eb0a9154637e77 11-12,36,48-49
+test/ui/__snapshots__/widgets/board-calibre_search-coverflow-debug.html
+  s_34f8c895b845ca::t_daf1e88d1d3b70 8,23-24,30-31,37-38,57-62,409-417
+test/ui/__snapshots__/widgets/board-calibre_search-coverflow-nodebug.html
+  s_34f8c895b845ca::t_3aebc1b2f1ad2c 8,23-24,30-31,37-38,57-62,410-418
+test/ui/__snapshots__/widgets/board-calibre_search-shelf-debug.html
+  s_34f8c895b845ca::t_895cc35e8df081 8,23-24,30-31,37-38,57-62,409-417
+test/ui/__snapshots__/widgets/board-calibre_search-shelf-nodebug.html
+  s_34f8c895b845ca::t_92ca7125269b86 8,23-24,30-31,37-38,57-62,410-418
+test/ui/__snapshots__/widgets/board-calibre_semantic_search-coverflow-debug.html
+  s_34f8c895b845ca::t_2833c3c65833d5 8,23-24,30-31,37-38,57-62,409-417
+test/ui/__snapshots__/widgets/board-calibre_semantic_search-coverflow-nodebug.html
+  s_34f8c895b845ca::t_4817f2f502b46b 8,23-24,30-31,37-38,57-62,410-418
+test/ui/__snapshots__/widgets/board-calibre_semantic_search-shelf-debug.html
+  s_34f8c895b845ca::t_b53d61e6c9983a 8,23-24,30-31,37-38,57-62,409-417
+test/ui/__snapshots__/widgets/board-calibre_semantic_search-shelf-nodebug.html
+  s_34f8c895b845ca::t_c73e123ac5c4ec 8,23-24,30-31,37-38,57-62,410-418
+test/ui/__snapshots__/widgets/card-debug.html
+  s_34f8c895b845ca::t_b4e7f2badce341 8,11,13-14,38,57,304-312
+test/ui/__snapshots__/widgets/card-nodebug.html
+  s_34f8c895b845ca::t_cc1d280dd1450d 8,11,13-14,38,57,305-313
+test/ui/__snapshots__/widgets/figures-debug.html
+  s_34f8c895b845ca::t_18781b89536e78 8,11-14,31-58,202-210
+test/ui/__snapshots__/widgets/figures-nodebug.html
+  s_34f8c895b845ca::t_5a863a41217613 8,11-14,31-58,203-211
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cab02abc27b61b4154bf5d0e2163d80374d1afb3",
+  "prompts": {},
+  "sessions": {
+    "s_34f8c895b845ca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "acde0812-c8ad-458d-b52e-46dc5cd004a4",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
