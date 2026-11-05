@@ -31,11 +31,22 @@
 //   seam via retrieve()'s opts.rrfWeights (#259); the shipped weights stay in retrieve.ts.
 
 import { execSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadConfig } from "../../../src/config.js";
-import { RERANKER_MODEL_ID, TransformersReranker } from "../../../src/semantic/reranker.js";
+import type { Embedder } from "../../../src/semantic/embedder.js";
+import { RERANKER_MODEL_ID, TransformersReranker, type Reranker } from "../../../src/semantic/reranker.js";
 import {
   baselinePaths,
   checkGateArgs,
@@ -62,7 +73,7 @@ import { compareReports, pairingWarnings, renderCompare } from "./stats.js";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const progress = (msg: string) => process.stderr.write(`[eval] ${msg}\n`);
 
-interface CliArgs {
+export interface CliArgs {
   live: boolean;
   gate: boolean;
   /** `--compare a.json b.json`: paired stats of two existing reports, no eval run (#358). */
@@ -77,7 +88,8 @@ interface CliArgs {
   outDir: string;
 }
 
-function parseArgs(argv: string[]): CliArgs {
+/** Parse `pnpm eval` flags (exported for the #389 run-path test). */
+export function parseArgs(argv: string[]): CliArgs {
   const args: CliArgs = {
     live: false,
     gate: false,
@@ -209,10 +221,16 @@ interface PassOptions {
   tag: string | undefined;
   protectedPaths: string[];
   axesCfg?: Thresholds["reportOnlyAxes"];
+  /** Test seam (#389): swap the e5 embedder / cross-encoder and capture the stderr log lines. */
+  deps?: { embedder?: Embedder; reranker?: Reranker; log?: (msg: string) => void };
 }
 
 /** One eval run (fresh fixture index or live copy) → report written to outDir + stdout summary. */
-async function runPass(args: CliArgs, { rerankOff, tag, protectedPaths, axesCfg }: PassOptions): Promise<PassResult> {
+export async function runPass(
+  args: CliArgs,
+  { rerankOff, tag, protectedPaths, axesCfg, deps = {} }: PassOptions,
+): Promise<PassResult> {
+  const log = deps.log ?? progress;
   const started = Date.now();
   const sha = gitSha();
   const date = new Date().toISOString().slice(0, 10);
@@ -238,7 +256,8 @@ async function runPass(args: CliArgs, { rerankOff, tag, protectedPaths, axesCfg 
   // Rerank stage mirrors the shipped default: ON for hybrid/vector unless --rerank off.
   const reranker = rerankOff
     ? undefined
-    : new TransformersReranker(loadConfig({ CALIBRE_MCP_INDEX_DIR: args.workDir } as NodeJS.ProcessEnv));
+    : (deps.reranker ??
+      new TransformersReranker(loadConfig({ CALIBRE_MCP_INDEX_DIR: args.workDir } as NodeJS.ProcessEnv)));
   const rerankLabel = rerankOff ? "off" : (args.rerank ?? `${RERANKER_MODEL_ID} q8`);
 
   const report = await runRetrievalEval({
@@ -246,20 +265,20 @@ async function runPass(args: CliArgs, { rerankOff, tag, protectedPaths, axesCfg 
     modes: args.modes,
     topK: args.topK,
     ...(reranker ? { reranker } : {}),
+    ...(deps.embedder ? { embedder: deps.embedder } : {}),
     rerank: rerankLabel,
     gitSha: sha,
     // #363 latency axis; the CLI is the only caller that records wall-clock timings
     timing: true,
     ...(args.rrfWeights ? { rrfWeights: args.rrfWeights } : {}),
     ...(live ? { live } : {}),
-    onProgress: progress,
+    onProgress: log,
   }).finally(() => {
     // rmSync never follows the models symlink; it only unlinks it
     if (indexDir !== args.workDir) rmSync(indexDir, { recursive: true, force: true });
   });
-  if (reranker && report.meta.rerankedRows === 0) {
-    progress("WARNING: rerank was ON but 0 rows reranked — model unavailable, run is reranker-degraded");
-  }
+  const degraded = degradedWarning(report, reranker !== undefined);
+  if (degraded) log(degraded);
 
   mkdirSync(args.outDir, { recursive: true });
   writeFileSync(jsonPath, JSON.stringify(report, null, 2) + "\n");
@@ -270,14 +289,29 @@ async function runPass(args: CliArgs, { rerankOff, tag, protectedPaths, axesCfg 
     renderMarkdown(report, base) + (axes.length ? `\n\n\`\`\`text\n${axes.join("\n")}\n\`\`\`` : "") + "\n",
   );
 
-  progress(`${rerankOff ? "rerank-off " : ""}pass done in ${((Date.now() - started) / 1000).toFixed(1)}s`);
+  log(`${rerankOff ? "rerank-off " : ""}pass done in ${((Date.now() - started) / 1000).toFixed(1)}s`);
   // CLI summary on stdout (this is a script, not the stdio MCP server).
-  process.stdout.write(
-    `${headline(report)}\n${saturationLines(report).join("\n")}\n` +
-      (axes.length ? `${axes.join("\n")}\n` : "") +
-      `report: ${mdPath}\njson:   ${jsonPath}\n`,
-  );
+  process.stdout.write(passSummary(report, axes, { md: mdPath, json: jsonPath }));
   return { report, mdPath, jsonPath };
+}
+
+/**
+ * stderr warning for a run that wired the reranker but reranked nothing (model failed to load):
+ * its numbers are fusion-only although labelled ON. Exported for the #389 test.
+ */
+export function degradedWarning(report: EvalReport, rerankerWired: boolean): string | undefined {
+  return rerankerWired && report.meta.rerankedRows === 0
+    ? "WARNING: rerank was ON but 0 rows reranked — model unavailable, run is reranker-degraded"
+    : undefined;
+}
+
+/** A pass's stdout summary: headline, saturation lines, #363 axes, report paths (#389 test seam). */
+export function passSummary(report: EvalReport, axes: string[], paths: { md: string; json: string }): string {
+  return (
+    `${headline(report)}\n${saturationLines(report).join("\n")}\n` +
+    (axes.length ? `${axes.join("\n")}\n` : "") +
+    `report: ${paths.md}\njson:   ${paths.json}\n`
+  );
 }
 
 /** Concatenate two gate outcomes into one pass section (gate checks + list diff). */
@@ -376,7 +410,25 @@ async function main(): Promise<void> {
   if (!pass) process.exit(1);
 }
 
-main().catch((err: unknown) => {
-  process.stderr.write(`[eval] FAILED: ${err instanceof Error ? err.message : String(err)}\n`);
-  process.exit(1);
-});
+/**
+ * True when this module is the process entry. Both sides are realpath'd: Node resolves the
+ * module URL through symlinks but leaves argv[1] as typed (e.g. macOS /var → /private/var), and
+ * a mismatch would make `pnpm eval --gate` exit 0 silently, which reads as a PASS.
+ */
+function isCliEntry(): boolean {
+  const entry = process.argv[1];
+  if (!entry) return false;
+  try {
+    return realpathSync(entry) === realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
+}
+
+// run only as the CLI entry, so tests can import the print helpers without starting an eval
+if (isCliEntry()) {
+  main().catch((err: unknown) => {
+    process.stderr.write(`[eval] FAILED: ${err instanceof Error ? err.message : String(err)}\n`);
+    process.exit(1);
+  });
+}
