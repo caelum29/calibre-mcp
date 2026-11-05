@@ -29,7 +29,7 @@ export const addBookTool = defineTool({
   name: "calibre_add_book",
   title: "Add a book file",
   description:
-    "Import a local ebook file (EPUB/PDF/MOBI/…) into the library. The file must live under an " +
+    "Import a local ebook file (EPUB/PDF/MOBI/…) into the library by its path. The file must live under an " +
     "allowed import root and be reachable by the Calibre server process. Flags possible duplicates (advisory). Requires writes to be enabled.",
   inputSchema: {
     path: z.string().min(1),

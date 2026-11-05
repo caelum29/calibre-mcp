@@ -12,7 +12,7 @@
         "idempotentHint": false,
         "readOnlyHint": false
       },
-      "description": "Import a local ebook file (EPUB/PDF/MOBI/…) into the library. The file must live under an allowed import root and be reachable by the Calibre server process. Flags possible duplicates (advisory). Requires writes to be enabled.",
+      "description": "Import a local ebook file (EPUB/PDF/MOBI/…) into the library by its path. The file must live under an allowed import root and be reachable by the Calibre server process. Flags possible duplicates (advisory). Requires writes to be enabled.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {
@@ -1298,7 +1298,7 @@
         "idempotentHint": true,
         "readOnlyHint": false
       },
-      "description": "List, create, update or delete Bundles — named topical filters backed by Calibre saved searches (e.g. a 'rust' bundle scoping searches to Rust books). A name starting with '-' is an exclusion marker. Also lists virtual libraries, which are read-only here. Preview-first: create/update report the match count until confirm=true. Requires writes to be enabled.",
+      "description": "List, create, update or delete Bundles (action) — named topical filters backed by Calibre saved searches (e.g. a 'rust' bundle scoping searches to Rust books). A name starting with '-' is an exclusion marker. Also lists virtual libraries, which are read-only here. Preview-first: create/update report the match count until confirm=true. Requires writes to be enabled.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {
@@ -1387,7 +1387,7 @@
         "idempotentHint": true,
         "readOnlyHint": false
       },
-      "description": "Merge duplicate book records: moves formats from source books into a target (target's copy wins conflicts), merges metadata per Calibre's rules, then trashes the sources. mode=safe keeps sources; mode=formatsOnly moves formats only. Dry-run unless confirm=true. Requires writes to be enabled.",
+      "description": "Merge duplicate book records: moves formats from the sourceIds books into targetId (the target's copy wins conflicts), merges metadata per Calibre's rules, then trashes the sources. mode=safe keeps sources; mode=formatsOnly moves formats only. Dry-run unless confirm=true. Requires writes to be enabled.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {
@@ -1809,7 +1809,7 @@
         "idempotentHint": true,
         "readOnlyHint": false
       },
-      "description": "Remove books from the library. Removed books go to Calibre's Trash and can be restored from the Calibre GUI, so this is recoverable. Two-step: the first call is a dry-run listing what would be removed; re-run with confirm=true to proceed. Requires writes to be enabled.",
+      "description": "Remove books (ids) from the library. Removed books go to Calibre's Trash and can be restored from the Calibre GUI, so this is recoverable. Two-step: the first call is a dry-run listing what would be removed; re-run with confirm=true to proceed. Requires writes to be enabled.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {
@@ -2352,7 +2352,7 @@
         "idempotentHint": true,
         "readOnlyHint": false
       },
-      "description": "Replace metadata fields on one book (title, authors, tags, series, rating, identifiers, comments, or any #custom column). Omitted fields are untouched. Requires writes to be enabled.",
+      "description": "Replace metadata fields on one book: changes maps each field (title, authors, tags, series, rating, identifiers, comments, or any #custom column) to its new value. Omitted fields are untouched. Requires writes to be enabled.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {
