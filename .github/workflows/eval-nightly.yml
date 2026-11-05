@@ -1,0 +1,77 @@
+# Nightly retrieval-eval model gate (#364): `pnpm eval --gate` = rerank ON pass + fusion-only pass
+# against their frozen baselines, with the embedding + reranker models cached between runs.
+# REPORT-ONLY for now: the baselines were frozen on macOS and no Linux baseline exists yet, so a
+# red gate here is a signal to read, not a verdict (see test/eval/README.md "Nightly CI").
+# Not a required check; no secrets; read-only token.
+name: Eval nightly
+
+on:
+  schedule:
+    - cron: "17 3 * * *" # 03:17 UTC, off the hour to dodge the scheduled-run rush
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: eval-nightly
+  cancel-in-progress: false
+
+env:
+  HUSKY: "0" # no git hooks in CI
+
+jobs:
+  gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45 # ~8 min gate + a cold ~0.7 GB model download on the first run
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: 10
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # The cache key names both model ids and the transformers.js version (they decide what the
+      # cache holds). Fail fast if the code moved on, so a stale key can't serve the wrong models.
+      - name: Check the cache key still names the models in use
+        run: |
+          grep -q '"Xenova/multilingual-e5-small"' src/semantic/model.ts
+          grep -q '"onnx-community/bge-reranker-v2-m3-ONNX"' src/semantic/reranker.ts
+      - name: Read the transformers.js version
+        id: tf
+        run: echo "version=$(node -p "require('./package.json').optionalDependencies['@huggingface/transformers']")" >> "$GITHUB_OUTPUT"
+      - name: Restore model cache
+        id: models
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          # run.ts keeps models under <work-dir>/models; the default work dir is gitignored
+          path: test/eval/retrieval/.work/models
+          key: eval-models-${{ runner.os }}-Xenova-multilingual-e5-small-onnx-community-bge-reranker-v2-m3-ONNX-transformers-${{ steps.tf.outputs.version }}
+      - name: Model cache status
+        run: |
+          echo "model cache hit: ${{ steps.models.outputs.cache-hit }} (transformers ${{ steps.tf.outputs.version }})"
+          echo "model cache hit: \`${{ steps.models.outputs.cache-hit }}\` (transformers \`${{ steps.tf.outputs.version }}\`)" >> "$GITHUB_STEP_SUMMARY"
+
+      # Report-only: a failing gate must not turn the run red until a Linux baseline exists. The
+      # outcome goes to the log, an annotation and the job summary instead.
+      - name: Run the model gate
+        id: gate
+        continue-on-error: true
+        run: pnpm eval --gate --out-dir "$RUNNER_TEMP/eval-reports"
+      - name: Report the gate outcome
+        if: always()
+        run: |
+          echo "::notice::eval gate outcome: ${{ steps.gate.outcome }} (report-only, not blocking)"
+          echo "eval gate outcome: \`${{ steps.gate.outcome }}\` (report-only until a Linux baseline exists)" >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: eval-reports
+          path: ${{ runner.temp }}/eval-reports/
+          if-no-files-found: warn
+          retention-days: 30

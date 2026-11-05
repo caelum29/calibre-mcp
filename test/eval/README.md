@@ -148,6 +148,29 @@ Every run also prints, after the per-mode headline:
   rule change first, then re-freeze with `pnpm eval:hash-freeze` (D-012). A rank that differs
   between platforms is a nondeterminism bug to fix, never a reason to loosen the rule.
 
+### Nightly CI (`.github/workflows/eval-nightly.yml`, #364)
+
+`pnpm eval --gate` (rerank ON + fusion-only) runs nightly on `ubuntu-24.04` and on manual
+`workflow_dispatch`, with the models cached in `test/eval/retrieval/.work/models`. The cache key
+names both model ids (`Xenova/multilingual-e5-small`, `onnx-community/bge-reranker-v2-m3-ONNX`)
+and the `@huggingface/transformers` version read from `package.json`; a step fails fast if the
+ids in `src/semantic/` no longer match the key text. The job logs and summarizes
+`model cache hit: true|false` (the first run, and any run after a key change, is a miss and
+downloads ~0.7 GB). The report JSON/md go to the `eval-reports` artifact (30 days).
+
+Failure semantics:
+
+- **Now: report-only.** The frozen baselines (`thresholds.json`) were measured on macOS, and no
+  Linux baseline or cross-platform ε exists yet, so a failing gate on Linux may be platform
+  drift (ORT, transformers.js), not a regression. The gate step runs with `continue-on-error`:
+  the run stays green, and the outcome is in an annotation and the job summary. The workflow is
+  not a required check, uses no secrets and a read-only token.
+- **Later: blocking.** Once a Linux report is frozen as a baseline and the cross-platform
+  tolerance is measured, drop `continue-on-error` so a failing gate turns the nightly red (and
+  consider making it required for the release workflow). The tier-0 hash gate in `pnpm test`
+  already blocks every PR (it stores ranks, not float scores, so it is platform-safe).
+- Nothing here re-freezes a baseline; a Linux baseline follows the usual rule-first re-freeze.
+
 ### Rules
 
 - `pnpm eval` is NOT part of `pnpm test` (it needs the embedding model and real minutes);
