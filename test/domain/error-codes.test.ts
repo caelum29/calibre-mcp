@@ -27,22 +27,6 @@ function sourceFiles(dir: string): string[] {
   });
 }
 
-/** First argument of every `toolError(` call in src/, comments and the definition excluded. */
-function toolErrorFirstArgs(): Array<{ at: string; arg: string }> {
-  const out: Array<{ at: string; arg: string }> = [];
-  for (const file of sourceFiles("src")) {
-    const code = readFileSync(file, "utf8")
-      .split("\n")
-      .filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l))
-      .join("\n");
-    for (const m of code.matchAll(/(?<!function )\btoolError\(\s*([^,)]*)/g)) {
-      const line = code.slice(0, m.index).split("\n").length;
-      out.push({ at: `${file}:${line}`, arg: m[1]!.trim() });
-    }
-  }
-  return out;
-}
-
 /**
  * Source with `//` and block comments blanked (newlines kept, so line numbers stay true), so a
  * name or an apostrophe in a comment is not code. Strings are skipped, not parsed: a regex literal
@@ -106,13 +90,29 @@ function splitArgs(code: string, open: number): string[] {
 }
 
 /** Every call of helper `name` in `source` (its definition excluded) with its arguments. */
-function helperCalls(source: string, name: "toolErrorFrom" | "errorFromCatch", file = "<source>") {
+function helperCalls(source: string, name: Helper, file = "<source>") {
   const code = codeOnly(source);
   // optional type arguments and whitespace before the paren: `name<T> (…)` is still a call
   return [...code.matchAll(new RegExp(`(?<!function )\\b${name}\\s*(?:<[^()]*>)?\\s*\\(`, "g"))].map((m) => ({
     at: `${file}:${code.slice(0, m.index).split("\n").length}`,
     args: splitArgs(code, m.index + m[0].length - 1),
   }));
+}
+
+/**
+ * `toolError` sites whose code is not from the closed set (#249). The code param is typed
+ * `ErrorCode`, so the compiler rejects stray strings; this scan rejects what the compiler cannot.
+ */
+function toolErrorViolations(source: string, file?: string): string[] {
+  const codes = new Set<string>(ERROR_CODES);
+  return helperCalls(source, "toolError", file)
+    .filter(({ args }) => {
+      const arg = args[0] ?? "";
+      const literal = /^"([a-z_]+)"$/.exec(arg);
+      if (literal) return !codes.has(literal[1]!);
+      return !arg.startsWith("errorCodeFor(");
+    })
+    .map(({ at, args }) => `${at}: toolError(${args[0] ?? ""}, …)`);
 }
 
 /**
@@ -224,18 +224,63 @@ describe("toolErrorFrom / errorFromCatch call sites (#367)", () => {
 
 describe("toolError call sites", () => {
   it("should_pass_a_code_from_the_closed_set_at_every_site", () => {
-    const codes = new Set<string>(ERROR_CODES);
-    const stray = toolErrorFirstArgs().filter(({ arg }) => {
-      const literal = /^"([a-z_]+)"$/.exec(arg);
-      if (literal) return !codes.has(literal[1]!);
-      return !arg.startsWith("errorCodeFor(");
-    });
-    expect(stray).toEqual([]);
+    const bad = sourceFiles("src").flatMap((f) => toolErrorViolations(readFileSync(f, "utf8"), f));
+    expect(bad).toEqual([]);
   });
 
   it("should_find_the_known_call_sites", () => {
     // proves the scanner still sees the sites: 111 after #345 folded 37 duplicates (148 before) into helpers
-    expect(toolErrorFirstArgs().length).toBeGreaterThan(100);
+    const all = sourceFiles("src").map((f) => readFileSync(f, "utf8"));
+    const parsed = all.reduce((n, src) => n + helperCalls(src, "toolError").length, 0);
+    expect(parsed).toBeGreaterThan(100);
+  });
+
+  // #348 (Artem, 2026-11-05): the ErrorCode param type closes the set, so the guard forbids only
+  // casts in the first argument, the one way around the type; variables are allowed.
+  it("should_flag_only_casts_in_the_code_argument", () => {
+    // allowed: literals, errorCodeFor(…), and plain variables or expressions typed ErrorCode
+    expect(toolErrorViolations(`return toolError("internal", m);`)).toEqual([]);
+    expect(toolErrorViolations(`return toolError(errorCodeFor(err), m);`)).toEqual([]);
+    expect(toolErrorViolations(`const code = errorCodeFor(err);\nreturn toolError(code, m);`)).toEqual([]);
+    expect(toolErrorViolations(`return toolError(stop.code, \`stopped at \${id}\`);`)).toEqual([]);
+    expect(toolErrorViolations(`return toolError(busy ? "calibre_busy" : "timeout", m);`)).toEqual([]);
+    // identifiers that merely contain "as" are not casts
+    expect(toolErrorViolations(`return toolError(lastCode, m);`)).toEqual([]);
+    expect(toolErrorViolations(`return toolError(r.alias, "as before");`)).toEqual([]);
+    // forbidden: every cast form, including one wrapped around errorCodeFor(…)
+    expect(toolErrorViolations(`return toolError(code as ErrorCode, m);`)).toHaveLength(1);
+    expect(toolErrorViolations(`return toolError("bogus_code" as ErrorCode, m);`)).toHaveLength(1);
+    expect(toolErrorViolations(`return toolError(x as unknown as ErrorCode, m);`)).toHaveLength(1);
+    expect(toolErrorViolations(`return toolError(errorCodeFor(err) as ErrorCode, m);`)).toHaveLength(1);
+    expect(toolErrorViolations(`return toolError(<ErrorCode>code, m);`)).toHaveLength(1);
+    expect(toolErrorViolations(`return toolError(ok ? "internal" : (raw as ErrorCode), m);`)).toHaveLength(1);
+    expect(toolErrorViolations(`return toolError(\n  // the cause's code\n  raw as ErrorCode,\n  m,\n);`)).toHaveLength(
+      1,
+    );
+    expect(toolErrorViolations(`return toolError<X>(raw as ErrorCode, m);`)).toHaveLength(1);
+    // a cast elsewhere in the call is not the code's business; comments and the definition are not sites
+    expect(toolErrorViolations(`return toolError("internal", m, opts as ToolErrorOptions);`)).toEqual([]);
+    expect(
+      toolErrorViolations(`// toolError(raw as ErrorCode, m)\nexport function toolError(code: ErrorCode) {}`),
+    ).toEqual([]);
+  });
+
+  it("should_parse_every_call_like_occurrence_of_toolError", () => {
+    // an unparsable site must fail here instead of vanishing from the cast scan
+    const all = sourceFiles("src").map((f) => readFileSync(f, "utf8"));
+    const raw = all.reduce((n, src) => n + rawCallLike(src, "toolError"), 0);
+    const parsed = all.reduce((n, src) => n + helperCalls(src, "toolError").length, 0);
+    expect(parsed).toBe(raw);
+  });
+
+  it("should_reject_a_bare_string_outside_the_set_at_compile_time", () => {
+    // Never invoked: the assertion is the compiler's (`pnpm typecheck`), which is why the scan
+    // above does not re-check literals against ERROR_CODES.
+    const compileOnly = () => {
+      // @ts-expect-error "bogus_code" is not an ErrorCode
+      void toolError("bogus_code", "m");
+    };
+    expect(typeof compileOnly).toBe("function");
   });
 });
 
