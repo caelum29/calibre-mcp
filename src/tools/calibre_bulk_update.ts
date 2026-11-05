@@ -13,25 +13,21 @@ import {
   sameItemName,
 } from "../domain/book-fields.js";
 import type { ChangeValue, FieldDiff } from "../domain/book-fields.js";
-import { CalibreCliTimeoutError } from "../domain/errors.js";
 import { buildScopedQuery, honestyLines, resolveFilter } from "../app/bundles.js";
 import { BookId, CoercedBool, jsonArray, jsonRecord, jsonStringList } from "./coerce.js";
 import { defineTool } from "./define.js";
 import { fence, toolError, toolOk, toolErrorFrom, errorFromCatch } from "./result.js";
 import type { ToolResult } from "./types.js";
-import type { BaseDeps } from "./deps.js";
 import type { Book } from "../domain/book.js";
 import { selectBooks } from "../app/select-books.js";
 import { ChangeValueSchema } from "./calibre_update_book.js";
 import {
-  isWriteRefused,
   WRITE_REFUSED_MESSAGE,
   classifyTransient,
   describeTransient,
   withTransientRetry,
-  verifyTimedOutWrite,
-  isDroppedMidRequest,
-  type TimedOutWriteCheck,
+  settleFailedWrite,
+  type FailedWriteOutcome,
   foreignNote,
   type ReReadCause,
 } from "../app/write-policy.js";
@@ -275,62 +271,14 @@ export const bulkUpdateTool = defineTool({
             failed,
             notAttempted: perBook.slice(i + 1).map((p) => p.id),
           };
-          // A drop on ANY attempt may have committed — even one a refusal followed: re-read it
-          // like the single-book path (#342) so a landed write is never reported failed (#370).
-          const dropped = isDroppedMidRequest(err)
-            ? await settleDroppedWrite(deps, {
-                id: b.id,
-                before: b.book,
-                changes: b.changes,
-                library: args.library,
-                err,
-                run,
-              })
-            : undefined;
-          if (dropped === "next") continue;
-          if (dropped) return dropped;
-          if (isWriteRefused(err)) return refusedStop(run, b.id, err);
-          // Retries exhausted. A down server fails every later book the same way, so this is a
-          // circuit breaker (stop like a refusal); a gateway 5xx fails only this book (#233).
-          const transient = classifyTransient(err);
-          if (transient === "connection") {
-            failed.push({ id: b.id, error: describeTransient(err, b.id) });
-            return stoppedMidLoop(
-              { ...run, blockedId: b.id },
-              {
-                headline: UNREACHABLE_HEADLINE,
-                steer: `${describeTransient(err, b.id)} Once it is back`,
-                err,
-              },
-            );
-          }
-          if (transient === "server") {
-            failed.push({ id: b.id, error: describeTransient(err, b.id) });
-            continue;
-          }
-          // Timed-out routed writes may have committed server-side — re-read and count
-          // the book as applied when every requested field landed (issue #33).
-          if (err instanceof CalibreCliTimeoutError) {
-            const check = await verifyTimedOutWrite(deps, {
-              id: b.id,
-              before: b.book,
-              changes: b.changes,
-              library: args.library,
-            });
-            if (check.status === "landed") {
-              applied.push(b.id);
-              confirmed.push({ id: b.id, cause: "timeout" });
-              continue;
-            }
-            failed.push({
-              id: b.id,
-              error:
-                "calibredb timed out and a re-read does not confirm the change — " +
-                `verify with calibre_get_book id=${b.id} before retrying.${foreignNote(check)}`,
-            });
-            continue;
-          }
-          failed.push({ id: b.id, error: err instanceof Error ? err.message : String(err) });
+          // a drop on ANY attempt or a timeout may have committed: the outcome comes from a re-read (#370)
+          const outcome = await settleFailedWrite(
+            deps,
+            { id: b.id, before: b.book, changes: b.changes, library: args.library },
+            err,
+          );
+          const stop = settleBook(outcome, b.id, err, run);
+          if (stop) return stop;
         }
       }
 
@@ -459,48 +407,83 @@ function stoppedMidLoop(run: StoppedRun, cause: StopCause): ToolResult {
       retryIds,
     },
   };
-  // literal codes per branch: the closed-set guard checks every call site textually (#249)
-  if (cause.code === "calibre_unreachable") return toolError("calibre_unreachable", text, opts);
-  if (cause.code === "write_unverified") return toolError("write_unverified", text, opts);
-  return toolError(errorCodeFor(cause.err), text, opts);
+  return toolError(cause.code ?? errorCodeFor(cause.err), text, opts);
 }
 
 const UNREACHABLE_HEADLINE = "Stopped: the Calibre Content Server is unreachable";
 
-/** A book whose write dropped mid-request (on any attempt), plus the loop state so far. */
-interface DroppedWrite {
-  id: number;
-  before: Book;
-  changes: Record<string, ChangeValue>;
-  library?: string;
-  /** The final error of the retried write. */
-  err: unknown;
-  run: Omit<StoppedRun, "blockedId" | "namedInSteer">;
+/** The loop state a failed book is recorded into; {@link stoppedMidLoop} adds where it stopped. */
+type LoopState = Omit<StoppedRun, "blockedId" | "namedInSteer">;
+
+/**
+ * Record a failed book's outcome into the loop state. Returns the stopped result when the rest
+ * of the set can't go on — a refusal, or a connection-class failure (the #233 breaker) — and
+ * `undefined` to keep looping.
+ */
+function settleBook(outcome: FailedWriteOutcome, id: number, err: unknown, run: LoopState): ToolResult | undefined {
+  switch (outcome.kind) {
+    case "confirmed":
+      run.applied.push(id);
+      run.confirmed.push({ id, cause: outcome.cause });
+      return outcome.refused ? refusedAfterLanding(run, id, err) : unreachableAfterLanding(run, id, err);
+    case "unverified":
+      return unverifiedBook(outcome, run, id, err);
+    case "refused":
+      return refusedStop(run, id, err);
+    case "transient":
+      run.failed.push({ id, error: describeTransient(err, id) });
+      // a down server fails every later book the same way; a gateway 5xx fails only this one (#233)
+      if (outcome.transient === "server") return undefined;
+      return stoppedMidLoop(
+        { ...run, blockedId: id },
+        { headline: UNREACHABLE_HEADLINE, steer: `${describeTransient(err, id)} Once it is back`, err },
+      );
+    case "unexpected":
+      run.failed.push({ id, error: err instanceof Error ? err.message : String(err) });
+      return undefined;
+  }
 }
 
 /**
- * Re-read a book whose connection dropped mid-request and record it as applied (landed) or
- * failed with the verify steer (#370). Returns the stopped result when the breaker trips —
- * only a connection-class final error does, as before — or "next" to keep looping.
+ * A book the re-read could not confirm is failed with the verify steer. A timeout or a 5xx/500
+ * tail fails only this book; a refusal or a connection-class tail stops the loop (#370).
  */
-async function settleDroppedWrite(deps: BaseDeps, drop: DroppedWrite): Promise<ToolResult | "next"> {
-  const { id, err, run } = drop;
-  const check = await verifyTimedOutWrite(deps, drop);
-  if (isWriteRefused(err)) return settleRefusedAfterDrop(check, drop);
-  const landed = check.status === "landed";
-  if (landed) {
-    run.applied.push(id);
-    run.confirmed.push({ id, cause: "dropped" });
-  } else run.failed.push({ id, error: describeTransient(err, id) + foreignNote(check) });
-  // a 5xx/500/timeout tail fails only this book; a landed last book has nothing left to stop
-  if (classifyTransient(err) !== "connection" || (landed && run.notAttempted.length === 0)) return "next";
-  if (!landed) {
-    const steer = `${describeTransient(err, id)}${foreignNote(check)} Once it is back`;
+function unverifiedBook(
+  outcome: Extract<FailedWriteOutcome, { kind: "unverified" }>,
+  run: LoopState,
+  id: number,
+  err: unknown,
+): ToolResult | undefined {
+  const note = foreignNote(outcome.check);
+  if (outcome.cause === "timeout") {
+    run.failed.push({
+      id,
+      error:
+        "calibredb timed out and a re-read does not confirm the change — " +
+        `verify with calibre_get_book id=${id} before retrying.${note}`,
+    });
+    return undefined;
+  }
+  run.failed.push({ id, error: describeTransient(err, id) + note });
+  if (outcome.refused) {
+    const steer = `${describeTransient(err, id)}${note} ${REFUSED_STEER}`;
     return stoppedMidLoop(
       { ...run, blockedId: id },
-      { headline: UNREACHABLE_HEADLINE, steer, err, code: "write_unverified" },
+      { headline: REFUSED_HEADLINE, steer, err, code: "write_unverified" },
     );
   }
+  if (classifyTransient(err) !== "connection") return undefined;
+  const steer = `${describeTransient(err, id)}${note} Once it is back`;
+  return stoppedMidLoop(
+    { ...run, blockedId: id },
+    { headline: UNREACHABLE_HEADLINE, steer, err, code: "write_unverified" },
+  );
+}
+
+/** A confirmed drop whose final error is connection-class still trips the breaker for the rest. */
+function unreachableAfterLanding(run: LoopState, id: number, err: unknown): ToolResult | undefined {
+  // a 5xx/500/timeout tail fails nothing more; a landed last book has nothing left to stop
+  if (classifyTransient(err) !== "connection" || run.notAttempted.length === 0) return undefined;
   // confirmed written: the stop is about the server, not this write — don't steer to a re-check
   const steer = `The connection dropped mid-request, but a re-read confirmed book ${id} was written. Once the Content Server is back`;
   return stoppedMidLoop(
@@ -512,34 +495,19 @@ async function settleDroppedWrite(deps: BaseDeps, drop: DroppedWrite): Promise<T
 const REFUSED_HEADLINE = "Calibre refused the write";
 const REFUSED_STEER = `${WRITE_REFUSED_MESSAGE} After fixing the server`;
 
+/** A dropped write that landed before a refusal: the refusal still blocks the rest (#370). */
+function refusedAfterLanding(run: LoopState, id: number, err: unknown): ToolResult | undefined {
+  if (run.notAttempted.length === 0) return undefined; // nothing left for the refusal to block
+  const steer = `A re-read confirmed book ${id} was written before the refusal. ${REFUSED_STEER}`;
+  return stoppedMidLoop({ ...run, blockedId: undefined, namedInSteer: id }, { headline: REFUSED_HEADLINE, steer, err });
+}
+
 /**
  * A refusal blocks every later write too, so stop — but once books have committed, they must
  * stay visible or the model retries the whole set (#33, #213). Records `id` as failed.
  */
-function refusedStop(run: DroppedWrite["run"], id: number, err: unknown): ToolResult {
+function refusedStop(run: LoopState, id: number, err: unknown): ToolResult {
   if (run.applied.length === 0) return toolError("write_refused", WRITE_REFUSED_MESSAGE);
   run.failed.push({ id, error: WRITE_REFUSED_MESSAGE });
   return stoppedMidLoop({ ...run, blockedId: id }, { headline: REFUSED_HEADLINE, steer: REFUSED_STEER, err });
-}
-
-/**
- * A retry that dropped and was then refused (#370): landed → applied, and the refusal still
- * stops the rest; not landed → the plain refusal; re-read failed → the "verify" steer.
- */
-function settleRefusedAfterDrop(check: TimedOutWriteCheck, drop: DroppedWrite): ToolResult | "next" {
-  const { id, err, run } = drop;
-  if (check.status === "not-landed") return refusedStop(run, id, err);
-  if (check.status === "unverifiable") {
-    run.failed.push({ id, error: describeTransient(err, id) + foreignNote(check) });
-    const steer = `${describeTransient(err, id)}${foreignNote(check)} ${REFUSED_STEER}`;
-    return stoppedMidLoop(
-      { ...run, blockedId: id },
-      { headline: REFUSED_HEADLINE, steer, err, code: "write_unverified" },
-    );
-  }
-  run.applied.push(id);
-  run.confirmed.push({ id, cause: "dropped" });
-  if (run.notAttempted.length === 0) return "next"; // nothing left for the refusal to block
-  const steer = `A re-read confirmed book ${id} was written before the refusal. ${REFUSED_STEER}`;
-  return stoppedMidLoop({ ...run, blockedId: undefined, namedInSteer: id }, { headline: REFUSED_HEADLINE, steer, err });
 }
