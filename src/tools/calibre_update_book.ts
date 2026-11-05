@@ -8,23 +8,21 @@ import { buildSetMetadataArgs } from "../calibre/metadata-fields.js";
 import { bookFieldValue, isAllowedField, sameFieldValue } from "../domain/book-fields.js";
 import type { ChangeValue } from "../domain/book-fields.js";
 import type { Book } from "../domain/book.js";
-import { CalibreCliTimeoutError, CalibreHttpError } from "../domain/errors.js";
+import { CalibreHttpError } from "../domain/errors.js";
 import { BookId, jsonRecord } from "./coerce.js";
 import { defineTool } from "./define.js";
 import type { ToolResult } from "./types.js";
-import type { BaseDeps } from "./deps.js";
 import { bookIdArg } from "./resolve-id.js";
 import { resolveNumericId } from "../app/resolve-id.js";
 import { fence, toolError, toolOk, bookNotFound, errorFromCatch } from "./result.js";
 import {
-  isWriteRefused,
   WRITE_REFUSED_MESSAGE,
-  classifyTransient,
   describeTransient,
   withTransientRetry,
-  verifyTimedOutWrite,
+  settleFailedWrite,
+  type FailedWriteOutcome,
   type TimedOutWrite,
-  isDroppedMidRequest,
+  type UnconfirmedCheck,
   foreignNote,
   reReadNote,
   type ReReadCause,
@@ -93,20 +91,9 @@ export const updateBookTool = defineTool({
         );
       } catch (err) {
         const write = { id: numericId, before, changes, library: args.library };
-        // an earlier attempt that dropped may have committed before the refusal — re-read first (#370)
-        if (isWriteRefused(err) && isDroppedMidRequest(err)) return confirmRefusedAfterDrop(deps, write, err);
-        if (isWriteRefused(err)) return toolError("write_refused", WRITE_REFUSED_MESSAGE);
-        // a mid-request drop may arrive after the server committed — verify it like a timeout (#342)
-        if (isDroppedMidRequest(err)) {
-          return confirmDroppedWrite(deps, write, err);
-        }
-        if (classifyTransient(err)) return toolError("calibre_unreachable", describeTransient(err, numericId));
-        // A routed write commits server-side BEFORE calibredb replies, so a timeout is
-        // ambiguous — verify against a re-read instead of reporting failure (issue #33).
-        if (err instanceof CalibreCliTimeoutError) {
-          return confirmTimedOutWrite(deps, write);
-        }
-        throw err;
+        const outcome = await settleFailedWrite(deps, write, err);
+        if (outcome.kind === "unexpected") throw err;
+        return failedWriteResult(outcome, write, err);
       }
 
       // Committed. Nothing below may turn the result into an error (issue #33): a failed
@@ -193,61 +180,47 @@ function diffText(changed: { field: string; before: unknown; after: unknown }[])
 }
 
 /**
- * The write TIMED OUT client-side but may have committed server-side. Re-read the book:
- * if every requested field landed, report success (never fail a committed write — issue
- * #33); otherwise return an error that steers the model to check before retrying.
+ * Render a failed write's outcome: a write a re-read confirmed is a success (never fail a
+ * committed write — #33); anything that may have committed steers to a check before a retry.
  */
-async function confirmTimedOutWrite(deps: BaseDeps, write: TimedOutWrite): Promise<ToolResult> {
-  const { id, before, changes } = write;
-  const check = await verifyTimedOutWrite(deps, write);
+function failedWriteResult(
+  outcome: Exclude<FailedWriteOutcome, { kind: "unexpected" }>,
+  write: TimedOutWrite,
+  err: unknown,
+): ToolResult {
+  const { id } = write;
+  switch (outcome.kind) {
+    case "confirmed":
+      return appliedResult(id, write.before, outcome.after, Object.keys(write.changes), outcome.cause);
+    case "refused":
+      return toolError("write_refused", WRITE_REFUSED_MESSAGE);
+    case "transient":
+      return toolError("calibre_unreachable", describeTransient(err, id));
+    case "unverified":
+      // a drop (refused after or not) keeps the "may have been committed" transient text (#342)
+      if (outcome.cause === "dropped") {
+        return toolError("write_unverified", describeTransient(err, id) + foreignNote(outcome.check));
+      }
+      return toolError("write_unverified", timedOutText(outcome.check, id));
+  }
+}
+
+/** Why a timed-out write is unverified, by what the re-read showed. */
+function timedOutText(check: UnconfirmedCheck, id: number): string {
   if (check.status === "unverifiable" && check.foreign) {
-    return toolError(
-      "write_unverified",
+    return (
       `calibredb timed out and the write can't be confirmed.${foreignNote(check)} ` +
-        `Check with calibre_get_book id=${id} before retrying.`,
+      `Check with calibre_get_book id=${id} before retrying.`
     );
   }
   if (check.status === "unverifiable") {
-    return toolError(
-      "write_unverified",
+    return (
       `calibredb timed out and the book could not be re-read to verify. The write MAY ` +
-        `have been applied — check with calibre_get_book id=${id} before retrying.`,
+      `have been applied — check with calibre_get_book id=${id} before retrying.`
     );
   }
-  if (check.status === "landed") {
-    return appliedResult(id, before, check.after, Object.keys(changes), "timeout");
-  }
-  return toolError(
-    "write_unverified",
+  return (
     `calibredb timed out and a re-read does not show the changes applied. Retry, or check ` +
-      `with calibre_get_book id=${id} first.`,
+    `with calibre_get_book id=${id} first.`
   );
-}
-
-/**
- * The connection DROPPED mid-request (after every transient retry), so the write may have
- * committed. Re-read like a timeout: landed → success; otherwise the "may have been committed —
- * verify" steer. No further retry (#342).
- */
-async function confirmDroppedWrite(deps: BaseDeps, write: TimedOutWrite, err: unknown): Promise<ToolResult> {
-  const check = await verifyTimedOutWrite(deps, write);
-  if (check.status === "landed") {
-    return appliedResult(write.id, write.before, check.after, Object.keys(write.changes), "dropped");
-  }
-  return toolError("write_unverified", describeTransient(err, write.id) + foreignNote(check));
-}
-
-/**
- * A retry that DROPPED and was then REFUSED: the dropped attempt may have committed. Landed →
- * success; not landed → the plain refusal; re-read failed → the "verify" steer (#370).
- */
-async function confirmRefusedAfterDrop(deps: BaseDeps, write: TimedOutWrite, err: unknown): Promise<ToolResult> {
-  const check = await verifyTimedOutWrite(deps, write);
-  if (check.status === "landed") {
-    return appliedResult(write.id, write.before, check.after, Object.keys(write.changes), "dropped");
-  }
-  if (check.status === "unverifiable") {
-    return toolError("write_unverified", describeTransient(err, write.id) + foreignNote(check));
-  }
-  return toolError("write_refused", WRITE_REFUSED_MESSAGE);
 }

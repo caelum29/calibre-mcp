@@ -6,9 +6,9 @@ import { z } from "zod";
 
 vi.mock("../../src/app/write-policy.js", async (orig) => {
   const real = await orig<typeof import("../../src/app/write-policy.js")>();
-  return { ...real, verifyTimedOutWrite: vi.fn(real.verifyTimedOutWrite) };
+  return { ...real, settleFailedWrite: vi.fn(real.settleFailedWrite) };
 });
-import { verifyTimedOutWrite } from "../../src/app/write-policy.js";
+import { settleFailedWrite } from "../../src/app/write-policy.js";
 import { bulkUpdateTool } from "../../src/tools/calibre_bulk_update.js";
 import { CalibreCliTimeoutError } from "../../src/domain/errors.js";
 import type { BaseDeps } from "../../src/tools/deps.js";
@@ -26,7 +26,7 @@ describe("tags ops — write-verify gets the merged list (PR #333 review)", () =
       },
     });
     await run({ ids: [1], changes: { publisher: "P" }, tags_add: ["DDD"], tags_remove: ["x"], preview: false }, f.deps);
-    expect(vi.mocked(verifyTimedOutWrite).mock.calls.map(([, w]) => w.changes)).toEqual([
+    expect(vi.mocked(settleFailedWrite).mock.calls.map(([, w]) => w.changes)).toEqual([
       { publisher: "P", tags: ["old", "DDD"] },
     ]);
   });

@@ -17,13 +17,19 @@ books already written?
 
 - A timeout or dropped connection after `calibredb` was invoked goes through
   `verifyTimedOutWrite`: confirmed → success, unconfirmed → steer to `calibre_get_book`.
-  Inline re-read logic is a twin (#221).
+  Inline re-read logic is a twin (#221). A retried `set_metadata` maps its error through
+  `settleFailedWrite` (`app/write-policy.ts`), and tools only render the outcome (#390).
 - Only idempotent `set_metadata` writes retry; a retry on `add`/`remove`/`add_format` is a finding.
 
 ## One equality
 
-- Diffs, "did it land" checks and no-op detection all compare via `sameFieldValue`. A new
+- Diffs, previews and no-op detection compare via `sameFieldValue`. A new
   `JSON.stringify(a) === JSON.stringify(b)` or field-specific comparison is a twin (#254, #202).
+- "Did it land" checks after an ambiguous write compare via `matchesIntended`: `sameFieldValue`
+  plus Calibre's own normalizations (case-insensitive tag/language sets, split author entries,
+  numeric strings). Preview stays strict on purpose: a case-only tag edit is a real rename (#390).
+- A pubdate counts as landed within ±1 day: Calibre stores a date-only pubdate as local midnight
+  and reads it back in UTC (#380). The accepted risk is a concurrent GUI edit to an adjacent day.
 - Unchanged fields never appear in the diff or the summary.
 
 ## Library identity

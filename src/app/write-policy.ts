@@ -1,6 +1,6 @@
 // Write policy for routed calibredb writes (#260): one home for how every write tool treats
 // a refusal, a transient failure and a timeout. Sections, in order: refusal classification,
-// transient-failure retry (#233), timed-out-write verification (#33).
+// transient-failure retry (#233), timed-out-write verification (#33), failed-write outcome (#390).
 
 import { CalibreCliError, CalibreCliTimeoutError } from "../domain/errors.js";
 import { CONNECTION_STDERR, DROPPED_MID_REQUEST_STDERR, WRITE_REFUSED_STDERR } from "../domain/calibredb-stderr.js";
@@ -205,4 +205,56 @@ export function foreignNote(check: TimedOutWriteCheck): string {
     ` A re-read shows ${fields.join("; ")} — another edit (e.g. the Calibre GUI) or Calibre's own ` +
     "normalization may explain it."
   );
+}
+
+// ── failed-write outcome ──
+// One mapping (#390) from a failed routed `set_metadata` to what happened, so the single-book and
+// bulk tools only render it. The order is fixed: a refusal that followed a drop is re-read first,
+// since the dropped attempt may have committed (#370); a plain timeout is re-read last (#33).
+
+/** A re-read that did not confirm the write: every {@link TimedOutWriteCheck} but `landed`. */
+export type UnconfirmedCheck = Exclude<TimedOutWriteCheck, { status: "landed" }>;
+
+/** What a failed routed write amounts to, judged from its error and, when it may have committed, a re-read. */
+export type FailedWriteOutcome =
+  /** A re-read shows every requested change: success. `refused`: a refusal followed the drop. */
+  | { kind: "confirmed"; cause: ReReadCause; after: Book; refused: boolean }
+  /** It may have committed, but the re-read can't confirm it: steer to calibre_get_book. */
+  | { kind: "unverified"; cause: ReReadCause; check: UnconfirmedCheck; refused: boolean }
+  /** The server refused the write, and nothing a dropped attempt sent landed. */
+  | { kind: "refused" }
+  /** Retries exhausted on a failure that never reached the server. */
+  | { kind: "transient"; transient: TransientKind }
+  /** None of the above: the caller reports or rethrows `err` as is. */
+  | { kind: "unexpected" };
+
+/**
+ * Classify the error of a failed routed write, re-reading the book whenever it may have
+ * committed (a drop on any attempt, or a timeout). A committed write is never a failure (#33).
+ */
+export async function settleFailedWrite(
+  deps: BaseDeps,
+  write: TimedOutWrite,
+  err: unknown,
+): Promise<FailedWriteOutcome> {
+  const refused = isWriteRefused(err);
+  if (isDroppedMidRequest(err)) return reRead(deps, write, "dropped", refused);
+  if (refused) return { kind: "refused" };
+  const transient = classifyTransient(err);
+  if (transient) return { kind: "transient", transient };
+  if (err instanceof CalibreCliTimeoutError) return reRead(deps, write, "timeout", false);
+  return { kind: "unexpected" };
+}
+
+async function reRead(
+  deps: BaseDeps,
+  write: TimedOutWrite,
+  cause: ReReadCause,
+  refused: boolean,
+): Promise<FailedWriteOutcome> {
+  const check = await verifyTimedOutWrite(deps, write);
+  if (check.status === "landed") return { kind: "confirmed", cause, after: check.after, refused };
+  // a refusal is the answer once the re-read shows the dropped attempt did not land (#370)
+  if (refused && check.status === "not-landed") return { kind: "refused" };
+  return { kind: "unverified", cause, check, refused };
 }
