@@ -152,7 +152,7 @@ describe("list-diff failure names the re-freeze (#392 decision 1)", () => {
     const res = evaluateListDiff(moved, base, { tier: "hash", topK: 10, allow: [] });
     expect(res.checks[0]!.detail).toBe(
       "1 changed, 0 allowed (of 2 rows): hybrid/sp-01 — intended? re-freeze with `pnpm eval:hash-freeze` " +
-        "(rule first, D-012) or add an allow-file entry with a reason",
+        "(rule first, D-012)",
     );
   });
 
