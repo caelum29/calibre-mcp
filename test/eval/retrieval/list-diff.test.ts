@@ -199,7 +199,8 @@ describe("hash tier list diff vs hash-baseline.json", () => {
     "the current hash run reproduces every frozen top-10 list",
     async () => {
       const res = evaluateListDiff(await runHashEval(), fromRankBaseline(frozen), hashOpts);
-      expect(res.drops).toEqual([]);
+      // the detail carries the re-freeze hint, so a failure prints how to fix it (#392)
+      expect(res.drops, res.checks[0]!.detail).toEqual([]);
       expect(res.checks[0]!.detail).toBe("0 changed, 0 allowed (of 204 rows)");
     },
     thresholds.hashGate!.maxDurationMs,

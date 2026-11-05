@@ -184,3 +184,20 @@ describe("pruneHashAllowEntries (re-freeze leaves no stale hash entries)", () =>
     expect(pruneHashAllowEntries(file)).toEqual({ file, removed: [] });
   });
 });
+
+describe("golden-set failures print the re-freeze command (#398 review)", () => {
+  // compares hashes without a run, so the failure message (the check detail) is all `pnpm test` shows
+  const tiers: Array<[Parameters<typeof evaluateGoldenSet>[2], string]> = [
+    ["on", thresholds.baselineReport],
+    ["fusionOnly", thresholds.fusionOnly!.baselineReport!],
+    ["hash", thresholds.hashGate!.baselineReport!],
+  ];
+  for (const [tier, rel] of tiers) {
+    it(`${tier}: ${rel} was frozen on the committed queries.json`, () => {
+      const raw = JSON.parse(readFileSync(path.join(HERE, rel), "utf8")) as EvalReport | RankBaseline;
+      const base = "perQuery" in raw && "meta" in raw ? raw : fromRankBaseline(raw);
+      const check = evaluateGoldenSet(reportWith(currentGoldenSetHash()), base, tier).checks[0]!;
+      expect(check.pass, check.detail).toBe(true);
+    });
+  }
+});
