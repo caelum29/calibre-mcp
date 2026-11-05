@@ -8,6 +8,8 @@
 //
 // Source syntax:
 //   {{include file}}   replaced by that file's content (path relative to the including file)
+//   // {{include file}}  the same for a whole line in a .js source: the comment keeps the source
+//                      valid JS for oxlint, and is dropped along with the marker
 //   /*@ … @*/ or <!--@ … @-->  a leading source-only header, dropped from the output
 // Runtime placeholders (__TOOL__, __VERSION__, __VARIANT__, __DEBUG__) pass through untouched;
 // the *-html.ts modules fill them per render.
@@ -31,6 +33,7 @@ const ENTRIES = [
 
 const HEADER = /^(?:\/\*@[\s\S]*?@\*\/|<!--@[\s\S]*?@-->)\n/;
 const INCLUDE = /\{\{include ([\w./-]+)\}\}/g;
+const JS_INCLUDE_LINE = /^[ \t]*\/\/[ \t]*\{\{include ([\w./-]+)\}\}[ \t]*\n/gm;
 
 function fail(msg) {
   process.stderr.write(`gen-widgets: ${msg}\n`);
@@ -42,7 +45,8 @@ function assemble(file, stack = []) {
   if (stack.includes(file)) fail(`include cycle: ${[...stack, file].join(" -> ")}`);
   if (!existsSync(file)) fail(`missing include ${path.relative(root, file)}`);
   const body = readFileSync(file, "utf8").replace(HEADER, "");
-  return body.replace(INCLUDE, (_, rel) => assemble(path.join(path.dirname(file), rel), [...stack, file]));
+  const inline = (_, rel) => assemble(path.join(path.dirname(file), rel), [...stack, file]);
+  return body.replace(JS_INCLUDE_LINE, inline).replace(INCLUDE, inline);
 }
 
 const lines = [

@@ -1,51 +1,10 @@
-/*@ Cover-board shell (#271 source, inlined by scripts/gen-widgets.mjs): tokens, base, meta row
-   + variant toggle. The ONLY place board colors live (frozen mockup); both variants consume these tokens. @*/
-/* ============ tokens — the ONLY place colors live (frozen mockup) ============ */
+/*@ Cover-board shell (#271 source, inlined by scripts/gen-widgets.mjs): base, meta row
+   + variant toggle; the palette comes from shared/tokens.css (#271). Both variants consume its tokens. @*/
+{{include ../shared/tokens.css}}
+/* board-only: a lighter scrim, and a thinner page stack sized for tile covers */
 :root{
-  color-scheme: light dark;
-  /* fallbacks (no light-dark support) */
-  --bg:#faf7f2; --tx:#33302b; --tx-muted:#8a8378; --card:#ffffff;
-  --line:rgba(60,50,40,.14); --accent:#c67139; --accent-deep:#8f4c20; --btn:#ffffff;
-  /* live tokens */
-  --bg: light-dark(#faf7f2, #262624);
-  --tx: light-dark(#33302b, #ece9e3);
-  --tx-muted: light-dark(#8a8378, #9c958a);
-  --card: light-dark(#ffffff, #31302e);
-  --line: light-dark(rgba(60,50,40,.14), rgba(255,255,255,.13));
-  --accent: light-dark(#c67139, #d98d55);
-  --accent-deep: light-dark(#8f4c20, #e8ab7d);
-  --accent-tint: light-dark(rgba(198,113,57,.12), rgba(217,141,85,.16));
-  --btn: light-dark(rgba(255,255,255,.94), rgba(49,48,46,.94));
-  --skel: light-dark(rgba(60,50,40,.08), rgba(255,255,255,.07));
-  --skel-hi: light-dark(rgba(255,255,255,.65), rgba(255,255,255,.09));
-  --shadow: 0 1px 2px rgba(0,0,0,.07), 0 5px 16px rgba(0,0,0,.09);
-  --shadow-lg: 0 2px 4px rgba(0,0,0,.09), 0 10px 26px rgba(0,0,0,.14);
   --scrim: light-dark(rgba(255,253,250,.88), rgba(38,38,36,.88));
-  /* book-volume knobs */
-  --spine: light-dark(rgba(0,0,0,.16), rgba(0,0,0,.42));
-  --crease: light-dark(rgba(255,255,255,.55), rgba(255,255,255,.14));
-  --sheen: light-dark(rgba(255,255,255,.26), rgba(255,255,255,.05));
-  --pages: light-dark(#f1ebe0, #46453f);
-  --pages-line: light-dark(#d8d0c2, #2c2b28);
   --pagestack: 1.5px 0 0 var(--pages), 2.5px 0 0 var(--pages-line), 4px 0 0 var(--pages), 5px 0 0 var(--pages-line);
-  /* generated-cover knobs (hue arrives per-card via --h/--h2) */
-  --cov-l:84%; --cov-l2:73%; --cov-c:.05; --cov-c2:.075;
-  --cov-tx-l:29%; --cov-tx-c:.055;
-  --cov-line:rgba(0,0,0,.10); --cov-shine:rgba(255,255,255,.35);
-}
-:root[data-theme="light"]{ color-scheme:light; }
-:root[data-theme="dark"]{ color-scheme:dark; }
-:root[data-theme="dark"]{
-  --cov-l:39%; --cov-l2:30%; --cov-c:.045; --cov-c2:.06;
-  --cov-tx-l:91%; --cov-tx-c:.03;
-  --cov-line:rgba(255,255,255,.12); --cov-shine:rgba(255,255,255,.08);
-}
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    --cov-l:39%; --cov-l2:30%; --cov-c:.045; --cov-c2:.06;
-    --cov-tx-l:91%; --cov-tx-c:.03;
-    --cov-line:rgba(255,255,255,.12); --cov-shine:rgba(255,255,255,.08);
-  }
 }
 /* ============ base ============ */
 *{box-sizing:border-box}

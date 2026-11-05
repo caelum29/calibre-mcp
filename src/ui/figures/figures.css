@@ -1,31 +1,12 @@
-/*@ Figures-strip styles; tokens follow the cover-board family plus the plate/mat knobs. @*/
-/* ============ tokens (shared family: cover-board, book-card) ============ */
+/*@ Figures-strip styles; palette from shared/tokens.css plus the plate/mat knobs. @*/
+{{include ../shared/tokens.css}}
 :root{
-  color-scheme: light dark;
-  --bg: light-dark(#faf7f2, #262624);
-  --tx: light-dark(#33302b, #ece9e3);
-  --tx-muted: light-dark(#8a8378, #9c958a);
-  --card: light-dark(#ffffff, #31302e);
-  --line: light-dark(rgba(60,50,40,.14), rgba(255,255,255,.13));
-  --accent: light-dark(#c67139, #d98d55);
-  --accent-deep: light-dark(#8f4c20, #e8ab7d);
-  --accent-tint: light-dark(rgba(198,113,57,.12), rgba(217,141,85,.16));
-  --sage: light-dark(#7a8a5e, #95a67a);
-  --sage-tint: light-dark(rgba(122,138,94,.14), rgba(149,166,122,.16));
-  --btn: light-dark(rgba(255,255,255,.94), rgba(49,48,46,.94));
-  --skel: light-dark(rgba(60,50,40,.08), rgba(255,255,255,.07));
-  --skel-hi: light-dark(rgba(255,255,255,.65), rgba(255,255,255,.09));
-  --shadow: 0 1px 2px rgba(0,0,0,.07), 0 5px 16px rgba(0,0,0,.09);
-  --shadow-lg: 0 2px 4px rgba(0,0,0,.09), 0 10px 26px rgba(0,0,0,.14);
-  --scrim: light-dark(rgba(255,253,250,.92), rgba(38,38,36,.92));
   /* the plate: line art is dark-on-white, so paper stays paper in both themes —
      softened in dark so a white diagram reads as an illustration, not a glowing hole */
   --plate: light-dark(#ffffff, #e9e4db);
   --plate-edge: light-dark(rgba(60,50,40,.15), rgba(0,0,0,.5));
   --plate-mat: light-dark(#f3ece1, #2c2b28);   /* mat board the plate sits on */
 }
-:root[data-theme="light"]{ color-scheme:light; }
-:root[data-theme="dark"]{ color-scheme:dark; }
 
 *{box-sizing:border-box}
 html,body{margin:0}

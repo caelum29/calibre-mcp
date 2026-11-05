@@ -17,6 +17,7 @@
     "src/ui/card/**",
     "src/ui/figures/**",
     "src/ui/debug.js",
+    "src/ui/shared/**",
     "src/ui/generated/**"
   ]
 }

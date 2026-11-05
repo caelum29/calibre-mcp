@@ -5,11 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>calibre-mcp book detail</title>
 <style>
-/* ============ tokens — shared with the cover-board widget (frozen mockup) ============ */
+/* ============ tokens — the ONLY place the palette lives (frozen mockup) ============ */
 :root{
   color-scheme: light dark;
+  /* fallbacks (no light-dark support) */
   --bg:#faf7f2; --tx:#33302b; --tx-muted:#8a8378; --card:#ffffff;
-  --line:rgba(60,50,40,.14); --accent:#c67139; --btn:#ffffff;
+  --line:rgba(60,50,40,.14); --accent:#c67139; --accent-deep:#8f4c20; --btn:#ffffff;
+  /* live tokens */
   --bg: light-dark(#faf7f2, #262624);
   --tx: light-dark(#33302b, #ece9e3);
   --tx-muted: light-dark(#8a8378, #9c958a);
@@ -33,7 +35,7 @@
   --pages: light-dark(#f1ebe0, #46453f);
   --pages-line: light-dark(#d8d0c2, #2c2b28);
   --pagestack: 2px 0 0 var(--pages), 3.5px 0 0 var(--pages-line), 5.5px 0 0 var(--pages), 7px 0 0 var(--pages-line);
-  /* generated cover */
+  /* generated cover (hue arrives per-card via --h/--h2) */
   --cov-l:84%; --cov-l2:73%; --cov-c:.05; --cov-c2:.075;
   --cov-tx-l:29%; --cov-tx-c:.055;
   --cov-line:rgba(0,0,0,.10); --cov-shine:rgba(255,255,255,.35);
@@ -52,6 +54,7 @@
     --cov-line:rgba(255,255,255,.12); --cov-shine:rgba(255,255,255,.08);
   }
 }
+
 *{box-sizing:border-box}
 html,body{margin:0}
 body{
@@ -298,6 +301,15 @@ body[data-noread="1"] .coverbtn{cursor:default; pointer-events:none}
   function rpcRespond(id, result) {
     window.parent.postMessage({ jsonrpc: "2.0", id: id, result: result }, "*");
   }
+
+  // light/dark follows the host; no theme in the context hands control back to prefers-color-scheme
+  function applyHostContext(ctx) {
+    if (!ctx) return;
+    var t = ctx.theme;
+    if (t === "dark" || t === "light") document.documentElement.dataset.theme = t;
+    else if (t) delete document.documentElement.dataset.theme;
+  }
+
   /* ================= probe debug (CALIBRE_MCP_WIDGET_DEBUG, issues #69/#72) ================= */
   var dbgPre = document.createElement("pre");
   dbgPre.id = "dbgLog";
@@ -431,13 +443,6 @@ body[data-noread="1"] .coverbtn{cursor:default; pointer-events:none}
       return;
     }
   });
-
-  function applyHostContext(ctx) {
-    if (!ctx) return;
-    var t = ctx.theme;
-    if (t === "dark" || t === "light") document.documentElement.dataset.theme = t;
-    else if (t) delete document.documentElement.dataset.theme;
-  }
 
   /* ================= data flow =================
      Spec hosts keep structuredContent on the tool-result notification; Claude Desktop

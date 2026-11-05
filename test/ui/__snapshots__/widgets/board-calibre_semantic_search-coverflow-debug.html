@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>calibre-mcp cover board</title>
 <style>
-/* ============ tokens — the ONLY place colors live (frozen mockup) ============ */
+/* ============ tokens — the ONLY place the palette lives (frozen mockup) ============ */
 :root{
   color-scheme: light dark;
   /* fallbacks (no light-dark support) */
@@ -20,20 +20,22 @@
   --accent: light-dark(#c67139, #d98d55);
   --accent-deep: light-dark(#8f4c20, #e8ab7d);
   --accent-tint: light-dark(rgba(198,113,57,.12), rgba(217,141,85,.16));
+  --sage: light-dark(#7a8a5e, #95a67a);
+  --sage-tint: light-dark(rgba(122,138,94,.14), rgba(149,166,122,.16));
   --btn: light-dark(rgba(255,255,255,.94), rgba(49,48,46,.94));
   --skel: light-dark(rgba(60,50,40,.08), rgba(255,255,255,.07));
   --skel-hi: light-dark(rgba(255,255,255,.65), rgba(255,255,255,.09));
   --shadow: 0 1px 2px rgba(0,0,0,.07), 0 5px 16px rgba(0,0,0,.09);
   --shadow-lg: 0 2px 4px rgba(0,0,0,.09), 0 10px 26px rgba(0,0,0,.14);
-  --scrim: light-dark(rgba(255,253,250,.88), rgba(38,38,36,.88));
-  /* book-volume knobs */
+  --scrim: light-dark(rgba(255,253,250,.92), rgba(38,38,36,.92));
+  /* book volume */
   --spine: light-dark(rgba(0,0,0,.16), rgba(0,0,0,.42));
   --crease: light-dark(rgba(255,255,255,.55), rgba(255,255,255,.14));
   --sheen: light-dark(rgba(255,255,255,.26), rgba(255,255,255,.05));
   --pages: light-dark(#f1ebe0, #46453f);
   --pages-line: light-dark(#d8d0c2, #2c2b28);
-  --pagestack: 1.5px 0 0 var(--pages), 2.5px 0 0 var(--pages-line), 4px 0 0 var(--pages), 5px 0 0 var(--pages-line);
-  /* generated-cover knobs (hue arrives per-card via --h/--h2) */
+  --pagestack: 2px 0 0 var(--pages), 3.5px 0 0 var(--pages-line), 5.5px 0 0 var(--pages), 7px 0 0 var(--pages-line);
+  /* generated cover (hue arrives per-card via --h/--h2) */
   --cov-l:84%; --cov-l2:73%; --cov-c:.05; --cov-c2:.075;
   --cov-tx-l:29%; --cov-tx-c:.055;
   --cov-line:rgba(0,0,0,.10); --cov-shine:rgba(255,255,255,.35);
@@ -51,6 +53,12 @@
     --cov-tx-l:91%; --cov-tx-c:.03;
     --cov-line:rgba(255,255,255,.12); --cov-shine:rgba(255,255,255,.08);
   }
+}
+
+/* board-only: a lighter scrim, and a thinner page stack sized for tile covers */
+:root{
+  --scrim: light-dark(rgba(255,253,250,.88), rgba(38,38,36,.88));
+  --pagestack: 1.5px 0 0 var(--pages), 2.5px 0 0 var(--pages-line), 4px 0 0 var(--pages), 5px 0 0 var(--pages-line);
 }
 /* ============ base ============ */
 *{box-sizing:border-box}
@@ -398,6 +406,15 @@ body[data-nomsg="1"] [data-need="msg"]{display:none}
   function rpcRespond(id, result) {
     window.parent.postMessage({ jsonrpc: "2.0", id: id, result: result }, "*");
   }
+
+  // light/dark follows the host; no theme in the context hands control back to prefers-color-scheme
+  function applyHostContext(ctx) {
+    if (!ctx) return;
+    var t = ctx.theme;
+    if (t === "dark" || t === "light") document.documentElement.dataset.theme = t;
+    else if (t) delete document.documentElement.dataset.theme;
+  }
+
   /* ================= probe debug (CALIBRE_MCP_WIDGET_DEBUG, issues #69/#72) ================= */
   var dbgPre = document.createElement("pre");
   dbgPre.id = "dbgLog";
@@ -545,13 +562,6 @@ body[data-nomsg="1"] [data-need="msg"]{display:none}
       return;
     }
   });
-
-  function applyHostContext(ctx) {
-    if (!ctx) return;
-    var t = ctx.theme;
-    if (t === "dark" || t === "light") document.documentElement.dataset.theme = t;
-    else if (t) delete document.documentElement.dataset.theme;
-  }
 
   function collapse() {
     document.body.dataset.collapsed = "1";
