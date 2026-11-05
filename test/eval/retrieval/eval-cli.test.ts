@@ -3,19 +3,19 @@
 // rejection through the real CLI entry, and the allow-file entries checked inside `pnpm test`.
 
 import { execFile } from "node:child_process";
-import { mkdtempSync, readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { Reranker } from "../../../src/semantic/reranker.js";
 import { checkAllowEntries, loadAllowEntries, loadGateBaselines } from "./gate-guards.js";
 import { evaluateFusionOnlyGate, type AllowEntry, type Thresholds } from "./gate.js";
 import { hashEmbedder } from "./hash-embedder.js";
 import { fromRankBaseline, type RankBaseline } from "./hash-gate.js";
 import { runRetrievalEval, type EvalReport, type Mode, type PerQueryRow } from "./harness.js";
-import { degradedWarning, passSummary } from "./run.js";
+import { degradedWarning, parseArgs, passSummary, runPass } from "./run.js";
 import { saturationLines } from "./saturation.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -104,34 +104,77 @@ describe("reranker-degraded run (the model fails to load)", () => {
 
 describe("CLI entry rejects bad --gate flags before any model load", () => {
   const exec = promisify(execFile);
-  // sandbox the work dir + model source, so a regression can't copy or download the model
+  const scratch = mkdtempSync(path.join(tmpdir(), "eval-cli-"));
+  // The work dir is a FILE: if the flag check ever regressed, `mkdirSync(workDir)` fails at once,
+  // before any model copy, index build or network fetch, instead of starting a real eval.
+  const workFile = path.join(scratch, "work-dir-is-a-file");
+  writeFileSync(workFile, "");
   const env = {
     ...process.env,
-    CALIBRE_MCP_EVAL_WORK_DIR: mkdtempSync(path.join(tmpdir(), "eval-cli-")),
-    CALIBRE_MCP_EVAL_MODEL_SOURCE: path.join(tmpdir(), "no-such-model-dir"),
+    CALIBRE_MCP_EVAL_WORK_DIR: workFile,
+    CALIBRE_MCP_EVAL_MODEL_SOURCE: path.join(scratch, "no-such-model-dir"),
   };
-  const cli = (...args: string[]) =>
-    exec(process.execPath, ["--import", "tsx", "test/eval/retrieval/run.ts", ...args], {
-      cwd: ROOT,
-      env,
-      timeout: 20_000,
-    }).then(
+  // a symlinked checkout (macOS /var → /private/var, or a linked worktree) must still run main()
+  const linkedRoot = path.join(scratch, "linked-repo");
+  symlinkSync(ROOT, linkedRoot, "dir");
+  const cli = (entry: string, ...args: string[]) =>
+    exec(process.execPath, ["--import", "tsx", entry, ...args], { cwd: ROOT, env, timeout: 20_000 }).then(
       (r) => ({ code: 0, stderr: r.stderr }),
-      (e: { code?: number; stderr?: string }) => ({ code: e.code, stderr: e.stderr }),
+      (e: { code?: number; stderr?: string }) => ({ code: e.code, stderr: e.stderr ?? "" }),
     );
+  // only our own lines: Node 22 adds an ExperimentalWarning (node:sqlite) to stderr
+  const evalLines = (r: { code?: number; stderr: string }) => ({
+    code: r.code,
+    eval: r.stderr.split("\n").filter((l) => l.startsWith("[eval]")),
+  });
+  const RUN = "test/eval/retrieval/run.ts";
 
   it("--gate --rerank off → exit 1 with the drop --rerank message", async () => {
-    expect(await cli("--gate", "--rerank", "off")).toEqual({
+    expect(evalLines(await cli(RUN, "--gate", "--rerank", "off"))).toEqual({
       code: 1,
-      stderr: "[eval] FAILED: --gate runs both rerank ON and OFF passes itself; drop --rerank.\n",
+      eval: ["[eval] FAILED: --gate runs both rerank ON and OFF passes itself; drop --rerank."],
     });
   }, 30_000);
 
   it("--gate --live → exit 1, the live diff is never a gate", async () => {
-    expect(await cli("--gate", "--live")).toEqual({
+    expect(evalLines(await cli(RUN, "--gate", "--live"))).toEqual({
       code: 1,
-      stderr: "[eval] FAILED: --gate is fixture-only: the live diff is a triage artifact, never a gate (#85).\n",
+      eval: ["[eval] FAILED: --gate is fixture-only: the live diff is a triage artifact, never a gate (#85)."],
     });
+  }, 30_000);
+
+  it("through a symlinked path the entry still runs main() (no silent exit 0)", async () => {
+    expect(evalLines(await cli(path.join(linkedRoot, RUN), "--gate", "--rerank", "off"))).toEqual({
+      code: 1,
+      eval: ["[eval] FAILED: --gate runs both rerank ON and OFF passes itself; drop --rerank."],
+    });
+  }, 30_000);
+});
+
+describe("run path emits the degraded-rerank warning (runPass)", () => {
+  const broken: Reranker = {
+    async rerank() {
+      throw new Error("RERANKER_UNAVAILABLE");
+    },
+    async warmup() {},
+  };
+
+  it("an ON pass whose reranker can't load logs the WARNING line", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "eval-pass-"));
+    const args = parseArgs(["--modes", "keyword,hybrid", "--work-dir", dir, "--out-dir", dir, "--tag", "t"]);
+    const lines: string[] = [];
+    const write = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+    try {
+      await runPass(args, {
+        rerankOff: false,
+        tag: "t",
+        protectedPaths: [],
+        deps: { embedder: hashEmbedder, reranker: broken, log: (m) => lines.push(m) },
+      });
+    } finally {
+      write.mockRestore();
+    }
+    expect(lines).toContain("WARNING: rerank was ON but 0 rows reranked — model unavailable, run is reranker-degraded");
   }, 30_000);
 });
 
@@ -158,6 +201,13 @@ describe("list-diff-allow.json entries are consistent with the frozen baselines 
       "fusionOnly/vector/no-such-id: no such row in the fusionOnly baseline",
       "on/hybrid/sp-01: allows the baseline's own top-10 list (stale entry)",
       "on/hybrid/sp-01: empty reason",
+    ]);
+  });
+
+  it("an entry for a tier with no loaded baseline is a problem, not skipped", () => {
+    const entry: AllowEntry = { tier: "fusionOnly", mode: "hybrid", id: "sp-01", retrieved: ["101"], reason: "x" };
+    expect(checkAllowEntries([entry], { on: gate.on }, cfg.topK)).toEqual([
+      "fusionOnly/hybrid/sp-01: no baseline loaded for tier fusionOnly",
     ]);
   });
 });
