@@ -18,6 +18,11 @@ Repo specifics for the `overnight-orchestrator` skill. The skill holds the proce
 - Changes write-path semantics beyond the issue (write gate, preview-first, timeout verify in `src/app/write-policy.ts`).
 - Touches ranking / chunking / fusion / rerank in `src/semantic/` without a green `pnpm eval --gate`. The gate builds a synthetic corpus, so EPUB/PDF structure changes still need Artem's eye.
 
+## Eval runs
+
+- `pnpm eval --gate` takes ~8 min alone; with model evals running in parallel in several chains it took 13–40 min each (2026-11-04). Expect that, or stagger the eval-heavy items across chains.
+- Since #387 the gate compares every top-10 list exactly on all three tiers (ON, fusion-only, and the hash tier inside `pnpm test`). Any change that moves a ranking, even an improvement, fails until the PR either re-freezes the baseline (rule commit first, D-012) or adds a `test/eval/retrieval/list-diff-allow.json` entry with a reason. The PR body names which one. Policy is under review in #392.
+
 ## Prod and live operations (Artem's, never at night)
 
 - `pnpm reindex` in any production mode, including `--flags-only --production` backfills.
@@ -43,10 +48,12 @@ Never part of the overnight wave.
 
 - **Result shape** (`toolError`, `toolOk`, structuredContent, outputSchema): Claude Desktop shows the model only the text channel, and the Claude Code tab shows only structuredContent when it is present. Does each fact, steer and error message reach the model in both? Run one error and one success through the handler and read both channels.
 - **Tool schema or description**: was `pnpm catalog` rerun and committed? An outputSchema field alone breaks `catalog:check`.
+- **New structuredContent / outputSchema field or changed tool behaviour**: are `docs/TOOLS.md` and the `skills/` manuals updated to match? `catalog:check` doesn't catch prose (#391).
+- **Write path** (`src/tools/calibre_*update*`, `calibre_merge_books`, `src/app/write-policy.ts`): does new outcome logic sit in `src/app/`, not in the tool file? Does it reuse the existing re-read → outcome mapping, or add another copy of it (#390)?
 - **Shared types or module paths moved** (`ToolDeps`, `src/app/`, `semantic/store/`): which open PRs import them? Tell those chains to sync.
 - **Display logic over book text** (snippets, highlights): natural-language queries (stopwords), Cyrillic, short chunks, text at the chunk edge, code containing `>>`/`<<`.
 - **`src/semantic/`**: is the `pnpm eval --gate` output in the body from the current head (`git log -1` sha named), not an earlier commit? A full eval run takes ~7–8 min.
 
 ## Report
 
-Markdown copy at `docs/dev/overnight-<date>.md` (gitignored). Earlier runs: `docs/dev/overnight-2026-10-28.md`, `docs/dev/overnight-2026-10-30.md`, `docs/dev/overnight-2026-10-31.md`, `docs/dev/overnight-2026-11-01.md`.
+Markdown copy at `docs/dev/overnight-<date>.md` (gitignored). Earlier runs: `docs/dev/overnight-2026-10-28.md`, `docs/dev/overnight-2026-10-30.md`, `docs/dev/overnight-2026-10-31.md`, `docs/dev/overnight-2026-11-01.md`, `docs/dev/overnight-2026-11-01-b.md`, `docs/dev/overnight-2026-11-01-c.md`, `docs/dev/overnight-2026-11-04.md`.
