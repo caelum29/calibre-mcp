@@ -50,8 +50,8 @@
   },
   "fusionOnly": {
     "$comment": "#356 fusion-only tier, declared + committed BEFORE the run that freezes its baseline (D-012). With rerank ON, RERANK_POOL (30) covers the whole fixture, so the cross-encoder re-sorts every candidate and a fusion regression is invisible (ON hybrid == vector on all 59 positives). This tier re-runs the suite with --rerank off and compares per-query Hit@1 against a second frozen baseline (fusionOnly.baselineReport, a --rerank off run at the rule commit): no query with Hit@1 = 1 in that baseline may break, in any mode. Cross-lingual queries are report-only (OFF hybrid gets 0/8 today; no floor until fusion is fixed) — their drops are listed but never fail the gate. A query missing from the current run counts as broken. `pnpm eval --gate` runs and prints both passes (ON = the blocks above, OFF = this block).",
-    "baselineReport": "reports/2026-11-04-b1c8ce2-rerankoff.json",
-    "$baselineComment": "Frozen from `pnpm eval --rerank off --tag rerankoff` at b1c8ce2, the rule commit (D-012). OFF Hit@1 hybrid 46/59, vector 47/59, keyword 47/59; cross-lingual hit@1 hybrid 0/8, vector 2/8. 2026-11-05 (#392): meta.goldenSetHash stamped (queries.json at b1c8ce2, unchanged since 2380568); no other byte changed.",
+    "baselineReport": "reports/2026-11-05-eec059d-tiebreak-rerankoff.json",
+    "$baselineComment": "Frozen from `pnpm eval --rerank off --tag rerankoff` at b1c8ce2, the rule commit (D-012). OFF Hit@1 hybrid 46/59, vector 47/59, keyword 47/59; cross-lingual hit@1 hybrid 0/8, vector 2/8. 2026-11-05 (#392): meta.goldenSetHash stamped (queries.json at b1c8ce2, unchanged since 2380568); no other byte changed. Re-frozen 2026-11-05 from the `pnpm eval --gate --tag tiebreak` OFF pass at eec059d (#392 decision 3, total tie-break by id; no rule change): 6 hybrid top-10 lists reordered among tied RRF scores (sp-01, sp-04, spb-01, xl-08, neg-03, fig-04), spb-01 Hit@1 0→1 (OFF hybrid 46/59 → 47/59), nothing worse; vector/keyword identical. Previous baseline: reports/2026-11-04-b1c8ce2-rerankoff.json.",
     "rerank": "off",
     "nonRegression": {
       "hybrid": { "maxBrokenHit1Queries": 0 },
