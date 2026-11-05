@@ -1,0 +1,19 @@
+.github/workflows/eval-nightly.yml
+  s_34f8c895b845ca::t_0a7847a944749d 44,46-50,53,62-64,75-79,81-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9baa1b420780c21ed8594a23657ec88ce6ad10dc",
+  "prompts": {},
+  "sessions": {
+    "s_34f8c895b845ca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "acde0812-c8ad-458d-b52e-46dc5cd004a4",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
