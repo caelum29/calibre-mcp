@@ -1,0 +1,23 @@
+test/eval/retrieval/thresholds.json
+  s_4ba34c72a1f257::t_1736ce292748d9 66
+src/semantic/store/shared.ts
+  s_4ba34c72a1f257::t_1736ce292748d9 118-119
+test/semantic/tie-break-392.test.ts
+  s_4ba34c72a1f257::t_5279c2735cc996 198-224
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "20ce299569910d54f8703d169e02a0ee911e9945",
+  "prompts": {},
+  "sessions": {
+    "s_4ba34c72a1f257": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c53829ca-e425-43bf-b4aa-48cbb05e9525",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
