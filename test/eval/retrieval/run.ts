@@ -19,7 +19,8 @@
 //
 // Every run prints the headroom share and, when rerank-ON hybrid Hit@1 >= 0.95, a saturation
 //   warning (#365, saturation.ts); both are skipped on --live (unverified labels).
-// Offline path: deterministic — two runs at the same commit produce identical JSON.
+// Offline path: deterministic — two runs at the same commit produce identical JSON apart from
+//   the per-row durationMs timings (#363 latency axis).
 // --live: runs library-scope queries against a COPY of the real library index using
 //   live-relevance.json labels (UNVERIFIED until Artem confirms). Never touches the
 //   production index dir beyond reading; skip in CI.
@@ -54,6 +55,7 @@ import {
 } from "./gate.js";
 import { currentGoldenSetHash, evaluateGoldenSet } from "./golden-set.js";
 import { ALL_MODES, renderMarkdown, runRetrievalEval, type EvalReport, type Mode } from "./harness.js";
+import { ablationMatrix, computeAxes, renderAxes } from "./axes.js";
 import { saturationLines } from "./saturation.js";
 import { compareReports, pairingWarnings, renderCompare } from "./stats.js";
 
@@ -201,13 +203,16 @@ interface PassResult {
   jsonPath: string;
 }
 
+/** Per-pass settings: rerank on/off, filename tag, the guarded baselines, the #363 axes block. */
+interface PassOptions {
+  rerankOff: boolean;
+  tag: string | undefined;
+  protectedPaths: string[];
+  axesCfg?: Thresholds["reportOnlyAxes"];
+}
+
 /** One eval run (fresh fixture index or live copy) → report written to outDir + stdout summary. */
-async function runPass(
-  args: CliArgs,
-  rerankOff: boolean,
-  tag: string | undefined,
-  protectedPaths: string[],
-): Promise<PassResult> {
+async function runPass(args: CliArgs, { rerankOff, tag, protectedPaths, axesCfg }: PassOptions): Promise<PassResult> {
   const started = Date.now();
   const sha = gitSha();
   const date = new Date().toISOString().slice(0, 10);
@@ -243,6 +248,8 @@ async function runPass(
     ...(reranker ? { reranker } : {}),
     rerank: rerankLabel,
     gitSha: sha,
+    // #363 latency axis; the CLI is the only caller that records wall-clock timings
+    timing: true,
     ...(args.rrfWeights ? { rrfWeights: args.rrfWeights } : {}),
     ...(live ? { live } : {}),
     onProgress: progress,
@@ -256,12 +263,19 @@ async function runPass(
 
   mkdirSync(args.outDir, { recursive: true });
   writeFileSync(jsonPath, JSON.stringify(report, null, 2) + "\n");
-  writeFileSync(mdPath, renderMarkdown(report, base) + "\n");
+  // #363: report-only axes, skipped on --live like saturation (unverified labels)
+  const axes = axesCfg && !args.live ? renderAxes(computeAxes(report), axesCfg) : [];
+  writeFileSync(
+    mdPath,
+    renderMarkdown(report, base) + (axes.length ? `\n\n\`\`\`text\n${axes.join("\n")}\n\`\`\`` : "") + "\n",
+  );
 
   progress(`${rerankOff ? "rerank-off " : ""}pass done in ${((Date.now() - started) / 1000).toFixed(1)}s`);
   // CLI summary on stdout (this is a script, not the stdio MCP server).
   process.stdout.write(
-    `${headline(report)}\n${saturationLines(report).join("\n")}\n` + `report: ${mdPath}\njson:   ${jsonPath}\n`,
+    `${headline(report)}\n${saturationLines(report).join("\n")}\n` +
+      (axes.length ? `${axes.join("\n")}\n` : "") +
+      `report: ${mdPath}\njson:   ${jsonPath}\n`,
   );
   return { report, mdPath, jsonPath };
 }
@@ -324,7 +338,8 @@ async function main(): Promise<void> {
   mkdirSync(args.workDir, { recursive: true });
   ensureModelCache(args.workDir);
 
-  const on = await runPass(args, args.rerank === "off", args.tag, protectedPaths);
+  const axesCfg = thresholds.reportOnlyAxes;
+  const on = await runPass(args, { rerankOff: args.rerank === "off", tag: args.tag, protectedPaths, axesCfg });
   if (!baselines) return;
 
   // #358 list diff + #392 golden-set hash run beside each tier's own gate, vs the same baseline
@@ -343,7 +358,10 @@ async function main(): Promise<void> {
   const fusion = thresholds.fusionOnly;
   if (fusion && baselines.off) {
     process.stdout.write("\n");
-    const off = await runPass(args, true, [args.tag, "rerankoff"].filter(Boolean).join("-"), protectedPaths);
+    const tag = [args.tag, "rerankoff"].filter(Boolean).join("-");
+    const off = await runPass(args, { rerankOff: true, tag, protectedPaths, axesCfg });
+    // #363 ablation axis (report-only): needs both passes, so it prints here
+    process.stdout.write(`\n${ablationMatrix(on.report, off.report).join("\n")}\n`);
     const offResult = withList(
       evaluateFusionOnlyGate(off.report, baselines.off, fusion),
       off.report,

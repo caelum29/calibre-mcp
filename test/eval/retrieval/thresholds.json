@@ -71,6 +71,34 @@
     },
     "maxDurationMs": 30000
   },
+  "$reportOnlyAxesComment": "#363, declared + committed BEFORE any measuring run (D-012). Every axis below is REPORT-ONLY (`gate: false`): every `pnpm eval` run prints it and the md report lists it, no gate reads it. Each states the trend it is watched for; promoting one to a gate is a new rule commit before the run that measures it. The new per-row fields (durationMs, snippetHasMarker, top2Rerank, spanHit, lowConfidence) are additive and optional, so the frozen baselines stay valid without them. durationMs is wall-clock, recorded only by the `pnpm eval` CLI (never in `pnpm test`), and never read by the hash tier, the list diff or any baseline comparison.",
+  "reportOnlyAxes": {
+    "snippetMarker": {
+      "gate": false,
+      "trend": "higher is better, target 1.0: for book-scope queries, the #243 snippet window of the first passage that holds a labelled marker shows that marker"
+    },
+    "spanHit": {
+      "gate": false,
+      "trend": "higher is better: book-scope span-hit@1/@3/@5 = share of positive book-scope queries whose labelled marker sits in a top-k passage that overlaps its span"
+    },
+    "confidence": {
+      "gate": false,
+      "trend": "false-flag rate (lowConfidence on Hit@1 = 1 positives) down; AUC of maxRerank and of the top1-top2 rerank margin for telling Hit@1 = 1 apart from misses + negatives up (0.5 = the signal is noise). Reranked rows only."
+    },
+    "latency": {
+      "gate": false,
+      "trend": "lower is better; p50/p95 per-query ms per mode, same-machine comparisons only (wall-clock, noisy)"
+    },
+    "ablation": {
+      "gate": false,
+      "trend": "`--gate` prints overall Hit@1 / nDCG@10 per mode x rerank on/off; a fusion change shows in the OFF column, a reranker change in the ON-OFF gap. Chunk-size variants are not wired yet."
+    },
+    "highlightInvariant": {
+      "gate": false,
+      "measured": false,
+      "trend": "violations must be 0 (no highlight on a non-query word or a NOT operand). Not measured by this harness yet: highlights come from calibre_search's FTS path, which the fixture doesn't run."
+    }
+  },
   "liveEval": {
     "$comment": "Before/after diff on the real library is a mandatory triage artifact, NOT a gate — live-relevance.json labels are unverified and the re-index mixes markers + figures + D-016 demotion.",
     "gate": false
