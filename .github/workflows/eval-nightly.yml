@@ -41,12 +41,16 @@ jobs:
         run: |
           grep -q '"Xenova/multilingual-e5-small"' src/semantic/model.ts
           grep -q '"onnx-community/bge-reranker-v2-m3-ONNX"' src/semantic/reranker.ts
-      - name: Read the transformers.js version
+      - name: Read the resolved transformers.js version
         id: tf
-        run: echo "version=$(node -p "require('./package.json').optionalDependencies['@huggingface/transformers']")" >> "$GITHUB_OUTPUT"
+        # from the lockfile, not the package.json specifier, so a range can never land in the key
+        run: |
+          v=$(grep -m1 -oE "'@huggingface/transformers@[^':]+'" pnpm-lock.yaml | sed -E "s/.*@([^@']+)'/\1/")
+          test -n "$v"
+          echo "version=$v" >> "$GITHUB_OUTPUT"
       - name: Restore model cache
         id: models
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           # run.ts keeps models under <work-dir>/models; the default work dir is gitignored
           path: test/eval/retrieval/.work/models
@@ -55,6 +59,9 @@ jobs:
         run: |
           echo "model cache hit: ${{ steps.models.outputs.cache-hit }} (transformers ${{ steps.tf.outputs.version }})"
           echo "model cache hit: \`${{ steps.models.outputs.cache-hit }}\` (transformers \`${{ steps.tf.outputs.version }}\`)" >> "$GITHUB_STEP_SUMMARY"
+      # run.ts symlinks <work-dir>/models into each pass's throwaway dir ONLY if it exists; on a
+      # cold run without it the e5 model would download into the discarded dir and never be cached.
+      - run: mkdir -p test/eval/retrieval/.work/models
 
       # Report-only: a failing gate must not turn the run red until a Linux baseline exists. The
       # outcome goes to the log, an annotation and the job summary instead.
@@ -65,8 +72,37 @@ jobs:
       - name: Report the gate outcome
         if: always()
         run: |
-          echo "::notice::eval gate outcome: ${{ steps.gate.outcome }} (report-only, not blocking)"
+          if [ "${{ steps.gate.outcome }}" = "success" ]; then
+            echo "::notice::eval gate outcome: success"
+          else
+            echo "::warning::eval gate outcome: ${{ steps.gate.outcome }} (report-only, not blocking)"
+          fi
           echo "eval gate outcome: \`${{ steps.gate.outcome }}\` (report-only until a Linux baseline exists)" >> "$GITHUB_STEP_SUMMARY"
+
+      # Both models must be fully there before the cache is saved: a crashed or partial download
+      # would otherwise be stored under the same key and stick (an exact-key hit never re-saves).
+      - name: Check both models are in the cache dir
+        id: models_ok
+        if: always()
+        run: |
+          dir=test/eval/retrieval/.work/models
+          ok=true
+          for m in Xenova/multilingual-e5-small onnx-community/bge-reranker-v2-m3-ONNX; do
+            if [ -z "$(find "$dir/$m" -name '*.onnx' -type f 2>/dev/null | head -1)" ]; then ok=false; fi
+          done
+          echo "complete=$ok" >> "$GITHUB_OUTPUT"
+          {
+            echo "model cache dir: \`$(du -sh "$dir" 2>/dev/null | cut -f1)\` (complete: \`$ok\`)"
+            echo '```'
+            find "$dir" -maxdepth 2 -mindepth 2 -type d 2>/dev/null | sort
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Save model cache
+        if: always() && steps.models.outputs.cache-hit != 'true' && steps.models_ok.outputs.complete == 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: test/eval/retrieval/.work/models
+          key: ${{ steps.models.outputs.cache-primary-key }}
       - name: Upload the report
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
