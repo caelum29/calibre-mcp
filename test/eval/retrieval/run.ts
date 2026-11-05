@@ -19,7 +19,8 @@
 //
 // Every run prints the headroom share and, when rerank-ON hybrid Hit@1 >= 0.95, a saturation
 //   warning (#365, saturation.ts); both are skipped on --live (unverified labels).
-// Offline path: deterministic — two runs at the same commit produce identical JSON.
+// Offline path: deterministic — two runs at the same commit produce identical JSON apart from
+//   the per-row durationMs timings (#363 latency axis).
 // --live: runs library-scope queries against a COPY of the real library index using
 //   live-relevance.json labels (UNVERIFIED until Artem confirms). Never touches the
 //   production index dir beyond reading; skip in CI.

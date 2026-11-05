@@ -164,7 +164,7 @@ comes from `durationMs`, which only the `pnpm eval` CLI records (`HarnessOptions
 - `pnpm eval` is NOT part of `pnpm test` (it needs the embedding model and real minutes);
   the smoke tests and the tier-0 hash gate are.
 - Offline determinism: fixed model (`Xenova/multilingual-e5-small` q8), no network after
-  the first model download, identical JSON on re-run.
+  the first model download, identical JSON on re-run apart from `durationMs`.
 - Reports are committed. Baseline first, then one report per tuning change, so every
   fusion/reranker/model decision cites numbers, not vibes.
 - No held-out set yet: every query has been used for tuning (model bake-off, RRF sweep,
