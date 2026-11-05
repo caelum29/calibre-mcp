@@ -195,3 +195,30 @@ describe("rerank stage", () => {
     ]);
   });
 });
+
+describe("ids compare as numbers, not strings (9 before 10)", () => {
+  it("vector topK: book 10 and book 9 at equal cosine → 9 first", () => {
+    const v = l2normalize(Float32Array.from([0, 1, 0]));
+    const cands = [
+      { chunkId: 100, bookId: 10, vector: v },
+      { chunkId: 90, bookId: 9, vector: v },
+    ];
+    expect(topK(v, cands, 2).map((h) => h.bookId)).toEqual([9, 10]);
+  });
+
+  it("library FTS: books 10 and 9 at equal bm25 → 9 first", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "calibre-mcp-tie-num-"));
+    const s = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: dir }));
+    try {
+      for (const bookId of [10, 9]) {
+        s.replaceBook("Num_Lib", { bookId, title: "Same", authors: ["A"] }, [
+          { body: "kappa lambda", charStart: 0, charEnd: 12 },
+        ]);
+      }
+      expect(s.searchLibraryFts("Num_Lib", stemText("kappa"), 10).map((h) => h.bookId)).toEqual([9, 10]);
+    } finally {
+      s.close();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
