@@ -1,0 +1,22 @@
+CODING_STANDARDS.md
+  s_ac4a90eadd9505::t_5102708b01da67 84-103
+docs/claude/overnight-profile.md
+  s_ac4a90eadd9505::t_a357ec29f05c3a 21-28
+  s_ac4a90eadd9505::t_41d2febc4da336 63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a7534b5d27263e868bb234febb2c06519827f40a",
+  "prompts": {},
+  "sessions": {
+    "s_ac4a90eadd9505": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "67e14d5e-f05f-4581-90f5-a9100228402c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
