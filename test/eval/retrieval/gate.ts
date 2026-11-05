@@ -410,8 +410,7 @@ export function evaluateListDiff(
       ? `${entries.length} entries, ${stale.length} stale (allow no current change — delete them): ${stale.join(", ")}`
       : `${entries.length} entries, all with a reason`;
   // the hash tier re-freezes in one command, so its failure says how (#392 decision 1)
-  const hashHint =
-    opts.tier === "hash" ? ` — intended? ${refreezeHint("hash")} or add an allow-file entry with a reason` : "";
+  const hashHint = opts.tier === "hash" ? ` — intended? ${refreezeHint("hash")}` : "";
   const checks: GateCheck[] = [
     {
       name: `top-${opts.topK} list diff (${opts.tier})`,
