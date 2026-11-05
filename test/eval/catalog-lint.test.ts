@@ -24,14 +24,14 @@ const schema = (props: string[], required: string[] = []) => ({
 const FIXTURE: CatalogTool[] = [
   {
     name: "fx_find",
-    description: "Find books by exact title, author or ISBN in the library catalog. Returns matching book ids.",
+    description: "Find books by exact title, author or ISBN query in the library catalog. Returns matching book ids.",
     annotations: read,
     inputSchema: schema(["query"], ["query"]),
   },
   {
     // a near copy of fx_find: a model can't tell which one to pick
     name: "fx_lookup",
-    description: "Find books by title, author or ISBN in the library catalog. Returns the matching book ids.",
+    description: "Find books by title, author or ISBN query in the library catalog. Returns the matching book ids.",
     annotations: read,
     inputSchema: schema(["query"], ["query"]),
   },
@@ -47,7 +47,11 @@ const FIXTURE: CatalogTool[] = [
     name: "fx_retag",
     description: "Replace the tags on one record with a new tag list chosen by the user.",
     annotations: { readOnlyHint: false, destructiveHint: false },
-    inputSchema: schema(["id", "changes"], ["id", "changes"]),
+    inputSchema: {
+      type: "object",
+      properties: { id: { type: "string", description: "the record to retag" }, changes: { type: "string" } },
+      required: ["id", "changes"],
+    },
   },
   {
     // app-only (widget-internal) tools are hidden from the model: never linted
