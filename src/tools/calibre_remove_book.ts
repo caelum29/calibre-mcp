@@ -17,7 +17,7 @@ export const removeBookTool = defineTool({
   name: "calibre_remove_book",
   title: "Remove books",
   description:
-    "Remove books from the library. Removed books go to Calibre's Trash and can be restored from " +
+    "Remove books (ids) from the library. Removed books go to Calibre's Trash and can be restored from " +
     "the Calibre GUI, so this is recoverable. Two-step: the first call is a dry-run listing what " +
     "would be removed; re-run with confirm=true to proceed. Requires writes to be enabled.",
   inputSchema: {

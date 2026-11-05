@@ -4,10 +4,19 @@ Two eval axes live (or will live) here — they measure different things:
 
 1. **Retrieval quality** (`retrieval/`, BUILT) — does `calibre_semantic_search` rank the
    right books/passages for a labeled query? See below.
-2. **Tool selection** (reserved) — golden-prompt evals (DESIGN §9.4) asserting the *model*
-   picks the right tool with the right args (e.g. "find me books about Rust ownership"
-   → `calibre_semantic_search`; "ISBN 978… details" → `calibre_search`). Deferred until
-   more tools land; this folder reserves the home so the CI quality gate has a place to grow.
+2. **Tool selection** (#362) — does the *model* pick the right tool with the right args (e.g.
+   "find me books about Rust ownership" → `calibre_semantic_search`; "ISBN 978… details" →
+   `calibre_search`)? Two layers:
+   - **Layer A, BUILT** (`catalog-lint.ts`, runs in `pnpm test`, milliseconds): a deterministic
+     lint of `docs/tool-catalog.json`. It checks pairwise description overlap and lead-sentence
+     overlap (word Jaccard, thresholds as named constants with their basis), that every required arg is
+     named in the description or has a schema description, that destructive writes say
+     preview/dry-run and name their apply param (`confirm`/`preview`/`apply`), and that the
+     skill manual has EN + RU triggers. A new or reworded tool that trips it gets its description
+     fixed, then `pnpm catalog`.
+   - **Layer B, not built** (`claude plugin eval` golden prompts against a mocked server, API
+     spend, nightly): measures the model's actual choice. Layer A only guards the catalog text
+     the model chooses from.
 
 ## Retrieval eval (`retrieval/`) — the measurement gate for tuning
 

@@ -129,7 +129,7 @@ export const manageBundlesTool = defineTool({
   name: "calibre_manage_bundles",
   title: "Manage bundles (saved searches)",
   description:
-    "List, create, update or delete Bundles — named topical filters backed by Calibre saved " +
+    "Manage Bundles via `action` (list | create | update | delete) — named topical filters backed by Calibre saved " +
     "searches (e.g. a 'rust' bundle scoping searches to Rust books). A name starting with '-' " +
     "is an exclusion marker. Also lists virtual libraries, which are read-only here. " +
     "Preview-first: create/update report the match count until confirm=true. Requires writes to be enabled.",
