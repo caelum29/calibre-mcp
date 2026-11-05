@@ -31,6 +31,8 @@ export interface RankBaseline {
   gitSha: string;
   queryCount: number;
   modes: Mode[];
+  /** sha256 of the queries.json the ranks were frozen on (#392, thresholds.goldenSet). */
+  goldenSetHash?: string;
   perQuery: RankRow[];
 }
 
@@ -62,6 +64,7 @@ export function toRankBaseline(report: EvalReport): RankBaseline {
     gitSha: report.meta.gitSha,
     queryCount: report.meta.queryCount,
     modes: report.meta.modes,
+    ...(report.meta.goldenSetHash ? { goldenSetHash: report.meta.goldenSetHash } : {}),
     perQuery: report.perQuery.map((r) => {
       const rank = rankOf(r);
       return { id: r.id, kind: r.kind, mode: r.mode, ...(rank !== undefined ? { rank } : {}), retrieved: r.retrieved };
@@ -94,7 +97,12 @@ export function fromRankBaseline(b: RankBaseline): EvalReport {
         }),
   }));
   return {
-    meta: { modes: b.modes, gitSha: b.gitSha, queryCount: b.queryCount } as EvalReport["meta"],
+    meta: {
+      modes: b.modes,
+      gitSha: b.gitSha,
+      queryCount: b.queryCount,
+      ...(b.goldenSetHash ? { goldenSetHash: b.goldenSetHash } : {}),
+    } as EvalReport["meta"],
     overall: {},
     ruInvolved: {},
     byKind: {},

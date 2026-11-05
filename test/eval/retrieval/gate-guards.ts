@@ -2,7 +2,7 @@
 // before the ~8 min ON pass, and no run may overwrite a frozen baseline report.
 
 import path from "node:path";
-import type { AllowEntry, ListDiffTier, Thresholds } from "./gate.js";
+import { LIST_DIFF_TIERS, rowKey, type AllowEntry, type ListDiffTier, type Thresholds } from "./gate.js";
 import { ALL_MODES, type EvalReport, type Mode } from "./harness.js";
 
 /** Flag combinations the gate refuses, checked before any pass runs. */
@@ -82,7 +82,8 @@ export function loadAllowEntries(
     const bad = (why: string) => new Error(`${cfg.allowFile} entry #${i}: ${why}`);
     if (typeof e !== "object" || e === null) throw bad("must be an object");
     const r = e as Record<string, unknown>;
-    if (!TIERS.includes(r.tier as ListDiffTier)) throw bad(`tier must be one of ${TIERS.join(", ")}`);
+    if (!LIST_DIFF_TIERS.includes(r.tier as ListDiffTier))
+      throw bad(`tier must be one of ${LIST_DIFF_TIERS.join(", ")}`);
     if (!ALL_MODES.includes(r.mode as Mode)) throw bad(`mode must be one of ${ALL_MODES.join(", ")}`);
     if (typeof r.id !== "string" || r.id === "") throw bad("id must be a non-empty string");
     if (!Array.isArray(r.retrieved) || r.retrieved.some((k) => typeof k !== "string")) {
@@ -90,12 +91,10 @@ export function loadAllowEntries(
     }
     // an empty reason is reported by the gate itself; a non-string can't be checked at all
     if (typeof r.reason !== "string") throw bad("reason must be a string");
-    const k = `${r.tier}/${r.mode}/${r.id}`;
+    const k = `${r.tier}/${rowKey(r.mode as Mode, r.id)}`;
     // last-wins would silently drop one of two intended lists
     if (seen.has(k)) throw bad(`duplicate entry for ${k}`);
     seen.add(k);
   });
   return entries as AllowEntry[];
 }
-
-const TIERS: ListDiffTier[] = ["on", "fusionOnly", "hash"];
