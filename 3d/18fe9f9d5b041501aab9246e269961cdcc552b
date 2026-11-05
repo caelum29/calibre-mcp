@@ -1,0 +1,37 @@
+src/app/library-id-guard.ts
+  s_7c21352ace8b6c::t_6f029e170135ca 1-24
+src/domain/library-id-collision.ts
+  s_7c21352ace8b6c::t_951ba40fd30bce 1-33
+scripts/reindex.ts
+  s_7c21352ace8b6c::t_ac3938035d740f 24,69,72,77,90-92
+src/calibre/content-server.ts
+  s_7c21352ace8b6c::t_455272fff035b0 172-176
+src/domain/error-codes.ts
+  s_7c21352ace8b6c::t_dd0ba4440d1e8f 17,37,57,80,139
+src/semantic/store/index.ts
+  s_7c21352ace8b6c::t_99c8e971d48444 56-57,61
+src/semantic/store/schema.ts
+  s_7c21352ace8b6c::t_b888b4917b9ddb 11,113,117,163,199,247-257
+src/server.ts
+  s_7c21352ace8b6c::t_a17f81169ae5f0 89-90
+src/tools/calibre_build_index.ts
+  s_7c21352ace8b6c::t_f9be832cefded1 12,120-122
+test/call-log.test.ts
+  s_7c21352ace8b6c::t_b2c72641f68369 171
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3d18fe9f9d5b041501aab9246e269961cdcc552b",
+  "prompts": {},
+  "sessions": {
+    "s_7c21352ace8b6c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ea3bd83-747d-4aab-91fc-cf5abd8fc2de",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
