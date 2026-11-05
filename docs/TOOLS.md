@@ -428,9 +428,11 @@ or one whose connection dropped mid-request, may still have committed, so the to
 book. When the re-read shows every requested value, the call succeeds, `confirmedByReRead` is
 `"timeout"` or `"dropped"`, and the text says so (e.g. `Updated book 187: tags. Confirmed by a
 re-read after calibredb timed out.`). If the re-read can't confirm it (some fields landed, others
-didn't, or another edit changed them), the result is a `write_unverified` error that asks you to
-check with `calibre_get_book` before retrying. A transient-failure message names the real
-number of retries (`… after 2 retries`).
+didn't, or another edit changed them), the result is a `write_unverified` error. Its text says
+what the re-read showed: a re-read that failed, or one that shows another edit's value, steers you
+to check with `calibre_get_book` before retrying; a timed-out write the re-read shows did not
+land says "Retry, or check with `calibre_get_book` first". A transient-failure message names
+the real number of retries (`… after 2 retries`).
 
 ### `calibre_bulk_update`
 
@@ -454,15 +456,18 @@ combined with `tags_add`/`tags_remove`.
 **Preview.** Each entry in `books` carries `id`, `title`, `changed` (`{ field, before, after }`),
 `tagsAdded` / `tagsRemoved` for a tags merge, and `warnings` when the edit needs a second look.
 The same warnings appear as `⚠` lines in the text:
-- a list value replaces the whole list, e.g. `tags: 3 → 1 (replaces the list: drops a, b)`;
+- a list value replaces the whole list, e.g. `tags: 3 → 1 (replaces the list: drops a, b)`
+  (never for a `tags_add` / `tags_remove` merge, which keeps the tags it doesn't remove);
 - a case-only rename of a tag or author renames it on every book, e.g.
   `tags: python → Python renames it on every book in the library (Calibre keeps one case-insensitive item)`.
 
 **Apply** (`preview: false`). structuredContent holds `matched`, `applied` (ids written),
 `failed` (`{ id, error }`) and, when they apply:
-- `unchanged`: for a `tags_add` / `tags_remove` call, the books whose merge changes nothing.
-  They get no `set_metadata`. The tool decides this on a fresh re-read of the book (the selection
-  may be stale), and lists them in `unchanged`, not in `applied`. Text: `Already current (nothing
+- `unchanged`: for a `tags_add` / `tags_remove` call, the books where nothing would change: the
+  tag merge AND any `changes` fields sent with it are already current. They get no
+  `set_metadata`. A book whose tags are already current but whose other field (e.g. `series`)
+  changes is written and listed in `applied`. The tool decides this on a fresh re-read of the
+  book (the selection may be stale), and lists skipped books in `unchanged`, not in `applied`. Text: `Already current (nothing
   written): 2, 5.`
 - `confirmedByReRead`: `{ id, cause: "dropped" | "timeout" }` for each book whose write timed
   out or lost its connection mid-request but a re-read showed every requested value. The book is

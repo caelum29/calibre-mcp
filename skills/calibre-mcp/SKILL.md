@@ -147,8 +147,9 @@ tags; `changes: {tags: [...]}` would replace them) — review the preview, then 
 replaces the whole list, or a case-only rename that renames a tag on every book.
 
 **Read a write result before reporting it:**
-- `applied` = written. `unchanged` (tags merges only) = the merge changed nothing, so the book
-  was skipped, not written. Report these as "already tagged", not as failures.
+- `applied` = written. `unchanged` (tags_add / tags_remove calls only) = nothing would change on
+  that book (the tag merge and any `changes` fields), so it was skipped, not written. Report these
+  as "already current", not as failures.
 - `confirmedByReRead` (`{id, cause: "dropped" | "timeout"}` in bulk, `"dropped" | "timeout"` on
   `calibre_update_book`) = the call timed out or lost its connection, but a re-read showed every
   requested value. It is a success; the text says "Confirmed by a re-read".
