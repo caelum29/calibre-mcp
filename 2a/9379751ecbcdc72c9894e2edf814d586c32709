@@ -1,0 +1,36 @@
+test/eval/catalog-lint.ts
+  s_7c21352ace8b6c::t_5e53ba7305443c 20-23,28,66-70,96-105,130-131,136-140,147,166-185
+src/tools/calibre_add_book.ts
+  s_7c21352ace8b6c::t_c613704ee60b19 32
+src/tools/calibre_search.ts
+  s_7c21352ace8b6c::t_c613704ee60b19 437
+test/eval/catalog-lint.test.ts
+  s_7c21352ace8b6c::t_d8c330ea4a2f94 15,138,146,153,158,165,171,176,185,201
+  s_7c21352ace8b6c::t_aa01ab6f2a97bc 139-145,147-152,154-157,159-164,166-170,172-175,177-184,186-200
+src/tools/calibre_semantic_search.ts
+  s_7c21352ace8b6c::t_c613704ee60b19 37
+docs/tool-catalog.json
+  s_7c21352ace8b6c::t_c407e699013be9 15,1301,1390,1891,2074,2355
+src/tools/calibre_update_book.ts
+  s_7c21352ace8b6c::t_c613704ee60b19 44
+src/tools/calibre_manage_bundles.ts
+  s_7c21352ace8b6c::t_c613704ee60b19 132
+src/tools/calibre_merge_books.ts
+  s_7c21352ace8b6c::t_c613704ee60b19 50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2a9379751ecbcdc72c9894e2edf814d586c32709",
+  "prompts": {},
+  "sessions": {
+    "s_7c21352ace8b6c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ea3bd83-747d-4aab-91fc-cf5abd8fc2de",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
