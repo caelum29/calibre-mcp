@@ -395,6 +395,86 @@ describe("calibre_merge_books failure semantics (#33)", () => {
   });
 });
 
+// #389 (write path): since #372/#380 a timed-out metadata merge counts as landed only when the
+// re-read shows the INTENDED merged values — "moved away from before" is not enough.
+describe("calibre_merge_books — timed-out metadata merge verifies the intended values (#389)", () => {
+  const timedOut = (getBook: (id: number) => Promise<Book>) =>
+    fakeDeps({
+      calibredb: async (args) => {
+        if (args[0] === "set_metadata") throw new CalibreCliTimeoutError("timeout");
+        return { stdout: "", stderr: "" };
+      },
+      getBook,
+    });
+  // the dry run's metadataChanges for 10 ← 12: tags ["t1","t2"], comments "dest c\n\nsrc c", identifiers isbn+doi
+  const reread = (tags: string[]) => async (id: number) =>
+    book({ id, formats: ["epub", "pdf"], tags, identifiers: { isbn: "111", doi: "d1" }, comments: "dest c\n\nsrc c" });
+  const NOTE =
+    "calibredb timed out and the re-read does not confirm the metadata merge — " +
+    "verify with calibre_get_book id=10 before retrying";
+
+  it("should_not_confirm_a_merge_whose_re_read_shows_a_third_tag_value", async () => {
+    // tags moved away from the target's ["t1"], but to ["GUI"], not the merged ["t1","t2"]
+    const d = timedOut(reread(["GUI"]));
+    const r = await run({ targetId: 10, sourceIds: [12], confirm: true }, d);
+    expect(d.calls.map((c) => c[0])).toEqual(["add_format", "set_metadata"]);
+    expect(r).toEqual({
+      content: [
+        {
+          type: "text",
+          text:
+            `Merge incomplete — some steps committed, then "merge metadata into #10" failed (${NOTE}). ` +
+            "No data was lost: sources are deleted only after every other step verifies. Re-run the same " +
+            "call to finish — completed steps are idempotent (already-moved formats skip, metadata re-merge " +
+            "is a no-op).\nSteps:\n  ✓ move pdf from #12 to #10\n" +
+            `  ✗ merge metadata into #10 — ${NOTE}\n  - trash sources #12`,
+        },
+      ],
+      structuredContent: {
+        targetId: 10,
+        sourceIds: [12],
+        mode: "merge",
+        warnings: [],
+        steps: [
+          { step: "move pdf from #12 to #10", status: "done" },
+          { step: "merge metadata into #10", status: "failed", note: NOTE },
+          { step: "trash sources #12", status: "not-run" },
+        ],
+        status: "incomplete",
+      },
+    });
+  });
+
+  it("should_confirm_a_merge_whose_re_read_differs_only_by_calibre_normalization", async () => {
+    // Calibre keeps the library's tag spelling and sorts them: still the intended set
+    const d = timedOut(reread(["T2", "T1"]));
+    const r = await run({ targetId: 10, sourceIds: [12], confirm: true }, d);
+    expect(d.calls.map((c) => c[0])).toEqual(["add_format", "set_metadata", "remove"]);
+    expect(r).toEqual({
+      content: [
+        {
+          type: "text",
+          text:
+            "Merged 1 source(s) into #10. Sources are in Calibre's trash (recoverable ~14 days).\nSteps:\n" +
+            "  ✓ move pdf from #12 to #10\n  ✓ merge metadata into #10\n  ✓ trash sources #12",
+        },
+      ],
+      structuredContent: {
+        targetId: 10,
+        sourceIds: [12],
+        mode: "merge",
+        warnings: [],
+        steps: [
+          { step: "move pdf from #12 to #10", status: "done" },
+          { step: "merge metadata into #10", status: "done" },
+          { step: "trash sources #12", status: "done" },
+        ],
+        status: "merged",
+      },
+    });
+  });
+});
+
 describe("calibre_merge_books schema coercion", () => {
   const schema = z.object(mergeBooksTool.inputSchema);
 
