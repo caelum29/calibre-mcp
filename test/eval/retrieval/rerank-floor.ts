@@ -1,9 +1,9 @@
 // RERANK_FLOOR recalibration scorer: replays the lowConfidence rule offline over the per-row
 // maxRerank/maxScore of one fixture report (+ optional live report) for every candidate floor,
 // and prints mechanical PASS/FAIL against thresholds.json `rerankFloor` (declared BEFORE the
-// measurement, D-012 protocol). Each candidate is also compared row-by-row with the current
-// floor through stats.ts's exact sign test (#358): the same rows, so a rate gap is a paired
-// question. Pure scoring is exported for the unit test.
+// measurement, D-012 protocol). Each candidate is also compared with the current floor through
+// stats.ts's exact sign test (#358), paired per query: a query's modes count once. Pure scoring
+// is exported for the unit test.
 //
 // Usage: node --import tsx test/eval/retrieval/rerank-floor.ts --fixture <report.json> [--live <report.json>]
 
@@ -26,11 +26,11 @@ export interface FloorThresholds {
   negativeSeparation: { kinds: string[]; marginFactor: number };
 }
 
-/** Hit@1 positives a candidate floor treats differently from the current floor (paired rows). */
+/** Hit@1-positive queries a candidate floor treats differently from the current floor (paired). */
 export interface FloorVsCurrent {
-  /** False-flagged at the current floor, not at this one. */
+  /** Queries false-flagged at the current floor, not at this one (in any mode, none the other way). */
   unflagged: number;
-  /** Not flagged at the current floor, false-flagged at this one. */
+  /** Queries not flagged at the current floor, false-flagged at this one. */
   newlyFlagged: number;
   /** Exact two-sided sign test on those discordant rows (stats.ts). */
   signP: number;
@@ -82,11 +82,23 @@ function falseFlags(rows: PerQueryRow[], floor: number, t: FloorThresholds) {
   };
 }
 
-/** Paired comparison of `floor` vs the current floor over the same Hit@1-positive rows. */
+/**
+ * Paired comparison of `floor` vs the current floor, per QUERY: one query's rows in several modes
+ * aren't independent, so a query counts once. It is un-flagged when some Hit@1-positive mode
+ * loses its false flag and none gains one (and the reverse); a query moving both ways is a tie.
+ */
 function vsCurrent(rows: PerQueryRow[], floor: number, t: FloorThresholds): FloorVsCurrent {
-  const hits = rows.filter((r) => !isNegative(r.kind, t) && r.metrics?.hit1 === 1);
-  const unflagged = hits.filter((r) => flagged(r, t.currentFloor) && !flagged(r, floor)).length;
-  const newlyFlagged = hits.filter((r) => !flagged(r, t.currentFloor) && flagged(r, floor)).length;
+  const byQuery = new Map<string, { gain: boolean; loss: boolean }>();
+  for (const r of rows) {
+    if (isNegative(r.kind, t) || r.metrics?.hit1 !== 1) continue;
+    const q = byQuery.get(r.id) ?? { gain: false, loss: false };
+    q.gain ||= flagged(r, t.currentFloor) && !flagged(r, floor);
+    q.loss ||= !flagged(r, t.currentFloor) && flagged(r, floor);
+    byQuery.set(r.id, q);
+  }
+  const qs = [...byQuery.values()];
+  const unflagged = qs.filter((q) => q.gain && !q.loss).length;
+  const newlyFlagged = qs.filter((q) => q.loss && !q.gain).length;
   return { unflagged, newlyFlagged, signP: signTest(unflagged, newlyFlagged) };
 }
 
@@ -148,7 +160,7 @@ export function renderFloors(res: FloorResult): string {
   const pct = (n: number) => `${(n * 100).toFixed(1)}%`;
   const vs = (c: FloorVsCurrent) => `${c.unflagged}/${c.newlyFlagged}, p ${c.signP.toFixed(4)}`;
   const lines = [
-    "| floor | negative separation | fixture false flags | fixture vs current (un-/newly flagged, sign p) | live false-flag rate | live vs current | live negatives unflagged |",
+    "| floor | negative separation | fixture false flags (rows, not queries) | fixture vs current (queries un-/newly flagged, sign p) | live false-flag rate (rows) | live vs current (queries) | live negatives unflagged |",
     "|---|---|---|---|---|---|---|",
     ...res.verdicts.map(
       (v) =>
