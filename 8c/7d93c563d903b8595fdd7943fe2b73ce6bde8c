@@ -1,0 +1,22 @@
+src/calibre/fts-highlight.ts
+  s_34f8c895b845ca::t_9c0de396ff4364 161-163
+  s_34f8c895b845ca::t_321f9611cabb33 139-144,150-153
+test/calibre/fts-highlight-column-guards.test.ts
+  s_34f8c895b845ca::t_7142bd81463853 1-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8c7d93c563d903b8595fdd7943fe2b73ce6bde8c",
+  "prompts": {},
+  "sessions": {
+    "s_34f8c895b845ca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "acde0812-c8ad-458d-b52e-46dc5cd004a4",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
