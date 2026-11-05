@@ -71,8 +71,8 @@
     },
     "maxDurationMs": 30000
   },
+  "$reportOnlyAxesComment": "#363, declared + committed BEFORE any measuring run (D-012). Every axis below is REPORT-ONLY (`gate: false`): every `pnpm eval` run prints it and the md report lists it, no gate reads it. Each states the trend it is watched for; promoting one to a gate is a new rule commit before the run that measures it. The new per-row fields (durationMs, snippetHasMarker, top2Rerank, spanHit, lowConfidence) are additive and optional, so the frozen baselines stay valid without them. durationMs is wall-clock, recorded only by the `pnpm eval` CLI (never in `pnpm test`), and never read by the hash tier, the list diff or any baseline comparison.",
   "reportOnlyAxes": {
-    "$comment": "#363, declared + committed BEFORE any measuring run (D-012). Every axis below is REPORT-ONLY (`gate: false`): every `pnpm eval` run prints it and the md report lists it, no gate reads it. Each states the trend it is watched for; promoting one to a gate is a new rule commit before the run that measures it. The new per-row fields (durationMs, snippetHasMarker, top2Rerank, spanHit, lowConfidence) are additive and optional, so the frozen baselines stay valid without them. durationMs is wall-clock, recorded only by the `pnpm eval` CLI (never in `pnpm test`), and never read by the hash tier, the list diff or any baseline comparison.",
     "snippetMarker": {
       "gate": false,
       "trend": "higher is better, target 1.0: for book-scope queries, the #243 snippet window of the first passage that holds a labelled marker shows that marker"
