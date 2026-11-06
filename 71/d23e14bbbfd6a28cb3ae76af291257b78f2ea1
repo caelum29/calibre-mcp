@@ -1,0 +1,37 @@
+src/calibre/figure-inventory.ts
+  s_e644f941191c91::t_422b530ba6c723 88-89
+test/domain/figures/band.test.ts
+  s_e644f941191c91::t_e367dc1693bd39 91-97
+src/domain/figures/band.ts
+  s_e644f941191c91::t_a4c2e94b8eb3dd 104-105
+  s_e644f941191c91::t_2f15f5b23c170b 111,118-120
+test/domain/figures/inventory.test.ts
+  s_e644f941191c91::t_3f8cf218735264 108-121
+  s_e644f941191c91::t_a7d8a45ce13ef2 68-79,86-107,122-134
+  s_e644f941191c91::t_bcb24788da855d 80-85
+src/domain/figures/inventory.ts
+  s_e644f941191c91::t_9fd15aae051b16 148-176
+  s_e644f941191c91::t_49c415690d3691 66-68
+  s_e644f941191c91::t_e6b725e3fd68bd 18-20
+  s_e644f941191c91::t_067c40e73d4174 75
+  s_e644f941191c91::t_222854460cc261 36-39
+  s_e644f941191c91::t_3510213d9e5c3d 107-108,112-114
+test/calibre/figure-fetch-raster.test.ts
+  s_e644f941191c91::t_071cd7ffb36158 1-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "71d23e14bbbfd6a28cb3ae76af291257b78f2ea1",
+  "prompts": {},
+  "sessions": {
+    "s_e644f941191c91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9635f1fd-fc39-4003-8a7e-6d9c83cd0e34",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
