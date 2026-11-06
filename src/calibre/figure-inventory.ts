@@ -85,7 +85,8 @@ const CACHE_DIR = path.join(tmpdir(), "calibre-mcp-cache");
 // v3: caption context guard — wrapped in-text references no longer become figures (#116)
 // v4: multi-line + bare-label captions, reference-tail rejects (#107) — indexes renumber
 // v5: label-only captions recovered from page layout (pdftotext -bbox-layout)
-const INVENTORY_VERSION = 5;
+// v6: fragment rasters demoted to page-render in place (#422) — indexes don't move
+const INVENTORY_VERSION = 6;
 const RUN_TIMEOUT_MS = 120_000;
 const MAX_LIST_BUFFER = 8 * 1024 * 1024;
 

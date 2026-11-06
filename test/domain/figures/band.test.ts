@@ -88,6 +88,13 @@ describe("computeBand", () => {
     expect(band.top).toBe(192);
   });
 
+  it("should_span_whole_page_when_caption_sits_above_its_figure", () => {
+    // Science places some captions at the top, figure below: page top → caption is a header strip
+    const page = parseBboxPage(bbox([[72, 80, 100, 90, "Fig."]]))!;
+    const band = computeBand(page, { y0: 80, y1: 90, hasTextAfter: true }, []);
+    expect(band).toEqual({ top: 0, bottom: 792 });
+  });
+
   it("ignores anchors below the target", () => {
     const page = parseBboxPage(bbox([[72, 300, 134, 312, "Figure"]]))!;
     const band = computeBand(page, { y0: 300, y1: 312, hasTextAfter: true }, [

@@ -15,6 +15,9 @@ export interface RasterImage {
   height: number;
   /** Row type: only `image` rows count; `smask`/`stencil` are transparency plumbing. */
   type: string;
+  /** Effective resolution as drawn on the page; with width/height it gives the printed size (#422). */
+  xPpi?: number;
+  yPpi?: number;
 }
 
 /** One inventory entry, document-ordered. See GLOSSARY.md: Figure vs Embedded image. */
@@ -30,7 +33,10 @@ export interface FigureEntry {
   caption?: string;
   /** Pixels: raster object, PDF page render (vector figure), or EPUB SVG rasterization. */
   source: "raster" | "page-render" | "svg-render";
-  /** Raster geometry / pdfimages handle; absent for page-render entries. */
+  /**
+   * Raster geometry / pdfimages handle; absent for page-render entries — except a demoted pair
+   * (#422) keeps the handle of the fragment it consumed, so per-page raster ordinals stay aligned.
+   */
   width?: number;
   height?: number;
   pdfImageNum?: number;
@@ -57,12 +63,16 @@ export function parsePdfImagesList(output: string): RasterImage[] {
     if (cols.length < 5) continue;
     const [page, num, type, width, height] = cols;
     if (!page || !num || !/^\d+$/.test(page) || !/^\d+$/.test(num)) continue; // header/noise
+    // counted from the end: inline images print `[inline]` where others print `<obj> <gen>`
+    const xPpi = Number(cols[cols.length - 4]);
+    const yPpi = Number(cols[cols.length - 3]);
     rasters.push({
       page: Number(page),
       num: Number(num),
       type: type ?? "",
       width: Number(width),
       height: Number(height),
+      ...(xPpi > 0 && yPpi > 0 ? { xPpi, yPpi } : {}),
     });
   }
   return rasters;
@@ -94,10 +104,14 @@ export function buildInventory(
     const caps = byPageCaptions.get(page) ?? [];
     const imgs = byPageImages.get(page) ?? [];
     const paired = Math.min(caps.length, imgs.length);
+    // magazines build one figure from dozens of tiles — any single raster is a fragment (#422)
+    const composite = imgs.length > 1 && imgs.length >= COMPOSITE_RATIO * caps.length;
     for (let i = 0; i < paired; i++) {
       const cap = caps[i];
       const img = imgs[i];
-      if (cap && img) entries.push(figureFromPair(cap, img));
+      if (!cap || !img) continue;
+      // demote in place: same slot, same index — the semantic index and text markers point at it
+      entries.push(composite || tooSmallForFigure(img) ? demotedPair(cap, img) : figureFromPair(cap, img));
     }
     // vector figures: caption present, raster missing → render the page later
     for (const cap of caps.slice(paired)) {
@@ -128,6 +142,35 @@ export function buildInventory(
       uncaptioned: entries.length - figures.length,
       pageRender: figures.filter((e) => e.source === "page-render").length,
     },
+  };
+}
+
+/**
+ * Printed area below which a raster is page furniture, not a figure (#422 calibration over
+ * Magazines + 120 Programming Books PDFs): colour bars, tiles, icons, section banners all sit
+ * under 1 in², while real figures — even narrow screenshot strips (5.5×0.64 in) — sit above.
+ * A rare small real figure loses little: its page render still shows it.
+ */
+const MIN_FIGURE_AREA_IN2 = 1;
+/** Rasters per caption at which a page is a composite figure (panels, markers, backgrounds). */
+const COMPOSITE_RATIO = 3;
+
+/** True when the raster prints too small to be the captioned figure; unknown ppi → keep. */
+function tooSmallForFigure(img: RasterImage): boolean {
+  if (!img.xPpi || !img.yPpi) return false;
+  return (img.width / img.xPpi) * (img.height / img.yPpi) < MIN_FIGURE_AREA_IN2;
+}
+
+/** A caption whose paired raster is a fragment: render the page band instead (#422). */
+function demotedPair(cap: Caption, img: RasterImage): FigureEntry {
+  return {
+    index: 0,
+    page: cap.page,
+    captioned: true,
+    label: cap.label,
+    caption: cap.text,
+    source: "page-render",
+    pdfImageNum: img.num,
   };
 }
 
