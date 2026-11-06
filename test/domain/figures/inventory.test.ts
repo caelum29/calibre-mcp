@@ -65,6 +65,73 @@ describe("buildInventory", () => {
   });
 });
 
+// #422: magazine pages build one figure from dozens of raster tiles (Science #6667 p.89),
+// or carry a lone section banner next to a vector figure (p.9). Rows mirror real probe output.
+const row = (page: number, num: number, w: number, h: number, ppi = 300) =>
+  `  ${page}  ${num} image  ${w}  ${h}  icc  3  8  jpeg  no  ${7000 + num}  0  ${ppi}  ${ppi}  1K  5%`;
+const listOf = (...rows: string[]) => `page num type width height\n----\n${rows.join("\n")}\n`;
+
+describe("buildInventory — implausible rasters (#422)", () => {
+  it("parses x/y ppi when present", () => {
+    const [r] = parsePdfImagesList(listOf(row(1, 0, 600, 300, 150)));
+    expect(r).toMatchObject({ xPpi: 150, yPpi: 150 });
+  });
+
+  it("parses ppi of inline images, whose object column is one token", () => {
+    const inline = " 104    12 image      12    12  devn    3   8  image  no   [inline]     106   106  213B  49%";
+    const [r] = parsePdfImagesList(listOf(inline));
+    expect(r).toMatchObject({ xPpi: 106, yPpi: 106 });
+  });
+
+  it("renders the page for a caption whose paired raster is a colour-bar strip", () => {
+    const text = ["", "Fig. 2. Superclusters and clusters are differentially distributed."].join("\f");
+    const inv = buildInventory(text, parsePdfImagesList(listOf(row(2, 0, 109, 11), row(2, 1, 193, 70))));
+    expect(inv.entries[0]).toMatchObject({ captioned: true, source: "page-render", pdfImageNum: 0 });
+    expect(inv.entries[0]?.width).toBeUndefined();
+    expect(inv.counts.pageRender).toBe(1);
+  });
+
+  it("renders the page for a lone section banner (one raster, one caption)", () => {
+    const text = ["", "Fig. 2. Cell type-specific differences in abundance across donors."].join("\f");
+    const inv = buildInventory(text, parsePdfImagesList(listOf(row(2, 0, 396, 135))));
+    expect(inv.entries[0]).toMatchObject({ source: "page-render" });
+  });
+
+  it("keeps a full-size raster figure, including a low-ppi one", () => {
+    const text = ["", "Fig. 1. Cell atlas of macaque telencephalon."].join("\f");
+    const big = buildInventory(text, parsePdfImagesList(listOf(row(2, 0, 1411, 2055))));
+    expect(big.entries[0]).toMatchObject({ source: "raster", width: 1411 });
+    const lowRes = buildInventory(text, parsePdfImagesList(listOf(row(2, 0, 400, 300, 72))));
+    expect(lowRes.entries[0]).toMatchObject({ source: "raster" });
+  });
+
+  it("renders the page when a big raster sits among composite fragments (gradient backdrop)", () => {
+    const text = ["", "Fig. 3. Observation of nonlocal fermion pairing."].join("\f");
+    const rows = [row(2, 0, 1226, 857), row(2, 1, 22, 516), row(2, 2, 22, 516)];
+    const inv = buildInventory(text, parsePdfImagesList(listOf(...rows)));
+    expect(inv.entries[0]).toMatchObject({ source: "page-render" });
+  });
+
+  it("keeps a book screenshot that shares its page with one small icon", () => {
+    const text = ["", "Figure 4-2. CloudFront distribution status during an update"].join("\f");
+    const rows = [row(2, 0, 1650, 192), row(2, 1, 60, 60)];
+    const inv = buildInventory(text, parsePdfImagesList(listOf(...rows)));
+    expect(inv.entries[0]).toMatchObject({ source: "raster", pdfImageNum: 0 });
+  });
+
+  it("keeps entry count, order and indexes stable — the semantic index and markers point at them", () => {
+    const text = ["", "Fig. 2. A composite figure."].join("\f");
+    const rows = [row(2, 0, 109, 11), row(2, 1, 22, 516), row(2, 2, 200, 516)];
+    const inv = buildInventory(text, parsePdfImagesList(listOf(...rows)));
+    // same shape as before the fix: 1 captioned slot that consumed raster 0, then the leftovers
+    expect(inv.entries.map((e) => [e.index, e.captioned, e.pdfImageNum])).toEqual([
+      [0, true, 0],
+      [1, false, 1],
+      [2, false, 2],
+    ]);
+  });
+});
+
 describe("detectScanned", () => {
   const imagePerPage = (n: number) =>
     Array.from({ length: n }, (_, i) => ({ page: i + 1, num: i, type: "image", width: 2000, height: 2800 }));

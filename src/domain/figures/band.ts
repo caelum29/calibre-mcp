@@ -101,19 +101,23 @@ export function selectAnchor(matches: AnchorMatch[]): AnchorMatch | null {
 }
 
 const BAND_PAD_PT = 3;
+/** Shorter than this, the band can't hold a figure: the caption sits above it (#422) → whole page. */
+const MIN_BAND_PT = 108; // 1.5 in
 
 /**
  * Compute the band for a caption anchor: top = the bottom of the lowest OTHER
  * caption anchor fully above ours (their figure ends where their caption does),
  * else page top; bottom = our caption's bottom edge (caption included — the crop
- * stays self-describing).
+ * stays self-describing). A band too short to hold a figure falls back to the whole page.
  */
 export function computeBand(page: BboxPage, anchor: AnchorMatch, othersAbove: AnchorMatch[]): Band {
   let top = 0;
   for (const other of othersAbove) {
     if (other.y1 <= anchor.y0 && other.y1 > top) top = other.y1;
   }
-  return { top, bottom: Math.min(page.height, anchor.y1 + BAND_PAD_PT) };
+  const bottom = Math.min(page.height, anchor.y1 + BAND_PAD_PT);
+  if (bottom - top < MIN_BAND_PT) return { top: 0, bottom: page.height };
+  return { top, bottom };
 }
 
 /** Label as printed → comparable form: trim trailing `.`/`:`/`,` (word tokens carry them). */
