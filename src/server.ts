@@ -19,7 +19,7 @@ import { TransformersEmbedder } from "./semantic/embedder.js";
 import { TransformersReranker } from "./semantic/reranker.js";
 import { SqliteIndexStore } from "./semantic/store/index.js";
 import { computeSemanticStatus } from "./semantic/status.js";
-import { readBookResource } from "./resources/book.js";
+import { parseBookResourceId, readBookResource } from "./resources/book.js";
 import { allTools, assertWriteClassification } from "./tools/registry.js";
 import { toolError } from "./tools/result.js";
 import type { ToolContext } from "./tools/types.js";
@@ -209,9 +209,7 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
     new ResourceTemplate("calibre://book/{id}", { list: undefined }),
     { title: "Calibre book", description: "Full metadata for one book." },
     async (_uri, variables) => {
-      const raw = Array.isArray(variables.id) ? variables.id[0] : variables.id;
-      const id = Number(raw);
-      const r = await readBookResource(deps.content, id);
+      const r = await readBookResource(deps.content, parseBookResourceId(variables.id));
       return { contents: [{ uri: r.uri, mimeType: r.mimeType, text: r.text }] };
     },
   );
