@@ -1,0 +1,24 @@
+docs/agents/triage-labels.md
+  s_c95837e85fd648::t_e9241fa11edf78 16-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d569f59f65667f4d29a26de03470ea0be39dcebb",
+  "prompts": {},
+  "humans": {
+    "h_e22d73abc85ef9": {
+      "author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_c95837e85fd648": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "20b3ba55-8bfd-4cb5-99aa-b552e1f98b37",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
