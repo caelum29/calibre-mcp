@@ -13,3 +13,13 @@ The skills speak in terms of five canonical triage roles. This file maps those r
 When a skill mentions a role (e.g. "apply the AFK-ready triage label"), use the corresponding label string from this table.
 
 Edit the right-hand column to match whatever vocabulary you actually use.
+
+## Priority labels
+
+Added 2026-11-08. Every issue gets one, alongside its type label (`bug` / `enhancement`). Milestones are for waves and themes only, since an issue can sit in just one milestone.
+
+| Label | Meaning |
+| ----- | ------- |
+| `P0`  | Critical: breaks core flows or loses data |
+| `P1`  | High: wrong or misleading behavior, fix next |
+| `P2`  | Normal: polish, low impact |
