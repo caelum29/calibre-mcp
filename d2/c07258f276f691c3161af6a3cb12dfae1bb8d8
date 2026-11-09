@@ -1,0 +1,24 @@
+test/eval/retrieval/reports/2026-10-21-embedder-bakeoff-140.md
+  s_c8a1d21b15ac49::t_19be06d2a7e10c 3-9
+  s_c8a1d21b15ac49::t_44ca7a5eeec419 1-2
+  s_c8a1d21b15ac49::t_eacd92e9b94a26 10-12
+  s_c8a1d21b15ac49::t_f59bfeabec48ee 13-180
+test/eval/retrieval/reports/bakeoff-140/scores.md
+  s_c8a1d21b15ac49::t_1372227efada4a 1-113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d2c07258f276f691c3161af6a3cb12dfae1bb8d8",
+  "prompts": {},
+  "sessions": {
+    "s_c8a1d21b15ac49": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1a280e2f-30cf-44be-a58a-122d4ea62155",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
