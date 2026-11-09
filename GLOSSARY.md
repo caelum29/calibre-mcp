@@ -11,7 +11,7 @@ ebook library (catalog + single-book content) to AI agents.
 A Calibre-native named, reusable search expression stored in library preferences. Composable: one saved search can reference another via `search:"=Name"`. Has a safe live write path (routed `calibredb`), so it is the storage mechanism for Bundles and Exclusion markers.
 
 **Virtual library**:
-A Calibre-native named filter that scopes the entire GUI view (tag browser, counts) to a subset of books. Read-only for the server — no write API exists; usable as a Bundle, never created or edited by tools.
+A Calibre-native named filter that scopes the entire GUI view (tag browser, counts) to a subset of books. Read-only for the server: usable as a Bundle, never created or edited by tools.
 _Avoid_: VL write, virtual library management
 
 **Bundle**:
@@ -19,7 +19,7 @@ A named topical filter — backed by a saved search or virtual library — that 
 _Avoid_: collection, shelf
 
 **Exclusion marker**:
-A saved search whose name starts with `-` (e.g. `-outdated`, `-noise`). All exclusion markers are automatically subtracted from every search unless the caller explicitly opts out. Adding a new marker takes effect immediately, without configuration.
+A saved search whose name starts with `-` (e.g. `-outdated`, `-noise`). All exclusion markers are automatically subtracted from every discovery search (metadata, full-text and semantic search, and the cover board) unless the caller explicitly opts out; maintenance and write tools see the whole library. Adding a new marker takes effect immediately, without configuration.
 _Avoid_: noise filter (as a term; fine as a description)
 
 ### Search ranking
@@ -60,3 +60,25 @@ The stable per-(book, format) ordinal of a Figure, assigned in document order de
 **Inline image marker**:
 A placeholder injected into extracted book text where a Figure sits (`[image #12: page 47, "caption"]`), letting the agent discover Figures while reading. Page-accurate for PDF, position-accurate for EPUB.
 _Avoid_: image tag
+
+### Public contract
+
+**Public contract**:
+The parts of the server that semantic versioning protects from 1.0 on: tool names, their inputs, their declared output fields, the Labelled lines of text results, the Stable settings, the set of error codes, the write gate with preview-first writes, and the minimum Node version. Removing or changing any of them is a breaking change; adding to them is not.
+_Avoid_: API, interface
+
+**Stable setting**:
+A configuration setting whose name and meaning belong to the Public contract.
+
+**Tuning setting**:
+A configuration setting tied to the current search models (score floors, the rerank switch, the index lock timeout). Outside the Public contract: its meaning or default can change in a minor release, with a changelog note.
+
+**Labelled line**:
+A line of a tool's text result that carries one declared output field under a fixed label (the cursor line, a book id, the error code). The label and the value format belong to the Public contract.
+
+**Prose**:
+Free wording in a tool's text result or description: hints, steering sentences, notes. Outside the Public contract, so it can be reworded in any release.
+_Avoid_: message format
+
+**Channel parity**:
+The guarantee that every output field a model must act on appears both in a tool's text result and in its structured result, because some clients show the model only one of the two.
