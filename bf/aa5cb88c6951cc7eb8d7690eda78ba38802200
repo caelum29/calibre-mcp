@@ -1,0 +1,35 @@
+GLOSSARY.md
+  s_c8a1d21b15ac49::t_4278dc1d81f44e 67,69-74
+  s_c8a1d21b15ac49::t_26e7a879468d12 14
+  s_c8a1d21b15ac49::t_51b13348a8d722 22
+  s_09df8d76f5b355::t_2749b6d19a999b 62-66,68,75-84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bfaa5cb88c6951cc7eb8d7690eda78ba38802200",
+  "prompts": {},
+  "humans": {
+    "h_e22d73abc85ef9": {
+      "author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_09df8d76f5b355": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f2fa8a77-ea07-4752-ad35-f55f72857f95",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    },
+    "s_c8a1d21b15ac49": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1a280e2f-30cf-44be-a58a-122d4ea62155",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
