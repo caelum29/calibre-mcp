@@ -1,0 +1,22 @@
+src/tools/search-annotations.ts
+  s_ba8eb38e987269::t_22d5ea5e8cd1df 11-12,132,134,191,197,220-240,251
+  s_ba8eb38e987269::t_99b43310709bcd 127-131,133,196
+src/calibre/annotations.ts
+  s_ba8eb38e987269::t_22d5ea5e8cd1df 70,79-80,127-166
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0b1bbbe460468773f29af0f702c6a87e1ef3b334",
+  "prompts": {},
+  "sessions": {
+    "s_ba8eb38e987269": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "21b90743-f48d-49ef-9ff2-ff368477cb73",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
