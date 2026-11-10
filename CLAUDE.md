@@ -36,10 +36,11 @@ search spans both via a `scope: library|book` param, not extra tools.
   `no-console`; log via `src/logging.ts` (→ stderr).
 - **FTS is book-level only** (no PDF page / EPUB spine location). Calibre has **no OCR**; PDF is the
   worst conversion/extraction input.
-- **Clients strip `structuredContent`** (Claude Desktop drops it from the tool-result notification;
-  some clients surface only text blocks). Anything the model must act on — ranked hits, excerpts,
-  `nextCursor` tokens — must ALSO appear in the text content; the cover-board widget refetches its
-  data via the widget-internal `calibre_board_data` tool for the same reason (#26, D-017).
+- **Clients strip `structuredContent`** — canary-verified (#434): Claude Desktop shows the model
+  the text only; Claude Code shows `structuredContent` on success and the text on `isError`.
+  Anything the model must act on — ranked hits, excerpts, `nextCursor` tokens — must ALSO appear in
+  the text content; the cover-board widget refetches its data via the widget-internal
+  `calibre_board_data` tool for the same reason (#26, D-017).
 
 ## Engineering invariants (constrain every edit)
 

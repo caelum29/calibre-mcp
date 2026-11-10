@@ -31,6 +31,7 @@
       },
       "name": "calibre_add_book",
       "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
           "addedIds": {
@@ -118,6 +119,7 @@
       },
       "name": "calibre_board_data",
       "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
           "books": {
@@ -251,6 +253,7 @@
       },
       "name": "calibre_build_index",
       "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
           "backgroundBuildFailed": {
@@ -463,6 +466,7 @@
       },
       "name": "calibre_bulk_update",
       "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
           "applied": {
@@ -639,6 +643,7 @@
       },
       "name": "calibre_extract_isbn",
       "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
           "applied": {
@@ -720,6 +725,7 @@
       },
       "name": "calibre_find_duplicates",
       "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
           "bookIds": {
@@ -870,6 +876,7 @@
       },
       "name": "calibre_get_book",
       "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
           "book": {
@@ -1028,6 +1035,7 @@
       },
       "name": "calibre_get_content",
       "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
           "backend": {
@@ -1208,6 +1216,7 @@
       },
       "name": "calibre_list_categories",
       "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
           "count": {
@@ -1268,6 +1277,7 @@
       },
       "name": "calibre_list_libraries",
       "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
           "default": {
@@ -1343,6 +1353,7 @@
       },
       "name": "calibre_manage_bundles",
       "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
           "action": {
@@ -1440,6 +1451,7 @@
       },
       "name": "calibre_merge_books",
       "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
           "formatMoves": {
@@ -1560,6 +1572,7 @@
       },
       "name": "calibre_open_book",
       "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
           "format": {
@@ -1659,6 +1672,7 @@
       },
       "name": "calibre_quality_report",
       "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
           "booksScanned": {
@@ -1777,6 +1791,7 @@
       },
       "name": "calibre_recover_metadata",
       "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
           "bookId": {
@@ -1852,6 +1867,7 @@
       },
       "name": "calibre_remove_book",
       "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
           "deleted": {
@@ -1983,6 +1999,7 @@
       },
       "name": "calibre_search",
       "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
           "bookId": {
@@ -2151,6 +2168,7 @@
       },
       "name": "calibre_semantic_search",
       "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
           "bookId": {
@@ -2433,6 +2451,7 @@
       },
       "name": "calibre_update_book",
       "outputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
           "changed": {

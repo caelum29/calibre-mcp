@@ -55,9 +55,6 @@ function compatProblems(schema: unknown, where: string, kind: "input" | "output"
     return;
   }
   if (!isObject(schema)) return;
-  if (kind === "output" && "$schema" in schema) {
-    out.push(`${where}: $schema in an output schema (Claude Desktop rejects the call)`);
-  }
   // #270: the input dialect stays draft-07 on the wire until clients are checked live on 2020-12
   if (kind === "input" && "$schema" in schema && schema.$schema !== DRAFT_07) {
     out.push(`${where}: $schema ${String(schema.$schema)} in an input schema (wire is pinned to draft-07)`);
@@ -122,9 +119,9 @@ describe("advertised tool schemas", () => {
 
   it("the walker catches each incompatibility it claims to", () => {
     const problems: string[] = [];
-    compatProblems({ $schema: "x", type: "object", properties: { a: { type: "array" } } }, "o", "output", problems);
+    compatProblems({ type: "object", properties: { a: { type: "array" } } }, "o", "output", problems);
     compatProblems({ type: "object", properties: { b: { const: true } } }, "i", "input", problems);
     compatProblems({ $schema: "https://json-schema.org/draft/2020-12/schema", type: "object" }, "d", "input", problems);
-    expect(problems).toHaveLength(4);
+    expect(problems).toHaveLength(3);
   });
 });
