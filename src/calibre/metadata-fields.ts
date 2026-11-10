@@ -35,7 +35,9 @@ export function formatFieldValue(field: string, value: ChangeValue): string {
   if (field === "pubdate" && typeof value === "string") {
     const v = value.trim();
     if (/^\d{4}$/.test(v)) return `${v}-01-01`;
-    if (/^\d{4}-\d{2}$/.test(v)) return `${v}-01`;
+    const ym = /^(\d{4})-(\d{1,2})$/.exec(v);
+    // only real months; "2020-13" stays as typed and is Calibre's call
+    if (ym && Number(ym[2]) >= 1 && Number(ym[2]) <= 12) return `${ym[1]}-${ym[2]!.padStart(2, "0")}-01`;
   }
   // scalars (title, series, publisher, pubdate, comments, rating, series_index, #custom)
   if (Array.isArray(value)) return value.join(",");
