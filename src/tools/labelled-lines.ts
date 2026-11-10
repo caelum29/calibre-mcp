@@ -179,7 +179,20 @@ export const LABELLED_LINES: Readonly<Record<string, ToolLabelledLines>> = {
   calibre_update_book: { none: PROSE_ONLY },
   calibre_bulk_update: { none: PROSE_ONLY },
   calibre_add_book: { none: PROSE_ONLY },
-  calibre_remove_book: { none: PROSE_ONLY },
+  calibre_remove_book: {
+    lines: [
+      {
+        // dry-run and apply results with some unknown ids (#522, #529); only unknown ids is an error
+        label: "Not found",
+        match: "segment",
+        pattern: /(?<=^Not found \(skipped\): (?:#[^,\n]+, )*)#(?<v>[^,\n]+)/,
+        format: "`Not found (skipped): #<id or uuid>, #<id or uuid>`",
+        field: "notFoundIds[]",
+        compare: "equal",
+        note: "an unresolved uuid also prints with `#`, a known limit",
+      },
+    ],
+  },
   calibre_merge_books: { none: PROSE_ONLY },
   calibre_manage_bundles: { none: PROSE_ONLY },
   calibre_board_data: { none: "none: app-only widget tool — the model never sees its text" },
