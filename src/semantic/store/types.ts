@@ -142,9 +142,10 @@ export interface IndexFreshness {
   /**
    * The index's persisted meta, read WITHOUT the compatibility guard — so a stale index
    * (built by another model/INDEX_VERSION) can still be described. Undefined when there is
-   * no index or its meta is unreadable. Never creates a db file.
+   * no index or its meta is unreadable. Never creates a db file. `diagnostic` (calibre_ping)
+   * waits only briefly on a lock and rethrows SQLITE_BUSY (#442).
    */
-  indexMeta(libraryId: string): IndexMeta | undefined;
+  indexMeta(libraryId: string, opts?: { diagnostic?: boolean }): IndexMeta | undefined;
   /** True if the index holds any embedding vectors (false = a keyword-only build). */
   hasVectors(libraryId: string): boolean;
   /**

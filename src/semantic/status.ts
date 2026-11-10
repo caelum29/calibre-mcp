@@ -16,9 +16,12 @@ import type { IndexFreshness, IndexMeta } from "./store/index.js";
 import { LibraryIdCollisionError } from "../domain/library-id-collision.js";
 import { EMBED_DIM, INDEX_VERSION, MODEL_ID } from "./model.js";
 import { staleness } from "./staleness.js";
+import { isIndexBusy } from "./index-busy.js";
 
 /** The semantic block mirrored onto calibre_ping's structuredContent. */
 export interface SemanticStatus {
+  /** The library the index facts below describe (#440); absent when none was resolved. */
+  libraryId?: string;
   /** Can vector/hybrid search run right now? (dep on disk AND not a failed in-process load). */
   available: boolean;
   /** Embedding model id — read from the index's meta when one exists, else the server's locked model. */
@@ -104,10 +107,12 @@ export function computeSemanticStatus(
   let clash: LibraryIdCollisionError | undefined;
   let meta: IndexMeta | undefined;
   try {
-    meta = libraryId ? deps.index.indexMeta(libraryId) : undefined;
+    meta = libraryId ? deps.index.indexMeta(libraryId, { diagnostic: true }) : undefined;
   } catch (err) {
-    if (!(err instanceof LibraryIdCollisionError)) throw err;
-    clash = err;
+    // locked by another process (#442): counts unknown this time, no long wait, no throw
+    if (isIndexBusy(err)) meta = undefined;
+    else if (!(err instanceof LibraryIdCollisionError)) throw err;
+    else clash = err;
   }
   const stale = meta !== undefined && staleness(meta) !== undefined;
   // A stale index is refused on open (INDEX_INCOMPATIBLE), so counting it would throw — skip.
@@ -141,6 +146,7 @@ export function computeSemanticStatus(
   }
 
   return {
+    ...(libraryId ? { libraryId } : {}),
     available,
     model: meta?.modelId ?? MODEL_ID,
     dim: meta?.dim ?? EMBED_DIM,
@@ -195,7 +201,9 @@ function formatIndexCounts(s: SemanticStatus): string | undefined {
   if (s.indexPresent === false) return "no index yet — run calibre_build_index";
   if (s.indexedBooks === undefined) return undefined;
   const gen = s.indexVersion !== undefined ? ` v${s.indexVersion}` : "";
-  return `index${gen}: ${s.indexedBooks} books / ${s.chunkCount ?? 0} chunks / ${s.figureCount ?? 0} figures, ${s.vectorCount ?? 0} vectors`;
+  // name the library the counts describe (#440): ping's Index line lists several
+  const lib = s.libraryId ? `${s.libraryId} ` : "";
+  return `${lib}index${gen}: ${s.indexedBooks} books / ${s.chunkCount ?? 0} chunks / ${s.figureCount ?? 0} figures, ${s.vectorCount ?? 0} vectors`;
 }
 
 /** `owner/name` → `name` for display. */

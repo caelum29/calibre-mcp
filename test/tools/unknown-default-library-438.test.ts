@@ -91,6 +91,6 @@ describe("calibre_ping with an unknown configured default library", () => {
   });
 
   it("should_still_run_the_index_section", async () => {
-    expect(text(await ping())).toContain("Index: Programming Books: none");
+    expect(text(await ping())).toContain("Index: Programming Books (id: Programming_Books) [default]: none");
   });
 });

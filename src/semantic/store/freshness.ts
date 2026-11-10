@@ -16,8 +16,8 @@ export class SqliteFreshness implements IndexFreshness {
     return this.conn.has(libraryId);
   }
 
-  indexMeta(libraryId: string): IndexMeta | undefined {
-    return this.conn.peekMeta(libraryId);
+  indexMeta(libraryId: string, opts?: { diagnostic?: boolean }): IndexMeta | undefined {
+    return this.conn.peekMeta(libraryId, opts);
   }
 
   hasVectors(libraryId: string): boolean {

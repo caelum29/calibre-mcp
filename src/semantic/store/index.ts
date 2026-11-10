@@ -75,8 +75,8 @@ export class SqliteIndexStore implements IndexStore {
     return this.#freshness.hasIndex(libraryId);
   }
 
-  indexMeta(libraryId: string): IndexMeta | undefined {
-    return this.#freshness.indexMeta(libraryId);
+  indexMeta(libraryId: string, opts?: { diagnostic?: boolean }): IndexMeta | undefined {
+    return this.#freshness.indexMeta(libraryId, opts);
   }
 
   hasVectors(libraryId: string): boolean {

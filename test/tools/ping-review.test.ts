@@ -95,7 +95,7 @@ describe("calibre_ping stays bounded (#304 review)", () => {
     await vi.advanceTimersByTimeAsync(5000);
     const r = await p;
     expect(text(r).split("\n")).toContain(
-      "Index: Programming Books: 10/? indexed · Humanities: none · Reaserch Books: none",
+      "Index: Programming Books (id: Programming_Books) [default]: 10/? indexed · Humanities (id: Humanities): none · Reaserch Books (id: Reaserch_Books): none",
     );
   });
 });
@@ -114,7 +114,7 @@ describe("calibre_ping index access is read-only and breaker-free (#304 review)"
     const r = await ping.handler({}, d);
     expect(spies.stats).not.toHaveBeenCalled();
     expect(text(r).split("\n")).toContain(
-      "Index: Programming Books: index unreadable · Humanities: index unreadable · Reaserch Books: index unreadable",
+      "Index: Programming Books (id: Programming_Books) [default]: index unreadable · Humanities (id: Humanities): index unreadable · Reaserch Books (id: Reaserch_Books): index unreadable",
     );
   });
 });

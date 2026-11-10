@@ -10,6 +10,7 @@ import type { Config } from "../../config.js";
 import type { LogSink } from "../../logging.js";
 import { caseCollisionOwner, LibraryIdCollisionError } from "../../domain/library-id-collision.js";
 import { EMBED_DIM, INDEX_VERSION, MODEL_ID } from "../model.js";
+import { DIAGNOSTIC_BUSY_TIMEOUT_MS, isIndexBusy } from "../index-busy.js";
 import { type Row, WEIGHTED_BM25 } from "./shared.js";
 import type { IndexMeta } from "./types.js";
 
@@ -126,8 +127,12 @@ export class IndexConnections {
     return existsSync(this.#file(libraryId));
   }
 
-  /** The persisted meta, read WITHOUT the compatibility guard; never creates a db file. */
-  peekMeta(libraryId: string): IndexMeta | undefined {
+  /**
+   * The persisted meta, read WITHOUT the compatibility guard; never creates a db file. A
+   * `diagnostic` read (calibre_ping, #442) waits only briefly on a lock and rethrows SQLITE_BUSY
+   * so the caller can say "busy" rather than "no meta".
+   */
+  peekMeta(libraryId: string, opts: { diagnostic?: boolean } = {}): IndexMeta | undefined {
     if (!this.has(libraryId)) return undefined;
     // An already-open db passed #ensureMeta; otherwise peek read-only so a stale index is
     // described instead of refused (and nothing is migrated or written).
@@ -136,7 +141,8 @@ export class IndexConnections {
     try {
       db = open ?? new DatabaseSync(this.#file(libraryId), { readOnly: true });
       // Read-only can't switch journal mode, but must still wait out a concurrent writer (#196).
-      if (!open) db.exec(`PRAGMA busy_timeout = ${this.cfg.indexBusyTimeoutMs}`);
+      const wait = opts.diagnostic ? DIAGNOSTIC_BUSY_TIMEOUT_MS : this.cfg.indexBusyTimeoutMs;
+      if (!open) db.exec(`PRAGMA busy_timeout = ${wait}`);
       const kv = new Map<string, string>();
       for (const r of db.prepare("SELECT key, value FROM meta").all() as Row[]) {
         kv.set(String(r.key), String(r.value));
@@ -147,7 +153,8 @@ export class IndexConnections {
       if (!modelId || !Number.isInteger(indexVersion) || !Number.isInteger(dim)) return undefined;
       const createdAt = kv.get("created_at");
       return { modelId, dim, indexVersion, ...(createdAt ? { createdAt } : {}) };
-    } catch {
+    } catch (err) {
+      if (opts.diagnostic && isIndexBusy(err)) throw err;
       return undefined; // no meta table / not a sqlite file — "no index" for provenance purposes
     } finally {
       if (!open) db?.close();
@@ -168,8 +175,9 @@ export class IndexConnections {
     if (!this.has(libraryId)) return absent;
     const db = new DatabaseSync(this.#file(libraryId), { readOnly: true });
     try {
-      // Read-only can't switch journal mode, but must still wait out a concurrent writer (#196).
-      db.exec(`PRAGMA busy_timeout = ${this.cfg.indexBusyTimeoutMs}`);
+      // Read-only can't switch journal mode; a WAL writer never blocks it (#196), and any other
+      // lock gets only a short wait so ping stays fast and can report "busy" (#442).
+      db.exec(`PRAGMA busy_timeout = ${DIAGNOSTIC_BUSY_TIMEOUT_MS}`);
       const meta = readMeta(db);
       if (meta.size === 0) throw new Error("INDEX_UNREADABLE: the index file has no meta (not built by this server).");
       assertCompatible(meta);
