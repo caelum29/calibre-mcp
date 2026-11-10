@@ -1,0 +1,26 @@
+test/eval/retrieval/run-cli.ts
+  s_c842c008e16f8f::t_01b3385ee21bf1 1-9
+test/eval/retrieval/eval-cli.test.ts
+  s_c842c008e16f8f::t_01b3385ee21bf1 130
+package.json
+  s_c842c008e16f8f::t_01b3385ee21bf1 51
+test/eval/retrieval/run.ts
+  s_c842c008e16f8f::t_49eb86da2719d3 34
+  s_c842c008e16f8f::t_01b3385ee21bf1 342-343
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9d814a481c4a165a0c79beca10bc9990e2a6e053",
+  "prompts": {},
+  "sessions": {
+    "s_c842c008e16f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "91965a68-3f52-49af-9990-ad0a6de81b7e",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
