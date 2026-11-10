@@ -115,6 +115,9 @@ export class CalibreClient implements LibraryWriter {
    * `calibredb --version`, lazily and once per process (#499). Local, no `--with-library`: it
    * reports the installed calibredb, which is the one that talks to the Content Server.
    * Any failure is "unknown" — a version gate must never break the calls it does not gate.
+   * Known limit, decided on #499 (2026-11-10): "unknown" is cached for the whole process, so after a
+   * failed or timed-out first read the gate stays open until the server restarts. `calibre_too_old`
+   * is then not produced and the raw calibredb error reaches the model. Not fixed on purpose.
    */
   calibreVersion(): Promise<CalibreVersionInfo> {
     this.version ??= spawnCollect(this.cfg.calibredbPath, ["--version"], {
