@@ -1,0 +1,20 @@
+docs/ARCHITECTURE.md
+  s_f029e91c9abcf4::t_f2f6de5cc9bf7c 80-82,98-100,109-110,161-162,186,213
+  s_f029e91c9abcf4::t_58510c80e2edb4 1-79,83-97,101-108,111-160,163-185,187-212,214-216
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a6471c8b5b4d3f9c7a14437e5940ebba9610247f",
+  "prompts": {},
+  "sessions": {
+    "s_f029e91c9abcf4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a620a43a-a56d-4fd0-9de8-7441fb6466a7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
