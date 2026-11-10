@@ -41,11 +41,12 @@ import type { ContentBlock, ToolResult } from "./types.js";
 import type { BaseDeps, DepsWithIndex } from "./deps.js";
 import type { IndexFreshness } from "../semantic/store/index.js";
 import { errorCodeFor } from "../domain/error-codes.js";
+import { searchAnnotationsOrNotes } from "./search-annotations.js";
 import { LibraryIdCollisionError } from "../domain/library-id-collision.js";
 
 type SearchArgs = {
   query: string;
-  mode: "meta" | "fts";
+  mode: "meta" | "fts" | "annotations" | "notes";
   scope: "library" | "book";
   bookId?: number | string;
   library?: string;
@@ -463,10 +464,10 @@ export const searchTool = defineTool({
   name: "calibre_search",
   title: "Search books",
   description:
-    'Find books by `query`: exact title, author, ISBN, tag, or Calibre query syntax (mode=meta), or full text (mode=fts). mode=fts words match independently and stemmed (events matches event); wrap a phrase in double quotes for an exact match ("event sourcing"); supports AND/OR/NOT between terms (uppercase, e.g. a NOT b). scope=book returns short keyword snippets from inside one book; first hits often land in TOC/front matter — for definitional or topic questions within a book prefer calibre_semantic_search scope=book (ranked passages with char offsets). Use calibre_semantic_search for meaning/topic queries. For "how many" questions use countOnly=true (returns only the count). filter accepts a bundle name to scope the search (list bundles via calibre_manage_bundles).',
+    'Find books by `query`: exact title, author, ISBN, tag, or Calibre query syntax (mode=meta), or full text (mode=fts). mode=fts words match independently and stemmed (events matches event); wrap a phrase in double quotes for an exact match ("event sourcing"); supports AND/OR/NOT between terms (uppercase, e.g. a NOT b). scope=book returns short keyword snippets from inside one book; first hits often land in TOC/front matter — for definitional or topic questions within a book prefer calibre_semantic_search scope=book (ranked passages with char offsets). Use calibre_semantic_search for meaning/topic queries. For "how many" questions use countOnly=true (returns only the count). filter accepts a bundle name to scope the search (list bundles via calibre_manage_bundles). Calibre 9.18+: mode=annotations searches highlights, their notes and bookmark titles (filter applies; scope=book + bookId searches one book, query "*" lists all its annotations); mode=notes searches notes attached to authors, series, tags, publisher (filters do not apply), and query "authors:Name" (or series:/tags:/publisher:/#custom:, item may be quoted) shows the whole note of that item.',
   inputSchema: {
     query: z.string().min(1).max(512),
-    mode: z.enum(["meta", "fts"]).optional().default("meta"),
+    mode: z.enum(["meta", "fts", "annotations", "notes"]).optional().default("meta"),
     scope: z.enum(["library", "book"]).optional().default("library"),
     bookId: BookId().optional(),
     library: z.string().optional(),
@@ -490,6 +491,29 @@ export const searchTool = defineTool({
     bookId: z.number().optional(),
     filter: z.string().optional(),
     exclusionsApplied: z.array(z.string()).optional(),
+    // mode=annotations (#500): highlights and bookmarks, in Calibre's relevance order
+    annotations: z
+      .array(
+        z.object({
+          id: z.number().optional(),
+          bookId: z.number(),
+          title: z.string().optional(),
+          format: z.string(),
+          type: z.string(),
+          text: z.string(),
+          note: z.string().optional(),
+          chapter: z.string().optional(),
+          timestamp: z.string().optional(),
+          user: z.string(),
+        }),
+      )
+      .optional(),
+    // mode=notes (#500): the item each note is attached to, plus Calibre's snippet
+    notes: z
+      .array(
+        z.object({ field: z.string(), item: z.string(), snippet: z.string().optional(), text: z.string().optional() }),
+      )
+      .optional(),
     // FTS snippets mirrored for structured-only clients (#199), fenced exactly like the text
     // blocks; bookId is set on library-scope hits (one entry per book with snippets).
     hits: z.array(z.object({ bookId: z.number().optional(), snippet: z.string() })).optional(),
@@ -503,6 +527,10 @@ export const searchTool = defineTool({
     // One budget for every Calibre sub-call below (bundle listing, id resolution, FTS, snippets).
     const deadline = new Deadline();
     try {
+      // Calibre 9.18+ annotations / item notes (#500): own module, own version gate
+      if (args.mode === "annotations" || args.mode === "notes") {
+        return await searchAnnotationsOrNotes({ ...args, mode: args.mode }, deps, deadline, ctx?.signal);
+      }
       const fts = deps.fts;
       // scope=book → full-text within one book (metadata search on a single record is moot).
       // Bundles scope LIBRARY discovery; a named book is already the narrowest scope.

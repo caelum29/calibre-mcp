@@ -37,7 +37,7 @@ ID `My_Books`. Calibre GUI + Content Server on `:8080` are normally running.
 
 | Tool | Purpose | Key params |
 |---|---|---|
-| `calibre_search` | Find books by metadata or full text; also keyword search *inside* one book | `query`, `mode: meta\|fts`, `scope: library\|book`, `bookId`, `sort`, `limit`, `cursor`, `filter` (bundle), `include_excluded` |
+| `calibre_search` | Find books by metadata or full text; also keyword search *inside* one book; highlights/bookmarks and author/series/tag notes (Calibre 9.18+) | `query`, `mode: meta\|fts\|annotations\|notes`, `scope: library\|book`, `bookId`, `sort`, `limit`, `cursor`, `filter` (bundle), `include_excluded` |
 | `calibre_get_book` | Full metadata + formats + cover for one book | `id` (number or uuid) |
 | `calibre_get_content` | Read book text chunk-by-chunk without flooding context | `id`, `maxChars` (default 8k, max 40k), `cursor`, `structure` (outline), `sentenceAware` |
 | `calibre_get_figures` | List a book's captioned figures, then fetch ≤3 as images (also rendered for the user in an in-chat figure viewer on MCP Apps hosts) | `id`, `indexes` (omit to list), `detail: standard\|high`, `include_uncaptioned`, `format` |
@@ -214,6 +214,10 @@ GUI preference); if a write is refused, that's the first thing to check. `calibr
 | "Які книги по JS є?" | `calibre_search` query: `"javascript"` |
 | "В якій книзі є event sourcing?" | `calibre_semantic_search` query: `"event sourcing"` |
 | "Where exactly does this book cover CQRS?" | `calibre_search` mode:fts scope:book bookId:N |
+| "What did I highlight about commits?" | `calibre_search` mode:annotations query:`"commit"` (Calibre 9.18+; `calibre_too_old` on older) |
+| "What do my author notes say about the outbox?" | `calibre_search` mode:notes query:`"outbox"` (notes attach to items: no `filter`) |
+| "Show my note on Adam Bellemare" | `calibre_search` mode:notes query:`'authors:"Adam Bellemare"'` (also `series:` / `tags:` / `publisher:` / `#custom:`) |
+| "All my highlights in book N" | `calibre_search` mode:annotations scope:book bookId:N query:`"*"` |
 | "Rate Vibe Coding 5 stars" | `calibre_update_book` changes: `{rating: 10}` |
 | "Зміни теги книги" | `calibre_update_book` changes: `{tags: [...]}` |
 | "Tag all SQL books" | `calibre_bulk_update` query:"title:SQL" → preview → apply |

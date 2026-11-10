@@ -1,0 +1,359 @@
+Integration status: False
+{
+  "annotations": [
+    {
+      "book_id": 644,
+      "end_cfi": "/2/4/2[book-content]/2[sbo-rt-content]/2/2[ch05_designing_events_id]/10/2[state_events_and_ecst]/24/2[id70]/6/12/2/1:242",
+      "format": "EPUB",
+      "highlighted_text": "Simple\nThe event broker stores any previous state events for that entity, such that if you need historical state, you simply rewind and replay your consumer offsets. You can set independent compaction policies for each event stream depending on your consumer’s needs for historical data.\n\nCompactable\nThe quantity of events in the stream is proportional to the quantity of unique keys in the domain. For example, if you have a compacted stream with 1,000 unique keys, then you can expect the long-term stream size to be just over 1,000 events.",
+      "spine_index": 12,
+      "spine_name": "OEBPS/ch05.html",
+      "start_cfi": "/2/4/2[book-content]/2[sbo-rt-content]/2/2[ch05_designing_events_id]/10/2[state_events_and_ecst]/24/2[id70]/6/6/1:0",
+      "style": {
+        "kind": "color",
+        "type": "builtin",
+        "which": "purple"
+      },
+      "timestamp": "2026-11-10T18:23:16.145Z",
+      "toc_family_titles": [
+        "5. Designing Events",
+        "State Events and Event-Carried State Transfer",
+        "Current State Events"
+      ],
+      "type": "highlight",
+      "user": "viewer",
+      "user_type": "local",
+      "uuid": "txlqcSN9R_v6r_V5_UqGbw"
+    },
+    {
+      "book_id": 94,
+      "format": "EPUB",
+      "pos": "epubcfi(/16/2/4[x978601084358-5]/2/698/1:165)",
+      "pos_type": "epubcfi",
+      "timestamp": "2026-11-10T18:21:23.940434+00:00",
+      "title": "Ветвление",
+      "type": "bookmark",
+      "user": "viewer",
+      "user_type": "local"
+    },
+    {
+      "book_id": 94,
+      "format": "EPUB",
+      "pos": "epubcfi(/16/2/4[x978601084358-5]/2/318/1:8)",
+      "pos_type": "epubcfi",
+      "timestamp": "2026-11-10T18:21:05.477793+00:00",
+      "title": "Rebase и конфликты",
+      "type": "bookmark",
+      "user": "viewer",
+      "user_type": "local"
+    },
+    {
+      "book_id": 94,
+      "end_cfi": "/2/4[x978601084358-5]/2/940/1:95",
+      "format": "EPUB",
+      "highlighted_text": "git reflog",
+      "spine_index": 7,
+      "spine_name": "OEBPS/Text/978601084358-5.xhtml",
+      "start_cfi": "/2/4[x978601084358-5]/2/940/2/1:0",
+      "style": {
+        "kind": "decoration",
+        "type": "builtin",
+        "which": "strikeout"
+      },
+      "timestamp": "2026-11-10T18:20:17.335Z",
+      "toc_family_titles": [
+        "Глава 3. Ветки",
+        "Управление ветками"
+      ],
+      "type": "highlight",
+      "user": "viewer",
+      "user_type": "local",
+      "uuid": "9K2z0KLVFMqxpGnuD2syAQ"
+    },
+    {
+      "book_id": 94,
+      "end_cfi": "/2/4[x978601084358-5]/2/784/1:297",
+      "format": "EPUB",
+      "highlighted_text": "git reflog",
+      "spine_index": 7,
+      "spine_name": "OEBPS/Text/978601084358-5.xhtml",
+      "start_cfi": "/2/4[x978601084358-5]/2/784/4/1:0",
+      "style": {
+        "kind": "decoration",
+        "type": "builtin",
+        "which": "strikeout"
+      },
+      "timestamp": "2026-11-10T18:19:58.379Z",
+      "toc_family_titles": [
+        "Глава 3. Ветки",
+        "Управление ветками"
+      ],
+      "type": "highlight",
+      "user": "viewer",
+      "user_type": "local",
+      "uuid": "alW7mqxlw46SC1wnahP_xQ"
+    },
+    {
+      "book_id": 94,
+      "end_cfi": "/2/4[x978601084358-2]/2/64/2/1:10",
+      "format": "EPUB",
+      "highlighted_text": "ветвлением",
+      "spine_index": 4,
+      "spine_name": "OEBPS/Text/978601084358-2.xhtml",
+      "start_cfi": "/2/4[x978601084358-2]/2/64/2/1:0",
+      "style": {
+        "kind": "color",
+        "type": "builtin",
+        "which": "yellow"
+      },
+      "timestamp": "2026-11-10T18:19:28.820Z",
+      "toc_family_titles": [
+        "Глава 1. Знакомство с Git",
+        "Характеристики Git"
+      ],
+      "type": "highlight",
+      "user": "viewer",
+      "user_type": "local",
+      "uuid": "45qFVy01qF5-USegj0v6RQ"
+    },
+    {
+      "book_id": 94,
+      "end_cfi": "/2/4[x978601084358-12]/2/762/1:27",
+      "format": "EPUB",
+      "highlighted_text": "Использование git rebase -i",
+      "notes": "Interactive rebase: squash, reword, reorder commits.",
+      "spine_index": 14,
+      "spine_name": "OEBPS/Text/978601084358-12.xhtml",
+      "start_cfi": "/2/4[x978601084358-12]/2/762/1:0",
+      "style": {
+        "kind": "color",
+        "type": "builtin",
+        "which": "blue"
+      },
+      "timestamp": "2026-11-10T18:19:00.721Z",
+      "toc_family_titles": [
+        "Глава 9. Изменение коммитов",
+        "Перебазирование коммитов"
+      ],
+      "type": "highlight",
+      "user": "viewer",
+      "user_type": "local",
+      "uuid": "kaqApLnUybGVQi4tF4I0Gw"
+    },
+    {
+      "book_id": 94,
+      "end_cfi": "/2/4[x978601084358-12]/2/758/1:256",
+      "format": "EPUB",
+      "highlighted_text": "последующие коммиты зависят",
+      "spine_index": 14,
+      "spine_name": "OEBPS/Text/978601084358-12.xhtml",
+      "start_cfi": "/2/4[x978601084358-12]/2/758/1:229",
+      "style": {
+        "kind": "color",
+        "type": "builtin",
+        "which": "green"
+      },
+      "timestamp": "2026-11-10T18:18:36.576Z",
+      "toc_family_titles": [
+        "Глава 9. Изменение коммитов",
+        "Перебазирование коммитов"
+      ],
+      "type": "highlight",
+      "user": "viewer",
+      "user_type": "local",
+      "uuid": "MO9RXK-EXoZRNxz1w3Ug9w"
+    },
+    {
+      "book_id": 94,
+      "end_cfi": "/2/4[x978601084358-12]/2/760/8/1:7",
+      "format": "EPUB",
+      "highlighted_text": "git rebase --abort",
+      "notes": "Аварійний вихід із rebase: повертає репозиторій у стан до операції.",
+      "spine_index": 14,
+      "spine_name": "OEBPS/Text/978601084358-12.xhtml",
+      "start_cfi": "/2/4[x978601084358-12]/2/760/4/1:0",
+      "style": {
+        "kind": "color",
+        "type": "builtin",
+        "which": "yellow"
+      },
+      "timestamp": "2026-11-10T18:18:15.692Z",
+      "toc_family_titles": [
+        "Глава 9. Изменение коммитов",
+        "Перебазирование коммитов"
+      ],
+      "type": "highlight",
+      "user": "viewer",
+      "user_type": "local",
+      "uuid": "ieGJA1UhVizpQde9VuEhrA"
+    },
+    {
+      "book_id": 644,
+      "format": "EPUB",
+      "pos": "epubcfi(/26/2/4/2[book-content]/2[sbo-rt-content]/2/2[ch05_designing_events_id]/10/2[state_events_and_ecst]/24/2[id70]/6/8/2/1:141)",
+      "pos_type": "epubcfi",
+      "timestamp": "2026-11-10T18:16:44.187658+00:00",
+      "title": "consumer offsets",
+      "type": "bookmark",
+      "user": "viewer",
+      "user_type": "local"
+    },
+    {
+      "book_id": 644,
+      "format": "EPUB",
+      "pos": "epubcfi(/28/2/4/2[book-content]/2[sbo-rt-content]/2/2[ch_06_integration]/32/2[id105]/12/1:539)",
+      "pos_type": "epubcfi",
+      "timestamp": "2026-11-10T18:15:51.026924+00:00",
+      "title": "Outbox pattern",
+      "type": "bookmark",
+      "user": "viewer",
+      "user_type": "local"
+    },
+    {
+      "book_id": 644,
+      "end_cfi": "/2/4/2[book-content]/2[sbo-rt-content]/2/2[ch03_v2_id]/20/2[ch03_edm_fundamentals_swp_section]/8/1:80",
+      "format": "EPUB",
+      "highlighted_text": "A microservice should also be reasonably sized. Does that sound ambiguous to you? Well, read on.",
+      "notes": "Data contracts = the API of an event stream. Link to D-023 idea.",
+      "spine_index": 9,
+      "spine_name": "OEBPS/ch03.html",
+      "start_cfi": "/2/4/2[book-content]/2[sbo-rt-content]/2/2[ch03_v2_id]/20/2[ch03_edm_fundamentals_swp_section]/8/1:0",
+      "style": {
+        "kind": "color",
+        "type": "builtin",
+        "which": "purple"
+      },
+      "timestamp": "2026-11-10T18:15:13.496Z",
+      "toc_family_titles": [
+        "3. Fundamentals of Event-Driven Microservices",
+        "Event-Driven Microservice Responsibilities"
+      ],
+      "type": "highlight",
+      "user": "viewer",
+      "user_type": "local",
+      "uuid": "6d6tx7kG34JdGT_j2IaRtA"
+    },
+    {
+      "book_id": 644,
+      "end_cfi": "/2/4/2[book-content]/2[sbo-rt-content]/2/2[ch03_v2_id]/20/2[ch03_edm_fundamentals_swp_section]/6/30/1:32",
+      "format": "EPUB",
+      "highlighted_text": "Event schemas and data contracts",
+      "spine_index": 9,
+      "spine_name": "OEBPS/ch03.html",
+      "start_cfi": "/2/4/2[book-content]/2[sbo-rt-content]/2/2[ch03_v2_id]/20/2[ch03_edm_fundamentals_swp_section]/6/30/1:0",
+      "style": {
+        "kind": "color",
+        "type": "builtin",
+        "which": "purple"
+      },
+      "timestamp": "2026-11-10T18:14:43.462Z",
+      "toc_family_titles": [
+        "3. Fundamentals of Event-Driven Microservices",
+        "Event-Driven Microservice Responsibilities"
+      ],
+      "type": "highlight",
+      "user": "viewer",
+      "user_type": "local",
+      "uuid": "KaA-49BUKRzUY7TqdIBvqA"
+    },
+    {
+      "book_id": 644,
+      "end_cfi": "/2/4/2[book-content]/2[sbo-rt-content]/2/2[ch_workflows]/20/2[durable_execution_engine_intro]/28/2[id167]/4/2[xi_eventsourcingviadurableappendonlylog104001_1]",
+      "format": "EPUB",
+      "highlighted_text": "Event Sourcing via the Durable Append-Only Log\n",
+      "spine_index": 17,
+      "spine_name": "OEBPS/ch10.html",
+      "start_cfi": "/2/4/2[book-content]/2[sbo-rt-content]/2/2[ch_workflows]/20/2[durable_execution_engine_intro]/28/2[id167]/2/1:0",
+      "style": {
+        "kind": "color",
+        "type": "builtin",
+        "which": "blue"
+      },
+      "timestamp": "2026-11-10T18:14:10.231Z",
+      "toc_family_titles": [
+        "10. Building Workflows with Microservices",
+        "Implementing Orchestration via a Durable \nExecution Engine",
+        "Event Sourcing via the Durable Append-Only Log"
+      ],
+      "type": "highlight",
+      "user": "viewer",
+      "user_type": "local",
+      "uuid": "1Fv88bRPPjNlAx6x5DuIdQ"
+    },
+    {
+      "book_id": 644,
+      "end_cfi": "/2/4/2[book-content]/2[sbo-rt-content]/2/2[ch_06_integration]/14/2[ch_bootstrap_dual_write_anti_pattern]/8/1:267",
+      "format": "EPUB",
+      "highlighted_text": "commit",
+      "notes": "Commit offsets only after processing, or you lose events on crash.",
+      "spine_index": 13,
+      "spine_name": "OEBPS/ch06.html",
+      "start_cfi": "/2/4/2[book-content]/2[sbo-rt-content]/2/2[ch_06_integration]/14/2[ch_bootstrap_dual_write_anti_pattern]/8/1:261",
+      "style": {
+        "kind": "color",
+        "type": "builtin",
+        "which": "green"
+      },
+      "timestamp": "2026-11-10T18:13:47.914Z",
+      "toc_family_titles": [
+        "6. Integrating Event-Driven Architectures with Existing Systems",
+        "The Dual Write Antipattern"
+      ],
+      "type": "highlight",
+      "user": "viewer",
+      "user_type": "local",
+      "uuid": "ViGPyty5eFEOP_KjVWFtWg"
+    },
+    {
+      "book_id": 644,
+      "end_cfi": "/2/4/2[book-content]/2[sbo-rt-content]/2/2[ch_06_integration]/24/2[ch_bootstrap_txn_outbox]/34/2[id331]/32/2[id98]/6/6/1:29",
+      "format": "EPUB",
+      "highlighted_text": "Exactly-once outbox semantics",
+      "spine_index": 13,
+      "spine_name": "OEBPS/ch06.html",
+      "start_cfi": "/2/4/2[book-content]/2[sbo-rt-content]/2/2[ch_06_integration]/24/2[ch_bootstrap_txn_outbox]/34/2[id331]/32/2[id98]/6/6/1:0",
+      "style": {
+        "kind": "color",
+        "type": "builtin",
+        "which": "yellow"
+      },
+      "timestamp": "2026-11-10T18:12:53.900Z",
+      "toc_family_titles": [
+        "6. Integrating Event-Driven Architectures with Existing Systems",
+        "Liberating Data Using Transactional Outbox Tables",
+        "Ensuring Schema Compatibility"
+      ],
+      "type": "highlight",
+      "user": "viewer",
+      "user_type": "local",
+      "uuid": "0HbQn8qfgXCIKPPou6b4-g"
+    },
+    {
+      "book_id": 644,
+      "end_cfi": "/2/4/2[book-content]/2[sbo-rt-content]/2/2[ch_06_integration]/24/2[ch_bootstrap_txn_outbox]/34/2[id331]/32/2[id98]/6/2",
+      "format": "EPUB",
+      "highlighted_text": "sactional outbox advantages include the following:\n\n",
+      "notes": "Outbox = atomic write of state + event. Use instead of dual writes.",
+      "spine_index": 13,
+      "spine_name": "OEBPS/ch06.html",
+      "start_cfi": "/2/4/2[book-content]/2[sbo-rt-content]/2/2[ch_06_integration]/24/2[ch_bootstrap_txn_outbox]/34/2[id331]/32/2[id98]/4/2[id1057]:4",
+      "style": {
+        "kind": "color",
+        "type": "builtin",
+        "which": "yellow"
+      },
+      "timestamp": "2026-11-10T18:12:32.185Z",
+      "toc_family_titles": [
+        "6. Integrating Event-Driven Architectures with Existing Systems",
+        "Liberating Data Using Transactional Outbox Tables",
+        "Ensuring Schema Compatibility"
+      ],
+      "type": "highlight",
+      "user": "viewer",
+      "user_type": "local",
+      "uuid": "oWCMs8nXxIX7H0ds-MzvFA"
+    }
+  ],
+  "type": "calibre_annotation_collection",
+  "version": 1
+}

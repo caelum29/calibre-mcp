@@ -72,7 +72,7 @@ of contents or front matter; for a definitional or topic question within a book,
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
 | `query` | string | *(required)* | Search text or Calibre query syntax (e.g. `author:knuth`, `tag:rust`) |
-| `mode` | `meta` \| `fts` | `meta` | `meta` = metadata/query-syntax search; `fts` = full-text search |
+| `mode` | `meta` \| `fts` \| `annotations` \| `notes` | `meta` | `meta` = metadata/query-syntax search; `fts` = full-text search; `annotations` / `notes` = highlights and item notes (Calibre 9.18+) |
 | `scope` | `library` \| `book` | `library` | `book` searches inside one book (forces full text; needs `bookId`) |
 | `bookId` | number \| uuid | — | Required when `scope: book` |
 | `library` | string | *(default)* | Library name or id |
@@ -103,7 +103,23 @@ built, the result says how far along it is (`indexing`). Each call answers withi
 Calibre is still busy with an earlier long request, the call fails fast with a retry time
 instead of queueing behind it.
 
-> Ask: *"find books about Rust"* · *"search my library for author:knuth"* · *"where does book 187 mention rebalancing?"* (`scope: book`) · *"search async runtimes in the Rust bundle"* (`filter`)
+**Annotations and notes (Calibre 9.18+).** `mode: annotations` searches the highlights,
+their notes and the bookmark titles made in the Calibre E-book viewer (and by Content Server
+users) — all users, read-only. Hits come in Calibre's relevance order, one
+`annotation <id> · <type> · book <bookId> · …` line each, with the highlighted text and the
+note fenced as data; `structuredContent.annotations[]` carries `id`, `bookId`, `title`,
+`format`, `type` (`highlight` / `bookmark`), `text`, `note`, `chapter`, `timestamp`, `user`.
+`filter` and exclusion markers apply as in `meta` / `fts`; `scope: book` + `bookId` searches
+one book, and `query: "*"` there lists every annotation of the book (in Calibre's export order;
+those rows carry no annotation `id` or `title`). `mode: notes` searches the notes attached to
+authors, series, tags and other items: one `note · <field>: <item>` line per hit with Calibre's
+snippet (`structuredContent.notes[].snippet`). A query of the form `<field>:<item>` — `authors`,
+`series`, `tags`, `publisher` or a custom `#column`, item quoted or not (`authors:"Adam Bellemare"`)
+— shows that item's whole note as Markdown (`notes[].text`); an item without a note returns
+`not_found`. Notes belong to items, not books, so `filter` and `scope: book` don't apply. Both modes cap at
+`limit` (no `cursor`, no `sort`); on a Calibre older than 9.18 they return `calibre_too_old`.
+
+> Ask: *"find books about Rust"* · *"search my library for author:knuth"* · *"where does book 187 mention rebalancing?"* (`scope: book`) · *"search async runtimes in the Rust bundle"* (`filter`) · *"what did I highlight about commits?"* (`mode: annotations`) · *"which author notes mention the outbox pattern?"* (`mode: notes`)
 
 ### `calibre_get_book`
 
@@ -674,6 +690,8 @@ only the part named here is contract. The table is generated from the server's r
 | `calibre_list_libraries` | `id` | `<Name> (id: <libraryId>)[ [default]]` — one line per library | `libraries[].id` |
 | `calibre_get_book` | `id` | `id: <id> \| uuid: <uuid>[ \| …]` (fields after the uuid are Prose) | `book.id` |
 | `calibre_search` | `cursor` | `… cursor: <nextCursor>` at the end of the line — pass the token verbatim (the words before `cursor:` are Prose) | `nextCursor` |
+| `calibre_search` | `annotation` | `annotation <id> · <type> · book <bookId> · <format> · <title>` — mode=annotations, one per hit (the format and title after `book <bookId>` are Prose) | `annotations[].id` |
+| `calibre_search` | `note` | `note · <field>: <item>` — mode=notes, one per hit | `notes[].item` |
 | `calibre_list_categories` | `cursor` | `… cursor: <nextCursor>` at the end of the line — pass the token verbatim (the words before `cursor:` are Prose) | `nextCursor` |
 | `calibre_quality_report` | `cursor` | `… cursor: <nextCursor>` at the end of the line — pass the token verbatim (the words before `cursor:` are Prose) | `nextCursor` |
 | `calibre_find_duplicates` | `cursor` | `… cursor: <nextCursor>` at the end of the line — pass the token verbatim (the words before `cursor:` are Prose) | `nextCursor` |

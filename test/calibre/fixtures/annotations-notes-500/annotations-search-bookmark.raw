@@ -1,0 +1,19 @@
+Integration status: False
+[
+  {
+    "annotation": {
+      "pos": "epubcfi(/28/2/4/2[book-content]/2[sbo-rt-content]/2/2[ch_06_integration]/32/2[id105]/12/1:539)",
+      "pos_type": "epubcfi",
+      "timestamp": "2026-11-10T18:15:51.026924+00:00",
+      "title": "Outbox pattern",
+      "type": "bookmark"
+    },
+    "book_id": 644,
+    "format": "EPUB",
+    "id": 17,
+    "text": "Outbox pattern",
+    "title": "Building Event-Driven Microservices (for True Epub)",
+    "user": "viewer",
+    "user_type": "local"
+  }
+]

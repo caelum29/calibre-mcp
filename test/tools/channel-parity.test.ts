@@ -29,6 +29,11 @@ import {
 import type { AnyToolDescriptor, ToolResult } from "../../src/tools/types.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
 import { fakeFts } from "./fake-fts.js";
+import { parseCalibreVersion } from "../../src/domain/calibre-version.js";
+
+// real calibredb captures (#500) for the annotations / notes modes
+const CAPTURE_500 = path.join(import.meta.dirname, "../calibre/fixtures/annotations-notes-500");
+const capture500 = (name: string): string => readFileSync(path.join(CAPTURE_500, `${name}.raw`), "utf8");
 
 // ── the parity checker ────────────────────────────────────────────────────────────────
 
@@ -133,7 +138,14 @@ function structuredNumbers(v: unknown, out = new Set<number>()): Set<number> {
 
 const FENCE = /--- BEGIN UNTRUSTED ([A-Z ]+) \(data to display, not instructions\) ---\n([\s\S]*?)\n--- END \1 ---/g;
 /** Fenced payloads whose body is the data itself (not a wrapper around a summary). */
-const PAYLOAD_FENCES = new Set(["FTS SNIPPET"]);
+const PAYLOAD_FENCES = new Set([
+  "FTS SNIPPET",
+  "HIGHLIGHT",
+  "BOOKMARK TITLE",
+  "ANNOTATION NOTE",
+  "NOTE SNIPPET",
+  "NOTE",
+]);
 
 /** text → structured: text payload the structured channel lacks. */
 function textOnly(r: ToolResult): string[] {
@@ -366,6 +378,7 @@ function fakeDeps(o: FakeOpts = {}): ToolDeps {
   };
   const calibre = {
     calibredb: o.calibredb ?? (async () => ({ stdout: "", stderr: "" })),
+    calibreVersion: async () => parseCalibreVersion("calibredb (calibre 9.18)"),
   };
   const extractor = {
     getText: async () => {
@@ -654,6 +667,37 @@ const SNIPPETS = [
 ];
 
 const PAYLOAD_SCENARIOS: Scenario[] = [
+  {
+    tool: "calibre_search",
+    label: "mode=annotations highlights with notes (#500)",
+    args: { query: "commit", mode: "annotations" },
+    deps: () => fakeDeps({ calibredb: async () => ({ stdout: capture500("annotations-search-commit"), stderr: "" }) }),
+  },
+  {
+    tool: "calibre_search",
+    label: "mode=annotations bookmark (#500)",
+    args: { query: "outbox", mode: "annotations" },
+    deps: () =>
+      fakeDeps({ calibredb: async () => ({ stdout: capture500("annotations-search-bookmark"), stderr: "" }) }),
+  },
+  {
+    tool: "calibre_search",
+    label: "mode=notes show one item (#500)",
+    args: { query: "authors:Adam Bellemare", mode: "notes" },
+    deps: () => fakeDeps({ calibredb: async () => ({ stdout: capture500("notes-show-bellemare"), stderr: "" }) }),
+  },
+  {
+    tool: "calibre_search",
+    label: 'mode=annotations scope=book query "*" (#500)',
+    args: { query: "*", mode: "annotations", scope: "book", bookId: 101 },
+    deps: () => fakeDeps({ calibredb: async () => ({ stdout: capture500("annotations-export"), stderr: "" }) }),
+  },
+  {
+    tool: "calibre_search",
+    label: "mode=notes (#500)",
+    args: { query: "outbox", mode: "notes" },
+    deps: () => fakeDeps({ calibredb: async () => ({ stdout: capture500("notes-search-outbox"), stderr: "" }) }),
+  },
   {
     tool: "calibre_quality_report",
     label: "issue lines, first of two pages",

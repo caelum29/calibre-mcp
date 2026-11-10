@@ -1,0 +1,61 @@
+Integration status: False
+[
+  {
+    "annotation": {
+      "end_cfi": "/2/4/2[book-content]/2[sbo-rt-content]/2/2[ch_06_integration]/14/2[ch_bootstrap_dual_write_anti_pattern]/8/1:267",
+      "highlighted_text": "commit",
+      "notes": "Commit offsets only after processing, or you lose events on crash.",
+      "spine_index": 13,
+      "spine_name": "OEBPS/ch06.html",
+      "start_cfi": "/2/4/2[book-content]/2[sbo-rt-content]/2/2[ch_06_integration]/14/2[ch_bootstrap_dual_write_anti_pattern]/8/1:261",
+      "style": {
+        "kind": "color",
+        "type": "builtin",
+        "which": "green"
+      },
+      "timestamp": "2026-11-10T18:13:47.914Z",
+      "toc_family_titles": [
+        "6. Integrating Event-Driven Architectures with Existing Systems",
+        "The Dual Write Antipattern"
+      ],
+      "type": "highlight",
+      "uuid": "ViGPyty5eFEOP_KjVWFtWg"
+    },
+    "book_id": 644,
+    "format": "EPUB",
+    "id": 23,
+    "text": "commit\n \nCommit offsets only after processing, or you lose events on crash.",
+    "title": "Building Event-Driven Microservices (for True Epub)",
+    "user": "viewer",
+    "user_type": "local"
+  },
+  {
+    "annotation": {
+      "end_cfi": "/2/4[x978601084358-12]/2/762/1:27",
+      "highlighted_text": "Использование git rebase -i",
+      "notes": "Interactive rebase: squash, reword, reorder commits.",
+      "spine_index": 14,
+      "spine_name": "OEBPS/Text/978601084358-12.xhtml",
+      "start_cfi": "/2/4[x978601084358-12]/2/762/1:0",
+      "style": {
+        "kind": "color",
+        "type": "builtin",
+        "which": "blue"
+      },
+      "timestamp": "2026-11-10T18:19:00.721Z",
+      "toc_family_titles": [
+        "Глава 9. Изменение коммитов",
+        "Перебазирование коммитов"
+      ],
+      "type": "highlight",
+      "uuid": "kaqApLnUybGVQi4tF4I0Gw"
+    },
+    "book_id": 94,
+    "format": "EPUB",
+    "id": 16,
+    "text": "Использование git rebase -i\n \nInteractive rebase: squash, reword, reorder commits.",
+    "title": "Git: контроль версий. 3-е изд.",
+    "user": "viewer",
+    "user_type": "local"
+  }
+]
