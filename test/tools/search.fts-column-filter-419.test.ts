@@ -9,6 +9,7 @@ import { FtsError } from "../../src/domain/errors.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
 import type { SearchDeps, SearchIndex } from "../../src/tools/calibre_search.js";
 import { fakeFts } from "./fake-fts.js";
+import { textOf } from "./text-of.js";
 
 function deps(fts: ToolDeps["fts"]): SearchDeps {
   return {
@@ -25,9 +26,6 @@ function deps(fts: ToolDeps["fts"]): SearchDeps {
     log,
   };
 }
-
-const textOf = (r: { content: { type: string; text?: string }[] }): string =>
-  r.content.map((c) => c.text ?? "").join("\n");
 
 const rejecting422 = () =>
   fakeFts([], {

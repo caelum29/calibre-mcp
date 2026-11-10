@@ -1,12 +1,11 @@
 import { describe, it, expect } from "vitest";
 import {
-  chooseExtractFormat,
   ebookConvertArgs,
   isEvictableCacheFile,
-  noTextReason,
   parseTextCacheEnvelope,
   pdftotextArgs,
 } from "../../src/calibre/extract.js";
+import { chooseExtractFormat, noTextReason } from "../../src/domain/extract-format.js";
 
 describe("chooseExtractFormat", () => {
   it("prefers epub over pdf when both exist", () => {

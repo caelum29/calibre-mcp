@@ -14,6 +14,7 @@ import type { ToolDeps } from "../../src/tools/deps.js";
 import type { SearchDeps, SearchIndex } from "../../src/tools/calibre_search.js";
 import type { ToolResult } from "../../src/tools/types.js";
 import { fakeFts } from "./fake-fts.js";
+import { textOf } from "./text-of.js";
 
 // Dirty books in same-title pairs: every book has quality issues, ids 2k-1/2k form a dup group.
 const BOOKS: Book[] = Array.from({ length: 8 }, (_, i) => ({
@@ -84,7 +85,6 @@ const meta = (a: Args, f = fake()) =>
 const fts = (a: Args, f = fake()) =>
   searchTool.handler({ query: "x", mode: "fts", scope: "library", limit: 2, ...a } as never, f.deps);
 
-const textOf = (r: ToolResult): string => r.content.map((c) => (c.type === "text" ? c.text : "")).join("\n");
 const nextOf = (r: ToolResult): string => {
   const c = r.structuredContent?.nextCursor;
   if (typeof c !== "string") throw new Error("no nextCursor on page 1");

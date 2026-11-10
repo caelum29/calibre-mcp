@@ -17,8 +17,8 @@ import { SqliteIndexStore } from "../../src/semantic/store/index.js";
 import { pingTool } from "../../src/tools/calibre_ping.js";
 import { semanticSearchTool } from "../../src/tools/calibre_semantic_search.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
-import type { ToolResult } from "../../src/tools/types.js";
 import { fakeCalibre, fakeContent, fakeEmbedder, fakeExtractor, fakeFigures } from "../tools/fake-ports.js";
+import { textOf } from "../tools/text-of.js";
 
 const dirs: string[] = [];
 const stores: SqliteIndexStore[] = [];
@@ -47,8 +47,6 @@ const store = (dir: string): SqliteIndexStore => {
   stores.push(s);
   return s;
 };
-const textOf = (r: ToolResult): string => r.content.map((b) => (b as { text?: string }).text ?? "").join("\n");
-
 describe("refusal message (#388 review)", () => {
   const msg = new LibraryIdCollisionError("books", "Books").message;
 

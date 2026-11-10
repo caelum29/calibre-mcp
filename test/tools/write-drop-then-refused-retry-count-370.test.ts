@@ -1,4 +1,4 @@
-// #370 review round 2: a retry that dropped mid-request and was then REFUSED may have committed
+// #370: a retry that dropped mid-request and was then REFUSED may have committed
 // on the dropped attempt, so both write paths re-read before trusting the refusal. Also: the
 // "after N retries" wording reports the retries that actually ran.
 

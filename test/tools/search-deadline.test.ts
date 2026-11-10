@@ -11,6 +11,7 @@ import { invalidateBundleCache } from "../../src/app/bundles.js";
 import { searchTool } from "../../src/tools/calibre_search.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
 import type { SearchDeps, SearchIndex } from "../../src/tools/calibre_search.js";
+import { textOf } from "./text-of.js";
 
 /** A boundary call that hangs until its own timeout fires, like a request queued behind a held lock. */
 const hangUntilTimeout = (err: () => Error) => (timeoutMs: number | undefined) =>
@@ -70,8 +71,6 @@ function deps(stall: Stalls): SearchDeps {
 }
 
 const ARGS = { query: "dependency injection", mode: "fts", scope: "library", limit: 3 } as const;
-const textOf = (r: { content: { type: string; text?: string }[] }) => r.content.map((c) => c.text ?? "").join("\n");
-
 /** Run the handler on fake time; returns the result and how long (fake ms) it took. */
 async function timed(d: SearchDeps) {
   const start = Date.now();

@@ -69,35 +69,33 @@ const guiEdited = (id: number) => book(id, { publisher: "GUI" });
 
 describe("changesSatisfied compares against the intended values (#370)", () => {
   it("should_not_count_a_value_that_is_neither_old_nor_intended", () => {
-    expect(changesSatisfied(book(1), book(1, { publisher: "GUI" }), { publisher: "New" })).toBe(false);
+    expect(changesSatisfied(book(1, { publisher: "GUI" }), { publisher: "New" })).toBe(false);
   });
 
   it("should_not_count_a_different_tag_list_as_ours", () => {
-    expect(changesSatisfied(book(1), book(1, { tags: ["gui-tag"] }), { tags: ["new"] })).toBe(false);
+    expect(changesSatisfied(book(1, { tags: ["gui-tag"] }), { tags: ["new"] })).toBe(false);
   });
 
   it("should_still_count_a_pubdate_that_Calibre_stored_with_a_time_part", () => {
     const after = book(1, { pubdate: "2002-01-15T00:00:00+00:00" });
-    expect(changesSatisfied(book(1, { pubdate: "2001-01-01T00:00:00+00:00" }), after, { pubdate: "2002-01-15" })).toBe(
-      true,
-    );
+    expect(changesSatisfied(after, { pubdate: "2002-01-15" })).toBe(true);
   });
 
   it("should_not_count_a_pubdate_on_a_different_date", () => {
     const after = book(1, { pubdate: "2005-06-01T00:00:00+00:00" });
-    expect(changesSatisfied(book(1), after, { pubdate: "2002-01-15" })).toBe(false);
+    expect(changesSatisfied(after, { pubdate: "2002-01-15" })).toBe(false);
   });
 
   it("should_count_tags_read_back_in_another_order_and_the_library_case", () => {
-    expect(changesSatisfied(book(1), book(1, { tags: ["Python", "go"] }), { tags: ["go", "python"] })).toBe(true);
+    expect(changesSatisfied(book(1, { tags: ["Python", "go"] }), { tags: ["go", "python"] })).toBe(true);
   });
 
   it("should_count_a_comma_string_of_tags_read_back_as_a_list", () => {
-    expect(changesSatisfied(book(1), book(1, { tags: ["a", "b"] }), { tags: "a, b" })).toBe(true);
+    expect(changesSatisfied(book(1, { tags: ["a", "b"] }), { tags: "a, b" })).toBe(true);
   });
 
   it("should_count_a_numeric_string_series_index_read_back_as_a_number", () => {
-    expect(changesSatisfied(book(1), book(1, { seriesIndex: 2 }), { series_index: "2" })).toBe(true);
+    expect(changesSatisfied(book(1, { seriesIndex: 2 }), { series_index: "2" })).toBe(true);
   });
 });
 
