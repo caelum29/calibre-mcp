@@ -1,0 +1,26 @@
+docs/TROUBLESHOOTING.md
+  s_7ec15e0f4b07a0::t_30d3ad3ec8480b 220,222-223
+docs/STABILITY.md
+  s_7ec15e0f4b07a0::t_f407bf55c8d5a7 20-23,28-34,58,102-103
+  s_7ec15e0f4b07a0::t_8d66a6183d0b5d 59-62
+README.md
+  s_7ec15e0f4b07a0::t_30d3ad3ec8480b 175-176,179-184,200
+SECURITY.md
+  s_7ec15e0f4b07a0::t_f407bf55c8d5a7 5-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bf65000fe5c3e69b0f128772b1b2757d7d16384e",
+  "prompts": {},
+  "sessions": {
+    "s_7ec15e0f4b07a0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2a67f80e-013c-457f-bb85-45dff001583e",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
