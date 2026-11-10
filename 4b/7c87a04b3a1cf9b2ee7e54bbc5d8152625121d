@@ -1,0 +1,56 @@
+test/tools/ping-index-readonly.test.ts
+  s_53ff9ec34f3db8::t_801564dbb4121d 94,115
+test/semantic/library-id-case-collision-388-review.test.ts
+  s_53ff9ec34f3db8::t_531835aaad3f09 81-82
+  s_53ff9ec34f3db8::t_801564dbb4121d 109
+test/tools/ping-review.test.ts
+  s_53ff9ec34f3db8::t_801564dbb4121d 98,117
+src/tools/calibre_ping.ts
+  s_53ff9ec34f3db8::t_f2b396b00823d0 220-221,223-251
+src/semantic/store/schema.ts
+  s_53ff9ec34f3db8::t_17443f2e7020fe 13
+  s_53ff9ec34f3db8::t_aa7dc1ccb61d79 130-135,144-145,156-157,178-180
+src/app/library-index.ts
+  s_53ff9ec34f3db8::t_6fa4104a4e231f 7,62
+  s_53ff9ec34f3db8::t_17443f2e7020fe 11,17-20,64,66,68,72,74-77,91,93-96
+test/tools/unknown-default-library-438.test.ts
+  s_53ff9ec34f3db8::t_801564dbb4121d 94
+src/semantic/status.ts
+  s_53ff9ec34f3db8::t_6f11ada1c6b3e3 19,23-24,110,112-115,149,204-206
+test/tools/ping-header.test.ts
+  s_53ff9ec34f3db8::t_801564dbb4121d 97,115,125
+test/semantic/status.test.ts
+  s_53ff9ec34f3db8::t_20763eb82430e9 113,130
+src/semantic/store/index.ts
+  s_53ff9ec34f3db8::t_17443f2e7020fe 78-79
+test/tools/ping-index-budget.test.ts
+  s_53ff9ec34f3db8::t_531835aaad3f09 90
+  s_53ff9ec34f3db8::t_801564dbb4121d 79-81,101,110,192
+src/tools/labelled-lines.ts
+  s_53ff9ec34f3db8::t_f2b396b00823d0 20-23
+src/semantic/index-busy.ts
+  s_53ff9ec34f3db8::t_aa7dc1ccb61d79 1-14
+test/app/library-index.test.ts
+  s_53ff9ec34f3db8::t_90b5dad7310820 48-51
+  s_53ff9ec34f3db8::t_801564dbb4121d 68-76,99-101,135-137
+src/semantic/store/freshness.ts
+  s_53ff9ec34f3db8::t_17443f2e7020fe 19-20
+src/semantic/store/types.ts
+  s_53ff9ec34f3db8::t_17443f2e7020fe 145-146,148
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4b7c87a04b3a1cf9b2ee7e54bbc5d8152625121d",
+  "prompts": {},
+  "sessions": {
+    "s_53ff9ec34f3db8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a4bd7ff7-48cb-45dc-95d3-fb2b8e7ff920",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
