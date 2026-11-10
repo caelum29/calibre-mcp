@@ -5,6 +5,7 @@
   "sortPackageJson": false,
   "ignorePatterns": [
     "manifest.json",
+    "backups/**",
     ".claude-plugin/plugin.json",
     "docs/tool-catalog.json",
     "**/*.md",

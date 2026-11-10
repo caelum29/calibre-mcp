@@ -59,3 +59,6 @@ backups/
 
 # JetBrains IDE settings (per-machine)
 .idea/
+
+# local tag backups (calibredb exports), never commit
+backups/
