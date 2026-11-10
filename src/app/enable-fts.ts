@@ -5,7 +5,7 @@
 
 import type { CalibreClientOptions, LibraryWriter } from "../calibre/client.js";
 import type { LibId } from "../calibre/lib-id.js";
-import { stripCalibredbBanner } from "../domain/calibredb-banner.js";
+import { isCalibredbBannerLine } from "../domain/calibredb-banner.js";
 import { CalibreCliError } from "../domain/errors.js";
 
 /** The outcome of the FTS part of a build. */
@@ -19,10 +19,11 @@ export interface FtsOutcome {
 
 /** Calibre's CLI prefixes every stdout with a banner; drop it and blank lines. */
 function lines(stdout: string): string[] {
-  return stripCalibredbBanner(stdout)
+  // status text is line-oriented, never user content: a banner line anywhere is noise
+  return stdout
     .split("\n")
     .map((l) => l.trim())
-    .filter((l) => l !== "");
+    .filter((l) => l !== "" && !isCalibredbBannerLine(l));
 }
 
 /** The "N of M books files indexed" line, if present. */
