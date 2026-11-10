@@ -35,7 +35,13 @@ instead of a build hint.
 Libraries the server is currently failing fast after a Calibre timeout are listed as
 `busy: library "…"` (`busyLibraries`). It also lists the server's recent errors (the last 20 distinct ones, newest first, each with its tool and
 `call` id; a repeated error is one entry with `count` and `firstTs`, shown as `(×N since …)`, and the header reads `recent errors: N (M occurrences)` when any repeat) and the path of today's log file — see [Troubleshooting → Logs](TROUBLESHOOTING.md#logs).
-Use it first when something isn't working, or to answer "why is semantic search off?".
+When Calibre is reachable it also asks whether Calibre itself accepts writes, with a probe that
+cannot write anything (a `POST` to `set_metadata` at a module version that does not exist):
+`calibre writes: allowed`, `refused — enable "Allow un-authenticated local connections to make
+changes" (Preferences → Sharing over the net)`, or `unknown (<reason>)` when the answer is unclear
+(`calibreWriteAccess`). If `CALIBRE_MCP_ENABLE_WRITE` is on but Calibre refuses, a `warning:` line
+says every write tool will fail. `ok` stays true either way: reads work.
+Use it first when something isn't working, or to answer "why is semantic search off?" or "are writes set up?".
 
 No parameters.
 
@@ -209,6 +215,24 @@ with the list of known libraries.
 No parameters.
 
 > Ask: *"list my calibre libraries"*
+
+---
+
+## Resources
+
+`calibre_search`, `calibre_semantic_search`, `calibre_get_book`, `calibre_find_duplicates` and
+`calibre_recover_metadata` return `resource_link` blocks. Each one points at a book resource:
+
+| URI template | Body |
+|---|---|
+| `calibre://book/{libId}/{id}` | Full metadata for one book as fenced JSON |
+
+- `{libId}` is the library **ID** (`My_Books`), not the display name: book ids repeat across
+  libraries, so a link names the library it came from. Example: `calibre://book/Other_Books/42`.
+  Links always carry the library ID.
+- An unknown `{libId}` or an invalid `{id}` is a protocol error (resources throw, tools return);
+  the message lists the known library IDs.
+- The older `calibre://book/{id}` form no longer exists.
 
 ---
 

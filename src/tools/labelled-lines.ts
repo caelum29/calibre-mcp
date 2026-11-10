@@ -12,3 +12,9 @@ export const ERROR_LINE_LABELS = {
 export function labelledLine(label: string, value: string): string {
   return `${label}: ${value}`;
 }
+
+/** Labels of calibre_ping's report lines that carry a declared structured field. */
+export const PING_LINE_LABELS = {
+  /** Calibre's own write gate (`calibreWriteAccess`, #439), next to our `writes:` gate line. */
+  calibreWrites: "calibre writes",
+} as const;

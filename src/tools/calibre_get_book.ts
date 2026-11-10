@@ -89,7 +89,7 @@ export const getBookTool = defineTool({
         [
           { type: "text", text: fence("BOOK METADATA", summary) },
           ...blocks,
-          bookResourceLink({ id: book.id, title: book.title, authors: book.authors }),
+          bookResourceLink({ id: book.id, title: book.title, authors: book.authors }, libraryId),
         ],
         { book, serverUrl: deps.config.serverUrl, libraryId },
       );
