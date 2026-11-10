@@ -28,14 +28,14 @@ flowchart TD
   tools --> domain["domain/<br/>pure rules, types, error codes"]
   app --> domain
   app -. "ports (tools/deps.ts)" .-> adapters
-  tools -. "ports (tools/deps.ts)" .-> adapters["adapters<br/>calibre/ · semantic/ · enrich/"]
+  tools -. "ports (tools/deps.ts)" .-> adapters["adapters<br/>calibre/ · semantic/ · enrich/ · ui/"]
   transport -->|"builds and injects"| adapters
   adapters --> calibre[("Calibre Content Server<br/>HTTP reads · calibredb writes")]
 ```
 
 The dependency rule points inward:
 
-- **`domain/`** imports nothing but itself: no I/O, no adapters, no MCP types.
+- **`domain/`** imports only itself (and ambient type declarations): no I/O, no adapters, no MCP types.
 - **`app/`** holds the use-cases. It sees `domain/` and the port interfaces in
   [`tools/deps.ts`](../src/tools/deps.ts), never concrete adapters, tool modules, MCP result types or UI.
 - **`tools/`** holds thin adapters from MCP to the use-cases: a Zod schema, argument resolution, one call into
@@ -81,8 +81,8 @@ message instead of throwing. Every error carries one code from a fixed set of 19
 the message does not already spell out the next step, a `Next:` line
 ([`tools/result.ts`](../src/tools/result.ts)). A test fails any call site that passes a code outside the set.
 
-**The SDK-free seam.** Keeping handlers off the SDK kept the move from MCP SDK v1 to v2 inside two files, and it
-lets every tool be unit-tested with plain fakes.
+**The SDK-free seam.** Keeping handlers off the SDK kept the move from MCP SDK v1 to v2 inside the transport files
+and the type mirror, and it lets every tool be unit-tested with plain fakes.
 
 **stdout is the protocol.** On stdio a single stray `console.log` corrupts the JSON-RPC stream. oxlint bans
 `console` in `src/`; logging goes to stderr and an optional file through [`logging.ts`](../src/logging.ts).
@@ -98,7 +98,7 @@ The pipeline is described for users in [`SEMANTIC-SEARCH.md`](SEMANTIC-SEARCH.md
 1. **Extract** text: download the book file from the Content Server and convert it to plain text
    (`pdftotext` or PyMuPDF for PDFs when installed, Calibre's `ebook-convert` otherwise), keeping page and
    chapter positions ([`calibre/extract.ts`](../src/calibre/extract.ts)).
-2. **Chunk** it into passages of about 460 tokens with overlap, split along headings where possible; chunks in
+2. **Chunk** it into passages of about 460 tokens, split along headings where possible; chunks in
    front matter are flagged.
 3. **Embed** each chunk with `multilingual-e5-small` and store the vectors as BLOBs in a local SQLite file
    (`node:sqlite`), next to an FTS5 keyword index with English and Russian stemming.
@@ -159,7 +159,7 @@ files are listed under [Decision ids](#decision-ids).
 
 7. **Bundles are backed by saved searches; no virtual-library writes** (D-019). A bundle (a named topical
    filter that scopes a search) is stored as a Calibre saved search, and so is an exclusion marker (a saved
-search named with a leading `-`, subtracted from every discovery search). Writing
+   search named with a leading `-`, subtracted from every discovery search). Writing
    virtual libraries had no safe path while the GUI holds the library. *Trade-off:* bundles do not appear as
    virtual libraries in the GUI. Newer Calibre versions expose virtual-library commands; whether those writes are
    safe with the GUI open has not been checked, so the decision stands.
@@ -170,12 +170,14 @@ search named with a leading `-`, subtracted from every discovery search). Writin
    have no embedded image, so they are produced by rendering the page. *Trade-off:* an uncaptioned image is
    invisible to `calibre_get_figures`.
 
-9. **Widgets pull their own data** (D-017). The cover board, book card and figures widget are MCP Apps. Some
-   hosts strip `structuredContent` before it reaches the widget, and re-running a semantic search costs seconds,
-   so a widget calls a widget-only tool (`calibre_board_data`) to fetch what it renders. *Trade-off:* one extra
-   call per widget and a tool the model never sees.
+9. **Widgets fetch their own data when the result can't carry it** (D-017). The cover board, book card and
+   figures widget are MCP Apps. Some hosts strip `structuredContent` before it reaches a widget, and re-running a
+   semantic search costs seconds. So the cover board pulls its rows through a widget-only tool
+   (`calibre_board_data`), and the book card re-reads its book with `calibre_get_book`. The figures widget needs no
+   call: it renders the image and text blocks of the tool result itself, which hosts pass through intact.
+   *Trade-off:* an extra call per board or card, and a tool the model never sees.
 
-10. **Clean-room and permissive next to GPL Calibre.** calibre-mcp is MIT. It uses Calibre only as a program
+10. **Clean-room and permissive next to GPL Calibre** (D-004). calibre-mcp is MIT. It uses Calibre only as a program
     (the Content Server API, `calibredb`, `ebook-convert`), which does not carry Calibre's GPL over. Algorithms
     such as ISBN checksums or duplicate detection are written from public descriptions and observed behaviour, not
     translated from Calibre's or its plugins' GPL source. *Trade-off:* some logic that exists in Calibre is
@@ -202,11 +204,13 @@ Ids cited in public code, tests and standards, one line each.
 | ----- | ----------------------------------------------------------------------------------------------------------- |
 | D-001 | The embedding model is `multilingual-e5-small`.                                                             |
 | D-003 | Writes confirm through in-band `preview` / `confirm` / `apply` parameters, not MCP elicitation.             |
+| D-004 | The server is MIT and clean-room: Calibre is used as a program, and its GPL source is read for contracts only. |
 | D-005 | Tools are few and intent-level (about twenty); `calibredb` subcommands fold into task tools.                |
+| D-006 | Distribution: npm (`npx`), a `.mcpb` bundle for Claude Desktop, and the MCP Registry, published by release CI. |
 | D-008 | Every `calibredb` call addresses the library by its id, resolved through the Content Server.                |
 | D-010 | Semantic stack: transformers.js, brute-force cosine on `node:sqlite` BLOBs, hybrid vector + FTS5 with RRF. |
 | D-011 | A cross-encoder reranker (`bge-reranker-v2-m3`) reorders hybrid and vector results.                         |
-| D-012 | `multilingual-e5-small` kept after a measured bake-off against larger embedding models.                     |
+| D-012 | `multilingual-e5-small` kept after a measured bake-off; set the rule that eval gates are declared before measuring. |
 | D-016 | Front-matter chunks are flagged at index time and ranked below body matches in book scope.                  |
 | D-017 | MCP Apps widgets (cover board, book card) attach to their tools and pull their data through a widget-only tool. |
 | D-018 | A figure is an image identified by an adjacent caption; served by `calibre_get_figures`.                    |

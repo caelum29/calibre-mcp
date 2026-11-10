@@ -37,7 +37,7 @@ Semantic search needs a local index, built once per book with `calibre_build_ind
    text — there is no OCR. Markdown (`MD`/`MARKDOWN`), `TXT`/`TXTZ`, AZW3, MOBI,
    DOCX, ODT, HTMLZ, FB2 and RTF are extracted too; when a book has several formats the
    best-structured one wins (EPUB → Markdown → PDF → the rest).
-2. **Chunk** the text into ~460-token passages with overlap, split along headings
+2. **Chunk** the text into ~460-token passages, split along headings
    where possible. Each chunk keeps its location (page / chapter position) and is
    prefixed with the book title, author, and heading path so the embedding carries
    context.
