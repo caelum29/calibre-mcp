@@ -13,6 +13,9 @@ export interface BoardBook {
   score?: number;
 }
 
+/** Search path behind a board: calibre_search meta/fts, or a calibre_semantic_search mode. */
+export type BoardSearchMode = "meta" | "fts" | "hybrid" | "vector" | "keyword";
+
 /** Everything the board widget needs to render one search's results. */
 export interface BoardPayload {
   /** Originating tool (calibre_search | calibre_semantic_search) — part of the cache key. */
@@ -20,6 +23,8 @@ export interface BoardPayload {
   query: string;
   /** Drives the widget's score-badge column: semantic payloads carry per-book scores. */
   kind: "keyword" | "semantic";
+  /** How the search ran — the widget labels the board with it so the user sees what was searched. */
+  searchMode?: BoardSearchMode;
   /** libId (not display name) — the widget builds /get/thumb/{id}/{libId} URLs from it. */
   libraryId: string;
   /** Content Server base URL for thumb + viewer links (must match the CSP resourceDomains). */

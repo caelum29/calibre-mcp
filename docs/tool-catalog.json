@@ -149,6 +149,15 @@
             },
             "type": "array"
           },
+          "exclusionsApplied": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "filter": {
+            "type": "string"
+          },
           "kind": {
             "type": "string"
           },
@@ -159,6 +168,9 @@
             "type": "boolean"
           },
           "query": {
+            "type": "string"
+          },
+          "searchMode": {
             "type": "string"
           },
           "serverUrl": {

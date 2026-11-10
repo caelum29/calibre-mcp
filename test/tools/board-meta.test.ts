@@ -139,6 +139,24 @@ describe("calibre_search board wiring", () => {
     expect(cache.get("calibre_search", "rust", "Programming_Books")).toBeUndefined();
   });
 
+  // The widget labels the board with the search path, so the user sees what was searched.
+  it("should_label_meta_board_payload_with_meta_search_mode", async () => {
+    const r = await searchTool.handler(
+      { query: "rust", mode: "meta", scope: "library", limit: 20 },
+      metaSearchDeps(new BoardCache()),
+    );
+    expect((r._meta as { calibreBoard: BoardPayload }).calibreBoard.searchMode).toBe("meta");
+  });
+
+  it("should_label_fts_board_payload_with_fts_search_mode", async () => {
+    const deps = metaSearchDeps(new BoardCache());
+    const r = await searchTool.handler(
+      { query: "borrow checker", mode: "fts", scope: "library", limit: 20 },
+      { ...deps, fts: fakeFts([{ bookId: 1, snippet: "the borrow checker" }]) },
+    );
+    expect((r._meta as { calibreBoard: BoardPayload }).calibreBoard.searchMode).toBe("fts");
+  });
+
   it("should_not_cache_or_attach_board_payload_on_zero_fts_results", async () => {
     const cache = new BoardCache();
     const deps = metaSearchDeps(cache);
@@ -162,6 +180,14 @@ describe("calibre_semantic_search board wiring", () => {
     expect(attached.kind).toBe("semantic");
     expect(attached.books[0]?.score).toBeCloseTo(0.9);
     expect(cache.get("calibre_semantic_search", "distributed systems", "Programming_Books")).toEqual(attached);
+  });
+
+  it("should_label_semantic_board_payload_with_the_requested_mode", async () => {
+    const r = await semanticSearchTool.handler(
+      { query: "distributed systems", scope: "library", mode: "vector", topK: 10 },
+      semanticDeps(new BoardCache()),
+    );
+    expect((r._meta as { calibreBoard: BoardPayload }).calibreBoard.searchMode).toBe("vector");
   });
 
   it("should_not_cache_or_attach_board_payload_on_zero_semantic_results", async () => {
