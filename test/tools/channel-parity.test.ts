@@ -74,7 +74,12 @@ function structuredOnly(structured: unknown, text: string, at = "$"): string[] {
   if (!structured || typeof structured !== "object") return gaps;
   for (const [k, v] of Object.entries(structured)) {
     const where = `${at}.${k}`;
-    if (CURSOR_KEY.test(k) && typeof v === "string") {
+    // #437: error results are text-only on both clients, so the code and the hint must be there too
+    if (k === "errorCode" && typeof v === "string") {
+      if (!new RegExp(`^Code: ${v}$`, "m").test(text)) gaps.push(`${where} "${v}" missing from text`);
+    } else if (k === "hint" && typeof v === "string") {
+      if (!text.includes(v)) gaps.push(`${where} "${v}" missing from text`);
+    } else if (CURSOR_KEY.test(k) && typeof v === "string") {
       if (!text.includes(v)) gaps.push(`${where} (cursor) missing from text`);
     } else if (ID_KEY.test(k) && (typeof v === "number" || typeof v === "string" || Array.isArray(v))) {
       for (const n of [v].flat()) {
@@ -205,6 +210,16 @@ describe("parity checker (self-test)", () => {
       'text FTS SNIPPET "the >>borrow<< checker" has no structured counterpart',
       'text issue check "raw_filename_title" has no structured counterpart',
     ]);
+  });
+
+  it("flags a structured-only errorCode and hint (#437)", () => {
+    expect(parityGaps(ok("Error: down", { error: "down", errorCode: "calibre_busy", hint: "retry" }))).toEqual([
+      '$.errorCode "calibre_busy" missing from text',
+      '$.hint "retry" missing from text',
+    ]);
+    expect(
+      parityGaps(ok("Error: down\nCode: calibre_busy\nNext: retry", { errorCode: "calibre_busy", hint: "retry" })),
+    ).toEqual([]);
   });
 
   it("passes a result that mirrors every actionable field", () => {
@@ -723,8 +738,10 @@ describe("dual-channel parity: scenarios are not vacuous", () => {
     "%s mirrors its steer in both channels",
     async (_name, s) => {
       const r = await runScenario(s);
+      // the message alone: drop the prefix and the labelled Code:/Next: lines (#437)
       const steer = textChannel(r)
         .replace(/^Error: /, "")
+        .replace(/\n(Code|Next): .*$/gm, "")
         .slice(0, PREFIX);
       expect({
         gaps: parityGaps(r),
