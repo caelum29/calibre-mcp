@@ -1,0 +1,20 @@
+test/tools/search-annotations-notes.test.ts
+  s_02b52ad8edbfad::t_e8439be239222d 259-260,264,266-267
+  s_02b52ad8edbfad::t_e25101c06fb782 261-263,265
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7e7373acac3a0adebd3c1b2d3f93abe9ffcea845",
+  "prompts": {},
+  "sessions": {
+    "s_02b52ad8edbfad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5df1a23b-ecee-482f-b178-3bf623cc8f7f",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
