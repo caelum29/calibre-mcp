@@ -7,7 +7,6 @@ import { updateBookTool } from "../../src/tools/calibre_update_book.js";
 import { bulkUpdateTool } from "../../src/tools/calibre_bulk_update.js";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
-import { defaultHint } from "../../src/domain/error-codes.js";
 import { CalibreCliError, CalibreCliTimeoutError } from "../../src/domain/errors.js";
 import type { BaseDeps } from "../../src/tools/deps.js";
 import { book, fakeBulkDeps } from "./fake-bulk-tags.js";
@@ -38,12 +37,13 @@ function single(err: Error, after = PARTIAL) {
 
 const update = (deps: BaseDeps) => updateBookTool.handler({ id: 1, changes: CHANGES }, deps);
 
-/** The exact toolError shape for `write_unverified`, both channels. */
-const unverified = (message: string) => ({
-  content: [
-    { type: "text", text: `Error: ${message}\nCode: write_unverified\nNext: ${defaultHint("write_unverified")}` },
-  ],
-  structuredContent: { error: message, errorCode: "write_unverified", hint: defaultHint("write_unverified") },
+/**
+ * The exact toolError shape for `write_unverified`, both channels. The message states its own
+ * verify step (`hint`), so no second `Next:` line follows it (#417).
+ */
+const unverified = (message: string, hint: string) => ({
+  content: [{ type: "text", text: `Error: ${message}\nCode: write_unverified` }],
+  structuredContent: { error: message, errorCode: "write_unverified", hint },
   isError: true,
 });
 
@@ -54,6 +54,7 @@ describe("calibre_update_book — partial landing is write_unverified (#389)", (
       unverified(
         "calibredb timed out and a re-read does not show the changes applied. Retry, or check " +
           "with calibre_get_book id=1 first.",
+        "Retry, or check with calibre_get_book id=1 first",
       ),
     );
   });
@@ -70,6 +71,7 @@ describe("calibre_update_book — partial landing is write_unverified (#389)", (
         'calibredb timed out and the write can\'t be confirmed. A re-read shows publisher reads back "GUI", ' +
           'not the requested "P" — another edit (e.g. the Calibre GUI) or Calibre\'s own normalization may ' +
           "explain it. Check with calibre_get_book id=1 before retrying.",
+        "Check with calibre_get_book id=1 before retrying",
       ),
     );
   });
@@ -85,6 +87,7 @@ describe("calibre_update_book — partial landing is write_unverified (#389)", (
       unverified(
         "The connection to the Calibre Content Server dropped mid-request after 2 retries; the write " +
           "may have been committed — verify with calibre_get_book id=1 before retrying.",
+        "verify with calibre_get_book id=1 before retrying",
       ),
     );
   });

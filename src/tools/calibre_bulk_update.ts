@@ -32,7 +32,7 @@ import {
   type ReReadCause,
 } from "../app/write-policy.js";
 import { presentFailedWrite } from "./write-failure.js";
-import { errorCodeFor } from "../domain/error-codes.js";
+import { errorCodeFor, type ErrorCode } from "../domain/error-codes.js";
 import { mergeTags, type TagMerge } from "../domain/tag-ops.js";
 import { resolveTagSpellings } from "../app/tag-spelling.js";
 
@@ -360,7 +360,7 @@ interface StopCause {
   /** The failure that stopped the loop — its code is the result's errorCode (#249). */
   err: unknown;
   /** Overrides the code derived from `err` when the re-read decided the outcome (#370). */
-  code?: "calibre_unreachable" | "write_unverified";
+  code?: ErrorCode;
 }
 
 /** Where the loop stood when the server stopped it. */
@@ -442,14 +442,21 @@ function settleBook(outcome: FailedWriteOutcome, id: number, err: unknown, run: 
       return unverifiedBook(outcome, run, id, err);
     case "refused":
       return refusedStop(run, id, err);
-    case "transient":
-      run.failed.push({ id, error: presentFailedWrite(outcome, { id, err }).text });
+    case "transient": {
+      const shown = presentFailedWrite(outcome, { id, err });
+      run.failed.push({ id, error: shown.text });
       // a down server fails every later book the same way; a gateway 5xx fails only this one (#233)
       if (outcome.transient === "server") return undefined;
       return stoppedMidLoop(
         { ...run, blockedId: id },
-        { headline: UNREACHABLE_HEADLINE, steer: `${describeTransient(err, id)} Once it is back`, err },
+        {
+          headline: UNREACHABLE_HEADLINE,
+          steer: `${describeTransient(err, id)} Once it is back`,
+          err,
+          code: shown.code,
+        },
       );
+    }
     case "unexpected":
       run.failed.push({ id, error: presentFailedWrite(outcome, { id, err }).text });
       return undefined;
@@ -471,28 +478,22 @@ function unverifiedBook(
     id,
     err,
     // a timeout words its steer for one book of many
-    unconfirmed: (cause) =>
-      cause === "timeout"
-        ? "calibredb timed out and a re-read does not confirm the change — " +
-          `verify with calibre_get_book id=${id} before retrying.${note}`
-        : undefined,
+    unconfirmed: (cause) => {
+      if (cause !== "timeout") return undefined;
+      const hint = `verify with calibre_get_book id=${id} before retrying`;
+      return { text: `calibredb timed out and a re-read does not confirm the change — ${hint}.${note}`, hint };
+    },
   });
   run.failed.push({ id, error: failed.text });
   // a timeout fails only this book; a drop continues below to the refusal / connection checks
   if (outcome.cause === "timeout") return undefined;
   if (outcome.kind === "refusedUnverified") {
     const steer = `${describeTransient(err, id)}${note} ${REFUSED_STEER}`;
-    return stoppedMidLoop(
-      { ...run, blockedId: id },
-      { headline: REFUSED_HEADLINE, steer, err, code: "write_unverified" },
-    );
+    return stoppedMidLoop({ ...run, blockedId: id }, { headline: REFUSED_HEADLINE, steer, err, code: failed.code });
   }
   if (classifyTransient(err) !== "connection") return undefined;
   const steer = `${describeTransient(err, id)}${note} Once it is back`;
-  return stoppedMidLoop(
-    { ...run, blockedId: id },
-    { headline: UNREACHABLE_HEADLINE, steer, err, code: "write_unverified" },
-  );
+  return stoppedMidLoop({ ...run, blockedId: id }, { headline: UNREACHABLE_HEADLINE, steer, err, code: failed.code });
 }
 
 /** A confirmed drop whose final error is connection-class still trips the breaker for the rest. */
@@ -522,7 +523,11 @@ function refusedAfterLanding(run: LoopState, id: number, err: unknown): ToolResu
  * stay visible or the model retries the whole set (#33, #213). Records `id` as failed.
  */
 function refusedStop(run: LoopState, id: number, err: unknown): ToolResult {
-  if (run.applied.length === 0) return toolError("write_refused", WRITE_REFUSED_MESSAGE);
-  run.failed.push({ id, error: WRITE_REFUSED_MESSAGE });
-  return stoppedMidLoop({ ...run, blockedId: id }, { headline: REFUSED_HEADLINE, steer: REFUSED_STEER, err });
+  const shown = presentFailedWrite({ kind: "refused" }, { id, err });
+  if (run.applied.length === 0) return toolError(shown.code, shown.text, { hint: shown.hint });
+  run.failed.push({ id, error: shown.text });
+  return stoppedMidLoop(
+    { ...run, blockedId: id },
+    { headline: REFUSED_HEADLINE, steer: REFUSED_STEER, err, code: shown.code },
+  );
 }

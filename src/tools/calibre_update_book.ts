@@ -189,6 +189,6 @@ function failedWriteResult(
   if (isLanded(outcome)) {
     return appliedResult(write.id, write.before, outcome.after, Object.keys(write.changes), outcome.cause);
   }
-  const { code, text } = presentFailedWrite(outcome, { id: write.id, err });
-  return toolError(code, text);
+  const { code, text, hint } = presentFailedWrite(outcome, { id: write.id, err });
+  return toolError(code, text, { hint });
 }
