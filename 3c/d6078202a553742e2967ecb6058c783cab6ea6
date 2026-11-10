@@ -1,0 +1,20 @@
+test/tools/channel-parity.test.ts
+  s_06ec9a5d22adfc::t_20845e1068c33f 1118-1135,1221-1231
+  s_06ec9a5d22adfc::t_533ce174ab4890 1232
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3cd6078202a553742e2967ecb6058c783cab6ea6",
+  "prompts": {},
+  "sessions": {
+    "s_06ec9a5d22adfc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0d6f5b7a-631a-4427-9d76-11530da044a3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
