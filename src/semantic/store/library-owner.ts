@@ -40,6 +40,13 @@ export class IndexFileOwners implements LibraryIdGuard {
   }
 
   claim(db: DatabaseSync, libraryId: string): void {
+    // An owner already on record needs no write: a plain open never takes the write lock, so it
+    // is not blocked behind another process's write transaction (#196). Only an unowned file is
+    // claimed, atomically.
+    const recorded = this.#ownersOf(libraryId);
+    const refused = refusal(libraryId, recorded);
+    if (refused) throw refused;
+    if (recorded.includes(libraryId)) return;
     const owner = ensureIndexOwner(db, libraryId);
     const clash = refusal(libraryId, [owner]);
     if (clash) throw clash;

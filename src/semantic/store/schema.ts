@@ -310,12 +310,14 @@ export function readIndexOwner(file: string): string | undefined {
   }
 }
 
-/** The owner recorded in a writable index db, recording `libraryId` first when there is none (#414). */
+/**
+ * The owner recorded in a writable index db, recording `libraryId` first when there is none (#414).
+ * Atomic across processes: a second server claiming the same file at once is ignored by the
+ * insert and reads back whoever won, instead of hitting the key's UNIQUE constraint.
+ */
 export function ensureIndexOwner(db: DatabaseSync, libraryId: string): string {
-  const row = db.prepare("SELECT value FROM meta WHERE key = ?").get(OWNER_KEY);
-  if (row !== undefined) return String(row.value);
-  db.prepare("INSERT INTO meta(key, value) VALUES(?, ?)").run(OWNER_KEY, libraryId);
-  return libraryId;
+  db.prepare("INSERT OR IGNORE INTO meta(key, value) VALUES(?, ?)").run(OWNER_KEY, libraryId);
+  return String(db.prepare("SELECT value FROM meta WHERE key = ?").get(OWNER_KEY)?.value);
 }
 
 function readMeta(db: DatabaseSync): Map<string, string> {
