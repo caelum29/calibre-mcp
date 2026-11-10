@@ -1,0 +1,42 @@
+test/calibre/fixtures/annotations-notes-500/annotations-export.raw
+  s_ba8eb38e987269::t_cc4466873e1e15 1-359
+test/calibre/fixtures/annotations-notes-500/notes-search-outbox.raw
+  s_ba8eb38e987269::t_cc4466873e1e15 1-2
+test/calibre/fixtures/annotations-notes-500/annotations-search-commit-nostem.raw
+  s_ba8eb38e987269::t_cc4466873e1e15 1-32
+test/calibre/fixtures/annotations-notes-500/annotations-search-scoped.raw
+  s_ba8eb38e987269::t_cc4466873e1e15 1-32
+test/calibre/fixtures/annotations-notes-500/annotations-search-commit.raw
+  s_ba8eb38e987269::t_cc4466873e1e15 1-61
+test/calibre/fixtures/annotations-notes-500/annotations-search-nomatch.raw
+  s_ba8eb38e987269::t_cc4466873e1e15 1-2
+test/calibre/fixtures/annotations-notes-500/notes-show-bellemare.raw
+  s_ba8eb38e987269::t_cc4466873e1e15 1-5
+test/calibre/fixtures/annotations-notes-500/notes-show-missing.err
+  s_ba8eb38e987269::t_cc4466873e1e15 1
+test/calibre/fixtures/annotations-notes-500/notes-show-missing.raw
+  s_ba8eb38e987269::t_cc4466873e1e15 1
+test/calibre/fixtures/annotations-notes-500/annotations-search-bookmark.raw
+  s_ba8eb38e987269::t_cc4466873e1e15 1-19
+test/calibre/fixtures/annotations-notes-500/annotations-search-commits-ru.raw
+  s_ba8eb38e987269::t_cc4466873e1e15 1-31
+test/tools/search-annotations-notes.test.ts
+  s_ba8eb38e987269::t_48f885a36b4f2c 1-230
+  s_ba8eb38e987269::t_5005a36a9729c4 231-255
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fea03a8488ceda9196683bcd88ecaf033da6914c",
+  "prompts": {},
+  "sessions": {
+    "s_ba8eb38e987269": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "21b90743-f48d-49ef-9ff2-ff368477cb73",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
