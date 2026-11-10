@@ -53,3 +53,9 @@ coverage/
 
 # Understand-Anything knowledge graph + cache (local only, not committed)
 .ua/
+
+# local backups (library/metadata exports)
+backups/
+
+# JetBrains IDE settings (per-machine)
+.idea/

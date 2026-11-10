@@ -164,3 +164,11 @@ export class FiguresError extends Error {
     this.name = "FiguresError";
   }
 }
+
+/** A field value the model supplied in an unusable shape (calibre_update_book); maps to `invalid_input`. */
+export class InvalidFieldValueError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "InvalidFieldValueError";
+  }
+}

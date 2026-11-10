@@ -4,7 +4,7 @@
 // Applies by looping `calibredb set_metadata` per book (no bulk CLI form; HTTP batch is LATER).
 
 import { z } from "zod";
-import { buildSetMetadataArgs } from "../calibre/metadata-fields.js";
+import { buildSetMetadataArgs, formatFieldValue } from "../calibre/metadata-fields.js";
 import {
   caseRenameNotes,
   isAllowedField,
@@ -121,6 +121,9 @@ export const bulkUpdateTool = defineTool({
             `rating, publisher, pubdate, languages, comments, identifiers, or any #custom column.`,
         );
       }
+
+      // reject malformed values up front: otherwise the preview shows them and apply fails per book (#421)
+      for (const [field, value] of Object.entries(changes)) formatFieldValue(field, value);
 
       // A set is mandatory — refuse an unbounded all-books write (the FaceDeer default we fix).
       // A bundle filter counts: it is a bounded, named set (#93). No auto-exclusion on writes.

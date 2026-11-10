@@ -415,6 +415,11 @@ Set metadata fields on one book — title, authors, tags, series, series_index, 
 publisher, pubdate, languages, comments, identifiers, or any `#custom` column. Omitted fields
 are left untouched. Returns the applied before/after diff.
 
+Partial `pubdate` values are normalised to the first day before writing: `"2020"` stores
+`2020-01-01`, `"2020-05"` stores `2020-05-01` (Calibre would otherwise fill the missing parts
+from today's date). The diff shows the stored date. `identifiers` must be an object
+(`{"isbn": "9780132350884"}`); the `"isbn:…"` string form is rejected with `invalid_input`.
+
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
 | `id` (or `bookId`) | number \| uuid | *(required)* | The book to update |

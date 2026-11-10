@@ -175,7 +175,7 @@ records (`HarnessOptions.timing`), so
 `pnpm eval --gate` (rerank ON + fusion-only) runs nightly on `ubuntu-24.04` and on manual
 `workflow_dispatch`, with the models cached in `test/eval/retrieval/.work/models`. The cache key
 names both model ids (`Xenova/multilingual-e5-small`, `onnx-community/bge-reranker-v2-m3-ONNX`)
-and the `@huggingface/transformers` version read from `package.json`; a step fails fast if the
+and the `@huggingface/transformers` version read from `pnpm-lock.yaml`; a step fails fast if the
 ids in `src/semantic/` no longer match the key text. The job logs and summarizes
 `model cache hit: true|false` (the first run, and any run after a key change, is a miss and
 downloads ~0.7 GB). The report JSON/md go to the `eval-reports` artifact (30 days).

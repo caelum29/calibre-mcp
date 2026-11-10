@@ -18,6 +18,7 @@
     "src/ui/figures/**",
     "src/ui/debug.js",
     "src/ui/shared/**",
-    "src/ui/generated/**"
+    "src/ui/generated/**",
+    "backups/"
   ]
 }
