@@ -450,8 +450,8 @@ describe("calibre_merge_books — timed-out metadata merge verifies the intended
         {
           type: "text",
           text:
-            `Merge incomplete — some steps committed, then "merge metadata into #10" failed (${NOTE}). ` +
-            "No data was lost: sources are deleted only after every other step verifies. Re-run the same " +
+            `Merge incomplete — some steps committed, then "merge metadata into #10" could not be confirmed (${NOTE}). ` +
+            "No data was lost: sources are deleted only after every other step verifies. Verify first, then re-run the same " +
             "call to finish — completed steps are idempotent (already-moved formats skip, metadata re-merge " +
             "is a no-op).\nSteps:\n  ✓ move pdf from #12 to #10\n" +
             `  ✗ merge metadata into #10 — ${NOTE}\n  - trash sources #12`,
@@ -490,8 +490,8 @@ describe("calibre_merge_books — timed-out metadata merge verifies the intended
         {
           type: "text",
           text:
-            `Merge incomplete — some steps committed, then "merge metadata into #10" failed (${NOTE}). ` +
-            "No data was lost: sources are deleted only after every other step verifies. Re-run the same " +
+            `Merge incomplete — some steps committed, then "merge metadata into #10" could not be confirmed (${NOTE}). ` +
+            "No data was lost: sources are deleted only after every other step verifies. Verify first, then re-run the same " +
             "call to finish — completed steps are idempotent (already-moved formats skip, metadata re-merge " +
             "is a no-op).\nSteps:\n  ✓ move pdf from #12 to #10\n" +
             `  ✗ merge metadata into #10 — ${NOTE}\n  - trash sources #12`,
