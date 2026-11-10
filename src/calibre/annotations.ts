@@ -67,9 +67,7 @@ interface RawAnnotation {
 
 /** Parse `annotations search … --format json` (a JSON array; `[]` on no match), in Calibre's order. */
 export function parseAnnotationSearch(stdout: string): AnnotationHit[] {
-  const start = stdout.search(/^\[/m);
-  if (start < 0) throw new Error("calibredb annotations search returned no JSON array");
-  const rows = JSON.parse(stdout.slice(start)) as RawAnnotation[];
+  const rows = JSON.parse(firstJsonValue(stdout, "[", "annotations search")) as RawAnnotation[];
   return rows.map((r) => toHit(r, r.annotation ?? {}));
 }
 
@@ -78,9 +76,8 @@ export function parseAnnotationSearch(stdout: string): AnnotationHit[] {
  * into the same fields as a search hit, in Calibre's export order. Export rows carry no id and no title.
  */
 export function parseAnnotationExport(stdout: string): AnnotationHit[] {
-  const start = stdout.search(/^\{/m);
-  if (start < 0) throw new Error("calibredb annotations export returned no JSON object");
-  const rows = (JSON.parse(stdout.slice(start)) as { annotations?: RawExportRow[] }).annotations ?? [];
+  const json = firstJsonValue(stdout, "{", "annotations export");
+  const rows = (JSON.parse(json) as { annotations?: RawExportRow[] }).annotations ?? [];
   return rows.map((r) => toHit({ book_id: r.book_id, format: r.format, user: r.user, user_type: r.user_type }, r));
 }
 
@@ -126,4 +123,44 @@ const NO_SUCH_ITEM = /No item named .+ found in the field \S+/;
 /** The "No item named X found in the field F" sentence in calibredb's output, if present. */
 export function noSuchNoteItem(diag: string | undefined): string | undefined {
   return diag === undefined ? undefined : NO_SUCH_ITEM.exec(diag)?.[0];
+}
+
+/**
+ * The JSON value that starts on the first line beginning with `open`, cut at its matching close:
+ * calibredb may print lines before it (the "Integration status" banner) and after it (warnings).
+ */
+function firstJsonValue(stdout: string, open: "[" | "{", what: string): string {
+  const start = stdout.search(open === "[" ? /^\[/m : /^\{/m);
+  if (start < 0) throw new Error(`calibredb ${what} returned no JSON`);
+  let depth = 0;
+  let inString = false;
+  for (let i = start; i < stdout.length; i++) {
+    const c = stdout[i];
+    if (inString) {
+      if (c === "\\") i++; // skip the escaped character
+      else if (c === '"') inString = false;
+    } else if (c === '"') inString = true;
+    else if (c === "[" || c === "{") depth++;
+    else if ((c === "]" || c === "}") && --depth === 0) return stdout.slice(start, i + 1);
+  }
+  throw new Error(`calibredb ${what} returned truncated JSON`);
+}
+
+// calibre's FTS5 parser refused the query (exit 1, stderr): the caller's input, not a fault
+const FTS5_PARSE_ERROR = /Failed to parse search query: .* with error: fts5: /;
+
+/** True when calibredb's output says the annotation/note search query is not valid FTS5. */
+export function isFts5QueryError(diag: string | undefined): boolean {
+  return diag !== undefined && FTS5_PARSE_ERROR.test(diag);
+}
+
+/**
+ * argv for a calibredb subcommand whose last arguments are user text. A positional starting
+ * with "-" would be read as a flag (`--help`, `-s`), so then the options go first and `--`
+ * ends option parsing; otherwise the argv keeps calibredb's documented order.
+ */
+export function calibredbArgv(head: string[], positionals: string[], options: string[] = []): string[] {
+  return positionals.some((p) => p.startsWith("-"))
+    ? [...head, ...options, "--", ...positionals]
+    : [...head, ...positionals, ...options];
 }

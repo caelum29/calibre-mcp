@@ -8,6 +8,8 @@ import { resolveNumericId } from "../app/resolve-id.js";
 import {
   type AnnotationHit,
   type NoteHit,
+  calibredbArgv,
+  isFts5QueryError,
   noSuchNoteItem,
   parseAnnotationExport,
   parseAnnotationSearch,
@@ -122,8 +124,14 @@ async function annotations(
   const wholeBook = args.scope === "book" && args.query.trim() === WHOLE_BOOK;
   const argv = wholeBook
     ? ["annotations", "export", "--search", restrict, "--format", "json"]
-    : ["annotations", "search", args.query, "--format", "json", ...(restrict ? ["--search", restrict] : [])];
-  const { stdout } = await deps.calibre.calibredb(argv, { library: libId, timeoutMs: deadline.timeoutFor(), signal });
+    : calibredbArgv(
+        ["annotations", "search"],
+        [args.query],
+        ["--format", "json", ...(restrict ? ["--search", restrict] : [])],
+      );
+  const out = await runSearch(deps, argv, args.query, { library: libId, timeoutMs: deadline.timeoutFor(), signal });
+  if (!("stdout" in out)) return out;
+  const { stdout } = out;
   const all = wholeBook ? parseAnnotationExport(stdout) : parseAnnotationSearch(stdout);
   const tail = honesty.length > 0 ? `\n${honesty.join("\n")}` : "";
   const q = JSON.stringify(args.query);
@@ -180,11 +188,13 @@ async function notes(
   const libId = await deps.content.resolveLibraryId(args.library);
   const one = noteItem(args.query);
   if (one) return showNote(one, libId, deps, deadline, signal);
-  const { stdout } = await deps.calibre.calibredb(["notes", "search", args.query], {
+  const out = await runSearch(deps, calibredbArgv(["notes", "search"], [args.query]), args.query, {
     library: libId,
     timeoutMs: deadline.timeoutFor(),
     signal,
   });
+  if (!("stdout" in out)) return out;
+  const { stdout } = out;
   const all = parseNoteSearch(stdout);
   const q = JSON.stringify(args.query);
   if (args.countOnly) return toolText(`${all.length} notes match ${q}.`, { total: all.length, query: args.query });
@@ -207,6 +217,27 @@ function renderNote(n: NoteHit): string {
   return `note · ${n.field}: ${n.item}\n${body}`;
 }
 
+type CalibredbOptions = Parameters<BaseDeps["calibre"]["calibredb"]>[1];
+
+/** Run an annotation/note search; a query calibre's FTS5 parser refuses is invalid_input. */
+async function runSearch(
+  deps: BaseDeps,
+  argv: string[],
+  query: string,
+  opts: CalibredbOptions,
+): Promise<{ stdout: string } | ToolResult> {
+  try {
+    return { stdout: (await deps.calibre.calibredb(argv, opts)).stdout };
+  } catch (err) {
+    if (!(err instanceof CalibreCliError && isFts5QueryError(err.stderr))) throw err;
+    return toolError(
+      "invalid_input",
+      `Calibre could not parse the search query ${JSON.stringify(query)}. Use plain words, put a phrase in ` +
+        `double quotes, and leave out a bare "-" or other operators.`,
+    );
+  }
+}
+
 /** `notes show FIELD ITEM`: the whole note (Markdown); an item without one is not_found. */
 async function showNote(
   one: { field: string; item: string },
@@ -217,7 +248,7 @@ async function showNote(
 ): Promise<ToolResult> {
   let stdout: string;
   try {
-    ({ stdout } = await deps.calibre.calibredb(["notes", "show", one.field, one.item], {
+    ({ stdout } = await deps.calibre.calibredb(calibredbArgv(["notes", "show", one.field], [one.item]), {
       library: libId,
       timeoutMs: deadline.timeoutFor(),
       signal,
