@@ -18,7 +18,9 @@ books already written?
 - A timeout or dropped connection after `calibredb` was invoked goes through
   `verifyTimedOutWrite`: confirmed → success, unconfirmed → steer to `calibre_get_book`.
   Inline re-read logic is a twin (#221). A retried `set_metadata` maps its error through
-  `settleFailedWrite` (`app/write-policy.ts`), and tools only render the outcome (#390).
+  `settleFailedWrite` (`app/write-policy.ts`), and tools only render the outcome (#390). Other
+  routed writes (`add_format`, `remove`) use `settleFailedStep` with their own landed? re-read
+  (`app/merge-verify.ts`), never a copy of the outcome mapping (#413).
 - Only idempotent `set_metadata` writes retry; a retry on `add`/`remove`/`add_format` is a finding.
 
 ## One equality
