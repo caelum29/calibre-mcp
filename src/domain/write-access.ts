@@ -4,10 +4,12 @@
 // Read from Calibre's source for the contract only (D-004); version-fragile, hence `unknown`.
 
 /** Whether the Content Server accepts writes from us. */
-export type CalibreWriteAccess = "allowed" | "refused" | "unknown";
+type CalibreWriteAccess = "allowed" | "refused" | "unknown";
 
 /** The probe's verdict; `reason` says why it could not tell. */
-export type WriteAccessProbe = { access: "allowed" | "refused" } | { access: "unknown"; reason: string };
+export type WriteAccessProbe =
+  | { access: Exclude<CalibreWriteAccess, "unknown"> }
+  | { access: "unknown"; reason: string };
 
 // the 404 for a missing module version; any other 404 (wrong path, old server) proves nothing
 const UNKNOWN_VERSION_BODY = /not available in version/i;
