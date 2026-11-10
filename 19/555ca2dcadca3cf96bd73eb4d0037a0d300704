@@ -1,0 +1,26 @@
+src/domain/calibredb-banner.ts
+  s_02b52ad8edbfad::t_4eeda2a6418f4c 4-8
+test/app/enable-fts-banner-518.test.ts
+  s_02b52ad8edbfad::t_8ea32fcd5cd54d 1-25
+test/integration/filter-steer-gate-518.test.ts
+  s_02b52ad8edbfad::t_791ab0e83a94d0 36-37,47
+  s_02b52ad8edbfad::t_169db6dd5714ac 1-35,38-46,48-65
+src/app/enable-fts.ts
+  s_02b52ad8edbfad::t_4eeda2a6418f4c 8,22-23,26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "19555ca2dcadca3cf96bd73eb4d0037a0d300704",
+  "prompts": {},
+  "sessions": {
+    "s_02b52ad8edbfad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5df1a23b-ecee-482f-b178-3bf623cc8f7f",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
