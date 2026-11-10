@@ -1,0 +1,26 @@
+docs/tool-catalog.json
+  s_3e8658abeda134::t_81bb81ac1674a4 1900-1908
+src/tools/calibre_remove_book.ts
+  s_3e8658abeda134::t_9a7d4e8c07a089 32,43,45,49,52-69,74,82,86,92,94,105-106
+  s_3e8658abeda134::t_c817d632dbd1c9 107,110
+docs/TOOLS.md
+  s_3e8658abeda134::t_adc2a2f31d9871 580-582
+skills/calibre-mcp/SKILL.md
+  s_3e8658abeda134::t_8795dd80ac5f1c 230
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "11ede04c7b03eada9fe36e16a67554c38ac94a52",
+  "prompts": {},
+  "sessions": {
+    "s_3e8658abeda134": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "90cd6d91-2e99-40ea-88d4-833235d9eb6d",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
