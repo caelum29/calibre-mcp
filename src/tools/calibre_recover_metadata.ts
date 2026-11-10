@@ -6,6 +6,7 @@
 // Lookup key: existing valid ISBN → else an ISBN scraped from the book text → else the title
 // (+first author) if usable. Providers are queried in order; the first with a hit wins.
 
+import { NEEDS_WRITES } from "./writes-remedy.js";
 import { z } from "zod";
 import { isValidIsbn } from "../domain/curation/isbn.js";
 import { isPlaceholderTitle, isUsableTitle } from "../domain/enrich/filename-guess.js";
@@ -38,7 +39,7 @@ export const recoverMetadataTool = defineTool({
   name: "calibre_recover_metadata",
   title: "Recover book metadata",
   description:
-    "Propose real metadata for a book with a missing/raw-filename title via online provider lookup (ISBN from its identifiers or text, else title/author) on Open Library and Google Books. Preview only — returns a changes object for calibre_update_book; never writes.",
+    "Propose real metadata for a book with a missing/raw-filename title via online provider lookup (ISBN from its identifiers or text, else title/author) on Open Library and Google Books. Preview only — returns a changes object for calibre_update_book (needs writes enabled); never writes.",
   inputSchema: {
     id: BookId().optional(),
     bookId: BookId().optional(),
@@ -151,7 +152,10 @@ export const recoverMetadataTool = defineTool({
       const body =
         `Book #${numericId} — matched ${lookupKey} on ${usedSource} (confidence ${confidence.toFixed(2)}).\n` +
         warningLines +
-        `Proposed metadata (apply with calibre_update_book id=${numericId}):\n` +
+        // gate off: calibre_update_book is hidden, so name the remedy instead (#519)
+        (deps.config.writeEnabled
+          ? `Proposed metadata (apply with calibre_update_book id=${numericId}):\n`
+          : `Proposed metadata — applying it ${NEEDS_WRITES}:\n`) +
         lines.join("\n") +
         `\n\nchanges = ${JSON.stringify(proposal.changes)}`;
 

@@ -6,6 +6,7 @@
 // imply otherwise. Gated write + preview-first (D-003): create/update first report how many books
 // the expression matches, which doubles as free expression validation.
 
+import { writeStep } from "./writes-remedy.js";
 import { z } from "zod";
 import { CalibreHttpError } from "../domain/errors.js";
 import { type BundleEntry, invalidateBundleCache, isExclusionMarker, loadBundles } from "../app/bundles.js";
@@ -78,6 +79,7 @@ function previewText(
   name: string,
   expression: string,
   total: number,
+  writeEnabled: boolean,
   existing?: BundleEntry,
 ): string {
   const head =
@@ -95,7 +97,7 @@ function previewText(
     : "";
   return (
     `${head}\n  ${expression}\nMatches ${total} book(s) right now.${zeroNote}${markerNote}\n` +
-    `Re-run with confirm=true to write it.`
+    writeStep(writeEnabled, `Re-run with confirm=true to write it.`, "Writing it")
   );
 }
 
@@ -208,7 +210,7 @@ export const manageBundlesTool = defineTool({
                 text:
                   `Preview — nothing deleted yet. Would delete the saved search "${name}" ` +
                   `(\`${existing.expression}\`). No books are touched, only the filter. ` +
-                  `Re-run with confirm=true to delete it.`,
+                  writeStep(deps.config.writeEnabled, `Re-run with confirm=true to delete it.`, "Deleting it"),
               },
             ],
             { action: "delete", applied: false, bundles: [existing] },
@@ -247,12 +249,20 @@ export const manageBundlesTool = defineTool({
       if ("failure" in count) return count.failure;
 
       if (!args.confirm) {
-        return toolOk([{ type: "text", text: previewText(args.action, name, expression, count.total, existing) }], {
-          action: args.action,
-          applied: false,
-          matches: count.total,
-          created_as: "saved_search",
-        });
+        return toolOk(
+          [
+            {
+              type: "text",
+              text: previewText(args.action, name, expression, count.total, deps.config.writeEnabled, existing),
+            },
+          ],
+          {
+            action: args.action,
+            applied: false,
+            matches: count.total,
+            created_as: "saved_search",
+          },
+        );
       }
 
       // update = remove + add: calibredb has no in-place edit for a saved search. That leaves a

@@ -1767,7 +1767,7 @@
         "openWorldHint": true,
         "readOnlyHint": true
       },
-      "description": "Propose real metadata for a book with a missing/raw-filename title via online provider lookup (ISBN from its identifiers or text, else title/author) on Open Library and Google Books. Preview only — returns a changes object for calibre_update_book; never writes.",
+      "description": "Propose real metadata for a book with a missing/raw-filename title via online provider lookup (ISBN from its identifiers or text, else title/author) on Open Library and Google Books. Preview only — returns a changes object for calibre_update_book (needs writes enabled); never writes.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {

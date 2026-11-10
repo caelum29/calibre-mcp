@@ -6,6 +6,7 @@
 // The dry-run is a SUCCESS result, not isError — an error here reads as "dangerous/failed"
 // and makes agents refuse the confirm step.
 
+import { writeStep } from "./writes-remedy.js";
 import { z } from "zod";
 import { BookId, CoercedBool, jsonArray } from "./coerce.js";
 import { defineTool } from "./define.js";
@@ -80,7 +81,7 @@ export const removeBookTool = defineTool({
                 `Dry-run — nothing removed yet. This would move ${targets.length} book(s) to ` +
                 `Calibre's Trash (restorable from the Calibre GUI):\n${list}\n` +
                 (skipped ? `${skipped}\n` : "") +
-                `Re-run with confirm=true to proceed.`,
+                writeStep(deps.config.writeEnabled, `Re-run with confirm=true to proceed.`, "Removing them"),
             },
           ],
           { deleted: false, wouldRemove: targets, ...notFound },

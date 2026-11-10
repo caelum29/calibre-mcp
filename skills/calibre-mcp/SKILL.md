@@ -47,7 +47,7 @@ ID `My_Books`. Calibre GUI + Content Server on `:8080` are normally running.
 | `calibre_build_index` | Build/refresh the semantic index (needed before semantic search) | `ids`/`query`/`bookId` to scope, `force`, `enableFts` (turn on Calibre FTS; needs writes enabled, else `fts.status: write_disabled`), `keywordOnly` |
 | `calibre_find_duplicates` | Dup detection | `mode: identical\|similar\|compare`, `ids`, `query`, `filter` (bundle) |
 | `calibre_quality_report` | Library audit: missing metadata, rule violations | `checks`, `ids`/`query`/`filter` |
-| `calibre_recover_metadata` | Propose metadata for raw-filename books (ISBN → OpenLibrary → Google Books) | `id`, `sources` — returns a *proposal*; apply via `calibre_update_book` |
+| `calibre_recover_metadata` | Propose metadata for raw-filename books (ISBN → OpenLibrary → Google Books) | `id`, `sources` — returns a *proposal*; apply via `calibre_update_book` (needs writes enabled) |
 | `calibre_update_book` | Write metadata for one book | `id`, `changes` (object incl. `#custom` fields) |
 | `calibre_bulk_update` | Same change across many books | `changes` and/or `tags_add`/`tags_remove`, `ids` OR `query` OR `filter` (one required), `preview` |
 | `calibre_add_book` | Import a file (path must be under the whitelisted roots) | `path` |
@@ -160,7 +160,8 @@ replaces the whole list, or a case-only rename that renames a tag on every book.
 
 **Fix a raw-filename book (e.g. `795731065.pdf`):**
 `calibre_extract_isbn` (preview) → `calibre_recover_metadata` → confirm with user →
-`calibre_update_book` with the proposed fields.
+`calibre_update_book` with the proposed fields. With writes off, show the user the proposal and
+tell them applying it needs `CALIBRE_MCP_ENABLE_WRITE`.
 
 **Dedupe:**
 `calibre_find_duplicates mode:similar` → inspect groups with `mode:compare ids:[...]` →

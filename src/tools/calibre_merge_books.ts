@@ -3,6 +3,7 @@
 // Calibre's rules, trash the sources. Dry-run unless confirm=true; execution is a step
 // ledger with delete ALWAYS last, so any abort leaves a superset state (issue #33).
 
+import { writeStep } from "./writes-remedy.js";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -178,7 +179,16 @@ export const mergeBooksTool = defineTool({
       }
 
       if (!args.confirm) {
-        return planResult(target, sources, args.mode, formatMoves, metadataChanges, coverFrom, warnings);
+        return planResult(
+          target,
+          sources,
+          args.mode,
+          formatMoves,
+          metadataChanges,
+          coverFrom,
+          warnings,
+          deps.config.writeEnabled,
+        );
       }
 
       return await executeMerge(deps, {
@@ -207,6 +217,7 @@ function planResult(
   metadataChanges: Record<string, ChangeValue>,
   coverFrom: number | undefined,
   warnings: string[],
+  writeEnabled: boolean,
 ) {
   const lines: string[] = [];
   lines.push(`Survivor: #${target.id} ${target.title} — ${target.authors.join(", ")}`);
@@ -239,7 +250,8 @@ function planResult(
   );
 
   const text =
-    `Dry run — nothing written. Re-run with confirm=true to execute.\n` + fence("MERGE PLAN", lines.join("\n"));
+    `Dry run — nothing written. ${writeStep(writeEnabled, "Re-run with confirm=true to execute.", "Executing it")}\n` +
+    fence("MERGE PLAN", lines.join("\n"));
   return toolOk([{ type: "text", text }], {
     status: "planned",
     targetId: target.id,

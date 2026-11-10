@@ -3,6 +3,7 @@
 // (ids or a non-empty query — never an all-books default, the FaceDeer anti-pattern we fix).
 // Applies by looping `calibredb set_metadata` per book (no bulk CLI form; HTTP batch is LATER).
 
+import { writeStep } from "./writes-remedy.js";
 import { z } from "zod";
 import { buildSetMetadataArgs, formatFieldValue } from "../calibre/metadata-fields.js";
 import {
@@ -216,7 +217,8 @@ export const bulkUpdateTool = defineTool({
         const text =
           (honesty.length ? `${honesty.join("\n")}\n` : "") +
           `Preview — ${selection.books.length} book(s) selected, ${changing} would change. ` +
-          `Re-run with preview=false to apply.\n` +
+          writeStep(deps.config.writeEnabled, "Re-run with preview=false to apply.", "Applying it") +
+          "\n" +
           fence("BULK UPDATE PREVIEW", lines.join("\n\n"));
         return toolOk([{ type: "text", text }], {
           preview: true,
