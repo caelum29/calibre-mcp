@@ -127,3 +127,42 @@ describe("calibre_ping Index text cap (#442)", () => {
     ]);
   });
 });
+
+// #479 review: the cap must never drop the default library, and a busy default library says so
+// on the Semantic search line too (text/structured parity).
+describe("calibre_ping Index cap keeps the default (#440 review)", () => {
+  it("should_show_the_default_entry_even_when_it_is_past_the_cap", async () => {
+    const map: Record<string, string> = Object.fromEntries(
+      Array.from({ length: 24 }, (_, i) => {
+        const n = String(i + 1).padStart(2, "0");
+        return [`Lib_${n}`, `Lib ${n}`];
+      }),
+    );
+    map.My_Books = "My Books"; // 25th in map order, and the default
+    const r = await ping().handler({}, deps({ map, indexed: [] }));
+    const text = line(r, "Index")!;
+    const entries = text.replace(/^Index: /, "").split(" · ");
+    expect({
+      shown: entries.length - 1,
+      tail: entries.at(-1),
+      defaults: entries.filter((e) => e.includes("[default]")),
+    }).toEqual({
+      shown: 20,
+      tail: "… +5 more — full list in structuredContent / calibre_list_libraries",
+      defaults: ["My Books (id: My_Books) [default]: none"],
+    });
+  });
+});
+
+describe("calibre_ping busy default library (#440 review)", () => {
+  it("should_name_the_library_and_say_busy_on_the_semantic_line_and_in_structured", async () => {
+    const r = await ping().handler({}, deps({ indexed: [], locked: ["My_Books"] }));
+    const semantic = r.structuredContent?.semantic as { libraryId?: string; indexBusy?: boolean } | undefined;
+    expect({
+      busyInText: line(r, "Semantic search")?.includes("My_Books index busy — index locked by another process, retry"),
+      buildHint: line(r, "Semantic search")?.includes("run calibre_build_index"),
+      libraryId: semantic?.libraryId,
+      indexBusy: semantic?.indexBusy,
+    }).toEqual({ busyInText: true, buildHint: false, libraryId: "My_Books", indexBusy: true });
+  });
+});

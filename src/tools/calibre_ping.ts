@@ -223,7 +223,7 @@ async function indexSection(deps: PingDeps, unreachable: boolean): Promise<{ lin
   if (!indexes) return { line: label("libraries unavailable") };
   if (indexes.length === 0) return { line: label("(no libraries)"), indexes };
   // the text stays bounded however many libraries there are; structuredContent keeps them all (#442)
-  const shown = indexes.slice(0, INDEX_TEXT_CAP).map(indexEntry);
+  const shown = cappedWithDefault(indexes).map(indexEntry);
   const more = indexes.length - shown.length;
   if (more > 0) shown.push(`… +${more} more — full list in structuredContent / calibre_list_libraries`);
   return { line: label(shown.join(" · ")), indexes };
@@ -231,6 +231,17 @@ async function indexSection(deps: PingDeps, unreachable: boolean): Promise<{ lin
 
 /** Libraries listed in the Index text before it says "+K more" (#442). */
 const INDEX_TEXT_CAP = 20;
+
+/**
+ * The first INDEX_TEXT_CAP libraries in map order, but never without the default: the Semantic
+ * search line describes it, so its `[default]` entry must stay in the text (#440 review).
+ */
+function cappedWithDefault(indexes: LibraryIndex[]): LibraryIndex[] {
+  const head = indexes.slice(0, INDEX_TEXT_CAP);
+  if (head.some((i) => i.isDefault)) return head;
+  const def = indexes.find((i) => i.isDefault);
+  return def ? [...head.slice(0, INDEX_TEXT_CAP - 1), def] : head;
+}
 
 /** One `Index:` entry: `Name (id: Lib_Id) [default]: <state>` — tools take the id, not the name (#440). */
 function indexEntry(i: LibraryIndex): string {
