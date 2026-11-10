@@ -210,23 +210,34 @@ function rerankActive(req: BaseRequest, deps: RetrievalDeps): boolean {
   return Boolean(deps.reranker) && deps.config.rerankEnabled && req.mode !== "keyword";
 }
 
-/** The two candidate halves of one hybrid ranking, keyed on `idOf` for fusion. */
+/**
+ * The two candidate halves of one hybrid ranking, keyed on `idOf` for fusion. `tieOf` is the
+ * (book id, unit id) order for equal fused scores, the same key the vector, FTS and rerank
+ * stages use (#392, #457).
+ */
 interface Halves<H> {
   vec: Array<H & { score: number }>;
   kw: H[];
   idOf: (h: H) => number;
+  tieOf: (h: H) => readonly [number, number];
 }
 
 /** RRF-fuse a vector and a keyword ranking, keeping the vector hit (and its cosine) when both have it. */
-function fuse<H>({ vec, kw, idOf }: Halves<H>, k: number, w: readonly number[]): Ranked<H>[] {
+function fuse<H>({ vec, kw, idOf, tieOf }: Halves<H>, k: number, w: readonly number[]): Ranked<H>[] {
   const vById = new Map(vec.map((h) => [idOf(h), h]));
   const kById = new Map(kw.map((h) => [idOf(h), h]));
-  return rrfFuse([vec.map(idOf), kw.map(idOf)], RRF_K, [...w])
-    .slice(0, k)
-    .map((f): Ranked<H> => {
-      const v = vById.get(f.id);
-      return { hit: (v ?? kById.get(f.id))!, cosine: v?.score };
-    });
+  const hitOf = (id: number): H => (vById.get(id) ?? kById.get(id))!;
+  // re-sort before the cut: rrfFuse breaks ties by the fused id alone, which for figures (fused
+  // on the row id) need not follow book order (#457)
+  const fused = rrfFuse([vec.map(idOf), kw.map(idOf)], RRF_K, [...w]).sort((a, b) => {
+    const [ab, au] = tieOf(hitOf(a.id));
+    const [bb, bu] = tieOf(hitOf(b.id));
+    return b.score - a.score || ab - bb || au - bu;
+  });
+  return fused.slice(0, k).map((f): Ranked<H> => {
+    const v = vById.get(f.id);
+    return { hit: hitOf(f.id), cosine: v?.score };
+  });
 }
 
 /** Rank books per mode. hybrid RRF-fuses the two halves; vector/keyword use one half each. */
@@ -247,7 +258,7 @@ async function rankBooks(
   // hybrid: fuse book rankings from both halves by bookId (vector first — weights order).
   const vec = deps.index.searchLibrary(libraryId, q, POOL, allow);
   const kw = deps.index.searchLibraryFts(libraryId, stemText(req.query), POOL, allow);
-  return fuse({ vec, kw, idOf: (h) => h.bookId }, k, w);
+  return fuse({ vec, kw, idOf: (h) => h.bookId, tieOf: (h) => [h.bookId, h.bookId] }, k, w);
 }
 
 /** Rank passages within one book per mode, mirroring rankBooks but fusing on chunkId. */
@@ -263,10 +274,10 @@ async function rankPassages(req: BookRequest, deps: RetrievalDeps, w: readonly n
   }
   const vec = deps.index.searchBook(libraryId, bookId, q, POOL);
   const kw = deps.index.searchBookFts(libraryId, bookId, stemText(req.query), POOL);
-  return fuse({ vec, kw, idOf: (h) => h.chunkId }, k, w);
+  return fuse({ vec, kw, idOf: (h) => h.chunkId, tieOf: (h) => [0, h.chunkId] }, k, w);
 }
 
-/** Rank figure captions per mode — the rankBooks/rankPassages mirror, fused on figureId. */
+/** Rank figure captions per mode — the rankBooks/rankPassages mirror, fused on figureId, ties by (bookId, figureId). */
 async function rankFigures(
   req: FiguresRequest,
   deps: RetrievalDeps,
@@ -283,7 +294,7 @@ async function rankFigures(
   }
   const vec = deps.index.searchFigures(libraryId, q, POOL, bookId, allow);
   const kw = deps.index.searchFiguresFts(libraryId, stemText(req.query), POOL, bookId, allow);
-  return fuse({ vec, kw, idOf: (h) => h.figureId }, k, w);
+  return fuse({ vec, kw, idOf: (h) => h.figureId, tieOf: (h) => [h.bookId, h.figureId] }, k, w);
 }
 
 /** The rerank stage's outcome: topK results (reordered when it ran) + honesty fields. */
