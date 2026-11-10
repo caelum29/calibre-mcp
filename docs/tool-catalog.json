@@ -1897,6 +1897,15 @@
           "deleted": {
             "type": "boolean"
           },
+          "notFoundIds": {
+            "items": {
+              "type": [
+                "number",
+                "string"
+              ]
+            },
+            "type": "array"
+          },
           "removedIds": {
             "items": {
               "type": "number"

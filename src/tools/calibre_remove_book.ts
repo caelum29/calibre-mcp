@@ -29,6 +29,7 @@ export const removeBookTool = defineTool({
     deleted: z.boolean().optional(),
     removedIds: z.array(z.number()).optional(),
     wouldRemove: z.array(z.object({ id: z.number(), title: z.string().optional() })).optional(),
+    notFoundIds: z.array(z.union([z.number(), z.string()])).optional(),
   },
   annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
   write: true,
@@ -39,21 +40,38 @@ export const removeBookTool = defineTool({
         return toolError("invalid_input", "Provide at least one book id to remove.");
       }
 
-      // Resolve every id (uuids too); drop unknowns so a stale id can't take the batch down.
+      // Resolve every id (uuids too); drop unresolvable ones so a stale id can't take the batch down.
       const numericIds: number[] = [];
+      const notFoundIds: (number | string)[] = [];
       for (const id of args.ids) {
         const num = await resolveNumericId(deps, id, args.library);
         if (num !== undefined) numericIds.push(num);
+        else notFoundIds.push(id);
       }
-      if (numericIds.length === 0) return toolError("not_found", "None of the given ids resolved to a book.");
 
-      const map = await deps.content.booksByIds(numericIds, args.library);
-      const targets = numericIds.map((id) => ({ id, title: map.get(id)?.title }));
+      // A numeric id always "resolves"; only the library lookup says whether the book exists (#519).
+      const map = numericIds.length > 0 ? await deps.content.booksByIds(numericIds, args.library) : new Map();
+      const targets: { id: number; title?: string }[] = [];
+      for (const id of numericIds) {
+        const found = map.get(id);
+        if (found) targets.push({ id, title: found.title });
+        else notFoundIds.push(id);
+      }
+      if (targets.length === 0) {
+        return toolError(
+          "not_found",
+          `None of the given ids is a book in this library: ${notFoundIds.map((i) => `#${i}`).join(", ")}.`,
+        );
+      }
+      // same wording in the text and in structuredContent — clients show the model only one of them
+      const skipped =
+        notFoundIds.length > 0 ? `Not found (skipped): ${notFoundIds.map((i) => `#${i}`).join(", ")}` : "";
+      const notFound = notFoundIds.length > 0 ? { notFoundIds } : {};
 
       // Dry-run unless explicitly confirmed. Success result, not isError — the gate worked
       // as designed, and an error result makes agents refuse the confirm step.
       if (!args.confirm) {
-        const list = targets.map((t) => `#${t.id} ${t.title ?? "(unknown)"}`).join("\n");
+        const list = targets.map((t) => `#${t.id} ${t.title ?? "(untitled)"}`).join("\n");
         return toolOk(
           [
             {
@@ -61,17 +79,19 @@ export const removeBookTool = defineTool({
               text:
                 `Dry-run — nothing removed yet. This would move ${targets.length} book(s) to ` +
                 `Calibre's Trash (restorable from the Calibre GUI):\n${list}\n` +
+                (skipped ? `${skipped}\n` : "") +
                 `Re-run with confirm=true to proceed.`,
             },
           ],
-          { deleted: false, wouldRemove: targets },
+          { deleted: false, wouldRemove: targets, ...notFound },
         );
       }
 
       // calibredb remove takes a comma-separated id list; needs the library ID, not display name.
       const libId = await deps.content.resolveLibraryId(args.library);
+      const removeIds = targets.map((t) => t.id);
       try {
-        await deps.calibre.calibredb(["remove", numericIds.join(",")], { library: libId });
+        await deps.calibre.calibredb(["remove", removeIds.join(",")], { library: libId });
       } catch (err) {
         if (isWriteRefused(err)) return toolError("write_refused", WRITE_REFUSED_MESSAGE);
         throw err;
@@ -82,11 +102,12 @@ export const removeBookTool = defineTool({
           {
             type: "text",
             text:
-              `Removed ${numericIds.length} book(s): ${numericIds.join(", ")}. ` +
-              `They went to Calibre's Trash and can be restored from the Calibre GUI.`,
+              `Removed ${removeIds.length} book(s): ${removeIds.join(", ")}. ` +
+              `They went to Calibre's Trash and can be restored from the Calibre GUI.` +
+              (skipped ? `\n${skipped}` : ""),
           },
         ],
-        { deleted: true, removedIds: numericIds },
+        { deleted: true, removedIds: removeIds, ...notFound },
       );
     } catch (err) {
       return errorFromCatch(err);
