@@ -20,7 +20,7 @@ const UNHINTED: ErrorCode[] = ERROR_CODES.filter((c) => defaultHint(c) === undef
 
 describe("toolError text carries Code: and Next: lines (#437)", () => {
   it("has hinted and unhinted codes to check", () => {
-    expect({ hinted: HINTED.length, unhinted: UNHINTED.length > 0 }).toEqual({ hinted: 11, unhinted: true });
+    expect({ hinted: HINTED.length, unhinted: UNHINTED.length > 0 }).toEqual({ hinted: 12, unhinted: true });
   });
 
   it.each(HINTED)("%s: text ends with its Code: line and its default hint as Next:", (code) => {

@@ -46,7 +46,7 @@ your library, all through natural language.
 ## 📋 Requirements
 
 - **Calibre** with the **Content Server running** (in Calibre: *Connect/share → Start
-  Content server*). Tested against Calibre 9.x; there is no hard minimum version.
+  Content server*). Developed and tested against Calibre 9.18; annotations and notes need 9.18+.
 - **Platform:** verified on **macOS**. Linux and Windows are not claimed: the code has paths
   for them and the unit suite runs on Linux in CI, but neither has had a live check. The
   Claude Desktop bundle installs on macOS, Windows and Linux; it is verified live only on

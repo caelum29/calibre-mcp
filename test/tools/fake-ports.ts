@@ -40,7 +40,7 @@ export function fakeContent(over: Partial<LibraryReader> = {}): LibraryReader {
 /** calibredb writes (`deps.calibre`). */
 export function fakeCalibre(over: Partial<LibraryWriter> = {}): LibraryWriter {
   const u = (m: keyof LibraryWriter) => unstubbed("calibre", m);
-  return { calibredb: u("calibredb"), listLibraries: u("listLibraries"), ...over };
+  return { calibredb: u("calibredb"), listLibraries: u("listLibraries"), calibreVersion: u("calibreVersion"), ...over };
 }
 
 /** Book-text extraction (`deps.extractor`). */

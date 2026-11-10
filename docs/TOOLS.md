@@ -670,6 +670,7 @@ only the part named here is contract. The table is generated from the server's r
 | `calibre_get_content` | `cursor` | `… cursor: <nextCursor>` at the end of the line — pass the token verbatim (the words before `cursor:` are Prose) | `nextCursor` |
 | `calibre_build_index` | `Indexed ids` | `Indexed ids: <id>, <id>.` | `bookDetails[].bookId` |
 | `calibre_ping` | `calibredb` | `calibredb: <path> (Content Server <url>)` | `calibredbPath` |
+| `calibre_ping` | `calibre version` | `calibre version: <x.y[.z]>\|unknown` — from `calibredb --version` | `calibreVersion` |
 | `calibre_ping` | `writes` | `writes: ENABLED\|disabled (…)` — our write gate (the parenthesis is Prose) | `writeEnabled` |
 | `calibre_ping` | `calibre writes` | `calibre writes: allowed\|refused — <how to allow writes>\|unknown (<reason>)` (the remedy after `refused` and the reason are Prose) | `calibreWriteAccess` |
 | `calibre_ping` | `Semantic search` | `Semantic search: ready\|UNAVAILABLE\|index STALE …` (the state word is contract; the explanation and steering sentence are Prose) | `semantic.available` |

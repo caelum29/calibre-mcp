@@ -161,6 +161,7 @@ describe("withCallLog — #325 recentErrors rule", () => {
     write_unverified: "error",
     calibre_unreachable: "error",
     calibre_busy: "warn",
+    calibre_too_old: "warn",
     calibre_error: "error",
     timeout: "error",
     cancelled: "warn",

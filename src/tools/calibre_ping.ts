@@ -18,6 +18,7 @@ import type { ToolResult } from "./types.js";
 import { defaultHint, errorCodeFor } from "../domain/error-codes.js";
 import type { WriteAccessProbe } from "../domain/write-access.js";
 import { labelledLine, PING_LINE_LABELS } from "./labelled-lines.js";
+import type { CalibreVersionInfo } from "../domain/calibre-version.js";
 
 // the write probe runs alongside the index section, inside the same short budget
 const WRITE_PROBE_TIMEOUT_MS = 5000;
@@ -38,6 +39,8 @@ export const pingTool = defineTool({
     // Resolve the libId (needed for both calibredb and the index vector count) first —
     // --with-library needs the ID, not the display name. A failure here is non-fatal to the
     // semantic diagnosis (it reads local disk/state), so keep it and still report semantics.
+    // local and cached after the first ping (#499): runs alongside the reachability probe
+    const calibreVersion = readVersion(deps);
     let libId: LibId | undefined;
     let pingError: string | undefined;
     let configError: string | undefined; // an unknown CALIBRE_MCP_LIBRARY (#438)
@@ -68,7 +71,8 @@ export const pingTool = defineTool({
     // Self-diagnosis without file access (#247). Text too — Desktop strips structuredContent.
     const diag = diagnostics();
     const serverUrl = deps.config.serverUrl;
-    const header = serverHeader(deps);
+    const version = await calibreVersion;
+    const header = serverHeader(deps, version);
     // probe Calibre's write gate only when it answered for a known library
     const probeLib = pingError === undefined && configError === undefined ? libId : undefined;
     // a busy library is reachable but refused for now: say so, not "unreachable" (#437 follow-up)
@@ -80,7 +84,7 @@ export const pingTool = defineTool({
         ? undefined
         : deps.content.probeWriteAccess(probeLib, { timeoutMs: WRITE_PROBE_TIMEOUT_MS }),
     ]);
-    const facts = serverFacts(deps, index.indexes);
+    const facts = serverFacts(deps, version, index.indexes);
 
     // A failed ping leads with its own headline, then the same sections as a healthy report.
     const failed = (headline: string, error: string) => ({
@@ -150,11 +154,16 @@ function busyReport(list: BusyLibrary[]): { text: string; structured: Record<str
 }
 
 /** structuredContent twin of the header + index line, for clients that show only structured data. */
-function serverFacts(deps: BaseDeps, indexes: LibraryIndex[] | undefined): Record<string, unknown> {
+function serverFacts(
+  deps: BaseDeps,
+  calibreVersion: CalibreVersionInfo,
+  indexes: LibraryIndex[] | undefined,
+): Record<string, unknown> {
   return {
     version: VERSION,
     sdkVersion: SDK_VERSION,
     calibredbPath: deps.config.calibredbPath,
+    calibreVersion: versionText(calibreVersion),
     writeEnabled: deps.config.writeEnabled,
     ...(indexes ? { indexes } : {}),
   };
@@ -180,14 +189,29 @@ function writeAccessText(p: WriteAccessProbe, gateOn: boolean): string {
   return `${lines.join("\n")}\n`;
 }
 
+// A health check reports the version, it never fails on it (#499): any throw reads as "unknown".
+async function readVersion(deps: BaseDeps): Promise<CalibreVersionInfo> {
+  try {
+    return await deps.calibre.calibreVersion();
+  } catch {
+    return "unknown";
+  }
+}
+
+// "unknown" when calibredb could not be run or parsed: a fact, never an error (#499)
+function versionText(v: CalibreVersionInfo): string {
+  return v === "unknown" ? v : v.text;
+}
+
 /** Version / calibredb / write-gate block — facts a session otherwise has to infer (#304). */
-function serverHeader(deps: BaseDeps): string {
+function serverHeader(deps: BaseDeps, version: CalibreVersionInfo): string {
   const writes = deps.config.writeEnabled
     ? "writes: ENABLED (CALIBRE_MCP_ENABLE_WRITE)"
     : "writes: disabled (set CALIBRE_MCP_ENABLE_WRITE to enable)";
   return [
     `calibre-mcp ${VERSION} (MCP SDK ${SDK_VERSION})`,
     `calibredb: ${deps.config.calibredbPath} (Content Server ${deps.config.serverUrl})`,
+    labelledLine(PING_LINE_LABELS.calibreVersion, versionText(version)),
     writes,
   ].join("\n");
 }
