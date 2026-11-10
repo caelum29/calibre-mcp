@@ -711,6 +711,7 @@ only the part named here is contract. The table is generated from the server's r
 | `calibre_get_content` | `cursor` | `… cursor: <nextCursor>` at the end of the line — pass the token verbatim (the words before `cursor:` are Prose) | `nextCursor` |
 | `calibre_build_index` | `Indexed ids` | `Indexed ids: <id>, <id>.` | `bookDetails[].bookId` |
 | `calibre_build_index` | `FTS` | `- FTS: write_disabled\|already enabled\|enabled\|failed — …` — only with `enableFts: true` (`already enabled` is `already_enabled`; the words after the dash are Prose) | `fts.status` |
+| `calibre_remove_book` | `Not found` | `Not found (skipped): #<id or uuid>, #<id or uuid>` (an unresolved uuid also prints with `#`, a known limit) | `notFoundIds[]` |
 | `calibre_ping` | `calibredb` | `calibredb: <path> (Content Server <url>)` | `calibredbPath` |
 | `calibre_ping` | `calibre version` | `calibre version: <x.y[.z]>\|unknown` — from `calibredb --version` | `calibreVersion` |
 | `calibre_ping` | `writes` | `writes: ENABLED (…)` or `writes: disabled — <what still works> (…)` — our write gate (the text after the state word is Prose) | `writeEnabled` |
@@ -734,7 +735,6 @@ Tools whose text has no Labelled lines beyond the error lines:
 - `calibre_update_book` — text is Prose (its fields sit inside sentences or item lines)
 - `calibre_bulk_update` — text is Prose (its fields sit inside sentences or item lines)
 - `calibre_add_book` — text is Prose (its fields sit inside sentences or item lines)
-- `calibre_remove_book` — text is Prose (its fields sit inside sentences or item lines)
 - `calibre_merge_books` — text is Prose (its fields sit inside sentences or item lines)
 - `calibre_manage_bundles` — text is Prose (its fields sit inside sentences or item lines)
 - `calibre_board_data` — app-only widget tool — the model never sees its text
