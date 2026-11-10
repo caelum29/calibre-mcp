@@ -1,0 +1,36 @@
+src/tools/calibre_merge_books.ts
+  s_fccff9ca746c05::t_9879eab5b1ca0a 20,22
+  s_fccff9ca746c05::t_9d5f4ae68f245f 31,41-42,60-62,71,80,398-402,404-409,459-461
+test/tools/write-partial-landing-389.test.ts
+  s_fccff9ca746c05::t_c9a3061814fb15 40-46,57,74,90
+src/app/merge-verify.ts
+  s_fccff9ca746c05::t_f6a8c1c7da3360 5,8-12,15,34
+src/tools/write-failure.ts
+  s_fccff9ca746c05::t_3914d52f2b1a05 7,13-24,42,53-54,63,66-70,72-76,81-82,84-88,91-95,97-98
+test/tools/write-failure-matrix-417.test.ts
+  s_fccff9ca746c05::t_360d2fcfec04ed 195
+docs/ARCHITECTURE.md
+  s_fccff9ca746c05::t_f6a8c1c7da3360 70-71
+src/tools/calibre_bulk_update.ts
+  s_fccff9ca746c05::t_360d2fcfec04ed 363,492
+  s_fccff9ca746c05::t_59e33f12e3926b 35,445-447,452-457,459,496,526-532
+  s_fccff9ca746c05::t_9879eab5b1ca0a 481-485
+src/tools/calibre_update_book.ts
+  s_fccff9ca746c05::t_3914d52f2b1a05 192-193
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fa03e9293d3df9b86b2160606fe927a8bc6098c2",
+  "prompts": {},
+  "sessions": {
+    "s_fccff9ca746c05": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cf60e5ce-4f0b-42be-815c-4ab99d6473a5",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
