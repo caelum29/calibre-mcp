@@ -163,7 +163,8 @@ VERIFY (c/d/e/f): config file contains the entry (read it back); live check is P
 ## Phase 3 — Live verify
 
 In a session where the server is loaded, call the **`calibre_ping`** tool — its
-semantic-status block reports connectivity, library, write-gate state, and
+semantic-status block reports connectivity, library, write-gate state, whether
+Calibre itself accepts writes (`calibre writes:` / `calibreWriteAccess`), and
 semantic-index state in one call. Evidence = the ping result.
 
 Triage the `semantic` block (don't just echo it):
@@ -175,6 +176,8 @@ Triage the `semantic` block (don't just echo it):
 | `dependencyInstalled: true, loaded: "failed"` / `restartRequired: true` | Dep is on disk but this process can't use it — **restart the server**; nothing else fixes it |
 | `modelCached: false` | First embedding build will download the ~118 MB model — set expectations |
 | `vectorCount` 0 / missing with dep OK | No semantic index yet — offer `calibre_build_index` (Phase 4) |
+| `calibre writes: refused` | Calibre blocks anonymous writes: enable "Allow un-authenticated local connections to make changes" (Preferences → Sharing over the net), then restart the Content Server. With `CALIBRE_MCP_ENABLE_WRITE` on, ping adds a `warning:` line: every write tool fails until then |
+| `calibre writes: unknown (<reason>)` | The probe got no clear answer; reads are fine. Writes may still work: try one and read its error |
 | `recent errors: N` with N > 0 (or `recent errors: N (M occurrences)` when some repeat) | Server-side failures this process logged: N distinct errors, M times in all. Read each line (tool, `call` id, cause, and `(×K since …)` for a repeat) before guessing; the cause is usually named there |
 
 **Logs** — when ping's errors don't explain the failure and you can read files: ping's

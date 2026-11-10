@@ -90,6 +90,7 @@ describe("ping reports the clash (#388 review)", () => {
       config,
       content: {
         resolveLibraryId: async () => "books",
+        probeWriteAccess: async () => ({ access: "allowed" as const }),
         libraryInfo: async () => ({ libraryMap: MAP, defaultLibrary: "books" }),
         search: async () => ({ total: 3 }),
       } as unknown as ToolDeps["content"],
@@ -120,6 +121,7 @@ describe("ping reports the clash (#388 review)", () => {
         config,
         content: {
           resolveLibraryId: async () => "books",
+          probeWriteAccess: async () => ({ access: "allowed" as const }),
           libraryInfo: async () => ({ libraryMap: MAP, defaultLibrary: "books" }),
           search: async () => ({ total: 3 }),
         } as unknown as ToolDeps["content"],
@@ -164,7 +166,10 @@ describe("calibre_semantic_search on the clashing id (#388 review)", () => {
       { query: "ownership", scope: "library", mode: "hybrid", topK: 10 },
       {
         config: loadConfig({ CALIBRE_MCP_INDEX_DIR: dir }),
-        content: fakeContent({ resolveLibraryId: async () => asLibId("books") }),
+        content: fakeContent({
+          resolveLibraryId: async () => asLibId("books"),
+          probeWriteAccess: async () => ({ access: "allowed" as const }),
+        }),
         calibre: fakeCalibre(),
         extractor: fakeExtractor(),
         figures: fakeFigures(),

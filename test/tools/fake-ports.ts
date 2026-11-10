@@ -32,6 +32,7 @@ export function fakeContent(over: Partial<LibraryReader> = {}): LibraryReader {
     virtualLibraries: u("virtualLibraries"),
     categories: u("categories"),
     categoryItemsByUrl: u("categoryItemsByUrl"),
+    probeWriteAccess: u("probeWriteAccess"),
     ...over,
   };
 }

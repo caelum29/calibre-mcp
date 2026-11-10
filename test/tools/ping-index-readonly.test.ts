@@ -49,6 +49,7 @@ function deps(indexDir: string): PingDeps {
     config,
     content: {
       resolveLibraryId: async () => LIB,
+      probeWriteAccess: async () => ({ access: "allowed" as const }),
       libraryInfo: async () => ({ libraryMap: { [LIB]: "Programming Books" }, defaultLibrary: LIB }),
       search: async () => ({ total: 10 }),
     } as unknown as ToolDeps["content"],

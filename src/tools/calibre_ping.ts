@@ -1,7 +1,8 @@
 // calibre_ping — connectivity probe that proves the SUBPROCESS path (calibredb --with-library
 // URL) works, complementary to calibre_list_libraries (HTTP /ajax). Also carries the
 // semantic-search self-diagnosis (#48), the server's recent errors + log file (#247), the
-// libraries the busy breaker is failing fast (calibre/busy.ts) and index coverage (app/library-index.ts).
+// libraries the busy breaker is failing fast (calibre/busy.ts), index coverage (app/library-index.ts)
+// and whether Calibre itself accepts writes (#439: our gate alone can say ENABLED while Calibre refuses).
 
 import { defineTool } from "./define.js";
 import { toolError, toolText } from "./result.js";
@@ -15,6 +16,11 @@ import { SDK_VERSION, VERSION } from "../version.js";
 import type { BaseDeps, DepsWithIndex } from "./deps.js";
 import type { ToolResult } from "./types.js";
 import { defaultHint, errorCodeFor } from "../domain/error-codes.js";
+import type { WriteAccessProbe } from "../domain/write-access.js";
+import { labelledLine, PING_LINE_LABELS } from "./labelled-lines.js";
+
+// the write probe runs alongside the index section, inside the same short budget
+const WRITE_PROBE_TIMEOUT_MS = 5000;
 
 /** calibre_ping's deps (#272): its index reads are exactly the semantic-status ones. */
 export type PingDeps = DepsWithIndex<StatusIndex>;
@@ -23,11 +29,9 @@ export const pingTool = defineTool({
   name: "calibre_ping",
   title: "Calibre ping",
   description:
-    "Health check: confirms the MCP server can reach the running Calibre " +
-    "Content Server via calibredb, and reports semantic-search status " +
-    "(embedding model, dependency, per-library index coverage). Returns the server version, calibredb path " +
-    "and write-gate state, plus libraries currently marked busy after a Calibre timeout, the server's recent errors and its " +
-    "log file path for self-diagnosis.",
+    "Health check: confirms the server reaches Calibre via calibredb and whether Calibre accepts writes; " +
+    "reports semantic-search status, per-library index coverage, version, write gate, busy libraries, " +
+    "recent errors and the log file path.",
   inputSchema: {},
   annotations: { readOnlyHint: true, openWorldHint: true },
   handler: async (_args, deps: PingDeps): Promise<ToolResult> => {
@@ -65,7 +69,14 @@ export const pingTool = defineTool({
     const diag = diagnostics();
     const serverUrl = deps.config.serverUrl;
     const header = serverHeader(deps);
-    const index = await indexSection(deps, pingError !== undefined);
+    // probe Calibre's write gate only when it answered for a known library
+    const probeLib = pingError === undefined && configError === undefined ? libId : undefined;
+    const [index, writeProbe] = await Promise.all([
+      indexSection(deps, pingError !== undefined),
+      probeLib === undefined
+        ? undefined
+        : deps.content.probeWriteAccess(probeLib, { timeoutMs: WRITE_PROBE_TIMEOUT_MS }),
+    ]);
     const facts = serverFacts(deps, index.indexes);
 
     if (pingError !== undefined) {
@@ -104,10 +115,12 @@ export const pingTool = defineTool({
         },
       );
     }
-    return toolText(`ok\n${header}\n${busy.text}${semLine}\n${index.line}\n${diag.text}`, {
+    const writeAccess = writeProbe === undefined ? "" : writeAccessText(writeProbe, deps.config.writeEnabled);
+    return toolText(`ok\n${header}\n${writeAccess}${busy.text}${semLine}\n${index.line}\n${diag.text}`, {
       ok: true,
       serverUrl,
       ...facts,
+      ...(writeProbe === undefined ? {} : { calibreWriteAccess: writeProbe.access }),
       semantic,
       ...busy.structured,
       ...diag.structured,
@@ -165,6 +178,26 @@ function serverFacts(deps: BaseDeps, indexes: LibraryIndex[] | undefined): Recor
     writeEnabled: deps.config.writeEnabled,
     ...(indexes ? { indexes } : {}),
   };
+}
+
+/**
+ * Calibre's write gate as a labelled line (+ a mismatch warning when our gate is on but Calibre
+ * refuses: every write tool would fail). `unknown` names its reason and claims nothing.
+ */
+function writeAccessText(p: WriteAccessProbe, gateOn: boolean): string {
+  const value =
+    p.access === "unknown"
+      ? `unknown (${p.reason})`
+      : p.access === "refused"
+        ? 'refused — enable "Allow un-authenticated local connections to make changes" (Preferences → Sharing over the net)'
+        : "allowed";
+  const lines = [labelledLine(PING_LINE_LABELS.calibreWrites, value)];
+  if (gateOn && p.access === "refused") {
+    lines.push(
+      "warning: CALIBRE_MCP_ENABLE_WRITE is on, but Calibre refuses writes — every write tool will fail until that setting is enabled",
+    );
+  }
+  return `${lines.join("\n")}\n`;
 }
 
 /** Version / calibredb / write-gate block — facts a session otherwise has to infer (#304). */
