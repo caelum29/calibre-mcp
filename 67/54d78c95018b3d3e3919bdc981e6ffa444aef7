@@ -1,0 +1,21 @@
+test/app/library-index-440.test.ts
+  s_53ff9ec34f3db8::t_3781226f5df87d 1-95
+test/tools/ping-index-440.test.ts
+  s_53ff9ec34f3db8::t_e1941028f02ddd 1-129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6754d78c95018b3d3e3919bdc981e6ffa444aef7",
+  "prompts": {},
+  "sessions": {
+    "s_53ff9ec34f3db8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a4bd7ff7-48cb-45dc-95d3-fb2b8e7ff920",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
