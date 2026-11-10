@@ -1,0 +1,25 @@
+test/calibre/fts-highlight-colon-in-word.test.ts
+  s_fccff9ca746c05::t_126808a406759d 1-2,9-13
+test/calibre/fts-highlight-column-terms.test.ts
+  s_fccff9ca746c05::t_68b802dc42ea54 1-2,9
+src/tools/calibre_search.ts
+  s_fccff9ca746c05::t_3be119d81023f0 400-409,414,421-422,519
+src/calibre/fts-highlight.ts
+  s_fccff9ca746c05::t_179f64a365be82 144-145,154-155,158-160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "be6a4f45e7c365cacd8424c9464774c896bb63d4",
+  "prompts": {},
+  "sessions": {
+    "s_fccff9ca746c05": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cf60e5ce-4f0b-42be-815c-4ab99d6473a5",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
