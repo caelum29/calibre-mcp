@@ -1,0 +1,23 @@
+docs/TOOLS.md
+  s_53ff9ec34f3db8::t_7567793f6b4483 674,677
+src/tools/labelled-lines.ts
+  s_53ff9ec34f3db8::t_5995d4c43a5c73 175,178,204
+docs/STABILITY.md
+  s_53ff9ec34f3db8::t_7567793f6b4483 16-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b6558b0fd918b0310c0d7cc8fa2a5bd294b430a7",
+  "prompts": {},
+  "sessions": {
+    "s_53ff9ec34f3db8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a4bd7ff7-48cb-45dc-95d3-fb2b8e7ff920",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
