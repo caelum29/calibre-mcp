@@ -24,8 +24,9 @@ ID `My_Books`. Calibre GUI + Content Server on `:8080` are normally running.
   `calibredb --with-library 'http://localhost:8080/#My_Books'` (library **ID** after `#`,
   not the display name — the display form 404s). **Never** use `--library-path` on a live GUI
   library — the concurrency lock makes direct DB access refused or dangerous.
-- Write tools are gated: they exist only when the server runs with `CALIBRE_MCP_ENABLE_WRITE`
-  set. If they're missing, that's why.
+- Writes are gated by `CALIBRE_MCP_ENABLE_WRITE`. With it off, previews and dry-runs still work;
+  the applying call returns `write_disabled` (tell the user, don't retry), and
+  `calibre_update_book` / `calibre_add_book` are not listed at all.
 - Destructive/bulk ops are preview-first: `calibre_bulk_update` defaults `preview:true`,
   `calibre_remove_book` and `calibre_merge_books` default `confirm:false` (dry-run),
   `calibre_extract_isbn` defaults `apply:false`, `calibre_manage_bundles` defaults `confirm:false`. Show the preview, get user confirmation,
@@ -57,7 +58,7 @@ ID `My_Books`. Calibre GUI + Content Server on `:8080` are normally running.
 
 ## Bundles (topical filters)
 
-Bundles are named filters backed by Calibre saved searches (`calibre_manage_bundles`, write-gated).
+Bundles are named filters backed by Calibre saved searches (`calibre_manage_bundles`; `list` works with writes off).
 Use them to scope work to a topic instead of the whole 800-book library:
 
 - **Topical query → try the matching bundle first.** "What do my databases books say about X?" →
@@ -102,6 +103,8 @@ tags:"=javascript"                   # exact match (= prefix)
 title:"~^Java.*Script$"              # regex (~ prefix)
 rating:">3"                          # comparison
 pubdate:">2024"                      # date filter
+date:lastmonth  date:thisyear  date:lastyear   # Calibre 9.18+
+date:>2monthsago  date:>1yearsago              # Calibre 9.18+ (number in front)
 ```
 
 Maintenance queries:

@@ -45,6 +45,7 @@ export const addBookTool = defineTool({
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
   write: true,
+  writeCall: "always", // no call writes nothing → hidden with the gate off (#435)
   handler: async (args, deps) => {
     try {
       const check = validateAddPath(args.path, deps.config.addRoots);

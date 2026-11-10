@@ -157,6 +157,7 @@ describe("withCallLog — #325 recentErrors rule", () => {
     not_found: "warn",
     path_not_allowed: "warn",
     write_refused: "error",
+    write_disabled: "warn",
     write_failed: "error",
     write_unverified: "error",
     calibre_unreachable: "error",

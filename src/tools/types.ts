@@ -64,8 +64,8 @@ export interface ToolContext {
 }
 
 /**
- * A plain, SDK-free tool definition. server.ts maps each onto registerTool and calls
- * `.disable()` on `write` tools when the write gate is off (DESIGN §4). `D` is the deps slice
+ * A plain, SDK-free tool definition. server.ts maps each onto registerTool and applies
+ * the per-call write gate (`tools/write-gate.ts`, #435) to `write` tools. `D` is the deps slice
  * the handler reads (#272): BaseDeps by default, or a `DepsWithIndex<…>` for index consumers.
  */
 export interface ToolDescriptor<Shape extends z.ZodRawShape = z.ZodRawShape, D = BaseDeps> {
@@ -76,8 +76,14 @@ export interface ToolDescriptor<Shape extends z.ZodRawShape = z.ZodRawShape, D =
   inputSchema: Shape;
   outputSchema?: z.ZodRawShape;
   annotations: ToolAnnotations;
-  /** When true, the server disables the tool unless writes are enabled. */
+  /** A library write: gated by CALIBRE_MCP_ENABLE_WRITE per call (see `writeCall`). */
   write?: boolean;
+  /**
+   * Required on every `write` tool (#435, D-028): which calls write. A predicate over the parsed
+   * args keeps the tool listed with the gate off (its other calls are previews) and refuses only
+   * the matching calls with `write_disabled`; `"always"` = no call writes nothing → hidden.
+   */
+  writeCall?: "always" | ((args: z.infer<z.ZodObject<Shape>>) => boolean);
   /**
    * Writes only to the server's own semantic-index dir, NOT the user's library — so it is
    * intentionally NOT gated by the library write flag despite `readOnlyHint: false`. This
@@ -102,6 +108,8 @@ export interface AnyToolDescriptor {
   outputSchema?: z.ZodRawShape;
   annotations: ToolAnnotations;
   write?: boolean;
+  /** See ToolDescriptor.writeCall. */
+  writeCall?: "always" | ((args: unknown) => boolean);
   /** See ToolDescriptor.localWrite — index-dir write, not library write; not gate-controlled. */
   localWrite?: boolean;
   handler: (args: unknown, deps: ToolDeps, ctx?: ToolContext) => Promise<ToolResult>;

@@ -88,6 +88,12 @@ searches whose name starts with `-`), and say so in the result: `exclusions appl
 (pass include_excluded=true to disable)`. There is no silent subtraction — if nothing is
 reported, nothing was subtracted.
 
+**Date keywords (Calibre 9.18+).** In `mode: meta`, date fields (`date` = added, `pubdate`,
+`last_modified`) accept `lastmonth`, `thisyear`, `lastyear`, and `Nmonthsago` / `Nyearsago` with
+the number in front. Examples: `date:lastmonth`, `date:thisyear`, `pubdate:lastyear`,
+`date:>2monthsago`. `monthsago3` is not valid and returns nothing. Older Calibre versions
+don't know these words; use `date:>7daysago` or explicit dates there.
+
 Full-text search (`mode: fts`, `scope: book`) uses Calibre's own full-text index, which you
 enable per library in Calibre (the **FT** button left of the search bar). If it is off, the call
 says so at once. Matches come back ranked; snippets are fetched only for the books on the
@@ -420,8 +426,9 @@ a proposal plus a ready-to-apply `changes` object and never writes. Apply the pr
 
 ## Writes (gated)
 
-The tools below change your library and are **hidden unless you enable writes** — see
-[Write safety](#write-safety). All of them route through the Calibre Content Server so they
+The tools below change your library. With writes off, their previews still work and only the
+call that would change the library is refused (`write_disabled`); `calibre_update_book` and
+`calibre_add_book`, which have no preview, stay hidden — see [Write safety](#write-safety). All of them route through the Calibre Content Server so they
 don't conflict with an open Calibre GUI.
 
 ### `calibre_extract_isbn`
@@ -581,9 +588,8 @@ searches**. A bundle called `rust` with the expression `tag:rust or title:rust` 
 the assistant) scope work to that slice instead of the whole library. A bundle whose name starts
 with `-` (e.g. `-outdated`) is an **exclusion marker**: a set of books to keep out of the way.
 
-`action: list` also shows your **virtual libraries**, marked `read_only`. Calibre exposes no way
-to write virtual libraries without racing the running GUI, so this tool never creates or changes
-one — bundles it writes are always saved searches, and the result says so (`created_as:
+`action: list` also shows your **virtual libraries**, marked `read_only`. This tool
+never creates or changes a virtual library — bundles it writes are always saved searches, and the result says so (`created_as:
 saved_search`). Trying to update or delete a virtual library returns an error pointing you at the
 Calibre GUI.
 
@@ -593,7 +599,8 @@ expression is reported as a syntax error. A count of `0` is ambiguous: Calibre a
 matches for an unknown field name, so check spelling before confirming. `delete` removes only the
 saved search; no books are touched.
 
-The whole tool is write-gated, so `list` needs writes enabled too.
+With writes off, `list` and every preview work; only a confirmed `create` / `update` / `delete`
+is refused with `write_disabled`.
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
@@ -619,11 +626,14 @@ query-time only — bundle changes never require a semantic re-index.
 
 ## Write safety
 
-Write tools are off by default and protected by two independent switches:
+Writes are off by default and protected by two independent switches:
 
-1. **The MCP-side gate.** Write tools are registered but disabled — hidden from the tool list
-   and uncallable — unless `CALIBRE_MCP_ENABLE_WRITE` is set (`1` / `true` / `yes`), or you tick *Enable writes* in the
-   Claude Desktop bundle settings.
+1. **The MCP-side gate.** The server changes nothing in the library unless
+   `CALIBRE_MCP_ENABLE_WRITE` is set (`1` / `true` / `yes`), or you tick *Enable writes* in the
+   Claude Desktop bundle settings. The gate works per call: with it off, the preview-first tools
+   below stay listed (announced read-only) and their previews work, while the call that would
+   write (`apply: true`, `preview: false`, `confirm: true`) returns `write_disabled`.
+   `calibre_update_book` and `calibre_add_book` have no preview, so they stay hidden.
 2. **The Calibre-side gate.** The Content Server must permit local writes. The server embedded
    in the Calibre GUI is read-only by default — enable *Sharing over the net → Advanced → allow
    local connections to make changes* and restart the Content Server, or run a standalone

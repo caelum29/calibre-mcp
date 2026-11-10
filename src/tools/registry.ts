@@ -54,7 +54,7 @@ export const allTools: AnyToolDescriptor[] = [
 /**
  * Startup invariant: any tool that isn't read-only MUST declare how it writes — either
  * `write` (library write → gated by CALIBRE_MCP_ENABLE_WRITE) or `localWrite` (server
- * index-dir only → intentionally ungated). A `readOnlyHint:false` tool with neither is a
+ * index-dir only → intentionally ungated) — and every `write` tool declares its `writeCall`. A `readOnlyHint:false` tool with neither is a
  * silent, unclassified mutation and a gate-audit hole; fail loud at boot rather than ship it.
  */
 export function assertWriteClassification(tools: AnyToolDescriptor[] = allTools): void {
@@ -64,6 +64,15 @@ export function assertWriteClassification(tools: AnyToolDescriptor[] = allTools)
     throw new Error(
       `Tool(s) [${names}] have readOnlyHint:false but neither write nor localWrite — ` +
         `classify each as a library write (write:true) or an index-dir write (localWrite:true).`,
+    );
+  }
+  // The per-call gate (#435) must know which calls write: a predicate keeps the tool listed with
+  // writes off, "always" hides it. A write tool with neither would be gated by guesswork.
+  const undeclared = tools.filter((t) => t.write && t.writeCall === undefined);
+  if (undeclared.length > 0) {
+    throw new Error(
+      `Write tool(s) [${undeclared.map((t) => t.name).join(", ")}] declare no writeCall — ` +
+        `give a predicate over the args (the calls that write) or "always" (no call writes nothing).`,
     );
   }
 }

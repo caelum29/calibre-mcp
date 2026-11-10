@@ -207,7 +207,7 @@ function versionText(v: CalibreVersionInfo): string {
 function serverHeader(deps: BaseDeps, version: CalibreVersionInfo): string {
   const writes = deps.config.writeEnabled
     ? "writes: ENABLED (CALIBRE_MCP_ENABLE_WRITE)"
-    : "writes: disabled (set CALIBRE_MCP_ENABLE_WRITE to enable)";
+    : `writes: disabled — previews only; Write calls return write_disabled (${defaultHint("write_disabled")})`;
   return [
     `calibre-mcp ${VERSION} (MCP SDK ${SDK_VERSION})`,
     `calibredb: ${deps.config.calibredbPath} (Content Server ${deps.config.serverUrl})`,

@@ -48,7 +48,7 @@ export const bulkUpdateTool = defineTool({
     "without writing unless preview is set false. A book set is required (never all books). " +
     "A list in changes replaces the whole list; to add or remove tags while keeping the rest, use " +
     "tags_add / tags_remove (merged per book, case-insensitive, not together with changes.tags). " +
-    "Requires writes to be enabled.",
+    "Previews work without writes; applying needs CALIBRE_MCP_ENABLE_WRITE.",
   inputSchema: {
     changes: jsonRecord(ChangeValueSchema).optional(),
     tags_add: jsonStringList(),
@@ -87,6 +87,7 @@ export const bulkUpdateTool = defineTool({
   },
   annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false },
   write: true,
+  writeCall: (args) => !args.preview,
   handler: async (args, deps) => {
     try {
       const changes = (args.changes ?? {}) as Record<string, ChangeValue>;

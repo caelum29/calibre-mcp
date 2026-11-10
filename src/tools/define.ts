@@ -6,7 +6,7 @@
 
 import type { z } from "zod";
 import type { BaseDeps as BaseDepsDefault, ToolDeps } from "./deps.js";
-import type { DefinedTool, ToolDescriptor } from "./types.js";
+import type { AnyToolDescriptor, DefinedTool, ToolDescriptor } from "./types.js";
 
 /**
  * Declare a tool with its precise Zod-inferred arg type, erased to a registry-compatible
@@ -24,7 +24,13 @@ export function defineTool<Shape extends z.ZodRawShape, D = BaseDepsDefault>(
     outputSchema: d.outputSchema,
     annotations: d.annotations,
     write: d.write,
+    writeCall: eraseWriteCall(d.writeCall),
     localWrite: d.localWrite,
     handler: (args, deps: D, ctx) => d.handler(args as z.infer<z.ZodObject<Shape>>, deps, ctx),
   };
+}
+
+// Same contained cast as the handler: the gate calls the predicate with the SDK-validated args.
+function eraseWriteCall<Args>(w: "always" | ((args: Args) => boolean) | undefined): AnyToolDescriptor["writeCall"] {
+  return typeof w === "function" ? (args: unknown) => w(args as Args) : w;
 }

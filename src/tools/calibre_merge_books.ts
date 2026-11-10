@@ -94,8 +94,8 @@ export const mergeBooksTool = defineTool({
   description:
     "Merge duplicate book records: moves formats from the `sourceIds` books into `targetId` (the target's copy " +
     "wins conflicts), merges metadata per Calibre's rules, then trashes the sources. mode=safe " +
-    "keeps sources; mode=formatsOnly moves formats only. Dry-run unless confirm=true. Requires " +
-    "writes to be enabled.",
+    "keeps sources; mode=formatsOnly moves formats only. Dry-run unless confirm=true. " +
+    "Previews work without writes; applying needs CALIBRE_MCP_ENABLE_WRITE.",
   inputSchema: {
     targetId: CoercedInt(),
     sourceIds: jsonArray(CoercedInt()),
@@ -115,6 +115,7 @@ export const mergeBooksTool = defineTool({
   },
   annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
   write: true,
+  writeCall: (args) => args.confirm,
   handler: async (args, deps) => {
     try {
       const sourceIds = [...new Set(args.sourceIds)];

@@ -25,6 +25,7 @@ export const ERROR_CODES = [
   "not_found",
   "path_not_allowed",
   "write_refused",
+  "write_disabled",
   "write_failed",
   "write_unverified",
   "calibre_unreachable",
@@ -144,6 +145,10 @@ const DEFAULT_HINTS: Partial<Record<ErrorCode, string>> = {
     'enable "Allow un-authenticated local connections to make changes" (Preferences → Sharing over the net), ' +
     "or for a command-line calibre-server restart it with --enable-local-write, " +
     "or configure an authenticated non-restricted user",
+  // The MCP-side gate (#435, D-028) — not Calibre's: write_refused above is Calibre refusing.
+  write_disabled:
+    "ask the user to enable writes on this server: set CALIBRE_MCP_ENABLE_WRITE=1, " +
+    "or tick Enable writes in the Claude Desktop extension settings",
   write_unverified: "re-read the book with calibre_get_book before retrying",
   path_not_allowed: "add the folder to CALIBRE_MCP_ADD_ROOTS",
   index_missing: "run calibre_build_index first",

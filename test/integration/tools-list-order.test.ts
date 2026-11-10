@@ -1,6 +1,6 @@
 // Pins tools/list order (spec 2026-07-28 SHOULD: deterministic, so clients and LLM prompt
 // caches can reuse the list). Order = registry order, then calibre_ping; the write gate only
-// removes tools, never reorders the rest.
+// hides tools, never reorders the rest.
 
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
@@ -33,17 +33,10 @@ const PINNED_ORDER = [
   "calibre_ping",
 ];
 
-// Gate off: the seven write:true tools are disabled and drop out; the rest keep their order.
-const WRITE_TOOLS = [
-  "calibre_update_book",
-  "calibre_extract_isbn",
-  "calibre_bulk_update",
-  "calibre_add_book",
-  "calibre_remove_book",
-  "calibre_merge_books",
-  "calibre_manage_bundles",
-];
-const PINNED_GATE_OFF = PINNED_ORDER.filter((n) => !WRITE_TOOLS.includes(n));
+// Gate off: only the write tools with no call that writes nothing drop out (#435, D-028);
+// the rest keep their order.
+const HIDDEN_WHEN_GATE_OFF = ["calibre_update_book", "calibre_add_book"];
+const PINNED_GATE_OFF = PINNED_ORDER.filter((n) => !HIDDEN_WHEN_GATE_OFF.includes(n));
 
 async function listToolNames(writeEnabled: boolean, calls = 1): Promise<string[][]> {
   const server = buildServer({
@@ -74,7 +67,7 @@ describe("tools/list order", () => {
     expect(names).toEqual(PINNED_ORDER);
   });
 
-  it("should_list_exactly_the_non_write_tools_in_pinned_order_when_the_write_gate_is_off", async () => {
+  it("should_hide_only_update_and_add_book_in_pinned_order_when_the_write_gate_is_off", async () => {
     const [names] = await listToolNames(false);
     expect(names).toEqual(PINNED_GATE_OFF);
   });

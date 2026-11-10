@@ -53,7 +53,9 @@ its own adapter. The rules behind it are in [`standards/architecture.md`](standa
 Each of these came from a concrete failure or risk; each is enforced by a test, a lint rule or one shared module.
 
 **Writes are gated by two keys and are preview-first.** A master switch (`CALIBRE_MCP_ENABLE_WRITE`, read in
-[`config.ts`](../src/config.ts)) disables every tool marked `write: true` at registration, and each tool also
+[`config.ts`](../src/config.ts)) gates writes per call: with it off, [`tools/write-gate.ts`](../src/tools/write-gate.ts)
+refuses each Write call with `write_disabled`, keeps preview-first tools listed, and hides write tools with no
+preview. Each tool also
 declares its own annotations (read-only, destructive, idempotent) for the client. Destructive and bulk tools
 preview by default and act only on an explicit `confirm` / `preview: false` / `apply`; a preview is a success
 result, not an error. A tool that takes a filesystem path checks it against an allow-list of roots

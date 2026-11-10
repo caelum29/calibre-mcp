@@ -55,6 +55,7 @@ export const updateBookTool = defineTool({
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
   write: true,
+  writeCall: "always", // no call writes nothing → hidden with the gate off (#435)
   handler: async (args, deps) => {
     try {
       const changes = args.changes as Record<string, ChangeValue>;
