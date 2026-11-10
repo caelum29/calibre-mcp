@@ -10,6 +10,7 @@ import { CalibreBusyError, CalibreHttpError, CalibreHttpTimeoutError, FtsError }
 import type { ToolDeps } from "../../src/tools/deps.js";
 import type { SearchDeps, SearchIndex } from "../../src/tools/calibre_search.js";
 import { fakeFts } from "./fake-fts.js";
+import { textOf } from "./text-of.js";
 
 function deps(content: object, calibre: object): SearchDeps {
   return {
@@ -35,8 +36,6 @@ const ftsFails = (err: Error): SearchDeps => ({
   fts: fakeFts([], { match: async () => Promise.reject(err) }),
 });
 const ftsArgs = { query: "LOGTEST-LONG event sourcing", mode: "fts", scope: "library", limit: 20 } as const;
-const textOf = (r: { content: { type: string; text?: string }[] }): string =>
-  r.content.map((c) => c.text ?? "").join("\n");
 const LIB = asLibId("Programming_Books");
 
 describe("calibre_search FTS failure steers (#251)", () => {

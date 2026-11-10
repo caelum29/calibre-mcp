@@ -71,7 +71,3 @@ export function fakeBulkDeps(f: FakeBulk): { deps: BaseDeps; searches: string[];
     },
   };
 }
-
-/** All text blocks of a result, joined. */
-export const textOf = (r: { content: { type: string; text?: string }[] }): string =>
-  r.content.map((b) => (b.type === "text" ? b.text : "")).join("\n");

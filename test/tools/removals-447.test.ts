@@ -8,6 +8,7 @@ import { qualityReportTool } from "../../src/tools/calibre_quality_report.js";
 import { findDuplicatesTool } from "../../src/tools/calibre_find_duplicates.js";
 import { buildIndexTool } from "../../src/tools/calibre_build_index.js";
 import type { BaseDeps, ToolDeps } from "../../src/tools/deps.js";
+import { textOf } from "./text-of.js";
 
 const fixture: Book[] = [
   { id: 1, uuid: "u", title: "X", authors: [], identifiers: {}, formats: [], tags: [], languages: [] },
@@ -29,8 +30,6 @@ function deps(): BaseDeps {
     log,
   };
 }
-
-const textOf = (r: { content: unknown[] }) => r.content.map((c) => (c as { text?: string }).text ?? "").join("\n");
 
 describe("calibre_quality_report has no readability input (#447)", () => {
   it("does not declare readability in its schema", () => {

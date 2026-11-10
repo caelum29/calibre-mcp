@@ -15,6 +15,7 @@ import type { ToolDeps } from "../../src/tools/deps.js";
 import type { SearchDeps, SearchIndex } from "../../src/tools/calibre_search.js";
 import type { ToolResult } from "../../src/tools/types.js";
 import { fakeFts } from "./fake-fts.js";
+import { textOf } from "./text-of.js";
 
 // Two libraries: "Humanities" by name, anything else (incl. omitted) is the default.
 const resolveLibraryId = async (d?: string) => (d === "Humanities" ? "Humanities" : "Programming_Books");
@@ -105,7 +106,6 @@ const CASES: Case[] = [
   },
 ];
 
-const textOf = (r: ToolResult): string => r.content.map((c) => (c.type === "text" ? c.text : "")).join("\n");
 const offsetOf = (r: ToolResult): unknown => r.structuredContent?.offset;
 
 async function mint(c: Case, library?: string): Promise<string> {

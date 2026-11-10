@@ -68,7 +68,7 @@ export function bookFieldValue(book: Book, field: string): unknown {
  * from before" is not enough — a concurrent GUI edit or a stale selection snapshot moves it too
  * (#370). Custom #columns aren't carried on Book → unverifiable → false (issue #33).
  */
-export function changesSatisfied(_before: Book, after: Book, changes: Record<string, ChangeValue>): boolean {
+export function changesSatisfied(after: Book, changes: Record<string, ChangeValue>): boolean {
   return Object.entries(changes).every(
     ([field, intended]) => !field.startsWith("#") && matchesIntended(field, bookFieldValue(after, field), intended),
   );
