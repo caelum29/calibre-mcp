@@ -201,7 +201,8 @@ LIB='http://localhost:8080/#My_Books'
 | Inspect file metadata | `ebook-meta file.epub` |
 
 CLI writes require the Content Server to allow local writes (`--enable-local-write` /
-GUI preference); if a write is refused, that's the first thing to check.
+GUI preference); if a write is refused, that's the first thing to check. `calibre_ping`'s
+`calibre writes:` line (`calibreWriteAccess`) says whether Calibre currently accepts writes.
 
 ## Examples
 

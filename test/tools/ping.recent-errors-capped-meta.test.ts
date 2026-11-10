@@ -34,7 +34,10 @@ function pingDeps(): ToolDeps {
   index = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
   return {
     config: loadConfig({ CALIBRE_MCP_SERVER_URL: "http://127.0.0.1:9", CALIBRE_MCP_INDEX_DIR: ":memory:" }),
-    content: { resolveLibraryId: async () => "Programming_Books" } as unknown as ToolDeps["content"],
+    content: {
+      resolveLibraryId: async () => "Programming_Books",
+      probeWriteAccess: async () => ({ access: "allowed" as const }),
+    } as unknown as ToolDeps["content"],
     calibre: { listLibraries: async () => "category,count\ntags,12" } as unknown as ToolDeps["calibre"],
     extractor: {} as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],

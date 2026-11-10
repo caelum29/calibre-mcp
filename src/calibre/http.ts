@@ -38,8 +38,24 @@ export async function getBytes(
   }));
 }
 
+/**
+ * POST `url` with no body and hand back the status and body text whatever the status — for probes
+ * that read meaning from a non-2xx answer (#439). Timeout and transport failures still throw
+ * {@link CalibreHttpError} like {@link getJson}.
+ */
+export async function postForStatus(url: string, opts: HttpOptions = {}): Promise<{ status: number; body: string }> {
+  return fetchBody(url, { ...opts, method: "POST", anyStatus: true }, async (res) => ({
+    status: res.status,
+    body: await res.text(),
+  }));
+}
+
 // Shared GET: timeout + caller-signal abort + error normalization; `read` consumes a 2xx body.
-async function fetchBody<T>(url: string, opts: HttpOptions, read: (res: Response) => Promise<T>): Promise<T> {
+async function fetchBody<T>(
+  url: string,
+  opts: HttpOptions & { method?: "POST"; anyStatus?: boolean },
+  read: (res: Response) => Promise<T>,
+): Promise<T> {
   if (opts.signal?.aborted) throw new OperationCancelledError();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), opts.timeoutMs ?? 30_000);
@@ -48,8 +64,8 @@ async function fetchBody<T>(url: string, opts: HttpOptions, read: (res: Response
   opts.signal?.addEventListener("abort", onAbort, { once: true });
 
   try {
-    const res = await fetch(url, { signal: controller.signal });
-    if (!res.ok) {
+    const res = await fetch(url, { method: opts.method ?? "GET", signal: controller.signal });
+    if (!res.ok && !opts.anyStatus) {
       logNon2xx("content-server non-2xx", logUrl(url), res.status);
       throw new CalibreHttpError(res.status, url, `Content Server returned HTTP ${res.status}`);
     }

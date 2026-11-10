@@ -10,7 +10,8 @@ import type { LibraryInfo, Category, CategoryItem, CategoryItemsPage } from "../
 import { CalibreHttpError, CalibreHttpTimeoutError, FtsError, UnknownLibraryError } from "../domain/errors.js";
 import type { FtsMatches, SearchParams, SearchPage } from "../domain/search.js";
 import type { LibraryBusyTracker } from "./busy.js";
-import { getBytes, getJson, type HttpOptions } from "./http.js";
+import { getBytes, getJson, postForStatus, type HttpOptions } from "./http.js";
+import { classifyWriteProbe, type WriteAccessProbe } from "../domain/write-access.js";
 import { asLibId, type LibId } from "./lib-id.js";
 
 // --- Raw /ajax response shapes (loose; only the fields we read) ---
@@ -137,6 +138,7 @@ export interface LibraryReader {
   virtualLibraries(library?: string, opts?: { timeoutMs?: number }): Promise<Record<string, string>>;
   categories(library?: string): Promise<Category[]>;
   categoryItemsByUrl(url: string, opts?: { num?: number; offset?: number; sort?: string }): Promise<CategoryItemsPage>;
+  probeWriteAccess(libId: LibId, opts?: { timeoutMs?: number }): Promise<WriteAccessProbe>;
 }
 
 /** HTTP client for the Content Server `/ajax/*` read API; maps raw JSON to domain objects. */
@@ -329,6 +331,21 @@ export class ContentServerClient implements LibraryReader {
   }
 
   /** GET /ajax/categories/{libId} → Category[]. */
+  /**
+   * Does Calibre accept writes from us (#439)? POSTs to set_metadata at module version 999, which
+   * Calibre refuses after its write check and before it reads args or opens the library, so the
+   * probe never writes. Never throws: a failure is `unknown` with its reason.
+   */
+  async probeWriteAccess(libId: LibId, opts: { timeoutMs?: number } = {}): Promise<WriteAccessProbe> {
+    const url = `${this.base}/cdb/cmd/set_metadata/999?library_id=${encodeURIComponent(libId)}`;
+    try {
+      const { status, body } = await postForStatus(url, opts);
+      return classifyWriteProbe(status, body);
+    } catch (err) {
+      return { access: "unknown", reason: err instanceof CalibreHttpTimeoutError ? "timed out" : "no reply" };
+    }
+  }
+
   async categories(library?: string): Promise<Category[]> {
     const libId = await this.resolveLibraryId(library);
     const raw = await this.#getLib<RawCategory[]>(libId, `${this.base}/ajax/categories/${encodeURIComponent(libId)}`);

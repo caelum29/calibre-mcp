@@ -38,6 +38,7 @@ function deps(o: Over = {}): PingDeps {
     }),
     content: {
       resolveLibraryId: async () => "Programming_Books",
+      probeWriteAccess: async () => ({ access: "allowed" as const }),
       libraryInfo: o.libraryInfo ?? (async () => ({ libraryMap: MAP, defaultLibrary: "Programming_Books" })),
       search: o.search ?? (async (p: { library?: string }) => ({ total: TOTALS[p.library ?? ""] ?? 0 })),
     } as unknown as ToolDeps["content"],
