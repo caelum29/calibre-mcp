@@ -1,0 +1,19 @@
+test/client-initialized-log.test.ts
+  s_5dacca1f4336e1::t_2e8b61f75225bc 28,30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b1f4f0b37d69ea1369c4cdfa27cec45103076e8c",
+  "prompts": {},
+  "sessions": {
+    "s_5dacca1f4336e1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "73c8bca9-0618-4fb7-a094-57644e7c55bd",
+        "model": "unknown"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
