@@ -32,6 +32,16 @@ The Content Server isn't running, or the server URL is wrong.
   *Preferences → Sharing over the net → Run server automatically when calibre starts*.
 - Non-default host/port? Set `CALIBRE_MCP_SERVER_URL` (default `http://localhost:8080`).
 
+### "Calibre busy" / `calibre_busy`
+
+The error reads `Code: calibre_busy` and `Next: retry in a few seconds — calibre_ping shows when the library is free`.
+Two causes: the library is busy with another operation, or the Content Server answered a gateway
+error (HTTP 502/503/504), usually while it restarts or behind a reverse proxy. Wait a few seconds and
+retry; `calibre_ping` shows when the library is free. The code is the same on HTTP reads, on
+`calibredb`-routed calls and on a failed write; the one exception is `calibre_bulk_update`, where a
+per-book gateway error is a "failed" line for that book without a code. A direct 502/503/504 from a
+plain `calibre-server` is not confirmed.
+
 ### `calibredb` not found
 
 The server shells out to `calibredb` and looks in the standard install locations, then
@@ -287,7 +297,7 @@ can open them for you: *"check the calibre-mcp logs for errors today"*):
   logged as its length only). Every line logged during that call carries
   the same `call` id, so `jq -c 'select(.call=="<id>")'` replays one call end to end.
 - **Failed calls** carry an `errorCode` from a closed set (`not_found`, `invalid_input`,
-  `calibre_unreachable`, `timeout`, `index_missing`, … — the full list is in the
+  `calibre_unreachable`, `calibre_busy`, `timeout`, `index_missing`, … — the full list is in the
   [stability policy](./STABILITY.md#error-codes) and the folder's `README.md`) and, where there is a generic next step, a `hint`. Group failures with
   `jq -r 'select(.msg=="tool call" and .meta.isError) | .meta.errorCode' calibre-mcp-*.jsonl | sort | uniq -c`.
 - **Trace context:** when the client sends a W3C `traceparent` in the request's `_meta`,
