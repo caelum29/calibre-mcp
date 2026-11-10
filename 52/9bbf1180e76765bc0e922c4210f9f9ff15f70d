@@ -1,0 +1,62 @@
+src/tools/calibre_get_content.ts
+  s_fccff9ca746c05::t_344531c674cd73 7
+test/semantic/library-id-case-collision-388-review.test.ts
+  s_fccff9ca746c05::t_8abc0d8555c18c 21
+src/domain/book-fields.ts
+  s_fccff9ca746c05::t_1e05ecc0ea44bc 71
+test/tools/bulk-update.tags-ops-review.test.ts
+  s_fccff9ca746c05::t_8abc0d8555c18c 9-10
+test/tools/search.fts-syntax-steer.test.ts
+  s_fccff9ca746c05::t_8abc0d8555c18c 13
+test/tools/bulk-update-preview-warnings-370.test.ts
+  s_fccff9ca746c05::t_8abc0d8555c18c 8-9
+test/domain/book-fields.test.ts
+  s_fccff9ca746c05::t_1e05ecc0ea44bc 51,57,62,67,71,76,81,86,90,95
+test/tools/write-verify-intended-370.test.ts
+  s_fccff9ca746c05::t_1e05ecc0ea44bc 72,76,81,86,90,94,98
+test/tools/bulk-update-noop-recheck-intended-value-370.test.ts
+  s_fccff9ca746c05::t_81ae90f8cb6193 1-38,40-42,44-46,48-50,52-54,56-57
+  s_fccff9ca746c05::t_1e05ecc0ea44bc 39,43,47,51,55
+test/tools/removals-447.test.ts
+  s_fccff9ca746c05::t_8abc0d8555c18c 11
+test/tools/cursor-binding-review.test.ts
+  s_fccff9ca746c05::t_8abc0d8555c18c 17
+src/app/write-policy.ts
+  s_fccff9ca746c05::t_1e05ecc0ea44bc 176
+test/tools/bulk-update-tags-noop-370.test.ts
+  s_fccff9ca746c05::t_8abc0d8555c18c 9-10
+test/tools/write-drop-then-refused-retry-count-370.test.ts
+  s_fccff9ca746c05::t_576ab318e5e3ba 1-166
+scripts/legal-gate.mjs
+  s_fccff9ca746c05::t_cc8544a9bc212a 17
+test/tools/add-book.dup-probe-operator-led-title-370.test.ts
+  s_fccff9ca746c05::t_576ab318e5e3ba 1-108
+test/tools/cursor-binding.test.ts
+  s_fccff9ca746c05::t_8abc0d8555c18c 18
+test/tools/search-deadline.test.ts
+  s_fccff9ca746c05::t_8abc0d8555c18c 14
+test/tools/steers-251.test.ts
+  s_fccff9ca746c05::t_8abc0d8555c18c 13
+test/calibre/extract.test.ts
+  s_fccff9ca746c05::t_344531c674cd73 8
+test/tools/search.fts-column-filter-419.test.ts
+  s_fccff9ca746c05::t_8abc0d8555c18c 12
+test/tools/text-of.ts
+  s_fccff9ca746c05::t_8abc0d8555c18c 1-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "529bbf1180e76765bc0e922c4210f9f9ff15f70d",
+  "prompts": {},
+  "sessions": {
+    "s_fccff9ca746c05": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cf60e5ce-4f0b-42be-815c-4ab99d6473a5",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
