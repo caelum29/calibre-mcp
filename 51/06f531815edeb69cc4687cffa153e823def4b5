@@ -1,0 +1,21 @@
+docs/TROUBLESHOOTING.md
+  s_7ec15e0f4b07a0::t_13db38a3a3abd6 35-44,300
+src/tools/calibre_remove_book.ts
+  s_7ec15e0f4b07a0::t_13db38a3a3abd6 67-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5106f531815edeb69cc4687cffa153e823def4b5",
+  "prompts": {},
+  "sessions": {
+    "s_7ec15e0f4b07a0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2a67f80e-013c-457f-bb85-45dff001583e",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
