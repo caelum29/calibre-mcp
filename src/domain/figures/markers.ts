@@ -265,11 +265,17 @@ function composeCaption(entry: FigureEntry): string {
   return [label, text].filter((s) => s.length > 0).join(". ");
 }
 
+// Marker caption head: optional label word, then the label token, then its separator.
+// Anchored at the start so a label never matches inside another (`1` in `Fig. 11`, `1.1`).
+const CAPTION_HEAD =
+  /^(\s*(?:(?:Figure|FIGURE|Fig\.|Рис(?:унок)?|рис(?:унок)?)\.?\s?)?)(\d+(?:[-–.,]\d+)*[a-z]?)((?:\s?[–—-]|[.:])?)/u;
+
 /**
  * The caption a figures row stores and embeds: the marker's printed label head (`Fig. 1.`)
  * plus the inventory's joined caption text. The marker caption is only the caption's first
  * physical line, cut to 120 chars — a two-column wrap leaves a 3-word stub (#428). Falls back
- * to the marker caption when the inventory has no caption text or the label isn't in it.
+ * to the marker caption when the inventory has no caption text, or the marker's leading label
+ * isn't the inventory's label (compared canonically: `2-1` = `2.1`).
  */
 export function indexedFigureCaption(
   markerCaption: string,
@@ -278,12 +284,9 @@ export function indexedFigureCaption(
   const text = collapseWs(entry?.caption ?? "");
   const label = entry?.label ?? "";
   if (text === "" || label === "") return markerCaption;
-  const at = markerCaption.indexOf(label);
-  if (at < 0) return markerCaption;
-  // keep the head as printed (`Fig. 1.`, `Рис. 11.10:`): the label plus its separator punctuation
-  const afterLabel = markerCaption.slice(at + label.length);
-  const sep = /^[.:\u2013\u2014-]?/u.exec(afterLabel)?.[0] ?? "";
-  return `${markerCaption.slice(0, at + label.length)}${sep} ${text}`;
+  const m = CAPTION_HEAD.exec(markerCaption);
+  if (!m || normalizeLabel(m[2]!) !== normalizeLabel(label)) return markerCaption;
+  return `${m[1]!.trimStart()}${m[2]!}${m[3]!} ${text}`;
 }
 
 /** Label separators vary between scans (`2-1` vs `2.1` vs `2–1`) — compare canonically. */
