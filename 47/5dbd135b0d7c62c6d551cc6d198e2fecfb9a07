@@ -1,0 +1,23 @@
+test/integration/write-gate-per-call.test.ts
+  s_ba8eb38e987269::t_dea5f210afc65e 1-10,15-31,34-44,46-182,214-215
+  s_ba8eb38e987269::t_d1fcec6da76cd8 11-14,183-213
+  s_ba8eb38e987269::t_616ec63bf927ad 32-33,45
+test/integration/tools-list-order.test.ts
+  s_ba8eb38e987269::t_d1fcec6da76cd8 3,36-39,70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "475dbd135b0d7c62c6d551cc6d198e2fecfb9a07",
+  "prompts": {},
+  "sessions": {
+    "s_ba8eb38e987269": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "21b90743-f48d-49ef-9ff2-ff368477cb73",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
