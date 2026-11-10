@@ -1,0 +1,19 @@
+test/calibre/banner-characterization-518.test.ts
+  s_02b52ad8edbfad::t_30745e87d793c4 1-104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9573eb22840176e96070e4623bd117c0daa377d6",
+  "prompts": {},
+  "sessions": {
+    "s_02b52ad8edbfad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5df1a23b-ecee-482f-b178-3bf623cc8f7f",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
