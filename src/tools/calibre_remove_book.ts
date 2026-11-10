@@ -64,6 +64,9 @@ export const removeBookTool = defineTool({
           `None of the given ids is a book in this library: ${notFoundIds.map((i) => `#${i}`).join(", ")}.`,
         );
       }
+      // Known limits, decided on #529 (2026-11-10): an unresolved uuid prints with a `#` prefix (reads
+      // like a numeric id), and duplicate ids in the input are not de-duplicated, so the count can
+      // include one book twice.
       // same wording in the text and in structuredContent — clients show the model only one of them
       const skipped =
         notFoundIds.length > 0 ? `Not found (skipped): ${notFoundIds.map((i) => `#${i}`).join(", ")}` : "";
