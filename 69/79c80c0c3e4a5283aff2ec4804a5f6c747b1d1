@@ -1,0 +1,23 @@
+src/tools/calibre_merge_books.ts
+  s_f029e91c9abcf4::t_9383b6bf3c3e57 38-41,71,384-389,392-403,443-447,455-460,466-469
+test/tools/merge-books.handler.test.ts
+  s_f029e91c9abcf4::t_ec011d1c8c1ab0 453-454,493-494
+src/app/merge-verify.ts
+  s_f029e91c9abcf4::t_9383b6bf3c3e57 26,32,41-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6979c80c0c3e4a5283aff2ec4804a5f6c747b1d1",
+  "prompts": {},
+  "sessions": {
+    "s_f029e91c9abcf4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a620a43a-a56d-4fd0-9de8-7441fb6466a7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
