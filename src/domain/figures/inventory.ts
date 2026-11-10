@@ -147,7 +147,7 @@ export function buildInventory(
 
 /**
  * Printed area below which a raster is page furniture, not a figure (#422 calibration over
- * Magazines + 120 Programming Books PDFs): colour bars, tiles, icons, section banners all sit
+ * a sample of magazine and technical-book PDFs): colour bars, tiles, icons, section banners all sit
  * under 1 in², while real figures — even narrow screenshot strips (5.5×0.64 in) — sit above.
  * A rare small real figure loses little: its page render still shows it.
  */

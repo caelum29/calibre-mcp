@@ -387,6 +387,7 @@ function stoppedMidLoop(run: StoppedRun, cause: StopCause): ToolResult {
   // The blocked book and the unattempted ones are held up only by the server; earlier
   // per-book failures had their own reasons, so they aren't part of the re-run.
   const retryIds = blockedId === undefined ? notAttempted : [blockedId, ...notAttempted];
+  const rerun = `re-run with ids=[${retryIds.join(",")}]`;
   const text =
     `${cause.headline} after ${applied.length}/${matched} book(s) were already updated. ` +
     (applied.length > 0 ? `Already committed: ${applied.join(", ")}. ` : "") +
@@ -397,8 +398,10 @@ function stoppedMidLoop(run: StoppedRun, cause: StopCause): ToolResult {
     (failed.length > 0 ? `Failed: ${failed.map((f) => f.id).join(", ")}. ` : "") +
     (notAttempted.length > 0 ? `Not attempted: ${notAttempted.join(", ")}. ` : "") +
     // writes are idempotent sets, so re-running is safe; naming the ids saves the model the set math
-    `${cause.steer}, re-run with ids=[${retryIds.join(",")}].`;
+    `${cause.steer}, ${rerun}.`;
   const opts = {
+    // the re-run is the stop's own next step, already in the text: no generic Next: line (#437)
+    hint: rerun,
     structured: {
       preview: false,
       matched,

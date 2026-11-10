@@ -11,6 +11,7 @@ import path from "node:path";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
+import { CalibreCliError } from "../../src/domain/errors.js";
 import type { ProviderHit } from "../../src/domain/enrich/types.js";
 import type { Embedder } from "../../src/semantic/embedder.js";
 import { EMBED_DIM } from "../../src/semantic/model.js";
@@ -74,7 +75,12 @@ function structuredOnly(structured: unknown, text: string, at = "$"): string[] {
   if (!structured || typeof structured !== "object") return gaps;
   for (const [k, v] of Object.entries(structured)) {
     const where = `${at}.${k}`;
-    if (CURSOR_KEY.test(k) && typeof v === "string") {
+    // #437: error results are text-only on both clients, so the code and the hint must be there too
+    if (k === "errorCode" && typeof v === "string") {
+      if (!new RegExp(`^Code: ${v}$`, "m").test(text)) gaps.push(`${where} "${v}" missing from text`);
+    } else if (k === "hint" && typeof v === "string") {
+      if (!text.includes(v)) gaps.push(`${where} "${v}" missing from text`);
+    } else if (CURSOR_KEY.test(k) && typeof v === "string") {
       if (!text.includes(v)) gaps.push(`${where} (cursor) missing from text`);
     } else if (ID_KEY.test(k) && (typeof v === "number" || typeof v === "string" || Array.isArray(v))) {
       for (const n of [v].flat()) {
@@ -205,6 +211,16 @@ describe("parity checker (self-test)", () => {
       'text FTS SNIPPET "the >>borrow<< checker" has no structured counterpart',
       'text issue check "raw_filename_title" has no structured counterpart',
     ]);
+  });
+
+  it("flags a structured-only errorCode and hint (#437)", () => {
+    expect(parityGaps(ok("Error: down", { error: "down", errorCode: "calibre_busy", hint: "retry" }))).toEqual([
+      '$.errorCode "calibre_busy" missing from text',
+      '$.hint "retry" missing from text',
+    ]);
+    expect(
+      parityGaps(ok("Error: down\nCode: calibre_busy\nNext: retry", { errorCode: "calibre_busy", hint: "retry" })),
+    ).toEqual([]);
   });
 
   it("passes a result that mirrors every actionable field", () => {
@@ -723,8 +739,10 @@ describe("dual-channel parity: scenarios are not vacuous", () => {
     "%s mirrors its steer in both channels",
     async (_name, s) => {
       const r = await runScenario(s);
+      // the message alone: drop the prefix and the labelled Code:/Next: lines (#437)
       const steer = textChannel(r)
         .replace(/^Error: /, "")
+        .replace(/\n(Code|Next): .*$/gm, "")
         .slice(0, PREFIX);
       expect({
         gaps: parityGaps(r),
@@ -775,5 +793,99 @@ describe("dual-channel parity: get_content cursors", () => {
     expect(chapters?.length).toBe(2);
     for (const c of chapters ?? []) expect(textChannel(r)).toContain(c.cursor);
     expect(parityGaps(r)).toEqual([]);
+  });
+});
+
+// #437 review: call sites that word their own step must not get a second, generic Next: line
+// (and never a contradicting one). Each row names the step its text must state exactly once.
+const refusedCli = async (): Promise<never> => {
+  throw new CalibreCliError(1, "calibredb command failed", "HTTP Error 403: Forbidden");
+};
+const downCli = async (): Promise<never> => {
+  throw new CalibreCliError(1, "calibredb command failed", "<urlopen error [Errno 61] Connection refused>");
+};
+// a real file (validation resolves the path) in a folder that is not an add root
+const outsideFile = path.join(mkdtempSync(path.join(tmpdir(), "parity-outside-")), "elsewhere.epub");
+writeFileSync(outsideFile, "x");
+const oneBookStore = (): SqliteIndexStore => {
+  const s = memoryStore();
+  s.replaceBook("Programming_Books", { bookId: 101, title: "Rust in Action", authors: ["Tim McNamara"] }, [
+    { charStart: 0, charEnd: 30, body: "ownership moves the value", vector: axis(0) },
+  ]);
+  return s;
+};
+const STEER_ONCE: Array<{ scenario: Scenario; code: string; step: string }> = [
+  {
+    scenario: {
+      tool: "calibre_search",
+      label: "fts in a build without FTS",
+      args: { query: "x", mode: "fts" },
+      deps: () => ({ ...fakeDeps(), fts: undefined }),
+    },
+    code: "fts_unavailable",
+    step: 'use calibre_semantic_search with mode:"keyword"',
+  },
+  {
+    scenario: { tool: "calibre_semantic_search", label: "no library index", args: { query: "x" } },
+    code: "index_missing",
+    step: "Run calibre_build_index",
+  },
+  {
+    scenario: {
+      tool: "calibre_semantic_search",
+      label: "book not indexed",
+      args: { query: "x", scope: "book", bookId: 103 },
+      deps: () => fakeDeps({ embedder: fakeEmbedder, index: oneBookStore() }),
+    },
+    code: "index_missing",
+    step: "Run calibre_build_index",
+  },
+  {
+    scenario: {
+      tool: "calibre_add_book",
+      label: "path outside the roots",
+      args: { path: outsideFile },
+      deps: () => fakeDeps({ env: { CALIBRE_MCP_ADD_ROOTS: addRoot } }),
+    },
+    code: "path_not_allowed",
+    step: "CALIBRE_MCP_ADD_ROOTS",
+  },
+  {
+    scenario: {
+      tool: "calibre_update_book",
+      label: "write refused",
+      args: { id: 101, changes: { publisher: "P" } },
+      deps: () => fakeDeps({ calibredb: refusedCli }),
+    },
+    code: "write_refused",
+    step: "--enable-local-write",
+  },
+  {
+    scenario: {
+      tool: "calibre_bulk_update",
+      label: "server unreachable",
+      args: { ids: [101, 102], changes: { publisher: "P" }, preview: false },
+      deps: () => ({ ...fakeDeps({ calibredb: downCli }), sleep: async () => {} }),
+    },
+    code: "calibre_unreachable",
+    step: "is running",
+  },
+];
+
+describe("error texts state their next step once (#437)", () => {
+  it.each(STEER_ONCE.map((r) => [`${r.scenario.tool}: ${r.scenario.label}`, r] as const))("%s", async (_name, r) => {
+    const res = await runScenario(r.scenario);
+    const text = textChannel(res);
+    expect({
+      isError: res.isError,
+      code: res.structuredContent?.errorCode,
+      nextLines: text.match(/^Next: /gm)?.length ?? 0,
+      stepCount: text.split(r.step).length - 1,
+    }).toEqual({ isError: true, code: r.code, nextLines: 0, stepCount: 1 });
+  });
+
+  it("never tells the model to enable FTS in Calibre when this build has no FTS", async () => {
+    const text = textChannel(await runScenario(STEER_ONCE[0]!.scenario));
+    expect(text).not.toMatch(/enable full-text indexing/i);
   });
 });

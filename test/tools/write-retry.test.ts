@@ -112,7 +112,8 @@ describe("calibre_bulk_update breaker text (#233)", () => {
       "Error: Stopped: the Calibre Content Server is unreachable after 0/2 book(s) were already updated. " +
         "Failed: 1. Not attempted: 2. " +
         "Could not reach the Calibre Content Server (connection refused or dropped) after 2 retries. " +
-        "Check that Calibre / its Content Server is running, then retry. Once it is back, re-run with ids=[1,2].",
+        "Check that Calibre / its Content Server is running, then retry. Once it is back, re-run with ids=[1,2]." +
+        "\nCode: calibre_unreachable",
     );
   });
 
@@ -130,7 +131,8 @@ describe("calibre_bulk_update breaker text (#233)", () => {
       "Error: Stopped: the Calibre Content Server is unreachable after 1/2 book(s) were already updated. " +
         "Already committed: 1. Failed: 2. " +
         "Could not reach the Calibre Content Server (connection refused or dropped) after 2 retries. " +
-        "Check that Calibre / its Content Server is running, then retry. Once it is back, re-run with ids=[2].",
+        "Check that Calibre / its Content Server is running, then retry. Once it is back, re-run with ids=[2]." +
+        "\nCode: calibre_unreachable",
     );
   });
 

@@ -26,6 +26,9 @@ import { bookResourceLink } from "./resource-link.js";
 import { resolveNumericId } from "../app/resolve-id.js";
 import { INSTALL_TRANSFORMERS } from "./remediation.js";
 import { fence, toolError, toolOk, toolErrorFrom } from "./result.js";
+
+// the message's own step doubles as the hint, so the error text states it once (#437)
+const BUILD_LIBRARY_INDEX = "Run calibre_build_index with a bookId, ids, or query first";
 import type { ContentBlock, ToolResult } from "./types.js";
 import type { BaseDeps, DepsWithIndex } from "./deps.js";
 import { errorCodeFor } from "../domain/error-codes.js";
@@ -131,7 +134,8 @@ export const semanticSearchTool = defineTool({
       if (!deps.index.hasIndex(libraryId)) {
         return toolError(
           "index_missing",
-          "No semantic index for this library yet. Run calibre_build_index with a bookId, ids, or query first (add keywordOnly=true to build a model-free keyword index).",
+          `No semantic index for this library yet. ${BUILD_LIBRARY_INDEX} (add keywordOnly=true to build a model-free keyword index).`,
+          { hint: BUILD_LIBRARY_INDEX },
         );
       }
 
@@ -180,6 +184,7 @@ export const semanticSearchTool = defineTool({
           return toolError(
             "index_missing",
             `Book ${numericId} is not indexed. Run calibre_build_index { bookId: ${numericId} } first.`,
+            { hint: `Run calibre_build_index { bookId: ${numericId} } first` },
           );
         }
         if (effArgs.target === "figures") {

@@ -14,7 +14,6 @@ const rawArgs = argvArgs ?? process.env.DEBUG_ARGS ?? "{}";
 const server = buildServer({
   env: {
     CALIBRE_MCP_SERVER_URL: "http://localhost:8080",
-    CALIBRE_MCP_LIBRARY: "Programming Books",
     ...process.env, // run-config env wins over the defaults above
   },
 });

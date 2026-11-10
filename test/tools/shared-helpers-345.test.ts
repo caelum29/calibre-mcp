@@ -17,7 +17,7 @@ describe("toolErrorFrom", () => {
     expect(toolErrorFrom(new CalibreBusyError("Programming_Books", 1000), "m").structuredContent?.errorCode).toBe(
       "calibre_busy",
     );
-    expect(text(toolErrorFrom(undefined, "no bundle x"))).toBe("Error: no bundle x");
+    expect(text(toolErrorFrom(undefined, "no bundle x"))).toBe("Error: no bundle x\nCode: not_found");
   });
 
   it("keeps the caller's structured extras", () => {
@@ -29,8 +29,12 @@ describe("toolErrorFrom", () => {
 describe("errorFromCatch", () => {
   it("maps an Error to its code and message, and a non-Error to internal + String()", () => {
     const e = errorFromCatch(new Error("boom"));
-    expect([e.isError, text(e), e.structuredContent?.errorCode]).toEqual([true, "Error: boom", "internal"]);
-    expect(text(errorFromCatch("raw"))).toBe("Error: raw");
+    expect([e.isError, text(e), e.structuredContent?.errorCode]).toEqual([
+      true,
+      "Error: boom\nCode: internal",
+      "internal",
+    ]);
+    expect(text(errorFromCatch("raw"))).toBe("Error: raw\nCode: internal");
   });
 });
 
@@ -38,7 +42,7 @@ describe("bookNotFound", () => {
   it("is the library-scoped 404", () => {
     const r = bookNotFound(42);
     expect([text(r), r.structuredContent?.errorCode]).toEqual([
-      "Error: No book with id 42 in the requested library",
+      "Error: No book with id 42 in the requested library\nCode: not_found",
       "not_found",
     ]);
   });

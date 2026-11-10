@@ -23,6 +23,18 @@ Claude Desktop shows the model only the text; Claude Code shows only `structured
   `CalibreCliError`, #251) is a finding.
 - Raw upstream text (HTTP bodies, Python tracebacks) never reaches the model unwrapped (#251).
 - Errors return `isError` with an actionable next step; nothing throws out of a handler.
+- Error results are text-only on both clients: Desktop always shows text, and Claude Code drops
+  `structuredContent` on `isError` (#437). So `toolError` writes the error code and the hint into
+  the text as labelled lines after the message (`bare: true` reports such as `calibre_ping` too):
+
+  ```text
+  Error: No semantic index for Programming_Books yet.
+  Code: index_missing
+  Next: run calibre_build_index first
+  ```
+
+  `Next:` is skipped when the message already contains the hint. Label strings live in
+  `src/tools/labelled-lines.ts`; never hand-format a `Code:`/`Next:` line elsewhere.
 
 ## Steers fit the deployment
 

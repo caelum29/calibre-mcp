@@ -397,17 +397,29 @@ async function ftsBookScope(call: FtsCall, bookId: number): Promise<ToolResult> 
   });
 }
 
+const COLUMN_FILTER_STEER =
+  "Full-text search couldn't parse that query: column filters are not supported in mode=fts " +
+  "(`title:x`, `{title authors}:x`) — Calibre's full-text index is one text column. " +
+  "Use mode=meta for title/author filters, or plain words or a quoted phrase in mode=fts.";
+
+// `word:` or `{a b}:` outside quotes; a colon inside a word (`std::vector`) is no filter.
+function hasColumnFilter(query: string): boolean {
+  return /(?:^|[\s(])(?:\{[^}]*\}|[\p{L}\p{N}_]+)\s*:(?!:)/u.test(query.replace(/"[^"]*"/g, '""'));
+}
+
 /**
  * Map each Calibre failure cause to its own steer (Discriminating catch). Returns undefined for
  * errors this tool has no specific advice for.
  */
-function searchErrorSteer(err: unknown, deadline: Deadline): string | undefined {
+function searchErrorSteer(err: unknown, deadline: Deadline, query: string): string | undefined {
   // A missing calibredb binary carries its own install hint — don't blame the index.
   if (err instanceof CalibreNotFoundError) return err.message;
   if (err instanceof FtsError) {
     if (err.code === "FTS_DISABLED") {
       return `Full-text search is not enabled for library "${err.libraryId}". ${ENABLE_FTS_STEPS} ${KEYWORD_SEARCH_FALLBACK}`;
     }
+    // Calibre's FTS table has no title/authors columns, so every `col:` operand is a 422 (#419).
+    if (hasColumnFilter(query)) return COLUMN_FILTER_STEER;
     // FTS5 reads `-`/`:` in a bare query as operators/column filters; a phrase bypasses that.
     // AND/OR/NOT are valid but binary: a leading/trailing one (`NOT foo`) is a syntax error.
     return (
@@ -504,7 +516,7 @@ export const searchTool = defineTool({
       }
       return await metaLibraryScope(args, deps, fr.res, deadline);
     } catch (err) {
-      const steer = searchErrorSteer(err, deadline);
+      const steer = searchErrorSteer(err, deadline, args.query);
       if (steer !== undefined) return toolError(errorCodeFor(err), steer);
       return errorFromCatch(err);
     }
@@ -516,6 +528,8 @@ function ftsUnavailable(): ToolResult {
   return toolError(
     "fts_unavailable",
     `Full-text search isn't available in this server build. ${KEYWORD_SEARCH_FALLBACK}`,
+    // this build has no FTS at all: the generic "enable it in Calibre" step would contradict (#437)
+    { hint: KEYWORD_SEARCH_FALLBACK },
   );
 }
 

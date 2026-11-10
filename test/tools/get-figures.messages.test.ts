@@ -51,7 +51,9 @@ describe("calibre_get_figures remaining code wording", () => {
       },
     };
     const r = await getFiguresTool.handler(args(), deps(figures));
-    expect(texts(r)[0]).toBe("Error: FIGURES_NO_QLMANAGE");
+    expect(texts(r)[0]).toBe(
+      "Error: FIGURES_NO_QLMANAGE\nCode: dependency_missing\nNext: install the tool the error names, then retry",
+    );
   });
 
   for (const code of ["SCAN_TIMEOUT", "SCAN_FAILED", "FORMAT_UNSUPPORTED"] as const) {

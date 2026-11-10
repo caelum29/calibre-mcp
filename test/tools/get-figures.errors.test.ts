@@ -60,13 +60,22 @@ describe("calibre_get_figures scan failures", () => {
   const cases: Array<[ConstructorParameters<typeof FiguresError>[0], string]> = [
     [
       "NO_POPPLER",
-      "No poppler tools found (pdfimages/pdftotext) — install with `brew install poppler` to scan PDF figures.",
+      "No poppler tools found (pdfimages/pdftotext) — install with `brew install poppler` to scan PDF figures.\nCode: dependency_missing\nNext: install the tool the error names, then retry",
     ],
-    ["NO_UNZIP", "No unzip binary found — needed to scan EPUB figures."],
-    ["FORMAT_UNSUPPORTED", "Figures need an EPUB or PDF source; pdf is not supported."],
-    ["SCAN_TIMEOUT", "Figure scan timed out for book 929 (pdf) — the file may be very large."],
-    ["SCAN_FAILED", "Could not scan book 929 (pdf) for figures — the file may be DRM-protected or corrupt."],
-    ["FETCH_FAILED", "FIGURES_FETCH_FAILED"],
+    [
+      "NO_UNZIP",
+      "No unzip binary found — needed to scan EPUB figures.\nCode: dependency_missing\nNext: install the tool the error names, then retry",
+    ],
+    ["FORMAT_UNSUPPORTED", "Figures need an EPUB or PDF source; pdf is not supported.\nCode: invalid_input"],
+    [
+      "SCAN_TIMEOUT",
+      "Figure scan timed out for book 929 (pdf) — the file may be very large.\nCode: timeout\nNext: retry, or narrow the request",
+    ],
+    [
+      "SCAN_FAILED",
+      "Could not scan book 929 (pdf) for figures — the file may be DRM-protected or corrupt.\nCode: extraction_failed",
+    ],
+    ["FETCH_FAILED", "FIGURES_FETCH_FAILED\nCode: extraction_failed"],
   ];
   for (const [code, text] of cases) {
     it(`should_say_exactly_this_for_${code}`, async () => {
@@ -117,5 +126,41 @@ describe("calibre_get_figures skipped figures", () => {
     ]);
     expect(texts).toContain("Figure index 0 skipped: no such figure index");
     expect(texts).toContain("Figure index 0 skipped: FIGURES_NO_UNZIP");
+  });
+});
+
+// #437 review: a call where every figure was skipped is an error result, so it carries a code in
+// both channels like any toolError: the first skip's code, or invalid_input for a prose reason.
+describe("calibre_get_figures all figures skipped (#437)", () => {
+  const allSkipped = async (skipped: unknown[]) => {
+    const figures = {
+      getInventory: async () => ({ inventory }),
+      fetchFigures: async () => ({ images: [], skipped }),
+    };
+    return getFiguresTool.handler(args({ indexes: [0] }), deps(figures));
+  };
+
+  it("should_code_a_coded_skip_and_show_its_labelled_lines", async () => {
+    const r = await allSkipped([{ index: 0, code: "NO_POPPLER" }]);
+    expect({
+      isError: r.isError,
+      errorCode: r.structuredContent?.errorCode,
+      lead: textOf(r),
+    }).toEqual({
+      isError: true,
+      errorCode: "dependency_missing",
+      lead:
+        "Book 929 (pdf): returned 0/1 figures at detail=standard.\n" +
+        "Code: dependency_missing\nNext: install the tool the error names, then retry",
+    });
+  });
+
+  it("should_code_a_prose_skip_as_invalid_input", async () => {
+    const r = await allSkipped([{ index: 0, reason: "no such figure index" }]);
+    expect([r.isError, r.structuredContent?.errorCode, textOf(r).split("\n").at(-1)]).toEqual([
+      true,
+      "invalid_input",
+      "Code: invalid_input",
+    ]);
   });
 });
