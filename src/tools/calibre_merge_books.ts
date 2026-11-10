@@ -35,6 +35,10 @@ interface Step {
   note?: string;
   /** What a failed step threw — the "did not start" result's errorCode (#249). Not rendered. */
   cause?: unknown;
+  /** The step may have committed: a re-read could not confirm it (#413). Not rendered. */
+  unverified?: boolean;
+  /** The note carries its own re-run instruction, so the ledger adds none (#413). Not rendered. */
+  ownRerun?: boolean;
 }
 
 /** The benign `--dont-replace` collision: target already holds that format (probe §1). */
@@ -64,6 +68,7 @@ function failStep<T>(
 ): void {
   step.status = "failed";
   step.cause = err;
+  step.unverified = outcome.kind === "unverified";
   step.note =
     outcome.kind === "unverified"
       ? unverifiedNote(outcome.cause, outcome.check)
@@ -376,16 +381,26 @@ async function executeMerge(deps: BaseDeps, job: MergeJob) {
         removeStep.status = "done";
       } catch (err) {
         // Removed books 404 immediately on /ajax (probe §4) — all gone = committed.
-        const outcome = await settleFailedStep(err, () => sourcesRemoved(deps, sourceIds, job.library));
+        let remaining: number[] = [...sourceIds];
+        const outcome = await settleFailedStep(err, async () => {
+          const r = await sourcesRemoved(deps, sourceIds, job.library);
+          remaining = r.remaining;
+          return r.check;
+        });
         if (outcome.kind === "confirmed") removeStep.status = "done";
         else {
-          const verify = `calibre_get_book id=${sourceIds.join(" / id=")}`;
-          failStep(removeStep, outcome, err, (cause, check) =>
-            check.status === "not-landed"
-              ? `${CAUSE_TEXT[cause]} and sources still exist — verify with ${verify}, then re-run to finish ` +
-                "the merge (formats and metadata are already on the target; re-merging is a no-op)"
-              : unconfirmedNote(cause, "the removal", verify),
-          );
+          failStep(removeStep, outcome, err, (cause, check) => {
+            // A re-run with an already-trashed source fails not_found, so name only what is left.
+            const gone = sourceIds.filter((id) => !remaining.includes(id));
+            const verify = `calibre_get_book id=${remaining.join(" / id=")}`;
+            const rerun = `re-run with sourceIds=[${remaining.join(",")}] (formats and metadata are already on the target)`;
+            return check.status === "not-landed"
+              ? `${CAUSE_TEXT[cause]}; ${remaining.map((id) => `#${id}`).join(", ")} still exist` +
+                  (gone.length > 0 ? ` (${gone.map((id) => `#${id}`).join(", ")} already in the trash)` : "") +
+                  ` — verify with ${verify}, then ${rerun}`
+              : `${unconfirmedNote(cause, "the removal", verify)}, then ${rerun}, leaving out any that 404`;
+          });
+          removeStep.ownRerun = removeStep.unverified;
         }
       }
     }
@@ -425,8 +440,11 @@ function ledgerResult(job: MergeJob, steps: Step[]) {
   }
 
   if (!committed) {
-    const message =
-      `Merge did not start — ${failed[0]!.note ?? failed[0]!.step}. Nothing was changed.\n` + `Steps:\n${ledger}`;
+    // An unverified step may have committed: never claim nothing changed (#413).
+    const message = failed[0]!.unverified
+      ? `Merge stopped — ${failed[0]!.note ?? failed[0]!.step}. That step may have committed; no later step ran.\n` +
+        `Steps:\n${ledger}`
+      : `Merge did not start — ${failed[0]!.note ?? failed[0]!.step}. Nothing was changed.\n` + `Steps:\n${ledger}`;
     const opts = { structured: { ...structured, status: "incomplete" } };
     // the failing step's own cause when it threw; a failed post-add check has none
     const cause = failed[0]!.cause;
@@ -434,16 +452,21 @@ function ledgerResult(job: MergeJob, steps: Step[]) {
   }
 
   // Something committed: NEVER isError (issue #33). Steer: re-running is safe.
+  const stop = failed[0]!;
+  // one steer, not two: an unverified step is verified first; a note with its own re-run wins (#413)
+  const rerun = stop.ownRerun
+    ? ""
+    : `${stop.unverified ? "Verify first, then re-run" : "Re-run"} the same call to finish — completed steps are ` +
+      "idempotent (already-moved formats skip, metadata re-merge is a no-op).";
   return toolOk(
     [
       {
         type: "text",
         text:
-          `Merge incomplete — some steps committed, then "${failed[0]!.step}" failed` +
-          `${failed[0]!.note ? ` (${failed[0]!.note})` : ""}. No data was lost: sources are ` +
-          `deleted only after every other step verifies. Re-run the same call to finish — ` +
-          `completed steps are idempotent (already-moved formats skip, metadata re-merge is ` +
-          `a no-op).\nSteps:\n${ledger}`,
+          `Merge incomplete — some steps committed, then "${stop.step}" ` +
+          `${stop.unverified ? "could not be confirmed" : "failed"}${stop.note ? ` (${stop.note})` : ""}. ` +
+          `No data was lost: sources are deleted only after every other step verifies.` +
+          `${rerun ? ` ${rerun}` : ""}\nSteps:\n${ledger}`,
       },
     ],
     { ...structured, status: "incomplete" },

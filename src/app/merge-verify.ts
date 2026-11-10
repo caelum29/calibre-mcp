@@ -23,12 +23,13 @@ export async function formatOnTarget(
 /**
  * Phase 3 (`remove`): landed when every source 404s (a removed book 404s at once on /ajax);
  * a source that still reads back is not-landed; any other re-read failure is unverifiable.
+ * `remaining` = the sources not confirmed gone, i.e. what a re-run must still remove.
  */
 export async function sourcesRemoved(
   deps: BaseDeps,
   sourceIds: readonly number[],
   library?: string,
-): Promise<ReReadCheck<readonly number[]>> {
+): Promise<{ check: ReReadCheck<readonly number[]>; remaining: number[] }> {
   const states = await Promise.all(
     sourceIds.map((id) =>
       deps.content.getBook(id, library).then(
@@ -37,6 +38,10 @@ export async function sourcesRemoved(
       ),
     ),
   );
-  if (states.every((s) => s === "gone")) return { status: "landed", after: sourceIds };
-  return states.includes("present") ? { status: "not-landed" } : { status: "unverifiable" };
+  const remaining = sourceIds.filter((_, i) => states[i] !== "gone");
+  if (remaining.length === 0) return { check: { status: "landed", after: sourceIds }, remaining };
+  const check: ReReadCheck<readonly number[]> = states.includes("present")
+    ? { status: "not-landed" }
+    : { status: "unverifiable" };
+  return { check, remaining };
 }
