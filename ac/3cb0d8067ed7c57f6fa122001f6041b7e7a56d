@@ -1,0 +1,19 @@
+test/semantic/library-owner-claim-414.test.ts
+  s_f029e91c9abcf4::t_7072b8a5135136 1-157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ac3cb0d8067ed7c57f6fa122001f6041b7e7a56d",
+  "prompts": {},
+  "sessions": {
+    "s_f029e91c9abcf4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a620a43a-a56d-4fd0-9de8-7441fb6466a7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
