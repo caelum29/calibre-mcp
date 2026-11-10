@@ -1,0 +1,19 @@
+test/tools/remove-book.handler.test.ts
+  s_3e8658abeda134::t_4d6483babb3504 62-119
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "92d90709088490a810fdde6a5af84991dd8f5b21",
+  "prompts": {},
+  "sessions": {
+    "s_3e8658abeda134": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "90cd6d91-2e99-40ea-88d4-833235d9eb6d",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
