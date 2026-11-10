@@ -1,0 +1,31 @@
+docs/TOOLS.md
+  s_db558d6b317526::t_509a7738cdd694 335-345
+docs/tool-catalog.json
+  s_db558d6b317526::t_140809319cf8b5 199,342-364
+  s_db558d6b317526::t_f33e11f83f1b89 365
+src/tools/calibre_build_index.ts
+  s_db558d6b317526::t_3994039eb07490 42,120-123,192-194
+  s_db558d6b317526::t_c58361062c570e 14,170
+  s_db558d6b317526::t_140809319cf8b5 126
+  s_db558d6b317526::t_4212c2b72e0cdd 2-3,12,68-75,191,195-210,214,266,291
+src/app/enable-fts.ts
+  s_db558d6b317526::t_4212c2b72e0cdd 1-67
+skills/calibre-mcp/SKILL.md
+  s_db558d6b317526::t_509a7738cdd694 47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ad1c29d74826b662ad8bdba01c3c8f67a2bfcb90",
+  "prompts": {},
+  "sessions": {
+    "s_db558d6b317526": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c3ace1e5-b5b1-4d35-8b5d-6026fc7c6385",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
