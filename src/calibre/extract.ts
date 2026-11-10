@@ -94,10 +94,6 @@ const MAX_CACHE_ENTRIES = 50;
 const MAX_CACHE_BYTES = 200 * 1024 * 1024;
 const CONVERT_TIMEOUT_MS = 120_000;
 
-// Format choice and the empty-extraction wording live in domain/extract-format.ts (#354); re-exported
-// here so tools, tests and scripts keep importing them from the extraction module.
-export { chooseExtractFormat, noTextReason } from "../domain/extract-format.js";
-
 /** pdftotext argv: UTF-8 output, quiet, src → dest. */
 export function pdftotextArgs(src: string, dest: string): string[] {
   return ["-q", "-enc", "UTF-8", src, dest];
