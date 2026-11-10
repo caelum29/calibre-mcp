@@ -2,6 +2,8 @@
 // Shapes come from real captures (docs/dev/local-groundtruth.md); calibredb prepends unrelated
 // lines such as "Integration status: False" to stdout, so every parser skips them.
 
+import { stripCalibredbBanner } from "../domain/calibredb-banner.js";
+
 /** One highlight or bookmark, as calibre_search mode=annotations returns it. */
 export interface AnnotationHit {
   /** Calibre's annotation id; `annotations export` (a whole book) does not carry it. */
@@ -114,7 +116,7 @@ export function parseNoteSearch(stdout: string): NoteHit[] {
 
 /** Parse `notes show FIELD ITEM` stdout: the note as Markdown, without calibredb's leading noise. */
 export function parseNoteShow(stdout: string): string {
-  return stdout.replace(/^(?:Integration status: .*\n)+/, "").trimEnd();
+  return stripCalibredbBanner(stdout).trimEnd();
 }
 
 // Calibre's refusal for an item without a note (exit 1, on stderr): a lookup miss, not a fault.
@@ -130,18 +132,19 @@ export function noSuchNoteItem(diag: string | undefined): string | undefined {
  * calibredb may print lines before it (the "Integration status" banner) and after it (warnings).
  */
 function firstJsonValue(stdout: string, open: "[" | "{", what: string): string {
-  const start = stdout.search(open === "[" ? /^\[/m : /^\{/m);
+  const body = stripCalibredbBanner(stdout);
+  const start = body.search(open === "[" ? /^\[/m : /^\{/m);
   if (start < 0) throw new Error(`calibredb ${what} returned no JSON`);
   let depth = 0;
   let inString = false;
-  for (let i = start; i < stdout.length; i++) {
-    const c = stdout[i];
+  for (let i = start; i < body.length; i++) {
+    const c = body[i];
     if (inString) {
       if (c === "\\") i++; // skip the escaped character
       else if (c === '"') inString = false;
     } else if (c === '"') inString = true;
     else if (c === "[" || c === "{") depth++;
-    else if ((c === "]" || c === "}") && --depth === 0) return stdout.slice(start, i + 1);
+    else if ((c === "]" || c === "}") && --depth === 0) return body.slice(start, i + 1);
   }
   throw new Error(`calibredb ${what} returned truncated JSON`);
 }

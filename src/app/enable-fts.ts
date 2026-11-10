@@ -6,6 +6,7 @@
 import type { CalibreClientOptions, LibraryWriter } from "../calibre/client.js";
 import type { LibId } from "../calibre/lib-id.js";
 import { defaultHint } from "../domain/error-codes.js";
+import { stripCalibredbBanner } from "../domain/calibredb-banner.js";
 import { CalibreCliError } from "../domain/errors.js";
 
 /** The outcome of the FTS part of a build. */
@@ -19,10 +20,10 @@ export interface FtsOutcome {
 
 /** Calibre's CLI prefixes every stdout with a banner; drop it and blank lines. */
 function lines(stdout: string): string[] {
-  return stdout
+  return stripCalibredbBanner(stdout)
     .split("\n")
     .map((l) => l.trim())
-    .filter((l) => l !== "" && !l.startsWith("Integration status:"));
+    .filter((l) => l !== "");
 }
 
 /** The "N of M books files indexed" line, if present. */

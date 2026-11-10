@@ -6,6 +6,7 @@
 
 import type { LibId } from "../calibre/lib-id.js";
 import type { BaseDeps } from "../tools/deps.js";
+import { stripCalibredbBanner } from "../domain/calibredb-banner.js";
 
 export interface BundleEntry {
   name: string;
@@ -25,7 +26,7 @@ export interface BundleEntry {
 export function parseSavedSearches(stdout: string): Array<{ name: string; expression: string }> {
   const out: Array<{ name: string; expression: string }> = [];
   let pending: string | undefined;
-  for (const line of stdout.split(/\r?\n/)) {
+  for (const line of stripCalibredbBanner(stdout).split(/\r?\n/)) {
     const name = /^Name:\s*(.*)$/.exec(line);
     if (name) {
       pending = (name[1] ?? "").trim();
