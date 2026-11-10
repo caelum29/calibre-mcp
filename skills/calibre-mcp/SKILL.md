@@ -227,7 +227,7 @@ GUI preference); if a write is refused, that's the first thing to check. `calibr
 | "Що не так з бібліотекою?" | `calibre_quality_report` |
 | "What's this 795731065.pdf book?" | `calibre_extract_isbn` → `calibre_recover_metadata` |
 | "Add book from Downloads" | `calibre_add_book` |
-| "Delete a book" | `calibre_remove_book` (dry-run → confirm with user → `confirm:true`) |
+| "Delete a book" | `calibre_remove_book` (dry-run → confirm with user → `confirm:true`; unknown ids are reported as not found, never counted) |
 | "Show all tags" | `calibre_list_categories` field:"tags" |
 | "Convert to EPUB" | shell: `ebook-convert` |
 | "Export a book" | shell: `calibredb export --with-library "$LIB"` |

@@ -577,7 +577,9 @@ separators as spaces, so its edition is recognised.
 
 **Destructive (recoverable).** Remove books from the library. Removed books go to Calibre's
 Trash and can be restored from the Calibre GUI. Dry-run by default: without `confirm: true` it
-lists what *would* be removed and writes nothing.
+lists what *would* be removed and writes nothing. Ids that are not books in the library are
+skipped and named (`notFoundIds`, "Not found (skipped)"), in the dry-run and on apply alike; if
+none of the ids is a book, the call is a `not_found` error.
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
