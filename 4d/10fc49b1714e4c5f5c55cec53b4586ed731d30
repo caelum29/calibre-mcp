@@ -1,0 +1,33 @@
+src/app/bundles.ts
+  s_02b52ad8edbfad::t_e4abb71d92e5a8 9
+  s_02b52ad8edbfad::t_2edd5f7615a6a9 29
+src/app/enable-fts.ts
+  s_02b52ad8edbfad::t_e4abb71d92e5a8 9
+  s_02b52ad8edbfad::t_2edd5f7615a6a9 23,26
+src/domain/calibredb-banner.ts
+  s_02b52ad8edbfad::t_2edd5f7615a6a9 1-8
+src/calibre/annotations.ts
+  s_02b52ad8edbfad::t_2edd5f7615a6a9 119,135-136,140-141,147
+  s_02b52ad8edbfad::t_e4abb71d92e5a8 5-6
+src/domain/calibre-version.ts
+  s_02b52ad8edbfad::t_e4abb71d92e5a8 4-5
+  s_02b52ad8edbfad::t_2edd5f7615a6a9 22
+test/domain/calibredb-banner.test.ts
+  s_02b52ad8edbfad::t_db50dfc50bfc77 1-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4d10fc49b1714e4c5f5c55cec53b4586ed731d30",
+  "prompts": {},
+  "sessions": {
+    "s_02b52ad8edbfad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5df1a23b-ecee-482f-b178-3bf623cc8f7f",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
