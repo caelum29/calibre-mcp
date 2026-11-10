@@ -1,0 +1,27 @@
+test/eval/README.md
+  s_c842c008e16f8f::t_a1110533111dfd 178
+.gitignore
+  s_c842c008e16f8f::t_1e073f2338a94b 56-61
+scripts/tsconfig.json
+  s_c842c008e16f8f::t_406905b217cb73 1-11
+.oxfmtrc.json
+  s_c842c008e16f8f::t_1e073f2338a94b 21-22
+package.json
+  s_c842c008e16f8f::t_a1110533111dfd 40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "49440274c294254100989474c92669b55b628f9d",
+  "prompts": {},
+  "sessions": {
+    "s_c842c008e16f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "91965a68-3f52-49af-9990-ad0a6de81b7e",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
