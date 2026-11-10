@@ -26,15 +26,24 @@ afterEach(() => {
   for (const s of stores.splice(0)) s.close();
   for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
 });
-const scratch = (): string => {
+const emptyDir = (): string => {
   const d = mkdtempSync(path.join(tmpdir(), "case-collision-review-"));
   dirs.push(d);
   return d;
 };
+/** A scratch index dir in which library "Books" was indexed first, so it owns the index (#414). */
+const scratch = (): string => {
+  const d = emptyDir();
+  const s = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: d }), log);
+  s.replaceBook("Books", { bookId: 1, title: "T", authors: ["A"] }, [{ body: "ownership", charStart: 0, charEnd: 9 }]);
+  s.close();
+  return d;
+};
+const sqliteFiles = (dir: string): string[] => readdirSync(dir).filter((f) => f.endsWith(".sqlite"));
 
 const MAP = { Books: "Books", books: "books" };
 const store = (dir: string): SqliteIndexStore => {
-  const s = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: dir }), log, () => Object.keys(MAP));
+  const s = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: dir }), log);
   stores.push(s);
   return s;
 };
@@ -47,8 +56,9 @@ describe("refusal message (#388 review)", () => {
     expect(msg).toContain('rebuild "Books" with calibre_build_index { force: true }');
   });
 
-  it("should_tell_how_this_server_picks_up_the_renamed_ids", () => {
-    expect(msg).toContain("then call calibre_list_libraries");
+  it("should_say_the_owner_keeps_working_while_the_refused_folder_is_renamed", () => {
+    expect(msg).toContain('Rename the folder of library "books"');
+    expect(msg).toContain('library "Books" keeps working meanwhile');
   });
 });
 
@@ -61,9 +71,13 @@ describe("index existence and meta peeks refuse the clashing id (#388 review)", 
     expect(() => store(scratch()).indexMeta("books")).toThrow(LibraryIdCollisionError);
   });
 
-  it("should_answer_hasIndex_false_for_the_owner_without_creating_files", () => {
-    const dir = scratch();
-    expect([store(dir).hasIndex("Books"), readdirSync(dir)]).toEqual([false, []]);
+  it("should_answer_hasIndex_false_without_creating_files_while_no_index_exists", () => {
+    const dir = emptyDir();
+    expect([store(dir).hasIndex("Books"), store(dir).hasIndex("books"), readdirSync(dir)]).toEqual([false, false, []]);
+  });
+
+  it("should_answer_hasIndex_true_for_the_owner", () => {
+    expect(store(scratch()).hasIndex("Books")).toBe(true);
   });
 });
 
@@ -77,8 +91,8 @@ describe("ping reports the clash (#388 review)", () => {
       },
       index: store(dir),
     });
-    expect(report).toEqual([
-      { id: "Books", name: "Books", isDefault: true, state: "none" },
+    expect([report?.[0]?.state, report?.[1]]).toEqual([
+      "ok",
       { id: "books", name: "books", isDefault: false, state: "conflict", conflictsWith: "Books" },
     ]);
   });
@@ -105,9 +119,9 @@ describe("ping reports the clash (#388 review)", () => {
     const line = textOf(r)
       .split("\n")
       .find((l) => l.startsWith("Index:"));
-    expect([line, readdirSync(dir)]).toEqual([
-      'Index: Books (id: Books): none · books (id: books) [default]: not indexable — id "books" differs from "Books" only in case; rename one of the two library folders',
-      [],
+    expect([line?.split(" · ")[1], sqliteFiles(dir)]).toEqual([
+      'books (id: books) [default]: not indexable — id "books" differs only in case from "Books", which was indexed first; rename the "books" library folder',
+      ["Books.sqlite"],
     ]);
   });
 
@@ -182,7 +196,7 @@ describe("calibre_semantic_search on the clashing id (#388 review)", () => {
       isError: r.isError,
       code: (r.structuredContent as { errorCode?: string }).errorCode,
       namesBoth: textOf(r).includes('"books"') && textOf(r).includes('"Books"'),
-      files: readdirSync(dir),
-    }).toEqual({ isError: true, code: "library_id_collision", namesBoth: true, files: [] });
+      files: sqliteFiles(dir),
+    }).toEqual({ isError: true, code: "library_id_collision", namesBoth: true, files: ["Books.sqlite"] });
   });
 });

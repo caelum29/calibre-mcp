@@ -254,7 +254,7 @@ function indexEntry(i: LibraryIndex): string {
     case "stale":
       return `${head}: stale index (rebuild)`;
     case "conflict":
-      return `${head}: not indexable — id "${i.id}" differs from "${i.conflictsWith}" only in case; rename one of the two library folders`;
+      return `${head}: not indexable — id "${i.id}" differs only in case from "${i.conflictsWith}", which was indexed first; rename the "${i.id}" library folder`;
     case "busy":
       return `${head}: busy — index locked by another process, retry`;
     default:

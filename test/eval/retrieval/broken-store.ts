@@ -6,6 +6,7 @@ import type { IndexStore } from "../../../src/semantic/store/index.js";
 /** Wrap a store so every search comes back worst-first — a deliberately broken retriever. */
 export function reversed(inner: IndexStore): IndexStore {
   return {
+    libraryIdCollision: (l) => inner.libraryIdCollision(l),
     hasIndex: (l) => inner.hasIndex(l),
     indexMeta: (l) => inner.indexMeta(l),
     hasVectors: (l) => inner.hasVectors(l),

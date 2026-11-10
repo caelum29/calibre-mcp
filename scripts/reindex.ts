@@ -21,7 +21,6 @@ import { ThreadEncoder } from "../src/semantic/thread-encoder.js";
 import { SqliteIndexStore } from "../src/semantic/store/index.js";
 import { runBookPipeline } from "../src/semantic/book-pipeline.js";
 import { appendProgress, resolveProgressPath, resumeProgress } from "../src/semantic/build-progress.js";
-import { libraryIdCollision } from "../src/app/library-id-guard.js";
 import { commitBook, commitRefresh, describeError, prepareBook, type PrepareResult } from "../src/app/index-book.js";
 
 const { values: opt } = parseArgs({
@@ -74,14 +73,13 @@ const deps = {
   extractor: new Extractor(config, figures),
   figures,
   embedder: new TransformersEmbedder(config),
-  index: new SqliteIndexStore(config, log, () => content.knownLibraryIds()),
+  index: new SqliteIndexStore(config, log),
   log,
 } satisfies IndexDeps;
 
 const libraryId = await deps.content.resolveLibraryId(opt.library);
-// Case-only id clash (#388): refuse before the model warmup, the progress log or the index file.
-// libraryIdCollision re-reads library-info, so a folder renamed since the last run is seen.
-const clash = await libraryIdCollision(deps.content, libraryId);
+// Case-only id clash (#388, #414): refuse before the model warmup, the progress log or the index file.
+const clash = deps.index.libraryIdCollision(libraryId);
 if (clash) throw clash;
 
 // shared: one ONNX session (its InferenceQueue serializes forwards) and all chunking on the
