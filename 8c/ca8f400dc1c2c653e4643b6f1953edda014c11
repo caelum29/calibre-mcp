@@ -1,0 +1,20 @@
+test/integration/book-resource-library-432.test.ts
+  s_fccff9ca746c05::t_8a8caa2abdbd86 16-22,36-47,152-177
+  s_fccff9ca746c05::t_e86eca194fe54c 178-181
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8cca8f400dc1c2c653e4643b6f1953edda014c11",
+  "prompts": {},
+  "sessions": {
+    "s_fccff9ca746c05": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cf60e5ce-4f0b-42be-815c-4ab99d6473a5",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
