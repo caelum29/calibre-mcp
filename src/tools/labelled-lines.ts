@@ -59,7 +59,10 @@ export interface LabelledLine {
 /** A tool's entry: its Labelled lines, or why its text is all Prose. */
 export type ToolLabelledLines = { lines: LabelledLine[] } | { none: string };
 
-/** On every tool's error results (#437). */
+/**
+ * On every error built by `toolError`: handler and write-gate errors (#437). SDK-generated errors
+ * (input validation, a call to a hidden write tool) are outside the contract (#493).
+ */
 export const ERROR_LINES: readonly LabelledLine[] = [
   {
     label: "Code",
@@ -157,6 +160,16 @@ export const LABELLED_LINES: Readonly<Record<string, ToolLabelledLines>> = {
         field: "bookDetails[].bookId",
         compare: "join",
       },
+      {
+        // enableFts=true only (#447); its twin is structuredContent.fts (#519)
+        label: "FTS",
+        match: "line",
+        pattern: /^- FTS: (?<v>write_disabled|already enabled|enabled|failed) — .+$/,
+        format: "`- FTS: write_disabled|already enabled|enabled|failed — …` — only with `enableFts: true`",
+        field: "fts.status",
+        compare: "format",
+        note: "`already enabled` is `already_enabled`; the words after the dash are Prose",
+      },
     ],
   },
   calibre_semantic_search: { none: PROSE_ONLY },
@@ -193,11 +206,12 @@ export const LABELLED_LINES: Readonly<Record<string, ToolLabelledLines>> = {
       {
         label: "writes",
         match: "line",
-        pattern: /^writes: (?<v>ENABLED|disabled) \(.+\)$/,
-        format: "`writes: ENABLED|disabled (…)` — our write gate",
+        // gate off adds "— previews only; …" before the parenthesis (#513, #519)
+        pattern: /^writes: (?<v>ENABLED|disabled)(?: — .+)? \(.+\)$/,
+        format: "`writes: ENABLED (…)` or `writes: disabled — <what still works> (…)` — our write gate",
         field: "writeEnabled",
         compare: "format",
-        note: "the parenthesis is Prose",
+        note: "the text after the state word is Prose",
       },
       {
         label: "calibre writes",
@@ -271,11 +285,19 @@ export function renderLabelledLinesDoc(): string {
   const rows = ["| Tool | Label | Value format | Structured field |", "|---|---|---|---|"];
   const add = (tool: string, l: LabelledLine) =>
     rows.push(`| ${tool} | \`${l.label}\` | ${cell(l.format)}${l.note ? ` (${cell(l.note)})` : ""} | \`${l.field}\` |`);
-  for (const l of ERROR_LINES) add("every tool (error results)", l);
+  for (const l of ERROR_LINES) add("every tool (handler and write-gate errors)", l);
   const none: string[] = [];
   for (const [tool, entry] of Object.entries(LABELLED_LINES)) {
     if ("none" in entry) none.push(`- \`${tool}\` — ${entry.none.replace(/^none: /, "")}`);
     else for (const l of entry.lines) add(`\`${tool}\``, l);
   }
-  return [...rows, "", "Tools whose text has no Labelled lines beyond the error lines:", "", ...none].join("\n");
+  // #493: the SDK answers these before a handler runs, so they never pass through toolError
+  const sdk = [
+    "",
+    "Errors the MCP SDK answers before a handler runs carry no `Code:` or `Next:` line: input-validation",
+    "failures, and a direct call to `calibre_update_book` or `calibre_add_book` while writes are off.",
+  ];
+  return [...rows, ...sdk, "", "Tools whose text has no Labelled lines beyond the error lines:", "", ...none].join(
+    "\n",
+  );
 }
