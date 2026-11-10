@@ -407,37 +407,52 @@ function hasColumnFilter(query: string): boolean {
   return /(?:^|[\s(])(?:\{[^}]*\}|[\p{L}\p{N}_]+)\s*:(?!:)/u.test(query.replace(/"[^"]*"/g, '""'));
 }
 
+/** A site's own steer, plus the part of it that is the next step (passed as the hint, so no second `Next:` line). */
+interface Steer {
+  message: string;
+  hint?: string;
+}
+
 /**
  * Map each Calibre failure cause to its own steer (Discriminating catch). Returns undefined for
- * errors this tool has no specific advice for.
+ * errors this tool has no specific advice for. Each steer names its own next step, so it is also
+ * passed as the hint: the generic per-code hint would repeat or contradict it (#437).
  */
-function searchErrorSteer(err: unknown, deadline: Deadline, query: string): string | undefined {
+function searchErrorSteer(err: unknown, deadline: Deadline, query: string): Steer | undefined {
   // A missing calibredb binary carries its own install hint — don't blame the index.
-  if (err instanceof CalibreNotFoundError) return err.message;
+  if (err instanceof CalibreNotFoundError) return { message: err.message, hint: err.message };
   if (err instanceof FtsError) {
     if (err.code === "FTS_DISABLED") {
-      return `Full-text search is not enabled for library "${err.libraryId}". ${ENABLE_FTS_STEPS} ${KEYWORD_SEARCH_FALLBACK}`;
+      return {
+        message: `Full-text search is not enabled for library "${err.libraryId}". ${ENABLE_FTS_STEPS} ${KEYWORD_SEARCH_FALLBACK}`,
+        hint: ENABLE_FTS_STEPS,
+      };
     }
     // Calibre's FTS table has no title/authors columns, so every `col:` operand is a 422 (#419).
-    if (hasColumnFilter(query)) return COLUMN_FILTER_STEER;
+    if (hasColumnFilter(query)) return { message: COLUMN_FILTER_STEER };
     // FTS5 reads `-`/`:` in a bare query as operators/column filters; a phrase bypasses that.
     // AND/OR/NOT are valid but binary: a leading/trailing one (`NOT foo`) is a syntax error.
-    return (
-      "Full-text search couldn't parse that query (FTS is working — the syntax is the problem). " +
-      "Retry with the phrase wrapped in double quotes, or drop - and : from bare words; AND/OR/NOT go between terms (a NOT b), never first or last."
-    );
+    return {
+      message:
+        "Full-text search couldn't parse that query (FTS is working — the syntax is the problem). " +
+        "Retry with the phrase wrapped in double quotes, or drop - and : from bare words; AND/OR/NOT go between terms (a NOT b), never first or last.",
+    };
   }
-  if (err instanceof CalibreBusyError) return `${err.message} ${KEYWORD_SEARCH_FALLBACK}`;
+  if (err instanceof CalibreBusyError)
+    return { message: `${err.message} ${KEYWORD_SEARCH_FALLBACK}`, hint: err.message };
   if (
     err instanceof DeadlineExceededError ||
     err instanceof CalibreHttpTimeoutError ||
     err instanceof CalibreCliTimeoutError
   ) {
-    return (
-      `Search stopped at its ${Math.round(deadline.totalMs / 1000)} s time budget: Calibre didn't answer in time — ` +
-      "most likely it is still finishing an earlier full-text search (Calibre can't cancel one once started). " +
-      `Retry in about a minute, or narrow it with bookId (one book) or filter (a bundle). ${KEYWORD_SEARCH_FALLBACK}`
-    );
+    const retry = "Retry in about a minute, or narrow it with bookId (one book) or filter (a bundle).";
+    return {
+      message:
+        `Search stopped at its ${Math.round(deadline.totalMs / 1000)} s time budget: Calibre didn't answer in time — ` +
+        "most likely it is still finishing an earlier full-text search (Calibre can't cancel one once started). " +
+        `${retry} ${KEYWORD_SEARCH_FALLBACK}`,
+      hint: retry,
+    };
   }
   return undefined;
 }
@@ -517,7 +532,7 @@ export const searchTool = defineTool({
       return await metaLibraryScope(args, deps, fr.res, deadline);
     } catch (err) {
       const steer = searchErrorSteer(err, deadline, args.query);
-      if (steer !== undefined) return toolError(errorCodeFor(err), steer);
+      if (steer !== undefined) return toolError(errorCodeFor(err), steer.message, { hint: steer.hint });
       return errorFromCatch(err);
     }
   },
