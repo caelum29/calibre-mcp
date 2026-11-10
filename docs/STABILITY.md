@@ -57,7 +57,7 @@ one; a call site may give a sharper one.
 | `invalid_input` | The call's parameters or query were wrong (or Calibre rejected the request as malformed). | — |
 | `not_found` | The book, library or resource does not exist. | — |
 | `path_not_allowed` | `calibre_add_book` was given a path outside the allowed folders. | add the folder to CALIBRE_MCP_ADD_ROOTS |
-| `write_refused` | Calibre refused a write (the Content Server is read-only for local writes). | restart the Content Server with --enable-local-write (localhost), or configure an authenticated non-restricted user |
+| `write_refused` | Calibre refused a write (the Content Server is read-only for local writes). | enable "Allow un-authenticated local connections to make changes" (Preferences → Sharing over the net), or for a command-line calibre-server restart it with --enable-local-write, or configure an authenticated non-restricted user |
 | `write_failed` | A write reached Calibre and failed. | — |
 | `write_unverified` | The connection dropped mid-write; the change may or may not have landed. | re-read the book with calibre_get_book before retrying |
 | `calibre_unreachable` | The Content Server (or `calibredb`'s route to it) cannot be reached. | start it in Calibre (Connect/share → Start Content server) or set CALIBRE_MCP_SERVER_URL |

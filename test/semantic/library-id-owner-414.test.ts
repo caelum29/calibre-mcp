@@ -83,7 +83,7 @@ describe("owner rule: the library indexed first owns the index (#414)", () => {
   it("should_refuse_before_any_library_was_resolved_with_no_library_list_at_all", () => {
     const dir = scratch();
     indexFirst(dir, "books");
-    // a fresh process: knownLibraryIds() would still be empty; the store needs no list
+    // a fresh process that has resolved no library yet: the store needs no library list
     expect(refusal(() => open(dir).indexMeta("Books"))).toEqual({ refused: "Books", owner: "books" });
   });
 

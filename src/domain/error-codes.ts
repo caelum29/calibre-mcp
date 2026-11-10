@@ -135,9 +135,12 @@ function figuresCode(err: FiguresError): ErrorCode {
 const DEFAULT_HINTS: Partial<Record<ErrorCode, string>> = {
   calibre_unreachable: "start it in Calibre (Connect/share → Start Content server) or set CALIBRE_MCP_SERVER_URL",
   calibre_busy: "retry in a few seconds — calibre_ping shows when the library is free",
-  // WRITE_REFUSED_MESSAGE embeds this clause verbatim, so a refusal states its step once (#437)
+  // The one remedy for a refused write (#437): WRITE_REFUSED_MESSAGE and calibre_ping's refused line
+  // embed it verbatim. GUI-run Content Server → the setting; command-line calibre-server → the flag.
   write_refused:
-    "restart the Content Server with --enable-local-write (localhost), or configure an authenticated non-restricted user",
+    'enable "Allow un-authenticated local connections to make changes" (Preferences → Sharing over the net), ' +
+    "or for a command-line calibre-server restart it with --enable-local-write, " +
+    "or configure an authenticated non-restricted user",
   write_unverified: "re-read the book with calibre_get_book before retrying",
   path_not_allowed: "add the folder to CALIBRE_MCP_ADD_ROOTS",
   index_missing: "run calibre_build_index first",
