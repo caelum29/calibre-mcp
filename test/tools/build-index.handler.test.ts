@@ -13,6 +13,7 @@ import { l2normalize } from "../../src/semantic/vector.js";
 import type { BuildIndexDeps } from "../../src/tools/calibre_build_index.js";
 import { asLibId } from "../../src/calibre/lib-id.js";
 import type { FigureInventory } from "../../src/domain/figures/inventory.js";
+import { injectFigureMarkers } from "../../src/domain/figures/markers.js";
 import { fakeCalibre, fakeContent, fakeExtractor, fakeFigures } from "./fake-ports.js";
 
 /** Asserts a remediation text names all three install layouts and the mandatory restart step (#47). */
@@ -656,5 +657,73 @@ describe("figure caption indexing (D-018 Phase B / #86)", () => {
     expect(r.isError).toBeUndefined();
     expect(r.structuredContent?.failures).toEqual([]);
     expect(store.figureCount(LIB, 1)).toBe(0);
+  });
+});
+
+describe("indexed figure captions take the inventory's joined caption (#428)", () => {
+  const LIB = "Programming_Books";
+  const LONG =
+    "Long single line caption about the distributed consensus protocol and its failure modes under network partitions in production";
+  // Two-column wrap (Science p.88): the caption line holds 3 words, the rest sits on the next lines.
+  const raw =
+    "\fBody text here.\nFig. 1. Single-nucleus RNA\nsequencing of the adult human\nbrain. (A) Schematic showing\n" +
+    `dissections across the brain.\nMore body.\n\fFigure 2. ${LONG}\nBody.\n\fFigure 3. Third\n` +
+    "Ownership and borrowing. ".repeat(200);
+  const inventory: FigureInventory = {
+    entries: [
+      {
+        index: 0,
+        page: 1,
+        captioned: true,
+        label: "1",
+        caption:
+          "Single-nucleus RNA sequencing of the adult human brain. (A) Schematic showing dissections across the brain.",
+        source: "raster",
+      },
+      { index: 1, page: 2, captioned: true, label: "2", caption: LONG, source: "raster" },
+      // no inventory caption text: the marker caption stays as-is
+      { index: 2, page: 3, captioned: true, label: "3", source: "page-render" },
+    ],
+    pageCount: 3,
+    scanned: false,
+    counts: { figures: 3, uncaptioned: 0, pageRender: 1 },
+  };
+  const marked = injectFigureMarkers(raw, inventory, "pdf");
+  const getText = async (): Promise<ExtractedText> => ({
+    text: marked.text,
+    backend: "pdftotext",
+    chars: marked.text.length,
+    cached: false,
+    markers: marked.markers,
+    unplaced: marked.unplaced,
+    outline: [],
+    epubToc: null,
+  });
+  const figures = fakeFigures({ getInventory: async () => ({ inventory, cached: true }) });
+
+  it("stores the label head plus the full inventory caption, uncapped, else the marker caption", async () => {
+    const store = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
+    const embedder = makeFakeEmbedder();
+    const r = await buildIndexTool.handler(args({ bookId: 1 }), { ...deps({ store, embedder, getText }), figures });
+    expect(r.isError).toBeUndefined();
+    const stored = store.figuresInSpan(LIB, 1, 0, Number.MAX_SAFE_INTEGER).map((f) => f.caption);
+    expect(stored).toEqual([
+      "Fig. 1. Single-nucleus RNA sequencing of the adult human brain. (A) Schematic showing dissections across the brain.",
+      `Figure 2. ${LONG}`,
+      "Figure 3. Third",
+    ]);
+    // the caption embedding sees the same full text, not the first-line stub
+    expect(embedder.embedded.some((t) => t.endsWith(" (A) Schematic showing dissections across the brain."))).toBe(
+      true,
+    );
+  });
+
+  it("keeps the marker line in the chunk text unchanged (no char-offset shift)", async () => {
+    const store = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
+    const r = await buildIndexTool.handler(args({ bookId: 1 }), { ...deps({ store, getText }), figures });
+    expect(r.isError).toBeUndefined();
+    const offsets = store.figuresInSpan(LIB, 1, 0, Number.MAX_SAFE_INTEGER).map((f) => f.charOffset);
+    expect(offsets).toEqual(marked.markers.map((m) => m.charOffset));
+    expect(marked.text).toContain(`[image #0: page 1, "Fig. 1. Single-nucleus RNA"]`);
   });
 });
