@@ -256,3 +256,12 @@ describe("Calibre version gate on annotations and notes (#500)", () => {
     expect(r.isError).not.toBe(true);
   });
 });
+
+describe("calibre_search mode=notes with a custom column field (#519)", () => {
+  it("should_show_the_note_of_a_custom_column_item_with_the_field_and_item_as_written", async () => {
+    // <field>:<item> shows that item's note (decided in #500); `#name` is a custom column
+    const f = deps(() => raw("notes-show-bellemare"));
+    await run({ query: "#mycol:value", mode: "notes" }, f.d);
+    expect(f.calls).toEqual([{ args: ["notes", "show", "#mycol", "value"], library: "Programming_Books" }]);
+  });
+});
