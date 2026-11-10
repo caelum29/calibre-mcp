@@ -17,8 +17,9 @@ import { mergeBuiltinMetadata, mergeCustomMetadata, planFormatMoves } from "../d
 import type { FormatMove } from "../domain/merge.js";
 import { CoercedBool, CoercedInt, jsonArray } from "./coerce.js";
 import { defineTool } from "./define.js";
-import { fence, toolError, toolOk, toolErrorFrom, errorFromCatch } from "./result.js";
+import { fence, toolError, toolOk, errorFromCatch } from "./result.js";
 import type { BaseDeps } from "./deps.js";
+import type { ErrorCode } from "../domain/error-codes.js";
 import {
   settleFailedStep,
   settleFailedWrite,
@@ -27,7 +28,7 @@ import {
   type ReReadCause,
   type UnconfirmedCheck,
 } from "../app/write-policy.js";
-import { presentFailedWrite, type FailedWrite } from "./write-failure.js";
+import { presentFailedWrite, type FailedWrite, type UnconfirmedWording } from "./write-failure.js";
 import { formatOnTarget, sourcesRemoved } from "../app/merge-verify.js";
 
 /** One executed (or planned) write step in the merge ledger. */
@@ -35,10 +36,10 @@ interface Step {
   step: string;
   status: "pending" | "done" | "skipped" | "failed" | "not-run";
   note?: string;
-  /** What a failed step threw — the "did not start" result's errorCode (#249). Not rendered. */
-  cause?: unknown;
   /** The step may have committed: a re-read could not confirm it (#413). Not rendered. */
   unverified?: boolean;
+  /** The presenter's code for a failed step; the "did not start" result's errorCode (#417). Not rendered. */
+  code?: ErrorCode;
   /** The next step the note already spells out, so the error adds no generic `Next:` line. Not rendered. */
   hint?: string;
   /** The note carries its own re-run instruction, so the ledger adds none (#413). Not rendered. */
@@ -56,8 +57,9 @@ const CAUSE_TEXT: Record<ReReadCause, string> = {
 };
 
 // The steer for a write that may have committed but a re-read could not confirm (#33, #413).
-function unconfirmedNote(cause: ReReadCause, what: string, verify: string): string {
-  return `${CAUSE_TEXT[cause]} and the re-read does not confirm ${what} — verify with ${verify} before retrying`;
+function unconfirmedNote(cause: ReReadCause, what: string, verify: string): UnconfirmedWording {
+  const hint = `verify with ${verify} before retrying`;
+  return { text: `${CAUSE_TEXT[cause]} and the re-read does not confirm ${what} — ${hint}`, hint };
 }
 
 /** Mark `step` failed from a settled outcome; an unverified one gets the caller's re-read steer. */
@@ -66,16 +68,16 @@ function failStep<T>(
   outcome: FailedWrite<T>,
   err: unknown,
   targetId: number,
-  unverifiedNote: (cause: ReReadCause, check: UnconfirmedCheck<T>) => string,
+  unverifiedNote: (cause: ReReadCause, check: UnconfirmedCheck<T>) => UnconfirmedWording,
 ): void {
   step.status = "failed";
-  step.cause = err;
   step.unverified = isUnverified(outcome);
   // the shared presenter words every other kind (refusal, transient, unexpected) with its next step (#417)
   // merge never retries (its calls aren't wrapped in withTransientRetry), so say 0, not the default
   const shown = presentFailedWrite(outcome, { id: targetId, err, retries: 0, unconfirmed: unverifiedNote });
   step.note = shown.text;
   step.hint = shown.hint;
+  step.code = shown.code;
 }
 
 const STATUS_MARK: Record<Step["status"], string> = {
@@ -393,11 +395,18 @@ async function executeMerge(deps: BaseDeps, job: MergeJob) {
             const gone = sourceIds.filter((id) => !remaining.includes(id));
             const verify = `calibre_get_book id=${remaining.join(" / id=")}`;
             const rerun = `re-run with sourceIds=[${remaining.join(",")}] (formats and metadata are already on the target)`;
-            return check.status === "not-landed"
-              ? `${CAUSE_TEXT[cause]}; ${remaining.map((id) => `#${id}`).join(", ")} still exist` +
+            if (check.status === "not-landed") {
+              const hint = `verify with ${verify}`;
+              return {
+                text:
+                  `${CAUSE_TEXT[cause]}; ${remaining.map((id) => `#${id}`).join(", ")} still exist` +
                   (gone.length > 0 ? ` (${gone.map((id) => `#${id}`).join(", ")} already in the trash)` : "") +
-                  ` — verify with ${verify}, then ${rerun}`
-              : `${unconfirmedNote(cause, "the removal", verify)}, then ${rerun}, leaving out any that 404`;
+                  ` — ${hint}, then ${rerun}`,
+                hint,
+              };
+            }
+            const note = unconfirmedNote(cause, "the removal", verify);
+            return { text: `${note.text}, then ${rerun}, leaving out any that 404`, hint: note.hint };
           });
           removeStep.ownRerun = removeStep.unverified;
         }
@@ -447,8 +456,9 @@ function ledgerResult(job: MergeJob, steps: Step[]) {
       : `Merge did not start — ${why}. Nothing was changed.\nSteps:\n${ledger}`;
     const opts = { hint: failed[0]!.hint, structured: { ...structured, status: "incomplete" } };
     // the failing step's own cause when it threw; a failed post-add check has none
-    const cause = failed[0]!.cause;
-    return toolErrorFrom(cause, message, "write_failed", opts);
+    // a step that threw carries the presenter's code; a failed post-add check has none (#389)
+    const { code } = failed[0]!;
+    return code === undefined ? toolError("write_failed", message, opts) : toolError(code, message, opts);
   }
 
   // Something committed: NEVER isError (issue #33). Steer: re-running is safe.

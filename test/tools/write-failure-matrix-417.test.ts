@@ -192,7 +192,7 @@ describe("calibre_merge_books — every failed-write outcome on the first step (
       calibre: { calibredb } as unknown as ToolDeps["calibre"],
       extractor: {} as ToolDeps["extractor"],
       log,
-    } as BaseDeps;
+    } as unknown as BaseDeps;
     return mergeBooksTool.handler({ targetId: 10, sourceIds: [12], mode: "merge", confirm: true }, deps);
   };
 
