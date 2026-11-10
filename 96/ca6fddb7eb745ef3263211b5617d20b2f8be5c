@@ -1,0 +1,19 @@
+src/tools/search-annotations.ts
+  s_02b52ad8edbfad::t_443fc765543fc6 136,164-177,180
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "96ca6fddb7eb745ef3263211b5617d20b2f8be5c",
+  "prompts": {},
+  "sessions": {
+    "s_02b52ad8edbfad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5df1a23b-ecee-482f-b178-3bf623cc8f7f",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
