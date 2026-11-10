@@ -172,10 +172,10 @@ export const LABELLED_LINES: Readonly<Record<string, ToolLabelledLines>> = {
         label: "calibre writes",
         match: "line",
         pattern: /^calibre writes: (?<v>allowed|refused|unknown)(?: .+)?$/,
-        format: "`calibre writes: allowed|refused — <setting>|unknown (<reason>)`",
+        format: "`calibre writes: allowed|refused — <how to allow writes>|unknown (<reason>)`",
         field: "calibreWriteAccess",
         compare: "equal",
-        note: "the steer after `refused` and the reason are Prose",
+        note: "the remedy after `refused` and the reason are Prose",
       },
       {
         label: "Semantic search",
@@ -201,7 +201,7 @@ export const LABELLED_LINES: Readonly<Record<string, ToolLabelledLines>> = {
         match: "line",
         pattern: /^Index: (?<v>.+)$/,
         format:
-          "`Index: <entry> · <entry>…[ · … +K more — …]` or `skipped — Calibre unreachable` / `libraries unavailable` / `(no libraries)`",
+          "`Index: <entry> · <entry>…[ · … +K more — …]` or `skipped — Calibre unreachable` / `skipped — library busy` / `libraries unavailable` / `(no libraries)`",
         field: "indexes",
         compare: "format",
       },
