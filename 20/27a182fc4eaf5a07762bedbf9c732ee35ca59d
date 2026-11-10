@@ -1,0 +1,20 @@
+test/tools/search-annotations-book-title-519.test.ts
+  s_02b52ad8edbfad::t_ed703e4e4adfe8 51,56-58,62,64-68,72,74,83
+  s_02b52ad8edbfad::t_db9e1defb7e1fb 1-50,52-55,59-61,63,69-71,73,75-82,84-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2027a182fc4eaf5a07762bedbf9c732ee35ca59d",
+  "prompts": {},
+  "sessions": {
+    "s_02b52ad8edbfad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5df1a23b-ecee-482f-b178-3bf623cc8f7f",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
