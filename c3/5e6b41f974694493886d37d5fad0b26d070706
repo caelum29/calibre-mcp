@@ -1,0 +1,25 @@
+src/app/write-policy.ts
+  s_3e8658abeda134::t_462610c887725b 7-9,11-12
+  s_3e8658abeda134::t_51b6f3b36e2e15 10
+  s_3e8658abeda134::t_57dbd08420cf8a 65,136
+src/domain/error-codes.ts
+  s_3e8658abeda134::t_462610c887725b 20-25,110
+src/domain/calibredb-stderr.ts
+  s_3e8658abeda134::t_462610c887725b 18-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c35e6b41f974694493886d37d5fad0b26d070706",
+  "prompts": {},
+  "sessions": {
+    "s_3e8658abeda134": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "90cd6d91-2e99-40ea-88d4-833235d9eb6d",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
