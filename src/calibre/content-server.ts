@@ -214,7 +214,7 @@ export class ContentServerClient implements LibraryReader {
       if (retry !== undefined) return asLibId(retry);
     }
     const known = Object.entries(this.#libMap ?? {}).map(([id, displayName]) => ({ id, name: displayName }));
-    throw new UnknownLibraryError(name, known);
+    throw new UnknownLibraryError(name, known, !display);
   }
 
   /** GET /ajax/search/{libId}?query=&num=&offset=&sort=&sort_order= → SearchPage (ids only). */

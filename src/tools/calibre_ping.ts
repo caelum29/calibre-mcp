@@ -10,7 +10,7 @@ import { libraryIndexReport, type LibraryIndex } from "../app/library-index.js";
 import { capString, log } from "../logging.js";
 import type { BusyLibrary } from "../calibre/busy.js";
 import type { LibId } from "../calibre/lib-id.js";
-import { CalibreBusyError } from "../domain/errors.js";
+import { CalibreBusyError, UnknownLibraryError } from "../domain/errors.js";
 import { SDK_VERSION, VERSION } from "../version.js";
 import type { BaseDeps, DepsWithIndex } from "./deps.js";
 import type { ToolResult } from "./types.js";
@@ -36,16 +36,22 @@ export const pingTool = defineTool({
     // semantic diagnosis (it reads local disk/state), so keep it and still report semantics.
     let libId: LibId | undefined;
     let pingError: string | undefined;
+    let configError: string | undefined; // an unknown CALIBRE_MCP_LIBRARY (#438)
     let pingCause: unknown;
     try {
       libId = await deps.content.resolveLibraryId();
       // reachability probe only; its raw category dump is noise, so it is not echoed (#304)
       await deps.calibre.listLibraries(libId);
     } catch (err) {
-      pingError = err instanceof Error ? err.message : String(err);
-      pingCause = err;
+      // library-info answered, so Calibre is reachable: a bad CALIBRE_MCP_LIBRARY is a config fault.
+      if (err instanceof UnknownLibraryError) configError = err.message;
+      else {
+        pingError = err instanceof Error ? err.message : String(err);
+        pingCause = err;
+      }
       // Busy is a known, self-clearing state (reported below), not a server fault.
       if (err instanceof CalibreBusyError) deps.log.warn("ping refused: library busy", { libraryId: err.libraryId });
+      else if (configError !== undefined) deps.log.warn("ping: unknown default library", { error: configError });
       else {
         const errorCode = errorCodeFor(err);
         deps.log.error("ping failed", { error: pingError, errorCode, hint: defaultHint(errorCode) });
@@ -71,6 +77,24 @@ export const pingTool = defineTool({
           structured: {
             ok: false,
             error: pingError,
+            serverUrl,
+            ...facts,
+            semantic,
+            ...busy.structured,
+            ...diag.structured,
+          },
+        },
+      );
+    }
+    if (configError !== undefined) {
+      return toolError(
+        "not_found",
+        `Calibre reachable, but: ${configError}\n${header}\n${busy.text}${semLine}\n${index.line}\n${diag.text}`,
+        {
+          bare: true,
+          structured: {
+            ok: false,
+            error: configError,
             serverUrl,
             ...facts,
             semantic,

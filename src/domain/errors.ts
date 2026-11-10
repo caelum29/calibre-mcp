@@ -11,9 +11,16 @@ export class UnknownLibraryError extends Error {
   constructor(
     readonly input: string,
     readonly known: ReadonlyArray<{ id: string; name: string }>,
+    /** True when `input` is the configured default (no `library` arg): only the user's env can fix it. */
+    readonly fromConfig = false,
   ) {
     const list = known.length > 0 ? known.map((l) => `"${l.name}" (ID ${l.id})`).join(", ") : "none";
-    super(`Unknown library "${input}". Known: ${list}. Call calibre_list_libraries.`);
+    super(
+      fromConfig
+        ? `Unknown default library "${input}" (set by CALIBRE_MCP_LIBRARY). Known: ${list}. ` +
+            "Fix CALIBRE_MCP_LIBRARY, or pass library explicitly (calibre_list_libraries lists them)."
+        : `Unknown library "${input}". Known: ${list}. Call calibre_list_libraries.`,
+    );
     this.name = "UnknownLibraryError";
   }
 }
