@@ -1,0 +1,21 @@
+src/tools/calibre_build_index.ts
+  s_db558d6b317526::t_0e3df22bd2aec3 144-147,150-152
+test/tools/build-index.enable-fts.paths.test.ts
+  s_db558d6b317526::t_0e3df22bd2aec3 148-187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "45638ac00c17196e163baf1813f9a901a6b4156f",
+  "prompts": {},
+  "sessions": {
+    "s_db558d6b317526": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c3ace1e5-b5b1-4d35-8b5d-6026fc7c6385",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
