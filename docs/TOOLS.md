@@ -332,6 +332,17 @@ index entries for every book that is no longer in the library and reports how ma
 This writes only to the server's own local index directory — not to your Calibre library — so
 it's safe to run without enabling library writes.
 
+**`enableFts: true`** also turns on Calibre's own full-text indexing for the library (the engine
+behind `calibre_search` `mode: fts`), through `calibredb fts_index enable`. Calibre indexes in the
+background; the call doesn't wait and reports what Calibre says (`0 of 144 books files indexed`).
+It changes a library setting, so it needs writes enabled (`CALIBRE_MCP_ENABLE_WRITE`): with writes
+off the semantic build still runs and the FTS line says `write_disabled`, with the remedy (enable
+writes, or tick FTS in the Calibre GUI: the **FT** button left of the search bar). If FTS is
+already on, it's a no-op that says so. A failed enable is reported in the FTS line and doesn't
+fail the build. Structured output carries the same as `fts.status`:
+`enabled` | `already_enabled` | `write_disabled` | `failed`. Enable-only: there's no status or
+reindex action.
+
 #### Case-clashing library ids
 
 Calibre ids are case-sensitive, but on a case-insensitive disk (the macOS default) two libraries

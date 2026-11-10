@@ -196,7 +196,7 @@
         "openWorldHint": true,
         "readOnlyHint": false
       },
-      "description": "Build the semantic index for specific books (select them with bookId, ids, or query; at least one is required). A query selects ALL matching books (no 100-book cap); a call still working after ~45 s returns a \"still running\" status (not an error) while the build keeps committing in the background — re-run the same call to get its result; only one build runs per library at a time, and up-to-date books are skipped. Extracts, chunks, and embeds each book. Set keywordOnly=true (or when the embedding model is absent, it happens automatically) to build a keyword-only index that powers mode:\"keyword\" search with zero ML dependencies. Re-run after adding books; use force to re-index unchanged ones. Set prune=true to also drop index entries for books that no longer exist in the library (removals/merges leave searchable orphans behind).",
+      "description": "Build the semantic index for specific books (select them with bookId, ids, or query; at least one is required; to index everything, pass a query that matches every book). A query selects ALL matching books (no 100-book cap); a call still working after ~45 s returns a \"still running\" status (not an error) while the build keeps committing in the background — re-run the same call to get its result; only one build runs per library at a time, and up-to-date books are skipped. Extracts, chunks, and embeds each book. Set keywordOnly=true (or when the embedding model is absent, it happens automatically) to build a keyword-only index that powers mode:\"keyword\" search with zero ML dependencies. Re-run after adding books; use force to re-index unchanged ones. Set enableFts=true to also turn on the Calibre full-text index for the library (needs writes enabled on this server; with writes off the semantic build still runs and the fts.status result field is write_disabled; already-enabled is a no-op; Calibre indexes in the background and the call does not wait). Set prune=true to also drop index entries for books that no longer exist in the library (removals/merges leave searchable orphans behind).",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {
@@ -338,6 +338,30 @@
           },
           "figures": {
             "type": "number"
+          },
+          "fts": {
+            "additionalProperties": false,
+            "properties": {
+              "detail": {
+                "type": "string"
+              },
+              "progress": {
+                "type": "string"
+              },
+              "status": {
+                "enum": [
+                  "write_disabled",
+                  "enabled",
+                  "already_enabled",
+                  "failed"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "status"
+            ],
+            "type": "object"
           },
           "indexedIds": {
             "items": {
