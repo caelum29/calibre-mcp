@@ -12,7 +12,8 @@ import type { ToolResult } from "../../src/tools/types.js";
 
 const REFUSED_LINE =
   'calibre writes: refused — enable "Allow un-authenticated local connections to make changes" ' +
-  "(Preferences → Sharing over the net)";
+  "(Preferences → Sharing over the net), or for a command-line calibre-server restart it with " +
+  "--enable-local-write, or configure an authenticated non-restricted user";
 const MISMATCH_LINE =
   "warning: CALIBRE_MCP_ENABLE_WRITE is on, but Calibre refuses writes — every write tool will fail until that setting is enabled";
 
