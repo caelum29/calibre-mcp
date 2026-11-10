@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatMarker, injectFigureMarkers } from "../../../src/domain/figures/markers.js";
+import { formatMarker, indexedFigureCaption, injectFigureMarkers } from "../../../src/domain/figures/markers.js";
 import type { FigureEntry, FigureInventory } from "../../../src/domain/figures/inventory.js";
 
 function inv(entries: Array<Partial<FigureEntry>>): FigureInventory {
@@ -309,5 +309,57 @@ describe("bare-label captions (#107)", () => {
       "epub",
     );
     expect(out.markers[0]?.charOffset).toBe(text.indexOf("Figure 12-32:"));
+  });
+});
+
+describe("indexedFigureCaption (#428)", () => {
+  const entry = (label: string, caption?: string) => ({ label, ...(caption !== undefined ? { caption } : {}) });
+
+  it("joins the printed head with the full inventory caption", () => {
+    expect(indexedFigureCaption("Fig. 1. Single-nucleus RNA", entry("1", "Single-nucleus RNA sequencing"))).toBe(
+      "Fig. 1. Single-nucleus RNA sequencing",
+    );
+  });
+
+  it("matches the label canonically across separator styles", () => {
+    expect(indexedFigureCaption("Fig. 2-1. Foo", entry("2.1", "Foo bar baz"))).toBe("Fig. 2-1. Foo bar baz");
+    expect(indexedFigureCaption("Figure 2.1: Foo", entry("2-1", "Foo bar baz"))).toBe("Figure 2.1: Foo bar baz");
+  });
+
+  it("keeps a Cyrillic head with its colon separator", () => {
+    expect(indexedFigureCaption("Рис. 11.10: Схема", entry("11.10", "Схема модулів ядра"))).toBe(
+      "Рис. 11.10: Схема модулів ядра",
+    );
+  });
+
+  it("keeps a spaced-dash separator", () => {
+    expect(indexedFigureCaption("Figure 12.1 – Logical", entry("12.1", "Logical architecture"))).toBe(
+      "Figure 12.1 – Logical architecture",
+    );
+  });
+
+  it("joins a label-first page-fallback marker", () => {
+    expect(indexedFigureCaption("1-1. The ownership", entry("1-1", "The ownership tree"))).toBe(
+      "1-1. The ownership tree",
+    );
+  });
+
+  it("falls back when the label is only a prefix of the printed one (`1` vs `11`)", () => {
+    expect(indexedFigureCaption("Fig. 11. Foo", entry("1", "Foo bar"))).toBe("Fig. 11. Foo");
+  });
+
+  it("falls back when the label is only part of a dotted label (`1` vs `1.1`)", () => {
+    expect(indexedFigureCaption("Figure 1.1 Foo", entry("1", "Foo bar"))).toBe("Figure 1.1 Foo");
+  });
+
+  it("falls back when the marker carries no label", () => {
+    expect(indexedFigureCaption("Overview of the pipeline", entry("3", "Overview of the pipeline stages"))).toBe(
+      "Overview of the pipeline",
+    );
+  });
+
+  it("falls back when the inventory has no caption text or no entry", () => {
+    expect(indexedFigureCaption("Figure 3. Third", entry("3"))).toBe("Figure 3. Third");
+    expect(indexedFigureCaption("Figure 3. Third", undefined)).toBe("Figure 3. Third");
   });
 });
