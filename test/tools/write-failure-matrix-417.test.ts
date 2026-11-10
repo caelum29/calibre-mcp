@@ -100,7 +100,7 @@ const CASES: Case[] = [
     name: "transient, gateway 5xx",
     outcomes: [GATEWAY],
     reRead: "unchanged",
-    code: "calibre_unreachable",
+    code: "calibre_busy",
     family: "server",
   },
   {
@@ -199,7 +199,7 @@ describe("calibre_merge_books — every failed-write outcome on the first step (
   const MERGE_CASES: [string, string[], string, "verify" | "server"][] = [
     ["refused", [FORBIDDEN], "write_refused", "server"],
     ["transient, unreachable", [CONN_REFUSED], "calibre_unreachable", "server"],
-    ["transient, gateway 5xx", [GATEWAY], "calibre_unreachable", "server"],
+    ["transient, gateway 5xx", [GATEWAY], "calibre_busy", "server"],
     ["dropped, not confirmed", [RESET], "write_unverified", "verify"],
     ["timeout, not confirmed", [TIMEOUT], "write_unverified", "verify"],
   ];

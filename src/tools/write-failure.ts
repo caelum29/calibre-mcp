@@ -55,7 +55,9 @@ export function presentFailedWrite<T>(outcome: FailedWrite<T>, ctx: FailedWriteC
     case "transient": {
       const text = describeTransient(err, id, ctx.retries);
       // the last sentence is the step (no "retries" clause or other sentence follows it)
-      return { code: "calibre_unreachable", text, hint: text.slice(text.lastIndexOf(". ") + 2) };
+      // a gateway 5xx means the server answered — "retry shortly", not "start the server" (#494)
+      const code = outcome.transient === "server" ? "calibre_busy" : "calibre_unreachable";
+      return { code, text, hint: text.slice(text.lastIndexOf(". ") + 2) };
     }
     case "unverified":
     case "refusedUnverified": {

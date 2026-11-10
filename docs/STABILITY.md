@@ -62,8 +62,8 @@ one; a call site may give a sharper one.
 | `write_disabled` | A Write call while this server's write gate is off (`CALIBRE_MCP_ENABLE_WRITE`); previews still work. | ask the user to enable writes on this server: set CALIBRE_MCP_ENABLE_WRITE=1, or tick Enable writes in the Claude Desktop extension settings |
 | `write_failed` | A write reached Calibre and failed. | — |
 | `write_unverified` | The connection dropped mid-write; the change may or may not have landed. | re-read the book with calibre_get_book before retrying |
-| `calibre_unreachable` | The Content Server (or `calibredb`'s route to it) cannot be reached. | start it in Calibre (Connect/share → Start Content server) or set CALIBRE_MCP_SERVER_URL |
-| `calibre_busy` | The library is busy with another operation. | retry in a few seconds — calibre_ping shows when the library is free |
+| `calibre_unreachable` | The Content Server (or `calibredb`'s route to it) cannot be reached: no HTTP reply at all. | start it in Calibre (Connect/share → Start Content server) or set CALIBRE_MCP_SERVER_URL |
+| `calibre_busy` | The library is busy with another operation, or the Content Server answered a gateway error (HTTP 502/503/504) — it is reachable but not serving right now. | retry in a few seconds — calibre_ping shows when the library is free |
 | `calibre_too_old` | The call needs a newer Calibre (annotations and notes need 9.18+) than the one running. | update Calibre (https://calibre-ebook.com/download); other tools work on this version |
 | `calibre_error` | Calibre or `calibredb` reported an error that fits no more specific code. | — |
 | `timeout` | The operation exceeded its time limit. | retry, or narrow the request |

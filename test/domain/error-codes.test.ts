@@ -386,7 +386,7 @@ describe("errorCodeFor — #325 HTTP 4xx", () => {
     [403, "calibre_error"],
     [404, "not_found"],
     [500, "calibre_error"],
-    [503, "calibre_error"],
+    [503, "calibre_busy"],
   ] as const)("should_map_HTTP_%i_to_%s", (status, code) => {
     expect(errorCodeFor(new CalibreHttpError(status, "u", `HTTP ${status}`))).toBe(code);
   });
