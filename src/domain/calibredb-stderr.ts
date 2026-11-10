@@ -15,3 +15,8 @@ export const CONNECTION_STDERR = /connection refused|connection reset|remote end
 // A drop AFTER the request went out: the server may already have committed the write (#33 rule).
 // `connection refused` is excluded — that request never reached the server.
 export const DROPPED_MID_REQUEST_STDERR = /connection reset|remote end closed connection/i;
+
+// A gateway 502/503/504 relayed in calibredb's stderr (mechanize: "HTTP Error 503: Service Unavailable").
+// Whether a real calibre-server ever answers these itself (vs. a reverse proxy in front) is UNCONFIRMED.
+// 500 is deliberately excluded — it is usually a real Calibre exception.
+export const GATEWAY_5XX_STDERR = /HTTP Error (50[234])\b/;
