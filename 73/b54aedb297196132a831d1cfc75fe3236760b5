@@ -1,0 +1,44 @@
+src/tools/calibre_merge_books.ts
+  s_06ec9a5d22adfc::t_efa452e97ddc61 6,220,253-254
+  s_06ec9a5d22adfc::t_204e88c0f3f43b 182-191
+skills/calibre-mcp/SKILL.md
+  s_06ec9a5d22adfc::t_a406ca50c1609a 50,163-164
+src/tools/calibre_extract_isbn.ts
+  s_06ec9a5d22adfc::t_efa452e97ddc61 7
+  s_06ec9a5d22adfc::t_204e88c0f3f43b 75-79
+src/tools/calibre_recover_metadata.ts
+  s_06ec9a5d22adfc::t_efa452e97ddc61 9,42,155-158
+src/tools/writes-remedy.ts
+  s_06ec9a5d22adfc::t_efa452e97ddc61 1-15
+src/domain/curation/quality.ts
+  s_06ec9a5d22adfc::t_efa452e97ddc61 34-35,95-96
+test/tools/remove-book.handler.test.ts
+  s_06ec9a5d22adfc::t_82fc229ddf71e2 27-28
+src/tools/calibre_manage_bundles.ts
+  s_06ec9a5d22adfc::t_efa452e97ddc61 9,82,100,213
+  s_06ec9a5d22adfc::t_204e88c0f3f43b 252-265
+src/tools/calibre_bulk_update.ts
+  s_06ec9a5d22adfc::t_efa452e97ddc61 6,220-221
+src/tools/calibre_quality_report.ts
+  s_06ec9a5d22adfc::t_204e88c0f3f43b 5,98-102,144-149
+src/tools/calibre_remove_book.ts
+  s_06ec9a5d22adfc::t_efa452e97ddc61 9,84
+docs/tool-catalog.json
+  s_06ec9a5d22adfc::t_a406ca50c1609a 1770
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "73b54aedb297196132a831d1cfc75fe3236760b5",
+  "prompts": {},
+  "sessions": {
+    "s_06ec9a5d22adfc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0d6f5b7a-631a-4427-9d76-11530da044a3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
