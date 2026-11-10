@@ -5,7 +5,8 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { bulkUpdateTool } from "../../src/tools/calibre_bulk_update.js";
 import type { BaseDeps } from "../../src/tools/deps.js";
-import { book, fakeBulkDeps, textOf } from "./fake-bulk-tags.js";
+import { book, fakeBulkDeps } from "./fake-bulk-tags.js";
+import { textOf } from "./text-of.js";
 
 const schema = z.object(bulkUpdateTool.inputSchema);
 const run = (args: Record<string, unknown>, d: BaseDeps) => bulkUpdateTool.handler(schema.parse(args), d);

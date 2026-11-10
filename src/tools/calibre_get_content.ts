@@ -4,7 +4,7 @@
 // are cached so paging doesn't reconvert. Scanned PDFs yield empty text (no OCR).
 
 import { z } from "zod";
-import { chooseExtractFormat, noTextReason } from "../calibre/extract.js";
+import { chooseExtractFormat, noTextReason } from "../domain/extract-format.js";
 import { detectChapters } from "../domain/structure/chapters.js";
 import { CalibreHttpError } from "../domain/errors.js";
 import { BookId, CoercedBool, CursorParam, limitParam } from "./coerce.js";

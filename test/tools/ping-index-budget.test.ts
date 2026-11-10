@@ -76,7 +76,9 @@ describe("calibre_ping Index line — keyword-only rows (#318)", () => {
   // count as indexed — but semantic search can't reach them, so the line says how many.
   it("should_label_books_without_embeddings_in_the_index_line", async () => {
     const r = await ping.handler({}, deps({ booksMissingVectors: 40 }));
-    expect(indexLine(r)).toBe("Index: Programming Books: 1064/1092 indexed (40 without embeddings)");
+    expect(indexLine(r)).toBe(
+      "Index: Programming Books (id: Programming_Books) [default]: 1064/1092 indexed (40 without embeddings)",
+    );
   });
 
   it("should_mirror_the_count_in_structuredContent", async () => {
@@ -85,6 +87,7 @@ describe("calibre_ping Index line — keyword-only rows (#318)", () => {
       {
         id: "Programming_Books",
         name: "Programming Books",
+        isDefault: true,
         state: "ok",
         indexed: 1064,
         total: 1092,
@@ -95,7 +98,7 @@ describe("calibre_ping Index line — keyword-only rows (#318)", () => {
 
   it("should_add_no_label_when_every_book_has_embeddings", async () => {
     const r = await ping.handler({}, deps({ booksMissingVectors: 0 }));
-    expect(indexLine(r)).toBe("Index: Programming Books: 1064/1092 indexed");
+    expect(indexLine(r)).toBe("Index: Programming Books (id: Programming_Books) [default]: 1064/1092 indexed");
   });
 });
 
@@ -104,7 +107,7 @@ describe("calibre_ping Index budget against a slow Content Server (#318)", () =>
     vi.useFakeTimers();
     const p = ping.handler({}, deps({ search: never }));
     expect(await settledBy(p, BUDGET_MS)).toBe(true);
-    expect(indexLine(await p)).toBe("Index: Programming Books: 1064/? indexed");
+    expect(indexLine(await p)).toBe("Index: Programming Books (id: Programming_Books) [default]: 1064/? indexed");
   });
 
   it("should_report_libraries_unavailable_within_the_budget_when_libraryInfo_hangs", async () => {
@@ -186,7 +189,7 @@ describe("calibre_ping Index line — corrupt or empty index file (#318)", () =>
       unchanged: readFileSync(file, "utf8") === content,
       files: readdirSync(dir),
     }).toEqual({
-      line: "Index: Programming Books: index unreadable",
+      line: "Index: Programming Books (id: Programming_Books) [default]: index unreadable",
       unchanged: true,
       files: ["Programming_Books.sqlite"],
     });

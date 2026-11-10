@@ -8,10 +8,11 @@ import { existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import type { Config } from "../../config.js";
 import type { LogSink } from "../../logging.js";
-import { caseCollisionOwner, LibraryIdCollisionError } from "../../domain/library-id-collision.js";
 import { EMBED_DIM, INDEX_VERSION, MODEL_ID } from "../model.js";
+import { DIAGNOSTIC_BUSY_TIMEOUT_MS, isIndexBusy } from "../index-busy.js";
 import { type Row, WEIGHTED_BM25 } from "./shared.js";
 import type { IndexMeta } from "./types.js";
+import type { LibraryIdGuard } from "./library-owner.js";
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -110,11 +111,11 @@ END;
 export class IndexConnections {
   #dbs = new Map<string, DatabaseSync>();
 
-  /** `libraryIds` lists the known library ids (absent/undefined = unknown: no #388 guard). */
+  /** `guard` decides which library owns a shared index file (#388, #414); required, never opt-in. */
   constructor(
     private readonly cfg: Config,
     private readonly log: LogSink,
-    private readonly libraryIds?: () => readonly string[] | undefined,
+    private readonly guard: LibraryIdGuard,
   ) {}
 
   /** Cheap, side-effect-free check for an existing index (no db file is created); throws on a #388 clash. */
@@ -126,8 +127,12 @@ export class IndexConnections {
     return existsSync(this.#file(libraryId));
   }
 
-  /** The persisted meta, read WITHOUT the compatibility guard; never creates a db file. */
-  peekMeta(libraryId: string): IndexMeta | undefined {
+  /**
+   * The persisted meta, read WITHOUT the compatibility guard; never creates a db file. A
+   * `diagnostic` read (calibre_ping, #442) waits only briefly on a lock and rethrows SQLITE_BUSY
+   * so the caller can say "busy" rather than "no meta".
+   */
+  peekMeta(libraryId: string, opts: { diagnostic?: boolean } = {}): IndexMeta | undefined {
     if (!this.has(libraryId)) return undefined;
     // An already-open db passed #ensureMeta; otherwise peek read-only so a stale index is
     // described instead of refused (and nothing is migrated or written).
@@ -136,7 +141,8 @@ export class IndexConnections {
     try {
       db = open ?? new DatabaseSync(this.#file(libraryId), { readOnly: true });
       // Read-only can't switch journal mode, but must still wait out a concurrent writer (#196).
-      if (!open) db.exec(`PRAGMA busy_timeout = ${this.cfg.indexBusyTimeoutMs}`);
+      const wait = opts.diagnostic ? DIAGNOSTIC_BUSY_TIMEOUT_MS : this.cfg.indexBusyTimeoutMs;
+      if (!open) db.exec(`PRAGMA busy_timeout = ${wait}`);
       const kv = new Map<string, string>();
       for (const r of db.prepare("SELECT key, value FROM meta").all() as Row[]) {
         kv.set(String(r.key), String(r.value));
@@ -147,7 +153,8 @@ export class IndexConnections {
       if (!modelId || !Number.isInteger(indexVersion) || !Number.isInteger(dim)) return undefined;
       const createdAt = kv.get("created_at");
       return { modelId, dim, indexVersion, ...(createdAt ? { createdAt } : {}) };
-    } catch {
+    } catch (err) {
+      if (opts.diagnostic && isIndexBusy(err)) throw err;
       return undefined; // no meta table / not a sqlite file — "no index" for provenance purposes
     } finally {
       if (!open) db?.close();
@@ -162,14 +169,15 @@ export class IndexConnections {
    * meta, missing tables or not a sqlite file throws to the caller — nothing is repaired here.
    */
   read<T>(libraryId: string, fn: (db: DatabaseSync) => T, absent: T): T {
-    this.#assertOwnFile(libraryId);
+    // an open handle passed the guard in db(); otherwise has() runs it
     const open = this.#dbs.get(libraryId);
     if (open) return fn(open);
     if (!this.has(libraryId)) return absent;
     const db = new DatabaseSync(this.#file(libraryId), { readOnly: true });
     try {
-      // Read-only can't switch journal mode, but must still wait out a concurrent writer (#196).
-      db.exec(`PRAGMA busy_timeout = ${this.cfg.indexBusyTimeoutMs}`);
+      // Read-only can't switch journal mode; a WAL writer never blocks it (#196), and any other
+      // lock gets only a short wait so ping stays fast and can report "busy" (#442).
+      db.exec(`PRAGMA busy_timeout = ${DIAGNOSTIC_BUSY_TIMEOUT_MS}`);
       const meta = readMeta(db);
       if (meta.size === 0) throw new Error("INDEX_UNREADABLE: the index file has no meta (not built by this server).");
       assertCompatible(meta);
@@ -210,6 +218,12 @@ export class IndexConnections {
     db.exec(SCHEMA);
     this.#migrate(db);
     this.#ensureMeta(db);
+    try {
+      this.guard.claim(db, libraryId); // first build, or a legacy index with no owner yet (#414)
+    } catch (err) {
+      db.close();
+      throw err;
+    }
     this.#dbs.set(libraryId, db);
     return db;
   }
@@ -247,23 +261,63 @@ export class IndexConnections {
   }
 
   /**
-   * Refuse a library whose id equals another's case-insensitively (#388): on a case-insensitive
-   * volume both ids name one file, so opening it would mix two libraries' books in one index.
-   * Checked before the file is created, so a refused library leaves nothing on disk.
+   * Refuse a library whose index file is owned by an id that differs only in letter case (#388,
+   * #414). Checked before the file is created, so a refused library leaves nothing on disk.
    */
   #assertOwnFile(libraryId: string): void {
-    const ids = this.libraryIds?.();
-    const owner = ids && caseCollisionOwner(libraryId, ids);
-    if (owner !== undefined) throw new LibraryIdCollisionError(libraryId, owner);
+    const refusal = this.guard.collision(libraryId);
+    if (refusal) throw refusal;
   }
 
   /** Db path for a library (no fs side effects). ":memory:" when the index dir is in-memory. */
   #file(libraryId: string): string {
     if (this.cfg.indexDir === ":memory:") return ":memory:";
-    // Sanitize the library id into a safe filename component.
-    const safe = libraryId.replace(/[^A-Za-z0-9._-]/g, "_") || "default";
-    return path.join(this.cfg.indexDir, `${safe}.sqlite`);
+    return path.join(this.cfg.indexDir, indexFileName(libraryId));
   }
+}
+
+/** The index file name for a library id (no fs side effects). */
+export function indexFileName(libraryId: string): string {
+  // Sanitize the library id into a safe filename component.
+  const safe = libraryId.replace(/[^A-Za-z0-9._-]/g, "_") || "default";
+  return `${safe}.sqlite`;
+}
+
+/** Meta key holding the id of the library that owns the index file (#414). */
+const OWNER_KEY = "library_id";
+
+/**
+ * The owner recorded in an index file's meta, read through a short-lived read-only handle.
+ * Undefined when none is recorded, the file is not an index this server can read, or a lock
+ * outlasts the short diagnostic wait: the caller then has no verdict, never a false one.
+ */
+export function readIndexOwner(file: string): string | undefined {
+  let db: DatabaseSync | undefined;
+  try {
+    db = new DatabaseSync(file, { readOnly: true });
+    db.exec(`PRAGMA busy_timeout = ${DIAGNOSTIC_BUSY_TIMEOUT_MS}`);
+    const row = db.prepare("SELECT value FROM meta WHERE key = ?").get(OWNER_KEY);
+    return row === undefined ? undefined : String(row.value);
+  } catch (err) {
+    // A lock past the short wait: no verdict yet (the write path re-checks in ensureIndexOwner).
+    if (isIndexBusy(err)) return undefined;
+    // Not an index this server can read (no meta table, not SQLite): it records no owner, and
+    // the regular open reports the damage. Anything else is a real fault.
+    if (err instanceof Error && "errcode" in err) return undefined;
+    throw err;
+  } finally {
+    db?.close();
+  }
+}
+
+/**
+ * The owner recorded in a writable index db, recording `libraryId` first when there is none (#414).
+ * Atomic across processes: a second server claiming the same file at once is ignored by the
+ * insert and reads back whoever won, instead of hitting the key's UNIQUE constraint.
+ */
+export function ensureIndexOwner(db: DatabaseSync, libraryId: string): string {
+  db.prepare("INSERT OR IGNORE INTO meta(key, value) VALUES(?, ?)").run(OWNER_KEY, libraryId);
+  return String(db.prepare("SELECT value FROM meta WHERE key = ?").get(OWNER_KEY)?.value);
 }
 
 function readMeta(db: DatabaseSync): Map<string, string> {

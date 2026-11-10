@@ -31,6 +31,7 @@ import {
   foreignNote,
   type ReReadCause,
 } from "../app/write-policy.js";
+import { presentFailedWrite } from "./write-failure.js";
 import { errorCodeFor } from "../domain/error-codes.js";
 import { mergeTags, type TagMerge } from "../domain/tag-ops.js";
 import { resolveTagSpellings } from "../app/tag-spelling.js";
@@ -431,13 +432,18 @@ function settleBook(outcome: FailedWriteOutcome, id: number, err: unknown, run: 
     case "confirmed":
       run.applied.push(id);
       run.confirmed.push({ id, cause: outcome.cause });
-      return outcome.refused ? refusedAfterLanding(run, id, err) : unreachableAfterLanding(run, id, err);
+      return stopRemainingAfterConfirmedDrop(run, id, err);
+    case "refusedAfterLanding":
+      run.applied.push(id);
+      run.confirmed.push({ id, cause: outcome.cause });
+      return refusedAfterLanding(run, id, err);
     case "unverified":
+    case "refusedUnverified":
       return unverifiedBook(outcome, run, id, err);
     case "refused":
       return refusedStop(run, id, err);
     case "transient":
-      run.failed.push({ id, error: describeTransient(err, id) });
+      run.failed.push({ id, error: presentFailedWrite(outcome, { id, err }).text });
       // a down server fails every later book the same way; a gateway 5xx fails only this one (#233)
       if (outcome.transient === "server") return undefined;
       return stoppedMidLoop(
@@ -445,7 +451,7 @@ function settleBook(outcome: FailedWriteOutcome, id: number, err: unknown, run: 
         { headline: UNREACHABLE_HEADLINE, steer: `${describeTransient(err, id)} Once it is back`, err },
       );
     case "unexpected":
-      run.failed.push({ id, error: err instanceof Error ? err.message : String(err) });
+      run.failed.push({ id, error: presentFailedWrite(outcome, { id, err }).text });
       return undefined;
   }
 }
@@ -455,23 +461,26 @@ function settleBook(outcome: FailedWriteOutcome, id: number, err: unknown, run: 
  * tail fails only this book; a refusal or a connection-class tail stops the loop (#370).
  */
 function unverifiedBook(
-  outcome: Extract<FailedWriteOutcome, { kind: "unverified" }>,
+  outcome: Extract<FailedWriteOutcome, { kind: "unverified" | "refusedUnverified" }>,
   run: LoopState,
   id: number,
   err: unknown,
 ): ToolResult | undefined {
   const note = foreignNote(outcome.check);
-  if (outcome.cause === "timeout") {
-    run.failed.push({
-      id,
-      error:
-        "calibredb timed out and a re-read does not confirm the change — " +
-        `verify with calibre_get_book id=${id} before retrying.${note}`,
-    });
-    return undefined;
-  }
-  run.failed.push({ id, error: describeTransient(err, id) + note });
-  if (outcome.refused) {
+  const failed = presentFailedWrite(outcome, {
+    id,
+    err,
+    // a timeout words its steer for one book of many
+    unconfirmed: (cause) =>
+      cause === "timeout"
+        ? "calibredb timed out and a re-read does not confirm the change — " +
+          `verify with calibre_get_book id=${id} before retrying.${note}`
+        : undefined,
+  });
+  run.failed.push({ id, error: failed.text });
+  // a timeout fails only this book; a drop continues below to the refusal / connection checks
+  if (outcome.cause === "timeout") return undefined;
+  if (outcome.kind === "refusedUnverified") {
     const steer = `${describeTransient(err, id)}${note} ${REFUSED_STEER}`;
     return stoppedMidLoop(
       { ...run, blockedId: id },
@@ -487,7 +496,7 @@ function unverifiedBook(
 }
 
 /** A confirmed drop whose final error is connection-class still trips the breaker for the rest. */
-function unreachableAfterLanding(run: LoopState, id: number, err: unknown): ToolResult | undefined {
+function stopRemainingAfterConfirmedDrop(run: LoopState, id: number, err: unknown): ToolResult | undefined {
   // a 5xx/500/timeout tail fails nothing more; a landed last book has nothing left to stop
   if (classifyTransient(err) !== "connection" || run.notAttempted.length === 0) return undefined;
   // confirmed written: the stop is about the server, not this write — don't steer to a re-check

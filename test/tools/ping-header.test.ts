@@ -94,7 +94,7 @@ describe("calibre_ping per-library index breakdown (#304)", () => {
   it("lists indexed/total per library and 'none' for an unindexed one", async () => {
     const lines = text(await ping.handler({}, deps())).split("\n");
     expect(lines).toContain(
-      "Index: Programming Books: 1064/1092 indexed · Humanities: 147/174 indexed · Reaserch Books: none",
+      "Index: Programming Books (id: Programming_Books) [default]: 1064/1092 indexed · Humanities (id: Humanities): 147/174 indexed · Reaserch Books (id: Reaserch_Books): none",
     );
   });
 
@@ -112,7 +112,7 @@ describe("calibre_ping per-library index breakdown (#304)", () => {
     const r = await ping.handler({}, d);
     expect(r.isError).toBeUndefined();
     expect(text(r).split("\n")).toContain(
-      "Index: Programming Books: 1064/? indexed · Humanities: index unreadable · Reaserch Books: none",
+      "Index: Programming Books (id: Programming_Books) [default]: 1064/? indexed · Humanities (id: Humanities): index unreadable · Reaserch Books (id: Reaserch_Books): none",
     );
   });
 
@@ -122,7 +122,7 @@ describe("calibre_ping per-library index breakdown (#304)", () => {
         id === "Humanities" ? { modelId: MODEL_ID, dim: EMBED_DIM, indexVersion: INDEX_VERSION - 1 } : undefined,
     });
     expect(text(await ping.handler({}, d)).split("\n")).toContain(
-      "Index: Programming Books: 1064/1092 indexed · Humanities: stale index (rebuild) · Reaserch Books: none",
+      "Index: Programming Books (id: Programming_Books) [default]: 1064/1092 indexed · Humanities (id: Humanities): stale index (rebuild) · Reaserch Books (id: Reaserch_Books): none",
     );
   });
 

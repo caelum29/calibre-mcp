@@ -14,7 +14,7 @@ import path from "node:path";
 import { loadRuntimeConfig } from "../dist/runtime-config.js";
 import { ContentServerClient } from "../dist/calibre/content-server.js";
 import { Extractor } from "../dist/calibre/extract.js";
-import { chooseExtractFormat } from "../dist/calibre/extract.js";
+import { chooseExtractFormat } from "../dist/domain/extract-format.js";
 import { detectChapters } from "../dist/domain/structure/chapters.js";
 import { runLegalGate, estimateTokens, extractProse } from "../dist/domain/distill/legal-gate.js";
 

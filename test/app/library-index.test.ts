@@ -45,10 +45,10 @@ describe("libraryIndexReport (#346)", () => {
   it("reports each library's state on its own, counting via the no-breaker path", async () => {
     const searches: SearchParams[] = [];
     expect(await libraryIndexReport(deps({}, searches))).toEqual([
-      { id: "A", name: "Alpha", state: "ok", indexed: 40, total: 50, withoutEmbeddings: 3 },
-      { id: "B", name: "Beta", state: "none" },
-      { id: "C", name: "Gamma", state: "stale" },
-      { id: "D", name: "Delta", state: "unreadable" },
+      { id: "A", name: "Alpha", isDefault: true, state: "ok", indexed: 40, total: 50, withoutEmbeddings: 3 },
+      { id: "B", name: "Beta", isDefault: false, state: "none" },
+      { id: "C", name: "Gamma", isDefault: false, state: "stale" },
+      { id: "D", name: "Delta", isDefault: false, state: "unreadable" },
     ]);
     expect(searches).toHaveLength(1);
     expect(searches[0]).toMatchObject({ query: "", library: "A", num: 0, noBreaker: true });
@@ -65,7 +65,15 @@ describe("libraryIndexReport (#346)", () => {
 
   it("a count that errors reports total null, not a failure", async () => {
     const out = await libraryIndexReport(deps({ search: async () => Promise.reject(new Error("timeout")) }));
-    expect(out?.[0]).toEqual({ id: "A", name: "Alpha", state: "ok", indexed: 40, total: null, withoutEmbeddings: 3 });
+    expect(out?.[0]).toEqual({
+      id: "A",
+      name: "Alpha",
+      isDefault: true,
+      state: "ok",
+      indexed: 40,
+      total: null,
+      withoutEmbeddings: 3,
+    });
   });
 
   it("one 5 s budget covers libraryInfo and the counts", async () => {
@@ -88,7 +96,9 @@ describe("libraryIndexReport (#346)", () => {
     await vi.advanceTimersByTimeAsync(1999);
     expect(settled).toBe("pending");
     await vi.advanceTimersByTimeAsync(1);
-    expect(settled).toEqual([{ id: "A", name: "Alpha", state: "ok", indexed: 40, total: null, withoutEmbeddings: 3 }]);
+    expect(settled).toEqual([
+      { id: "A", name: "Alpha", isDefault: true, state: "ok", indexed: 40, total: null, withoutEmbeddings: 3 },
+    ]);
   });
 
   it("gives up on a hanging libraryInfo at exactly the 5 s budget, not before", async () => {
@@ -122,6 +132,8 @@ describe("libraryIndexReport (#346)", () => {
     await vi.advanceTimersByTimeAsync(99);
     expect(settled).toBe("pending");
     await vi.advanceTimersByTimeAsync(1);
-    expect(settled).toEqual([{ id: "A", name: "Alpha", state: "ok", indexed: 40, total: null, withoutEmbeddings: 3 }]);
+    expect(settled).toEqual([
+      { id: "A", name: "Alpha", isDefault: true, state: "ok", indexed: 40, total: null, withoutEmbeddings: 3 },
+    ]);
   });
 });

@@ -9,6 +9,8 @@ import { loadChunkCandidates, SqliteChunkIndex } from "./chunks.js";
 import { SqliteFigureIndex } from "./figures.js";
 import { SqliteFreshness } from "./freshness.js";
 import { IndexConnections } from "./schema.js";
+import { IndexFileOwners } from "./library-owner.js";
+import type { LibraryIdCollisionError } from "../../domain/library-id-collision.js";
 import type {
   BookHit,
   BookMeta,
@@ -43,6 +45,7 @@ export type * from "./types.js";
  * extract cache in tmp.
  */
 export class SqliteIndexStore implements IndexStore {
+  readonly #guard: IndexFileOwners;
   readonly #conn: IndexConnections;
   readonly #freshness: SqliteFreshness;
   readonly #writer: SqliteWriter;
@@ -53,12 +56,12 @@ export class SqliteIndexStore implements IndexStore {
     cfg: Config,
     /** Injected stderr logger seam (tests/callers may substitute); defaults to the module logger. */
     log: LogSink = defaultLog,
-    /** Known library ids for the #388 case-clash guard on open; absent = no guard. */
-    libraryIds?: () => readonly string[] | undefined,
   ) {
     // Split by concern (#272): schema.ts owns the connections + DDL; freshness/writer/chunks/figures
-    // each implement one narrow port, composed here.
-    this.#conn = new IndexConnections(cfg, log, libraryIds);
+    // each implement one narrow port, composed here. The owner guard (#414) reads the index files
+    // themselves, so it needs nothing from the caller and no store exists without it.
+    this.#guard = new IndexFileOwners(cfg.indexDir);
+    this.#conn = new IndexConnections(cfg, log, this.#guard);
     this.#freshness = new SqliteFreshness(this.#conn);
     // Resolved per call, so a spy on this.loadCandidates sees the cache's SQL reads.
     this.#chunks = new SqliteChunkIndex(this.#conn, log, (l) => this.loadCandidates(l));
@@ -71,12 +74,16 @@ export class SqliteIndexStore implements IndexStore {
     });
   }
 
+  libraryIdCollision(libraryId: string): LibraryIdCollisionError | undefined {
+    return this.#guard.collision(libraryId);
+  }
+
   hasIndex(libraryId: string): boolean {
     return this.#freshness.hasIndex(libraryId);
   }
 
-  indexMeta(libraryId: string): IndexMeta | undefined {
-    return this.#freshness.indexMeta(libraryId);
+  indexMeta(libraryId: string, opts?: { diagnostic?: boolean }): IndexMeta | undefined {
+    return this.#freshness.indexMeta(libraryId, opts);
   }
 
   hasVectors(libraryId: string): boolean {

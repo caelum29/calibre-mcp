@@ -17,4 +17,8 @@ export function labelledLine(label: string, value: string): string {
 export const PING_LINE_LABELS = {
   /** Calibre's own write gate (`calibreWriteAccess`, #439), next to our `writes:` gate line. */
   calibreWrites: "calibre writes",
+  /** Per-library index coverage (`indexes[]`, #440): `Name (id: Lib_Id) [default]: <state>` entries. */
+  index: "Index",
+  /** Semantic-search readiness + the resolved library's counts (`semantic`, #440); built in semantic/status.ts. */
+  semanticSearch: "Semantic search",
 } as const;

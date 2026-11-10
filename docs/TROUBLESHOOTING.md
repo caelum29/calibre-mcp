@@ -87,6 +87,17 @@ Semantic search only sees books you've indexed. Run `calibre_build_index` with a
 `ids`, or a Calibre `query` selecting the books, then search again. Re-run it after adding
 books (unchanged books are skipped).
 
+### "can't be indexed: its id differs only in letter case" (`library_id_collision`)
+
+**Symptom:** building, searching or pinging one library fails with this message; `calibre_ping`
+shows that library as `not indexable`. **Cause:** two libraries have ids that differ only in
+letter case (say `books` and `Books`). On a case-insensitive disk, the macOS default, both would
+use one index file. The library indexed first owns that file; the other is refused so their books
+never mix. **Fix:** rename the refused library's folder (e.g. `Books` → `Books-2`) and restart
+Calibre's Content Server. The owner keeps working meanwhile. If both libraries were indexed before
+this check existed, the owner's index may hold the other library's books: rebuild it with
+`calibre_build_index { force: true }`.
+
 ### `calibre_build_index`: "database is locked"
 
 Two calibre-mcp servers share one index file — typically Claude Desktop's extension and a

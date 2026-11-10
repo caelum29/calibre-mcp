@@ -176,6 +176,8 @@ Triage the `semantic` block (don't just echo it):
 | `dependencyInstalled: false` | Expected for `.mcpb` / `--omit=optional` installs; keyword search fully works. Offer the Phase 2(c) enable recipe |
 | `dependencyInstalled: true, loaded: "failed"` / `restartRequired: true` | Dep is on disk but this process can't use it — **restart the server**; nothing else fixes it |
 | `modelCached: false` | First embedding build will download the ~118 MB model — set expectations |
+| `Index:` entry `busy — index locked by another process, retry` | Another process (often a `calibre_build_index` in a second client) holds that library's index; nothing is damaged. Re-run ping later. `index unreadable` instead means the file itself is damaged: rebuild |
+| `Index:` entry `not indexable — id "X" differs only in case from "Y", which was indexed first` | Two library ids differ only in letter case; `Y` owns the index. Tell the user to rename library `X`'s folder and restart the Content Server; `Y` keeps working |
 | `vectorCount` 0 / missing with dep OK | No semantic index yet — offer `calibre_build_index` (Phase 4) |
 | `calibre writes: refused` | Calibre blocks anonymous writes: enable "Allow un-authenticated local connections to make changes" (Preferences → Sharing over the net), then restart the Content Server. With `CALIBRE_MCP_ENABLE_WRITE` on, ping adds a `warning:` line: every write tool fails until then |
 | `calibre writes: unknown (<reason>)` | The probe got no clear answer; reads are fine. Writes may still work: try one and read its error |

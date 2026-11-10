@@ -1,4 +1,4 @@
-// PR #380 review round 1 (#370 §Write path): a no-op tags merge is re-checked against a fresh
+// #370 (PR #380 review): a no-op tags merge is re-checked against a fresh
 // read before it is skipped (the GUI may have changed the tags since selection), and the
 // intended-value check trims whitespace and splits an "A & B" author entry like calibredb does.
 import { describe, expect, it } from "vitest";
@@ -36,22 +36,22 @@ describe("tags ops re-read before skipping a no-op book (PR #380 review)", () =>
 
 describe("matchesIntended trims and splits like calibredb (PR #380 review)", () => {
   it("should_count_a_tag_entry_with_surrounding_whitespace", () => {
-    expect(changesSatisfied(book(), book({ tags: ["a"] }), { tags: ["a "] })).toBe(true);
+    expect(changesSatisfied(book({ tags: ["a"] }), { tags: ["a "] })).toBe(true);
   });
 
   it("should_count_a_publisher_with_surrounding_whitespace", () => {
-    expect(changesSatisfied(book(), book({ publisher: "P" }), { publisher: "  P " })).toBe(true);
+    expect(changesSatisfied(book({ publisher: "P" }), { publisher: "  P " })).toBe(true);
   });
 
   it("should_count_a_title_read_back_with_trailing_whitespace", () => {
-    expect(changesSatisfied(book(), book({ title: "New " }), { title: "New" })).toBe(true);
+    expect(changesSatisfied(book({ title: "New " }), { title: "New" })).toBe(true);
   });
 
   it("should_split_an_A_and_B_author_entry", () => {
-    expect(changesSatisfied(book(), book({ authors: ["A", "B"] }), { authors: ["A & B"] })).toBe(true);
+    expect(changesSatisfied(book({ authors: ["A", "B"] }), { authors: ["A & B"] })).toBe(true);
   });
 
   it("should_still_reject_a_different_publisher_after_trimming", () => {
-    expect(changesSatisfied(book(), book({ publisher: "Q" }), { publisher: " P " })).toBe(false);
+    expect(changesSatisfied(book({ publisher: "Q" }), { publisher: " P " })).toBe(false);
   });
 });

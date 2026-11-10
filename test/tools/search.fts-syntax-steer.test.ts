@@ -10,6 +10,7 @@ import { FtsError } from "../../src/domain/errors.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
 import type { SearchDeps, SearchIndex } from "../../src/tools/calibre_search.js";
 import { fakeFts, type FakeFtsHit } from "./fake-fts.js";
+import { textOf } from "./text-of.js";
 
 // Boundary stub: only what the FTS library branch touches.
 function deps(fts: ToolDeps["fts"]): SearchDeps {
@@ -28,8 +29,6 @@ function deps(fts: ToolDeps["fts"]): SearchDeps {
   };
 }
 
-const textOf = (r: { content: { type: string; text?: string }[] }): string =>
-  r.content.map((c) => c.text ?? "").join("\n");
 const hits: FakeFtsHit[] = [{ bookId: 1, snippet: "x" }];
 
 describe("calibre_search FTS syntax consistency (PR #311 review)", () => {

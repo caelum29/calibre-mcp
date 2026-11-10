@@ -56,7 +56,6 @@ describe("settleFailedWrite — outcome table (#389)", () => {
       kind: "confirmed",
       cause: "dropped",
       after: LANDED,
-      refused: false,
     });
   });
 
@@ -66,17 +65,15 @@ describe("settleFailedWrite — outcome table (#389)", () => {
       kind: "unverified",
       cause: "dropped",
       check: { status: "not-landed" },
-      refused: false,
     });
   });
 
   it("should_confirm_a_drop_then_refusal_the_re_read_shows", async () => {
     const { deps: d } = deps(LANDED);
     expect(await settleFailedWrite(d, WRITE, await droppedThenRefused())).toEqual({
-      kind: "confirmed",
+      kind: "refusedAfterLanding",
       cause: "dropped",
       after: LANDED,
-      refused: true,
     });
   });
 
@@ -88,10 +85,9 @@ describe("settleFailedWrite — outcome table (#389)", () => {
   it("should_leave_a_drop_then_refusal_unverified_when_the_re_read_shows_a_third_value", async () => {
     const { deps: d } = deps(FOREIGN);
     expect(await settleFailedWrite(d, WRITE, await droppedThenRefused())).toEqual({
-      kind: "unverified",
+      kind: "refusedUnverified",
       cause: "dropped",
       check: { status: "unverifiable", foreign: [{ field: "publisher", after: "GUI", intended: "New" }] },
-      refused: true,
     });
   });
 
@@ -120,7 +116,6 @@ describe("settleFailedWrite — outcome table (#389)", () => {
       kind: "confirmed",
       cause: "timeout",
       after: LANDED,
-      refused: false,
     });
   });
 
@@ -130,7 +125,6 @@ describe("settleFailedWrite — outcome table (#389)", () => {
       kind: "unverified",
       cause: "timeout",
       check: { status: "not-landed" },
-      refused: false,
     });
   });
 
@@ -140,7 +134,6 @@ describe("settleFailedWrite — outcome table (#389)", () => {
       kind: "unverified",
       cause: "timeout",
       check: { status: "unverifiable", foreign: [{ field: "publisher", after: "GUI", intended: "New" }] },
-      refused: false,
     });
   });
 
@@ -150,7 +143,6 @@ describe("settleFailedWrite — outcome table (#389)", () => {
       kind: "unverified",
       cause: "timeout",
       check: { status: "unverifiable" },
-      refused: false,
     });
   });
 

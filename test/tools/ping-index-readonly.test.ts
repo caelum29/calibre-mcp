@@ -91,7 +91,7 @@ describe("calibre_ping opens index files read-only (#325 review)", () => {
       files: readdirSync(dir),
       writableOpens: opensOf(file).filter((o) => !o.readOnly).length,
     }).toEqual({
-      line: "Index: Programming Books: index unreadable",
+      line: "Index: Programming Books (id: Programming_Books) [default]: index unreadable",
       unchanged: true,
       files: [`${LIB}.sqlite`],
       writableOpens: 0,
@@ -112,7 +112,7 @@ describe("calibre_ping opens index files read-only (#325 review)", () => {
       opened: opensOf(file).length > 0,
       writableOpens: opensOf(file).filter((o) => !o.readOnly).length,
     }).toEqual({
-      line: "Index: Programming Books: 1/10 indexed (1 without embeddings)",
+      line: "Index: Programming Books (id: Programming_Books) [default]: 1/10 indexed (1 without embeddings)",
       opened: true,
       writableOpens: 0,
     });
