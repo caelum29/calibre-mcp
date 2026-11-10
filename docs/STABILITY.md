@@ -69,7 +69,7 @@ one; a call site may give a sharper one.
 | `index_missing` | No semantic index exists for the requested books. | run calibre_build_index first |
 | `index_incompatible` | The semantic index was built by an incompatible version. | rebuild with calibre_build_index { force: true } |
 | `index_build_failed` | Building the semantic index failed. | — |
-| `library_id_collision` | Two library folders have ids that differ only in case. | rename one of the two library folders the error names (ids differ only in case) |
+| `library_id_collision` | Two library folders have ids that differ only in case. | rename the folder of the refused library the error names (its id differs only in case from the library indexed first) |
 | `dependency_missing` | A required external tool or optional package is missing. | install the tool the error names, then retry |
 | `extraction_failed` | A book's text or figures could not be extracted. | — |
 | `internal` | An unexpected server error. | — |
