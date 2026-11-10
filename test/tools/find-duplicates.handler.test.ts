@@ -80,18 +80,6 @@ describe("calibre_find_duplicates handler", () => {
     expect(r.isError).toBeFalsy();
     expect(r.structuredContent).toMatchObject({ mode: "compare", keep: 2 });
   });
-
-  it("notes that binary mode is deferred", async () => {
-    const r = await findDuplicatesTool.handler(args(), deps([book({ id: 1, title: "X" })]));
-    expect((r.content[0] as { text: string }).text).toContain("binary mode");
-  });
-
-  it("describes binary mode as not implemented yet, not 'deferred in v1' (#306)", async () => {
-    const r = await findDuplicatesTool.handler(args(), deps([book({ id: 1, title: "X" })]));
-    const text = (r.content[0] as { text: string }).text;
-    expect(text).toContain("binary mode (byte-level dedupe) is not implemented yet.");
-    expect(text).not.toContain("deferred in v1");
-  });
 });
 
 // issue #211 — the group cursor must reach text-only clients (Desktop) too

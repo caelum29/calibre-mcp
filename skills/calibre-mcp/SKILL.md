@@ -47,7 +47,7 @@ Mostly PDF/EPUB, technical, EN + RU. Calibre GUI + Content Server on `:8080` are
 | `calibre_semantic_search` | Meaning-based search across the library or within one book | `query`, `scope: library\|book`, `bookId`, `mode: hybrid\|vector\|keyword`, `topK`, `filter` (bundle), `include_excluded` |
 | `calibre_build_index` | Build/refresh the semantic index (needed before semantic search) | `ids`/`query`/`bookId` to scope, `force`, `enableFts`, `keywordOnly` |
 | `calibre_find_duplicates` | Dup detection | `mode: identical\|similar\|compare`, `ids`, `query`, `filter` (bundle) |
-| `calibre_quality_report` | Library audit: missing metadata, rule violations, readability | `checks`, `ids`/`query`/`filter`, `readability` |
+| `calibre_quality_report` | Library audit: missing metadata, rule violations | `checks`, `ids`/`query`/`filter` |
 | `calibre_recover_metadata` | Propose metadata for raw-filename books (ISBN → OpenLibrary → Google Books) | `id`, `sources` — returns a *proposal*; apply via `calibre_update_book` |
 | `calibre_update_book` | Write metadata for one book | `id`, `changes` (object incl. `#custom` fields) |
 | `calibre_bulk_update` | Same change across many books | `changes` and/or `tags_add`/`tags_remove`, `ids` OR `query` OR `filter` (one required), `preview` |

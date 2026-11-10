@@ -1,12 +1,11 @@
 // calibre_quality_report — scan the library (or an ids/query subset) for metadata problems:
 // missing fields, raw-filename titles, invalid ISBNs, author-sort mismatches, series gaps, suspect (glued/junk) authors.
-// Read-only; the raw-filename findings feed calibre_recover_metadata. readability (Flesch/Fog
-// over full text) is deferred — it needs text extraction, not just metadata.
+// Read-only; the raw-filename findings feed calibre_recover_metadata.
 
 import { z } from "zod";
 import { ALL_CHECKS, type QualityCheck, runQualityChecks } from "../domain/curation/quality.js";
 import { buildScopedQuery, honestyLines, resolveFilter } from "../app/bundles.js";
-import { BookId, CoercedBool, CursorParam, jsonArray, limitParam } from "./coerce.js";
+import { BookId, CursorParam, jsonArray, limitParam } from "./coerce.js";
 import { pageCursor, pageOffset, selectionKey } from "./cursor.js";
 import { defineTool } from "./define.js";
 import { selectBooks } from "../app/select-books.js";
@@ -32,7 +31,6 @@ export const qualityReportTool = defineTool({
     query: z.string().max(512).optional(),
     filter: z.string().trim().min(1).max(256).optional(),
     library: z.string().optional(),
-    readability: CoercedBool().optional(),
     limit: limitParam(500, 100),
     cursor: CursorParam,
   },
@@ -109,8 +107,7 @@ export const qualityReportTool = defineTool({
           Object.entries(byCheck)
             .map(([k, v]) => `${k}=${v}`)
             .join(", ") || "none"
-        }.` +
-        (args.readability ? "\nreadability check is not implemented yet (needs full-text extraction)." : "");
+        }.`;
 
       const lines = page.map((i) => `[${i.severity}] #${i.bookId} "${i.title}" — ${i.check}: ${i.message}`);
       const text = `${summary}\n${lines.join("\n")}`;
