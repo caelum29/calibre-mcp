@@ -65,3 +65,23 @@ describe("ContentServerClient.probeWriteAccess", () => {
     });
   });
 });
+
+// #475 review: pin the safety property itself — one bodiless POST, never re-sent on a redirect.
+describe("ContentServerClient.probeWriteAccess request shape (#439 review)", () => {
+  it("should_send_no_body_and_not_follow_redirects", async () => {
+    const fetch = vi.fn().mockResolvedValue(new Response("not available in version: 999", { status: 404 }));
+    vi.stubGlobal("fetch", fetch);
+    await client().probeWriteAccess(asLibId("My_Books"));
+    const init = fetch.mock.calls[0]![1] as RequestInit;
+    expect({ body: init.body, redirect: init.redirect }).toEqual({ body: undefined, redirect: "manual" });
+  });
+
+  it("should_send_one_request_and_report_unknown_on_a_redirect", async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValue(new Response(null, { status: 302, headers: { location: "http://127.0.0.1:9/login" } }));
+    vi.stubGlobal("fetch", fetch);
+    const r = await client().probeWriteAccess(asLibId("My_Books"));
+    expect({ calls: fetch.mock.calls.length, r }).toEqual({ calls: 1, r: { access: "unknown", reason: "HTTP 302" } });
+  });
+});

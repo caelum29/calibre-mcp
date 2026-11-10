@@ -1,7 +1,8 @@
 // #439: calibre_ping reports whether Calibre itself accepts writes, not just our own gate,
 // in both channels, and flags our gate ON + Calibre refusing as a mismatch. Fakes only.
 
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { ContentServerClient } from "../../src/calibre/content-server.js";
 import { allTools } from "../../src/tools/registry.js";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
@@ -113,5 +114,40 @@ describe("calibre_ping Calibre write access (#439)", () => {
       undefined,
       false,
     ]);
+  });
+});
+
+// #475 review: a probe that never answers must not hold up ping — the adapter's own budget turns
+// it into `unknown (timed out)` and the rest of the report is normal.
+describe("calibre_ping with a hanging write probe (#439 review)", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it("should_report_unknown_timed_out_and_stay_ok", async () => {
+    vi.useFakeTimers();
+    // the POST never answers until its abort signal fires
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        (_u: string, init: RequestInit) =>
+          new Promise((_res, rej) =>
+            init.signal!.addEventListener("abort", () => rej(Object.assign(new Error("a"), { name: "AbortError" }))),
+          ),
+      ),
+    );
+    const server = new ContentServerClient(loadConfig({ CALIBRE_MCP_SERVER_URL: "http://127.0.0.1:9" }));
+    const { d } = deps({});
+    d.content.probeWriteAccess = (libId, opts) => server.probeWriteAccess(libId, opts);
+    const pending = ping().handler({}, d);
+    await vi.advanceTimersByTimeAsync(5000);
+    const r = await pending;
+    expect([r.isError, r.structuredContent?.ok, r.structuredContent?.calibreWriteAccess]).toEqual([
+      undefined,
+      true,
+      "unknown",
+    ]);
+    expect(lines(r)).toContain("calibre writes: unknown (timed out)");
   });
 });

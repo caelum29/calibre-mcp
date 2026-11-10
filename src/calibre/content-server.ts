@@ -330,7 +330,6 @@ export class ContentServerClient implements LibraryReader {
     return out;
   }
 
-  /** GET /ajax/categories/{libId} → Category[]. */
   /**
    * Does Calibre accept writes from us (#439)? POSTs to set_metadata at module version 999, which
    * Calibre refuses after its write check and before it reads args or opens the library, so the
@@ -346,6 +345,7 @@ export class ContentServerClient implements LibraryReader {
     }
   }
 
+  /** GET /ajax/categories/{libId} → Category[]. */
   async categories(library?: string): Promise<Category[]> {
     const libId = await this.resolveLibraryId(library);
     const raw = await this.#getLib<RawCategory[]>(libId, `${this.base}/ajax/categories/${encodeURIComponent(libId)}`);

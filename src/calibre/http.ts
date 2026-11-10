@@ -44,7 +44,9 @@ export async function getBytes(
  * {@link CalibreHttpError} like {@link getJson}.
  */
 export async function postForStatus(url: string, opts: HttpOptions = {}): Promise<{ status: number; body: string }> {
-  return fetchBody(url, { ...opts, method: "POST", anyStatus: true }, async (res) => ({
+  // manual redirects: a 3xx must not be re-sent as a GET elsewhere — one request, and a 3xx is
+  // just a status for the caller to classify
+  return fetchBody(url, { ...opts, method: "POST", anyStatus: true, redirect: "manual" }, async (res) => ({
     status: res.status,
     body: await res.text(),
   }));
@@ -53,7 +55,7 @@ export async function postForStatus(url: string, opts: HttpOptions = {}): Promis
 // Shared GET: timeout + caller-signal abort + error normalization; `read` consumes a 2xx body.
 async function fetchBody<T>(
   url: string,
-  opts: HttpOptions & { method?: "POST"; anyStatus?: boolean },
+  opts: HttpOptions & { method?: "POST"; anyStatus?: boolean; redirect?: "follow" | "manual" },
   read: (res: Response) => Promise<T>,
 ): Promise<T> {
   if (opts.signal?.aborted) throw new OperationCancelledError();
@@ -64,7 +66,11 @@ async function fetchBody<T>(
   opts.signal?.addEventListener("abort", onAbort, { once: true });
 
   try {
-    const res = await fetch(url, { method: opts.method ?? "GET", signal: controller.signal });
+    const res = await fetch(url, {
+      method: opts.method ?? "GET",
+      redirect: opts.redirect ?? "follow",
+      signal: controller.signal,
+    });
     if (!res.ok && !opts.anyStatus) {
       logNon2xx("content-server non-2xx", logUrl(url), res.status);
       throw new CalibreHttpError(res.status, url, `Content Server returned HTTP ${res.status}`);
