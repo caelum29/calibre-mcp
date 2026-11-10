@@ -1,6 +1,32 @@
 import { describe, it, expect } from "vitest";
 import { stripDollarSchema, stripOutputSchemaDollarSchema } from "../src/wire-compat.js";
 
+// #434: the output-schema `$schema` strip is gone (Desktop 4.23118.1 + Code 2.1.318 accept it).
+describe("outputSchema is passed through untouched (#434)", () => {
+  it("should_keep_the_sdk_emitted_output_schema_dialect_and_still_pin_the_input_one", () => {
+    const out2020 = { $schema: "https://json-schema.org/draft/2020-12/schema", type: "object" };
+    const msg = {
+      jsonrpc: "2.0" as const,
+      id: 1,
+      result: {
+        tools: [
+          {
+            name: "a",
+            inputSchema: { $schema: "https://json-schema.org/draft/2020-12/schema", type: "object" },
+            outputSchema: { ...out2020 },
+          },
+        ],
+      },
+    };
+    stripDollarSchema(msg);
+    expect(msg.result.tools[0]?.outputSchema).toEqual(out2020);
+    expect(msg.result.tools[0]?.inputSchema).toEqual({
+      $schema: "http://json-schema.org/draft-07/schema#",
+      type: "object",
+    });
+  });
+});
+
 describe("stripDollarSchema", () => {
   it("removes $schema from tools/list output schemas only", () => {
     const msg = {
