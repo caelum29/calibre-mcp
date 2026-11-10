@@ -1115,7 +1115,24 @@ const FTS_FIXTURE: Scenario = {
   args: { bookId: 101, enableFts: true },
   deps: () => fakeDeps({ embedder: fakeEmbedder, index: memoryStore(), env: { CALIBRE_MCP_ENABLE_WRITE: "0" } }),
 };
-const ALL_RENDERED = [...SCENARIOS, ...PAGINATED_SCENARIOS, ...PAYLOAD_SCENARIOS, ...PING_FIXTURES, FTS_FIXTURE];
+// real + unknown ids: both results print `Not found (skipped): …` (#522, #529); gate on for the apply
+const REMOVE_MIXED: Scenario[] = [
+  { tool: "calibre_remove_book", label: "dry run, mixed ids", args: { ids: [101, 999998, 102, 999999] } },
+  {
+    tool: "calibre_remove_book",
+    label: "confirmed, mixed ids",
+    args: { ids: [101, 999998, 102, 999999], confirm: "true" },
+    deps: () => fakeDeps({ env: { CALIBRE_MCP_ENABLE_WRITE: "1" } }),
+  },
+];
+const ALL_RENDERED = [
+  ...SCENARIOS,
+  ...PAGINATED_SCENARIOS,
+  ...PAYLOAD_SCENARIOS,
+  ...PING_FIXTURES,
+  FTS_FIXTURE,
+  ...REMOVE_MIXED,
+];
 
 /** A structured field's values: `a.b` → [value], `a[].b` → one per item. */
 function fieldValues(sc: unknown, field: string): unknown[] {
@@ -1200,6 +1217,18 @@ describe("Labelled lines (#454)", () => {
     const hit = (await rendered).find(({ s }) => s.tool === "calibre_ping" && s.label === label)!;
     expect(occurrences(textChannel(hit.r), registered("calibre_ping", "writes"))).toEqual([want]);
   });
+
+  it.each(REMOVE_MIXED.map((s) => [s.label, s] as const))(
+    "calibre_remove_book's Not found line is registered and carries notFoundIds (%s)",
+    async (_label, sc) => {
+      const hit = (await rendered).find(({ s }) => s === sc)!;
+      expect(hit.r.structuredContent).toMatchObject({ notFoundIds: [999998, 999999] });
+      expect(occurrences(textChannel(hit.r), registered("calibre_remove_book", "Not found"))).toEqual([
+        "999998",
+        "999999",
+      ]);
+    },
+  );
 
   it("calibre_build_index's FTS line is registered and carries fts.status", async () => {
     const hit = (await rendered).find(({ s }) => s === FTS_FIXTURE)!;
