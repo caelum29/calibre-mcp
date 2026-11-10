@@ -60,13 +60,22 @@ describe("calibre_get_figures scan failures", () => {
   const cases: Array<[ConstructorParameters<typeof FiguresError>[0], string]> = [
     [
       "NO_POPPLER",
-      "No poppler tools found (pdfimages/pdftotext) — install with `brew install poppler` to scan PDF figures.",
+      "No poppler tools found (pdfimages/pdftotext) — install with `brew install poppler` to scan PDF figures.\nCode: dependency_missing\nNext: install the tool the error names, then retry",
     ],
-    ["NO_UNZIP", "No unzip binary found — needed to scan EPUB figures."],
-    ["FORMAT_UNSUPPORTED", "Figures need an EPUB or PDF source; pdf is not supported."],
-    ["SCAN_TIMEOUT", "Figure scan timed out for book 929 (pdf) — the file may be very large."],
-    ["SCAN_FAILED", "Could not scan book 929 (pdf) for figures — the file may be DRM-protected or corrupt."],
-    ["FETCH_FAILED", "FIGURES_FETCH_FAILED"],
+    [
+      "NO_UNZIP",
+      "No unzip binary found — needed to scan EPUB figures.\nCode: dependency_missing\nNext: install the tool the error names, then retry",
+    ],
+    ["FORMAT_UNSUPPORTED", "Figures need an EPUB or PDF source; pdf is not supported.\nCode: invalid_input"],
+    [
+      "SCAN_TIMEOUT",
+      "Figure scan timed out for book 929 (pdf) — the file may be very large.\nCode: timeout\nNext: retry, or narrow the request",
+    ],
+    [
+      "SCAN_FAILED",
+      "Could not scan book 929 (pdf) for figures — the file may be DRM-protected or corrupt.\nCode: extraction_failed",
+    ],
+    ["FETCH_FAILED", "FIGURES_FETCH_FAILED\nCode: extraction_failed"],
   ];
   for (const [code, text] of cases) {
     it(`should_say_exactly_this_for_${code}`, async () => {

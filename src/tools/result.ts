@@ -4,6 +4,7 @@
 
 import { defaultHint, errorCodeFor, type ErrorCode } from "../domain/error-codes.js";
 import type { PageCursor } from "./cursor.js";
+import { ERROR_LINE_LABELS, labelledLine } from "./labelled-lines.js";
 import type { ContentBlock, ToolResult } from "./types.js";
 
 // fence moved to shared/ (#261); re-exported so tool handlers keep their import site
@@ -50,13 +51,19 @@ export interface ToolErrorOptions {
  * Error result — LLM-actionable message, not a stack trace. `message` should tell the
  * model what to do next (e.g. "Writes are disabled; set CALIBRE_MCP_ENABLE_WRITE=1").
  * `code` (closed set, #249) and the hint go to structuredContent, where the `tool call`
- * log record picks them up. The message is mirrored there as `error`: Claude Code renders
- * structuredContent when present, so a code-only payload would hide the steer.
+ * log record picks them up, AND to the text as `Code:`/`Next:` lines: on isError results
+ * both Desktop and Claude Code show the model the text only (#437). The message is mirrored
+ * in structuredContent as `error` for clients that render that channel instead.
  */
 export function toolError(code: ErrorCode, message: string, opts: ToolErrorOptions = {}): ToolResult {
   const hint = opts.hint ?? defaultHint(code);
+  const lines = [opts.bare ? message : `Error: ${message}`, labelledLine(ERROR_LINE_LABELS.code, code)];
+  // a message that already spells out the step needs no duplicate Next: line; a bare report
+  // (ping) always gets it — its log excerpt may quote the hint as data, not as the steer
+  if (hint !== undefined && (opts.bare || !message.includes(hint)))
+    lines.push(labelledLine(ERROR_LINE_LABELS.next, hint));
   return {
-    content: [{ type: "text", text: opts.bare ? message : `Error: ${message}` }],
+    content: [{ type: "text", text: lines.join("\n") }],
     // a caller's own `error` field (e.g. ping's raw cause) wins over the mirrored message
     structuredContent: { error: message, ...opts.structured, errorCode: code, ...(hint === undefined ? {} : { hint }) },
     isError: true,

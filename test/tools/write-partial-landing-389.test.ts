@@ -40,7 +40,9 @@ const update = (deps: BaseDeps) => updateBookTool.handler({ id: 1, changes: CHAN
 
 /** The exact toolError shape for `write_unverified`, both channels. */
 const unverified = (message: string) => ({
-  content: [{ type: "text", text: `Error: ${message}` }],
+  content: [
+    { type: "text", text: `Error: ${message}\nCode: write_unverified\nNext: ${defaultHint("write_unverified")}` },
+  ],
   structuredContent: { error: message, errorCode: "write_unverified", hint: defaultHint("write_unverified") },
   isError: true,
 });

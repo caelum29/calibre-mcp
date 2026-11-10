@@ -125,9 +125,9 @@ function figuresCode(err: FiguresError): ErrorCode {
   }
 }
 
-// The generic next step per code, for the log record when the call site gives no sharper one.
-// The model already got the full steer in the message; this is what the file log and
-// calibre_ping.recentErrors show next to the code.
+// The generic next step per code, used when the call site gives no sharper one. toolError puts it
+// in the text as a `Next:` line (error results are text-only on both clients, #437), in
+// structuredContent, and so in the file log and calibre_ping.recentErrors.
 const DEFAULT_HINTS: Partial<Record<ErrorCode, string>> = {
   calibre_unreachable: "start it in Calibre (Connect/share → Start Content server) or set CALIBRE_MCP_SERVER_URL",
   calibre_busy: "retry in a few seconds — calibre_ping shows when the library is free",
