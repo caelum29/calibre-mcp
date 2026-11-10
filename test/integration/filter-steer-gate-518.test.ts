@@ -54,10 +54,9 @@ describe("unknown-bundle steer follows the gate in every filter-taking tool (#51
     const out: string[] = [];
     for (const on of [false, true]) {
       invalidateBundleCache();
-      const r = await (tool as { handler: (a: unknown, d: unknown) => Promise<never> }).handler(
-        { ...args, filter: "Golang" },
-        deps(on),
-      );
+      const r = await (
+        tool as unknown as { handler: (a: unknown, d: unknown) => Promise<Parameters<typeof text>[0]> }
+      ).handler({ ...args, filter: "Golang" }, deps(on));
       out.push(text(r));
     }
     expect(out).toEqual([`${FACT} ${GATE_OFF}`, `${FACT} ${GATE_ON}`].map((t) => expect.stringContaining(t)));
