@@ -230,7 +230,8 @@ GUI preference); if a write is refused, that's the first thing to check. `calibr
 
 An `isError` result already says what to do next — follow it. When the cause stays unclear
 or the same failure repeats, call `calibre_ping`: its `recent errors` list the server's own
-failures with tool and `call` id, plus today's log file path. With file access, read the
+failures with tool and `call` id, plus today's log file path. Its `Index:` line lists every
+library as `Name (id: Lib_Id) [default]: …`: pass that id, not the display name, as `library`. With file access, read the
 `README.md` beside that log file and trace the failing `call` id; report the logged cause
 rather than a guess.
 
