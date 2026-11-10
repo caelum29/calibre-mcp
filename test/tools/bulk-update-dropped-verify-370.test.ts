@@ -93,7 +93,8 @@ describe("calibre_bulk_update — dropped write is verified by re-read (#370)", 
       "Error: Stopped: the Calibre Content Server is unreachable after 2/3 book(s) were already updated. " +
         "Already committed: 1, 2. Not attempted: 3. " +
         "The connection dropped mid-request, but a re-read confirmed book 2 was written. " +
-        "Once the Content Server is back, re-run with ids=[3].",
+        "Once the Content Server is back, re-run with ids=[3]." +
+        "\nCode: calibre_unreachable",
     );
   });
 

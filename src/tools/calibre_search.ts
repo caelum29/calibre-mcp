@@ -516,6 +516,8 @@ function ftsUnavailable(): ToolResult {
   return toolError(
     "fts_unavailable",
     `Full-text search isn't available in this server build. ${KEYWORD_SEARCH_FALLBACK}`,
+    // this build has no FTS at all: the generic "enable it in Calibre" step would contradict (#437)
+    { hint: KEYWORD_SEARCH_FALLBACK },
   );
 }
 

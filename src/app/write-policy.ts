@@ -3,6 +3,7 @@
 // transient-failure retry (#233), timed-out-write verification (#33), failed-write outcome (#390).
 
 import { CalibreCliError, CalibreCliTimeoutError } from "../domain/errors.js";
+import { defaultHint } from "../domain/error-codes.js";
 import { CONNECTION_STDERR, DROPPED_MID_REQUEST_STDERR, WRITE_REFUSED_STDERR } from "../domain/calibredb-stderr.js";
 import { changesSatisfied, foreignValues, type ForeignValue } from "../domain/book-fields.js";
 import type { ChangeValue } from "../domain/book-fields.js";
@@ -21,8 +22,7 @@ export function isWriteRefused(err: unknown): boolean {
 
 /** The actionable message shown when the server refuses a write. */
 export const WRITE_REFUSED_MESSAGE =
-  "Calibre refused the write. Anonymous writes are blocked — restart the Content Server " +
-  "with --enable-local-write (localhost), or configure an authenticated non-restricted user. " +
+  `Calibre refused the write. Anonymous writes are blocked — ${defaultHint("write_refused")}. ` +
   'See the README\'s "Enabling writes" section.';
 
 // ── transient retry ──

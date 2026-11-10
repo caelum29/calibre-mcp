@@ -410,7 +410,7 @@ describe("calibre_merge_books failure semantics (#33)", () => {
       "  - merge metadata into #10\n" +
       "  - trash sources #12";
     expect(r.isError).toBe(true);
-    expect((r.content[0] as { text: string }).text).toBe(`Error: ${steer}`);
+    expect((r.content[0] as { text: string }).text).toBe(`Error: ${steer}\nCode: write_failed`);
     expect(r.structuredContent).toMatchObject({
       error: steer,
       errorCode: "write_failed",

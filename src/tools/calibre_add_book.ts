@@ -4,7 +4,7 @@
 
 import { z } from "zod";
 import { defineTool } from "./define.js";
-import { validateAddPath } from "./add-path.js";
+import { ADD_ROOTS_STEP, validateAddPath } from "./add-path.js";
 import { probeDuplicates, renderHint, renderNotProbed, renderProbeFailed } from "./add-dup-probe.js";
 import { unprobedIds, type PossibleDuplicate } from "../domain/curation/add-probe.js";
 import { toolError, toolOk, errorFromCatch } from "./result.js";
@@ -49,7 +49,9 @@ export const addBookTool = defineTool({
     try {
       const check = validateAddPath(args.path, deps.config.addRoots);
       if (!check.ok)
-        return check.outsideRoots ? toolError("path_not_allowed", check.reason) : toolError("not_found", check.reason);
+        return check.outsideRoots
+          ? toolError("path_not_allowed", check.reason, { hint: ADD_ROOTS_STEP })
+          : toolError("not_found", check.reason);
 
       // calibredb --with-library needs the library ID, not the display name (routed-write 404 fix).
       const libId = await deps.content.resolveLibraryId(args.library);

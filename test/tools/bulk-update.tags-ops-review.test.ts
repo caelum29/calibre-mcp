@@ -68,7 +68,7 @@ describe("tags ops — spelling lookup failure (PR #333 review)", () => {
     expect(r.isError).toBe(true);
     expect(r.structuredContent?.errorCode).toBe("timeout");
     expect(textOf(r)).toBe(
-      "Error: Couldn't check the library's existing tag spellings (Content Server request timed out). Nothing was written; retry the call.",
+      "Error: Couldn't check the library's existing tag spellings (Content Server request timed out). Nothing was written; retry the call.\nCode: timeout\nNext: retry, or narrow the request",
     );
     expect(f.cli).not.toHaveBeenCalled();
   });
