@@ -1,0 +1,19 @@
+test/tools/steer-once-437b.test.ts
+  s_53ff9ec34f3db8::t_95347be0c5ec8d 1-108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e381bcf380ed4aa4e6ba7629d84a44e1e8c518aa",
+  "prompts": {},
+  "sessions": {
+    "s_53ff9ec34f3db8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a4bd7ff7-48cb-45dc-95d3-fb2b8e7ff920",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
