@@ -113,7 +113,7 @@ describe("calibre_bulk_update breaker text (#233)", () => {
         "Failed: 1. Not attempted: 2. " +
         "Could not reach the Calibre Content Server (connection refused or dropped) after 2 retries. " +
         "Check that Calibre / its Content Server is running, then retry. Once it is back, re-run with ids=[1,2]." +
-        "\nCode: calibre_unreachable\nNext: start it in Calibre (Connect/share → Start Content server) or set CALIBRE_MCP_SERVER_URL",
+        "\nCode: calibre_unreachable",
     );
   });
 
@@ -132,7 +132,7 @@ describe("calibre_bulk_update breaker text (#233)", () => {
         "Already committed: 1. Failed: 2. " +
         "Could not reach the Calibre Content Server (connection refused or dropped) after 2 retries. " +
         "Check that Calibre / its Content Server is running, then retry. Once it is back, re-run with ids=[2]." +
-        "\nCode: calibre_unreachable\nNext: start it in Calibre (Connect/share → Start Content server) or set CALIBRE_MCP_SERVER_URL",
+        "\nCode: calibre_unreachable",
     );
   });
 

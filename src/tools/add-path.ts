@@ -5,6 +5,9 @@
 import { realpathSync, statSync } from "node:fs";
 import path from "node:path";
 
+/** The outside-roots refusal's own step; calibre_add_book passes it as the hint so it shows once (#437). */
+export const ADD_ROOTS_STEP = "Set CALIBRE_MCP_ADD_ROOTS to add more";
+
 export type AddPathResult =
   | { ok: true; resolved: string }
   // outsideRoots tells the whitelist refusal apart from a missing file (#249 code)
@@ -45,9 +48,7 @@ export function validateAddPath(candidate: string, roots: string[]): AddPathResu
     return {
       ok: false,
       outsideRoots: true,
-      reason:
-        `Path is outside the allowed import roots. Allowed: ${roots.join(", ")}. ` +
-        `Set CALIBRE_MCP_ADD_ROOTS to add more.`,
+      reason: `Path is outside the allowed import roots. Allowed: ${roots.join(", ")}. ` + `${ADD_ROOTS_STEP}.`,
     };
   }
   return { ok: true, resolved };

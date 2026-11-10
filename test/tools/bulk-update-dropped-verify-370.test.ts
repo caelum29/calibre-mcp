@@ -94,7 +94,7 @@ describe("calibre_bulk_update — dropped write is verified by re-read (#370)", 
         "Already committed: 1, 2. Not attempted: 3. " +
         "The connection dropped mid-request, but a re-read confirmed book 2 was written. " +
         "Once the Content Server is back, re-run with ids=[3]." +
-        "\nCode: calibre_unreachable\nNext: start it in Calibre (Connect/share → Start Content server) or set CALIBRE_MCP_SERVER_URL",
+        "\nCode: calibre_unreachable",
     );
   });
 
