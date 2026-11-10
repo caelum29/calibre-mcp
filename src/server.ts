@@ -212,7 +212,7 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
       // {libId} is the library ID; resolveLibraryId also accepts a display name and throws
       // UnknownLibraryError (valid ids named) for anything else. The id is checked before any request.
       const id = parseBookResourceId(variables.id);
-      const libId = await deps.content.resolveLibraryId(String(variables.libId));
+      const libId = await deps.content.resolveLibraryId(decodeSegment(String(variables.libId)));
       const r = await readBookResource(deps.content, id, libId);
       return { contents: [{ uri: r.uri, mimeType: r.mimeType, text: r.text }] };
     },
@@ -227,6 +227,16 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
     serverUrl: config.serverUrl,
   });
   return server;
+}
+
+// The SDK hands template variables back still percent-encoded (bookResourceUri encodes the libId),
+// so decode once. Malformed encoding stays as typed and ends in the same unknown-library error.
+function decodeSegment(raw: string): string {
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
 }
 
 /**

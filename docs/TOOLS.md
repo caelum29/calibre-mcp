@@ -223,7 +223,7 @@ No parameters.
 
 - `{libId}` is the library **ID** (`My_Books`), not the display name: book ids repeat across
   libraries, so a link names the library it came from. Example: `calibre://book/Other_Books/42`.
-  Links always carry the ID; a display name in the URI is also accepted and resolved to the ID.
+  Links always carry the library ID.
 - An unknown `{libId}` or an invalid `{id}` is a protocol error (resources throw, tools return);
   the message lists the known library IDs.
 - The older `calibre://book/{id}` form no longer exists.
