@@ -16,7 +16,7 @@ import {
 import { resolveNumericId } from "./resolve-id.js";
 import { runBookPipeline } from "../semantic/book-pipeline.js";
 import type { BuildProgress } from "../semantic/index-builds.js";
-import type { IndexFreshness, IndexWriter, PruneCounts } from "../semantic/store/index.js";
+import type { IndexFreshness, IndexWriter, LibraryIdCheck, PruneCounts } from "../semantic/store/index.js";
 import type { BaseDeps, DepsWithIndex } from "../tools/deps.js";
 
 /** Page size when listing query matches / the whole library (ids only — the response is tiny). */
@@ -39,6 +39,7 @@ const BUILD_CONCURRENCY = 1;
 
 /** The build's index ports (#272): the per-book trip plus the orphan prune. */
 export type BuildIndexPorts = BookIndexPorts &
+  LibraryIdCheck &
   Pick<IndexFreshness, "indexedBookIds"> &
   Pick<IndexWriter, "deleteBooks">;
 /** The build's deps: BaseDeps plus BuildIndexPorts. */

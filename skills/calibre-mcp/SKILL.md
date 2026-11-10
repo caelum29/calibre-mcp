@@ -235,6 +235,11 @@ library as `Name (id: Lib_Id) [default]: …`: pass that id, not the display nam
 `README.md` beside that log file and trace the failing `call` id; report the logged cause
 rather than a guess.
 
+A `library_id_collision` error means two libraries' ids differ only in letter case and the named
+one was refused because the other was indexed first. Tell the user which library is refused and
+that renaming its folder (then restarting Calibre's Content Server) fixes it; the other library
+keeps working. Don't retry the build.
+
 ## Reference Documentation
 
 - `calibredb --help` / `calibredb <subcommand> --help` — the authoritative CLI reference for the installed version

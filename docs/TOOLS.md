@@ -324,12 +324,12 @@ it's safe to run without enabling library writes.
 
 Calibre ids are case-sensitive, but on a case-insensitive disk (the macOS default) two libraries
 whose ids differ only in letter case, such as `Books` and `books`, would share one index file and
-one progress log. The server keeps the id that sorts first by code point (`Books` before `books`)
-and refuses the other on every index path (build, `pnpm reindex`, search, `calibre_ping`) with
-error code `library_id_collision`; nothing is written for the refused library. To fix it, rename
-one of the two library folders, restart Calibre's Content Server, then call
-`calibre_list_libraries` so the server re-reads the ids. If an index for the pair existed before,
-it may hold the other library's books: rebuild the kept library with `force: true`.
+one progress log. The library indexed first owns the index (its id is recorded in the index at
+the first build; an older index without that record belongs to the first library that opens it).
+The other id is refused on every index path (build, `pnpm reindex`, search, `calibre_ping`) with
+error code `library_id_collision`; nothing is written for it. To fix it, rename the refused
+library's folder and restart Calibre's Content Server. If an index for the pair existed before,
+it may hold the other library's books: rebuild the owner with `force: true`.
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|

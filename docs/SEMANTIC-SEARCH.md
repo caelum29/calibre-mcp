@@ -156,3 +156,7 @@ Russian book and vice versa. The keyword half stems both languages, so
   extraction or figures.
 - Retrieval is book-level or passage-level; exact PDF page mapping depends on the
   extractor's quality for that file.
+- **Two libraries whose ids differ only in letter case** (`books` / `Books`) can't both be
+  indexed: on a case-insensitive disk they would share one index file. The one indexed first
+  keeps the index; the other is refused until its folder is renamed (see
+  [Troubleshooting](TROUBLESHOOTING.md)).
