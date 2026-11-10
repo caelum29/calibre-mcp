@@ -18,7 +18,7 @@ interface WireTool {
 }
 
 describe("installWireCompat on a StdioServerTransport", () => {
-  it("should_write_draft_07_input_and_no_output_$schema_for_a_2020_12_tools_list", async () => {
+  it("should_write_draft_07_input_and_leave_the_output_schema_as_emitted_for_a_2020_12_tools_list", async () => {
     const stdout = new PassThrough();
     const written: string[] = [];
     stdout.on("data", (d: Buffer) => written.push(d.toString()));
@@ -46,7 +46,7 @@ describe("installWireCompat on a StdioServerTransport", () => {
           {
             name: "calibre_search",
             inputSchema: { $schema: "http://json-schema.org/draft-07/schema#", type: "object" },
-            outputSchema: { type: "object" },
+            outputSchema: { $schema: "https://json-schema.org/draft/2020-12/schema", type: "object" },
           },
         ],
       },
@@ -57,7 +57,7 @@ describe("installWireCompat on a StdioServerTransport", () => {
 describe("stdio entry point wire form", () => {
   // Spawns the shipped entry point; unreachable Content Server + :memory: index so nothing
   // touches a real library or log dir.
-  it("should_send_tools_list_with_draft_07_inputs_and_no_output_$schema", async () => {
+  it("should_send_tools_list_with_draft_07_inputs_and_outputs_as_the_sdk_emits_them", async () => {
     const tsx = createRequire(import.meta.url).resolve("tsx");
     const entry = fileURLToPath(new URL("../src/run-stdio.ts", import.meta.url));
     const child = spawn(process.execPath, ["--import", tsx, entry], {
@@ -93,11 +93,11 @@ describe("stdio entry point wire form", () => {
       const withOutput = tools.filter((t) => t.outputSchema !== undefined);
       expect({
         inputDialects: [...new Set(tools.map((t) => t.inputSchema.$schema))],
-        outputsWithDollarSchema: withOutput.filter((t) => "$schema" in (t.outputSchema ?? {})).map((t) => t.name),
+        outputsWithoutDollarSchema: withOutput.filter((t) => !("$schema" in (t.outputSchema ?? {}))).map((t) => t.name),
         hasOutputSchemas: withOutput.length > 0,
       }).toEqual({
         inputDialects: ["http://json-schema.org/draft-07/schema#"],
-        outputsWithDollarSchema: [],
+        outputsWithoutDollarSchema: [],
         hasOutputSchemas: true,
       });
     } finally {

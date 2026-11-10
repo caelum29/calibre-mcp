@@ -9,6 +9,19 @@ Claude Desktop shows the model only the text; Claude Code shows only `structured
 `outputSchema` exists. This was the single most repeated defect (#26, #104, #105, #199, #211,
 #216, #227).
 
+Canary-verified 2026-11-10 (#434): a marker only in `content` text and another only in
+`structuredContent`, on a success and on an `isError` result of `calibre_ping`. Cowork is no longer
+a client.
+
+| Client | Result | `content` text | `structuredContent` |
+|---|---|---|---|
+| Claude Desktop 4.23118.1 | success | seen | not seen |
+| Claude Desktop 4.23118.1 | `isError` | seen | not seen |
+| Claude Code 2.1.318 | success | not seen | seen |
+| Claude Code 2.1.318 | `isError` | seen | not seen |
+
+So on `isError` the text is the only channel both clients read: put the steer there.
+
 - Every new or changed result field the model can act on (ids, cursors, counts, diffs, per-id
   errors, formats, "what changed") appears in both, built through `renderResult`/`pageCursor`.
 - A new tool gets a `channel-parity.test.ts` scenario; a new `ALLOWLIST` entry needs a stated
