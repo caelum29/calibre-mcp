@@ -67,7 +67,7 @@ describe("calibre_ping handler", () => {
     expect(r.isError).toBeUndefined();
     expect(listCalls).toEqual(["Programming_Books"]);
     expect(text(r)).toMatch(
-      /^ok\ncalibre-mcp [^\n]+\ncalibredb: [^\n]+\nwrites: [^\n]+\ncalibre writes: allowed\nSemantic search: [^\n]+\nIndex: [^\n]+\nlog file: /,
+      /^ok\ncalibre-mcp [^\n]+\ncalibredb: [^\n]+\ncalibre version: [^\n]+\nwrites: [^\n]+\ncalibre writes: allowed\nSemantic search: [^\n]+\nIndex: [^\n]+\nlog file: /,
     );
     expect(r.structuredContent).toMatchObject({ ok: true, serverUrl: SERVER_URL, recentErrors: expect.any(Array) });
     expect(r.structuredContent).toHaveProperty("semantic.available");
@@ -90,7 +90,7 @@ describe("calibre_ping handler", () => {
     expect(r.isError).toBe(true);
     expect(listCalls).toEqual([]);
     expect(text(r)).toMatch(
-      /^Calibre unreachable: connect ECONNREFUSED 127\.0\.0\.1:9\ncalibre-mcp [^\n]+\ncalibredb: [^\n]+\nwrites: [^\n]+\nSemantic search: /,
+      /^Calibre unreachable: connect ECONNREFUSED 127\.0\.0\.1:9\ncalibre-mcp [^\n]+\ncalibredb: [^\n]+\ncalibre version: [^\n]+\nwrites: [^\n]+\nSemantic search: /,
     );
     expect(r.structuredContent).toMatchObject({
       ok: false,

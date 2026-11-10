@@ -17,6 +17,7 @@ import { redactArgvEchoes, summarizeArgv } from "../call-log.js";
 import type { LibraryBusyTracker } from "./busy.js";
 import type { LibId } from "./lib-id.js";
 import { SpawnAbortedError, spawnCollect, SpawnTimeoutError } from "./spawn.js";
+import { type CalibreVersionInfo, parseCalibreVersion } from "../domain/calibre-version.js";
 
 export interface CalibreClientOptions {
   /** Per-call timeout in ms. macOS calibredb can hang against a busy GUI. */
@@ -34,6 +35,8 @@ export interface CalibreClientOptions {
 export interface LibraryWriter {
   calibredb(args: readonly string[], opts: CalibreClientOptions): Promise<{ stdout: string; stderr: string }>;
   listLibraries(library: LibId): Promise<string>;
+  /** The running Calibre's version, read once per process (#499); never throws. */
+  calibreVersion(): Promise<CalibreVersionInfo>;
 }
 
 /** Shells out to `calibredb` (routed through the Content Server URL) and Calibre CLI tools. */
@@ -104,6 +107,27 @@ export class CalibreClient implements LibraryWriter {
     }
     this.busy?.markOk(opts.library);
     return { stdout: result.stdout, stderr: result.stderr };
+  }
+
+  private version?: Promise<CalibreVersionInfo>;
+
+  /**
+   * `calibredb --version`, lazily and once per process (#499). Local, no `--with-library`: it
+   * reports the installed calibredb, which is the one that talks to the Content Server.
+   * Any failure is "unknown" — a version gate must never break the calls it does not gate.
+   */
+  calibreVersion(): Promise<CalibreVersionInfo> {
+    this.version ??= spawnCollect(this.cfg.calibredbPath, ["--version"], {
+      timeoutMs: 10_000,
+      maxBuffer: 64 * 1024,
+    }).then(
+      (r) => (r.code === 0 ? parseCalibreVersion(r.stdout) : "unknown"),
+      (err: unknown) => {
+        log.warn("calibredb --version failed", { msg: err instanceof Error ? err.message : String(err) });
+        return "unknown" as const;
+      },
+    );
+    return this.version;
   }
 
   /** Library list as JSON, proving connectivity to the live server. */

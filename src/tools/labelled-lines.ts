@@ -17,6 +17,8 @@ export function labelledLine(label: string, value: string): string {
 export const PING_LINE_LABELS = {
   /** Calibre's own write gate (`calibreWriteAccess`, #439), next to our `writes:` gate line. */
   calibreWrites: "calibre writes",
+  /** The running Calibre's version (`calibreVersion`, #499): `9.18`, `9.18.1` or `unknown`. */
+  calibreVersion: "calibre version",
   /** Per-library index coverage (`indexes[]`, #440): `Name (id: Lib_Id) [default]: <state>` entries. */
   index: "Index",
   /** Semantic-search readiness + the resolved library's counts (`semantic`, #440); built in semantic/status.ts. */
@@ -157,6 +159,14 @@ export const LABELLED_LINES: Readonly<Record<string, ToolLabelledLines>> = {
         pattern: /^calibredb: (?<v>.+) \(Content Server \S+\)$/,
         format: "`calibredb: <path> (Content Server <url>)`",
         field: "calibredbPath",
+        compare: "equal",
+      },
+      {
+        label: "calibre version",
+        match: "line",
+        pattern: /^calibre version: (?<v>\d+\.\d+(?:\.\d+)?|unknown)$/,
+        format: "`calibre version: <x.y[.z]>|unknown` — from `calibredb --version`",
+        field: "calibreVersion",
         compare: "equal",
       },
       {

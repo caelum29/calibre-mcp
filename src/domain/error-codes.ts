@@ -30,6 +30,7 @@ export const ERROR_CODES = [
   "write_unverified",
   "calibre_unreachable",
   "calibre_busy",
+  "calibre_too_old",
   "calibre_error",
   "timeout",
   "cancelled",
@@ -136,6 +137,8 @@ function figuresCode(err: FiguresError): ErrorCode {
 const DEFAULT_HINTS: Partial<Record<ErrorCode, string>> = {
   calibre_unreachable: "start it in Calibre (Connect/share → Start Content server) or set CALIBRE_MCP_SERVER_URL",
   calibre_busy: "retry in a few seconds — calibre_ping shows when the library is free",
+  // a 9.18-only call on an older Calibre (#499); every other tool still works on it
+  calibre_too_old: "update Calibre (https://calibre-ebook.com/download); other tools work on this version",
   // The one remedy for a refused write (#437): WRITE_REFUSED_MESSAGE and calibre_ping's refused line
   // embed it verbatim. GUI-run Content Server → the setting; command-line calibre-server → the flag.
   write_refused:
