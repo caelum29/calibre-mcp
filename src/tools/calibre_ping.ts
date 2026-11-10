@@ -71,49 +71,29 @@ export const pingTool = defineTool({
     const header = serverHeader(deps);
     // probe Calibre's write gate only when it answered for a known library
     const probeLib = pingError === undefined && configError === undefined ? libId : undefined;
+    // a busy library is reachable but refused for now: say so, not "unreachable" (#437 follow-up)
+    const busyLib = pingCause instanceof CalibreBusyError;
+    const skipped = pingError === undefined ? undefined : busyLib ? "library busy" : "Calibre unreachable";
     const [index, writeProbe] = await Promise.all([
-      indexSection(deps, pingError !== undefined),
+      indexSection(deps, skipped),
       probeLib === undefined
         ? undefined
         : deps.content.probeWriteAccess(probeLib, { timeoutMs: WRITE_PROBE_TIMEOUT_MS }),
     ]);
     const facts = serverFacts(deps, index.indexes);
 
+    // A failed ping leads with its own headline, then the same sections as a healthy report.
+    const failed = (headline: string, error: string) => ({
+      text: `${headline}: ${error}\n${header}\n${busy.text}${semLine}\n${index.line}\n${diag.text}`,
+      structured: { ok: false, error, serverUrl, ...facts, semantic, ...busy.structured, ...diag.structured },
+    });
     if (pingError !== undefined) {
-      return toolError(
-        errorCodeFor(pingCause),
-        `Calibre unreachable: ${pingError}\n${header}\n${busy.text}${semLine}\n${index.line}\n${diag.text}`,
-        {
-          bare: true, // the report leads with its own headline, as before
-          structured: {
-            ok: false,
-            error: pingError,
-            serverUrl,
-            ...facts,
-            semantic,
-            ...busy.structured,
-            ...diag.structured,
-          },
-        },
-      );
+      const f = failed(busyLib ? "Calibre busy" : "Calibre unreachable", pingError);
+      return toolError(errorCodeFor(pingCause), f.text, { bare: true, structured: f.structured });
     }
     if (configError !== undefined) {
-      return toolError(
-        "not_found",
-        `Calibre reachable, but: ${configError}\n${header}\n${busy.text}${semLine}\n${index.line}\n${diag.text}`,
-        {
-          bare: true,
-          structured: {
-            ok: false,
-            error: configError,
-            serverUrl,
-            ...facts,
-            semantic,
-            ...busy.structured,
-            ...diag.structured,
-          },
-        },
-      );
+      const f = failed("Calibre reachable, but", configError);
+      return toolError("not_found", f.text, { bare: true, structured: f.structured });
     }
     const writeAccess = writeProbe === undefined ? "" : writeAccessText(writeProbe, deps.config.writeEnabled);
     return toolText(`ok\n${header}\n${writeAccess}${busy.text}${semLine}\n${index.line}\n${diag.text}`, {
@@ -189,7 +169,7 @@ function writeAccessText(p: WriteAccessProbe, gateOn: boolean): string {
     p.access === "unknown"
       ? `unknown (${p.reason})`
       : p.access === "refused"
-        ? 'refused — enable "Allow un-authenticated local connections to make changes" (Preferences → Sharing over the net)'
+        ? `refused — ${defaultHint("write_refused")}`
         : "allowed";
   const lines = [labelledLine(PING_LINE_LABELS.calibreWrites, value)];
   if (gateOn && p.access === "refused") {
@@ -213,12 +193,12 @@ function serverHeader(deps: BaseDeps): string {
 }
 
 /**
- * The index section as one text line + its structured array. With Calibre down the report is
- * skipped: libraryInfo would just burn another full timeout.
+ * The index section as one text line + its structured array. With Calibre down or the library
+ * busy, the report is skipped with that reason: libraryInfo would just burn another full timeout.
  */
-async function indexSection(deps: PingDeps, unreachable: boolean): Promise<{ line: string; indexes?: LibraryIndex[] }> {
+async function indexSection(deps: PingDeps, skipped?: string): Promise<{ line: string; indexes?: LibraryIndex[] }> {
   const label = (value: string) => labelledLine(PING_LINE_LABELS.index, value);
-  if (unreachable) return { line: label("skipped — Calibre unreachable") };
+  if (skipped !== undefined) return { line: label(`skipped — ${skipped}`) };
   const indexes = await libraryIndexReport(deps);
   if (!indexes) return { line: label("libraries unavailable") };
   if (indexes.length === 0) return { line: label("(no libraries)"), indexes };
@@ -254,7 +234,7 @@ function indexEntry(i: LibraryIndex): string {
     case "stale":
       return `${head}: stale index (rebuild)`;
     case "conflict":
-      return `${head}: not indexable — id "${i.id}" differs from "${i.conflictsWith}" only in case; rename one of the two library folders`;
+      return `${head}: not indexable — id "${i.id}" differs only in case from "${i.conflictsWith}", which was indexed first; rename the "${i.id}" library folder`;
     case "busy":
       return `${head}: busy — index locked by another process, retry`;
     default:

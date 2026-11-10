@@ -18,6 +18,10 @@ Book ids: wherever a tool takes `id` / `bookId`, you can pass a numeric database
 book uuid — they're interchangeable. The id you get back from a search result is what these
 tools expect.
 
+Errors: a failed call returns its message followed by a `Code: <errorCode>` line and, when the
+message doesn't already say it, a `Next: <step>` line (see
+[Troubleshooting → Reading an error](TROUBLESHOOTING.md#troubleshooting)).
+
 ---
 
 ## Health check
@@ -37,8 +41,10 @@ Libraries the server is currently failing fast after a Calibre timeout are liste
 `call` id; a repeated error is one entry with `count` and `firstTs`, shown as `(×N since …)`, and the header reads `recent errors: N (M occurrences)` when any repeat) and the path of today's log file — see [Troubleshooting → Logs](TROUBLESHOOTING.md#logs).
 When Calibre is reachable it also asks whether Calibre itself accepts writes, with a probe that
 cannot write anything (a `POST` to `set_metadata` at a module version that does not exist):
-`calibre writes: allowed`, `refused — enable "Allow un-authenticated local connections to make
-changes" (Preferences → Sharing over the net)`, or `unknown (<reason>)` when the answer is unclear
+`calibre writes: allowed`, `refused — <how to allow writes>` (the GUI setting "Allow
+un-authenticated local connections to make changes", or `--enable-local-write` for a command-line
+`calibre-server`, or an authenticated user: the same remedy a refused write gives), or
+`unknown (<reason>)` when the answer is unclear
 (`calibreWriteAccess`). If `CALIBRE_MCP_ENABLE_WRITE` is on but Calibre refuses, a `warning:` line
 says every write tool will fail. `ok` stays true either way: reads work.
 Use it first when something isn't working, or to answer "why is semantic search off?" or "are writes set up?".
@@ -238,7 +244,7 @@ No parameters.
 
 ## Semantic search
 
-Meaning-based retrieval — the feature no other Calibre MCP server has. It finds books and
+Meaning-based retrieval — the server's headline feature. It finds books and
 passages by *meaning*, not keyword overlap, and works cross-lingually (an English query finds
 Russian passages and vice versa). It requires a one-time local index; see
 [`SEMANTIC-SEARCH.md`](./SEMANTIC-SEARCH.md) for how the pipeline works.
@@ -324,12 +330,12 @@ it's safe to run without enabling library writes.
 
 Calibre ids are case-sensitive, but on a case-insensitive disk (the macOS default) two libraries
 whose ids differ only in letter case, such as `Books` and `books`, would share one index file and
-one progress log. The server keeps the id that sorts first by code point (`Books` before `books`)
-and refuses the other on every index path (build, `pnpm reindex`, search, `calibre_ping`) with
-error code `library_id_collision`; nothing is written for the refused library. To fix it, rename
-one of the two library folders, restart Calibre's Content Server, then call
-`calibre_list_libraries` so the server re-reads the ids. If an index for the pair existed before,
-it may hold the other library's books: rebuild the kept library with `force: true`.
+one progress log. The library indexed first owns the index (its id is recorded in the index at
+the first build; an older index without that record belongs to the first library that opens it).
+The other id is refused on every index path (build, `pnpm reindex`, search, `calibre_ping`) with
+error code `library_id_collision`; nothing is written for it. To fix it, rename the refused
+library's folder and restart Calibre's Content Server. If an index for the pair existed before,
+it may hold the other library's books: rebuild the owner with `force: true`.
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|

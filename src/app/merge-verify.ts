@@ -2,12 +2,17 @@
 // connection (#413). They only answer "landed?"; settleFailedStep (write-policy.ts) decides the outcome.
 
 import { CalibreHttpError } from "../domain/errors.js";
-import type { BaseDeps } from "../tools/deps.js";
+import type { Book } from "../domain/book.js";
 import type { ReReadCheck } from "./write-policy.js";
+
+/** The one read these re-checks need: a book by id (a narrow port, not the whole tool deps). */
+export interface BookReader {
+  content: { getBook(id: number, library?: string): Promise<Book> };
+}
 
 /** Phase 1 (`add_format`): landed when the target now holds `format`. A failed re-read is unverifiable. */
 export async function formatOnTarget(
-  deps: BaseDeps,
+  deps: BookReader,
   targetId: number,
   format: string,
   library?: string,
@@ -26,7 +31,7 @@ export async function formatOnTarget(
  * `remaining` = the sources not confirmed gone, i.e. what a re-run must still remove.
  */
 export async function sourcesRemoved(
-  deps: BaseDeps,
+  deps: BookReader,
   sourceIds: readonly number[],
   library?: string,
 ): Promise<{ check: ReReadCheck<readonly number[]>; remaining: number[] }> {

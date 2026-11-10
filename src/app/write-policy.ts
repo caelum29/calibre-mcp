@@ -173,7 +173,7 @@ export async function verifyTimedOutWrite(deps: BaseDeps, write: TimedOutWrite):
   } catch {
     return { status: "unverifiable" };
   }
-  if (changesSatisfied(write.before, after, write.changes)) return { status: "landed", after };
+  if (changesSatisfied(after, write.changes)) return { status: "landed", after };
   // a third value (GUI edit, stale snapshot) may hide our write — never call that "not landed"
   const foreign = foreignValues(write.before, after, write.changes);
   return foreign.length > 0 ? { status: "unverifiable", foreign } : { status: "not-landed" };

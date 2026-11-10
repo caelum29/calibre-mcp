@@ -1,4 +1,4 @@
-// PR #377 review: a main title starting with `=`/`~`/`^` must not reach Calibre as an exact
+// #370 (PR #377): a main title starting with `=`/`~`/`^` must not reach Calibre as an exact
 // or regex `title:` search — an invalid regex throws and the whole probe degrades to
 // "unavailable". The fake search throws on such queries the way Calibre rejects them.
 import { afterAll, beforeAll, describe, expect, it } from "vitest";

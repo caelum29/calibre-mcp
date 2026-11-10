@@ -47,57 +47,52 @@ describe("previewBookChanges", () => {
 
 describe("changesSatisfied", () => {
   it("is satisfied when the re-read equals the intended values", () => {
-    const before = book({ publisher: "Old" });
     const after = book({ publisher: "New" });
-    expect(changesSatisfied(before, after, { publisher: "New" })).toBe(true);
+    expect(changesSatisfied(after, { publisher: "New" })).toBe(true);
   });
 
   it("is satisfied when a normalized-on-write field moved away from the before value", () => {
     // Calibre normalizes pubdate on write, so re-read ≠ intended but ≠ before → applied.
-    const before = book({ pubdate: "2001-01-01T00:00:00+00:00" });
     const after = book({ pubdate: "2002-01-15T00:00:00+00:00" });
-    expect(changesSatisfied(before, after, { pubdate: "2002-01-15" })).toBe(true);
+    expect(changesSatisfied(after, { pubdate: "2002-01-15" })).toBe(true);
   });
 
   it("is satisfied when the intended value was already current (no-op write)", () => {
     const same = book({ publisher: "P" });
-    expect(changesSatisfied(same, same, { publisher: "P" })).toBe(true);
+    expect(changesSatisfied(same, { publisher: "P" })).toBe(true);
   });
 
   it("is not satisfied when the re-read still shows the old value", () => {
     const same = book({ publisher: "Old" });
-    expect(changesSatisfied(same, same, { publisher: "New" })).toBe(false);
+    expect(changesSatisfied(same, { publisher: "New" })).toBe(false);
   });
 
   it("is not satisfied for unverifiable custom #columns", () => {
-    expect(changesSatisfied(book(), book(), { "#shelf": "to-read" })).toBe(false);
+    expect(changesSatisfied(book(), { "#shelf": "to-read" })).toBe(false);
   });
 
   it("is satisfied when a clear landed and Calibre reads the field back as absent", () => {
-    const before = book({ publisher: "Old" });
     const after = book({ publisher: undefined });
-    expect(changesSatisfied(before, after, { publisher: "" })).toBe(true);
+    expect(changesSatisfied(after, { publisher: "" })).toBe(true);
   });
 
   it("is satisfied when a cleared list reads back empty", () => {
-    const before = book({ tags: ["old"] });
     const after = book({ tags: [] });
-    expect(changesSatisfied(before, after, { tags: [] })).toBe(true);
+    expect(changesSatisfied(after, { tags: [] })).toBe(true);
   });
 
   it("is satisfied when identifiers read back in a different key order", () => {
     const same = book({ identifiers: { isbn: "1", amazon: "2" } });
-    expect(changesSatisfied(same, same, { identifiers: { amazon: "2", isbn: "1" } })).toBe(true);
+    expect(changesSatisfied(same, { identifiers: { amazon: "2", isbn: "1" } })).toBe(true);
   });
 
   it("is not satisfied when clearing an unverifiable custom #column", () => {
-    expect(changesSatisfied(book(), book(), { "#shelf": "" })).toBe(false);
+    expect(changesSatisfied(book(), { "#shelf": "" })).toBe(false);
   });
 
   it("requires EVERY requested field to have landed", () => {
-    const before = book({ publisher: "Old", tags: ["old"] });
     const after = book({ publisher: "New", tags: ["old"] });
-    expect(changesSatisfied(before, after, { publisher: "New", tags: ["new"] })).toBe(false);
+    expect(changesSatisfied(after, { publisher: "New", tags: ["new"] })).toBe(false);
   });
 });
 

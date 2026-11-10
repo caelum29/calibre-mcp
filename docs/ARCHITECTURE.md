@@ -67,7 +67,8 @@ every call first resolves the name through the server's own library map.
 **A committed write is never reported as failed.** A routed write commits on the server before `calibredb`
 answers, so a timeout or a connection dropped mid-request says nothing about the outcome. Those cases are settled
 by re-reading the book: confirmed → success, unconfirmed → the result steers to `calibre_get_book`. One module
-holds that mapping, [`app/write-policy.ts`](../src/app/write-policy.ts); tools only render its outcome. Only
+decides that mapping, [`app/write-policy.ts`](../src/app/write-policy.ts), and [`tools/write-failure.ts`](../src/tools/write-failure.ts)
+renders it (code, text and next step) for every write tool. Only
 idempotent metadata writes are retried, and a timeout never is.
 
 **Channel parity.** A tool result has a text channel and a structured channel, and clients disagree on which one

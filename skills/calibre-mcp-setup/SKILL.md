@@ -1,6 +1,6 @@
 ---
 name: calibre-mcp-setup
-description: "Install and verify the calibre-mcp server, end to end. Guides an agent from 'Calibre is installed' to a verified working MCP connection: preflight (Node, calibredb, Content Server — macOS/Windows/Linux commands), client-specific install (Claude Code plugin or claude mcp add, Claude Desktop .mcpb or JSON config, Cowork via Desktop, any other MCP client via a generic mcpServers block), config (library, write gate), calibre_ping verification with semantic-status triage, enabling semantic search in the .mcpb bundle, and upgrade/uninstall. Use when the user wants to set up calibre-mcp, connect Claude or another agent to their Calibre library, enable semantic search, upgrade, or fix a broken install. Triggers: install calibre-mcp, set up calibre, connect my calibre library, calibre not working, semantic search unavailable, upgrade calibre-mcp."
+description: "Install and verify the calibre-mcp server, end to end. Guides an agent from 'Calibre is installed' to a verified working MCP connection: preflight (Node, calibredb, Content Server — commands for macOS, Windows and Linux; the server is verified live on macOS only), client-specific install (Claude Code plugin or claude mcp add, Claude Desktop .mcpb or JSON config, Cowork via Desktop, any other MCP client via a generic mcpServers block), config (library, write gate), calibre_ping verification with semantic-status triage, enabling semantic search in the .mcpb bundle, and upgrade/uninstall. Use when the user wants to set up calibre-mcp, connect Claude or another agent to their Calibre library, enable semantic search, upgrade, or fix a broken install. Triggers: install calibre-mcp, set up calibre, connect my calibre library, calibre not working, semantic search unavailable, upgrade calibre-mcp."
 ---
 
 <!--
@@ -10,7 +10,8 @@ Cross-agent notes (informational; ignored by host agents):
     (.agents/skills, ~/.config/agents/skills). Installable via
     `npx skills@latest add caelum29/calibre-mcp`.
   - Needs only shell access (and, for Phase 3, the calibre-mcp tools once loaded).
-  - Windows commands assume PowerShell; macOS/Linux assume any POSIX shell.
+  - Windows commands assume PowerShell; macOS/Linux assume any POSIX shell. Verified live on
+    macOS only (Calibre 9.x); Linux and Windows steps are not claimed — say so if they fail.
 -->
 
 # calibre-mcp setup
@@ -176,8 +177,9 @@ Triage the `semantic` block (don't just echo it):
 | `dependencyInstalled: true, loaded: "failed"` / `restartRequired: true` | Dep is on disk but this process can't use it — **restart the server**; nothing else fixes it |
 | `modelCached: false` | First embedding build will download the ~118 MB model — set expectations |
 | `Index:` entry `busy — index locked by another process, retry` | Another process (often a `calibre_build_index` in a second client) holds that library's index; nothing is damaged. Re-run ping later. `index unreadable` instead means the file itself is damaged: rebuild |
+| `Index:` entry `not indexable — id "X" differs only in case from "Y", which was indexed first` | Two library ids differ only in letter case; `Y` owns the index. Tell the user to rename library `X`'s folder and restart the Content Server; `Y` keeps working |
 | `vectorCount` 0 / missing with dep OK | No semantic index yet — offer `calibre_build_index` (Phase 4) |
-| `calibre writes: refused` | Calibre blocks anonymous writes: enable "Allow un-authenticated local connections to make changes" (Preferences → Sharing over the net), then restart the Content Server. With `CALIBRE_MCP_ENABLE_WRITE` on, ping adds a `warning:` line: every write tool fails until then |
+| `calibre writes: refused` | Calibre blocks anonymous writes: enable "Allow un-authenticated local connections to make changes" (Preferences → Sharing over the net), then restart the Content Server; a command-line `calibre-server` needs `--enable-local-write` instead. With `CALIBRE_MCP_ENABLE_WRITE` on, ping adds a `warning:` line: every write tool fails until then |
 | `calibre writes: unknown (<reason>)` | The probe got no clear answer; reads are fine. Writes may still work: try one and read its error |
 | `recent errors: N` with N > 0 (or `recent errors: N (M occurrences)` when some repeat) | Server-side failures this process logged: N distinct errors, M times in all. Read each line (tool, `call` id, cause, and `(×K since …)` for a repeat) before guessing; the cause is usually named there |
 

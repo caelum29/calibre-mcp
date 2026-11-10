@@ -3,6 +3,7 @@
 // IndexStore is their union plus close().
 
 import type { ChunkSpan } from "../content-match.js";
+import type { LibraryIdCollisionError } from "../../domain/library-id-collision.js";
 
 /** A chunk ready to index: its span in the source text plus its embedding. */
 export interface IndexedChunk {
@@ -135,15 +136,29 @@ export interface RefreshCheck {
 /** What replaceBook did: wrote the rows, or kept an embedded book's rows untouched. */
 export type ReplaceOutcome = "written" | "preserved";
 
+/** The store's verdict on the case-only library-id clash (#414), for callers that must not throw. */
+export interface LibraryIdCheck {
+  /**
+   * The case-only id refusal for this library (#388, #414): its index file is owned by a library
+   * whose id differs only in letter case. Undefined when the library may use its index. Reads
+   * only; throws only SQLITE_BUSY. Callers that must not fail over the clash ask this first.
+   */
+  libraryIdCollision(libraryId: string): LibraryIdCollisionError | undefined;
+}
+
 /** Freshness/coverage reads: what is indexed, how completely, and with what provenance. */
 export interface IndexFreshness {
-  /** Cheap, side-effect-free check for an existing index (no db file is created). */
+  /**
+   * Cheap, side-effect-free check for an existing index (no db file is created). Throws
+   * LibraryIdCollisionError for a refused library, like every per-library method of the store.
+   */
   hasIndex(libraryId: string): boolean;
   /**
    * The index's persisted meta, read WITHOUT the compatibility guard — so a stale index
    * (built by another model/INDEX_VERSION) can still be described. Undefined when there is
    * no index or its meta is unreadable. Never creates a db file. `diagnostic` (calibre_ping)
-   * waits only briefly on a lock and rethrows SQLITE_BUSY (#442).
+   * waits only briefly on a lock and rethrows SQLITE_BUSY (#442). Throws LibraryIdCollisionError
+   * for a refused library.
    */
   indexMeta(libraryId: string, opts?: { diagnostic?: boolean }): IndexMeta | undefined;
   /** True if the index holds any embedding vectors (false = a keyword-only build). */
@@ -237,6 +252,6 @@ export interface FigureIndex {
 }
 
 /** The full store: every port plus lifecycle. Callers that need less depend on a port. */
-export interface IndexStore extends IndexFreshness, IndexWriter, ChunkIndex, FigureIndex {
+export interface IndexStore extends LibraryIdCheck, IndexFreshness, IndexWriter, ChunkIndex, FigureIndex {
   close(): void;
 }

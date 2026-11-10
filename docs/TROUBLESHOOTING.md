@@ -8,6 +8,18 @@ mentioned here are documented in the [README's Configuration section](../README.
 indexed?) — and its output usually names the broken link directly. Just ask: *"is calibre
 reachable?"*
 
+**Reading an error.** A failed tool call ends with two labelled lines after its message:
+`Code:` names the error from a closed set (the same `errorCode` as in the [logs](#logs)), and
+`Next:` gives the next step when the message hasn't already said it. For example:
+
+```text
+Error: No semantic index for My_Books yet.
+Code: index_missing
+Next: run calibre_build_index first
+```
+
+Search this page for the code or the message's first words.
+
 ---
 
 ## Connection & setup
@@ -86,6 +98,17 @@ dependencies.
 Semantic search only sees books you've indexed. Run `calibre_build_index` with a `bookId`,
 `ids`, or a Calibre `query` selecting the books, then search again. Re-run it after adding
 books (unchanged books are skipped).
+
+### "can't be indexed: its id differs only in letter case" (`library_id_collision`)
+
+**Symptom:** building, searching or pinging one library fails with this message; `calibre_ping`
+shows that library as `not indexable`. **Cause:** two libraries have ids that differ only in
+letter case (say `books` and `Books`). On a case-insensitive disk, the macOS default, both would
+use one index file. The library indexed first owns that file; the other is refused so their books
+never mix. **Fix:** rename the refused library's folder (e.g. `Books` → `Books-2`) and restart
+Calibre's Content Server. The owner keeps working meanwhile. If both libraries were indexed before
+this check existed, the owner's index may hold the other library's books: rebuild it with
+`calibre_build_index { force: true }`.
 
 ### `calibre_build_index`: "database is locked"
 
@@ -263,8 +286,8 @@ can open them for you: *"check the calibre-mcp logs for errors today"*):
   logged as its length only). Every line logged during that call carries
   the same `call` id, so `jq -c 'select(.call=="<id>")'` replays one call end to end.
 - **Failed calls** carry an `errorCode` from a closed set (`not_found`, `invalid_input`,
-  `calibre_unreachable`, `timeout`, `index_missing`, … — the full list is in the folder's
-  `README.md`) and, where there is a generic next step, a `hint`. Group failures with
+  `calibre_unreachable`, `timeout`, `index_missing`, … — the full list is in the
+  [stability policy](./STABILITY.md#error-codes) and the folder's `README.md`) and, where there is a generic next step, a `hint`. Group failures with
   `jq -r 'select(.msg=="tool call" and .meta.isError) | .meta.errorCode' calibre-mcp-*.jsonl | sort | uniq -c`.
 - **Trace context:** when the client sends a W3C `traceparent` in the request's `_meta`,
   the `tool call` line carries its `traceId` and `parentSpanId`, so it joins the client's trace.
