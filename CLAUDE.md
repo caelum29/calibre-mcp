@@ -57,8 +57,9 @@ search spans both via a `scope: library|book` param, not extra tools.
   `CallToolResult`/`ToolAnnotations` — no re-export from `@modelcontextprotocol/core` (#121) — and tool
   modules declare raw Zod shapes; `server.ts` wraps them in `z.object()` for v2's Standard Schema API.
 - **Return-not-throw.** Handlers return `isError` + an actionable message steering the model's next step,
-  via `toolError(code, message)` — `code` from the closed set in `src/domain/error-codes.ts` (a literal, or
-  `errorCodeFor(err)` for a caught error; `test/domain/error-codes.test.ts` enforces it, #249).
+  via `toolError(code, message)` — `code` is typed `ErrorCode`, the closed set in
+  `src/domain/error-codes.ts` (`errorCodeFor(err)` maps a caught error onto it);
+  `test/domain/error-codes.test.ts` forbids casts in that argument, the one way around the type (#249, #348).
 - **Tool-count ≤ ~20.** Selection accuracy degrades as confusable tools pile up (`docs/dev/DESIGN.md`
   §9.1), so fold related calibredb subcommands into task/intent tools — one `calibre_recover_metadata`,
   not three chainable ones; don't 1:1-mirror the CLI (D-005; build list of record =
