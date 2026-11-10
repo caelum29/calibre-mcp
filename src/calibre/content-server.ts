@@ -189,7 +189,7 @@ export class ContentServerClient implements LibraryReader {
   }
 
   /**
-   * Resolve a libId or display name ("Programming Books") to its libId ("Programming_Books")
+   * Resolve a libId or display name ("My Books") to its libId ("My_Books")
    * via the authoritative library_map; an exact libId key wins over a display name.
    * No name anywhere (no arg, empty config) → the server's own default library.
    * @throws UnknownLibraryError when the name matches nothing, even after one map refresh.

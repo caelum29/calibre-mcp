@@ -2,8 +2,8 @@
 // authoritative library_map (/ajax/library-info) — never by guessing from a display name (#438).
 
 /**
- * A Content Server library ID ("Programming_Books"), as opposed to a display name
- * ("Programming Books"). `calibredb --with-library` 404s on the latter (D-008), so the
+ * A Content Server library ID ("My_Books"), as opposed to a display name
+ * ("My Books"). `calibredb --with-library` 404s on the latter (D-008), so the
  * type makes the resolve step compile-checked.
  */
 export type LibId = string & { readonly __brand: "LibId" };

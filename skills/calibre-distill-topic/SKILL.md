@@ -5,10 +5,10 @@ description: "Synthesize ONE topic across MULTIPLE Calibre books into a single, 
 
 <!--
 Provenance: extends the calibre-distill recipe (this repo, skills/calibre-distill/) into the
-D1.7 topic-aggregate artifact class (docs/dev/PRODUCT-DECISIONS.md). Reuses calibre-distill's
+topic-aggregate artifact class. Reuses calibre-distill's
 Step 1 (resolve), Step 2/2.6 (chapter map + targeted in-book access), and Step 9.5
 (write-back) patterns; the synthesis is concept-keyed multi-source authorship, NOT a
-per-book recount. Validated hand-run: docs/prompts/ideas/distill-samples/topic-kafka-reliability/.
+per-book recount. Validated by a hand-run on a Kafka-reliability topic.
 
 Cross-agent notes (informational; ignored by host agents):
   - Compatible skill roots: Claude Code (~/.claude/skills, .claude/skills), GitHub
