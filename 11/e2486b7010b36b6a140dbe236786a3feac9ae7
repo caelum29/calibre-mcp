@@ -1,0 +1,25 @@
+test/tools/ping-write-access.test.ts
+  s_53ff9ec34f3db8::t_188c4348eb2aa3 1-117
+test/domain/write-access.test.ts
+  s_53ff9ec34f3db8::t_8ba6c897adff94 1-13,18-32
+  s_53ff9ec34f3db8::t_188c4348eb2aa3 14-17
+test/calibre/write-access-probe.test.ts
+  s_53ff9ec34f3db8::t_188c4348eb2aa3 40-42
+  s_53ff9ec34f3db8::t_8ba6c897adff94 1-39,43-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "11e2486b7010b36b6a140dbe236786a3feac9ae7",
+  "prompts": {},
+  "sessions": {
+    "s_53ff9ec34f3db8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a4bd7ff7-48cb-45dc-95d3-fb2b8e7ff920",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
