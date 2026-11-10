@@ -25,9 +25,9 @@ describe("client initialized log line (#124)", () => {
       const call = info.mock.calls.find(([msg]) => msg === "client initialized");
       expect(call?.[1]).toMatchObject({
         client: "init-log-test",
-        protocolVersion: client.getNegotiatedProtocolVersion(),
+        protocolVersion: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
       });
-      expect(call?.[1]?.protocolVersion).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(call?.[1]).toMatchObject({ protocolVersion: client.getNegotiatedProtocolVersion() });
     } finally {
       info.mockRestore();
       await Promise.allSettled([client.close(), server.close()]);
