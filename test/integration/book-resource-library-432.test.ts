@@ -13,7 +13,13 @@ import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
 
-const LIBRARY_MAP = { My_Books: "My Books", Other_Books: "Other Books" };
+const LIBRARY_MAP: Record<string, string> = {
+  My_Books: "My Books",
+  Other_Books: "Other Books",
+  Книги: "Книги",
+  "Lib One": "Lib One",
+  "100%": "100%",
+};
 
 // Fake Content Server: library-info + one book; records every requested path.
 function stubServer(): string[] {
@@ -27,6 +33,18 @@ function stubServer(): string[] {
       if (path === "/ajax/library-info") return json({ library_map: LIBRARY_MAP, default_library: "My_Books" });
       const m = /^\/ajax\/book\/(\d+)\/([^/]+)$/.exec(path);
       if (m) return json({ application_id: Number(m[1]), title: `Book ${m[1]} of ${m[2]}`, authors: ["A"] });
+      const search = /^\/ajax\/search\/([^/]+)$/.exec(path);
+      if (search)
+        return json({
+          book_ids: [42],
+          total_num: 1,
+          num: 1,
+          offset: 0,
+          sort: "title",
+          library_id: decodeURIComponent(search[1]!),
+        });
+      if (/^\/ajax\/books\/[^/]+$/.test(path))
+        return json({ "42": { application_id: 42, title: "Plato", authors: ["P"] } });
       return new Response("nope", { status: 404 });
     }),
   );
@@ -127,6 +145,36 @@ describe("resources/read over the real server (#432)", () => {
     try {
       await expect(client.readResource({ uri: "calibre://book/42" })).rejects.toThrow();
       expect(seen.filter((p) => p.startsWith("/ajax/book/"))).toEqual([]);
+    } finally {
+      await close();
+    }
+  });
+
+  // The emitted link must round-trip: whatever a tool emits, reading that exact URI hits that library.
+  for (const libId of ["Книги", "Lib One", "100%"]) {
+    it(`should_round_trip_a_link_emitted_for_library_${libId}`, async () => {
+      const seen = stubServer();
+      const { client, close } = await connect();
+      try {
+        const found = await client.callTool({
+          name: "calibre_search",
+          arguments: { query: "Plato", library: libId },
+        });
+        const link = (found.content as { type: string; uri?: string }[]).find((b) => b.type === "resource_link");
+        expect(link?.uri).toBeDefined();
+        await client.readResource({ uri: link!.uri! });
+        expect(seen.map(decodeURIComponent)).toContain(`/ajax/book/42/${libId}`);
+      } finally {
+        await close();
+      }
+    });
+  }
+
+  it("should_end_malformed_percent_encoding_in_a_protocol_error_not_a_crash", async () => {
+    stubServer();
+    const { client, close } = await connect();
+    try {
+      await expect(client.readResource({ uri: "calibre://book/%E0%A4%A/42" })).rejects.toThrow();
     } finally {
       await close();
     }
