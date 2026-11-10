@@ -3,6 +3,7 @@
 // (ids or a non-empty query — never an all-books default, the FaceDeer anti-pattern we fix).
 // Applies by looping `calibredb set_metadata` per book (no bulk CLI form; HTTP batch is LATER).
 
+import { filterErrorText } from "./writes-remedy.js";
 import { writeStep } from "./writes-remedy.js";
 import { z } from "zod";
 import { buildSetMetadataArgs, formatFieldValue } from "../calibre/metadata-fields.js";
@@ -144,7 +145,7 @@ export const bulkUpdateTool = defineTool({
         return toolError("invalid_input", "Pass either ids or query/filter, not both.");
       }
       const fr = await resolveFilter(deps, { filter: args.filter, autoExclude: false, library: args.library });
-      if (!fr.ok) return toolErrorFrom(fr.cause, fr.error);
+      if (!fr.ok) return toolErrorFrom(fr.cause, filterErrorText(fr, deps.config.writeEnabled));
 
       const selection = await selectBooks(deps, {
         ids: hasIds ? args.ids : undefined,

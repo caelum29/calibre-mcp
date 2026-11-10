@@ -2,6 +2,7 @@
 // routed through the Content Server URL. Gated write. The path is whitelisted to configured
 // roots (symlink-resolved boundary check, DESIGN §5) so a caller can't import arbitrary files.
 
+import { calibredbArgv } from "../calibre/calibredb-argv.js";
 import { z } from "zod";
 import { defineTool } from "./define.js";
 import { ADD_ROOTS_STEP, validateAddPath } from "./add-path.js";
@@ -61,7 +62,7 @@ export const addBookTool = defineTool({
       try {
         // Imports/conversions can legitimately exceed the 30s default; the group-kill
         // in spawn.ts still bounds a true hang.
-        ({ stdout } = await deps.calibre.calibredb(["add", check.resolved], {
+        ({ stdout } = await deps.calibre.calibredb(calibredbArgv(["add"], [check.resolved]), {
           library: libId,
           timeoutMs: 120_000,
         }));

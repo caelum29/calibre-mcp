@@ -6,6 +6,7 @@
 
 import type { LibId } from "../calibre/lib-id.js";
 import type { BaseDeps } from "../tools/deps.js";
+import { stripCalibredbBanner } from "../domain/calibredb-banner.js";
 
 export interface BundleEntry {
   name: string;
@@ -25,7 +26,7 @@ export interface BundleEntry {
 export function parseSavedSearches(stdout: string): Array<{ name: string; expression: string }> {
   const out: Array<{ name: string; expression: string }> = [];
   let pending: string | undefined;
-  for (const line of stdout.split(/\r?\n/)) {
+  for (const line of stripCalibredbBanner(stdout).split(/\r?\n/)) {
     const name = /^Name:\s*(.*)$/.exec(line);
     if (name) {
       pending = (name[1] ?? "").trim();
@@ -187,7 +188,8 @@ export interface FilterRequest {
 export type FilterOutcome =
   | { ok: true; res: FilterResolution }
   // `cause` = the thrown listing error; absent when the filter names no bundle (#249 code)
-  | { ok: false; error: string; cause?: unknown };
+  // `unknownBundle` = the filter named no bundle; `error` then ends before the write-gate steer, which the tool layer adds
+  | { ok: false; error: string; cause?: unknown; unknownBundle?: true };
 
 // A load-bearing `filter` may wait out the caller's whole budget; the best-effort exclusion
 // sweep waits at most the short cold cap so a stalled Calibre can't hold the search hostage.
@@ -235,12 +237,8 @@ export async function resolveFilter(deps: BaseDeps, req: FilterRequest): Promise
       const names = bundles.map((b) => b.name);
       return {
         ok: false,
-        error:
-          `Unknown bundle "${req.filter}". Available bundles: ${names.join(", ") || "(none)"}. ` +
-          // gate off: create would be refused, so steer to what the session can do (#435)
-          (deps.config.writeEnabled
-            ? `Create one with calibre_manage_bundles { action: "create" }.`
-            : `List them with calibre_manage_bundles { action: "list" }; creating one needs writes enabled (CALIBRE_MCP_ENABLE_WRITE).`),
+        error: `Unknown bundle "${req.filter}". Available bundles: ${names.join(", ") || "(none)"}.`,
+        unknownBundle: true,
       };
     }
     if (matches.length > 1) {

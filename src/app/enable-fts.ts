@@ -5,7 +5,7 @@
 
 import type { CalibreClientOptions, LibraryWriter } from "../calibre/client.js";
 import type { LibId } from "../calibre/lib-id.js";
-import { defaultHint } from "../domain/error-codes.js";
+import { isCalibredbBannerLine } from "../domain/calibredb-banner.js";
 import { CalibreCliError } from "../domain/errors.js";
 
 /** The outcome of the FTS part of a build. */
@@ -13,16 +13,17 @@ export interface FtsOutcome {
   status: "write_disabled" | "enabled" | "already_enabled" | "failed";
   /** What Calibre said about indexing progress (e.g. `0 of 144 books files indexed`), if it said. */
   progress?: string;
-  /** Why it failed, or the remedy when the write gate is off. */
+  /** Why it failed (a `write_disabled` outcome carries none: the tool layer words the remedy). */
   detail?: string;
 }
 
 /** Calibre's CLI prefixes every stdout with a banner; drop it and blank lines. */
 function lines(stdout: string): string[] {
+  // status text is line-oriented, never user content: a banner line anywhere is noise
   return stdout
     .split("\n")
     .map((l) => l.trim())
-    .filter((l) => l !== "" && !l.startsWith("Integration status:"));
+    .filter((l) => l !== "" && !isCalibredbBannerLine(l));
 }
 
 /** The "N of M books files indexed" line, if present. */
@@ -40,10 +41,8 @@ export async function enableFts(
   signal?: AbortSignal,
 ): Promise<FtsOutcome> {
   if (!deps.writeEnabled) {
-    return {
-      status: "write_disabled",
-      detail: `${defaultHint("write_disabled") ?? ""}; or enable FTS in the Calibre GUI (the FT button left of the search bar)`,
-    };
+    // the remedy wording belongs to the tool layer, which fills `detail`
+    return { status: "write_disabled" };
   }
   const opts = { library, ...(signal ? { signal } : {}) };
   try {

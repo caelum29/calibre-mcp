@@ -2,6 +2,7 @@
 // call that writes nothing stay listed (announced read-only) and only their Write calls are
 // refused with write_disabled; tools with no such call stay hidden. With the gate on, nothing changes.
 
+import { filterErrorText } from "../../src/tools/writes-remedy.js";
 import { describe, it, expect } from "vitest";
 import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
 import { buildServer } from "../../src/server.js";
@@ -197,7 +198,8 @@ describe("Unknown bundle steer follows the write gate (#435)", () => {
   async function unknownBundleError(writeEnabled: boolean): Promise<string> {
     invalidateBundleCache();
     const out = await resolveFilter(depsFor(writeEnabled), { filter: "Golang", autoExclude: false });
-    return out.ok ? "" : out.error;
+    // the use case returns the fact; the tool layer words the steer (#518)
+    return out.ok ? "" : filterErrorText(out, writeEnabled);
   }
 
   it("should_point_at_list_and_say_writes_are_needed_to_create_when_the_gate_is_off", async () => {

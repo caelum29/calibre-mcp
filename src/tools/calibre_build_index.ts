@@ -10,6 +10,7 @@ import { z } from "zod";
 import { BookId, CoercedBool, jsonArray } from "./coerce.js";
 import { defineTool } from "./define.js";
 import { describeError } from "../app/index-book.js";
+import { FTS_WRITE_DISABLED_DETAIL } from "./writes-remedy.js";
 import { enableFts, type FtsOutcome } from "../app/enable-fts.js";
 import { runIndexBuild, type BuildIndexDeps, type BuildSummary } from "../app/build-index.js";
 import type { LibId } from "../calibre/lib-id.js";
@@ -149,7 +150,7 @@ export const buildIndexTool = defineTool({
     const result = await runOrReport(builds, libraryId, args, deps, ctx);
     const fts = await ftsRun;
     // a cancelled call returns the build's result as is, without an FTS line
-    return fts && !signal?.aborted ? withFts(result, fts) : result;
+    return fts && !signal?.aborted ? withFts(result, withRemedy(fts)) : result;
   },
 });
 
@@ -177,6 +178,11 @@ async function runOrReport(
   return outcome.earlierCallFinishedAgoMs === undefined
     ? outcome.result
     : fromEarlierCall(outcome.result, outcome.earlierCallFinishedAgoMs);
+}
+
+/** The write gate's remedy is worded here, not in the use case. */
+function withRemedy(f: FtsOutcome): FtsOutcome {
+  return f.status === "write_disabled" ? { ...f, detail: FTS_WRITE_DISABLED_DETAIL } : f;
 }
 
 /** Attach the FTS outcome to a result: one more text line plus `structuredContent.fts`. Non-mutating (results are cached). */

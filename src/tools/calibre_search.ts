@@ -7,6 +7,7 @@
 // Large result sets come back as resource_links + an app-level nextCursor (DESIGN §2);
 // FTS snippets are fenced as untrusted book text.
 
+import { filterErrorText } from "./writes-remedy.js";
 import { z } from "zod";
 import type { SnippetBatch } from "../calibre/fts.js";
 import {
@@ -554,7 +555,7 @@ export const searchTool = defineTool({
         library: args.library,
         timeoutMs: deadline.timeoutFor(),
       });
-      if (!fr.ok) return toolErrorFrom(fr.cause, fr.error);
+      if (!fr.ok) return toolErrorFrom(fr.cause, filterErrorText(fr, deps.config.writeEnabled));
       if (args.mode === "fts") {
         if (!fts) return ftsUnavailable();
         return await ftsLibraryScope({ args, deps, fts, deadline, signal: ctx?.signal }, fr.res);

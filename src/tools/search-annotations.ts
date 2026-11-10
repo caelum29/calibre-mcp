@@ -3,12 +3,12 @@
 // Annotations respect Bundles and Exclusion markers (calibredb --search); notes attach to items
 // (authors, series, tags…), not books, so filters do not apply to them.
 
+import { filterErrorText } from "./writes-remedy.js";
 import { honestyLines, resolveFilter, scopeExpression } from "../app/bundles.js";
 import { resolveNumericId } from "../app/resolve-id.js";
 import {
   type AnnotationHit,
   type NoteHit,
-  calibredbArgv,
   isFts5QueryError,
   noSuchNoteItem,
   parseAnnotationExport,
@@ -16,6 +16,7 @@ import {
   parseNoteSearch,
   parseNoteShow,
 } from "../calibre/annotations.js";
+import { calibredbArgv } from "../calibre/calibredb-argv.js";
 import { CalibreCliError } from "../domain/errors.js";
 import type { LibId } from "../calibre/lib-id.js";
 import type { Deadline } from "../shared/deadline.js";
@@ -110,7 +111,7 @@ async function annotations(
       library: args.library,
       timeoutMs: deadline.timeoutFor(),
     });
-    if (!fr.ok) return toolErrorFrom(fr.cause, fr.error);
+    if (!fr.ok) return toolErrorFrom(fr.cause, filterErrorText(fr, deps.config.writeEnabled));
     restrict = scopeExpression(fr.res);
     honesty = honestyLines(fr.res);
     filterFields = {

@@ -1,6 +1,8 @@
 // The Calibre version, read from `calibredb --version` (#499, D-029). Calibre 9.18 added the
 // commands behind annotations and notes, so those calls check it first. SDK-free.
 
+import { stripCalibredbBanner } from "./calibredb-banner.js";
+
 /** A parsed Calibre version; `text` is what Calibre printed (`9.18`, `9.18.1`). */
 export interface CalibreVersion {
   text: string;
@@ -17,7 +19,7 @@ const VERSION_LINE = /\(calibre (\d+)\.(\d+)(?:\.(\d+))?\)/;
 
 /** Parse `calibredb --version` stdout; "unknown" when no version line is found. */
 export function parseCalibreVersion(stdout: string): CalibreVersionInfo {
-  const m = VERSION_LINE.exec(stdout);
+  const m = VERSION_LINE.exec(stripCalibredbBanner(stdout));
   if (!m) return "unknown";
   const [, major, minor, patch] = m;
   return {
