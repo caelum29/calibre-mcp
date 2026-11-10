@@ -1,0 +1,25 @@
+test/tools/ping-index-440.test.ts
+  s_53ff9ec34f3db8::t_25b2070eee6be2 130-168
+src/semantic/status.ts
+  s_53ff9ec34f3db8::t_68f7becc2398e2 25-26,111,116,153,208-209
+  s_53ff9ec34f3db8::t_25b2070eee6be2 185-188
+src/tools/calibre_ping.ts
+  s_53ff9ec34f3db8::t_68f7becc2398e2 226,235-244
+  s_53ff9ec34f3db8::t_17a2b00a538f95 245
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "12609fe1bbeb5730bd948d7c293da8c263f7b36a",
+  "prompts": {},
+  "sessions": {
+    "s_53ff9ec34f3db8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a4bd7ff7-48cb-45dc-95d3-fb2b8e7ff920",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
