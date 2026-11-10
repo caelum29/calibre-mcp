@@ -1,0 +1,19 @@
+CLAUDE.md
+  s_d0e77d3e45172d::t_31e6f493278857 60-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a1d2aa34e0685c628afad6e24d303a2fbd978b65",
+  "prompts": {},
+  "sessions": {
+    "s_d0e77d3e45172d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "774d07be-67bf-4261-a90d-56b8867ec462",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
