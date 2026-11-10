@@ -202,14 +202,18 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
     log.warn("widget debug ON — probe pane injected into widgets, calibre_widget_log registered");
   }
 
-  // calibre://book/{id} — the target of search/get_book resource_links. RESOURCE CONTRACT:
+  // calibre://book/{libId}/{id} — the target of search/get_book resource_links. RESOURCE CONTRACT:
   // the read handler THROWS on failure (the SDK turns it into a protocol error), unlike tools.
   server.registerResource(
     "book",
-    new ResourceTemplate("calibre://book/{id}", { list: undefined }),
+    new ResourceTemplate("calibre://book/{libId}/{id}", { list: undefined }),
     { title: "Calibre book", description: "Full metadata for one book." },
     async (_uri, variables) => {
-      const r = await readBookResource(deps.content, parseBookResourceId(variables.id));
+      // {libId} is the library ID; resolveLibraryId also accepts a display name and throws
+      // UnknownLibraryError (valid ids named) for anything else. The id is checked before any request.
+      const id = parseBookResourceId(variables.id);
+      const libId = await deps.content.resolveLibraryId(decodeSegment(String(variables.libId)));
+      const r = await readBookResource(deps.content, id, libId);
       return { contents: [{ uri: r.uri, mimeType: r.mimeType, text: r.text }] };
     },
   );
@@ -223,6 +227,16 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
     serverUrl: config.serverUrl,
   });
   return server;
+}
+
+// The SDK hands template variables back still percent-encoded (bookResourceUri encodes the libId),
+// so decode once. Malformed encoding stays as typed and ends in the same unknown-library error.
+function decodeSegment(raw: string): string {
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
 }
 
 /**

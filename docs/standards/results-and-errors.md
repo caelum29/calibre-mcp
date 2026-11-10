@@ -28,7 +28,7 @@ Claude Desktop shows the model only the text; Claude Code shows only `structured
   the text as labelled lines after the message (`bare: true` reports such as `calibre_ping` too):
 
   ```text
-  Error: No semantic index for Programming_Books yet.
+  Error: No semantic index for My_Books yet.
   Code: index_missing
   Next: run calibre_build_index first
   ```

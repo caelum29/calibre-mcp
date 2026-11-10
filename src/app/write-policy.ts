@@ -141,12 +141,15 @@ export function describeTransient(err: unknown, id: number): string {
 // have committed before the CLI gave up, so every write tool re-reads the book and decides
 // landed / not-landed / unverifiable from that, instead of reporting the timeout as failure.
 
-/** What a timed-out write is, judged from a re-read of the book. */
-export type TimedOutWriteCheck =
-  | { status: "landed"; after: Book }
+/** What a write that may have committed is, judged from a re-read; `after` is what was read. */
+export type ReReadCheck<T> =
+  | { status: "landed"; after: T }
   | { status: "not-landed" }
   /** `foreign`: the re-read shows values that are neither the old nor ours (#370). */
   | { status: "unverifiable"; foreign?: ForeignValue[] };
+
+/** What a timed-out `set_metadata` is, judged from a re-read of the book. */
+export type TimedOutWriteCheck = ReReadCheck<Book>;
 
 /** The write being verified: target book, its pre-write snapshot, and the requested changes. */
 export interface TimedOutWrite {
@@ -212,15 +215,15 @@ export function foreignNote(check: TimedOutWriteCheck): string {
 // bulk tools only render it. The order is fixed: a refusal that followed a drop is re-read first,
 // since the dropped attempt may have committed (#370); a plain timeout is re-read last (#33).
 
-/** A re-read that did not confirm the write: every {@link TimedOutWriteCheck} but `landed`. */
-export type UnconfirmedCheck = Exclude<TimedOutWriteCheck, { status: "landed" }>;
+/** A re-read that did not confirm the write: every {@link ReReadCheck} but `landed`. */
+export type UnconfirmedCheck<T = Book> = Exclude<ReReadCheck<T>, { status: "landed" }>;
 
 /** What a failed routed write amounts to, judged from its error and, when it may have committed, a re-read. */
-export type FailedWriteOutcome =
+export type FailedWriteOutcome<T = Book> =
   /** A re-read shows every requested change: success. `refused`: a refusal followed the drop. */
-  | { kind: "confirmed"; cause: ReReadCause; after: Book; refused: boolean }
+  | { kind: "confirmed"; cause: ReReadCause; after: T; refused: boolean }
   /** It may have committed, but the re-read can't confirm it: steer to calibre_get_book. */
-  | { kind: "unverified"; cause: ReReadCause; check: UnconfirmedCheck; refused: boolean }
+  | { kind: "unverified"; cause: ReReadCause; check: UnconfirmedCheck<T>; refused: boolean }
   /** The server refused the write, and nothing a dropped attempt sent landed. */
   | { kind: "refused" }
   /** Retries exhausted on a failure that never reached the server. */
@@ -237,22 +240,27 @@ export async function settleFailedWrite(
   write: TimedOutWrite,
   err: unknown,
 ): Promise<FailedWriteOutcome> {
+  return settleFailedStep(err, () => verifyTimedOutWrite(deps, write));
+}
+
+/**
+ * {@link settleFailedWrite} for any routed write (`add_format`, `remove`, …): `reRead` checks
+ * whether this write landed and runs only when it may have committed (a drop or a timeout).
+ */
+export async function settleFailedStep<T>(
+  err: unknown,
+  reRead: () => Promise<ReReadCheck<T>>,
+): Promise<FailedWriteOutcome<T>> {
   const refused = isWriteRefused(err);
-  if (isDroppedMidRequest(err)) return reRead(deps, write, "dropped", refused);
+  if (isDroppedMidRequest(err)) return judge(await reRead(), "dropped", refused);
   if (refused) return { kind: "refused" };
   const transient = classifyTransient(err);
   if (transient) return { kind: "transient", transient };
-  if (err instanceof CalibreCliTimeoutError) return reRead(deps, write, "timeout", false);
+  if (err instanceof CalibreCliTimeoutError) return judge(await reRead(), "timeout", false);
   return { kind: "unexpected" };
 }
 
-async function reRead(
-  deps: BaseDeps,
-  write: TimedOutWrite,
-  cause: ReReadCause,
-  refused: boolean,
-): Promise<FailedWriteOutcome> {
-  const check = await verifyTimedOutWrite(deps, write);
+function judge<T>(check: ReReadCheck<T>, cause: ReReadCause, refused: boolean): FailedWriteOutcome<T> {
   if (check.status === "landed") return { kind: "confirmed", cause, after: check.after, refused };
   // a refusal is the answer once the re-read shows the dropped attempt did not land (#370)
   if (refused && check.status === "not-landed") return { kind: "refused" };

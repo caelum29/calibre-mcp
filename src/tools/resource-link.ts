@@ -1,17 +1,17 @@
 // Build lightweight resource_links from book summaries instead of shipping full records
 // — the biggest context-window win at ~801 books (DESIGN §2). The host readResource's
-// only the books it actually needs via the calibre://book/{id} template.
+// only the books it actually needs via the calibre://book/{libId}/{id} template.
 
 import type { BookSummary } from "../domain/book.js";
 import type { ResourceLinkBlock } from "./types.js";
 import { BOOK_MIME, bookResourceUri } from "../shared/book-uri.js";
 
-/** A resource_link content block pointing at a book, with a one-line description. */
-export function bookResourceLink(b: BookSummary): ResourceLinkBlock {
+/** A resource_link content block pointing at a book in library `libId`, with a one-line description. */
+export function bookResourceLink(b: BookSummary, libId: string): ResourceLinkBlock {
   const description = [b.authors.join(", "), b.snippet].filter(Boolean).join(" — ");
   return {
     type: "resource_link",
-    uri: bookResourceUri(b.id),
+    uri: bookResourceUri(b.id, libId),
     name: b.title || `book ${b.id}`,
     title: b.title || undefined,
     description: description || undefined,

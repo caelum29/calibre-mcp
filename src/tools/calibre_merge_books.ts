@@ -12,14 +12,21 @@ import type { ChangeValue } from "../domain/book-fields.js";
 import { downloadToFile } from "../calibre/http.js";
 import type { Book } from "../domain/book.js";
 import { isSimilarMatch } from "../domain/curation/normalize.js";
-import { CalibreCliError, CalibreCliTimeoutError, CalibreHttpError } from "../domain/errors.js";
+import { CalibreCliError } from "../domain/errors.js";
 import { mergeBuiltinMetadata, mergeCustomMetadata, planFormatMoves } from "../domain/merge.js";
 import type { FormatMove } from "../domain/merge.js";
 import { CoercedBool, CoercedInt, jsonArray } from "./coerce.js";
 import { defineTool } from "./define.js";
 import { fence, toolError, toolOk, toolErrorFrom, errorFromCatch } from "./result.js";
 import type { BaseDeps } from "./deps.js";
-import { isWriteRefused, WRITE_REFUSED_MESSAGE, verifyTimedOutWrite } from "../app/write-policy.js";
+import {
+  settleFailedStep,
+  settleFailedWrite,
+  WRITE_REFUSED_MESSAGE,
+  type FailedWriteOutcome,
+  type ReReadCause,
+} from "../app/write-policy.js";
+import { formatOnTarget, sourcesRemoved } from "../app/merge-verify.js";
 
 /** One executed (or planned) write step in the merge ledger. */
 interface Step {
@@ -28,11 +35,48 @@ interface Step {
   note?: string;
   /** What a failed step threw — the "did not start" result's errorCode (#249). Not rendered. */
   cause?: unknown;
+  /** The step may have committed: a re-read could not confirm it (#413). Not rendered. */
+  unverified?: boolean;
+  /** The note carries its own re-run instruction, so the ledger adds none (#413). Not rendered. */
+  ownRerun?: boolean;
 }
 
 /** The benign `--dont-replace` collision: target already holds that format (probe §1). */
 function isFormatCollision(err: unknown): boolean {
   return err instanceof CalibreCliError && /already exists for book/i.test(err.stderr ?? "");
+}
+
+const CAUSE_TEXT: Record<ReReadCause, string> = {
+  timeout: "calibredb timed out",
+  dropped: "the connection dropped mid-request",
+};
+
+// The steer for a write that may have committed but a re-read could not confirm (#33, #413).
+function unconfirmedNote(cause: ReReadCause, what: string, verify: string): string {
+  return `${CAUSE_TEXT[cause]} and the re-read does not confirm ${what} — verify with ${verify} before retrying`;
+}
+
+/** Mark `step` failed from a settled outcome; `unverified` gets the caller's re-read steer. */
+function failStep<T>(
+  step: Step,
+  outcome: Exclude<FailedWriteOutcome<T>, { kind: "confirmed" }>,
+  err: unknown,
+  unverifiedNote: (
+    cause: ReReadCause,
+    check: Extract<FailedWriteOutcome<T>, { kind: "unverified" }>["check"],
+  ) => string,
+): void {
+  step.status = "failed";
+  step.cause = err;
+  step.unverified = outcome.kind === "unverified";
+  step.note =
+    outcome.kind === "unverified"
+      ? unverifiedNote(outcome.cause, outcome.check)
+      : outcome.kind === "refused"
+        ? WRITE_REFUSED_MESSAGE
+        : err instanceof Error
+          ? err.message
+          : String(err);
 }
 
 const STATUS_MARK: Record<Step["status"], string> = {
@@ -263,21 +307,16 @@ async function executeMerge(deps: BaseDeps, job: MergeJob) {
           step.note = "target already has this format";
           continue;
         }
-        // A routed write commits server-side before calibredb replies — a timeout is
-        // ambiguous, so verify against a re-read before failing (issue #33).
-        if (err instanceof CalibreCliTimeoutError) {
-          const landed = await deps.content
-            .getBook(target.id, job.library)
-            .then((b) => b.formats.includes(m.format))
-            .catch(() => false);
-          if (landed) {
-            step.status = "done";
-            continue;
-          }
+        // A routed write commits server-side before calibredb replies: a timeout or a drop is
+        // settled by a re-read of the target's formats (#33, #413).
+        const outcome = await settleFailedStep(err, () => formatOnTarget(deps, target.id, m.format, job.library));
+        if (outcome.kind === "confirmed") {
+          step.status = "done";
+          continue;
         }
-        step.status = "failed";
-        step.cause = err;
-        step.note = isWriteRefused(err) ? WRITE_REFUSED_MESSAGE : err instanceof Error ? err.message : String(err);
+        failStep(step, outcome, err, (cause) =>
+          unconfirmedNote(cause, `${m.format} on #${target.id}`, `calibre_get_book id=${target.id}`),
+        );
         aborted = true;
         break;
       }
@@ -317,40 +356,18 @@ async function executeMerge(deps: BaseDeps, job: MergeJob) {
         });
         metaStep.status = "done";
       } catch (err) {
-        let handled = false;
-        if (err instanceof CalibreCliTimeoutError) {
-          // Verify on the built-in subset (custom #columns aren't carried on Book).
-          const builtin = Object.fromEntries(Object.entries(job.metadataChanges).filter(([k]) => !k.startsWith("#")));
-          if (Object.keys(builtin).length > 0) {
-            const check = await verifyTimedOutWrite(deps, {
-              id: target.id,
-              before: target,
-              changes: builtin,
-              library: job.library,
-            });
-            if (check.status === "landed") {
-              metaStep.status = "done";
-              handled = true;
-            }
-          }
-          if (!handled) {
-            metaStep.status = "failed";
-            metaStep.cause = err;
-            metaStep.note =
-              "calibredb timed out and the re-read does not confirm the metadata merge — " +
-              `verify with calibre_get_book id=${target.id} before retrying`;
-            aborted = true;
-            handled = true;
-          }
-        }
-        if (!handled) {
-          metaStep.status = "failed";
-          metaStep.cause = err;
-          metaStep.note = isWriteRefused(err)
-            ? WRITE_REFUSED_MESSAGE
-            : err instanceof Error
-              ? err.message
-              : String(err);
+        // Verify on the built-in subset (custom #columns aren't carried on Book).
+        const builtin = Object.fromEntries(Object.entries(job.metadataChanges).filter(([k]) => !k.startsWith("#")));
+        const outcome = await settleFailedWrite(
+          deps,
+          { id: target.id, before: target, changes: builtin, library: job.library },
+          err,
+        );
+        if (outcome.kind === "confirmed") metaStep.status = "done";
+        else {
+          failStep(metaStep, outcome, err, (cause) =>
+            unconfirmedNote(cause, "the metadata merge", `calibre_get_book id=${target.id}`),
+          );
           aborted = true;
         }
       }
@@ -363,33 +380,27 @@ async function executeMerge(deps: BaseDeps, job: MergeJob) {
         await deps.calibre.calibredb(["remove", sourceIds.join(",")], { library: libId });
         removeStep.status = "done";
       } catch (err) {
-        let handled = false;
-        if (err instanceof CalibreCliTimeoutError) {
-          // Removed books 404 immediately on /ajax (probe §4) — all gone = committed.
-          const gone = await Promise.all(
-            sourceIds.map((id) =>
-              deps.content.getBook(id, job.library).then(
-                () => false,
-                (e) => e instanceof CalibreHttpError && e.status === 404,
-              ),
-            ),
-          );
-          if (gone.every(Boolean)) {
-            removeStep.status = "done";
-            handled = true;
-          }
-        }
-        if (!handled) {
-          removeStep.status = "failed";
-          removeStep.cause = err;
-          removeStep.note = isWriteRefused(err)
-            ? WRITE_REFUSED_MESSAGE
-            : err instanceof CalibreCliTimeoutError
-              ? "calibredb timed out and sources still exist — re-run to finish the merge " +
-                "(formats and metadata are already on the target; re-merging is a no-op)"
-              : err instanceof Error
-                ? err.message
-                : String(err);
+        // Removed books 404 immediately on /ajax (probe §4) — all gone = committed.
+        let remaining: number[] = [...sourceIds];
+        const outcome = await settleFailedStep(err, async () => {
+          const r = await sourcesRemoved(deps, sourceIds, job.library);
+          remaining = r.remaining;
+          return r.check;
+        });
+        if (outcome.kind === "confirmed") removeStep.status = "done";
+        else {
+          failStep(removeStep, outcome, err, (cause, check) => {
+            // A re-run with an already-trashed source fails not_found, so name only what is left.
+            const gone = sourceIds.filter((id) => !remaining.includes(id));
+            const verify = `calibre_get_book id=${remaining.join(" / id=")}`;
+            const rerun = `re-run with sourceIds=[${remaining.join(",")}] (formats and metadata are already on the target)`;
+            return check.status === "not-landed"
+              ? `${CAUSE_TEXT[cause]}; ${remaining.map((id) => `#${id}`).join(", ")} still exist` +
+                  (gone.length > 0 ? ` (${gone.map((id) => `#${id}`).join(", ")} already in the trash)` : "") +
+                  ` — verify with ${verify}, then ${rerun}`
+              : `${unconfirmedNote(cause, "the removal", verify)}, then ${rerun}, leaving out any that 404`;
+          });
+          removeStep.ownRerun = removeStep.unverified;
         }
       }
     }
@@ -429,8 +440,11 @@ function ledgerResult(job: MergeJob, steps: Step[]) {
   }
 
   if (!committed) {
-    const message =
-      `Merge did not start — ${failed[0]!.note ?? failed[0]!.step}. Nothing was changed.\n` + `Steps:\n${ledger}`;
+    // An unverified step may have committed: never claim nothing changed (#413).
+    const message = failed[0]!.unverified
+      ? `Merge stopped — ${failed[0]!.note ?? failed[0]!.step}. That step may have committed; no later step ran.\n` +
+        `Steps:\n${ledger}`
+      : `Merge did not start — ${failed[0]!.note ?? failed[0]!.step}. Nothing was changed.\n` + `Steps:\n${ledger}`;
     const opts = { structured: { ...structured, status: "incomplete" } };
     // the failing step's own cause when it threw; a failed post-add check has none
     const cause = failed[0]!.cause;
@@ -438,16 +452,21 @@ function ledgerResult(job: MergeJob, steps: Step[]) {
   }
 
   // Something committed: NEVER isError (issue #33). Steer: re-running is safe.
+  const stop = failed[0]!;
+  // one steer, not two: an unverified step is verified first; a note with its own re-run wins (#413)
+  const rerun = stop.ownRerun
+    ? ""
+    : `${stop.unverified ? "Verify first, then re-run" : "Re-run"} the same call to finish — completed steps are ` +
+      "idempotent (already-moved formats skip, metadata re-merge is a no-op).";
   return toolOk(
     [
       {
         type: "text",
         text:
-          `Merge incomplete — some steps committed, then "${failed[0]!.step}" failed` +
-          `${failed[0]!.note ? ` (${failed[0]!.note})` : ""}. No data was lost: sources are ` +
-          `deleted only after every other step verifies. Re-run the same call to finish — ` +
-          `completed steps are idempotent (already-moved formats skip, metadata re-merge is ` +
-          `a no-op).\nSteps:\n${ledger}`,
+          `Merge incomplete — some steps committed, then "${stop.step}" ` +
+          `${stop.unverified ? "could not be confirmed" : "failed"}${stop.note ? ` (${stop.note})` : ""}. ` +
+          `No data was lost: sources are deleted only after every other step verifies.` +
+          `${rerun ? ` ${rerun}` : ""}\nSteps:\n${ledger}`,
       },
     ],
     { ...structured, status: "incomplete" },
