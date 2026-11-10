@@ -12,18 +12,16 @@ Two interfaces, in priority order:
 2. **Calibre CLI via shell** — escape hatch for operations the server intentionally defers
    (convert, export, catalog, maintenance). See "CLI escape hatch" below.
 
-Libraries (under `~/Documents/Books/`):
-- `Programming Books` (default, ~800 books) — library ID `Programming_Books`
-- `Reaserch Books` (sic) — library ID `Reaserch_Books`
-
-Mostly PDF/EPUB, technical, EN + RU. Calibre GUI + Content Server on `:8080` are normally running.
+Libraries: discover them with `calibre_list_libraries` (names and IDs differ per user; the
+default library is used when none is given). Examples below use a library named `My Books` with
+ID `My_Books`. Calibre GUI + Content Server on `:8080` are normally running.
 
 ## Hard rules
 
 - **Metadata writes go through MCP tools** (`calibre_update_book`, `calibre_bulk_update`) —
   the old `-32602` serialization bug is fixed by server-side coercion. No CLI workaround needed.
 - **CLI writes/reads while the GUI is open MUST route through the running Content Server**:
-  `calibredb --with-library 'http://localhost:8080/#Programming_Books'` (library **ID** after `#`,
+  `calibredb --with-library 'http://localhost:8080/#My_Books'` (library **ID** after `#`,
   not the display name — the display form 404s). **Never** use `--library-path` on a live GUI
   library — the concurrency lock makes direct DB access refused or dangerous.
 - Write tools are gated: they exist only when the server runs with `CALIBRE_MCP_ENABLE_WRITE`
@@ -174,7 +172,7 @@ discarding a record without keeping anything from it.
 metadata via recover_metadata).
 
 **Add a book:**
-`calibre_add_book path:"/Users/artem/Downloads/file.epub"` (path must be under the allowed
+`calibre_add_book path:"/Users/me/Downloads/file.epub"` (path must be under the allowed
 roots; if refused, the error names them).
 
 **Extract book text to a file / send to NotebookLM:**
@@ -188,7 +186,7 @@ roots; if refused, the error names them).
 For operations the MCP server defers. Always through the server URL when the GUI is running:
 
 ```bash
-LIB='http://localhost:8080/#Programming_Books'
+LIB='http://localhost:8080/#My_Books'
 ```
 
 | Operation | Command |

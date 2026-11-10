@@ -3,7 +3,7 @@
 
 /** The Content Server's view of available libraries. */
 export interface LibraryInfo {
-  /** libId (underscored, e.g. "Programming_Books") → display name ("Programming Books"). */
+  /** libId (underscored, e.g. "My_Books") → display name ("My Books"). */
   libraryMap: Record<string, string>;
   /** libId of the default library. */
   defaultLibrary: string;
