@@ -55,7 +55,7 @@ function deps(
   } as unknown as ToolDeps;
 }
 
-const ok = async () => ({ stdout: "", stderr: "" });
+const ok = async (_args: readonly string[]) => ({ stdout: "", stderr: "" });
 
 describe("identifiers wrong shape: handler level", () => {
   it("update_book: invalid_input, not a server fault, calibredb untouched", async () => {
@@ -101,7 +101,7 @@ describe("recover_metadata proposal → update_book", () => {
     const changes = proposed.structuredContent?.changes as Record<string, unknown>;
     expect(changes.pubdate).toBe("2020");
     await updateBookTool.handler({ id: 658, changes: changes as never }, d);
-    const argv = spy.mock.calls[0]?.[0] as string[];
+    const argv = spy.mock.calls[0]?.[0];
     expect(argv).toContain("pubdate:2020-01-01");
   });
 });
