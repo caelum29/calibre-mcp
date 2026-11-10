@@ -10,6 +10,8 @@ import { errorCodeFor, type ErrorCode } from "../domain/error-codes.js";
 export interface FailedWriteText {
   code: ErrorCode;
   text: string;
+  /** The next step the text already spells out, for a caller that must not add a second one. */
+  hint?: string;
 }
 
 /** The outcomes this presenter renders: everything a re-read did not show landing. */
@@ -19,6 +21,8 @@ export type FailedWrite<T> = Exclude<FailedWriteOutcome<T>, { kind: "confirmed" 
 export interface FailedWriteContext<T> {
   /** The book the write targeted (named in the verify steer). */
   id: number;
+  /** Retries that actually ran; omit when the write went through `withTransientRetry` (it records them). */
+  retries?: number;
   /** The error the write threw. */
   err: unknown;
   /**
@@ -37,15 +41,18 @@ export function presentFailedWrite<T>(outcome: FailedWrite<T>, ctx: FailedWriteC
   switch (outcome.kind) {
     case "refused":
       return { code: "write_refused", text: WRITE_REFUSED_MESSAGE };
-    case "transient":
-      return { code: "calibre_unreachable", text: describeTransient(err, id) };
+    case "transient": {
+      const text = describeTransient(err, id, ctx.retries);
+      // the last sentence is the step (no "retries" clause or other sentence follows it)
+      return { code: "calibre_unreachable", text, hint: text.slice(text.lastIndexOf(". ") + 2) };
+    }
     case "unverified":
     case "refusedUnverified": {
       const own = ctx.unconfirmed?.(outcome.cause, outcome.check);
       if (own !== undefined) return { code: "write_unverified", text: own };
       // a drop (refused after or not) keeps the "may have been committed" transient text (#342)
       if (outcome.cause === "dropped") {
-        return { code: "write_unverified", text: describeTransient(err, id) + foreignNote(outcome.check) };
+        return { code: "write_unverified", text: describeTransient(err, id, ctx.retries) + foreignNote(outcome.check) };
       }
       return { code: "write_unverified", text: timedOutText(outcome.check, id) };
     }

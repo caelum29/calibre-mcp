@@ -115,9 +115,10 @@ export function isDroppedMidRequest(err: unknown): boolean {
  * Model-facing reason for a write to book `id` that stayed transient after every retry. A
  * mid-request drop is never reported as a plain failure — it may have committed (#33).
  */
-export function describeTransient(err: unknown, id: number): string {
-  // the real count: a timeout or 500 after a drop ends the loop early (#370)
-  const n = recordOf(err)?.retries ?? RETRY_PAUSES_MS.length;
+export function describeTransient(err: unknown, id: number, ranRetries?: number): string {
+  // the real count: a timeout or 500 after a drop ends the loop early (#370); a caller that never
+  // retried (merge_books) says so with 0 instead of the default
+  const n = ranRetries ?? recordOf(err)?.retries ?? RETRY_PAUSES_MS.length;
   // a first-attempt failure ran no retry, so it gets no clause rather than "after 0 retries"
   const retries = n === 0 ? "" : n === 1 ? " after 1 retry" : ` after ${n} retries`;
   if (isDroppedMidRequest(err)) {

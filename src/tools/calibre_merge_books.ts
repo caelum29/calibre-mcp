@@ -39,6 +39,8 @@ interface Step {
   cause?: unknown;
   /** The step may have committed: a re-read could not confirm it (#413). Not rendered. */
   unverified?: boolean;
+  /** The next step the note already spells out, so the error adds no generic `Next:` line. Not rendered. */
+  hint?: string;
   /** The note carries its own re-run instruction, so the ledger adds none (#413). Not rendered. */
   ownRerun?: boolean;
 }
@@ -70,7 +72,10 @@ function failStep<T>(
   step.cause = err;
   step.unverified = isUnverified(outcome);
   // the shared presenter words every other kind (refusal, transient, unexpected) with its next step (#417)
-  step.note = presentFailedWrite(outcome, { id: targetId, err, unconfirmed: unverifiedNote }).text;
+  // merge never retries (its calls aren't wrapped in withTransientRetry), so say 0, not the default
+  const shown = presentFailedWrite(outcome, { id: targetId, err, retries: 0, unconfirmed: unverifiedNote });
+  step.note = shown.text;
+  step.hint = shown.hint;
 }
 
 const STATUS_MARK: Record<Step["status"], string> = {
@@ -435,11 +440,12 @@ function ledgerResult(job: MergeJob, steps: Step[]) {
 
   if (!committed) {
     // An unverified step may have committed: never claim nothing changed (#413).
+    // a note that ends in its own full stop must not double it before our sentence
+    const why = (failed[0]!.note ?? failed[0]!.step).replace(/\.+$/, "");
     const message = failed[0]!.unverified
-      ? `Merge stopped — ${failed[0]!.note ?? failed[0]!.step}. That step may have committed; no later step ran.\n` +
-        `Steps:\n${ledger}`
-      : `Merge did not start — ${failed[0]!.note ?? failed[0]!.step}. Nothing was changed.\n` + `Steps:\n${ledger}`;
-    const opts = { structured: { ...structured, status: "incomplete" } };
+      ? `Merge stopped — ${why}. That step may have committed; no later step ran.\nSteps:\n${ledger}`
+      : `Merge did not start — ${why}. Nothing was changed.\nSteps:\n${ledger}`;
+    const opts = { hint: failed[0]!.hint, structured: { ...structured, status: "incomplete" } };
     // the failing step's own cause when it threw; a failed post-add check has none
     const cause = failed[0]!.cause;
     return toolErrorFrom(cause, message, "write_failed", opts);
