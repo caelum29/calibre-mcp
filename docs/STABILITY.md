@@ -101,5 +101,6 @@ tools are hidden then). Adding the lines to these errors later would be a minor 
 
 ## Supported versions
 
-Security fixes go to the latest `1.x` minor release line only ([`SECURITY.md`](../SECURITY.md)).
-`0.x` releases do not receive fixes once 1.0.0 is out. Upgrade to the latest release first.
+Security fixes go to the latest minor release line only; from 1.0.0 on that is `1.x`, and `0.x`
+releases get no fixes after 1.0.0 is out ([`SECURITY.md`](../SECURITY.md)). Upgrade to the latest
+release first.

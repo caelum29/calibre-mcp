@@ -2,9 +2,9 @@
 
 ## Supported versions
 
-Security fixes go to the latest `1.x` minor release line only (the newest release on
-[npm](https://www.npmjs.com/package/calibre-mcp)); `0.x` releases do not receive fixes once 1.0.0 is
-out. See the [stability policy](./docs/STABILITY.md). Upgrade to the latest release before
+Security fixes go to the latest minor release line only (the newest release on
+[npm](https://www.npmjs.com/package/calibre-mcp)); from 1.0.0 on that is `1.x`, and `0.x` releases
+get no fixes after 1.0.0 is out. See the [stability policy](./docs/STABILITY.md). Upgrade to the latest release before
 reporting; older versions are not patched.
 
 ## Reporting a vulnerability
