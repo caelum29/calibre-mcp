@@ -12,7 +12,8 @@ A breaking change to any of these is a **major** release.
 - **Declared output fields** (`outputSchema` / `structuredContent`): removing or renaming a field, or
   changing its type, is breaking. Adding a field is a minor change.
 - **Labelled lines of text results:** the label and value format of each text line that carries a
-  declared output field: the cursor, the book id, the error `Code:` and `Next:` lines, and
+  declared output field: the cursor, the book id, the error `Code:` and `Next:` lines (on the errors
+  named under [Error codes](#error-codes)), and
   `calibre_ping`'s `Index:`, `Semantic search:` and `calibre writes:` lines. The full list, per
   tool, is the [Labelled lines](TOOLS.md#labelled-lines) table, generated from the server's registry.
 - **Client channels:** every field a model must act on appears in both the text and the structured
@@ -49,9 +50,15 @@ A breaking change to any of these is a **major** release.
 
 ## Error codes
 
-Every failed tool call carries one `errorCode` from this closed set (structured result and the
-`Code:` line of the text). Adding or removing a code is a contract change. The next step is the generic
+Every error the server's tool handlers or its write gate return carries one `errorCode` from this
+closed set (structured result and the `Code:` line of the text), and a `Next:` line unless the message
+already states the step. Adding or removing a code is a contract change. The next step is the generic
 one; a call site may give a sharper one.
+
+Errors the MCP SDK answers before any handler runs are outside this contract and carry no
+`errorCode`, `Code:` or `Next:`: input-validation failures (an argument that doesn't fit the tool's
+schema), and a direct call to `calibre_update_book` or `calibre_add_book` while writes are off (both
+tools are hidden then). Adding the lines to these errors later would be a minor change.
 
 | Code | Meaning | Default next step |
 |---|---|---|

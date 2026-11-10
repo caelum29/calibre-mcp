@@ -345,8 +345,8 @@ Indexing only ever adds or replaces books, so books you later **remove or merge 
 their (now unreachable) passages in the index. Pass `prune: true` to reconcile: it deletes the
 index entries for every book that is no longer in the library and reports how many it dropped.
 
-This writes only to the server's own local index directory — not to your Calibre library — so
-it's safe to run without enabling library writes.
+The index build writes only to the server's own local index directory — not to your Calibre
+library — so it runs without enabling library writes. Only `enableFts: true` needs them.
 
 **`enableFts: true`** also turns on Calibre's own full-text indexing for the library (the engine
 behind `calibre_search` `mode: fts`), through `calibredb fts_index enable`. Calibre indexes in the
@@ -696,8 +696,8 @@ only the part named here is contract. The table is generated from the server's r
 <!-- labelled-lines:start -->
 | Tool | Label | Value format | Structured field |
 |---|---|---|---|
-| every tool (error results) | `Code` | `Code: <errorCode>` — one of the closed error-code set | `errorCode` |
-| every tool (error results) | `Next` | `Next: <hint>` — omitted when the message already states the hint (the hint text itself is Prose; the label and its presence are contract) | `hint` |
+| every tool (handler and write-gate errors) | `Code` | `Code: <errorCode>` — one of the closed error-code set | `errorCode` |
+| every tool (handler and write-gate errors) | `Next` | `Next: <hint>` — omitted when the message already states the hint (the hint text itself is Prose; the label and its presence are contract) | `hint` |
 | `calibre_list_libraries` | `id` | `<Name> (id: <libraryId>)[ [default]]` — one line per library | `libraries[].id` |
 | `calibre_get_book` | `id` | `id: <id> \| uuid: <uuid>[ \| …]` (fields after the uuid are Prose) | `book.id` |
 | `calibre_search` | `cursor` | `… cursor: <nextCursor>` at the end of the line — pass the token verbatim (the words before `cursor:` are Prose) | `nextCursor` |
@@ -708,9 +708,10 @@ only the part named here is contract. The table is generated from the server's r
 | `calibre_find_duplicates` | `cursor` | `… cursor: <nextCursor>` at the end of the line — pass the token verbatim (the words before `cursor:` are Prose) | `nextCursor` |
 | `calibre_get_content` | `cursor` | `… cursor: <nextCursor>` at the end of the line — pass the token verbatim (the words before `cursor:` are Prose) | `nextCursor` |
 | `calibre_build_index` | `Indexed ids` | `Indexed ids: <id>, <id>.` | `bookDetails[].bookId` |
+| `calibre_build_index` | `FTS` | `- FTS: write_disabled\|already enabled\|enabled\|failed — …` — only with `enableFts: true` (`already enabled` is `already_enabled`; the words after the dash are Prose) | `fts.status` |
 | `calibre_ping` | `calibredb` | `calibredb: <path> (Content Server <url>)` | `calibredbPath` |
 | `calibre_ping` | `calibre version` | `calibre version: <x.y[.z]>\|unknown` — from `calibredb --version` | `calibreVersion` |
-| `calibre_ping` | `writes` | `writes: ENABLED\|disabled (…)` — our write gate (the parenthesis is Prose) | `writeEnabled` |
+| `calibre_ping` | `writes` | `writes: ENABLED (…)` or `writes: disabled — <what still works> (…)` — our write gate (the text after the state word is Prose) | `writeEnabled` |
 | `calibre_ping` | `calibre writes` | `calibre writes: allowed\|refused — <how to allow writes>\|unknown (<reason>)` (the remedy after `refused` and the reason are Prose) | `calibreWriteAccess` |
 | `calibre_ping` | `Semantic search` | `Semantic search: ready\|UNAVAILABLE\|index STALE …` (the state word is contract; the explanation and steering sentence are Prose) | `semantic.available` |
 | `calibre_ping` | `index` | on the Semantic search line: `; <libraryId> index v<N>: <B> books / <C> chunks / <F> figures, <V> vectors` or `; <libraryId> index busy — …` | `semantic.libraryId` |
@@ -718,6 +719,9 @@ only the part named here is contract. The table is generated from the server's r
 | `calibre_ping` | `id` | each Index entry: `<Name> (id: <libraryId>)[ [default]]: <N>/<M\|?> indexed[ (<K> without embeddings)]\|none\|stale index (rebuild)\|busy — …\|not indexable — …\|index unreadable` (at most 20) | `indexes[].id` |
 | `calibre_ping` | `log file` | `log file: <path>\|off (stderr only)` | `logFile` |
 | `calibre_ping` | `recent errors` | `recent errors: <N>[ (<M> occurrences)]` | `recentErrors` |
+
+Errors the MCP SDK answers before a handler runs carry no `Code:` or `Next:` line: input-validation
+failures, and a direct call to `calibre_update_book` or `calibre_add_book` while writes are off.
 
 Tools whose text has no Labelled lines beyond the error lines:
 
