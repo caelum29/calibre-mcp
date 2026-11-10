@@ -1,0 +1,32 @@
+Integration status: False
+[
+  {
+    "annotation": {
+      "end_cfi": "/2/4/2[book-content]/2[sbo-rt-content]/2/2[ch_06_integration]/14/2[ch_bootstrap_dual_write_anti_pattern]/8/1:267",
+      "highlighted_text": "commit",
+      "notes": "Commit offsets only after processing, or you lose events on crash.",
+      "spine_index": 13,
+      "spine_name": "OEBPS/ch06.html",
+      "start_cfi": "/2/4/2[book-content]/2[sbo-rt-content]/2/2[ch_06_integration]/14/2[ch_bootstrap_dual_write_anti_pattern]/8/1:261",
+      "style": {
+        "kind": "color",
+        "type": "builtin",
+        "which": "green"
+      },
+      "timestamp": "2026-11-10T18:13:47.914Z",
+      "toc_family_titles": [
+        "6. Integrating Event-Driven Architectures with Existing Systems",
+        "The Dual Write Antipattern"
+      ],
+      "type": "highlight",
+      "uuid": "ViGPyty5eFEOP_KjVWFtWg"
+    },
+    "book_id": 644,
+    "format": "EPUB",
+    "id": 23,
+    "text": "commit\n \nCommit offsets only after processing, or you lose events on crash.",
+    "title": "Building Event-Driven Microservices (for True Epub)",
+    "user": "viewer",
+    "user_type": "local"
+  }
+]

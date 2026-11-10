@@ -1,0 +1,31 @@
+Integration status: False
+[
+  {
+    "annotation": {
+      "end_cfi": "/2/4[x978601084358-12]/2/758/1:256",
+      "highlighted_text": "последующие коммиты зависят",
+      "spine_index": 14,
+      "spine_name": "OEBPS/Text/978601084358-12.xhtml",
+      "start_cfi": "/2/4[x978601084358-12]/2/758/1:229",
+      "style": {
+        "kind": "color",
+        "type": "builtin",
+        "which": "green"
+      },
+      "timestamp": "2026-11-10T18:18:36.576Z",
+      "toc_family_titles": [
+        "Глава 9. Изменение коммитов",
+        "Перебазирование коммитов"
+      ],
+      "type": "highlight",
+      "uuid": "MO9RXK-EXoZRNxz1w3Ug9w"
+    },
+    "book_id": 94,
+    "format": "EPUB",
+    "id": 13,
+    "text": "последующие коммиты зависят",
+    "title": "Git: контроль версий. 3-е изд.",
+    "user": "viewer",
+    "user_type": "local"
+  }
+]
