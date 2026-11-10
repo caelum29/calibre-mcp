@@ -1,0 +1,40 @@
+src/app/enable-fts.ts
+  s_02b52ad8edbfad::t_3364bd28147240 16,43-44
+src/tools/search-annotations.ts
+  s_02b52ad8edbfad::t_3364bd28147240 6,114
+src/app/bundles.ts
+  s_02b52ad8edbfad::t_3364bd28147240 191-192,240-241
+src/tools/writes-remedy.ts
+  s_02b52ad8edbfad::t_3364bd28147240 4-5,18-32
+src/tools/calibre_search.ts
+  s_02b52ad8edbfad::t_3364bd28147240 10,558
+test/integration/write-gate-per-call.test.ts
+  s_02b52ad8edbfad::t_cf44524dc1845d 5,201-202
+src/tools/calibre_bulk_update.ts
+  s_02b52ad8edbfad::t_3364bd28147240 6,148
+src/tools/calibre_semantic_search.ts
+  s_02b52ad8edbfad::t_3364bd28147240 17,206
+src/tools/calibre_quality_report.ts
+  s_02b52ad8edbfad::t_3364bd28147240 5,79
+src/tools/calibre_find_duplicates.ts
+  s_02b52ad8edbfad::t_3364bd28147240 6,109
+src/tools/calibre_build_index.ts
+  s_02b52ad8edbfad::t_5e66e11b9a876c 186-187
+  s_02b52ad8edbfad::t_3364bd28147240 13,153,183-185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4caa2a6f2bbb1cb26b0f0d37c74ed6615bfdb18c",
+  "prompts": {},
+  "sessions": {
+    "s_02b52ad8edbfad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5df1a23b-ecee-482f-b178-3bf623cc8f7f",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
