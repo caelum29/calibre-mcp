@@ -1,0 +1,19 @@
+test/tools/gateway-5xx-busy-494.test.ts
+  s_3e8658abeda134::t_f3aeb9b46b74b6 1-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "94efadfb4683c2ae17f4e7e332b2c05ae5f40375",
+  "prompts": {},
+  "sessions": {
+    "s_3e8658abeda134": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "90cd6d91-2e99-40ea-88d4-833235d9eb6d",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
