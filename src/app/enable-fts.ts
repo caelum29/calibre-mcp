@@ -3,7 +3,7 @@
 // Business context: `fts_index enable` prints the same text whether or not FTS was already on,
 // so "already enabled" is detected with `fts_index status` first (exit 2 there = disabled).
 
-import type { LibraryWriter } from "../calibre/client.js";
+import type { CalibreClientOptions, LibraryWriter } from "../calibre/client.js";
 import type { LibId } from "../calibre/lib-id.js";
 import { defaultHint } from "../domain/error-codes.js";
 import { CalibreCliError } from "../domain/errors.js";
@@ -62,6 +62,22 @@ export async function enableFts(
     return { status: "enabled", ...(progress ? { progress } : {}) };
   } catch (err) {
     if (signal?.aborted) throw err;
-    return { status: "failed", detail: err instanceof Error ? err.message : String(err) };
+    // A routed write can commit before calibredb replies (timeout, dropped connection): look
+    // once more before calling it a failure (never report a committed write as failed).
+    if (await isEnabled(deps.calibre, opts)) return { status: "enabled" };
+    return {
+      status: "failed",
+      detail: `${err instanceof Error ? err.message : String(err)}; check with calibre_ping or Calibre's FT button (left of the search bar)`,
+    };
+  }
+}
+
+/** True when `fts_index status` says FTS is on; any error (incl. exit 2 = off) counts as not enabled. */
+async function isEnabled(calibre: LibraryWriter, opts: CalibreClientOptions): Promise<boolean> {
+  try {
+    const { stdout } = await calibre.calibredb(["fts_index", "status"], opts);
+    return lines(stdout).some((l) => /is enabled/i.test(l));
+  } catch {
+    return false;
   }
 }

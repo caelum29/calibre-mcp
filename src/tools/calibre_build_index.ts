@@ -3,7 +3,8 @@
 // implicitly (it's a ~1-2h job); pass a query that matches everything to do that on purpose. Each book is
 // extracted (reusing calibre_get_content's cache), chunked, embedded, and persisted; a
 // deterministic "[title › authors]" prefix gives each chunk cheap document context.
-// Per-book failures are collected, not fatal. The write gate disables this tool by default.
+// Per-book failures are collected, not fatal. Listed in every session (it writes the local index
+// dir, not the library); only the optional enableFts part needs the library write gate (#447).
 
 import { z } from "zod";
 import { BookId, CoercedBool, jsonArray } from "./coerce.js";
@@ -25,7 +26,7 @@ import {
   type BuildSelector,
 } from "./build-index-results.js";
 import type { ToolContext, ToolResult } from "./types.js";
-import { IndexBuildRegistry, type BuildRun } from "../semantic/index-builds.js";
+import { IndexBuildRegistry, type BuildRun, type IndexBuilds } from "../semantic/index-builds.js";
 import { log } from "../logging.js";
 import { bookProgress } from "./book-progress.js";
 
@@ -137,23 +138,49 @@ export const buildIndexTool = defineTool({
     // One build per library at a time (one index file, one writer); past the soft deadline the
     // call returns a "still running" status and the build keeps committing in the background.
     const builds = deps.indexBuilds ?? sharedBuilds;
-    const outcome = await builds.run(
-      libraryId,
-      selectorKey(args),
-      (run) => runBuild(args, deps, ctx, libraryId, run),
-      // A cancelled build's result must not answer the next call: that call should build.
-      { signal, keep: (r) => r.structuredContent?.cancelled !== true },
-    );
-    if (outcome.kind === "running")
-      return stillRunningResult(outcome, { ids: requestedIds(args), mode: buildModeKey(args) });
-    if (outcome.kind === "failed") {
-      return backgroundFailedResult(describeError(outcome.error), outcome.earlierCallFinishedAgoMs);
-    }
-    return outcome.earlierCallFinishedAgoMs === undefined
-      ? outcome.result
-      : fromEarlierCall(outcome.result, outcome.earlierCallFinishedAgoMs);
+    // The FTS part is independent of the build outcome (#447): started once here, it is attached
+    // to whatever result the call returns (final, still running, nothing to build, failed).
+    const ftsRun = args.enableFts
+      ? enableFts({ calibre: deps.calibre, writeEnabled: deps.config.writeEnabled }, libraryId, signal)
+      : undefined;
+    const result = await runOrReport(builds, libraryId, args, deps, ctx);
+    return ftsRun ? withFts(result, await ftsRun) : result;
   },
 });
+
+/** Run (or join) the build for this call and render whichever result kind comes back. */
+async function runOrReport(
+  builds: IndexBuilds<ToolResult>,
+  libraryId: LibId,
+  args: BuildArgs,
+  deps: BuildIndexDeps,
+  ctx: ToolContext | undefined,
+): Promise<ToolResult> {
+  const signal = ctx?.signal;
+  const outcome = await builds.run(
+    libraryId,
+    selectorKey(args),
+    (run) => runBuild(args, deps, ctx, libraryId, run),
+    // A cancelled build's result must not answer the next call: that call should build.
+    { signal, keep: (r) => r.structuredContent?.cancelled !== true },
+  );
+  if (outcome.kind === "running")
+    return stillRunningResult(outcome, { ids: requestedIds(args), mode: buildModeKey(args) });
+  if (outcome.kind === "failed") {
+    return backgroundFailedResult(describeError(outcome.error), outcome.earlierCallFinishedAgoMs);
+  }
+  return outcome.earlierCallFinishedAgoMs === undefined
+    ? outcome.result
+    : fromEarlierCall(outcome.result, outcome.earlierCallFinishedAgoMs);
+}
+
+/** Attach the FTS outcome to a result: one more text line plus `structuredContent.fts`. Non-mutating (results are cached). */
+function withFts(r: ToolResult, fts: FtsOutcome): ToolResult {
+  const [first, ...rest] = r.content;
+  const content =
+    first && first.type === "text" ? [{ ...first, text: `${first.text}\n- ${ftsLine(fts)}` }, ...rest] : r.content;
+  return { ...r, content, structuredContent: { ...r.structuredContent, fts } };
+}
 
 /** Args of one build call, as parsed by the input schema. */
 type BuildArgs = BuildSelector & { library?: string | undefined };
@@ -188,11 +215,7 @@ async function runBuild(
   }
   // Same buckets as the progress text, so the cancel summary and "Books so far" agree.
   if (outcome.kind === "cancelled") return cancelledResult(outcome.counts);
-  // FTS part runs after the semantic build and never fails it (#447)
-  const fts = args.enableFts
-    ? await enableFts({ calibre: deps.calibre, writeEnabled: deps.config.writeEnabled }, libraryId, ctx?.signal)
-    : undefined;
-  return summaryResult(outcome.summary, fts);
+  return summaryResult(outcome.summary);
 }
 
 /** The FTS line of the summary: always names the status so clients that drop structuredContent see it. */
@@ -211,7 +234,7 @@ function ftsLine(f: FtsOutcome): string {
 }
 
 /** The finished build's text summary + structuredContent. */
-function summaryResult(s: BuildSummary, fts: FtsOutcome | undefined): ToolResult {
+function summaryResult(s: BuildSummary): ToolResult {
   const notes: string[] = [];
   if (s.largeSelection !== undefined) {
     // Up-to-date books are skipped, so re-running the same call resumes an interrupted build.
@@ -263,7 +286,6 @@ function summaryResult(s: BuildSummary, fts: FtsOutcome | undefined): ToolResult
           : "Prune found no stale books — the index matches the library.",
     );
   }
-  if (fts) notes.push(ftsLine(fts));
 
   const { failures, bookDetails } = s;
   // Surface the first few failure reasons in the text block — clients that ignore
@@ -288,7 +310,6 @@ function summaryResult(s: BuildSummary, fts: FtsOutcome | undefined): ToolResult
     figures: s.figures,
     ...(pruned ? { prunedBooks: pruned.books, prunedChunks: pruned.chunks, prunedFigures: pruned.figures } : {}),
     elapsedMs: s.elapsedMs,
-    ...(fts ? { fts } : {}),
     keywordOnly: s.keywordOnly,
     semanticAvailable: !s.keywordOnly,
     ...(semanticReason !== undefined ? { semanticReason } : {}),
