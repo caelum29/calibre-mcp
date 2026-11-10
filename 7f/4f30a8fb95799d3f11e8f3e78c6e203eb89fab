@@ -1,0 +1,21 @@
+src/server.ts
+  s_5dacca1f4336e1::t_a92d2f6d9e58ad 112-118
+test/client-initialized-log.test.ts
+  s_5dacca1f4336e1::t_5f7909c2ddf01e 1-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7f4f30a8fb95799d3f11e8f3e78c6e203eb89fab",
+  "prompts": {},
+  "sessions": {
+    "s_5dacca1f4336e1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "73c8bca9-0618-4fb7-a094-57644e7c55bd",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
