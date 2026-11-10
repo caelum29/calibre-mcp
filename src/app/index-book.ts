@@ -3,7 +3,8 @@
 // books at once; commitBook is the single SQLite write and must only run serialized.
 
 import { chooseExtractFormat, noTextReason } from "../domain/extract-format.js";
-import type { FigureMarker } from "../domain/figures/markers.js";
+import type { FigureEntry } from "../domain/figures/inventory.js";
+import { indexedFigureCaption, type FigureMarker } from "../domain/figures/markers.js";
 import type { ExtractedText } from "../calibre/extract.js";
 import { frontMatterEnd } from "../domain/structure/front-matter.js";
 import { inThreadEncoder, structureOf, type BookEncoder } from "../semantic/book-encoder.js";
@@ -159,13 +160,14 @@ export async function prepareBook(deps: IndexBookDeps, bookId: number, opts: Pre
   const ctx = `[${book.title} › ${book.authors.join(", ")}]\n`;
 
   // Figure captions (D-018 Phase B / #86): every placed marker becomes a figures row —
-  // caption + char_offset come from the marker (same text coordinates as the chunks),
-  // source/dims from the figure inventory (already cached by marker injection). Captions get
-  // their own embeddings so target:"figures" search ranks them directly.
-  const figureRowsP: Promise<IndexedFigure[]> =
+  // char_offset comes from the marker (same text coordinates as the chunks); caption text,
+  // source and dims from the figure inventory (already cached by marker injection). Captions get
+  // their own embeddings so target:"figures" search ranks them directly. Awaited before encoding:
+  // the embedded caption is the row's full one, not the marker's first-line stub (#428).
+  let figures: IndexedFigure[] =
     extracted.markers.length > 0
-      ? figureRows(deps, { bookId, format: fmt, downloadUrl, cacheKey, signal: opts.signal }, extracted.markers)
-      : Promise.resolve([]);
+      ? await figureRows(deps, { bookId, format: fmt, downloadUrl, cacheKey, signal: opts.signal }, extracted.markers)
+      : [];
   const encoder = opts.encoder ?? inThreadEncoder(deps.embedder);
   opts.onPhase?.({ phase: "chunk" });
   const onPhase = opts.onPhase;
@@ -174,7 +176,7 @@ export async function prepareBook(deps: IndexBookDeps, bookId: number, opts: Pre
       text: extracted.text,
       ctx,
       ...structureOf(extracted),
-      captions: extracted.markers.map((m) => m.caption),
+      captions: figures.map((f) => f.caption),
       keywordOnly,
       tokenBudgeted,
     },
@@ -194,7 +196,6 @@ export async function prepareBook(deps: IndexBookDeps, bookId: number, opts: Pre
     frontMatter: isFrontMatterSpan(c, fmEnd),
     ...(vectors ? { vector: vectors[i]! } : {}),
   }));
-  let figures = await figureRowsP;
   if (captionVectors && figures.length > 0) {
     figures = figures.map((f, i) => ({ ...f, vector: captionVectors[i]! }));
   }
@@ -299,14 +300,21 @@ export function commitRefresh(deps: RefreshDeps, libraryId: string, book: Refres
 /**
  * Marker → IndexedFigure rows. The inventory is best-effort: it should be a cache hit
  * (marker injection just built it), but if it is unavailable the captions still index —
- * only source/dims are omitted (never guessed) — and figure indexing never fails the book.
+ * only source/dims are omitted (never guessed), captions fall back to the marker's first line —
+ * and figure indexing never fails the book.
  */
 async function figureRows(
   deps: BaseDeps,
   invArgs: { bookId: number; format: string; downloadUrl: string; cacheKey: string; signal?: AbortSignal },
   markers: FigureMarker[],
 ): Promise<IndexedFigure[]> {
-  let entries: Array<{ source?: "raster" | "page-render" | "svg-render"; width?: number; height?: number }> = [];
+  let entries: Array<
+    Pick<FigureEntry, "label" | "caption"> & {
+      source?: "raster" | "page-render" | "svg-render";
+      width?: number;
+      height?: number;
+    }
+  > = [];
   try {
     const { inventory } = await deps.figures.getInventory(invArgs);
     entries = inventory.entries;
@@ -321,7 +329,7 @@ async function figureRows(
     return {
       figIndex: m.index,
       page: m.page,
-      caption: m.caption,
+      caption: indexedFigureCaption(m.caption, e),
       charOffset: m.charOffset,
       format: invArgs.format,
       ...(e?.source !== undefined ? { source: e.source } : {}),
