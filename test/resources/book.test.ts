@@ -1,4 +1,4 @@
-// calibre://book/{id} resource: the id template variable must be a positive integer before any
+// calibre://book/{libId}/{id} resource: the id template variable must be a positive integer before any
 // Content Server call — a malformed URI is the caller's error, not an HTTP failure.
 
 import { describe, it, expect, vi } from "vitest";
@@ -25,7 +25,7 @@ describe("parseBookResourceId", () => {
 describe("readBookResource", () => {
   it("never reaches the source for an invalid id", async () => {
     const getBook = vi.fn();
-    await expect(readBookResource({ getBook }, Number.NaN)).rejects.toThrow(/positive integer/);
+    await expect(readBookResource({ getBook }, Number.NaN, "My_Books")).rejects.toThrow(/positive integer/);
     expect(getBook).not.toHaveBeenCalled();
   });
 });

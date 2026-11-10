@@ -158,7 +158,10 @@ export const recoverMetadataTool = defineTool({
       return toolOk(
         [
           { type: "text", text: fence("METADATA PROPOSAL", body) },
-          bookResourceLink({ id: numericId, title: book.title, authors: book.authors }),
+          bookResourceLink(
+            { id: numericId, title: book.title, authors: book.authors },
+            await deps.content.resolveLibraryId(args.library),
+          ),
         ],
         {
           bookId: numericId,

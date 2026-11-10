@@ -53,8 +53,9 @@ export const findDuplicatesTool = defineTool({
     try {
       // Every input that shapes the group list is in the key, and a bad cursor is refused
       // before the (expensive) book selection — compare mode included, it never pages (#305).
+      const libId = await deps.content.resolveLibraryId(args.library);
       const bind = {
-        libId: await deps.content.resolveLibraryId(args.library),
+        libId,
         mode: `dup:${args.mode}`,
         query: selectionKey(args),
       };
@@ -147,7 +148,7 @@ export const findDuplicatesTool = defineTool({
           text: fence("DUP GROUP", `mergeSafety ${g.mergeSafety.toFixed(2)}\n${summary}${note}`),
         });
         for (const b of g.books) {
-          content.push(bookResourceLink({ id: b.id, title: b.title, authors: b.authors }));
+          content.push(bookResourceLink({ id: b.id, title: b.title, authors: b.authors }, libId));
         }
       }
 

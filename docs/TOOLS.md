@@ -212,6 +212,24 @@ No parameters.
 
 ---
 
+## Resources
+
+`calibre_search`, `calibre_semantic_search`, `calibre_get_book`, `calibre_find_duplicates` and
+`calibre_recover_metadata` return `resource_link` blocks. Each one points at a book resource:
+
+| URI template | Body |
+|---|---|
+| `calibre://book/{libId}/{id}` | Full metadata for one book as fenced JSON |
+
+- `{libId}` is the library **ID** (`My_Books`), not the display name: book ids repeat across
+  libraries, so a link names the library it came from. Example: `calibre://book/Other_Books/42`.
+  Links always carry the library ID.
+- An unknown `{libId}` or an invalid `{id}` is a protocol error (resources throw, tools return);
+  the message lists the known library IDs.
+- The older `calibre://book/{id}` form no longer exists.
+
+---
+
 ## Semantic search
 
 Meaning-based retrieval — the feature no other Calibre MCP server has. It finds books and
