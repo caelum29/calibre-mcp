@@ -62,9 +62,14 @@ describe("gateway 5xx on a write is calibre_busy (#494)", () => {
     );
   });
 
-  it("should_code_bulk_update_calibre_busy_when_every_book_hits_a_gateway_5xx", async () => {
+  it("should_pin_a_per_book_gateway_5xx_in_bulk_as_a_failed_line_without_an_errorCode", async () => {
     const r = await bulkUpdateTool.handler({ changes: { tags: ["new"] }, ids: [1], preview: false }, deps(failing()));
-    expect(r.structuredContent?.errorCode).toBe("calibre_busy");
+    expect(textOf(r)).toBe(
+      "Applied tags to 0/1 book(s). 1 failed: 1.\n" +
+        `#1: The Calibre Content Server answered HTTP 503 after 2 retries; ${STEP}`,
+    );
+    expect(r.structuredContent?.errorCode).toBeUndefined();
+    expect(r.isError).toBeUndefined();
   });
 
   it("should_code_merge_books_calibre_busy_on_the_first_step", async () => {
