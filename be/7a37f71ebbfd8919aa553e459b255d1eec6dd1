@@ -1,0 +1,19 @@
+test/integration/write-gate-per-call.test.ts
+  s_02b52ad8edbfad::t_cf44524dc1845d 5,201-202
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "be7a37f71ebbfd8919aa553e459b255d1eec6dd1",
+  "prompts": {},
+  "sessions": {
+    "s_02b52ad8edbfad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5df1a23b-ecee-482f-b178-3bf623cc8f7f",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
