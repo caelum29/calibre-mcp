@@ -1,0 +1,19 @@
+test/tools/ping-write-access.test.ts
+  s_53ff9ec34f3db8::t_48ddb7f1e5debf 15-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "40ce5d9dd6c35c67232cd81505a627139ffaaa93",
+  "prompts": {},
+  "sessions": {
+    "s_53ff9ec34f3db8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a4bd7ff7-48cb-45dc-95d3-fb2b8e7ff920",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
