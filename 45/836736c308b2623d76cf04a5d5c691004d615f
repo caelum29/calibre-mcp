@@ -1,0 +1,27 @@
+src/domain/error-codes.ts
+  s_3e8658abeda134::t_e719fddfe9edb6 116-118
+src/tools/write-failure.ts
+  s_3e8658abeda134::t_e719fddfe9edb6 58-60
+test/tools/write-failure-matrix-417.test.ts
+  s_3e8658abeda134::t_9aae034b3bd99d 103,202
+test/domain/error-codes.test.ts
+  s_3e8658abeda134::t_9aae034b3bd99d 389
+docs/STABILITY.md
+  s_3e8658abeda134::t_9aae034b3bd99d 65-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "45836736c308b2623d76cf04a5d5c691004d615f",
+  "prompts": {},
+  "sessions": {
+    "s_3e8658abeda134": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "90cd6d91-2e99-40ea-88d4-833235d9eb6d",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
