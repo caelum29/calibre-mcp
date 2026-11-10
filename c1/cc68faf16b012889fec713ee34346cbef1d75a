@@ -1,0 +1,14 @@
+docs/standards/results-and-errors.md
+  h_e22d73abc85ef9 31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c1cc68faf16b012889fec713ee34346cbef1d75a",
+  "prompts": {},
+  "humans": {
+    "h_e22d73abc85ef9": {
+      "author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
