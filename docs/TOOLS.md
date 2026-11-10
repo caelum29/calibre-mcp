@@ -41,8 +41,10 @@ Libraries the server is currently failing fast after a Calibre timeout are liste
 `call` id; a repeated error is one entry with `count` and `firstTs`, shown as `(×N since …)`, and the header reads `recent errors: N (M occurrences)` when any repeat) and the path of today's log file — see [Troubleshooting → Logs](TROUBLESHOOTING.md#logs).
 When Calibre is reachable it also asks whether Calibre itself accepts writes, with a probe that
 cannot write anything (a `POST` to `set_metadata` at a module version that does not exist):
-`calibre writes: allowed`, `refused — enable "Allow un-authenticated local connections to make
-changes" (Preferences → Sharing over the net)`, or `unknown (<reason>)` when the answer is unclear
+`calibre writes: allowed`, `refused — <how to allow writes>` (the GUI setting "Allow
+un-authenticated local connections to make changes", or `--enable-local-write` for a command-line
+`calibre-server`, or an authenticated user: the same remedy a refused write gives), or
+`unknown (<reason>)` when the answer is unclear
 (`calibreWriteAccess`). If `CALIBRE_MCP_ENABLE_WRITE` is on but Calibre refuses, a `warning:` line
 says every write tool will fail. `ok` stays true either way: reads work.
 Use it first when something isn't working, or to answer "why is semantic search off?" or "are writes set up?".
