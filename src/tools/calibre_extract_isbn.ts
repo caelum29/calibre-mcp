@@ -21,7 +21,7 @@ export const extractIsbnTool = defineTool({
   description:
     "Offline scan of a book's own text for a checksum-valid ISBN → sets identifiers:isbn " +
     "(no network; for online lookup use calibre_recover_metadata). Preview-first: apply=false " +
-    "reports only, merges into existing identifiers. Requires writes enabled.",
+    "reports only, merges into existing identifiers. Previews work without writes; applying needs CALIBRE_MCP_ENABLE_WRITE.",
   inputSchema: {
     id: BookId().optional(),
     bookId: BookId().optional(),
@@ -37,6 +37,7 @@ export const extractIsbnTool = defineTool({
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
   write: true,
+  writeCall: (args) => args.apply,
   handler: async (args, deps) => {
     const idArg = bookIdArg(args);
     if (idArg === undefined) return toolError("invalid_input", "Provide id (the book's db id or uuid).");

@@ -43,9 +43,11 @@ search spans both via a `scope: library|book` param, not extra tools.
 
 ## Engineering invariants (constrain every edit)
 
-- **Write gate is two-key.** Master gate `CALIBRE_MCP_ENABLE_WRITE` (`config.ts`) — `server.ts`
-  disables every `write:true` tool when off — plus per-tool `annotations`. A new write tool must:
-  set `write:true`; be **preview-first** if destructive or bulk (in-band `preview`/`confirm`/`apply`
+- **Write gate is two-key, and per call** (D-028, #435). Master gate `CALIBRE_MCP_ENABLE_WRITE`
+  (`config.ts`) plus per-tool `annotations`. With it off, `src/tools/write-gate.ts` (applied in
+  `server.ts`, handlers stay gate-unaware) refuses each Write call with `write_disabled`, keeps
+  preview-first tools listed and announced read-only, and hides tools with no preview. A new write
+  tool must: set `write:true` and a `writeCall` (predicate over args, or `"always"`); be **preview-first** if destructive or bulk (in-band `preview`/`confirm`/`apply`
   params, not MCP elicitation — D-003; single-book update/add write directly); and enforce the
   `CALIBRE_MCP_ADD_ROOTS` path whitelist (`src/tools/add-path.ts`) if it takes a filesystem path.
 - **libId-resolve pattern for ALL `calibredb` calls.** `calibredb --with-library` needs the library

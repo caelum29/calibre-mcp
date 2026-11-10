@@ -381,7 +381,7 @@
         "idempotentHint": false,
         "readOnlyHint": false
       },
-      "description": "Apply the same metadata changes (tags, series, publisher, etc.) to a set of books selected by ids, a search query, or filter (a bundle name). Preview-first: returns the per-book diff without writing unless preview is set false. A book set is required (never all books). A list in changes replaces the whole list; to add or remove tags while keeping the rest, use tags_add / tags_remove (merged per book, case-insensitive, not together with changes.tags). Requires writes to be enabled.",
+      "description": "Apply the same metadata changes (tags, series, publisher, etc.) to a set of books selected by ids, a search query, or filter (a bundle name). Preview-first: returns the per-book diff without writing unless preview is set false. A book set is required (never all books). A list in changes replaces the whole list; to add or remove tags while keeping the rest, use tags_add / tags_remove (merged per book, case-insensitive, not together with changes.tags). Previews work without writes; applying needs CALIBRE_MCP_ENABLE_WRITE.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {
@@ -598,7 +598,7 @@
         "idempotentHint": true,
         "readOnlyHint": false
       },
-      "description": "Offline scan of a book's own text for a checksum-valid ISBN → sets identifiers:isbn (no network; for online lookup use calibre_recover_metadata). Preview-first: apply=false reports only, merges into existing identifiers. Requires writes enabled.",
+      "description": "Offline scan of a book's own text for a checksum-valid ISBN → sets identifiers:isbn (no network; for online lookup use calibre_recover_metadata). Preview-first: apply=false reports only, merges into existing identifiers. Previews work without writes; applying needs CALIBRE_MCP_ENABLE_WRITE.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {
@@ -1310,7 +1310,7 @@
         "idempotentHint": true,
         "readOnlyHint": false
       },
-      "description": "Manage Bundles via `action` (list | create | update | delete) — named topical filters backed by Calibre saved searches (e.g. a 'rust' bundle scoping searches to Rust books). A name starting with '-' is an exclusion marker. Also lists virtual libraries, which are read-only here. Preview-first: create/update report the match count until confirm=true. Requires writes to be enabled.",
+      "description": "Manage Bundles via `action` (list | create | update | delete) — named topical filters backed by Calibre saved searches (e.g. a 'rust' bundle scoping searches to Rust books). A name starting with '-' is an exclusion marker. Also lists virtual libraries, which are read-only here. Preview-first: create/update/delete preview until confirm=true. Previews work without writes; applying needs CALIBRE_MCP_ENABLE_WRITE.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {
@@ -1399,7 +1399,7 @@
         "idempotentHint": true,
         "readOnlyHint": false
       },
-      "description": "Merge duplicate book records: moves formats from the `sourceIds` books into `targetId` (the target's copy wins conflicts), merges metadata per Calibre's rules, then trashes the sources. mode=safe keeps sources; mode=formatsOnly moves formats only. Dry-run unless confirm=true. Requires writes to be enabled.",
+      "description": "Merge duplicate book records: moves formats from the `sourceIds` books into `targetId` (the target's copy wins conflicts), merges metadata per Calibre's rules, then trashes the sources. mode=safe keeps sources; mode=formatsOnly moves formats only. Dry-run unless confirm=true. Previews work without writes; applying needs CALIBRE_MCP_ENABLE_WRITE.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {
@@ -1818,7 +1818,7 @@
         "idempotentHint": true,
         "readOnlyHint": false
       },
-      "description": "Remove books (ids) from the library. Removed books go to Calibre's Trash and can be restored from the Calibre GUI, so this is recoverable. Two-step: the first call is a dry-run listing what would be removed; re-run with confirm=true to proceed. Requires writes to be enabled.",
+      "description": "Remove books (ids) from the library. Removed books go to Calibre's Trash and can be restored from the Calibre GUI, so this is recoverable. Two-step: the first call is a dry-run listing what would be removed; re-run with confirm=true to proceed. Previews work without writes; applying needs CALIBRE_MCP_ENABLE_WRITE.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {
