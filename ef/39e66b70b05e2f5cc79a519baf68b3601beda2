@@ -1,0 +1,21 @@
+.oxfmtrc.json
+  s_109f5cb18c0e45::t_fa6e1e33e680f1 8
+.gitignore
+  s_109f5cb18c0e45::t_a61d2f28877e1a 62-64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ef39e66b70b05e2f5cc79a519baf68b3601beda2",
+  "prompts": {},
+  "sessions": {
+    "s_109f5cb18c0e45": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fecf4a25-5dd5-4b5b-9c81-f3f1a4776c37",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
