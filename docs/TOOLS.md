@@ -88,6 +88,12 @@ searches whose name starts with `-`), and say so in the result: `exclusions appl
 (pass include_excluded=true to disable)`. There is no silent subtraction — if nothing is
 reported, nothing was subtracted.
 
+**Date keywords (Calibre 9.18+).** In `mode: meta`, date fields (`date` = added, `pubdate`,
+`last_modified`) accept `lastmonth`, `thisyear`, `lastyear`, and `Nmonthsago` / `Nyearsago` with
+the number in front. Examples: `date:lastmonth`, `date:thisyear`, `pubdate:lastyear`,
+`date:>2monthsago`. `monthsago3` is not valid and returns nothing. Older Calibre versions
+don't know these words; use `date:>7daysago` or explicit dates there.
+
 Full-text search (`mode: fts`, `scope: book`) uses Calibre's own full-text index, which you
 enable per library in Calibre (the **FT** button left of the search bar). If it is off, the call
 says so at once. Matches come back ranked; snippets are fetched only for the books on the
@@ -581,9 +587,8 @@ searches**. A bundle called `rust` with the expression `tag:rust or title:rust` 
 the assistant) scope work to that slice instead of the whole library. A bundle whose name starts
 with `-` (e.g. `-outdated`) is an **exclusion marker**: a set of books to keep out of the way.
 
-`action: list` also shows your **virtual libraries**, marked `read_only`. Calibre exposes no way
-to write virtual libraries without racing the running GUI, so this tool never creates or changes
-one — bundles it writes are always saved searches, and the result says so (`created_as:
+`action: list` also shows your **virtual libraries**, marked `read_only`. This tool
+never creates or changes a virtual library — bundles it writes are always saved searches, and the result says so (`created_as:
 saved_search`). Trying to update or delete a virtual library returns an error pointing you at the
 Calibre GUI.
 

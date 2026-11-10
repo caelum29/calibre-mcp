@@ -102,6 +102,8 @@ tags:"=javascript"                   # exact match (= prefix)
 title:"~^Java.*Script$"              # regex (~ prefix)
 rating:">3"                          # comparison
 pubdate:">2024"                      # date filter
+date:lastmonth  date:thisyear  date:lastyear   # Calibre 9.18+
+date:>2monthsago  date:>1yearsago              # Calibre 9.18+ (number in front)
 ```
 
 Maintenance queries:
