@@ -26,6 +26,9 @@ svg.i{width:12px;height:12px;stroke:currentColor;stroke-width:2.75;fill:none;str
   display:flex; align-items:center; gap:12px;
   padding:0 18px 6px; min-height:24px;
 }
+/* layout toggle left, query centred, counter right — equal-basis sides keep the query centred */
+.meta .side{flex:1 1 0; display:flex; align-items:center; gap:12px}
+.meta .side-r{justify-content:flex-end}
 .meta .note{
   font-size:12.5px; color:var(--tx-muted);
   display:none; align-items:center; gap:6px;
@@ -35,7 +38,24 @@ svg.i{width:12px;height:12px;stroke:currentColor;stroke-width:2.75;fill:none;str
   background:var(--accent); opacity:.7; flex:none; display:inline-block;
 }
 .widget[data-lowconf="1"] .meta .note{display:inline-flex}
-.meta .pos{margin-left:auto; font-size:12px; color:var(--tx-muted); font-variant-numeric:tabular-nums; white-space:nowrap;}
+/* what the model searched for — query + mode + bundle, so the board isn't a black box */
+.meta .query{
+  display:none; align-items:center; gap:6px; min-width:0; flex:0 1 auto;
+  font-size:12.5px; color:var(--tx-muted);
+}
+.widget[data-state="results"] .meta .query.has-q,
+.widget[data-state="hero"] .meta .query.has-q{display:inline-flex}
+.meta .query .qt{
+  font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; color:var(--tx);
+  background:var(--skel); padding:2px 7px; border-radius:6px;
+  min-width:0; overflow:hidden; overflow-wrap:anywhere;
+  /* up to 2 lines; a longer query expands on click instead of being cut for good */
+  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2;
+}
+.meta .query.clamped .qt{cursor:pointer}
+.meta .query.expanded .qt{display:block; -webkit-line-clamp:unset; line-clamp:none}
+.meta .query .qm{white-space:nowrap}
+.meta .pos{font-size:12px; color:var(--tx-muted); font-variant-numeric:tabular-nums; white-space:nowrap;}
 /* chrome-level variant toggle (shelf ⇄ coverflow) */
 .vswitch{display:inline-flex; background:var(--btn); box-shadow:var(--shadow); border-radius:999px; padding:2px}
 .vswitch button{display:grid; place-items:center; width:26px; height:20px; border-radius:999px; color:var(--tx-muted)}

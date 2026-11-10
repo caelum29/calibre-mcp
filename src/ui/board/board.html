@@ -18,14 +18,22 @@
 
 <div class="widget" id="w" data-state="loading" data-variant="__VARIANT__" data-mode="keyword" data-lowconf="0">
   <div class="meta">
-    <span class="note">Weak matches — try rephrasing your query</span>
-    <span class="vswitch" role="group" aria-label="Board layout">
-      <button id="vShelf" type="button" aria-pressed="true" aria-label="Shelf layout" title="Shelf">
-        <svg class="i" viewBox="0 0 24 24"><rect x="3" y="5" width="5" height="14" rx="1"/><rect x="10" y="5" width="5" height="14" rx="1"/><rect x="17" y="5" width="4" height="14" rx="1"/></svg></button>
-      <button id="vFlow" type="button" aria-pressed="false" aria-label="Coverflow layout" title="Coverflow">
-        <svg class="i" viewBox="0 0 24 24"><rect x="8" y="4" width="8" height="16" rx="1"/><path d="M4 6v12M20 6v12"/></svg></button>
+    <span class="side side-l">
+      <span class="vswitch" role="group" aria-label="Board layout">
+        <button id="vShelf" type="button" aria-pressed="true" aria-label="Shelf layout" title="Shelf">
+          <svg class="i" viewBox="0 0 24 24"><rect x="3" y="5" width="5" height="14" rx="1"/><rect x="10" y="5" width="5" height="14" rx="1"/><rect x="17" y="5" width="4" height="14" rx="1"/></svg></button>
+        <button id="vFlow" type="button" aria-pressed="false" aria-label="Coverflow layout" title="Coverflow">
+          <svg class="i" viewBox="0 0 24 24"><rect x="8" y="4" width="8" height="16" rx="1"/><path d="M4 6v12M20 6v12"/></svg></button>
+      </span>
     </span>
-    <span class="pos" id="pos"></span>
+    <span class="query" id="qLabel">
+      <svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+      <span class="qt" id="qText"></span><span class="qm" id="qMode"></span>
+    </span>
+    <span class="side side-r">
+      <span class="note">Weak matches — try rephrasing your query</span>
+      <span class="pos" id="pos"></span>
+    </span>
   </div>
 {{include views.html}}
   <div class="view view-empty flat">

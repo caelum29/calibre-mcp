@@ -80,6 +80,9 @@ svg.i{width:12px;height:12px;stroke:currentColor;stroke-width:2.75;fill:none;str
   display:flex; align-items:center; gap:12px;
   padding:0 18px 6px; min-height:24px;
 }
+/* layout toggle left, query centred, counter right — equal-basis sides keep the query centred */
+.meta .side{flex:1 1 0; display:flex; align-items:center; gap:12px}
+.meta .side-r{justify-content:flex-end}
 .meta .note{
   font-size:12.5px; color:var(--tx-muted);
   display:none; align-items:center; gap:6px;
@@ -89,7 +92,24 @@ svg.i{width:12px;height:12px;stroke:currentColor;stroke-width:2.75;fill:none;str
   background:var(--accent); opacity:.7; flex:none; display:inline-block;
 }
 .widget[data-lowconf="1"] .meta .note{display:inline-flex}
-.meta .pos{margin-left:auto; font-size:12px; color:var(--tx-muted); font-variant-numeric:tabular-nums; white-space:nowrap;}
+/* what the model searched for — query + mode + bundle, so the board isn't a black box */
+.meta .query{
+  display:none; align-items:center; gap:6px; min-width:0; flex:0 1 auto;
+  font-size:12.5px; color:var(--tx-muted);
+}
+.widget[data-state="results"] .meta .query.has-q,
+.widget[data-state="hero"] .meta .query.has-q{display:inline-flex}
+.meta .query .qt{
+  font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; color:var(--tx);
+  background:var(--skel); padding:2px 7px; border-radius:6px;
+  min-width:0; overflow:hidden; overflow-wrap:anywhere;
+  /* up to 2 lines; a longer query expands on click instead of being cut for good */
+  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2;
+}
+.meta .query.clamped .qt{cursor:pointer}
+.meta .query.expanded .qt{display:block; -webkit-line-clamp:unset; line-clamp:none}
+.meta .query .qm{white-space:nowrap}
+.meta .pos{font-size:12px; color:var(--tx-muted); font-variant-numeric:tabular-nums; white-space:nowrap;}
 /* chrome-level variant toggle (shelf ⇄ coverflow) */
 .vswitch{display:inline-flex; background:var(--btn); box-shadow:var(--shadow); border-radius:999px; padding:2px}
 .vswitch button{display:grid; place-items:center; width:26px; height:20px; border-radius:999px; color:var(--tx-muted)}
@@ -309,14 +329,22 @@ body[data-nomsg="1"] [data-need="msg"]{display:none}
 
 <div class="widget" id="w" data-state="loading" data-variant="shelf" data-mode="keyword" data-lowconf="0">
   <div class="meta">
-    <span class="note">Weak matches — try rephrasing your query</span>
-    <span class="vswitch" role="group" aria-label="Board layout">
-      <button id="vShelf" type="button" aria-pressed="true" aria-label="Shelf layout" title="Shelf">
-        <svg class="i" viewBox="0 0 24 24"><rect x="3" y="5" width="5" height="14" rx="1"/><rect x="10" y="5" width="5" height="14" rx="1"/><rect x="17" y="5" width="4" height="14" rx="1"/></svg></button>
-      <button id="vFlow" type="button" aria-pressed="false" aria-label="Coverflow layout" title="Coverflow">
-        <svg class="i" viewBox="0 0 24 24"><rect x="8" y="4" width="8" height="16" rx="1"/><path d="M4 6v12M20 6v12"/></svg></button>
+    <span class="side side-l">
+      <span class="vswitch" role="group" aria-label="Board layout">
+        <button id="vShelf" type="button" aria-pressed="true" aria-label="Shelf layout" title="Shelf">
+          <svg class="i" viewBox="0 0 24 24"><rect x="3" y="5" width="5" height="14" rx="1"/><rect x="10" y="5" width="5" height="14" rx="1"/><rect x="17" y="5" width="4" height="14" rx="1"/></svg></button>
+        <button id="vFlow" type="button" aria-pressed="false" aria-label="Coverflow layout" title="Coverflow">
+          <svg class="i" viewBox="0 0 24 24"><rect x="8" y="4" width="8" height="16" rx="1"/><path d="M4 6v12M20 6v12"/></svg></button>
+      </span>
     </span>
-    <span class="pos" id="pos"></span>
+    <span class="query" id="qLabel">
+      <svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+      <span class="qt" id="qText"></span><span class="qm" id="qMode"></span>
+    </span>
+    <span class="side side-r">
+      <span class="note">Weak matches — try rephrasing your query</span>
+      <span class="pos" id="pos"></span>
+    </span>
   </div>
 
   <div class="view view-shelf-loading">
@@ -414,7 +442,6 @@ body[data-nomsg="1"] [data-need="msg"]{display:none}
     if (t === "dark" || t === "light") document.documentElement.dataset.theme = t;
     else if (t) delete document.documentElement.dataset.theme;
   }
-
 
   /* ================= widget state ================= */
   var w = document.getElementById("w"), pos = document.getElementById("pos");
@@ -554,6 +581,7 @@ body[data-nomsg="1"] [data-need="msg"]{display:none}
 
   function gotPayload(p) {
     payload = p;
+    renderQueryLabel(p);
     if (!p.books || p.books.length === 0) {
       document.getElementById("emptyQ").textContent = p.query || (toolArgs && toolArgs.query) || "";
       setState("empty");
@@ -573,6 +601,37 @@ body[data-nomsg="1"] [data-need="msg"]{display:none}
     S.rendered = { shelf: false, coverflow: false };
     setState("results");
   }
+
+  /* ================= query label — what the model searched for ================= */
+  var MODE_LABEL = { meta: "metadata", fts: "full-text", hybrid: "semantic", vector: "semantic \u00b7 vector", keyword: "keyword" };
+  function renderQueryLabel(p) {
+    var q = payloadQuery();
+    var label = document.getElementById("qLabel");
+    label.classList.toggle("has-q", q !== "");
+    label.classList.remove("expanded");
+    document.getElementById("qText").textContent = q;
+    // Older servers send no searchMode — fall back to the semantic/keyword kind.
+    var parts = [MODE_LABEL[p.searchMode] || (p.kind === "semantic" ? "semantic" : "")];
+    if (p.filter) parts.push("in " + p.filter);
+    if (p.exclusionsApplied && p.exclusionsApplied.length) parts.push("minus " + p.exclusionsApplied.join(", "));
+    var mode = parts.filter(Boolean).join(" \u00b7 ");
+    document.getElementById("qMode").textContent = mode;
+    label.title = q + (mode ? " (" + mode + ")" : ""); // full text when the query is clamped
+  }
+  // Mark the query clickable only when the 2-line clamp actually cuts it (needs layout, so
+  // it runs after the label is visible and on resize).
+  function updateClamp() {
+    var label = document.getElementById("qLabel"), qt = document.getElementById("qText");
+    if (label.classList.contains("expanded")) return;
+    label.classList.toggle("clamped", qt.scrollHeight > qt.clientHeight + 1);
+  }
+  document.getElementById("qText").addEventListener("click", function () {
+    var label = document.getElementById("qLabel");
+    if (!label.classList.contains("clamped") && !label.classList.contains("expanded")) return;
+    label.classList.toggle("expanded");
+    updateClamp();
+    reportSize();
+  });
 
   /* ================= hero (single result, issue #71) ================= */
   function heroBook() { return payload && payload.books && payload.books[0]; }
@@ -730,6 +789,7 @@ body[data-nomsg="1"] [data-need="msg"]{display:none}
     S.state = st;
     w.dataset.state = st;
     if (st === "results") showActive(); else pos.textContent = "";
+    updateClamp();
     reportSize();
   }
 
@@ -765,6 +825,7 @@ body[data-nomsg="1"] [data-need="msg"]{display:none}
 
   // One shared resize listener for both variants (replaces the two per-variant ones).
   window.addEventListener("resize", function () {
+    updateClamp();
     if (S.state !== "results") return;
     refreshActive();
   });

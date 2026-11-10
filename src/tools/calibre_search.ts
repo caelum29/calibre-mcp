@@ -142,6 +142,7 @@ async function metaLibraryScope(
   const _meta = boardMeta(deps, "calibre_search", {
     query: args.query,
     kind: "keyword",
+    searchMode: "meta",
     libraryId: page.libraryId,
     total: page.total,
     ...boardFilterFields(fRes),
@@ -307,6 +308,7 @@ async function ftsLibraryScope(call: FtsCall, fRes: FilterResolution): Promise<T
   const _meta = boardMeta(deps, "calibre_search", {
     query: args.query,
     kind: "keyword",
+    searchMode: "fts",
     libraryId: libId,
     total: bookIds.length,
     ...boardFilterFields(fRes),

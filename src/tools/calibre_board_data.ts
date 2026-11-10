@@ -29,10 +29,13 @@ export const boardDataTool = defineTool({
     tool: z.string().optional(),
     query: z.string().optional(),
     kind: z.string().optional(),
+    searchMode: z.string().optional(),
     libraryId: z.string().optional(),
     serverUrl: z.string().optional(),
     lowConfidence: z.boolean().optional(),
     total: z.number().optional(),
+    filter: z.string().optional(),
+    exclusionsApplied: z.array(z.string()).optional(),
     books: z
       .array(
         z.object({

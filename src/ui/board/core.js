@@ -143,6 +143,7 @@ __DEBUG__
 
   function gotPayload(p) {
     payload = p;
+    renderQueryLabel(p);
     if (!p.books || p.books.length === 0) {
       document.getElementById("emptyQ").textContent = p.query || (toolArgs && toolArgs.query) || "";
       setState("empty");
@@ -162,6 +163,37 @@ __DEBUG__
     S.rendered = { shelf: false, coverflow: false };
     setState("results");
   }
+
+  /* ================= query label — what the model searched for ================= */
+  var MODE_LABEL = { meta: "metadata", fts: "full-text", hybrid: "semantic", vector: "semantic \u00b7 vector", keyword: "keyword" };
+  function renderQueryLabel(p) {
+    var q = payloadQuery();
+    var label = document.getElementById("qLabel");
+    label.classList.toggle("has-q", q !== "");
+    label.classList.remove("expanded");
+    document.getElementById("qText").textContent = q;
+    // Older servers send no searchMode — fall back to the semantic/keyword kind.
+    var parts = [MODE_LABEL[p.searchMode] || (p.kind === "semantic" ? "semantic" : "")];
+    if (p.filter) parts.push("in " + p.filter);
+    if (p.exclusionsApplied && p.exclusionsApplied.length) parts.push("minus " + p.exclusionsApplied.join(", "));
+    var mode = parts.filter(Boolean).join(" \u00b7 ");
+    document.getElementById("qMode").textContent = mode;
+    label.title = q + (mode ? " (" + mode + ")" : ""); // full text when the query is clamped
+  }
+  // Mark the query clickable only when the 2-line clamp actually cuts it (needs layout, so
+  // it runs after the label is visible and on resize).
+  function updateClamp() {
+    var label = document.getElementById("qLabel"), qt = document.getElementById("qText");
+    if (label.classList.contains("expanded")) return;
+    label.classList.toggle("clamped", qt.scrollHeight > qt.clientHeight + 1);
+  }
+  document.getElementById("qText").addEventListener("click", function () {
+    var label = document.getElementById("qLabel");
+    if (!label.classList.contains("clamped") && !label.classList.contains("expanded")) return;
+    label.classList.toggle("expanded");
+    updateClamp();
+    reportSize();
+  });
 
   /* ================= hero (single result, issue #71) ================= */
   function heroBook() { return payload && payload.books && payload.books[0]; }
@@ -319,6 +351,7 @@ __DEBUG__
     S.state = st;
     w.dataset.state = st;
     if (st === "results") showActive(); else pos.textContent = "";
+    updateClamp();
     reportSize();
   }
 
@@ -354,6 +387,7 @@ __DEBUG__
 
   // One shared resize listener for both variants (replaces the two per-variant ones).
   window.addEventListener("resize", function () {
+    updateClamp();
     if (S.state !== "results") return;
     refreshActive();
   });

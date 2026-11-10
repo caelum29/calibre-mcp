@@ -281,6 +281,7 @@ function semanticBoardMeta(
     query: args.query,
     // keyword-degraded runs carry no scores — the widget hides the badge column then
     kind: args.mode === "keyword" ? "keyword" : "semantic",
+    searchMode: args.mode,
     libraryId,
     lowConfidence,
     total: ranked.length,

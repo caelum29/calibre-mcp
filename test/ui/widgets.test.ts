@@ -84,6 +84,22 @@ describe("widget templates", () => {
     for (const html of boards) expect(html).toContain("calibre_board_data");
   });
 
+  it("should_label_the_board_with_the_search_query_via_textContent", () => {
+    // The user must see what the model searched for; the query is model text, so textContent only.
+    for (const html of boards) {
+      expect(html).toContain('id="qLabel"');
+      expect(html).toContain('getElementById("qText").textContent = q');
+    }
+  });
+
+  it("should_clamp_a_long_query_to_two_lines_and_expand_it_on_click", () => {
+    // A long query must stay readable in full — clamped, never cut for good (no nowrap ellipsis).
+    for (const html of boards) {
+      expect(html).toContain("-webkit-line-clamp:2");
+      expect(html).toContain('classList.toggle("expanded")');
+    }
+  });
+
   it("should_collapse_on_zero_result_searches", () => {
     // Issue #68: zero results never populate the board cache — the widget must
     // recognize them and collapse instead of erroring after a futile re-run.
