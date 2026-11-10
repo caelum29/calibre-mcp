@@ -32,6 +32,7 @@ function deps(o: Over = {}): PingDeps {
     config: loadConfig({ CALIBRE_MCP_SERVER_URL: "http://127.0.0.1:9", CALIBRE_MCP_INDEX_DIR: ":memory:" }),
     content: {
       resolveLibraryId: async () => "Programming_Books",
+      probeWriteAccess: async () => ({ access: "allowed" as const }),
       libraryInfo: o.libraryInfo ?? (async () => ({ libraryMap: MAP, defaultLibrary: "Programming_Books" })),
       search: o.search ?? (async () => ({ total: 1092 })),
     } as unknown as ToolDeps["content"],

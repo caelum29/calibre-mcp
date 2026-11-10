@@ -40,6 +40,7 @@ function deps(o: {
     }),
     content: {
       resolveLibraryId: o.resolve ?? (async () => "Programming_Books"),
+      probeWriteAccess: async () => ({ access: "allowed" as const }),
       libraryInfo,
       search,
     } as unknown as ToolDeps["content"],

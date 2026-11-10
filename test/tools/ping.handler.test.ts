@@ -25,6 +25,7 @@ function deps(o: { resolveLibraryId?: () => Promise<string>; listLibraries?: (li
     config: loadConfig({ CALIBRE_MCP_SERVER_URL: SERVER_URL, CALIBRE_MCP_INDEX_DIR: ":memory:" }),
     content: {
       resolveLibraryId: o.resolveLibraryId ?? (async () => "Programming_Books"),
+      probeWriteAccess: async () => ({ access: "allowed" as const }),
     } as unknown as ToolDeps["content"],
     calibre: {
       listLibraries: async (lib?: string) => {
@@ -66,7 +67,7 @@ describe("calibre_ping handler", () => {
     expect(r.isError).toBeUndefined();
     expect(listCalls).toEqual(["Programming_Books"]);
     expect(text(r)).toMatch(
-      /^ok\ncalibre-mcp [^\n]+\ncalibredb: [^\n]+\nwrites: [^\n]+\nSemantic search: [^\n]+\nIndex: [^\n]+\nlog file: /,
+      /^ok\ncalibre-mcp [^\n]+\ncalibredb: [^\n]+\nwrites: [^\n]+\ncalibre writes: allowed\nSemantic search: [^\n]+\nIndex: [^\n]+\nlog file: /,
     );
     expect(r.structuredContent).toMatchObject({ ok: true, serverUrl: SERVER_URL, recentErrors: expect.any(Array) });
     expect(r.structuredContent).toHaveProperty("semantic.available");
