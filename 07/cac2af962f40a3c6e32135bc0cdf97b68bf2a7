@@ -1,0 +1,19 @@
+test/tools/error-text-lines.test.ts
+  s_ba8eb38e987269::t_167344aa8cf770 23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "07cac2af962f40a3c6e32135bc0cdf97b68bf2a7",
+  "prompts": {},
+  "sessions": {
+    "s_ba8eb38e987269": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "21b90743-f48d-49ef-9ff2-ff368477cb73",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
