@@ -14,6 +14,7 @@ import {
   InvalidFieldValueError,
   FtsError,
   OperationCancelledError,
+  UnknownLibraryError,
 } from "./errors.js";
 import { LibraryIdCollisionError } from "./library-id-collision.js";
 import { CONNECTION_STDERR, DROPPED_MID_REQUEST_STDERR, WRITE_REFUSED_STDERR } from "./calibredb-stderr.js";
@@ -79,6 +80,7 @@ export function errorCodeFor(err: unknown): ErrorCode {
   if (err instanceof CalibreBusyError) return "calibre_busy";
   if (err instanceof DeadlineExceededError) return "timeout";
   if (err instanceof LibraryIdCollisionError) return "library_id_collision";
+  if (err instanceof UnknownLibraryError) return "not_found";
   if (err instanceof FtsError) return err.code === "FTS_DISABLED" ? "fts_unavailable" : "invalid_input";
   if (err instanceof InvalidFieldValueError) return "invalid_input";
   if (err instanceof FiguresError) return figuresCode(err);

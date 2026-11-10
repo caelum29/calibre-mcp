@@ -7,11 +7,11 @@ import type { Config } from "../config.js";
 import type { Book, Identifiers } from "../domain/book.js";
 import type { CustomFieldValue } from "../domain/merge.js";
 import type { LibraryInfo, Category, CategoryItem, CategoryItemsPage } from "../domain/library.js";
-import { CalibreHttpError, CalibreHttpTimeoutError, FtsError } from "../domain/errors.js";
+import { CalibreHttpError, CalibreHttpTimeoutError, FtsError, UnknownLibraryError } from "../domain/errors.js";
 import type { FtsMatches, SearchParams, SearchPage } from "../domain/search.js";
 import type { LibraryBusyTracker } from "./busy.js";
 import { getBytes, getJson, type HttpOptions } from "./http.js";
-import { asLibId, type LibId, toLibId } from "./lib-id.js";
+import { asLibId, type LibId } from "./lib-id.js";
 
 // --- Raw /ajax response shapes (loose; only the fields we read) ---
 
@@ -110,6 +110,12 @@ const FIELD_SYNONYMS: Record<string, string> = {
   rating: "rating",
 };
 
+// libId for `name` in a libId → display-name map: an exact key wins, then a display name.
+function matchLibrary(map: Record<string, string>, name: string): string | undefined {
+  if (map[name] !== undefined) return name;
+  return Object.entries(map).find(([, displayName]) => displayName === name)?.[0];
+}
+
 /** Resolve a caller's `field` to a category node by case-insensitive name (+ synonyms). */
 export function matchCategory(categories: Category[], field: string): Category | undefined {
   const raw = field.trim().toLowerCase();
@@ -135,8 +141,7 @@ export interface LibraryReader {
 
 /** HTTP client for the Content Server `/ajax/*` read API; maps raw JSON to domain objects. */
 export class ContentServerClient implements LibraryReader {
-  // Process-lifetime cache of libId → display name. Libraries rarely change; a
-  // rename/add mid-session goes stale until restart (acceptable for local stdio use).
+  // Cache of libId → display name, re-read once when a name misses (a library added mid-session).
   #libMap?: Record<string, string>;
   // The server's own default library (a libId), for when no library is configured.
   #defaultLibId?: string;
@@ -184,15 +189,15 @@ export class ContentServerClient implements LibraryReader {
   }
 
   /**
-   * Resolve a display name ("Programming Books") to its libId ("Programming_Books")
-   * via the authoritative library_map; falls back to space→underscore substitution
-   * only if the server doesn't list it (DESIGN: don't hard-code the substitution).
+   * Resolve a libId or display name ("Programming Books") to its libId ("Programming_Books")
+   * via the authoritative library_map; an exact libId key wins over a display name.
    * No name anywhere (no arg, empty config) → the server's own default library.
+   * @throws UnknownLibraryError when the name matches nothing, even after one map refresh.
    */
   async resolveLibraryId(display?: string): Promise<LibId> {
     const name = display || this.cfg.defaultLibrary;
-    if (!this.#libMap) await this.libraryInfo();
-    const map = this.#libMap ?? {};
+    const fresh = !this.#libMap;
+    if (fresh) await this.libraryInfo();
     if (!name) {
       if (this.#defaultLibId) return asLibId(this.#defaultLibId);
       throw new Error(
@@ -200,12 +205,16 @@ export class ContentServerClient implements LibraryReader {
           "set CALIBRE_MCP_LIBRARY or check the server.",
       );
     }
-    // If `name` already IS a libId (a key), use it directly.
-    if (map[name] !== undefined) return asLibId(name);
-    for (const [libId, displayName] of Object.entries(map)) {
-      if (displayName === name) return asLibId(libId);
+    const hit = matchLibrary(this.#libMap ?? {}, name);
+    if (hit !== undefined) return asLibId(hit);
+    // A miss on a cached map may be a library added in the GUI since: re-read it once.
+    if (!fresh) {
+      await this.libraryInfo();
+      const retry = matchLibrary(this.#libMap ?? {}, name);
+      if (retry !== undefined) return asLibId(retry);
     }
-    return asLibId(toLibId(name));
+    const known = Object.entries(this.#libMap ?? {}).map(([id, displayName]) => ({ id, name: displayName }));
+    throw new UnknownLibraryError(name, known, !display);
   }
 
   /** GET /ajax/search/{libId}?query=&num=&offset=&sort=&sort_order= → SearchPage (ids only). */

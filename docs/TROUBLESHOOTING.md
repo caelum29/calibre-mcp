@@ -26,13 +26,14 @@ The server shells out to `calibredb` and looks in the standard install locations
 `PATH`. If Calibre is installed somewhere unusual, set `CALIBRE_MCP_CALIBREDB_PATH` to the
 binary — on macOS typically `/Applications/calibre.app/Contents/MacOS/calibredb`.
 
-### Library not found (404)
+### Unknown library
 
-Pass the library's **display name or ID exactly as shown by `calibre_list_libraries`**.
-When in doubt, leave `library` unset and the server uses the Content Server's default
-library. (Internally the server resolves display names to library IDs for you; a 404 with
-an explicit `library` value usually means a typo or a library the Content Server doesn't
-serve.)
+A `library` value the Content Server doesn't serve fails with a `not_found` error that names
+the value and lists the known libraries (display name + ID); either form works as `library`.
+When in doubt, leave `library` unset and the server uses the Content Server's default library.
+If the error says **Unknown default library … set by CALIBRE_MCP_LIBRARY**, the env var holds a
+name the server doesn't list: fix it (`calibre_ping` reports this too). A library added in the
+Calibre GUI mid-session is picked up on the next call, no restart needed.
 
 ---
 

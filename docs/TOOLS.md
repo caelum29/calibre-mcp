@@ -202,8 +202,9 @@ Paginates via `nextCursor`.
 
 ### `calibre_list_libraries`
 
-List the libraries the Content Server exposes and which one is the default. A good first call
-to discover valid library names, and a quick connectivity check.
+List the libraries the Content Server exposes (ID and display name) and which one is the default,
+plus a quick connectivity check. Other tools take either form as `library`; an unknown name fails
+with the list of known libraries.
 
 No parameters.
 

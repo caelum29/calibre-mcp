@@ -1,12 +1,5 @@
-// Offline fallback for resolving a library display name to its Content Server libId.
-// Calibre derives the libId by replacing spaces with underscores ("Programming Books"
-// → "Programming_Books"). This is a FALLBACK ONLY — prefer the authoritative
-// library_map from /ajax/library-info (a real underscore in a name breaks this).
-
-/** Fallback display-name to libId mapping (spaces to underscores); prefer the server's library_map. */
-export function toLibId(displayName: string): string {
-  return displayName.replace(/ /g, "_");
-}
+// The branded Content Server libId. Only ContentServerClient.resolveLibraryId mints one, from the
+// authoritative library_map (/ajax/library-info) — never by guessing from a display name (#438).
 
 /**
  * A Content Server library ID ("Programming_Books"), as opposed to a display name

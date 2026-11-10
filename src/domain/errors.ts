@@ -2,6 +2,29 @@
 // (no local filesystem paths) so they can surface to the LLM without leaking the host
 // layout (DESIGN §3); full detail is logged to stderr at the throw site.
 
+/**
+ * A `library` argument that matches no libId or display name in the server's library_map, even
+ * after a refresh (#438). The message lists the known libraries so the model can fix its call
+ * instead of retrying book ids against a made-up library.
+ */
+export class UnknownLibraryError extends Error {
+  constructor(
+    readonly input: string,
+    readonly known: ReadonlyArray<{ id: string; name: string }>,
+    /** True when `input` is the configured default (no `library` arg): only the user's env can fix it. */
+    readonly fromConfig = false,
+  ) {
+    const list = known.length > 0 ? known.map((l) => `"${l.name}" (ID ${l.id})`).join(", ") : "none";
+    super(
+      fromConfig
+        ? `Unknown default library "${input}" (set by CALIBRE_MCP_LIBRARY). Known: ${list}. ` +
+            "Fix CALIBRE_MCP_LIBRARY, or pass library explicitly (calibre_list_libraries lists them)."
+        : `Unknown library "${input}". Known: ${list}. Call calibre_list_libraries.`,
+    );
+    this.name = "UnknownLibraryError";
+  }
+}
+
 /** A non-2xx response (or transport failure) from the Calibre Content Server. */
 export class CalibreHttpError extends Error {
   constructor(

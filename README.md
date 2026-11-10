@@ -360,9 +360,9 @@ back a much heavier copy (an 8 MB PDF served as 70 MB), so a disk-sized cap sile
   the binary (macOS: `/Applications/calibre.app/Contents/MacOS/calibredb`).
 - **A PDF extracts to empty text** — it’s a scanned/image PDF; Calibre has no OCR, and
   neither do we.
-- **Library not found (404)** — pass the library’s *display name* or *ID* as shown by
-  `calibre_list_libraries`; when in doubt, leave the library unset and let the server
-  pick its default (unless `calibre_list_libraries` reports the default as unavailable — then pass an explicit id).
+- **Unknown library** — the error lists the known libraries; pass one’s *display name* or
+  *ID* (or fix `CALIBRE_MCP_LIBRARY` when it says *Unknown default library*); when in doubt,
+  leave the library unset and let the server pick its default (unless `calibre_list_libraries` reports the default as unavailable — then pass an explicit id).
 
 ## 🛠️ Development
 
