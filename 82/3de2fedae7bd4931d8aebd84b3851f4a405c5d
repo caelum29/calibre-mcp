@@ -1,0 +1,19 @@
+test/tools/build-index.enable-fts.test.ts
+  s_db558d6b317526::t_c43f4cdf3c1832 1-140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "823de2fedae7bd4931d8aebd84b3851f4a405c5d",
+  "prompts": {},
+  "sessions": {
+    "s_db558d6b317526": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c3ace1e5-b5b1-4d35-8b5d-6026fc7c6385",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
