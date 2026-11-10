@@ -1,0 +1,60 @@
+src/calibre/http.ts
+  s_53ff9ec34f3db8::t_ac291f8918228b 41-52,54-58,67-68
+test/tools/ping-index-readonly.test.ts
+  s_53ff9ec34f3db8::t_1b7489c816ff48 52
+src/tools/calibre_ping.ts
+  s_53ff9ec34f3db8::t_c4bcb3dd28418c 4-5,19-23,72-79,118-119,123,183-188,191-192,194-200
+  s_53ff9ec34f3db8::t_74c309bdac45c1 32-34
+  s_53ff9ec34f3db8::t_a99f78ebd5db0b 189-190,193
+  s_53ff9ec34f3db8::t_2a21a8684b2910 201-202
+test/tools/ping.recent-errors-capped-meta.test.ts
+  s_53ff9ec34f3db8::t_1b7489c816ff48 37-40
+docs/TOOLS.md
+  s_53ff9ec34f3db8::t_f2ba03aed77724 38-44
+skills/calibre-mcp-setup/SKILL.md
+  s_53ff9ec34f3db8::t_f2ba03aed77724 166-167,179-180
+src/domain/write-access.ts
+  s_53ff9ec34f3db8::t_9225ab929b1a47 1-20
+test/tools/ping.recent-errors-burst.test.ts
+  s_53ff9ec34f3db8::t_1b7489c816ff48 145-148
+test/semantic/library-id-case-collision-388-review.test.ts
+  s_53ff9ec34f3db8::t_1b7489c816ff48 93,124,169-172
+test/tools/ping-header.test.ts
+  s_53ff9ec34f3db8::t_1b7489c816ff48 41
+src/tools/labelled-lines.ts
+  s_53ff9ec34f3db8::t_c4bcb3dd28418c 15-20
+test/tools/ping-index-budget.test.ts
+  s_53ff9ec34f3db8::t_1b7489c816ff48 35
+test/tools/ping.handler.test.ts
+  s_53ff9ec34f3db8::t_974353bea56525 70
+  s_53ff9ec34f3db8::t_1b7489c816ff48 28
+docs/tool-catalog.json
+  s_53ff9ec34f3db8::t_74c309bdac45c1 1577
+src/calibre/content-server.ts
+  s_53ff9ec34f3db8::t_591e4f905f262b 340
+  s_53ff9ec34f3db8::t_ac291f8918228b 13-14,141,334-339,341-348
+test/tools/ping.recent-errors-eviction.test.ts
+  s_53ff9ec34f3db8::t_1b7489c816ff48 74-77
+test/tools/ping-review.test.ts
+  s_53ff9ec34f3db8::t_1b7489c816ff48 43
+skills/calibre-mcp/SKILL.md
+  s_53ff9ec34f3db8::t_f2ba03aed77724 204-205
+test/tools/fake-ports.ts
+  s_53ff9ec34f3db8::t_4532ac8dcf07b9 35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2b00b00382a5e04532ab1dad626a4498137e4bb9",
+  "prompts": {},
+  "sessions": {
+    "s_53ff9ec34f3db8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a4bd7ff7-48cb-45dc-95d3-fb2b8e7ff920",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
