@@ -1,0 +1,22 @@
+test/tools/get-figures.errors.test.ts
+  s_53ff9ec34f3db8::t_9db6962912739b 153
+  s_53ff9ec34f3db8::t_be134d0002cd3e 131-152,154-166
+src/tools/calibre_get_figures.ts
+  s_53ff9ec34f3db8::t_aac9d88c7b71f4 276-295
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9bdfcaea09cd883e10e41cd103c27637ade38498",
+  "prompts": {},
+  "sessions": {
+    "s_53ff9ec34f3db8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a4bd7ff7-48cb-45dc-95d3-fb2b8e7ff920",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
