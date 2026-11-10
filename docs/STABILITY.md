@@ -13,7 +13,8 @@ A breaking change to any of these is a **major** release.
   changing its type, is breaking. Adding a field is a minor change.
 - **Labelled lines of text results:** the label and value format of each text line that carries a
   declared output field: the cursor, the book id, the error `Code:` and `Next:` lines, and
-  `calibre_ping`'s `Index:`, `Semantic search:` and `calibre writes:` lines.
+  `calibre_ping`'s `Index:`, `Semantic search:` and `calibre writes:` lines. The full list, per
+  tool, is the [Labelled lines](TOOLS.md#labelled-lines) table, generated from the server's registry.
 - **Client channels:** every field a model must act on appears in both the text and the structured
   result, so a client that surfaces only one of the two still works.
 - **Stable settings:** `CALIBRE_MCP_SERVER_URL`, `CALIBRE_MCP_LIBRARY`, `CALIBRE_MCP_ENABLE_WRITE`,

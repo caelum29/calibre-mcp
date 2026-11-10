@@ -5,13 +5,13 @@
 
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
-import { CalibreCliError } from "../../src/domain/errors.js";
+import { CalibreCliError, CalibreHttpError } from "../../src/domain/errors.js";
 import type { ProviderHit } from "../../src/domain/enrich/types.js";
 import type { Embedder } from "../../src/semantic/embedder.js";
 import { EMBED_DIM } from "../../src/semantic/model.js";
@@ -20,6 +20,12 @@ import { l2normalize } from "../../src/semantic/vector.js";
 import { allTools } from "../../src/tools/registry.js";
 import { decodeCursor, pageCursor } from "../../src/tools/cursor.js";
 import { renderResult } from "../../src/tools/result.js";
+import {
+  ERROR_LINES,
+  LABELLED_LINES,
+  renderLabelledLinesDoc,
+  type LabelledLine,
+} from "../../src/tools/labelled-lines.js";
 import type { AnyToolDescriptor, ToolResult } from "../../src/tools/types.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
 import { fakeFts } from "./fake-fts.js";
@@ -887,5 +893,121 @@ describe("error texts state their next step once (#437)", () => {
   it("never tells the model to enable FTS in Calibre when this build has no FTS", async () => {
     const text = textChannel(await runScenario(STEER_ONCE[0]!.scenario));
     expect(text).not.toMatch(/enable full-text indexing/i);
+  });
+});
+
+// ── Labelled lines (#454): the text half of the 1.0 public contract ──────────────────────────
+// Every registered Labelled line must be rendered by at least one of the scenarios above, and
+// every occurrence must carry its structured field's value. calibre_ping has no parity scenario
+// (no outputSchema), so it gets two fixtures here: healthy, and Calibre down.
+const pingDeps = (o: { down?: boolean } = {}): ToolDeps => {
+  const index = memoryStore();
+  index.replaceBook("My_Books", { bookId: 101, title: "Rust in Action", authors: ["Tim McNamara"] }, [
+    { charStart: 0, charEnd: 30, body: "ownership moves the value", vector: axis(0) },
+  ]);
+  const base = fakeDeps({ index });
+  return {
+    ...base,
+    content: {
+      resolveLibraryId: async () => {
+        if (o.down) throw new CalibreHttpError(0, "http://127.0.0.1:9/ajax/library-info", "Cannot reach Calibre");
+        return "My_Books";
+      },
+      libraryInfo: async () => ({
+        libraryMap: { My_Books: "My Books", Other_Books: "Other Books" },
+        defaultLibrary: "My_Books",
+      }),
+      search: async (p: { library?: string }) => ({
+        bookIds: [],
+        total: 3,
+        num: 0,
+        offset: 0,
+        sort: "title",
+        libraryId: p.library,
+      }),
+      probeWriteAccess: async () => ({ access: "allowed" as const }),
+    } as unknown as ToolDeps["content"],
+    calibre: { listLibraries: async () => "category,count" } as unknown as ToolDeps["calibre"],
+    embedder: { loadState: () => "not-attempted" } as unknown as ToolDeps["embedder"],
+  };
+};
+const PING_FIXTURES: Scenario[] = [
+  { tool: "calibre_ping", label: "healthy", args: {}, deps: () => pingDeps() },
+  { tool: "calibre_ping", label: "Calibre down (error)", args: {}, deps: () => pingDeps({ down: true }) },
+];
+const ALL_RENDERED = [...SCENARIOS, ...PAGINATED_SCENARIOS, ...PAYLOAD_SCENARIOS, ...PING_FIXTURES];
+
+/** A structured field's values: `a.b` → [value], `a[].b` → one per item. */
+function fieldValues(sc: unknown, field: string): unknown[] {
+  let cur: unknown[] = [sc];
+  for (const part of field.split(".")) {
+    const each = part.endsWith("[]");
+    const key = each ? part.slice(0, -2) : part;
+    cur = cur.flatMap((v) => {
+      const x = v && typeof v === "object" ? (v as Record<string, unknown>)[key] : undefined;
+      return each ? (Array.isArray(x) ? x : []) : x === undefined ? [] : [x];
+    });
+  }
+  return cur;
+}
+
+/** Every value the line's pattern captures in the result's text, in order. */
+function occurrences(text: string, l: LabelledLine): string[] {
+  const re = new RegExp(l.pattern.source, "gm");
+  return [...text.matchAll(re)].map((m) => m.groups!.v!);
+}
+
+/** The values the line must show for this result, per its compare mode (undefined = format only). */
+function expected(l: LabelledLine, sc: unknown): string[] | undefined {
+  const vals = fieldValues(sc, l.field);
+  if (l.compare === "equal") return vals.map(String);
+  if (l.compare === "join") return [vals.map(String).join(", ")];
+  if (l.compare === "length") return [String((vals[0] as unknown[] | undefined)?.length ?? 0)];
+  return undefined;
+}
+
+describe("Labelled lines (#454)", () => {
+  const rendered = Promise.all(ALL_RENDERED.map(async (s) => ({ s, r: await runScenario(s) })));
+
+  it("registers every tool: Labelled lines or an explicit none", () => {
+    expect(Object.keys(LABELLED_LINES).sort()).toEqual(allTools.map((t) => t.name).sort());
+  });
+
+  it.each(
+    Object.entries(LABELLED_LINES).flatMap(([tool, e]) =>
+      "lines" in e ? e.lines.map((l) => [`${tool} — ${l.label} (${l.field})`, tool, l] as const) : [],
+    ),
+  )("%s is rendered with its field's value", async (_name, tool, l) => {
+    const hits = (await rendered)
+      .filter(({ s }) => s.tool === tool)
+      .map(({ r }) => ({ got: occurrences(textChannel(r), l), want: expected(l, r.structuredContent) }))
+      .filter((h) => h.got.length > 0);
+    expect(hits.length).toBeGreaterThan(0);
+    for (const h of hits) if (h.want !== undefined) expect(h.got).toEqual(h.want);
+  });
+
+  it.each(ERROR_LINES.map((l) => [l.label, l] as const))(
+    "error line %s: every occurrence matches its field, and it is rendered somewhere",
+    async (_name, l) => {
+      const hits = (await rendered)
+        .map(({ r }) => ({ got: occurrences(textChannel(r), l), want: expected(l, r.structuredContent) }))
+        .filter((h) => h.got.length > 0);
+      expect(hits.length).toBeGreaterThan(0);
+      for (const h of hits) expect(h.got).toEqual(h.want);
+    },
+  );
+
+  it("every error result carries its Code line", async () => {
+    const missing = (await rendered)
+      .filter(({ r }) => r.isError)
+      .filter(({ r }) => occurrences(textChannel(r), ERROR_LINES[0]!).length !== 1)
+      .map(({ s }) => `${s.tool}: ${s.label}`);
+    expect(missing).toEqual([]);
+  });
+
+  it("docs/TOOLS.md's Labelled lines table is the registry (regenerate with pnpm catalog)", () => {
+    const doc = readFileSync(path.join(process.cwd(), "docs/TOOLS.md"), "utf8");
+    const section = /<!-- labelled-lines:start -->\n([\s\S]*?)\n<!-- labelled-lines:end -->/.exec(doc)?.[1];
+    expect(section).toBe(renderLabelledLinesDoc());
   });
 });
