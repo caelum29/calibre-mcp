@@ -31,17 +31,7 @@
 //   seam via retrieve()'s opts.rrfWeights (#259); the shipped weights stay in retrieve.ts.
 
 import { execSync } from "node:child_process";
-import {
-  cpSync,
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  realpathSync,
-  rmSync,
-  symlinkSync,
-  writeFileSync,
-} from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadConfig } from "../../../src/config.js";
@@ -349,7 +339,8 @@ function compareFiles([a, b]: [string, string]): void {
   process.stdout.write(`${[renderCompare(compareReports(ra, rb), la, lb), ...warnings].join("\n")}\n`);
 }
 
-async function main(): Promise<void> {
+/** The eval CLI body; invoked only by run-cli.ts, so importing this module starts nothing. */
+export async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   if (args.compare) {
     if (args.gate || args.live)
@@ -408,27 +399,4 @@ async function main(): Promise<void> {
 
   process.stdout.write(`\n${sections.join("\n\n")}\n\nOVERALL GATE: ${pass ? "PASS" : "FAIL"}\n`);
   if (!pass) process.exit(1);
-}
-
-/**
- * True when this module is the process entry. Both sides are realpath'd: Node resolves the
- * module URL through symlinks but leaves argv[1] as typed (e.g. macOS /var → /private/var), and
- * a mismatch would make `pnpm eval --gate` exit 0 silently, which reads as a PASS.
- */
-function isCliEntry(): boolean {
-  const entry = process.argv[1];
-  if (!entry) return false;
-  try {
-    return realpathSync(entry) === realpathSync(fileURLToPath(import.meta.url));
-  } catch {
-    return false;
-  }
-}
-
-// run only as the CLI entry, so tests can import the print helpers without starting an eval
-if (isCliEntry()) {
-  main().catch((err: unknown) => {
-    process.stderr.write(`[eval] FAILED: ${err instanceof Error ? err.message : String(err)}\n`);
-    process.exit(1);
-  });
 }

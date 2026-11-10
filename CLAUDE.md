@@ -49,7 +49,7 @@ search spans both via a `scope: library|book` param, not extra tools.
   params, not MCP elicitation — D-003; single-book update/add write directly); and enforce the
   `CALIBRE_MCP_ADD_ROOTS` path whitelist (`src/tools/add-path.ts`) if it takes a filesystem path.
 - **libId-resolve pattern for ALL `calibredb` calls.** `calibredb --with-library` needs the library
-  **ID** (`Programming_Books`), **not** the display name (`Programming Books`, which 404s). Resolve
+  **ID** (`My_Books`), **not** the display name (`My Books`, which 404s). Resolve
   display→libId via `content.resolveLibraryId` first, then pass it as `calibredb` `opts.library` (D-008).
 - **SDK-free seam.** Tool handlers/schemas/domain code never import the MCP SDK
   (`@modelcontextprotocol/server`/`client`/`core`); only the transport/registration layer

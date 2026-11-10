@@ -127,7 +127,7 @@ describe("CLI entry rejects bad --gate flags before any model load", () => {
     code: r.code,
     eval: r.stderr.split("\n").filter((l) => l.startsWith("[eval]")),
   });
-  const RUN = "test/eval/retrieval/run.ts";
+  const RUN = "test/eval/retrieval/run-cli.ts";
 
   it("--gate --rerank off → exit 1 with the drop --rerank message", async () => {
     expect(evalLines(await cli(RUN, "--gate", "--rerank", "off"))).toEqual({
