@@ -82,3 +82,17 @@ _Avoid_: message format
 
 **Channel parity**:
 The guarantee that every output field a model must act on appears both in a tool's text result and in its structured result, because some clients show the model only one of the two.
+
+**Write gate**:
+The setting (`CALIBRE_MCP_ENABLE_WRITE`) that decides whether the server may change the library. It works per call: with the gate off a Write call is refused, while calls that only preview still run.
+_Avoid_: read-only mode (as a term)
+
+**Write call**:
+A tool call that would change the library, as opposed to a preview or dry-run of the same tool (`confirm: true`, `apply: true`, `preview: false`).
+
+**Annotation**:
+A highlight or bookmark a reader made inside a book, stored by Calibre with the book.
+_Avoid_: note (a Note is a different thing)
+
+**Note**:
+A text Calibre keeps for an item such as an author, a series or a tag. Not attached to a book.
