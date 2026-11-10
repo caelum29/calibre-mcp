@@ -22,10 +22,12 @@ import type { BaseDeps } from "./deps.js";
 import {
   settleFailedStep,
   settleFailedWrite,
-  WRITE_REFUSED_MESSAGE,
-  type FailedWriteOutcome,
+  isLanded,
+  isUnverified,
   type ReReadCause,
+  type UnconfirmedCheck,
 } from "../app/write-policy.js";
+import { presentFailedWrite, type FailedWrite } from "./write-failure.js";
 import { formatOnTarget, sourcesRemoved } from "../app/merge-verify.js";
 
 /** One executed (or planned) write step in the merge ledger. */
@@ -37,6 +39,8 @@ interface Step {
   cause?: unknown;
   /** The step may have committed: a re-read could not confirm it (#413). Not rendered. */
   unverified?: boolean;
+  /** The next step the note already spells out, so the error adds no generic `Next:` line. Not rendered. */
+  hint?: string;
   /** The note carries its own re-run instruction, so the ledger adds none (#413). Not rendered. */
   ownRerun?: boolean;
 }
@@ -56,27 +60,22 @@ function unconfirmedNote(cause: ReReadCause, what: string, verify: string): stri
   return `${CAUSE_TEXT[cause]} and the re-read does not confirm ${what} — verify with ${verify} before retrying`;
 }
 
-/** Mark `step` failed from a settled outcome; `unverified` gets the caller's re-read steer. */
+/** Mark `step` failed from a settled outcome; an unverified one gets the caller's re-read steer. */
 function failStep<T>(
   step: Step,
-  outcome: Exclude<FailedWriteOutcome<T>, { kind: "confirmed" }>,
+  outcome: FailedWrite<T>,
   err: unknown,
-  unverifiedNote: (
-    cause: ReReadCause,
-    check: Extract<FailedWriteOutcome<T>, { kind: "unverified" }>["check"],
-  ) => string,
+  targetId: number,
+  unverifiedNote: (cause: ReReadCause, check: UnconfirmedCheck<T>) => string,
 ): void {
   step.status = "failed";
   step.cause = err;
-  step.unverified = outcome.kind === "unverified";
-  step.note =
-    outcome.kind === "unverified"
-      ? unverifiedNote(outcome.cause, outcome.check)
-      : outcome.kind === "refused"
-        ? WRITE_REFUSED_MESSAGE
-        : err instanceof Error
-          ? err.message
-          : String(err);
+  step.unverified = isUnverified(outcome);
+  // the shared presenter words every other kind (refusal, transient, unexpected) with its next step (#417)
+  // merge never retries (its calls aren't wrapped in withTransientRetry), so say 0, not the default
+  const shown = presentFailedWrite(outcome, { id: targetId, err, retries: 0, unconfirmed: unverifiedNote });
+  step.note = shown.text;
+  step.hint = shown.hint;
 }
 
 const STATUS_MARK: Record<Step["status"], string> = {
@@ -310,11 +309,11 @@ async function executeMerge(deps: BaseDeps, job: MergeJob) {
         // A routed write commits server-side before calibredb replies: a timeout or a drop is
         // settled by a re-read of the target's formats (#33, #413).
         const outcome = await settleFailedStep(err, () => formatOnTarget(deps, target.id, m.format, job.library));
-        if (outcome.kind === "confirmed") {
+        if (isLanded(outcome)) {
           step.status = "done";
           continue;
         }
-        failStep(step, outcome, err, (cause) =>
+        failStep(step, outcome, err, target.id, (cause) =>
           unconfirmedNote(cause, `${m.format} on #${target.id}`, `calibre_get_book id=${target.id}`),
         );
         aborted = true;
@@ -363,9 +362,9 @@ async function executeMerge(deps: BaseDeps, job: MergeJob) {
           { id: target.id, before: target, changes: builtin, library: job.library },
           err,
         );
-        if (outcome.kind === "confirmed") metaStep.status = "done";
+        if (isLanded(outcome)) metaStep.status = "done";
         else {
-          failStep(metaStep, outcome, err, (cause) =>
+          failStep(metaStep, outcome, err, target.id, (cause) =>
             unconfirmedNote(cause, "the metadata merge", `calibre_get_book id=${target.id}`),
           );
           aborted = true;
@@ -387,9 +386,9 @@ async function executeMerge(deps: BaseDeps, job: MergeJob) {
           remaining = r.remaining;
           return r.check;
         });
-        if (outcome.kind === "confirmed") removeStep.status = "done";
+        if (isLanded(outcome)) removeStep.status = "done";
         else {
-          failStep(removeStep, outcome, err, (cause, check) => {
+          failStep(removeStep, outcome, err, target.id, (cause, check) => {
             // A re-run with an already-trashed source fails not_found, so name only what is left.
             const gone = sourceIds.filter((id) => !remaining.includes(id));
             const verify = `calibre_get_book id=${remaining.join(" / id=")}`;
@@ -441,11 +440,12 @@ function ledgerResult(job: MergeJob, steps: Step[]) {
 
   if (!committed) {
     // An unverified step may have committed: never claim nothing changed (#413).
+    // a note that ends in its own full stop must not double it before our sentence
+    const why = (failed[0]!.note ?? failed[0]!.step).replace(/\.+$/, "");
     const message = failed[0]!.unverified
-      ? `Merge stopped — ${failed[0]!.note ?? failed[0]!.step}. That step may have committed; no later step ran.\n` +
-        `Steps:\n${ledger}`
-      : `Merge did not start — ${failed[0]!.note ?? failed[0]!.step}. Nothing was changed.\n` + `Steps:\n${ledger}`;
-    const opts = { structured: { ...structured, status: "incomplete" } };
+      ? `Merge stopped — ${why}. That step may have committed; no later step ran.\nSteps:\n${ledger}`
+      : `Merge did not start — ${why}. Nothing was changed.\nSteps:\n${ledger}`;
+    const opts = { hint: failed[0]!.hint, structured: { ...structured, status: "incomplete" } };
     // the failing step's own cause when it threw; a failed post-add check has none
     const cause = failed[0]!.cause;
     return toolErrorFrom(cause, message, "write_failed", opts);
