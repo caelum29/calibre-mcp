@@ -14,6 +14,7 @@
 // reranker model is available; keyword mode has no semantic claim to sharpen and skips it.
 // Ranking/fusion/rerank/confidence live in semantic/retrieve.ts (#259); this file adapts + renders.
 
+import { filterErrorText } from "./writes-remedy.js";
 import { z } from "zod";
 import { type RankedHits, type RetrievalMode, retrieve } from "../semantic/retrieve.js";
 import { SNIPPET_CHARS } from "../semantic/snippet.js";
@@ -202,7 +203,7 @@ export const semanticSearchTool = defineTool({
         autoExclude: true,
         library: effArgs.library,
       });
-      if (!fr.ok) return toolErrorFrom(fr.cause, fr.error);
+      if (!fr.ok) return toolErrorFrom(fr.cause, filterErrorText(fr, deps.config.writeEnabled));
       const allow = await restrictSet(deps, fr.res, effArgs.library);
       const scope: FilterCtx = { fRes: fr.res, ...(allow ? { allow } : {}) };
       note = joinNotes(note, ...honestyLines(fr.res, allow?.size));

@@ -2,6 +2,7 @@
 // missing fields, raw-filename titles, invalid ISBNs, author-sort mismatches, series gaps, suspect (glued/junk) authors.
 // Read-only; the raw-filename findings feed calibre_recover_metadata.
 
+import { filterErrorText } from "./writes-remedy.js";
 import { NEEDS_WRITES } from "./writes-remedy.js";
 import { z } from "zod";
 import { ALL_CHECKS, type QualityCheck, runQualityChecks } from "../domain/curation/quality.js";
@@ -75,7 +76,7 @@ export const qualityReportTool = defineTool({
       const offset = start.offset;
 
       const fr = await resolveFilter(deps, { filter: args.filter, autoExclude: false, library: args.library });
-      if (!fr.ok) return toolErrorFrom(fr.cause, fr.error);
+      if (!fr.ok) return toolErrorFrom(fr.cause, filterErrorText(fr, deps.config.writeEnabled));
 
       ctx?.progress?.(0, "Selecting books…", 2);
       const {

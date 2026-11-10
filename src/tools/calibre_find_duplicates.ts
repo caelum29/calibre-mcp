@@ -3,6 +3,7 @@
 // with a merge-safety score; `compare` diffs an explicit id set field-by-field. READ-only:
 // it never merges — Calibre's own merge is a separate, gated write.
 
+import { filterErrorText } from "./writes-remedy.js";
 import { z } from "zod";
 import { compareBooks, findDuplicateGroups } from "../domain/curation/duplicates.js";
 import { buildScopedQuery, honestyLines, resolveFilter } from "../app/bundles.js";
@@ -105,7 +106,7 @@ export const findDuplicatesTool = defineTool({
         return toolError("invalid_input", "Pass either ids or filter (a bundle name), not both.");
       }
       const fr = await resolveFilter(deps, { filter: args.filter, autoExclude: false, library: args.library });
-      if (!fr.ok) return toolErrorFrom(fr.cause, fr.error);
+      if (!fr.ok) return toolErrorFrom(fr.cause, filterErrorText(fr, deps.config.writeEnabled));
       const { books, total, capped } = await selectBooks(deps, {
         ids: args.ids,
         query: buildScopedQuery(args.query ?? "", fr.res) || undefined,
