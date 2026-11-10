@@ -19,6 +19,8 @@
 // Markdown body text uses <!-- tool-count:KIND -->N<!-- /tool-count:KIND --> markers;
 // JSON strings, YAML front matter, headings and shell defaults use an anchored regex.
 //
+// Also renders the Labelled lines table into docs/TOOLS.md (between labelled-lines markers).
+//
 // Diagnostics go to stderr.
 
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
@@ -139,6 +141,23 @@ for (const site of COUNT_SITES) {
   if (wrong.length > 0) {
     drift.push(`${site.file}: ${site.kind} tool count says ${wrong.join(", ")}, catalog has ${want}`);
     writes.set(site.file, text.replace(site.re, want));
+  }
+}
+
+// docs/TOOLS.md's "Labelled lines" table is rendered from the registry (#454): the committed
+// table is the reviewable snapshot of the text half of the public contract.
+{
+  const { renderLabelledLinesDoc } = await import("../dist/tools/labelled-lines.js");
+  const rel = "docs/TOOLS.md";
+  const text = writes.get(rel) ?? readFileSync(path.join(root, rel), "utf8");
+  const re = /(<!-- labelled-lines:start -->\n)[\s\S]*?(\n<!-- labelled-lines:end -->)/;
+  if (!re.test(text)) drift.push(`${rel}: no labelled-lines markers found — edit by hand`);
+  else {
+    const next = text.replace(re, (_m, open, close) => `${open}${renderLabelledLinesDoc()}${close}`);
+    if (next !== text) {
+      drift.push(`${rel}: Labelled lines table is stale`);
+      writes.set(rel, next);
+    }
   }
 }
 

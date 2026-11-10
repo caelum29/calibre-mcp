@@ -641,6 +641,56 @@ Content Server, so they never race an open Calibre GUI.
 
 ---
 
+## Labelled lines
+
+Most of a tool's text is Prose: it can be reworded in any release. A few text lines are part of
+the public contract instead: a **Labelled line** carries a field of the structured result under a
+fixed label and value format, so an assistant (or your script) can rely on finding it in the text
+alone. From 1.0 these labels and formats change only in a major release. Where a line mixes both,
+only the part named here is contract. The table is generated from the server's registry
+(`src/tools/labelled-lines.ts`) and checked by the test suite.
+
+<!-- labelled-lines:start -->
+| Tool | Label | Value format | Structured field |
+|---|---|---|---|
+| every tool (error results) | `Code` | `Code: <errorCode>` — one of the closed error-code set | `errorCode` |
+| every tool (error results) | `Next` | `Next: <hint>` — omitted when the message already states the hint (the hint text itself is Prose; the label and its presence are contract) | `hint` |
+| `calibre_list_libraries` | `id` | `<Name> (id: <libraryId>)[ [default]]` — one line per library | `libraries[].id` |
+| `calibre_get_book` | `id` | `id: <id> \| uuid: <uuid>[ \| …]` (fields after the uuid are Prose) | `book.id` |
+| `calibre_search` | `cursor` | `… cursor: <nextCursor>` at the end of the line — pass the token verbatim (the words before `cursor:` are Prose) | `nextCursor` |
+| `calibre_list_categories` | `cursor` | `… cursor: <nextCursor>` at the end of the line — pass the token verbatim (the words before `cursor:` are Prose) | `nextCursor` |
+| `calibre_quality_report` | `cursor` | `… cursor: <nextCursor>` at the end of the line — pass the token verbatim (the words before `cursor:` are Prose) | `nextCursor` |
+| `calibre_find_duplicates` | `cursor` | `… cursor: <nextCursor>` at the end of the line — pass the token verbatim (the words before `cursor:` are Prose) | `nextCursor` |
+| `calibre_get_content` | `cursor` | `… cursor: <nextCursor>` at the end of the line — pass the token verbatim (the words before `cursor:` are Prose) | `nextCursor` |
+| `calibre_build_index` | `Indexed ids` | `Indexed ids: <id>, <id>.` | `bookDetails[].bookId` |
+| `calibre_ping` | `calibredb` | `calibredb: <path> (Content Server <url>)` | `calibredbPath` |
+| `calibre_ping` | `writes` | `writes: ENABLED\|disabled (…)` — our write gate (the parenthesis is Prose) | `writeEnabled` |
+| `calibre_ping` | `calibre writes` | `calibre writes: allowed\|refused — <setting>\|unknown (<reason>)` (the steer after `refused` and the reason are Prose) | `calibreWriteAccess` |
+| `calibre_ping` | `Semantic search` | `Semantic search: ready\|UNAVAILABLE\|index STALE …` (the state word is contract; the explanation and steering sentence are Prose) | `semantic.available` |
+| `calibre_ping` | `index` | on the Semantic search line: `; <libraryId> index v<N>: <B> books / <C> chunks / <F> figures, <V> vectors` or `; <libraryId> index busy — …` | `semantic.libraryId` |
+| `calibre_ping` | `Index` | `Index: <entry> · <entry>…[ · … +K more — …]` or `skipped — Calibre unreachable` / `libraries unavailable` / `(no libraries)` | `indexes` |
+| `calibre_ping` | `id` | each Index entry: `<Name> (id: <libraryId>)[ [default]]: <N>/<M\|?> indexed[ (<K> without embeddings)]\|none\|stale index (rebuild)\|busy — …\|not indexable — …\|index unreadable` (at most 20) | `indexes[].id` |
+| `calibre_ping` | `log file` | `log file: <path>\|off (stderr only)` | `logFile` |
+| `calibre_ping` | `recent errors` | `recent errors: <N>[ (<M> occurrences)]` | `recentErrors` |
+
+Tools whose text has no Labelled lines beyond the error lines:
+
+- `calibre_semantic_search` — text is Prose (its fields sit inside sentences or item lines)
+- `calibre_get_figures` — text is Prose; no outputSchema (images ride in content blocks)
+- `calibre_recover_metadata` — text is Prose (its fields sit inside sentences or item lines)
+- `calibre_extract_isbn` — text is Prose (its fields sit inside sentences or item lines)
+- `calibre_update_book` — text is Prose (its fields sit inside sentences or item lines)
+- `calibre_bulk_update` — text is Prose (its fields sit inside sentences or item lines)
+- `calibre_add_book` — text is Prose (its fields sit inside sentences or item lines)
+- `calibre_remove_book` — text is Prose (its fields sit inside sentences or item lines)
+- `calibre_merge_books` — text is Prose (its fields sit inside sentences or item lines)
+- `calibre_manage_bundles` — text is Prose (its fields sit inside sentences or item lines)
+- `calibre_board_data` — app-only widget tool — the model never sees its text
+- `calibre_open_book` — app-only widget tool — the model never sees its text
+<!-- labelled-lines:end -->
+
+---
+
 ## A note on the widget-internal tools
 
 <!-- tool-count:appOnly -->2<!-- /tool-count:appOnly --> extra tools exist that aren't meant for the assistant to call; MCP-Apps hosts (like
