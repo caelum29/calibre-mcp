@@ -4,6 +4,7 @@
 // --field grammar), NOT a line-by-line port of Calibre's GPL source.
 
 import type { ChangeValue } from "../domain/book-fields.js";
+import { InvalidFieldValueError } from "../domain/errors.js";
 
 /**
  * Format one field's value into the `value` half of a `--field name:value` token.
@@ -14,7 +15,9 @@ export function formatFieldValue(field: string, value: ChangeValue): string {
   // identifiers: {isbn:"X", doi:"Y"} → "isbn:X,doi:Y"
   if (field === "identifiers") {
     if (typeof value !== "object" || value === null || Array.isArray(value)) {
-      throw new Error("identifiers must be an object of scheme → value");
+      throw new InvalidFieldValueError(
+        'identifiers must be an object of scheme → value, e.g. {"isbn": "9780132350884"}',
+      );
     }
     return Object.entries(value)
       .map(([scheme, v]) => `${scheme}:${v}`)
@@ -26,6 +29,13 @@ export function formatFieldValue(field: string, value: ChangeValue): string {
   }
   if (field === "tags" || field === "languages") {
     return (Array.isArray(value) ? value : [String(value)]).join(",");
+  }
+  // Calibre fills the missing parts of a partial date from today (2020 → 2020-<this month>-15),
+  // so the stored date would depend on when the write ran (#423): pin them to the first day.
+  if (field === "pubdate" && typeof value === "string") {
+    const v = value.trim();
+    if (/^\d{4}$/.test(v)) return `${v}-01-01`;
+    if (/^\d{4}-\d{2}$/.test(v)) return `${v}-01`;
   }
   // scalars (title, series, publisher, pubdate, comments, rating, series_index, #custom)
   if (Array.isArray(value)) return value.join(",");
