@@ -145,3 +145,43 @@ describe("enableFts verifies a possibly committed enable (#447)", () => {
     expect(textOf(r)).toContain("FT button");
   });
 });
+
+describe("enableFts on a cancelled call (#447)", () => {
+  it("should_return_the_cancelled_result_and_raise_no_unhandled_rejection_when_aborted_mid_flight", async () => {
+    const unhandled: unknown[] = [];
+    const spy = (reason: unknown) => unhandled.push(reason);
+    process.on("unhandledRejection", spy);
+    try {
+      const ac = new AbortController();
+      // status never answers until the call is aborted, then rejects like a killed calibredb
+      const calibre: LibraryWriter = fakeCalibre({
+        calibredb: (_args, o) =>
+          new Promise((_resolve, reject) => {
+            o.signal?.addEventListener("abort", () => reject(new Error("The operation was cancelled.")), {
+              once: true,
+            });
+          }),
+      });
+      const d = deps(calibre, [1], true);
+      d.extractor = fakeExtractor({
+        getText: (a) =>
+          new Promise((_resolve, reject) => {
+            a.signal?.addEventListener("abort", () => reject(a.signal?.reason ?? new Error("aborted")), {
+              once: true,
+            });
+          }),
+      });
+      const run = buildIndexTool.handler(args, d, { signal: ac.signal });
+      await new Promise((r) => setTimeout(r, 10));
+      ac.abort();
+      const r = await run;
+      await new Promise((r2) => setTimeout(r2, 20));
+      expect(r.isError).toBe(true);
+      expect(textOf(r)).toMatch(/^Error: Index build cancelled/);
+      expect(r.structuredContent).not.toHaveProperty("fts");
+      expect(unhandled).toEqual([]);
+    } finally {
+      process.off("unhandledRejection", spy);
+    }
+  });
+});

@@ -141,10 +141,15 @@ export const buildIndexTool = defineTool({
     // The FTS part is independent of the build outcome (#447): started once here, it is attached
     // to whatever result the call returns (final, still running, nothing to build, failed).
     const ftsRun = args.enableFts
-      ? enableFts({ calibre: deps.calibre, writeEnabled: deps.config.writeEnabled }, libraryId, signal)
+      ? // never rejects: a cancel (or a throwing build) must not leave an unhandled rejection
+        enableFts({ calibre: deps.calibre, writeEnabled: deps.config.writeEnabled }, libraryId, signal).catch(
+          () => undefined,
+        )
       : undefined;
     const result = await runOrReport(builds, libraryId, args, deps, ctx);
-    return ftsRun ? withFts(result, await ftsRun) : result;
+    const fts = await ftsRun;
+    // a cancelled call returns the build's result as is, without an FTS line
+    return fts && !signal?.aborted ? withFts(result, fts) : result;
   },
 });
 
