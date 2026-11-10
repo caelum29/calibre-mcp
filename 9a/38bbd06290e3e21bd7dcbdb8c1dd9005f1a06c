@@ -1,0 +1,44 @@
+test/tools/merge-books.handler.test.ts
+  s_53ff9ec34f3db8::t_1e1722e52f10d4 413
+src/tools/result.ts
+  s_53ff9ec34f3db8::t_ef10e07182b222 61-64
+  s_53ff9ec34f3db8::t_d8b9b8b861b69b 7,54-56,60,66
+test/tools/bulk-update.tags-ops-review.test.ts
+  s_53ff9ec34f3db8::t_980686743a4155 71
+test/tools/get-figures.messages.test.ts
+  s_53ff9ec34f3db8::t_980686743a4155 54-56
+test/tools/write-retry.test.ts
+  s_53ff9ec34f3db8::t_1e1722e52f10d4 115-116,134-135
+test/tools/shared-helpers-345.test.ts
+  s_53ff9ec34f3db8::t_980686743a4155 20,32-37,45
+test/tools/write-partial-landing-389.test.ts
+  s_53ff9ec34f3db8::t_5153c51a23b7d1 43-45
+test/tools/get-figures.errors.test.ts
+  s_53ff9ec34f3db8::t_980686743a4155 63,65-78
+test/tools/bulk-update-dropped-verify-370.test.ts
+  s_53ff9ec34f3db8::t_1e1722e52f10d4 96-97
+test/domain/error-codes.test.ts
+  s_53ff9ec34f3db8::t_980686743a4155 304-306
+src/tools/labelled-lines.ts
+  s_53ff9ec34f3db8::t_d8b9b8b861b69b 1-14
+docs/standards/results-and-errors.md
+  s_53ff9ec34f3db8::t_a6cde546ef7e52 26-37
+src/domain/error-codes.ts
+  s_53ff9ec34f3db8::t_55cd8198628ed6 128-130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9a38bbd06290e3e21bd7dcbdb8c1dd9005f1a06c",
+  "prompts": {},
+  "sessions": {
+    "s_53ff9ec34f3db8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a4bd7ff7-48cb-45dc-95d3-fb2b8e7ff920",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
