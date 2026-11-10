@@ -944,12 +944,12 @@ describe("error texts state their next step once (#437)", () => {
 // Every registered Labelled line must be rendered by at least one of the scenarios above, and
 // every occurrence must carry its structured field's value. calibre_ping has no parity scenario
 // (no outputSchema), so it gets two fixtures here: healthy, and Calibre down.
-const pingDeps = (o: { down?: boolean } = {}): ToolDeps => {
+const pingDeps = (o: { down?: boolean; env?: Record<string, string> } = {}): ToolDeps => {
   const index = memoryStore();
   index.replaceBook("My_Books", { bookId: 101, title: "Rust in Action", authors: ["Tim McNamara"] }, [
     { charStart: 0, charEnd: 30, body: "ownership moves the value", vector: axis(0) },
   ]);
-  const base = fakeDeps({ index });
+  const base = fakeDeps({ index, env: o.env });
   return {
     ...base,
     content: {
@@ -978,8 +978,22 @@ const pingDeps = (o: { down?: boolean } = {}): ToolDeps => {
 const PING_FIXTURES: Scenario[] = [
   { tool: "calibre_ping", label: "healthy", args: {}, deps: () => pingDeps() },
   { tool: "calibre_ping", label: "Calibre down (error)", args: {}, deps: () => pingDeps({ down: true }) },
+  // the write gate's two states print different `writes:` lines (#519)
+  {
+    tool: "calibre_ping",
+    label: "healthy, writes off",
+    args: {},
+    deps: () => pingDeps({ env: { CALIBRE_MCP_ENABLE_WRITE: "0" } }),
+  },
 ];
-const ALL_RENDERED = [...SCENARIOS, ...PAGINATED_SCENARIOS, ...PAYLOAD_SCENARIOS, ...PING_FIXTURES];
+// enableFts adds the `- FTS:` line; with the gate off no calibredb call is made (#519)
+const FTS_FIXTURE: Scenario = {
+  tool: "calibre_build_index",
+  label: "enableFts, writes off",
+  args: { bookId: 101, enableFts: true },
+  deps: () => fakeDeps({ embedder: fakeEmbedder, index: memoryStore(), env: { CALIBRE_MCP_ENABLE_WRITE: "0" } }),
+};
+const ALL_RENDERED = [...SCENARIOS, ...PAGINATED_SCENARIOS, ...PAYLOAD_SCENARIOS, ...PING_FIXTURES, FTS_FIXTURE];
 
 /** A structured field's values: `a.b` → [value], `a[].b` → one per item. */
 function fieldValues(sc: unknown, field: string): unknown[] {
@@ -1047,6 +1061,28 @@ describe("Labelled lines (#454)", () => {
       .filter(({ r }) => occurrences(textChannel(r), ERROR_LINES[0]!).length !== 1)
       .map(({ s }) => `${s.tool}: ${s.label}`);
     expect(missing).toEqual([]);
+  });
+
+  // A format-only line must match in every state the tool prints, not just one (#519).
+  const registered = (tool: string, label: string): LabelledLine => {
+    const e = LABELLED_LINES[tool];
+    const l = e && "lines" in e ? e.lines.find((x) => x.label === label) : undefined;
+    if (!l) throw new Error(`${tool} has no registered "${label}" line`);
+    return l;
+  };
+
+  it.each([
+    ["on", "healthy", "ENABLED"],
+    ["off", "healthy, writes off", "disabled"],
+  ])("calibre_ping's writes line matches with the gate %s", async (_gate, label, want) => {
+    const hit = (await rendered).find(({ s }) => s.tool === "calibre_ping" && s.label === label)!;
+    expect(occurrences(textChannel(hit.r), registered("calibre_ping", "writes"))).toEqual([want]);
+  });
+
+  it("calibre_build_index's FTS line is registered and carries fts.status", async () => {
+    const hit = (await rendered).find(({ s }) => s === FTS_FIXTURE)!;
+    expect(hit.r.structuredContent).toMatchObject({ fts: { status: "write_disabled" } });
+    expect(occurrences(textChannel(hit.r), registered("calibre_build_index", "FTS"))).toEqual(["write_disabled"]);
   });
 
   it("docs/TOOLS.md's Labelled lines table is the registry (regenerate with pnpm catalog)", () => {
