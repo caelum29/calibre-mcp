@@ -1,0 +1,32 @@
+test/tools/schema-compat.test.ts
+  s_db558d6b317526::t_024a238300b0bd 122,125
+docs/tool-catalog.json
+  s_db558d6b317526::t_bc45caad9ad1c7 34,122,256,469,646,728,879,1038,1219,1280,1356,1454,1575,1675,1794,1870,2002,2171,2454
+test/wire-compat.transport.test.ts
+  s_db558d6b317526::t_bc45caad9ad1c7 21,49,60,96,100
+CLAUDE.md
+  s_db558d6b317526::t_0d1d94edaa9b48 39-43
+test/wire-compat.test.ts
+  s_db558d6b317526::t_03141a2a5cb2fa 2,38-39
+docs/standards/results-and-errors.md
+  s_db558d6b317526::t_0d1d94edaa9b48 12-24
+src/wire-compat.ts
+  s_db558d6b317526::t_03141a2a5cb2fa 25
+  s_db558d6b317526::t_bc45caad9ad1c7 7-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5c99aa316099757411238e9713cd46e1d9bf377d",
+  "prompts": {},
+  "sessions": {
+    "s_db558d6b317526": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c3ace1e5-b5b1-4d35-8b5d-6026fc7c6385",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
