@@ -263,8 +263,8 @@ can open them for you: *"check the calibre-mcp logs for errors today"*):
   logged as its length only). Every line logged during that call carries
   the same `call` id, so `jq -c 'select(.call=="<id>")'` replays one call end to end.
 - **Failed calls** carry an `errorCode` from a closed set (`not_found`, `invalid_input`,
-  `calibre_unreachable`, `timeout`, `index_missing`, … — the full list is in the folder's
-  `README.md`) and, where there is a generic next step, a `hint`. Group failures with
+  `calibre_unreachable`, `timeout`, `index_missing`, … — the full list is in the
+  [stability policy](./STABILITY.md#error-codes) and the folder's `README.md`) and, where there is a generic next step, a `hint`. Group failures with
   `jq -r 'select(.msg=="tool call" and .meta.isError) | .meta.errorCode' calibre-mcp-*.jsonl | sort | uniq -c`.
 - **Trace context:** when the client sends a W3C `traceparent` in the request's `_meta`,
   the `tool call` line carries its `traceId` and `parentSpanId`, so it joins the client's trace.
