@@ -1,0 +1,19 @@
+test/semantic/library-id-owner-414.test.ts
+  s_f029e91c9abcf4::t_41e7d4e5014acd 1-122
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "648c817b175a3c78a66e4ee6b05cc6b984c24e76",
+  "prompts": {},
+  "sessions": {
+    "s_f029e91c9abcf4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a620a43a-a56d-4fd0-9de8-7441fb6466a7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
