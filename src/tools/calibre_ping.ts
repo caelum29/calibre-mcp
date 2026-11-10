@@ -217,18 +217,47 @@ function serverHeader(deps: BaseDeps): string {
  * skipped: libraryInfo would just burn another full timeout.
  */
 async function indexSection(deps: PingDeps, unreachable: boolean): Promise<{ line: string; indexes?: LibraryIndex[] }> {
-  if (unreachable) return { line: "Index: skipped — Calibre unreachable" };
+  const label = (value: string) => labelledLine(PING_LINE_LABELS.index, value);
+  if (unreachable) return { line: label("skipped — Calibre unreachable") };
   const indexes = await libraryIndexReport(deps);
-  if (!indexes) return { line: "Index: libraries unavailable" };
-  const part = (i: LibraryIndex): string =>
-    i.state === "ok"
-      ? `${i.name}: ${i.indexed}/${i.total ?? "?"} indexed${i.withoutEmbeddings ? ` (${i.withoutEmbeddings} without embeddings)` : ""}`
-      : i.state === "none"
-        ? `${i.name}: none`
-        : i.state === "stale"
-          ? `${i.name}: stale index (rebuild)`
-          : i.state === "conflict"
-            ? `${i.name}: not indexable — id "${i.id}" differs from "${i.conflictsWith}" only in case; rename one of the two library folders`
-            : `${i.name}: index unreadable`;
-  return { line: `Index: ${indexes.length > 0 ? indexes.map(part).join(" · ") : "(no libraries)"}`, indexes };
+  if (!indexes) return { line: label("libraries unavailable") };
+  if (indexes.length === 0) return { line: label("(no libraries)"), indexes };
+  // the text stays bounded however many libraries there are; structuredContent keeps them all (#442)
+  const shown = cappedWithDefault(indexes).map(indexEntry);
+  const more = indexes.length - shown.length;
+  if (more > 0) shown.push(`… +${more} more — full list in structuredContent / calibre_list_libraries`);
+  return { line: label(shown.join(" · ")), indexes };
+}
+
+/** Libraries listed in the Index text before it says "+K more" (#442). */
+const INDEX_TEXT_CAP = 20;
+
+/**
+ * The first INDEX_TEXT_CAP libraries in map order, but never without the default: the Semantic
+ * search line describes it, so its `[default]` entry must stay in the text (#440 review).
+ */
+function cappedWithDefault(indexes: LibraryIndex[]): LibraryIndex[] {
+  const head = indexes.slice(0, INDEX_TEXT_CAP);
+  if (head.some((i) => i.isDefault)) return head;
+  const def = indexes.find((i) => i.isDefault);
+  return def ? [...head.slice(0, INDEX_TEXT_CAP - 1), def] : head;
+}
+
+/** One `Index:` entry: `Name (id: Lib_Id) [default]: <state>` — tools take the id, not the name (#440). */
+function indexEntry(i: LibraryIndex): string {
+  const head = `${i.name} (id: ${i.id})${i.isDefault ? " [default]" : ""}`;
+  switch (i.state) {
+    case "ok":
+      return `${head}: ${i.indexed}/${i.total ?? "?"} indexed${i.withoutEmbeddings ? ` (${i.withoutEmbeddings} without embeddings)` : ""}`;
+    case "none":
+      return `${head}: none`;
+    case "stale":
+      return `${head}: stale index (rebuild)`;
+    case "conflict":
+      return `${head}: not indexable — id "${i.id}" differs from "${i.conflictsWith}" only in case; rename one of the two library folders`;
+    case "busy":
+      return `${head}: busy — index locked by another process, retry`;
+    default:
+      return `${head}: index unreadable`;
+  }
 }

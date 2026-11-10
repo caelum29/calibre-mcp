@@ -110,7 +110,7 @@ describe("computeSemanticStatus", () => {
     expect(s.chunkCount).toBe(3);
     expect(s.figureCount).toBe(0);
     expect(formatSemanticStatusLine(s)).toBe(
-      `Semantic search: UNAVAILABLE — model multilingual-e5-small NOT LOADED (@huggingface/transformers not installed — install it, then restart the server); index v${INDEX_VERSION}: 1 books / 3 chunks / 0 figures, 3 vectors (keyword search still works).`,
+      `Semantic search: UNAVAILABLE — model multilingual-e5-small NOT LOADED (@huggingface/transformers not installed — install it, then restart the server); ${LIB} index v${INDEX_VERSION}: 1 books / 3 chunks / 0 figures, 3 vectors (keyword search still works).`,
     );
   });
 
@@ -127,7 +127,7 @@ describe("computeSemanticStatus", () => {
     expect(s.vectorCount).toBe(3);
     expect(s.reason).toBeUndefined();
     expect(formatSemanticStatusLine(s)).toBe(
-      `Semantic search: ready (multilingual-e5-small, 384-dim); index v${INDEX_VERSION}: 1 books / 3 chunks / 0 figures, 3 vectors.`,
+      `Semantic search: ready (multilingual-e5-small, 384-dim); ${LIB} index v${INDEX_VERSION}: 1 books / 3 chunks / 0 figures, 3 vectors.`,
     );
   });
 

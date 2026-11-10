@@ -16,9 +16,14 @@ import type { IndexFreshness, IndexMeta } from "./store/index.js";
 import { LibraryIdCollisionError } from "../domain/library-id-collision.js";
 import { EMBED_DIM, INDEX_VERSION, MODEL_ID } from "./model.js";
 import { staleness } from "./staleness.js";
+import { isIndexBusy } from "./index-busy.js";
 
 /** The semantic block mirrored onto calibre_ping's structuredContent. */
 export interface SemanticStatus {
+  /** The library the index facts below describe (#440); absent when none was resolved. */
+  libraryId?: string;
+  /** True when that library's index is locked by another process: its counts are unknown this time (#442). */
+  indexBusy?: boolean;
   /** Can vector/hybrid search run right now? (dep on disk AND not a failed in-process load). */
   available: boolean;
   /** Embedding model id — read from the index's meta when one exists, else the server's locked model. */
@@ -103,11 +108,14 @@ export function computeSemanticStatus(
   // A #388 case clash refuses this library's index: report it as the reason, never throw.
   let clash: LibraryIdCollisionError | undefined;
   let meta: IndexMeta | undefined;
+  let busy = false;
   try {
-    meta = libraryId ? deps.index.indexMeta(libraryId) : undefined;
+    meta = libraryId ? deps.index.indexMeta(libraryId, { diagnostic: true }) : undefined;
   } catch (err) {
-    if (!(err instanceof LibraryIdCollisionError)) throw err;
-    clash = err;
+    // locked by another process (#442): counts unknown this time, no long wait, no throw
+    if (isIndexBusy(err)) busy = true;
+    else if (!(err instanceof LibraryIdCollisionError)) throw err;
+    else clash = err;
   }
   const stale = meta !== undefined && staleness(meta) !== undefined;
   // A stale index is refused on open (INDEX_INCOMPATIBLE), so counting it would throw — skip.
@@ -141,6 +149,8 @@ export function computeSemanticStatus(
   }
 
   return {
+    ...(libraryId ? { libraryId } : {}),
+    ...(busy ? { indexBusy: true } : {}),
     available,
     model: meta?.modelId ?? MODEL_ID,
     dim: meta?.dim ?? EMBED_DIM,
@@ -172,7 +182,10 @@ export function formatSemanticStatusLine(s: SemanticStatus): string {
   const index = formatIndexCounts(s);
   if (s.available) {
     if (index === undefined) return `Semantic search: ready (${name}, ${s.dim}-dim).`;
-    let hint = s.vectorCount || s.indexPresent === false ? "" : " — no vectors indexed yet; run calibre_build_index";
+    let hint =
+      s.vectorCount || s.indexPresent === false || s.indexBusy
+        ? ""
+        : " — no vectors indexed yet; run calibre_build_index";
     // Some books embedded, others not (e.g. written by a model-less server sharing the db):
     // vector/hybrid search silently misses the rest, so name the count and the fix.
     if (s.vectorCount && s.booksWithoutVectors) {
@@ -192,10 +205,14 @@ export function formatSemanticStatusLine(s: SemanticStatus): string {
 function formatIndexCounts(s: SemanticStatus): string | undefined {
   // A refused library (#388): calibre_build_index would be refused too, so steer to the rename.
   if (s.indexRefused) return `index refused — ${s.indexRefused}`;
+  // same wording as ping's Index entry, so both channels say the counts are missing for a lock
+  if (s.indexBusy) return `${s.libraryId} index busy — index locked by another process, retry`;
   if (s.indexPresent === false) return "no index yet — run calibre_build_index";
   if (s.indexedBooks === undefined) return undefined;
   const gen = s.indexVersion !== undefined ? ` v${s.indexVersion}` : "";
-  return `index${gen}: ${s.indexedBooks} books / ${s.chunkCount ?? 0} chunks / ${s.figureCount ?? 0} figures, ${s.vectorCount ?? 0} vectors`;
+  // name the library the counts describe (#440): ping's Index line lists several
+  const lib = s.libraryId ? `${s.libraryId} ` : "";
+  return `${lib}index${gen}: ${s.indexedBooks} books / ${s.chunkCount ?? 0} chunks / ${s.figureCount ?? 0} figures, ${s.vectorCount ?? 0} vectors`;
 }
 
 /** `owner/name` → `name` for display. */

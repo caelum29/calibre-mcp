@@ -78,8 +78,8 @@ describe("ping reports the clash (#388 review)", () => {
       index: store(dir),
     });
     expect(report).toEqual([
-      { id: "Books", name: "Books", state: "none" },
-      { id: "books", name: "books", state: "conflict", conflictsWith: "Books" },
+      { id: "Books", name: "Books", isDefault: true, state: "none" },
+      { id: "books", name: "books", isDefault: false, state: "conflict", conflictsWith: "Books" },
     ]);
   });
 
@@ -106,7 +106,7 @@ describe("ping reports the clash (#388 review)", () => {
       .split("\n")
       .find((l) => l.startsWith("Index:"));
     expect([line, readdirSync(dir)]).toEqual([
-      'Index: Books: none · books: not indexable — id "books" differs from "Books" only in case; rename one of the two library folders',
+      'Index: Books (id: Books): none · books (id: books) [default]: not indexable — id "books" differs from "Books" only in case; rename one of the two library folders',
       [],
     ]);
   });

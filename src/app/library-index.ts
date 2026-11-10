@@ -4,15 +4,20 @@
 
 import type { LibraryReader } from "../calibre/content-server.js";
 import type { StatusIndex } from "../semantic/status.js";
+import type { LibraryInfo } from "../domain/library.js";
 import { staleness } from "../semantic/staleness.js";
 import { Deadline } from "../shared/deadline.js";
 import { LibraryIdCollisionError } from "../domain/library-id-collision.js";
+import { isIndexBusy } from "../semantic/index-busy.js";
 
 /** One library's index coverage; `total` is null when the Content Server did not answer in time. */
 export interface LibraryIndex {
   id: string;
   name: string;
-  state: "ok" | "none" | "stale" | "unreadable" | "conflict";
+  /** The Content Server's default library (#440). */
+  isDefault: boolean;
+  /** "busy" (#442): another process holds the index locked — retry, nothing is wrong with it. */
+  state: "ok" | "none" | "stale" | "unreadable" | "conflict" | "busy";
   /** state "conflict" (#388): the library whose id equals this one case-insensitively and owns the index file. */
   conflictsWith?: string;
   indexed?: number;
@@ -54,20 +59,22 @@ async function within<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
 export async function libraryIndexReport(deps: LibraryIndexDeps): Promise<LibraryIndex[] | undefined> {
   // One clock for the whole section: a slow libraryInfo leaves the counts less time (#325).
   const deadline = new Deadline(INDEX_DEADLINE_MS);
-  let map: Record<string, string> | undefined;
+  let info: LibraryInfo | undefined;
   try {
-    map = (await within(deps.content.libraryInfo(), deadline.remainingMs(), undefined))?.libraryMap;
+    info = await within(deps.content.libraryInfo(), deadline.remainingMs(), undefined);
   } catch {
-    map = undefined;
+    info = undefined;
   }
+  const map = info?.libraryMap;
   if (!map) return undefined;
   return Promise.all(
     Object.entries(map).map(async ([id, name]): Promise<LibraryIndex> => {
+      const lib = { id, name, isDefault: id === info?.defaultLibrary };
       try {
-        if (!deps.index.hasIndex(id)) return { id, name, state: "none" };
-        const meta = deps.index.indexMeta(id);
-        if (!meta) return { id, name, state: "unreadable" };
-        if (staleness(meta) !== undefined) return { id, name, state: "stale" };
+        if (!deps.index.hasIndex(id)) return { ...lib, state: "none" };
+        const meta = deps.index.indexMeta(id, { diagnostic: true });
+        if (!meta) return { ...lib, state: "unreadable" };
+        if (staleness(meta) !== undefined) return { ...lib, state: "stale" };
         // Keyword-only books are FTS-searchable, so they count as indexed; semantic search can't
         // reach them, so the report says how many (#325).
         const indexed = deps.index.stats(id).books;
@@ -81,10 +88,12 @@ export async function libraryIndexReport(deps: LibraryIndexDeps): Promise<Librar
           left,
           null,
         );
-        return { id, name, state: "ok", indexed, total, withoutEmbeddings };
+        return { ...lib, state: "ok", indexed, total, withoutEmbeddings };
       } catch (err) {
-        if (err instanceof LibraryIdCollisionError) return { id, name, state: "conflict", conflictsWith: err.owner };
-        return { id, name, state: "unreadable" };
+        if (err instanceof LibraryIdCollisionError) return { ...lib, state: "conflict", conflictsWith: err.owner };
+        // a lock is transient, not damage: say so instead of "unreadable" (#442)
+        if (isIndexBusy(err)) return { ...lib, state: "busy" };
+        return { ...lib, state: "unreadable" };
       }
     }),
   );
