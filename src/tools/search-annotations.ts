@@ -133,6 +133,7 @@ async function annotations(
   if (!("stdout" in out)) return out;
   const { stdout } = out;
   const all = wholeBook ? parseAnnotationExport(stdout) : parseAnnotationSearch(stdout);
+  if (wholeBook) await fillTitle(all, restrictedId(restrict), deps, args.library);
   const tail = honesty.length > 0 ? `\n${honesty.join("\n")}` : "";
   const q = JSON.stringify(args.query);
 
@@ -160,9 +161,23 @@ async function annotations(
   });
 }
 
+const restrictedId = (restrict: string): number => Number(restrict.slice("id:".length));
+
+/** Export rows carry no title: take it from the one book, looked up once. A failed lookup leaves them untitled. */
+async function fillTitle(rows: AnnotationHit[], bookId: number, deps: BaseDeps, library?: string): Promise<void> {
+  if (rows.length === 0) return;
+  try {
+    const { title } = await deps.content.getBook(bookId, library);
+    // the export is restricted to one book; only that book's rows get its title
+    for (const row of rows) if (row.bookId === bookId) row.title = title;
+  } catch {
+    // the title is polish: the listing is still correct without it
+  }
+}
+
 /** One hit: a Labelled header line, then the reader's text and note fenced as data. */
 function renderAnnotation(a: AnnotationHit): string {
-  // export rows (a whole book) carry no annotation id and no title
+  // export rows (a whole book) carry no annotation id; the title is filled from the book
   const id = a.id === undefined ? "" : ` ${a.id}`;
   const lines = [`annotation${id} · ${a.type} · book ${a.bookId} · ${a.format}${a.title ? ` · ${a.title}` : ""}`];
   if (a.chapter) lines.push(`chapter: ${a.chapter}`);
