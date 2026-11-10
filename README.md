@@ -172,12 +172,16 @@ raw-filename titles, invalid ISBNs).
 ## ✍️ Enabling writes
 
 Write tools (`calibre_update_book`, `calibre_bulk_update`, `calibre_add_book`,
-`calibre_remove_book`, `calibre_merge_books`, `calibre_manage_bundles`) are **hidden by
-default** — including `calibre_manage_bundles`' read-only `list` action, since the gate works
-per tool, not per action. Two independent switches must be on:
+`calibre_remove_book`, `calibre_merge_books`, `calibre_manage_bundles`, `calibre_extract_isbn`) are
+**off by default**. Two independent switches must be on:
 
 1. **The MCP-side gate** — set `CALIBRE_MCP_ENABLE_WRITE=1` (or tick *Enable writes* in
-   the Desktop bundle settings). Without it the write tools are disabled — hidden from the tool list and uncallable.
+   the Desktop bundle settings). The gate works **per call**: with it off, the five preview-first
+   tools (`calibre_bulk_update`, `calibre_remove_book`, `calibre_merge_books`,
+   `calibre_manage_bundles`, `calibre_extract_isbn`) stay listed (announced read-only) and their
+   previews work, while a call that would write (`apply: true`, `preview: false` or `confirm: true`)
+   returns `write_disabled`. `calibre_update_book` and `calibre_add_book` have no preview, so they
+   are hidden from the tool list.
 2. **The Calibre-side gate** — the Content Server must allow local writes. **By
    default the server embedded in the Calibre GUI is read-only**, so either enable
    the GUI option below or run a standalone server with `--enable-local-write`:
@@ -193,7 +197,7 @@ per tool, not per action. Two independent switches must be on:
    (i.e. permit local write access), then restart the Content Server from the GUI.
    This is the `--enable-local-write` equivalent for the embedded server.
 
-With only the first switch on, write tools appear but Calibre refuses the write — the
+With only the first switch on, writes reach Calibre but it refuses the write — the
 error message tells you exactly that. Reads work fine against the GUI-embedded server.
 
 Safety behavior: `calibre_bulk_update` requires an explicit book selection (`ids` or

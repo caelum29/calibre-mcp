@@ -17,12 +17,21 @@ A breaking change to any of these is a **major** release.
   `calibre_ping`'s `Index:`, `Semantic search:` and `calibre writes:` lines. The full list, per
   tool, is the [Labelled lines](TOOLS.md#labelled-lines) table, generated from the server's registry.
 - **Client channels:** every field a model must act on appears in both the text and the structured
-  result, so a client that surfaces only one of the two still works.
+  result. Claude Desktop shows the model only the text; Claude Code shows `structuredContent` on a
+  success and only the text on an error (canary-verified, see
+  [results and errors](standards/results-and-errors.md)). On an error the text is the one channel
+  both read, so the error `Code:` and `Next:` lines live there.
 - **Stable settings:** `CALIBRE_MCP_SERVER_URL`, `CALIBRE_MCP_LIBRARY`, `CALIBRE_MCP_ENABLE_WRITE`,
   `CALIBRE_MCP_ADD_ROOTS`, `CALIBRE_MCP_CALIBREDB_PATH`, `CALIBRE_MCP_INDEX_DIR`,
   `CALIBRE_MCP_LOG_LEVEL`, `CALIBRE_MCP_MAX_BOOK_BYTES`, `CALIBRE_MCP_BOARD_STYLE`.
 - **The closed error-code set** ([below](#error-codes)).
-- **The write gate and the preview-first behaviour of write tools.**
+- **The write gate and the preview-first behaviour of write tools.** The gate
+  (`CALIBRE_MCP_ENABLE_WRITE`) works per call. With it off, the five preview-first write tools
+  (`calibre_bulk_update`, `calibre_remove_book`, `calibre_merge_books`, `calibre_manage_bundles`,
+  `calibre_extract_isbn`) stay listed, announced read-only, and their previews work; a call that
+  would write returns `write_disabled`. `calibre_update_book` and `calibre_add_book` have no
+  preview and are hidden. Destructive and bulk tools show a preview first and write only on an
+  explicit `apply` / `confirm`.
 - **The resource URI template** `calibre://book/{libId}/{id}`.
 - **The minimum Node version** (`engines.node` in `package.json`): raising it is a major release.
 
@@ -46,7 +55,11 @@ A breaking change to any of these is a **major** release.
 
 - **Verified:** macOS with Calibre 9.x. Linux and Windows are not claimed: the code has paths for
   them and the unit suite runs on Linux in CI, but neither has had a live check.
-- **Calibre:** tested against 9.x, with no hard minimum.
+- **Calibre:** developed and tested against 9.x (9.18 at the time of writing). There is no general
+  minimum version: the server starts and most tools work on older releases. The 9.18-only calls
+  (`calibre_search` with `mode: annotations` or `notes`) return `calibre_too_old` on an older Calibre;
+  that is part of the contract. (Date keywords such as `lastmonth` also need 9.18+, but an older
+  Calibre just doesn't match them; see [Tools](TOOLS.md).)
 
 ## Error codes
 
@@ -86,4 +99,5 @@ tools are hidden then). Adding the lines to these errors later would be a minor 
 
 ## Supported versions
 
-Security fixes go to the latest minor release line ([`SECURITY.md`](../SECURITY.md)).
+Security fixes go to the latest `1.x` minor release line only ([`SECURITY.md`](../SECURITY.md)).
+`0.x` releases do not receive fixes once 1.0.0 is out. Upgrade to the latest release first.

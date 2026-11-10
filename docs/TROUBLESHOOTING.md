@@ -217,9 +217,10 @@ is a real extraction problem — see the PDF and vector-figure notes in `docs/TO
 
 ## Writes
 
-### Write tools don't appear at all
+### Write tools are missing, or return `write_disabled`
 
-The master gate is off. Set `CALIBRE_MCP_ENABLE_WRITE=1` (or tick *Enable writes* in the
+The master gate is off. With it off, `calibre_update_book` and `calibre_add_book` are hidden, and the
+preview-first tools stay listed but return `write_disabled` for a call that would write. Set `CALIBRE_MCP_ENABLE_WRITE=1` (or tick *Enable writes* in the
 Desktop extension settings) and restart the server. This is deliberate — the server is
 read-only by default.
 
