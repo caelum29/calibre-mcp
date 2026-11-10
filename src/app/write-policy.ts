@@ -195,7 +195,7 @@ const MAX_NOTE_VALUE = 60;
  * Text naming the third values a re-read found, e.g. ` A re-read shows publisher reads back
  * "GUI", not the requested "New" — …`; "" when the check found none. Same in both channels.
  */
-export function foreignNote(check: TimedOutWriteCheck): string {
+export function foreignNote(check: ReReadCheck<unknown>): string {
   if (check.status !== "unverifiable" || !check.foreign?.length) return "";
   const show = (v: unknown): string => {
     const s = JSON.stringify(v ?? null);
@@ -220,16 +220,34 @@ export type UnconfirmedCheck<T = Book> = Exclude<ReReadCheck<T>, { status: "land
 
 /** What a failed routed write amounts to, judged from its error and, when it may have committed, a re-read. */
 export type FailedWriteOutcome<T = Book> =
-  /** A re-read shows every requested change: success. `refused`: a refusal followed the drop. */
-  | { kind: "confirmed"; cause: ReReadCause; after: T; refused: boolean }
+  /** A re-read shows every requested change: success. */
+  | { kind: "confirmed"; cause: ReReadCause; after: T }
   /** It may have committed, but the re-read can't confirm it: steer to calibre_get_book. */
-  | { kind: "unverified"; cause: ReReadCause; check: UnconfirmedCheck<T>; refused: boolean }
+  | { kind: "unverified"; cause: ReReadCause; check: UnconfirmedCheck<T> }
   /** The server refused the write, and nothing a dropped attempt sent landed. */
   | { kind: "refused" }
+  /** A refusal followed a dropped attempt that a re-read shows landed: written, yet the rest is blocked. */
+  | { kind: "refusedAfterLanding"; cause: ReReadCause; after: T }
+  /** A refusal followed a dropped attempt the re-read can't confirm. */
+  | { kind: "refusedUnverified"; cause: ReReadCause; check: UnconfirmedCheck<T> }
   /** Retries exhausted on a failure that never reached the server. */
   | { kind: "transient"; transient: TransientKind }
   /** None of the above: the caller reports or rethrows `err` as is. */
   | { kind: "unexpected" };
+
+/** The write is on the server: a re-read confirmed it (even if a refusal then blocked what follows). */
+export function isLanded<T>(
+  o: FailedWriteOutcome<T>,
+): o is Extract<FailedWriteOutcome<T>, { kind: "confirmed" | "refusedAfterLanding" }> {
+  return o.kind === "confirmed" || o.kind === "refusedAfterLanding";
+}
+
+/** The write may have committed and the re-read can't tell. */
+export function isUnverified<T>(
+  o: FailedWriteOutcome<T>,
+): o is Extract<FailedWriteOutcome<T>, { kind: "unverified" | "refusedUnverified" }> {
+  return o.kind === "unverified" || o.kind === "refusedUnverified";
+}
 
 /**
  * Classify the error of a failed routed write, re-reading the book whenever it may have
@@ -261,8 +279,12 @@ export async function settleFailedStep<T>(
 }
 
 function judge<T>(check: ReReadCheck<T>, cause: ReReadCause, refused: boolean): FailedWriteOutcome<T> {
-  if (check.status === "landed") return { kind: "confirmed", cause, after: check.after, refused };
+  if (check.status === "landed") {
+    return refused
+      ? { kind: "refusedAfterLanding", cause, after: check.after }
+      : { kind: "confirmed", cause, after: check.after };
+  }
   // a refusal is the answer once the re-read shows the dropped attempt did not land (#370)
   if (refused && check.status === "not-landed") return { kind: "refused" };
-  return { kind: "unverified", cause, check, refused };
+  return refused ? { kind: "refusedUnverified", cause, check } : { kind: "unverified", cause, check };
 }

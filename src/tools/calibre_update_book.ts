@@ -16,17 +16,15 @@ import { bookIdArg } from "./resolve-id.js";
 import { resolveNumericId } from "../app/resolve-id.js";
 import { fence, toolError, toolOk, bookNotFound, errorFromCatch } from "./result.js";
 import {
-  WRITE_REFUSED_MESSAGE,
-  describeTransient,
+  isLanded,
   withTransientRetry,
   settleFailedWrite,
   type FailedWriteOutcome,
   type TimedOutWrite,
-  type UnconfirmedCheck,
-  foreignNote,
   reReadNote,
   type ReReadCause,
 } from "../app/write-policy.js";
+import { presentFailedWrite } from "./write-failure.js";
 
 // One field's new value: scalar, multi-value list, or identifiers map. -32602-hardened
 // via jsonRecord (the whole `changes` object may arrive as a JSON string).
@@ -188,39 +186,9 @@ function failedWriteResult(
   write: TimedOutWrite,
   err: unknown,
 ): ToolResult {
-  const { id } = write;
-  switch (outcome.kind) {
-    case "confirmed":
-      return appliedResult(id, write.before, outcome.after, Object.keys(write.changes), outcome.cause);
-    case "refused":
-      return toolError("write_refused", WRITE_REFUSED_MESSAGE);
-    case "transient":
-      return toolError("calibre_unreachable", describeTransient(err, id));
-    case "unverified":
-      // a drop (refused after or not) keeps the "may have been committed" transient text (#342)
-      if (outcome.cause === "dropped") {
-        return toolError("write_unverified", describeTransient(err, id) + foreignNote(outcome.check));
-      }
-      return toolError("write_unverified", timedOutText(outcome.check, id));
+  if (isLanded(outcome)) {
+    return appliedResult(write.id, write.before, outcome.after, Object.keys(write.changes), outcome.cause);
   }
-}
-
-/** Why a timed-out write is unverified, by what the re-read showed. */
-function timedOutText(check: UnconfirmedCheck, id: number): string {
-  if (check.status === "unverifiable" && check.foreign) {
-    return (
-      `calibredb timed out and the write can't be confirmed.${foreignNote(check)} ` +
-      `Check with calibre_get_book id=${id} before retrying.`
-    );
-  }
-  if (check.status === "unverifiable") {
-    return (
-      `calibredb timed out and the book could not be re-read to verify. The write MAY ` +
-      `have been applied — check with calibre_get_book id=${id} before retrying.`
-    );
-  }
-  return (
-    `calibredb timed out and a re-read does not show the changes applied. Retry, or check ` +
-    `with calibre_get_book id=${id} first.`
-  );
+  const { code, text } = presentFailedWrite(outcome, { id: write.id, err });
+  return toolError(code, text);
 }
