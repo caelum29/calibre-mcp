@@ -8,7 +8,6 @@ import { resolveNumericId } from "../app/resolve-id.js";
 import {
   type AnnotationHit,
   type NoteHit,
-  calibredbArgv,
   isFts5QueryError,
   noSuchNoteItem,
   parseAnnotationExport,
@@ -16,6 +15,7 @@ import {
   parseNoteSearch,
   parseNoteShow,
 } from "../calibre/annotations.js";
+import { calibredbArgv } from "../calibre/calibredb-argv.js";
 import { CalibreCliError } from "../domain/errors.js";
 import type { LibId } from "../calibre/lib-id.js";
 import type { Deadline } from "../shared/deadline.js";

@@ -156,14 +156,3 @@ const FTS5_PARSE_ERROR = /Failed to parse search query: .* with error: fts5: /;
 export function isFts5QueryError(diag: string | undefined): boolean {
   return diag !== undefined && FTS5_PARSE_ERROR.test(diag);
 }
-
-/**
- * argv for a calibredb subcommand whose last arguments are user text. A positional starting
- * with "-" would be read as a flag (`--help`, `-s`), so then the options go first and `--`
- * ends option parsing; otherwise the argv keeps calibredb's documented order.
- */
-export function calibredbArgv(head: string[], positionals: string[], options: string[] = []): string[] {
-  return positionals.some((p) => p.startsWith("-"))
-    ? [...head, ...options, "--", ...positionals]
-    : [...head, ...positionals, ...options];
-}

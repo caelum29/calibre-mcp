@@ -3,6 +3,7 @@
 // Calibre's rules, trash the sources. Dry-run unless confirm=true; execution is a step
 // ledger with delete ALWAYS last, so any abort leaves a superset state (issue #33).
 
+import { calibredbArgv } from "../calibre/calibredb-argv.js";
 import { writeStep } from "./writes-remedy.js";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -313,7 +314,9 @@ async function executeMerge(deps: BaseDeps, job: MergeJob) {
       try {
         const file = join(await tmp(), `${m.sourceId}.${m.format}`);
         await downloadToFile(`${base}/get/${m.format.toUpperCase()}/${m.sourceId}/${encodeURIComponent(libId)}`, file);
-        await deps.calibre.calibredb(["add_format", "--dont-replace", String(target.id), file], { library: libId });
+        await deps.calibre.calibredb(calibredbArgv(["add_format", "--dont-replace"], [String(target.id), file]), {
+          library: libId,
+        });
         step.status = "done";
       } catch (err) {
         if (isFormatCollision(err)) {
