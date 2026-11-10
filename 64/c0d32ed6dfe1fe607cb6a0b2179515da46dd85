@@ -1,0 +1,19 @@
+GLOSSARY.md
+  s_2e04df4f1a593b::t_ce106e413de57c 84-98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "64c0d32ed6dfe1fe607cb6a0b2179515da46dd85",
+  "prompts": {},
+  "sessions": {
+    "s_2e04df4f1a593b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "39096fac-5516-402c-ac1d-7547e29f2ad1",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
