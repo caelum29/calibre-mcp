@@ -49,11 +49,13 @@ interface Candidate {
  * A normalized ISBN is plausible if it's checksum-valid AND not a degenerate run. Guards on top
  * of the checksum: all-same-digit strings pass the ISBN-10 checksum but are never real, and a
  * 13-digit run must carry an allowed prefix (Bookland 977/978/979 by default) to be an ISBN
- * rather than a stray EAN.
+ * rather than a stray EAN. Bare (unlabeled) runs of only 0/1 digits are rejected as binary data.
  */
-function plausibleIsbn(norm: string, prefixes: ReadonlySet<string>): boolean {
+function plausibleIsbn(norm: string, prefixes: ReadonlySet<string>, labeled: boolean): boolean {
   if (norm.length !== 10 && norm.length !== 13) return false;
   if (/^(\d)\1+$/.test(norm)) return false; // 1111111111 / 0000000000 etc.
+  // Bare 0/1-only runs are binary exercise data (nibble groups stitched by BARE), not ISBNs (#445).
+  if (!labeled && /^[01]+$/.test(norm)) return false;
   if (norm.length === 13 && !prefixes.has(norm.slice(0, 3))) return false;
   return isValidIsbn(norm);
 }
@@ -93,7 +95,7 @@ export function extractIsbns(text: string, limit = 5, opts: ExtractIsbnOptions =
   for (const [re, labeled] of sources) {
     for (const m of text.matchAll(re)) {
       const norm = normalizeIsbn(m[1]!);
-      if (!plausibleIsbn(norm, prefixes)) continue;
+      if (!plausibleIsbn(norm, prefixes, labeled)) continue;
       // Measure from the ISBN digits themselves, so a "ISBN:" label sits inside the lookbehind.
       const start = m.index + m[0].lastIndexOf(m[1]!);
       matches.push({ isbn: norm, labeled, start, end: start + m[1]!.length });
