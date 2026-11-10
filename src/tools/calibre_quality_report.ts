@@ -2,6 +2,7 @@
 // missing fields, raw-filename titles, invalid ISBNs, author-sort mismatches, series gaps, suspect (glued/junk) authors.
 // Read-only; the raw-filename findings feed calibre_recover_metadata.
 
+import { NEEDS_WRITES } from "./writes-remedy.js";
 import { z } from "zod";
 import { ALL_CHECKS, type QualityCheck, runQualityChecks } from "../domain/curation/quality.js";
 import { buildScopedQuery, honestyLines, resolveFilter } from "../app/bundles.js";
@@ -94,7 +95,11 @@ export const qualityReportTool = defineTool({
       const byCheck: Record<string, number> = {};
       for (const i of issues) byCheck[i.check] = (byCheck[i.check] ?? 0) + 1;
 
-      const page = issues.slice(offset, offset + args.limit);
+      // The fix steer is worded here: gate off, calibre_update_book is hidden (#519).
+      const page = issues.slice(offset, offset + args.limit).map(({ fix, ...i }) => ({
+        ...i,
+        message: fix === undefined ? i.message : `${i.message} ${fixStep(fix, deps.config.writeEnabled)}`,
+      }));
 
       // The count is only the bundle's size when the bundle alone selected the set.
       const honesty = honestyLines(fr.res, args.filter !== undefined && !args.query ? matched : undefined);
@@ -136,3 +141,9 @@ export const qualityReportTool = defineTool({
     }
   },
 });
+
+/** A quality issue's fix steer: the edit tool when writes are on, else the remedy. */
+function fixStep(fix: string, writeEnabled: boolean): string {
+  if (writeEnabled) return `Fix with calibre_update_book (${fix}).`;
+  return `${fix.charAt(0).toUpperCase()}${fix.slice(1)}; fixing it ${NEEDS_WRITES}.`;
+}

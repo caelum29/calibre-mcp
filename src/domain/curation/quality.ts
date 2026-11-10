@@ -31,6 +31,8 @@ export interface Issue {
   check: QualityCheck;
   severity: "info" | "warn";
   message: string;
+  /** How to fix it in Calibre terms; the tool layer words the steer (it knows the write gate, #519). */
+  fix?: string;
 }
 
 /** Author list is effectively empty (unset, the Calibre "Unknown" placeholder, or letter-less junk). */
@@ -90,7 +92,8 @@ function checkAuthorsSuspect(book: Book): Issue | undefined {
     title: book.title,
     check: "authors_suspect",
     severity: "warn",
-    message: `Suspect author value(s): ${bad.join("; ")}. Fix with calibre_update_book (one person per author, "First Last").`,
+    message: `Suspect author value(s): ${bad.join("; ")}.`,
+    fix: 'one person per author, "First Last"',
   };
 }
 

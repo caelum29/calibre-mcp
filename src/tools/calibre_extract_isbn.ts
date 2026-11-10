@@ -4,6 +4,7 @@
 // preview-first: returns what it found without writing unless apply=true. Merges into existing
 // identifiers so a doi/asin/etc. is never clobbered (set_metadata replaces the whole map).
 
+import { writeStep } from "./writes-remedy.js";
 import { z } from "zod";
 import { buildSetMetadataArgs } from "../calibre/metadata-fields.js";
 import { isValidIsbn } from "../domain/curation/isbn.js";
@@ -71,7 +72,11 @@ export const extractIsbnTool = defineTool({
             : "this matches the current isbn";
         const text = changed
           ? `Found ISBN ${isbn} in book #${numericId} text (${status}). ` +
-            `Re-run with apply=true to write identifiers:isbn.`
+            writeStep(
+              deps.config.writeEnabled,
+              `Re-run with apply=true to write identifiers:isbn.`,
+              "Writing identifiers:isbn",
+            )
           : `Book #${numericId} already has isbn ${isbn} (${status}); nothing to write.`;
         return toolOk([{ type: "text", text }], {
           bookId: numericId,

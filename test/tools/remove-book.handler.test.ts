@@ -24,7 +24,8 @@ function deps(calibredb: (args: readonly string[]) => Promise<{ stdout: string; 
     booksByIds: async (ids: number[]) => new Map(ids.map((id) => [id, byId.get(id) ?? null] as const)),
   };
   return {
-    config: loadConfig({}),
+    // gate on: these tests pin the dry-run text a model can act on (gate-off wording: channel-parity, #519)
+    config: loadConfig({ CALIBRE_MCP_ENABLE_WRITE: "1" }),
     content: content as unknown as ToolDeps["content"],
     calibre: { calibredb } as unknown as ToolDeps["calibre"],
     extractor: {} as ToolDeps["extractor"],
