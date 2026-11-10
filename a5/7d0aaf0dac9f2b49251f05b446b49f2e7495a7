@@ -1,0 +1,37 @@
+README.md
+  s_c842c008e16f8f::t_d816fba29023f5 11-13,16,27-31,34,49-53,72,147,324-328,342-351,396-399
+docs/TROUBLESHOOTING.md
+  s_c842c008e16f8f::t_2ab3f1f755a13c 267
+  s_c842c008e16f8f::t_e15ecffaf8f06b 266
+skills/calibre-mcp-setup/SKILL.md
+  s_c842c008e16f8f::t_e15ecffaf8f06b 3,13-14
+docs/TOOLS.md
+  s_c842c008e16f8f::t_e15ecffaf8f06b 241
+test/domain/stability-doc-sync.test.ts
+  s_c842c008e16f8f::t_0216637b0c256c 1-15,17,25-26
+  s_c842c008e16f8f::t_fe5aae5455a7af 16,18-24
+manifest.json
+  s_c842c008e16f8f::t_e15ecffaf8f06b 6
+package.json
+  s_c842c008e16f8f::t_e15ecffaf8f06b 4
+SECURITY.md
+  s_c842c008e16f8f::t_6612cf78c1cb83 5-7
+docs/STABILITY.md
+  s_c842c008e16f8f::t_ca8180b6f9e771 1-80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a57d0aaf0dac9f2b49251f05b446b49f2e7495a7",
+  "prompts": {},
+  "sessions": {
+    "s_c842c008e16f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "91965a68-3f52-49af-9990-ad0a6de81b7e",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
