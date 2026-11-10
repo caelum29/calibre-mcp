@@ -128,3 +128,39 @@ describe("calibre_get_figures skipped figures", () => {
     expect(texts).toContain("Figure index 0 skipped: FIGURES_NO_UNZIP");
   });
 });
+
+// #437 review: a call where every figure was skipped is an error result, so it carries a code in
+// both channels like any toolError: the first skip's code, or invalid_input for a prose reason.
+describe("calibre_get_figures all figures skipped (#437)", () => {
+  const allSkipped = async (skipped: unknown[]) => {
+    const figures = {
+      getInventory: async () => ({ inventory }),
+      fetchFigures: async () => ({ images: [], skipped }),
+    };
+    return getFiguresTool.handler(args({ indexes: [0] }), deps(figures));
+  };
+
+  it("should_code_a_coded_skip_and_show_its_labelled_lines", async () => {
+    const r = await allSkipped([{ index: 0, code: "NO_POPPLER" }]);
+    expect({
+      isError: r.isError,
+      errorCode: r.structuredContent?.errorCode,
+      lead: textOf(r),
+    }).toEqual({
+      isError: true,
+      errorCode: "dependency_missing",
+      lead:
+        "Book 929 (pdf): returned 0/1 figures at detail=standard.\n" +
+        "Code: dependency_missing\nNext: install the tool the error names, then retry",
+    });
+  });
+
+  it("should_code_a_prose_skip_as_invalid_input", async () => {
+    const r = await allSkipped([{ index: 0, reason: "no such figure index" }]);
+    expect([r.isError, r.structuredContent?.errorCode, textOf(r).split("\n").at(-1)]).toEqual([
+      true,
+      "invalid_input",
+      "Code: invalid_input",
+    ]);
+  });
+});

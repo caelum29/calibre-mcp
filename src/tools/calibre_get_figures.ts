@@ -273,17 +273,26 @@ async function fetchFigures(
   // No structuredContent when images are present: clients drop the whole content
   // array (images included) if structuredContent coexists (anthropics/claude-code
   // #54737/#45575; #80 probe). Everything is mirrored in the text blocks anyway.
-  const result =
-    outcome.images.length > 0
-      ? toolOk(blocks)
-      : toolOk(blocks, {
-          format: fmt,
-          returned,
-          skipped: outcome.skipped.map((s) => ({ index: s.index, reason: skipReason(s) })),
-          text: summary,
-        });
-  if (anyFailed) result.isError = true;
-  return result;
+  if (outcome.images.length > 0) return toolOk(blocks);
+  const structured = {
+    format: fmt,
+    returned,
+    skipped: outcome.skipped.map((s) => ({ index: s.index, reason: skipReason(s) })),
+    text: summary,
+  };
+  if (!anyFailed) return toolOk(blocks, structured);
+  // every figure skipped: an error result like any other, so it carries a Code: line (#437)
+  const err = allSkippedError(outcome.skipped[0]!, summary, structured);
+  return { ...err, content: [...err.content, ...blocks.slice(1)] };
+}
+
+// The first skip names the code: a coded skip maps like a scan failure; a prose reason (bad
+// index, byte cap) is the request's to fix.
+function allSkippedError(first: SkippedFigure, summary: string, structured: Record<string, unknown>) {
+  const opts = { bare: true, structured };
+  return "code" in first
+    ? toolError(errorCodeFor(new FiguresError(first.code)), summary, opts)
+    : toolError("invalid_input", summary, opts);
 }
 
 interface FigureMessages {
