@@ -1,15 +1,18 @@
 // calibre_build_index (WRITE) — build the semantic embeddings index for a chosen set of
-// books. A selector (bookId | ids | query) is REQUIRED: full-library indexing is deferred
-// (it's a ~1-2h job), so this slice never indexes everything by default. Each book is
+// books. A selector (bookId | ids | query) is REQUIRED: the build never indexes the whole library
+// implicitly (it's a ~1-2h job); pass a query that matches everything to do that on purpose. Each book is
 // extracted (reusing calibre_get_content's cache), chunked, embedded, and persisted; a
 // deterministic "[title › authors]" prefix gives each chunk cheap document context.
-// Per-book failures are collected, not fatal. The write gate disables this tool by default.
+// Per-book failures are collected, not fatal. Listed in every session (it writes the local index
+// dir, not the library); only the optional enableFts part needs the library write gate (#447).
 
 import { z } from "zod";
 import { BookId, CoercedBool, jsonArray } from "./coerce.js";
 import { defineTool } from "./define.js";
 import { describeError } from "../app/index-book.js";
+import { enableFts, type FtsOutcome } from "../app/enable-fts.js";
 import { runIndexBuild, type BuildIndexDeps, type BuildSummary } from "../app/build-index.js";
+import type { LibId } from "../calibre/lib-id.js";
 import { INSTALL_TRANSFORMERS } from "./remediation.js";
 import { toolError, toolOk, errorFromCatch } from "./result.js";
 import {
@@ -23,7 +26,7 @@ import {
   type BuildSelector,
 } from "./build-index-results.js";
 import type { ToolContext, ToolResult } from "./types.js";
-import { IndexBuildRegistry, type BuildRun } from "../semantic/index-builds.js";
+import { IndexBuildRegistry, type BuildRun, type IndexBuilds } from "../semantic/index-builds.js";
 import { log } from "../logging.js";
 import { bookProgress } from "./book-progress.js";
 
@@ -37,7 +40,7 @@ export const buildIndexTool = defineTool({
   name: "calibre_build_index",
   title: "Build semantic index",
   description:
-    'Build the semantic index for specific books (select them with bookId, ids, or query; at least one is required). A query selects ALL matching books (no 100-book cap); a call still working after ~45 s returns a "still running" status (not an error) while the build keeps committing in the background — re-run the same call to get its result; only one build runs per library at a time, and up-to-date books are skipped. Extracts, chunks, and embeds each book. Set keywordOnly=true (or when the embedding model is absent, it happens automatically) to build a keyword-only index that powers mode:"keyword" search with zero ML dependencies. Re-run after adding books; use force to re-index unchanged ones. Set prune=true to also drop index entries for books that no longer exist in the library (removals/merges leave searchable orphans behind).',
+    'Build the semantic index for specific books (select them with bookId, ids, or query; at least one is required; to index everything, pass a query that matches every book). A query selects ALL matching books (no 100-book cap); a call still working after ~45 s returns a "still running" status (not an error) while the build keeps committing in the background — re-run the same call to get its result; only one build runs per library at a time, and up-to-date books are skipped. Extracts, chunks, and embeds each book. Set keywordOnly=true (or when the embedding model is absent, it happens automatically) to build a keyword-only index that powers mode:"keyword" search with zero ML dependencies. Re-run after adding books; use force to re-index unchanged ones. Set enableFts=true to also turn on the Calibre full-text index for the library (needs writes enabled on this server; with writes off the semantic build still runs and the fts.status result field is write_disabled; already-enabled is a no-op; Calibre indexes in the background and the call does not wait). Set prune=true to also drop index entries for books that no longer exist in the library (removals/merges leave searchable orphans behind).',
   inputSchema: {
     bookId: BookId().optional(),
     ids: jsonArray(BookId()).optional(),
@@ -63,6 +66,14 @@ export const buildIndexTool = defineTool({
     prunedChunks: z.number().optional(),
     prunedFigures: z.number().optional(),
     elapsedMs: z.number().optional(),
+    // enableFts=true only (#447): what happened to Calibre's own full-text indexing.
+    fts: z
+      .object({
+        status: z.enum(["write_disabled", "enabled", "already_enabled", "failed"]),
+        progress: z.string().optional(),
+        detail: z.string().optional(),
+      })
+      .optional(),
     // Soft-deadline status (#284): a build is still running in the background — a success, not
     // an error. runningBuild says whose: "this" = this call's selection; "other" = another
     // selector's build that blocks this one, and booksRequested/booksDone/booksIndexed/indexedIds
@@ -107,10 +118,13 @@ export const buildIndexTool = defineTool({
   handler: async (args, deps: BuildIndexDeps, ctx) => {
     const signal = ctx?.signal;
     if (args.bookId === undefined && !args.ids?.length && !args.query) {
-      return toolError("invalid_input", "Specify bookId, ids, or query — full-library indexing is deferred.");
+      return toolError(
+        "invalid_input",
+        "Specify bookId, ids, or query (a query matching every book indexes the whole library).",
+      );
     }
 
-    let libraryId: string;
+    let libraryId: LibId;
     try {
       libraryId = await deps.content.resolveLibraryId(args.library);
     } catch (err) {
@@ -124,23 +138,54 @@ export const buildIndexTool = defineTool({
     // One build per library at a time (one index file, one writer); past the soft deadline the
     // call returns a "still running" status and the build keeps committing in the background.
     const builds = deps.indexBuilds ?? sharedBuilds;
-    const outcome = await builds.run(
-      libraryId,
-      selectorKey(args),
-      (run) => runBuild(args, deps, ctx, libraryId, run),
-      // A cancelled build's result must not answer the next call: that call should build.
-      { signal, keep: (r) => r.structuredContent?.cancelled !== true },
-    );
-    if (outcome.kind === "running")
-      return stillRunningResult(outcome, { ids: requestedIds(args), mode: buildModeKey(args) });
-    if (outcome.kind === "failed") {
-      return backgroundFailedResult(describeError(outcome.error), outcome.earlierCallFinishedAgoMs);
-    }
-    return outcome.earlierCallFinishedAgoMs === undefined
-      ? outcome.result
-      : fromEarlierCall(outcome.result, outcome.earlierCallFinishedAgoMs);
+    // The FTS part is independent of the build outcome (#447): started once here, it is attached
+    // to whatever result the call returns (final, still running, nothing to build, failed).
+    const ftsRun = args.enableFts
+      ? // never rejects: a cancel (or a throwing build) must not leave an unhandled rejection
+        enableFts({ calibre: deps.calibre, writeEnabled: deps.config.writeEnabled }, libraryId, signal).catch(
+          () => undefined,
+        )
+      : undefined;
+    const result = await runOrReport(builds, libraryId, args, deps, ctx);
+    const fts = await ftsRun;
+    // a cancelled call returns the build's result as is, without an FTS line
+    return fts && !signal?.aborted ? withFts(result, fts) : result;
   },
 });
+
+/** Run (or join) the build for this call and render whichever result kind comes back. */
+async function runOrReport(
+  builds: IndexBuilds<ToolResult>,
+  libraryId: LibId,
+  args: BuildArgs,
+  deps: BuildIndexDeps,
+  ctx: ToolContext | undefined,
+): Promise<ToolResult> {
+  const signal = ctx?.signal;
+  const outcome = await builds.run(
+    libraryId,
+    selectorKey(args),
+    (run) => runBuild(args, deps, ctx, libraryId, run),
+    // A cancelled build's result must not answer the next call: that call should build.
+    { signal, keep: (r) => r.structuredContent?.cancelled !== true },
+  );
+  if (outcome.kind === "running")
+    return stillRunningResult(outcome, { ids: requestedIds(args), mode: buildModeKey(args) });
+  if (outcome.kind === "failed") {
+    return backgroundFailedResult(describeError(outcome.error), outcome.earlierCallFinishedAgoMs);
+  }
+  return outcome.earlierCallFinishedAgoMs === undefined
+    ? outcome.result
+    : fromEarlierCall(outcome.result, outcome.earlierCallFinishedAgoMs);
+}
+
+/** Attach the FTS outcome to a result: one more text line plus `structuredContent.fts`. Non-mutating (results are cached). */
+function withFts(r: ToolResult, fts: FtsOutcome): ToolResult {
+  const [first, ...rest] = r.content;
+  const content =
+    first && first.type === "text" ? [{ ...first, text: `${first.text}\n- ${ftsLine(fts)}` }, ...rest] : r.content;
+  return { ...r, content, structuredContent: { ...r.structuredContent, fts } };
+}
 
 /** Args of one build call, as parsed by the input schema. */
 type BuildArgs = BuildSelector & { library?: string | undefined };
@@ -154,7 +199,7 @@ async function runBuild(
   args: BuildArgs,
   deps: BuildIndexDeps,
   ctx: ToolContext | undefined,
-  libraryId: string,
+  libraryId: LibId,
   run: BuildRun,
 ): Promise<ToolResult> {
   // Set before the first await, so a refused call always sees which mode this build runs in.
@@ -175,11 +220,26 @@ async function runBuild(
   }
   // Same buckets as the progress text, so the cancel summary and "Books so far" agree.
   if (outcome.kind === "cancelled") return cancelledResult(outcome.counts);
-  return summaryResult(outcome.summary, args.enableFts);
+  return summaryResult(outcome.summary);
+}
+
+/** The FTS line of the summary: always names the status so clients that drop structuredContent see it. */
+function ftsLine(f: FtsOutcome): string {
+  const progress = f.progress ? ` ${f.progress}.` : "";
+  switch (f.status) {
+    case "write_disabled":
+      return `FTS: write_disabled — Calibre full-text indexing was not enabled (the semantic build ran). Remedy: ${f.detail}.`;
+    case "already_enabled":
+      return `FTS: already enabled — nothing changed.${progress}`;
+    case "enabled":
+      return `FTS: enabled — Calibre indexes in the background.${progress}`;
+    case "failed":
+      return `FTS: failed — could not enable Calibre full-text indexing (${f.detail}). The semantic build is unaffected.`;
+  }
 }
 
 /** The finished build's text summary + structuredContent. */
-function summaryResult(s: BuildSummary, enableFts: boolean): ToolResult {
+function summaryResult(s: BuildSummary): ToolResult {
   const notes: string[] = [];
   if (s.largeSelection !== undefined) {
     // Up-to-date books are skipped, so re-running the same call resumes an interrupted build.
@@ -230,9 +290,6 @@ function summaryResult(s: BuildSummary, enableFts: boolean): ToolResult {
           ? `Pruned ${s.prune.pruned.books} book(s) no longer in the library (${s.prune.pruned.chunks} chunks, ${s.prune.pruned.figures} figures).`
           : "Prune found no stale books — the index matches the library.",
     );
-  }
-  if (enableFts) {
-    notes.push("enableFts is accepted but not yet implemented in this version (semantic-only index).");
   }
 
   const { failures, bookDetails } = s;

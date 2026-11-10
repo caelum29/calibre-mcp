@@ -44,7 +44,7 @@ ID `My_Books`. Calibre GUI + Content Server on `:8080` are normally running.
 | `calibre_list_categories` | Tags/authors/series/etc. values + counts; schema discovery | `field`, `valueFilter` (regex), `limit`, `cursor` |
 | `calibre_list_libraries` | Library map + default | — |
 | `calibre_semantic_search` | Meaning-based search across the library or within one book | `query`, `scope: library\|book`, `bookId`, `mode: hybrid\|vector\|keyword`, `topK`, `filter` (bundle), `include_excluded` |
-| `calibre_build_index` | Build/refresh the semantic index (needed before semantic search) | `ids`/`query`/`bookId` to scope, `force`, `enableFts`, `keywordOnly` |
+| `calibre_build_index` | Build/refresh the semantic index (needed before semantic search) | `ids`/`query`/`bookId` to scope, `force`, `enableFts` (turn on Calibre FTS; needs writes enabled, else `fts.status: write_disabled`), `keywordOnly` |
 | `calibre_find_duplicates` | Dup detection | `mode: identical\|similar\|compare`, `ids`, `query`, `filter` (bundle) |
 | `calibre_quality_report` | Library audit: missing metadata, rule violations | `checks`, `ids`/`query`/`filter` |
 | `calibre_recover_metadata` | Propose metadata for raw-filename books (ISBN → OpenLibrary → Google Books) | `id`, `sources` — returns a *proposal*; apply via `calibre_update_book` |

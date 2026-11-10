@@ -243,11 +243,6 @@ describe("calibre_build_index handler", () => {
     expect((r.content[0] as { text: string }).text).not.toContain("resume");
   });
 
-  it("notes that enableFts is not yet implemented", async () => {
-    const r = await buildIndexTool.handler(args({ bookId: 1, enableFts: true }), deps());
-    expect((r.content[0] as { text: string }).text).toContain("enableFts");
-  });
-
   it("keywordOnly=true builds without the model — chunks are FTS-searchable, no vectors", async () => {
     const store = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
     // The unavailable embedder proves keywordOnly never touches the model (warmup/embed would throw).
