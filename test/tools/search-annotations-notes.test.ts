@@ -148,7 +148,10 @@ describe("calibre_search mode=annotations (#500)", () => {
       { query: "commit", mode: "annotations", countOnly: true },
       deps(() => raw("annotations-search-commit")).d,
     );
-    expect({ text: textOf(r), total: sc(r).total }).toEqual({ text: '2 annotations match "commit".', total: 2 });
+    expect({ text: textOf(r), total: sc(r).total }).toEqual({
+      text: '2 annotations match "commit".\nexclusions applied: [-hidden] (pass include_excluded=true to disable)',
+      total: 2,
+    });
   });
 
   it("should_restrict_to_the_bundle_and_subtract_markers_via_search", async () => {
