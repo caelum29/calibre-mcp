@@ -109,7 +109,13 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
     if (!c) return;
     clientTagged = true;
     log.setClient(c.name);
-    log.info("client initialized", { client: c.name, clientVersion: c.version, serverVersion: VERSION });
+    log.info("client initialized", {
+      client: c.name,
+      clientVersion: c.version,
+      serverVersion: VERSION,
+      // the client's own log never prints the MCP revision it negotiated (#124)
+      protocolVersion: server.server.getNegotiatedProtocolVersion(),
+    });
   };
   server.server.oninitialized = tagClient;
   type Extra = ServerContext;
