@@ -940,6 +940,128 @@ describe("error texts state their next step once (#437)", () => {
   });
 });
 
+// ── Gate-off steers (#519): with writes off, no text steers to a hidden tool or a refused call ──
+describe("gate-off steers name the remedy, never a refused call (#519)", () => {
+  const OFF = { CALIBRE_MCP_ENABLE_WRITE: "0" };
+  const ON = { CALIBRE_MCP_ENABLE_WRITE: "1" };
+  const run = (tool: string, args: Record<string, unknown>, o: FakeOpts) =>
+    runScenario({ tool, label: tool, args, deps: () => fakeDeps(o) }).then(textChannel);
+  // Steers that land on write_disabled or on a tool that is hidden with the gate off.
+  const REFUSED = /confirm=true|preview=false|apply=true|calibre_update_book|calibre_add_book/;
+  const SUSPECT = [book({ id: 101, title: "Rust in Action", authors: ["McNamara, Tim"] })];
+
+  it("calibre_remove_book dry-run, gate off", async () => {
+    expect(await run("calibre_remove_book", { ids: [101, 102] }, { env: OFF })).toBe(
+      "Dry-run — nothing removed yet. This would move 2 book(s) to Calibre's Trash (restorable from the " +
+        "Calibre GUI):\n#101 Rust in Action\n#102 Programming Rust\n" +
+        "Removing them needs writes enabled (CALIBRE_MCP_ENABLE_WRITE).",
+    );
+  });
+  it("calibre_remove_book dry-run, gate on: unchanged", async () => {
+    expect(await run("calibre_remove_book", { ids: [101, 102] }, { env: ON })).toBe(
+      "Dry-run — nothing removed yet. This would move 2 book(s) to Calibre's Trash (restorable from the " +
+        "Calibre GUI):\n#101 Rust in Action\n#102 Programming Rust\nRe-run with confirm=true to proceed.",
+    );
+  });
+
+  it("calibre_bulk_update preview, gate off", async () => {
+    const t = await run("calibre_bulk_update", { ids: [101, 102], changes: { tags: ["systems"] } }, { env: OFF });
+    expect(t).toContain("would change. Applying it needs writes enabled (CALIBRE_MCP_ENABLE_WRITE).\n");
+    expect(t).not.toMatch(REFUSED);
+  });
+  it("calibre_bulk_update preview, gate on: unchanged", async () => {
+    const t = await run("calibre_bulk_update", { ids: [101, 102], changes: { tags: ["systems"] } }, { env: ON });
+    expect(t).toContain("would change. Re-run with preview=false to apply.\n");
+  });
+
+  it("calibre_merge_books dry-run, gate off", async () => {
+    const t = await run("calibre_merge_books", { targetId: 101, sourceIds: [102] }, { env: OFF });
+    expect(
+      t.startsWith("Dry run — nothing written. Executing it needs writes enabled (CALIBRE_MCP_ENABLE_WRITE).\n"),
+    ).toBe(true);
+    expect(t).not.toMatch(REFUSED);
+  });
+  it("calibre_merge_books dry-run, gate on: unchanged", async () => {
+    const t = await run("calibre_merge_books", { targetId: 101, sourceIds: [102] }, { env: ON });
+    expect(t.startsWith("Dry run — nothing written. Re-run with confirm=true to execute.\n")).toBe(true);
+  });
+
+  it("calibre_extract_isbn preview, gate off", async () => {
+    const t = await run("calibre_extract_isbn", { id: 101 }, { env: OFF, text: "ISBN 978-0-306-40615-7" });
+    expect(t).toMatch(/\. Writing identifiers:isbn needs writes enabled \(CALIBRE_MCP_ENABLE_WRITE\)\.$/);
+    expect(t).not.toMatch(REFUSED);
+  });
+  it("calibre_extract_isbn preview, gate on: unchanged", async () => {
+    const t = await run("calibre_extract_isbn", { id: 101 }, { env: ON, text: "ISBN 978-0-306-40615-7" });
+    expect(t).toMatch(/\. Re-run with apply=true to write identifiers:isbn\.$/);
+  });
+
+  it("calibre_manage_bundles create preview, gate off", async () => {
+    const t = await run(
+      "calibre_manage_bundles",
+      { action: "create", name: "rusty", expression: "tags:rust" },
+      { env: OFF },
+    );
+    expect(t).toMatch(/\nWriting it needs writes enabled \(CALIBRE_MCP_ENABLE_WRITE\)\.$/);
+    expect(t).not.toMatch(REFUSED);
+  });
+  it("calibre_manage_bundles create preview, gate on: unchanged", async () => {
+    const t = await run(
+      "calibre_manage_bundles",
+      { action: "create", name: "rusty", expression: "tags:rust" },
+      { env: ON },
+    );
+    expect(t).toMatch(/\nRe-run with confirm=true to write it\.$/);
+  });
+
+  const hits: ProviderHit[] = [
+    {
+      source: "openlibrary",
+      confidence: 0.95,
+      title: "Rust in Action",
+      authors: ["Tim McNamara"],
+      publisher: "Manning Publications",
+    },
+  ];
+  // raw-filename title → the provider's title is a real proposal
+  const RAW_101 = [book({ title: "795731065" })];
+  it("calibre_recover_metadata proposal, gate off", async () => {
+    const t = await run("calibre_recover_metadata", { id: 101 }, { env: OFF, hits, books: RAW_101 });
+    expect(t).toContain("\nProposed metadata — applying it needs writes enabled (CALIBRE_MCP_ENABLE_WRITE):\n");
+    expect(t).not.toMatch(REFUSED);
+  });
+  it("calibre_recover_metadata proposal, gate on: unchanged", async () => {
+    const t = await run("calibre_recover_metadata", { id: 101 }, { env: ON, hits, books: RAW_101 });
+    expect(t).toContain("\nProposed metadata (apply with calibre_update_book id=101):\n");
+  });
+
+  const SUSPECT_MSG =
+    'Suspect author value(s): "McNamara, Tim" (several people glued together or an unflipped "Last, First").';
+  it("calibre_quality_report authors_suspect, gate off: text and structured message", async () => {
+    const r = await runScenario({
+      tool: "calibre_quality_report",
+      label: "suspect, off",
+      args: { checks: ["authors_suspect"] },
+      deps: () => fakeDeps({ env: OFF, books: SUSPECT }),
+    });
+    const msg = `${SUSPECT_MSG} One person per author, "First Last"; fixing it needs writes enabled (CALIBRE_MCP_ENABLE_WRITE).`;
+    expect((r.structuredContent as { issues: { message: string }[] }).issues.map((i) => i.message)).toEqual([msg]);
+    expect(textChannel(r)).toContain(`authors_suspect: ${msg}`);
+    expect(textChannel(r)).not.toMatch(REFUSED);
+  });
+  it("calibre_quality_report authors_suspect, gate on: unchanged", async () => {
+    const r = await runScenario({
+      tool: "calibre_quality_report",
+      label: "suspect, on",
+      args: { checks: ["authors_suspect"] },
+      deps: () => fakeDeps({ env: ON, books: SUSPECT }),
+    });
+    const msg = `${SUSPECT_MSG} Fix with calibre_update_book (one person per author, "First Last").`;
+    expect((r.structuredContent as { issues: { message: string }[] }).issues.map((i) => i.message)).toEqual([msg]);
+    expect(textChannel(r)).toContain(`authors_suspect: ${msg}`);
+  });
+});
+
 // ── Labelled lines (#454): the text half of the 1.0 public contract ──────────────────────────
 // Every registered Labelled line must be rendered by at least one of the scenarios above, and
 // every occurrence must carry its structured field's value. calibre_ping has no parity scenario
