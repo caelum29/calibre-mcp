@@ -18,6 +18,10 @@ Book ids: wherever a tool takes `id` / `bookId`, you can pass a numeric database
 book uuid — they're interchangeable. The id you get back from a search result is what these
 tools expect.
 
+Errors: a failed call returns its message followed by a `Code: <errorCode>` line and, when the
+message doesn't already say it, a `Next: <step>` line (see
+[Troubleshooting → Reading an error](TROUBLESHOOTING.md#troubleshooting)).
+
 ---
 
 ## Health check

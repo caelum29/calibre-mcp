@@ -15,8 +15,9 @@ import { ensureIndexOwner, indexFileName, readIndexOwner } from "./schema.js";
 export interface LibraryIdGuard {
   /**
    * The refusal for `libraryId` when an index file of the same case-folded name is owned by an id
-   * that differs from it only in letter case, else undefined. Reads only; never creates a file;
-   * never throws (a file locked past a short wait gives no verdict).
+   * that differs from it only in letter case, else undefined. Reads only; never creates a file. A
+   * file locked past a short wait gives no verdict; a missing index directory means no owner; any
+   * other failure to list the directory (e.g. EACCES) is rethrown.
    */
   collision(libraryId: string): LibraryIdCollisionError | undefined;
   /**

@@ -8,6 +8,18 @@ mentioned here are documented in the [README's Configuration section](../README.
 indexed?) — and its output usually names the broken link directly. Just ask: *"is calibre
 reachable?"*
 
+**Reading an error.** A failed tool call ends with two labelled lines after its message:
+`Code:` names the error from a closed set (the same `errorCode` as in the [logs](#logs)), and
+`Next:` gives the next step when the message hasn't already said it. For example:
+
+```text
+Error: No semantic index for My_Books yet.
+Code: index_missing
+Next: run calibre_build_index first
+```
+
+Search this page for the code or the message's first words.
+
 ---
 
 ## Connection & setup
