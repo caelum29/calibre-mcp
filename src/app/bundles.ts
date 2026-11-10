@@ -237,7 +237,10 @@ export async function resolveFilter(deps: BaseDeps, req: FilterRequest): Promise
         ok: false,
         error:
           `Unknown bundle "${req.filter}". Available bundles: ${names.join(", ") || "(none)"}. ` +
-          `Create one with calibre_manage_bundles { action: "create" }.`,
+          // gate off: create would be refused, so steer to what the session can do (#435)
+          (deps.config.writeEnabled
+            ? `Create one with calibre_manage_bundles { action: "create" }.`
+            : `List them with calibre_manage_bundles { action: "list" }; creating one needs writes enabled (CALIBRE_MCP_ENABLE_WRITE).`),
       };
     }
     if (matches.length > 1) {

@@ -21,6 +21,7 @@ import { SqliteIndexStore } from "./semantic/store/index.js";
 import { computeSemanticStatus } from "./semantic/status.js";
 import { parseBookResourceId, readBookResource } from "./resources/book.js";
 import { allTools, assertWriteClassification } from "./tools/registry.js";
+import { isListed, refuseWriteCall, sessionAnnotations } from "./tools/write-gate.js";
 import { toolError } from "./tools/result.js";
 import type { ToolContext } from "./tools/types.js";
 import type { ToolDeps } from "./tools/deps.js";
@@ -144,12 +145,15 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
       // seam) so tool modules keep their SDK-agnostic raw shapes.
       inputSchema: z.object(t.inputSchema),
       outputSchema: t.outputSchema && z.object(t.outputSchema),
-      annotations: t.annotations,
+      annotations: sessionAnnotations(t, config.writeEnabled),
     };
     // ToolResult is structurally a CallToolResult minus the SDK's loose index signature;
     // cast once here (the seam) rather than weaken the shared ToolResult type.
     const handler = async (args: unknown, extra: Extra): Promise<CallToolResult> =>
       logged(t.name, args, extra, async () => {
+        // The write gate per call (#435): refuse a Write call before its handler ever runs.
+        const refused = refuseWriteCall(t, args, config.writeEnabled);
+        if (refused) return refused as CallToolResult;
         try {
           return (await t.handler(args, deps, toolContext(extra))) as CallToolResult;
         } catch (err) {
@@ -180,8 +184,8 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
     const reg = ui
       ? registerAppTool(server, t.name, { ...toolConfig, _meta: { ui } }, handler)
       : server.registerTool(t.name, toolConfig, handler);
-    // Disable (not reject) write tools when the gate is off (DESIGN §4).
-    if (t.write && !config.writeEnabled) reg.disable();
+    // Gate off: hide write tools that have no call writing nothing (#435, D-028).
+    if (!isListed(t, config.writeEnabled)) reg.disable();
   }
 
   registerUiResources(server, config);

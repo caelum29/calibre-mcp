@@ -59,6 +59,7 @@ one; a call site may give a sharper one.
 | `not_found` | The book, library or resource does not exist. | — |
 | `path_not_allowed` | `calibre_add_book` was given a path outside the allowed folders. | add the folder to CALIBRE_MCP_ADD_ROOTS |
 | `write_refused` | Calibre refused a write (the Content Server is read-only for local writes). | enable "Allow un-authenticated local connections to make changes" (Preferences → Sharing over the net), or for a command-line calibre-server restart it with --enable-local-write, or configure an authenticated non-restricted user |
+| `write_disabled` | A Write call while this server's write gate is off (`CALIBRE_MCP_ENABLE_WRITE`); previews still work. | ask the user to enable writes on this server: set CALIBRE_MCP_ENABLE_WRITE=1, or tick Enable writes in the Claude Desktop extension settings |
 | `write_failed` | A write reached Calibre and failed. | — |
 | `write_unverified` | The connection dropped mid-write; the change may or may not have landed. | re-read the book with calibre_get_book before retrying |
 | `calibre_unreachable` | The Content Server (or `calibredb`'s route to it) cannot be reached. | start it in Calibre (Connect/share → Start Content server) or set CALIBRE_MCP_SERVER_URL |

@@ -66,7 +66,9 @@ describe("calibre_ping header (#304)", () => {
     const lines = text(await ping.handler({}, deps())).split("\n");
     expect(lines).toContain(`calibre-mcp ${VERSION} (MCP SDK ${sdkVersion})`);
     expect(lines).toContain("calibredb: /opt/calibre/calibredb (Content Server http://127.0.0.1:9)");
-    expect(lines).toContain("writes: disabled (set CALIBRE_MCP_ENABLE_WRITE to enable)");
+    expect(lines).toContain(
+      "writes: disabled — previews only; Write calls return write_disabled (ask the user to enable writes on this server: set CALIBRE_MCP_ENABLE_WRITE=1, or tick Enable writes in the Claude Desktop extension settings)",
+    );
   });
 
   it("shows writes ENABLED when the gate is on", async () => {

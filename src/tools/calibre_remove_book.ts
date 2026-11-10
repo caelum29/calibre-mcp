@@ -19,7 +19,7 @@ export const removeBookTool = defineTool({
   description:
     "Remove books (ids) from the library. Removed books go to Calibre's Trash and can be restored from " +
     "the Calibre GUI, so this is recoverable. Two-step: the first call is a dry-run listing what " +
-    "would be removed; re-run with confirm=true to proceed. Requires writes to be enabled.",
+    "would be removed; re-run with confirm=true to proceed. Previews work without writes; applying needs CALIBRE_MCP_ENABLE_WRITE.",
   inputSchema: {
     ids: jsonArray(BookId()),
     library: z.string().optional(),
@@ -32,6 +32,7 @@ export const removeBookTool = defineTool({
   },
   annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
   write: true,
+  writeCall: (args) => args.confirm,
   handler: async (args, deps) => {
     try {
       if (!Array.isArray(args.ids) || args.ids.length === 0) {

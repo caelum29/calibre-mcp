@@ -132,7 +132,7 @@ export const manageBundlesTool = defineTool({
     "Manage Bundles via `action` (list | create | update | delete) — named topical filters backed by Calibre saved " +
     "searches (e.g. a 'rust' bundle scoping searches to Rust books). A name starting with '-' " +
     "is an exclusion marker. Also lists virtual libraries, which are read-only here. " +
-    "Preview-first: create/update report the match count until confirm=true. Requires writes to be enabled.",
+    "Preview-first: create/update/delete preview until confirm=true. Previews work without writes; applying needs CALIBRE_MCP_ENABLE_WRITE.",
   inputSchema: {
     action: z.enum(["list", "create", "update", "delete"]),
     name: z.string().trim().optional(),
@@ -159,6 +159,8 @@ export const manageBundlesTool = defineTool({
   },
   annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
   write: true,
+  // list never writes; create/update/delete write only once confirmed
+  writeCall: (args) => args.action !== "list" && args.confirm,
   handler: async (args, deps) => {
     try {
       const name = args.name?.trim();
