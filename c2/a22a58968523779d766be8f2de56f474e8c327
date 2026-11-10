@@ -1,0 +1,19 @@
+test/tools/update-book-review-421-423.test.ts
+  s_c842c008e16f8f::t_b3bf3926884b4a 58,104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c2a22a58968523779d766be8f2de56f474e8c327",
+  "prompts": {},
+  "sessions": {
+    "s_c842c008e16f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "91965a68-3f52-49af-9990-ad0a6de81b7e",
+        "model": "unknown"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
