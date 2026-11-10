@@ -1,0 +1,27 @@
+src/app/write-policy.ts
+  s_fccff9ca746c05::t_0703824d2b7712 118,121
+  s_fccff9ca746c05::t_d2794b19e4976f 119-120
+src/tools/write-failure.ts
+  s_fccff9ca746c05::t_d2794b19e4976f 13-14,24-25,44-48,55
+test/tools/merge-books-transient-417-review.test.ts
+  s_fccff9ca746c05::t_0703824d2b7712 1-74,77-79
+  s_fccff9ca746c05::t_3be8309c165372 75-76
+src/tools/calibre_merge_books.ts
+  s_fccff9ca746c05::t_b81340d654ce48 42-43,75-78,443-444,446-448
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d41168352aa28fa7a2b45b982327e04f3bc7e904",
+  "prompts": {},
+  "sessions": {
+    "s_fccff9ca746c05": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cf60e5ce-4f0b-42be-815c-4ab99d6473a5",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
