@@ -37,7 +37,7 @@
     "dev": "tsx watch src/run-stdio.ts",
     "start": "node dist/run-stdio.js",
     "inspect": "pnpm build && mcp-inspector node dist/run-stdio.js",
-    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p test/tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p test/tsconfig.json && tsc -p scripts/tsconfig.json",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "format": "oxfmt .",
