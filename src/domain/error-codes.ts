@@ -113,6 +113,9 @@ function httpCode(err: CalibreHttpError): ErrorCode {
   // not land in calibre_ping.recentErrors (#325). 401/403 stay faults: we send no credentials,
   // so only a Content Server setting change fixes them.
   if (err.status >= 400 && err.status < 500 && err.status !== 401 && err.status !== 403) return "invalid_input";
+  // a gateway 5xx: the server answered but is not serving now — same code as a write's (#494);
+  // 500 is usually a real Calibre exception and stays calibre_error
+  if (err.status === 502 || err.status === 503 || err.status === 504) return "calibre_busy";
   return "calibre_error";
 }
 
