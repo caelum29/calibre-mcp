@@ -1,6 +1,6 @@
 ---
 name: calibre-mcp-setup
-description: "Install and verify the calibre-mcp server, end to end. Guides an agent from 'Calibre is installed' to a verified working MCP connection: preflight (Node, calibredb, Content Server — macOS/Windows/Linux commands), client-specific install (Claude Code plugin or claude mcp add, Claude Desktop .mcpb or JSON config, Cowork via Desktop, any other MCP client via a generic mcpServers block), config (library, write gate), calibre_ping verification with semantic-status triage, enabling semantic search in the .mcpb bundle, and upgrade/uninstall. Use when the user wants to set up calibre-mcp, connect Claude or another agent to their Calibre library, enable semantic search, upgrade, or fix a broken install. Triggers: install calibre-mcp, set up calibre, connect my calibre library, calibre not working, semantic search unavailable, upgrade calibre-mcp."
+description: "Install and verify the calibre-mcp server, end to end. Guides an agent from 'Calibre is installed' to a verified working MCP connection: preflight (Node, calibredb, Content Server — commands for macOS, Windows and Linux; the server is verified live on macOS only), client-specific install (Claude Code plugin or claude mcp add, Claude Desktop .mcpb or JSON config, Cowork via Desktop, any other MCP client via a generic mcpServers block), config (library, write gate), calibre_ping verification with semantic-status triage, enabling semantic search in the .mcpb bundle, and upgrade/uninstall. Use when the user wants to set up calibre-mcp, connect Claude or another agent to their Calibre library, enable semantic search, upgrade, or fix a broken install. Triggers: install calibre-mcp, set up calibre, connect my calibre library, calibre not working, semantic search unavailable, upgrade calibre-mcp."
 ---
 
 <!--
@@ -10,7 +10,8 @@ Cross-agent notes (informational; ignored by host agents):
     (.agents/skills, ~/.config/agents/skills). Installable via
     `npx skills@latest add caelum29/calibre-mcp`.
   - Needs only shell access (and, for Phase 3, the calibre-mcp tools once loaded).
-  - Windows commands assume PowerShell; macOS/Linux assume any POSIX shell.
+  - Windows commands assume PowerShell; macOS/Linux assume any POSIX shell. Verified live on
+    macOS only (Calibre 9.x); Linux and Windows steps are not claimed — say so if they fail.
 -->
 
 # calibre-mcp setup

@@ -244,7 +244,7 @@ No parameters.
 
 ## Semantic search
 
-Meaning-based retrieval — the feature no other Calibre MCP server has. It finds books and
+Meaning-based retrieval — the server's headline feature. It finds books and
 passages by *meaning*, not keyword overlap, and works cross-lingually (an English query finds
 Russian passages and vice versa). It requires a one-time local index; see
 [`SEMANTIC-SEARCH.md`](./SEMANTIC-SEARCH.md) for how the pipeline works.
