@@ -132,7 +132,7 @@ async function metaLibraryScope(
   const books = await deps.content.booksByIds(page.bookIds, args.library);
   const links = page.bookIds.map((id) => {
     const b = books.get(id);
-    return bookResourceLink({ id, title: b?.title ?? `book ${id}`, authors: b?.authors ?? [] });
+    return bookResourceLink({ id, title: b?.title ?? `book ${id}`, authors: b?.authors ?? [] }, libId);
   });
 
   const fetched = page.bookIds.length;
@@ -294,7 +294,7 @@ async function ftsLibraryScope(call: FtsCall, fRes: FilterResolution): Promise<T
   ];
   const ftsHits: { bookId: number; snippet: string }[] = [];
   for (const id of pageIds) {
-    blocks.push(bookResourceLink({ id, ...meta(id) }));
+    blocks.push(bookResourceLink({ id, ...meta(id) }, libId));
     const snips = (batch.byBook.get(id) ?? []).slice(0, 3).join("\n…\n");
     if (snips) {
       const snippet = fence("FTS SNIPPET", snips);

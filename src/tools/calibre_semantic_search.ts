@@ -342,7 +342,7 @@ async function libraryScope(
   ];
   const results: Record<string, unknown>[] = [];
   for (const r of ranked) {
-    const link = bookResourceLink({ id: r.hit.bookId, title: r.hit.title, authors: r.hit.authors });
+    const link = bookResourceLink({ id: r.hit.bookId, title: r.hit.title, authors: r.hit.authors }, libraryId);
     link.description = [scoreLabel(r), r.hit.authors.join(", ")].filter(Boolean).join(" — ");
     blocks.push(link);
     const at = r.hit.snippetStart !== undefined ? ` snippet@${r.hit.snippetStart}` : "";
