@@ -181,7 +181,9 @@ Write tools (`calibre_update_book`, `calibre_bulk_update`, `calibre_add_book`,
    `calibre_manage_bundles`, `calibre_extract_isbn`) stay listed (announced read-only) and their
    previews work, while a call that would write (`apply: true`, `preview: false` or `confirm: true`)
    returns `write_disabled`. `calibre_update_book` and `calibre_add_book` have no preview, so they
-   are hidden from the tool list.
+   are hidden from the tool list. `calibre_build_index` is not a write tool: with the gate off it
+   still builds the index, and `enableFts: true` reports `fts.status: write_disabled` instead of
+   enabling Calibre's full-text indexing.
 2. **The Calibre-side gate** — the Content Server must allow local writes. **By
    default the server embedded in the Calibre GUI is read-only**, so either enable
    the GUI option below or run a standalone server with `--enable-local-write`:
@@ -206,7 +208,8 @@ Safety behavior: `calibre_bulk_update` requires an explicit book selection (`ids
 deletion removes records *and* files, permanently. `calibre_merge_books` shows its full
 merge plan until you pass `confirm: true`, and trashed sources stay recoverable from
 Calibre's trash (mode `safe` keeps them entirely). `calibre_add_book` only imports files
-from whitelisted folders (`CALIBRE_MCP_ADD_ROOTS`).
+from whitelisted folders (`CALIBRE_MCP_ADD_ROOTS`). `calibre_extract_isbn` only previews the
+ISBN it found until you pass `apply: true`.
 
 ## 🔎 Semantic search
 
