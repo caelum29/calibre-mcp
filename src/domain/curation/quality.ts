@@ -1,6 +1,6 @@
 // Metadata quality checks. Pure, SDK-free, clean-room reimplementation of the Quality-Check
 // plugin's rule ideas (GPL — reimplemented from documented behavior, not translated). Cheap,
-// metadata-only rules that run library-wide; full-text checks (readability) are deferred.
+// metadata-only rules that run library-wide.
 
 import type { Book } from "../book.js";
 import { looksLikeRawFilename } from "../enrich/filename-guess.js";
