@@ -1,0 +1,20 @@
+test/calibre/pubdate-partial-423.test.ts
+  s_fccff9ca746c05::t_8f37f8d404c609 1-37
+  s_fccff9ca746c05::t_739f24be09f32c 38-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0ffb7c1863a761ac8db50c72ea8750873ca6b04d",
+  "prompts": {},
+  "sessions": {
+    "s_fccff9ca746c05": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cf60e5ce-4f0b-42be-815c-4ab99d6473a5",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
