@@ -1,0 +1,47 @@
+src/domain/error-codes.ts
+  s_ba8eb38e987269::t_48443cdd90020c 32,139-140
+src/domain/calibre-version.ts
+  s_ba8eb38e987269::t_48443cdd90020c 1-37
+src/tools/calibre-version-gate.ts
+  s_ba8eb38e987269::t_48443cdd90020c 1-21
+src/tools/calibre_ping.ts
+  s_ba8eb38e987269::t_4a4f71ca20118b 21,42,74-75,87,157-161,166,199,201-205,207,214
+  s_ba8eb38e987269::t_dfc711c4dce618 43,192-198
+  s_ba8eb38e987269::t_9d1e8c9e0b1bf3 200
+docs/TOOLS.md
+  s_ba8eb38e987269::t_4c475ab260d712 673
+src/tools/labelled-lines.ts
+  s_ba8eb38e987269::t_4a4f71ca20118b 20-21,164-169
+  s_ba8eb38e987269::t_e6984972f00e14 170-171
+docs/STABILITY.md
+  s_ba8eb38e987269::t_3b8aba913a1754 66
+test/tools/error-text-lines.test.ts
+  s_ba8eb38e987269::t_3b8aba913a1754 23
+README.md
+  s_ba8eb38e987269::t_21c18b62385870 49
+test/tools/ping.handler.test.ts
+  s_ba8eb38e987269::t_3b8aba913a1754 70,93
+test/call-log.test.ts
+  s_ba8eb38e987269::t_36dab873f357d1 164
+test/tools/fake-ports.ts
+  s_ba8eb38e987269::t_36dab873f357d1 43
+src/calibre/client.ts
+  s_ba8eb38e987269::t_48443cdd90020c 20,38-39,112-130
+  s_ba8eb38e987269::t_cd01c7795f0722 131-132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "15a9e59906e25819236c04eec6066194be324b18",
+  "prompts": {},
+  "sessions": {
+    "s_ba8eb38e987269": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "21b90743-f48d-49ef-9ff2-ff368477cb73",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
