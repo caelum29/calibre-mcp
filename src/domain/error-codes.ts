@@ -17,7 +17,12 @@ import {
   UnknownLibraryError,
 } from "./errors.js";
 import { LibraryIdCollisionError } from "./library-id-collision.js";
-import { CONNECTION_STDERR, DROPPED_MID_REQUEST_STDERR, WRITE_REFUSED_STDERR } from "./calibredb-stderr.js";
+import {
+  CONNECTION_STDERR,
+  DROPPED_MID_REQUEST_STDERR,
+  GATEWAY_5XX_STDERR,
+  WRITE_REFUSED_STDERR,
+} from "./calibredb-stderr.js";
 
 /** Every code a tool error may carry. Adding one = update the log README table too. */
 export const ERROR_CODES = [
@@ -102,6 +107,7 @@ function cliCode(err: CalibreCliError): ErrorCode {
   if (WRITE_REFUSED_STDERR.test(stderr)) return "write_refused";
   if (DROPPED_MID_REQUEST_STDERR.test(stderr)) return "write_unverified";
   if (CONNECTION_STDERR.test(stderr)) return "calibre_unreachable";
+  if (GATEWAY_5XX_STDERR.test(stderr)) return "calibre_busy"; // same as httpCode's 502/503/504 (#494)
   return "calibre_error";
 }
 

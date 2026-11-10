@@ -4,7 +4,12 @@
 
 import { CalibreCliError, CalibreCliTimeoutError } from "../domain/errors.js";
 import { defaultHint } from "../domain/error-codes.js";
-import { CONNECTION_STDERR, DROPPED_MID_REQUEST_STDERR, WRITE_REFUSED_STDERR } from "../domain/calibredb-stderr.js";
+import {
+  CONNECTION_STDERR,
+  DROPPED_MID_REQUEST_STDERR,
+  GATEWAY_5XX_STDERR,
+  WRITE_REFUSED_STDERR,
+} from "../domain/calibredb-stderr.js";
 import { changesSatisfied, foreignValues, type ForeignValue } from "../domain/book-fields.js";
 import type { ChangeValue } from "../domain/book-fields.js";
 import type { Book } from "../domain/book.js";
@@ -48,11 +53,6 @@ export const realSleep: Sleep = (ms) => new Promise((resolve) => setTimeout(reso
 
 // Patterns + probe record: domain/calibredb-stderr.ts.
 
-// Observed with the fake server: mechanize renders a 5xx as "HTTP Error 503: Service Unavailable".
-// Whether a real calibre-server ever answers 502/503/504 (vs. only a reverse proxy in front of
-// it) is UNCONFIRMED. 500 is deliberately excluded — it is usually a real Calibre exception.
-const GATEWAY_5XX = /HTTP Error (50[234])\b/;
-
 /**
  * Classify a calibredb failure as transient, or `undefined` when it must not be retried.
  * Timeouts are never transient: a timed-out routed write may already have committed, and the
@@ -62,7 +62,7 @@ export function classifyTransient(err: unknown): TransientKind | undefined {
   if (!(err instanceof CalibreCliError) || err instanceof CalibreCliTimeoutError) return undefined;
   const stderr = err.stderr ?? "";
   if (CONNECTION_STDERR.test(stderr)) return "connection";
-  if (GATEWAY_5XX.test(stderr)) return "server";
+  if (GATEWAY_5XX_STDERR.test(stderr)) return "server";
   return undefined;
 }
 
@@ -133,7 +133,7 @@ export function describeTransient(err: unknown, id: number, ranRetries?: number)
       `Check that Calibre / its Content Server is running, then retry.`
     );
   }
-  const status = err instanceof CalibreCliError ? GATEWAY_5XX.exec(err.stderr ?? "")?.[1] : undefined;
+  const status = err instanceof CalibreCliError ? GATEWAY_5XX_STDERR.exec(err.stderr ?? "")?.[1] : undefined;
   return `The Calibre Content Server answered HTTP ${status ?? "5xx"}${retries}; it may be restarting — retry shortly.`;
 }
 
