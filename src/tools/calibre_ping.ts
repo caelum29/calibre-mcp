@@ -169,7 +169,7 @@ function writeAccessText(p: WriteAccessProbe, gateOn: boolean): string {
     p.access === "unknown"
       ? `unknown (${p.reason})`
       : p.access === "refused"
-        ? 'refused — enable "Allow un-authenticated local connections to make changes" (Preferences → Sharing over the net)'
+        ? `refused — ${defaultHint("write_refused")}`
         : "allowed";
   const lines = [labelledLine(PING_LINE_LABELS.calibreWrites, value)];
   if (gateOn && p.access === "refused") {
