@@ -353,7 +353,7 @@ Indexing only ever adds or replaces books. `calibre_remove_book` and `calibre_me
 the books they remove from the index themselves, but books removed or merged **in the Calibre
 GUI** (or whose drop failed because the index was busy) keep their now unreachable passages.
 Pass `prune: true` to reconcile: it deletes the index entries for every book that is no longer
-in the library and reports how many it dropped.
+in the library and reports how many it dropped. A selected id the library no longer holds (it 404s and is missing from the listing the prune checked) is listed once as `Selected but no longer in the library: #N — removed from the index, not a failure.` (`removedIds`), not as a failed book. Without `prune`, or when the prune is skipped, it still counts as failed.
 
 The index build writes only to the server's own local index directory — not to your Calibre
 library — so it runs without enabling library writes. Only `enableFts: true` needs them.
