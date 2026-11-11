@@ -1511,6 +1511,9 @@
             },
             "type": "array"
           },
+          "indexNote": {
+            "type": "string"
+          },
           "metadataChanges": {
             "additionalProperties": {},
             "propertyNames": {
@@ -1906,6 +1909,9 @@
         "properties": {
           "deleted": {
             "type": "boolean"
+          },
+          "indexNote": {
+            "type": "string"
           },
           "notFoundIds": {
             "items": {

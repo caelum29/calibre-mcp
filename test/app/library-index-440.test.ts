@@ -41,7 +41,7 @@ function deps(dir: string): LibraryIndexDeps {
   return {
     content: {
       libraryInfo: async () => ({ libraryMap: MAP, defaultLibrary: "My_Books" }),
-      search: async (p) => ({ bookIds: [], total: 3, num: 0, offset: 0, sort: "", libraryId: p.library ?? "" }),
+      search: async (p) => ({ bookIds: [1, 2, 3], total: 3, num: 3, offset: 0, sort: "", libraryId: p.library ?? "" }),
     },
     // a fresh store with no open handles — the default (5 s) busy timeout is configured
     index: new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: dir })),

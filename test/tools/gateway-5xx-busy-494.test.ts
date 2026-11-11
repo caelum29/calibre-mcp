@@ -11,7 +11,8 @@ import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
 import { errorCodeFor } from "../../src/domain/error-codes.js";
 import { CalibreCliError, CalibreHttpError } from "../../src/domain/errors.js";
-import type { BaseDeps, ToolDeps } from "../../src/tools/deps.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
+import { noPruneIndex, type WithPrune } from "./fake-prune-index.js";
 import { textOf } from "./text-of.js";
 
 vi.mock("../../src/calibre/http.js", () => ({
@@ -37,7 +38,7 @@ const failing = () =>
     throw new CalibreCliError(1, "calibredb command failed", GATEWAY);
   });
 
-const deps = (calibredb: ReturnType<typeof failing>): BaseDeps =>
+const deps = (calibredb: ReturnType<typeof failing>): WithPrune =>
   ({
     config: loadConfig({}),
     content: {
@@ -52,7 +53,8 @@ const deps = (calibredb: ReturnType<typeof failing>): BaseDeps =>
     figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],
     log,
-  }) as BaseDeps;
+    ...noPruneIndex,
+  }) as WithPrune;
 
 describe("gateway 5xx on a write is calibre_busy (#494)", () => {
   it("should_code_update_book_calibre_busy_with_the_status_text_and_no_next_line", async () => {

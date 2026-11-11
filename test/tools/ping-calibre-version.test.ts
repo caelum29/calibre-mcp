@@ -7,7 +7,6 @@ import { log } from "../../src/logging.js";
 import type { CalibreVersionInfo } from "../../src/domain/calibre-version.js";
 import { parseCalibreVersion } from "../../src/domain/calibre-version.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
-import type { StatusIndex } from "../../src/semantic/status.js";
 import { type PingDeps, pingTool as ping } from "../../src/tools/calibre_ping.js";
 import type { ToolResult } from "../../src/tools/types.js";
 
@@ -40,7 +39,8 @@ function deps(version: CalibreVersionInfo, reachable = true): PingDeps {
       stats: () => ({ books: 0, chunks: 0, figures: 0 }),
       vectorCount: () => 0,
       booksMissingVectors: () => 0,
-    } satisfies StatusIndex,
+      indexedBookIds: () => [],
+    } satisfies PingDeps["index"],
     log,
   };
 }

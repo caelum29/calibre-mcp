@@ -176,7 +176,9 @@ the rest as `sourceIds` (dry-run plan → confirm with user → `confirm:true`).
 user before merging, whatever the score. Formats move to
 the target (its copy wins), metadata merges per Calibre's rules, sources land in Calibre's
 trash (recoverable ~14 days). `mode:safe` keeps sources; plain `calibre_remove_book` is for
-discarding a record without keeping anything from it.
+discarding a record without keeping anything from it. Both drop the removed books from the
+semantic index on their own; a `Semantic index not updated` line means run
+`calibre_build_index prune:true` later (also the fix after removals in the Calibre GUI).
 
 **Library cleanup sweep:**
 `calibre_quality_report` → fix per issue class (tags via bulk_update, ISBNs via extract_isbn,

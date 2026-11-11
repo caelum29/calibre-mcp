@@ -32,7 +32,7 @@ Confirms the server can reach your running Calibre Content Server (end to end, v
 `calibredb`) and reports semantic-search status — whether the embedding model and its
 dependency are present, how many vectors the index holds, and the index generation
 (`indexVersion`, read from the index itself — flagged **stale** with a rebuild hint when it
-doesn't match the running server). It also prints the server version, MCP SDK version, `calibredb` path, Content Server URL and write-gate state, plus a per-library index line (`Index: My Books (id: My_Books) [default]: 1064/1092 indexed · … · Other Books (id: Other_Books): none`; `indexes[].isDefault`) so unindexed books are visible and every library id is at hand. The semantic-search line names the library its counts describe (`…; My_Books index v4: 1064 books / …`, `semantic.libraryId`). An index another process holds locked shows as `busy — index locked by another process, retry` (`state: "busy"`), not as unreadable. Past 20 libraries the text ends with `… +K more — full list in structuredContent / calibre_list_libraries`; `indexes` keeps them all; books indexed keyword-only (FTS-searchable, out of semantic search's reach) are labelled, e.g. `1064/1092 indexed (40 without embeddings)`. A library refused for a
+doesn't match the running server). It also prints the server version, MCP SDK version, `calibredb` path, Content Server URL and write-gate state, plus a per-library index line (`Index: My Books (id: My_Books) [default]: 1064/1092 indexed · … · Other Books (id: Other_Books): none`; `indexes[].isDefault`) so unindexed books are visible and every library id is at hand. `indexed` counts only books the library still holds: index rows of removed or merged books are not counted. When ping can't check the count against the library in time (a big or slow library), it shows the raw row count marked `(count not checked against the library)` (`indexes[].indexedUnchecked: true`); that count may include removed books. The semantic-search line names the library its counts describe (`…; My_Books index v4: 1064 books / …`, `semantic.libraryId`). An index another process holds locked shows as `busy — index locked by another process, retry` (`state: "busy"`), not as unreadable. Past 20 libraries the text ends with `… +K more — full list in structuredContent / calibre_list_libraries`; `indexes` keeps them all; books indexed keyword-only (FTS-searchable, out of semantic search's reach) are labelled, e.g. `1064/1092 indexed (40 without embeddings)`. A library refused for a
 [case-only id clash](#case-clashing-library-ids) shows as `not indexable` (`state: "conflict"`,
 with `conflictsWith` naming the other id), and the semantic-search line prints the refusal
 instead of a build hint.
@@ -344,9 +344,11 @@ reports them as `booksPreserved`). Each book's
 figure captions (see `calibre_get_figures`) are indexed alongside its text, powering
 `calibre_semantic_search` with `target: figures`.
 
-Indexing only ever adds or replaces books, so books you later **remove or merge away** keep
-their (now unreachable) passages in the index. Pass `prune: true` to reconcile: it deletes the
-index entries for every book that is no longer in the library and reports how many it dropped.
+Indexing only ever adds or replaces books. `calibre_remove_book` and `calibre_merge_books` drop
+the books they remove from the index themselves, but books removed or merged **in the Calibre
+GUI** (or whose drop failed because the index was busy) keep their now unreachable passages.
+Pass `prune: true` to reconcile: it deletes the index entries for every book that is no longer
+in the library and reports how many it dropped.
 
 The index build writes only to the server's own local index directory — not to your Calibre
 library — so it runs without enabling library writes. Only `enableFts: true` needs them.
@@ -603,7 +605,13 @@ separators as spaces, so its edition is recognised.
 Trash and can be restored from the Calibre GUI. Dry-run by default: without `confirm: true` it
 lists what *would* be removed and writes nothing. Ids that are not books in the library are
 skipped and named (`notFoundIds`, "Not found (skipped)"), in the dry-run and on apply alike; if
-none of the ids is a book, the call is a `not_found` error.
+none of the ids is a book, the call is a `not_found` error. Once the removal is confirmed, the
+removed books are also dropped from the semantic index, so search stops returning them. That
+step never waits on an index another process holds and never fails the removal: if it can't
+run, the result carries one `Semantic index not updated: …` line (`indexNote`), and a later
+`calibre_build_index` with `prune: true` cleans up. Only removals made through this tool (or
+`calibre_merge_books`) are followed: books removed in the Calibre GUI stay in the index until
+`calibre_build_index` runs with `prune: true`.
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
@@ -624,7 +632,10 @@ trash list) and writes nothing. The plan warns, without refusing, when a source 
 like the same work as the target, or may be a different edition of it (the same verdict as
 `calibre_find_duplicates`). Trashed sources stay recoverable from Calibre's trash for about
 two weeks. Deletion always happens last, so an interrupted merge never loses data — just re-run
-the same call to finish.
+the same call to finish. Once the trash step is confirmed, the trashed sources are dropped from
+the semantic index the same way `calibre_remove_book` does it (a failure only adds the
+`indexNote` line). Merges done in the Calibre GUI are not followed: their sources stay in the
+index until `calibre_build_index` runs with `prune: true`.
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|

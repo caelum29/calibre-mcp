@@ -8,7 +8,8 @@ import { loadConfig } from "../../src/config.js";
 import { log, type LogSink } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
 import { CalibreCliError, CalibreHttpError } from "../../src/domain/errors.js";
-import type { BaseDeps, ToolDeps } from "../../src/tools/deps.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
+import { noPruneIndex, type WithPrune } from "./fake-prune-index.js";
 import type { ToolResult } from "../../src/tools/types.js";
 
 vi.mock("../../src/calibre/http.js", () => ({
@@ -81,7 +82,8 @@ function run(f: Fake): Promise<{ r: ToolResult; cmds: string[] }> {
     } as unknown as ToolDeps["calibre"],
     extractor: {} as ToolDeps["extractor"],
     log: sink,
-  } as BaseDeps;
+    ...noPruneIndex,
+  } as WithPrune;
   return mergeBooksTool
     .handler({ targetId: 10, sourceIds: [12], mode: "merge", confirm: true }, deps)
     .then((r) => ({ r, cmds }));

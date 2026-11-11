@@ -54,6 +54,20 @@ The index lives in a per-user data directory
 `~/.local/share/calibre-mcp/index`; Windows: `%APPDATA%\calibre-mcp\index`) —
 override with `CALIBRE_MCP_INDEX_DIR`. Your Calibre library is never modified.
 
+### Removed and merged books
+
+When `calibre_remove_book` or `calibre_merge_books` removes books, it also drops them from the
+index once the removal is confirmed, so semantic search stops returning them. This is
+best-effort: if another process holds the index at that moment, the removal still succeeds and
+its result says the index was not updated.
+
+Only removals and merges done through this server's tools are followed. Books removed or merged
+in the Calibre GUI stay in the index, and can still come up in semantic search, until
+`calibre_build_index` runs with `prune: true`, which drops every index entry whose book is gone.
+
+`calibre_ping` counts only books the library still holds as indexed. When it can't check that in
+time, it shows the raw count marked `(count not checked against the library)`.
+
 ### Without the ML model
 
 The embedding model comes from the optional `@huggingface/transformers` package

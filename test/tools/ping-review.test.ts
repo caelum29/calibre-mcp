@@ -5,11 +5,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { type PingDeps, pingTool as ping } from "../../src/tools/calibre_ping.js";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
+import { idsUpTo, withLiveIds } from "./fake-live-ids.js";
 import { VERSION } from "../../src/version.js";
 import { EMBED_DIM, INDEX_VERSION, MODEL_ID } from "../../src/semantic/model.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
 import type { IndexMeta } from "../../src/semantic/store/index.js";
-import type { StatusIndex } from "../../src/semantic/status.js";
 
 const MAP = { Programming_Books: "Programming Books", Humanities: "Humanities", Reaserch_Books: "Reaserch Books" };
 const META_OK = { modelId: MODEL_ID, dim: EMBED_DIM, indexVersion: INDEX_VERSION };
@@ -29,7 +29,7 @@ function deps(o: {
   writes?: boolean;
 }): { d: PingDeps; spies: Spies } {
   const libraryInfo = vi.fn(o.libraryInfo ?? (async () => ({ libraryMap: MAP, defaultLibrary: "Programming_Books" })));
-  const search = vi.fn(o.search ?? (async () => ({ total: 100 })));
+  const search = vi.fn(withLiveIds(o.search ?? (async () => ({ total: 100 }))));
   const stats = vi.fn(() => ({ books: 10, chunks: 1, figures: 0 }));
   const d: PingDeps = {
     config: loadConfig({
@@ -54,7 +54,8 @@ function deps(o: {
       stats,
       vectorCount: () => 1,
       booksMissingVectors: () => 0,
-    } satisfies StatusIndex,
+      indexedBookIds: () => idsUpTo(10),
+    } satisfies PingDeps["index"],
     log,
   };
   return { d, spies: { libraryInfo, search, stats } };
@@ -95,7 +96,7 @@ describe("calibre_ping stays bounded (#304 review)", () => {
     await vi.advanceTimersByTimeAsync(5000);
     const r = await p;
     expect(text(r).split("\n")).toContain(
-      "Index: Programming Books (id: Programming_Books) [default]: 10/? indexed · Humanities (id: Humanities): none · Reaserch Books (id: Reaserch_Books): none",
+      "Index: Programming Books (id: Programming_Books) [default]: 10/? indexed (count not checked against the library) · Humanities (id: Humanities): none · Reaserch Books (id: Reaserch_Books): none",
     );
   });
 });
@@ -105,7 +106,7 @@ describe("calibre_ping index access is read-only and breaker-free (#304 review)"
     const { d, spies } = deps({});
     await ping.handler({}, d);
     expect(spies.search).toHaveBeenCalledWith(
-      expect.objectContaining({ library: "Programming_Books", num: 0, noBreaker: true }),
+      expect.objectContaining({ library: "Programming_Books", num: 1000, noBreaker: true }),
     );
   });
 

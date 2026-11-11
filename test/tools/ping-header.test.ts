@@ -5,11 +5,11 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
+import { idsUpTo, withLiveIds } from "./fake-live-ids.js";
 import { VERSION } from "../../src/version.js";
 import { EMBED_DIM, INDEX_VERSION, MODEL_ID } from "../../src/semantic/model.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
 import type { IndexMeta } from "../../src/semantic/store/index.js";
-import type { StatusIndex } from "../../src/semantic/status.js";
 import { type PingDeps, pingTool as ping } from "../../src/tools/calibre_ping.js";
 
 const sdkVersion = (
@@ -40,7 +40,7 @@ function deps(o: Over = {}): PingDeps {
       resolveLibraryId: async () => "Programming_Books",
       probeWriteAccess: async () => ({ access: "allowed" as const }),
       libraryInfo: o.libraryInfo ?? (async () => ({ libraryMap: MAP, defaultLibrary: "Programming_Books" })),
-      search: o.search ?? (async (p: { library?: string }) => ({ total: TOTALS[p.library ?? ""] ?? 0 })),
+      search: withLiveIds(o.search ?? (async (p: { library?: string }) => ({ total: TOTALS[p.library ?? ""] ?? 0 }))),
     } as unknown as ToolDeps["content"],
     calibre: { listLibraries: async () => "category,count\ntags,12" } as unknown as ToolDeps["calibre"],
     extractor: {} as ToolDeps["extractor"],
@@ -53,7 +53,8 @@ function deps(o: Over = {}): PingDeps {
       stats: o.stats ?? ((id: string) => ({ books: BOOKS[id] ?? 0, chunks: 10, figures: 0 })),
       vectorCount: () => 1,
       booksMissingVectors: () => 0,
-    } satisfies StatusIndex,
+      indexedBookIds: (id: string) => idsUpTo(BOOKS[id] ?? 0),
+    } satisfies PingDeps["index"],
     log,
   };
 }
@@ -114,7 +115,7 @@ describe("calibre_ping per-library index breakdown (#304)", () => {
     const r = await ping.handler({}, d);
     expect(r.isError).toBeUndefined();
     expect(text(r).split("\n")).toContain(
-      "Index: Programming Books (id: Programming_Books) [default]: 1064/? indexed · Humanities (id: Humanities): index unreadable · Reaserch Books (id: Reaserch_Books): none",
+      "Index: Programming Books (id: Programming_Books) [default]: 1064/? indexed (count not checked against the library) · Humanities (id: Humanities): index unreadable · Reaserch Books (id: Reaserch_Books): none",
     );
   });
 

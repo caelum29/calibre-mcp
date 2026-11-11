@@ -202,6 +202,21 @@ export class IndexConnections {
     this.#dbs.clear();
   }
 
+  /**
+   * Run `fn` on the library's writable db with no busy wait: a lock held by another process
+   * fails at once with SQLITE_BUSY (#496). For best-effort writes that must never stall the call
+   * that triggered them; the configured wait is restored afterwards.
+   */
+  withoutBusyWait<T>(libraryId: string, fn: (db: DatabaseSync) => T): T {
+    const db = this.db(libraryId);
+    db.exec("PRAGMA busy_timeout = 0");
+    try {
+      return fn(db);
+    } finally {
+      db.exec(`PRAGMA busy_timeout = ${this.cfg.indexBusyTimeoutMs}`);
+    }
+  }
+
   /** Lazily open (and validate) the per-library db — the one place a writable handle is made. */
   db(libraryId: string): DatabaseSync {
     let db = this.#dbs.get(libraryId);
