@@ -1,0 +1,20 @@
+src/domain/enrich/filename-guess.ts
+  s_a7e734b50897ac::t_5cafd58d5ea2b4 89-91
+  s_a7e734b50897ac::t_1879e9a870f191 88,96-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "affb43ce6ae4671b396ca68988536617aa8a32bb",
+  "prompts": {},
+  "sessions": {
+    "s_a7e734b50897ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1169afa2-73f5-4947-b770-81b7de000813",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
