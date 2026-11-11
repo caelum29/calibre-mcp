@@ -1,0 +1,21 @@
+src/tools/content-chunk.ts
+  s_d9a4590e130330::t_038fc9d067e70d 3-4,30-42,44-46,49-55,73
+docs/TOOLS.md
+  s_d9a4590e130330::t_d15c4055113dc1 167
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fd913b7eda79daae7a5df42db5d05ef5c9faf72f",
+  "prompts": {},
+  "sessions": {
+    "s_d9a4590e130330": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "59545b9e-4b8e-4234-a52d-c531f3be42d7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
