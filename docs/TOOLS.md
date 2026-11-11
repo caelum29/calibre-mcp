@@ -499,10 +499,14 @@ are set, unlisted ones stay, and `null` removes one. Scheme names are case-insen
 `{"identifiers": {"isbn": "9780132350884", "doi": null}}` leaves `{"url": "…", "isbn":
 "9780132350884"}`. The diff shows the full map before and after.
 
-Partial `pubdate` values are normalised to the first day before writing: `"2020"` stores
-`2020-01-01`, `"2020-05"` stores `2020-05-01` (Calibre would otherwise fill the missing parts
-from today's date). The diff shows the stored date. `identifiers` must be an object
-(`{"isbn": "9780132350884"}`); the `"isbn:…"` string form is rejected with `invalid_input`.
+Partial `pubdate` values are sent as the first day of the period: `"2020"` is sent as
+`2020-01-01`, `"2020-05"` as `2020-05-01` (Calibre would otherwise fill the missing parts from
+today's date). Calibre then moves any date-only value off the edges of its month, so the month
+and year read correctly in every timezone: the 1st is stored as the 2nd, and the last day of a
+month as the day before, except 31 December. So `"2020"` stores `2020-01-02`, `"2020-05"` stores
+`2020-05-02`, and `2020-01-31` stores `2020-01-30`. The diff shows the stored date.
+`identifiers` must be an object (`{"isbn": "9780132350884"}`); the `"isbn:…"` string form is
+rejected with `invalid_input`.
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
