@@ -60,6 +60,7 @@ function deps(o: Opts = {}): ToolDeps {
         guard(id);
         return 0;
       },
+      indexedBookIds: () => [],
     } as unknown as ToolDeps["index"],
     log,
   };

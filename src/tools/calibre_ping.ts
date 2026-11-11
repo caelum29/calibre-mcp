@@ -15,6 +15,7 @@ import { CalibreBusyError, UnknownLibraryError } from "../domain/errors.js";
 import { SDK_VERSION, VERSION } from "../version.js";
 import type { BaseDeps, DepsWithIndex } from "./deps.js";
 import type { ToolResult } from "./types.js";
+import type { IndexFreshness } from "../semantic/store/types.js";
 import { defaultHint, errorCodeFor } from "../domain/error-codes.js";
 import type { WriteAccessProbe } from "../domain/write-access.js";
 import { labelledLine, PING_LINE_LABELS } from "./labelled-lines.js";
@@ -24,7 +25,7 @@ import type { CalibreVersionInfo } from "../domain/calibre-version.js";
 const WRITE_PROBE_TIMEOUT_MS = 5000;
 
 /** calibre_ping's deps (#272): its index reads are exactly the semantic-status ones. */
-export type PingDeps = DepsWithIndex<StatusIndex>;
+export type PingDeps = DepsWithIndex<StatusIndex & Pick<IndexFreshness, "indexedBookIds">>;
 
 export const pingTool = defineTool({
   name: "calibre_ping",

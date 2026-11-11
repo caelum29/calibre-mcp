@@ -11,7 +11,6 @@ import { log } from "../../src/logging.js";
 import { LibraryBusyTracker } from "../../src/calibre/busy.js";
 import { ContentServerClient } from "../../src/calibre/content-server.js";
 import { EMBED_DIM, INDEX_VERSION, MODEL_ID } from "../../src/semantic/model.js";
-import type { StatusIndex } from "../../src/semantic/status.js";
 import { SqliteIndexStore } from "../../src/semantic/store/index.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
 import type { ToolResult } from "../../src/tools/types.js";
@@ -46,7 +45,8 @@ function deps(o: Over = {}): PingDeps {
       stats: () => ({ books: 1064, chunks: 10, figures: 0 }),
       vectorCount: () => 1,
       booksMissingVectors: () => o.booksMissingVectors ?? 0,
-    } satisfies StatusIndex,
+      indexedBookIds: () => [],
+    } satisfies PingDeps["index"],
     log,
   };
 }

@@ -13,6 +13,12 @@ import { defineTool } from "./define.js";
 import { resolveNumericId } from "../app/resolve-id.js";
 import { toolError, toolOk, errorFromCatch } from "./result.js";
 import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "../app/write-policy.js";
+import { pruneRemovedBooks } from "../app/prune-removed.js";
+import type { DepsWithIndex } from "./deps.js";
+import type { IndexWriter } from "../semantic/store/types.js";
+
+/** Remove's deps: the library plus the index prune port (#496). */
+export type RemoveBookDeps = DepsWithIndex<Pick<IndexWriter, "deleteBooks">>;
 
 export const removeBookTool = defineTool({
   name: "calibre_remove_book",
@@ -31,11 +37,13 @@ export const removeBookTool = defineTool({
     removedIds: z.array(z.number()).optional(),
     wouldRemove: z.array(z.object({ id: z.number(), title: z.string().optional() })).optional(),
     notFoundIds: z.array(z.union([z.number(), z.string()])).optional(),
+    // #496: present only when the post-remove index prune failed — the remove itself committed
+    indexNote: z.string().optional(),
   },
   annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
   write: true,
   writeCall: (args) => args.confirm,
-  handler: async (args, deps) => {
+  handler: async (args, deps: RemoveBookDeps) => {
     try {
       if (!Array.isArray(args.ids) || args.ids.length === 0) {
         return toolError("invalid_input", "Provide at least one book id to remove.");
@@ -101,6 +109,8 @@ export const removeBookTool = defineTool({
         throw err;
       }
 
+      // calibredb replied: the remove is confirmed, so the index follows it (best-effort, #496)
+      const indexNote = pruneRemovedBooks(deps, libId, removeIds);
       return toolOk(
         [
           {
@@ -108,10 +118,11 @@ export const removeBookTool = defineTool({
             text:
               `Removed ${removeIds.length} book(s): ${removeIds.join(", ")}. ` +
               `They went to Calibre's Trash and can be restored from the Calibre GUI.` +
-              (skipped ? `\n${skipped}` : ""),
+              (skipped ? `\n${skipped}` : "") +
+              (indexNote ? `\n${indexNote}` : ""),
           },
         ],
-        { deleted: true, removedIds: removeIds, ...notFound },
+        { deleted: true, removedIds: removeIds, ...notFound, ...(indexNote ? { indexNote } : {}) },
       );
     } catch (err) {
       return errorFromCatch(err);

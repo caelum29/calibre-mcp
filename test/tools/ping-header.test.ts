@@ -9,7 +9,6 @@ import { VERSION } from "../../src/version.js";
 import { EMBED_DIM, INDEX_VERSION, MODEL_ID } from "../../src/semantic/model.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
 import type { IndexMeta } from "../../src/semantic/store/index.js";
-import type { StatusIndex } from "../../src/semantic/status.js";
 import { type PingDeps, pingTool as ping } from "../../src/tools/calibre_ping.js";
 
 const sdkVersion = (
@@ -53,7 +52,8 @@ function deps(o: Over = {}): PingDeps {
       stats: o.stats ?? ((id: string) => ({ books: BOOKS[id] ?? 0, chunks: 10, figures: 0 })),
       vectorCount: () => 1,
       booksMissingVectors: () => 0,
-    } satisfies StatusIndex,
+      indexedBookIds: () => [],
+    } satisfies PingDeps["index"],
     log,
   };
 }

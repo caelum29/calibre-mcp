@@ -73,9 +73,12 @@ export class SqliteFreshness implements IndexFreshness {
   }
 
   indexedBookIds(libraryId: string): number[] {
-    if (!this.conn.has(libraryId)) return [];
-    const rows = this.conn.db(libraryId).prepare("SELECT book_id FROM books").all() as Row[];
-    return rows.map((r) => Number(r.book_id));
+    // a read, not a writable open: ping's live count (#496) must never create or migrate the file
+    return this.conn.read(
+      libraryId,
+      (db) => (db.prepare("SELECT book_id FROM books").all() as Row[]).map((r) => Number(r.book_id)),
+      [],
+    );
   }
 
   stats(libraryId: string): { books: number; chunks: number; figures: number } {

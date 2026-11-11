@@ -33,6 +33,7 @@ function deps(o: Over = {}, searches: SearchParams[] = []): LibraryIndexDeps {
         return { books: 40, chunks: 400, figures: 0 };
       },
       booksMissingVectors: () => 3,
+      indexedBookIds: () => [],
     },
   };
 }
@@ -51,7 +52,7 @@ describe("libraryIndexReport (#346)", () => {
       { id: "D", name: "Delta", isDefault: false, state: "unreadable" },
     ]);
     expect(searches).toHaveLength(1);
-    expect(searches[0]).toMatchObject({ query: "", library: "A", num: 0, noBreaker: true });
+    expect(searches[0]).toMatchObject({ query: "", library: "A", num: 1000, noBreaker: true });
   });
 
   it("returns undefined when the library list is unavailable", async () => {

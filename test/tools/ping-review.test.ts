@@ -9,7 +9,6 @@ import { VERSION } from "../../src/version.js";
 import { EMBED_DIM, INDEX_VERSION, MODEL_ID } from "../../src/semantic/model.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
 import type { IndexMeta } from "../../src/semantic/store/index.js";
-import type { StatusIndex } from "../../src/semantic/status.js";
 
 const MAP = { Programming_Books: "Programming Books", Humanities: "Humanities", Reaserch_Books: "Reaserch Books" };
 const META_OK = { modelId: MODEL_ID, dim: EMBED_DIM, indexVersion: INDEX_VERSION };
@@ -54,7 +53,8 @@ function deps(o: {
       stats,
       vectorCount: () => 1,
       booksMissingVectors: () => 0,
-    } satisfies StatusIndex,
+      indexedBookIds: () => [],
+    } satisfies PingDeps["index"],
     log,
   };
   return { d, spies: { libraryInfo, search, stats } };
@@ -105,7 +105,7 @@ describe("calibre_ping index access is read-only and breaker-free (#304 review)"
     const { d, spies } = deps({});
     await ping.handler({}, d);
     expect(spies.search).toHaveBeenCalledWith(
-      expect.objectContaining({ library: "Programming_Books", num: 0, noBreaker: true }),
+      expect.objectContaining({ library: "Programming_Books", num: 1000, noBreaker: true }),
     );
   });
 

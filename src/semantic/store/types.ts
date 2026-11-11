@@ -205,8 +205,11 @@ export interface IndexWriter {
    * writer re-chunked it after the caller verified the text).
    */
   refreshBookMeta(libraryId: string, meta: BookMeta, check: RefreshCheck): boolean;
-  /** Drop all rows for these books (books/chunks/embeddings/figures + FTS shadows). */
-  deleteBooks(libraryId: string, bookIds: number[]): PruneCounts;
+  /**
+   * Drop all rows for these books (books/chunks/embeddings/figures + FTS shadows). `noWait`
+   * (#496): fail at once with SQLITE_BUSY on another process's lock instead of waiting it out.
+   */
+  deleteBooks(libraryId: string, bookIds: number[], opts?: { noWait?: boolean }): PruneCounts;
 }
 
 /** Chunk retrieval: vector + keyword halves over passages, and figure → context lookup. */
