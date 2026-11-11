@@ -1,0 +1,38 @@
+src/ui/board/core.js
+  s_19d82177de7b0c::t_be587f1d1d24f3 37-39
+  s_19d82177de7b0c::t_e4b3ff0e7f206a 53-61
+src/ui/generated/widgets.ts
+  s_19d82177de7b0c::t_a84d7035ceeeb8 5
+test/ui/__snapshots__/widgets/board-calibre_search-coverflow-debug.html
+  s_19d82177de7b0c::t_a28ec2849bdcec 576-578,592-600
+test/ui/__snapshots__/widgets/board-calibre_search-coverflow-nodebug.html
+  s_19d82177de7b0c::t_ecb39d0fc9392c 475-477,491-499
+test/ui/__snapshots__/widgets/board-calibre_search-shelf-debug.html
+  s_19d82177de7b0c::t_9ecc5f5d283b13 576-578,592-600
+test/ui/__snapshots__/widgets/board-calibre_search-shelf-nodebug.html
+  s_19d82177de7b0c::t_162dbba5c3571d 475-477,491-499
+test/ui/__snapshots__/widgets/board-calibre_semantic_search-coverflow-debug.html
+  s_19d82177de7b0c::t_57a1b53ba0153f 576-578,592-600
+test/ui/__snapshots__/widgets/board-calibre_semantic_search-coverflow-nodebug.html
+  s_19d82177de7b0c::t_68740a9a7b490e 475-477,491-499
+test/ui/__snapshots__/widgets/board-calibre_semantic_search-shelf-debug.html
+  s_19d82177de7b0c::t_487fc238cdbbd3 576-578,592-600
+test/ui/__snapshots__/widgets/board-calibre_semantic_search-shelf-nodebug.html
+  s_19d82177de7b0c::t_1b0943fff6c2d4 475-477,491-499
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e62221100edc0397f0e153a3a486367d87282217",
+  "prompts": {},
+  "sessions": {
+    "s_19d82177de7b0c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "73acba5b-5f32-404c-a693-6d481df24722",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
