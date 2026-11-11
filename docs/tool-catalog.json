@@ -620,6 +620,10 @@
               "type": "number"
             },
             "type": "array"
+          },
+          "writeEnabled": {
+            "description": "false on a preview in a session with writes disabled: applying it will be refused (write_disabled)",
+            "type": "boolean"
           }
         },
         "type": "object"
@@ -690,6 +694,10 @@
           },
           "isbn": {
             "type": "string"
+          },
+          "writeEnabled": {
+            "description": "false on a preview in a session with writes disabled: applying it will be refused (write_disabled)",
+            "type": "boolean"
           }
         },
         "type": "object"
@@ -1435,6 +1443,10 @@
           },
           "matches": {
             "type": "number"
+          },
+          "writeEnabled": {
+            "description": "false on a preview in a session with writes disabled: applying it will be refused (write_disabled)",
+            "type": "boolean"
           }
         },
         "type": "object"
@@ -1571,6 +1583,10 @@
               "type": "string"
             },
             "type": "array"
+          },
+          "writeEnabled": {
+            "description": "false on a preview in a session with writes disabled: applying it will be refused (write_disabled)",
+            "type": "boolean"
           }
         },
         "type": "object"
@@ -1948,6 +1964,10 @@
               "type": "object"
             },
             "type": "array"
+          },
+          "writeEnabled": {
+            "description": "false on a preview in a session with writes disabled: applying it will be refused (write_disabled)",
+            "type": "boolean"
           }
         },
         "type": "object"

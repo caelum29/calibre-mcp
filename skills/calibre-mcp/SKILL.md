@@ -24,8 +24,9 @@ ID `My_Books`. Calibre GUI + Content Server on `:8080` are normally running.
   `calibredb --with-library 'http://localhost:8080/#My_Books'` (library **ID** after `#`,
   not the display name — the display form 404s). **Never** use `--library-path` on a live GUI
   library — the concurrency lock makes direct DB access refused or dangerous.
-- Writes are gated by `CALIBRE_MCP_ENABLE_WRITE`. With it off, previews and dry-runs still work;
-  the applying call returns `write_disabled` (tell the user, don't retry), and
+- Writes are gated by `CALIBRE_MCP_ENABLE_WRITE`. With it off, previews and dry-runs still work
+  and carry `writeEnabled: false` plus a "needs writes enabled" line: tell the user before
+  proposing to apply. The applying call returns `write_disabled` (tell the user, don't retry), and
   `calibre_update_book` / `calibre_add_book` are not listed at all.
 - Destructive/bulk ops are preview-first: `calibre_bulk_update` defaults `preview:true`,
   `calibre_remove_book` and `calibre_merge_books` default `confirm:false` (dry-run),

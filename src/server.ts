@@ -21,7 +21,7 @@ import { SqliteIndexStore } from "./semantic/store/index.js";
 import { computeSemanticStatus } from "./semantic/status.js";
 import { parseBookResourceId, readBookResource } from "./resources/book.js";
 import { allTools, assertWriteClassification } from "./tools/registry.js";
-import { isListed, refuseWriteCall, sessionAnnotations } from "./tools/write-gate.js";
+import { isListed, previewHint, refuseWriteCall, sessionAnnotations, sessionOutputSchema } from "./tools/write-gate.js";
 import { toolError } from "./tools/result.js";
 import type { ToolContext } from "./tools/types.js";
 import type { ToolDeps } from "./tools/deps.js";
@@ -144,7 +144,7 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
       // v2 takes Standard Schemas, not raw Zod shapes: wrap the descriptor's shapes here (the
       // seam) so tool modules keep their SDK-agnostic raw shapes.
       inputSchema: z.object(t.inputSchema),
-      outputSchema: t.outputSchema && z.object(t.outputSchema),
+      outputSchema: sessionOutputSchema(t) && z.object(sessionOutputSchema(t)!),
       annotations: sessionAnnotations(t, config.writeEnabled),
     };
     // ToolResult is structurally a CallToolResult minus the SDK's loose index signature;
@@ -155,7 +155,13 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
         const refused = refuseWriteCall(t, args, config.writeEnabled);
         if (refused) return refused as CallToolResult;
         try {
-          return (await t.handler(args, deps, toolContext(extra))) as CallToolResult;
+          // gate-off previews say that applying will be refused (#554)
+          return previewHint(
+            t,
+            args,
+            await t.handler(args, deps, toolContext(extra)),
+            config.writeEnabled,
+          ) as CallToolResult;
         } catch (err) {
           if (err instanceof OperationCancelledError) {
             // The client cancelled; the SDK drops this response anyway. Keep it a result.
