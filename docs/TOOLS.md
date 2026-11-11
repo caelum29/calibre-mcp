@@ -441,6 +441,12 @@ title + first author) and queries Open Library, then Google Books. **Preview onl
 a proposal plus a ready-to-apply `changes` object and never writes. Apply the proposal with
 `calibre_update_book`.
 
+A slug-shaped filename title is turned back into words and searched: `modular-monoliths` →
+`modular monoliths`, `Microsoft Word - Report Name.docx` → `Report Name`. That match is a guess,
+so its confidence is capped at 0.40 and a `WARNING` line (also in `warnings`) asks you to verify
+it before applying. A title that is only an identifier (`795731065`, `B0CZS7H23N`, `top.dvi`)
+can't be searched: without an ISBN the tool refuses and asks for one.
+
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
 | `id` (or `bookId`) | number \| uuid | *(required)* | The book to look up |

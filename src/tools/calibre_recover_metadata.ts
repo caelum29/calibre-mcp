@@ -4,12 +4,13 @@
 // ready-to-apply `changes` object — it NEVER writes. Apply via calibre_update_book (#11).
 //
 // Lookup key: existing valid ISBN → else an ISBN scraped from the book text → else the title
-// (+first author) if usable. Providers are queried in order; the first with a hit wins.
+// (+first author) if usable, or a title de-slugged from a filename ("modular-monoliths" →
+// "modular monoliths", #549) at capped confidence. Providers are queried in order; the first with a hit wins.
 
 import { NEEDS_WRITES } from "./writes-remedy.js";
 import { z } from "zod";
 import { isValidIsbn } from "../domain/curation/isbn.js";
-import { isPlaceholderTitle, isUsableTitle } from "../domain/enrich/filename-guess.js";
+import { isPlaceholderTitle, isUsableTitle, slugTitleQuery } from "../domain/enrich/filename-guess.js";
 import { buildProposal } from "../domain/enrich/proposal.js";
 import type { ProviderHit } from "../domain/enrich/types.js";
 import { createGoogleBooks } from "../enrich/googlebooks.js";
@@ -28,6 +29,9 @@ import type { BaseDeps } from "./deps.js";
 
 const SOURCE = z.enum(["openlibrary", "googlebooks"]);
 const DEFAULT_SOURCES: Provider["name"][] = ["openlibrary", "googlebooks"];
+// A de-slugged title is a guess at the real one, so its match ranks below a provider's own
+// fuzzy title-search score (0.6) — the model must verify it before applying (#549).
+const SLUG_QUERY_CONFIDENCE = 0.4;
 
 /** Lazily construct the real providers (no network until a method is called). */
 function providersFor(deps: BaseDeps, order: Provider["name"][]): Provider[] {
@@ -77,11 +81,15 @@ export const recoverMetadataTool = defineTool({
 
       let lookupKey: string;
       let byIsbn: boolean;
+      // The title the providers search on; differs from book.title only for a de-slugged guess.
+      let titleQuery = book.title;
+      const slugQuery = isbn ? undefined : slugTitleQuery(book.title);
       if (isbn) {
         lookupKey = `isbn:${isbn}`;
         byIsbn = true;
-      } else if (isUsableTitle(book.title, book.authors)) {
-        lookupKey = `title:${book.title}${author ? ` / ${author}` : ""}`;
+      } else if (slugQuery || isUsableTitle(book.title, book.authors)) {
+        titleQuery = slugQuery ?? book.title;
+        lookupKey = `title:${titleQuery}${author ? ` / ${author}` : ""}`;
         byIsbn = false;
       } else {
         // No lookup key at all. Tell the user why the text scan didn't rescue us so they can act.
@@ -107,7 +115,7 @@ export const recoverMetadataTool = defineTool({
       let hits: ProviderHit[] = [];
       let usedSource: string | undefined;
       for (const p of providers) {
-        const res = byIsbn ? await p.lookupByIsbn(isbn!) : await p.searchByTitleAuthor(book.title, author);
+        const res = byIsbn ? await p.lookupByIsbn(isbn!) : await p.searchByTitleAuthor(titleQuery, author);
         if (res.length) {
           hits = res;
           usedSource = p.name;
@@ -125,8 +133,15 @@ export const recoverMetadataTool = defineTool({
 
       const proposal = buildProposal(book, hits);
       // The proposal's confidence, not the raw hit's: a title mismatch lowers it (#198).
-      const confidence = proposal.confidence ?? hits[0]!.confidence;
+      let confidence = proposal.confidence ?? hits[0]!.confidence;
       const warnings = proposal.warnings ?? [];
+      if (slugQuery) {
+        confidence = Math.min(confidence, SLUG_QUERY_CONFIDENCE);
+        for (const f of proposal.fields) f.confidence = Math.min(f.confidence, SLUG_QUERY_CONFIDENCE);
+        warnings.push(
+          `title query "${slugQuery}" was derived from the filename-like title "${book.title}"; verify the match before applying`,
+        );
+      }
       const warningLines = warnings.map((w) => `WARNING ${w}\n`).join("");
 
       if (proposal.fields.length === 0) {
