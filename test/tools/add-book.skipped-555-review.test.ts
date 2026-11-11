@@ -27,9 +27,7 @@ const HEADER =
 const FORMAT_HINT =
   "Convert the file to a format Calibre imports (EPUB, PDF, MOBI, AZW3…), then retry calibre_add_book.";
 const PERMISSION_HINT = "Give the Calibre server process read access to the file, then retry calibre_add_book.";
-const OTHER_HINT =
-  "Check that the file opens and is not corrupt, then retry calibre_add_book; calibre_search for its title " +
-  "shows whether it is already in the library.";
+const OTHER_HINT = "Check that the file opens and is not corrupt, then retry calibre_add_book.";
 
 const free928: Book = {
   id: 928,
@@ -124,6 +122,18 @@ describe("calibre_add_book no-ids outcomes (#555 review)", () => {
   it("treats whitespace-only stderr as empty (a duplicate skip)", async () => {
     const r = await run({ stderr: "  \n\t\n" });
     expect([r.structuredContent?.skipped, r.structuredContent?.duplicateOf]).toEqual(["duplicate", undefined]);
+  });
+
+  it("keeps a stdout duplicate report a skip when stderr carries a warning", async () => {
+    const r = await run({
+      stdout: `${HEADER}\n  Free as in Freedom\n    ${real}\n`,
+      stderr: "Warning: font cache rebuilt\n",
+    });
+    expect([r.isError, r.structuredContent?.skipped, r.structuredContent?.duplicateOf]).toEqual([
+      undefined,
+      "duplicate",
+      928,
+    ]);
   });
 
   it("finds the duplicate report in stdout too", async () => {

@@ -50,9 +50,7 @@ const FAILURES: Record<AddFailureCause, { code: "invalid_input" | "write_failed"
   other: {
     code: "write_failed",
     why: "calibredb reported an error (details are in the server log).",
-    hint:
-      "Check that the file opens and is not corrupt, then retry calibre_add_book; calibre_search for its title " +
-      "shows whether it is already in the library.",
+    hint: "Check that the file opens and is not corrupt, then retry calibre_add_book.",
   },
 };
 
