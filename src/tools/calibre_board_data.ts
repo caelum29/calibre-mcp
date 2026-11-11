@@ -36,6 +36,7 @@ export const boardDataTool = defineTool({
     total: z.number().optional(),
     filter: z.string().optional(),
     exclusionsApplied: z.array(z.string()).optional(),
+    exclusionsRemoved: z.number().optional(),
     books: z
       .array(
         z.object({

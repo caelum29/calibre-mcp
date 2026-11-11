@@ -36,6 +36,8 @@ export interface BoardPayload {
   filter?: string;
   /** Exclusion-marker names subtracted from this search (#93); absent = nothing subtracted. */
   exclusionsApplied?: string[];
+  /** Books of the filter bundle those markers removed (#564); absent = not counted / no filter. */
+  exclusionsRemoved?: number;
   books: BoardBook[];
 }
 

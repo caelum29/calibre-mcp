@@ -118,6 +118,7 @@ async function metaLibraryScope(
     return toolOk([{ type: "text", text: `${page.total} books match "${args.query}".${honesty}` }], {
       total: page.total,
       query: args.query,
+      ...structuredFilterFields(fRes),
     });
   }
 
@@ -128,6 +129,7 @@ async function metaLibraryScope(
       offset: 0,
       count: 0,
       bookIds: [],
+      ...structuredFilterFields(fRes),
     });
   }
 
@@ -176,6 +178,7 @@ function boardFilterFields(fRes: FilterResolution): Partial<BoardPayload> {
   return {
     ...(fRes.bundle ? { filter: fRes.bundle.name } : {}),
     ...(fRes.markers.length > 0 ? { exclusionsApplied: fRes.markers.map((m) => m.name) } : {}),
+    ...(fRes.excludedBooks !== undefined ? { exclusionsRemoved: fRes.excludedBooks } : {}),
   };
 }
 
@@ -492,6 +495,7 @@ export const searchTool = defineTool({
     bookId: z.number().optional(),
     filter: z.string().optional(),
     exclusionsApplied: z.array(z.string()).optional(),
+    exclusionsRemoved: z.number().optional(),
     // mode=annotations (#500): highlights and bookmarks, in Calibre's relevance order
     annotations: z
       .array(

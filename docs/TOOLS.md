@@ -86,7 +86,11 @@ of contents or front matter; for a definitional or topic question within a book,
 Library-scope searches automatically subtract books in **exclusion-marker** bundles (saved
 searches whose name starts with `-`), and say so in the result: `exclusions applied: [-noise]
 (pass include_excluded=true to disable)`. There is no silent subtraction — if nothing is
-reported, nothing was subtracted.
+reported, nothing was subtracted. Exclusions are global: they also cut an explicit `filter`
+bundle (`include_excluded: true` is the way around them), and the note then says how many of
+the bundle's books they removed (`exclusions applied: [-noise] removed 3 books from the
+filter …`; `structuredContent.exclusionsRemoved`), so `filter: zz (0 books)` is never mistaken
+for an empty bundle.
 
 **Date keywords (Calibre 9.18+).** In `mode: meta`, date fields (`date` = added, `pubdate`,
 `last_modified`) accept `lastmonth`, `thisyear`, `lastyear`, and `Nmonthsago` / `Nyearsago` with
@@ -315,7 +319,8 @@ figure support need a `force: true` rebuild before `target: figures` finds them.
 | `include_excluded` | boolean | `false` | Include books from `-`-named exclusion bundles |
 
 Like `calibre_search`, library-scope calls subtract exclusion-marker bundles by default and
-report it (`exclusions applied: […]`). The filter never touches the index — it restricts
+report it (`exclusions applied: […]`, with the removed-book count when a `filter` is also set,
+as in `calibre_search`). The filter never touches the index — it restricts
 candidates at query time, so creating or changing bundles needs no re-index.
 
 Every successful response carries the index generation once — `indexVersion` in

@@ -41,7 +41,11 @@ export function parseSavedSearches(stdout: string): Array<{ name: string; expres
   return out;
 }
 
-/** True when a bundle name starts with `-` — an exclusion marker subtracted from default scope (D-019). */
+/**
+ * True when a bundle name starts with `-` — an exclusion marker. Markers are GLOBAL (D-019, #564):
+ * they are subtracted from default scope AND from an explicit `filter`; `include_excluded: true`
+ * is the way around them.
+ */
 export function isExclusionMarker(name: string): boolean {
   return name.startsWith("-");
 }
@@ -166,6 +170,8 @@ export interface FilterResolution {
   markers: BundleEntry[];
   /** Same-name saved search shadowed a virtual library — noted per D-019 collision rule. */
   collisionNote?: string;
+  /** Books of the `filter` bundle the markers removed (#564); set only when both are in play. */
+  excludedBooks?: number;
   /** Markers skipped or unavailable — reported, never silent (honesty contract). */
   degradeNote?: string;
 }
@@ -262,6 +268,23 @@ export async function resolveFilter(deps: BaseDeps, req: FilterRequest): Promise
     }
   }
 
+  // Count what the markers cut from an explicit filter, so "filter: zz (0 books)" can't read as
+  // an empty bundle (#564). Best-effort: a failed count drops the number, never the search.
+  if (res.bundle && res.markers.length > 0) {
+    const union = res.markers.map((m) => `search:"=${m.name}"`).join(" or ");
+    try {
+      const page = await deps.content.search({
+        query: `(${res.bundle.expression}) and (${union})`,
+        library: req.library,
+        num: 0,
+        timeoutMs: req.timeoutMs,
+      });
+      res.excludedBooks = page.total;
+    } catch {
+      // count is advisory
+    }
+  }
+
   return { ok: true, res };
 }
 
@@ -328,8 +351,12 @@ export function honestyLines(res: FilterResolution, bundleBooks?: number): strin
     lines.push(`filter: ${res.bundle.name}${n}`);
   }
   if (res.markers.length > 0) {
+    const removed =
+      res.excludedBooks !== undefined
+        ? ` removed ${res.excludedBooks} ${res.excludedBooks === 1 ? "book" : "books"} from the filter`
+        : "";
     lines.push(
-      `exclusions applied: [${res.markers.map((m) => m.name).join(", ")}] (pass include_excluded=true to disable)`,
+      `exclusions applied: [${res.markers.map((m) => m.name).join(", ")}]${removed} (pass include_excluded=true to disable)`,
     );
   }
   if (res.collisionNote) lines.push(res.collisionNote);
