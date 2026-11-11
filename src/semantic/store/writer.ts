@@ -165,10 +165,14 @@ export class SqliteWriter implements IndexWriter {
     }
   }
 
-  deleteBooks(libraryId: string, bookIds: number[]): PruneCounts {
+  deleteBooks(libraryId: string, bookIds: number[], opts: { noWait?: boolean } = {}): PruneCounts {
     const counts: PruneCounts = { books: 0, chunks: 0, figures: 0 };
     if (bookIds.length === 0 || !this.conn.has(libraryId)) return counts;
-    const db = this.conn.db(libraryId);
+    const run = (db: DatabaseSync) => this.#delete(db, libraryId, bookIds, counts);
+    return opts.noWait ? this.conn.withoutBusyWait(libraryId, run) : run(this.conn.db(libraryId));
+  }
+
+  #delete(db: DatabaseSync, libraryId: string, bookIds: number[], counts: PruneCounts): PruneCounts {
     // IMMEDIATE takes the write lock up front, where busy_timeout applies (#196); a deferred
     // BEGIN that upgrades to a writer mid-transaction can fail with SQLITE_BUSY without waiting.
     db.exec("BEGIN IMMEDIATE");

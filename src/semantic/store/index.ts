@@ -137,8 +137,8 @@ export class SqliteIndexStore implements IndexStore {
     return this.#writer.refreshBookMeta(libraryId, meta, check);
   }
 
-  deleteBooks(libraryId: string, bookIds: number[]): PruneCounts {
-    return this.#writer.deleteBooks(libraryId, bookIds);
+  deleteBooks(libraryId: string, bookIds: number[], opts?: { noWait?: boolean }): PruneCounts {
+    return this.#writer.deleteBooks(libraryId, bookIds, opts);
   }
 
   searchLibrary(libraryId: string, query: Float32Array, k: number, allow?: ReadonlySet<number>): LibraryHit[] {

@@ -14,6 +14,7 @@ import { defineTool } from "./define.js";
 import type { ToolResult } from "./types.js";
 import { bookIdArg } from "./resolve-id.js";
 import { resolveNumericId } from "../app/resolve-id.js";
+import { mergeIdentifierChanges } from "../app/merge-identifiers.js";
 import { fence, toolError, toolOk, bookNotFound, errorFromCatch } from "./result.js";
 import {
   isLanded,
@@ -32,7 +33,7 @@ export const ChangeValueSchema = z.union([
   z.string(),
   z.number(),
   z.array(z.string()),
-  z.record(z.string(), z.string()),
+  z.record(z.string(), z.string().nullable()), // identifiers: null removes a scheme (#563)
 ]);
 
 // One wording for both channels: text-only clients and JSON-only clients read the same reason.
@@ -42,7 +43,7 @@ export const updateBookTool = defineTool({
   name: "calibre_update_book",
   title: "Update book metadata",
   description:
-    "Replace metadata fields on one book: `changes` maps each field (title, authors, tags, series, rating, identifiers, comments, or any #custom column) to its new value. Omitted fields are untouched. Requires writes to be enabled.",
+    'Replace metadata fields on one book: `changes` maps each field (title, authors, tags, series, rating, identifiers, comments, or any #custom column) to its new value. Omitted fields are untouched. `identifiers` merges by scheme (case-insensitive) instead: listed schemes are set, others stay, null removes one ({"isbn": "978…", "url": null}). Requires writes to be enabled.',
   inputSchema: {
     id: BookId().optional(),
     bookId: BookId().optional(),
@@ -63,8 +64,8 @@ export const updateBookTool = defineTool({
   writeCall: "always", // no call writes nothing → hidden with the gate off (#435)
   handler: async (args, deps) => {
     try {
-      const changes = args.changes as Record<string, ChangeValue>;
-      const fields = Object.keys(changes);
+      const requested = args.changes as Record<string, ChangeValue>;
+      const fields = Object.keys(requested);
       if (fields.length === 0) return toolError("invalid_input", "Provide at least one field in changes.");
 
       const unknown = fields.filter((f) => !isAllowedField(f));
@@ -79,9 +80,11 @@ export const updateBookTool = defineTool({
       const idArg = bookIdArg(args);
       if (idArg === undefined) return toolError("invalid_input", "Provide id (the book's db id or uuid).");
       const numericId = await resolveNumericId(deps, idArg, args.library);
-      if (numericId === undefined) return toolError("not_found", `No book with id/uuid ${idArg}`);
+      if (numericId === undefined) return bookNotFound(idArg, { idOrUuid: true });
 
       const before = await deps.content.getBook(numericId, args.library);
+      // identifiers merge into the current map; the merged map is written, verified and diffed (#563)
+      const changes = mergeIdentifierChanges(before, requested);
 
       // calibredb --with-library needs the library ID (e.g. "My_Books"), not the
       // display name — resolve it, or the routed write 404s ("Not Found") against the server.

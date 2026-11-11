@@ -37,7 +37,7 @@ import { defineTool } from "./define.js";
 import { bookResourceLink } from "./resource-link.js";
 import { resolveNumericId } from "../app/resolve-id.js";
 import { ENABLE_FTS_STEPS, KEYWORD_SEARCH_FALLBACK } from "./remediation.js";
-import { fence, renderResult, toolError, toolOk, toolErrorFrom, errorFromCatch } from "./result.js";
+import { fence, renderResult, toolError, toolOk, toolErrorFrom, errorFromCatch, bookNotFound } from "./result.js";
 import type { ContentBlock, ToolResult } from "./types.js";
 import type { BaseDeps, DepsWithIndex } from "./deps.js";
 import type { IndexFreshness } from "../semantic/store/index.js";
@@ -118,6 +118,7 @@ async function metaLibraryScope(
     return toolOk([{ type: "text", text: `${page.total} books match "${args.query}".${honesty}` }], {
       total: page.total,
       query: args.query,
+      ...structuredFilterFields(fRes),
     });
   }
 
@@ -128,6 +129,7 @@ async function metaLibraryScope(
       offset: 0,
       count: 0,
       bookIds: [],
+      ...structuredFilterFields(fRes),
     });
   }
 
@@ -176,6 +178,7 @@ function boardFilterFields(fRes: FilterResolution): Partial<BoardPayload> {
   return {
     ...(fRes.bundle ? { filter: fRes.bundle.name } : {}),
     ...(fRes.markers.length > 0 ? { exclusionsApplied: fRes.markers.map((m) => m.name) } : {}),
+    ...(fRes.excludedBooks !== undefined ? { exclusionsRemoved: fRes.excludedBooks } : {}),
   };
 }
 
@@ -492,6 +495,7 @@ export const searchTool = defineTool({
     bookId: z.number().optional(),
     filter: z.string().optional(),
     exclusionsApplied: z.array(z.string()).optional(),
+    exclusionsRemoved: z.number().optional(),
     // mode=annotations (#500): highlights and bookmarks, in Calibre's relevance order
     annotations: z
       .array(
@@ -545,7 +549,7 @@ export const searchTool = defineTool({
         if (args.bookId === undefined) return toolError("invalid_input", "scope=book requires bookId");
         if (!fts) return ftsUnavailable();
         const bookId = await resolveNumericId(deps, args.bookId, args.library);
-        if (bookId === undefined) return toolError("not_found", `No book with id/uuid ${args.bookId}`);
+        if (bookId === undefined) return bookNotFound(args.bookId, { idOrUuid: true });
         return await ftsBookScope({ args, deps, fts, deadline, signal: ctx?.signal }, bookId);
       }
       const fr = await resolveFilter(deps, {

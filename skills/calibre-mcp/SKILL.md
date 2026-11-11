@@ -24,8 +24,9 @@ ID `My_Books`. Calibre GUI + Content Server on `:8080` are normally running.
   `calibredb --with-library 'http://localhost:8080/#My_Books'` (library **ID** after `#`,
   not the display name — the display form 404s). **Never** use `--library-path` on a live GUI
   library — the concurrency lock makes direct DB access refused or dangerous.
-- Writes are gated by `CALIBRE_MCP_ENABLE_WRITE`. With it off, previews and dry-runs still work;
-  the applying call returns `write_disabled` (tell the user, don't retry), and
+- Writes are gated by `CALIBRE_MCP_ENABLE_WRITE`. With it off, previews and dry-runs still work
+  and carry `writeEnabled: false` plus a "needs writes enabled" line: tell the user before
+  proposing to apply. The applying call returns `write_disabled` (tell the user, don't retry), and
   `calibre_update_book` / `calibre_add_book` are not listed at all.
 - Destructive/bulk ops are preview-first: `calibre_bulk_update` defaults `preview:true`,
   `calibre_remove_book` and `calibre_merge_books` default `confirm:false` (dry-run),
@@ -67,6 +68,9 @@ Use them to scope work to a topic instead of the whole 800-book library:
 - **Exclusion markers**: bundles named `-something` are auto-subtracted from discovery searches
   (`calibre_search`, `calibre_semantic_search` library scope). The result always says what was
   subtracted (`exclusions applied: […]`); pass `include_excluded: true` to see everything.
+  Markers are global: they also cut an explicit `filter`, and the note says how many of that
+  bundle's books they removed (`… removed N books from the filter`) — a `(0 books)` filter with
+  that note is not an empty bundle, retry with `include_excluded: true`.
   Targeting the marker itself (`filter: "-outdated"`) shows exactly its books.
 - **Maintenance sees everything**: `quality_report`/`find_duplicates`/`bulk_update` accept
   `filter` but never auto-subtract markers — noise books need curation most.
@@ -139,7 +143,10 @@ then drill into a hit: `calibre_search scope:book bookId:N` or
 `calibre_get_content` with `structure:true` first for the outline, then walk with `cursor`.
 
 **Update metadata:**
-`calibre_update_book` with `changes: {tags: [...], title: "...", rating: 8}`.
+`calibre_update_book` with `changes: {tags: [...], title: "...", rating: 8}`. Each field
+replaces its value, except `identifiers`, which merges by scheme: `{identifiers: {isbn: "978…"}}`
+keeps the book's url/doi/etc., and `{identifiers: {url: null}}` removes one scheme (scheme names are case-insensitive). Same in
+`calibre_bulk_update`.
 
 **Batch tag by search:**
 `calibre_bulk_update` with `query: "title:SQL"` and `tags_add: ["SQL"]` (keeps each book's other
@@ -162,14 +169,20 @@ replaces the whole list, or a case-only rename that renames a tag on every book.
 `calibre_extract_isbn` (preview) → `calibre_recover_metadata` → confirm with user →
 `calibre_update_book` with the proposed fields. With writes off, show the user the proposal and
 tell them applying it needs `CALIBRE_MCP_ENABLE_WRITE`.
+A slug title (`modular-monoliths`) is searched as `modular monoliths` at capped confidence
+(0.40, with a `WARNING`): show the user the matched title and get a yes before applying.
 
 **Dedupe:**
 `calibre_find_duplicates mode:similar` → inspect groups with `mode:compare ids:[...]` →
 `calibre_merge_books` with `targetId` = the compare report's "recommend keeping book N" and
-the rest as `sourceIds` (dry-run plan → confirm with user → `confirm:true`). Formats move to
+the rest as `sourceIds` (dry-run plan → confirm with user → `confirm:true`). A
+`⚠ REVIEW` line (mixed languages, possibly different editions, not the same work) means ask the
+user before merging, whatever the score. Formats move to
 the target (its copy wins), metadata merges per Calibre's rules, sources land in Calibre's
 trash (recoverable ~14 days). `mode:safe` keeps sources; plain `calibre_remove_book` is for
-discarding a record without keeping anything from it.
+discarding a record without keeping anything from it. Both drop the removed books from the
+semantic index on their own; a `Semantic index not updated` line means run
+`calibre_build_index prune:true` later (also the fix after removals in the Calibre GUI).
 
 **Library cleanup sweep:**
 `calibre_quality_report` → fix per issue class (tags via bulk_update, ISBNs via extract_isbn,

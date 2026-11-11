@@ -169,6 +169,9 @@
             },
             "type": "array"
           },
+          "exclusionsRemoved": {
+            "type": "number"
+          },
           "filter": {
             "type": "string"
           },
@@ -420,7 +423,7 @@
         "idempotentHint": false,
         "readOnlyHint": false
       },
-      "description": "Apply the same metadata changes (tags, series, publisher, etc.) to a set of books selected by ids, a search query, or filter (a bundle name). Preview-first: returns the per-book diff without writing unless preview is set false. A book set is required (never all books). A list in changes replaces the whole list; to add or remove tags while keeping the rest, use tags_add / tags_remove (merged per book, case-insensitive, not together with changes.tags). Previews work without writes; applying needs CALIBRE_MCP_ENABLE_WRITE.",
+      "description": "Apply the same metadata changes (tags, series, publisher, etc.) to a set of books selected by ids, a search query, or filter (a bundle name). Preview-first: returns the per-book diff without writing unless preview is set false. A book set is required (never all books). A list in changes replaces the whole list; to add or remove tags while keeping the rest, use tags_add / tags_remove (merged per book, case-insensitive, not together with changes.tags). changes.identifiers merges per book by scheme (listed schemes set, others kept, null removes one). Previews work without writes; applying needs CALIBRE_MCP_ENABLE_WRITE.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {
@@ -441,7 +444,10 @@
                 },
                 {
                   "additionalProperties": {
-                    "type": "string"
+                    "type": [
+                      "string",
+                      "null"
+                    ]
                   },
                   "propertyNames": {
                     "type": "string"
@@ -626,6 +632,10 @@
               "type": "number"
             },
             "type": "array"
+          },
+          "writeEnabled": {
+            "description": "false on a preview in a session with writes disabled: applying it will be refused (write_disabled)",
+            "type": "boolean"
           }
         },
         "type": "object"
@@ -696,6 +706,10 @@
           },
           "isbn": {
             "type": "string"
+          },
+          "writeEnabled": {
+            "description": "false on a preview in a session with writes disabled: applying it will be refused (write_disabled)",
+            "type": "boolean"
           }
         },
         "type": "object"
@@ -823,12 +837,16 @@
                 },
                 "mixedLanguages": {
                   "type": "boolean"
+                },
+                "workMatch": {
+                  "type": "string"
                 }
               },
               "required": [
                 "bookIds",
                 "mergeSafety",
-                "mixedLanguages"
+                "mixedLanguages",
+                "workMatch"
               ],
               "type": "object"
             },
@@ -851,6 +869,9 @@
           },
           "offset": {
             "type": "number"
+          },
+          "workMatch": {
+            "type": "string"
           }
         },
         "required": [
@@ -1434,6 +1455,10 @@
           },
           "matches": {
             "type": "number"
+          },
+          "writeEnabled": {
+            "description": "false on a preview in a session with writes disabled: applying it will be refused (write_disabled)",
+            "type": "boolean"
           }
         },
         "type": "object"
@@ -1513,6 +1538,9 @@
             },
             "type": "array"
           },
+          "indexNote": {
+            "type": "string"
+          },
           "metadataChanges": {
             "additionalProperties": {},
             "propertyNames": {
@@ -1567,6 +1595,10 @@
               "type": "string"
             },
             "type": "array"
+          },
+          "writeEnabled": {
+            "description": "false on a preview in a session with writes disabled: applying it will be refused (write_disabled)",
+            "type": "boolean"
           }
         },
         "type": "object"
@@ -1909,6 +1941,9 @@
           "deleted": {
             "type": "boolean"
           },
+          "indexNote": {
+            "type": "string"
+          },
           "notFoundIds": {
             "items": {
               "type": [
@@ -1941,6 +1976,10 @@
               "type": "object"
             },
             "type": "array"
+          },
+          "writeEnabled": {
+            "description": "false on a preview in a session with writes disabled: applying it will be refused (write_disabled)",
+            "type": "boolean"
           }
         },
         "type": "object"
@@ -2112,6 +2151,9 @@
               "type": "string"
             },
             "type": "array"
+          },
+          "exclusionsRemoved": {
+            "type": "number"
           },
           "filter": {
             "type": "string"
@@ -2307,6 +2349,9 @@
             },
             "type": "array"
           },
+          "exclusionsRemoved": {
+            "type": "number"
+          },
           "figures": {
             "items": {
               "additionalProperties": false,
@@ -2501,7 +2546,7 @@
         "idempotentHint": true,
         "readOnlyHint": false
       },
-      "description": "Replace metadata fields on one book: `changes` maps each field (title, authors, tags, series, rating, identifiers, comments, or any #custom column) to its new value. Omitted fields are untouched. Requires writes to be enabled.",
+      "description": "Replace metadata fields on one book: `changes` maps each field (title, authors, tags, series, rating, identifiers, comments, or any #custom column) to its new value. Omitted fields are untouched. `identifiers` merges by scheme (case-insensitive) instead: listed schemes are set, others stay, null removes one ({\"isbn\": \"978…\", \"url\": null}). Requires writes to be enabled.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {
@@ -2535,7 +2580,10 @@
                 },
                 {
                   "additionalProperties": {
-                    "type": "string"
+                    "type": [
+                      "string",
+                      "null"
+                    ]
                   },
                   "propertyNames": {
                     "type": "string"

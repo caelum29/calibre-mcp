@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { allTools } from "../../src/tools/registry.js";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
+import { idsUpTo } from "./fake-live-ids.js";
 import { EMBED_DIM, INDEX_VERSION, MODEL_ID } from "../../src/semantic/model.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
 import type { ToolResult } from "../../src/tools/types.js";
@@ -32,9 +33,9 @@ function deps(o: Opts = {}): ToolDeps {
       resolveLibraryId: async () => "My_Books",
       libraryInfo: async () => ({ libraryMap: map, defaultLibrary: "My_Books" }),
       search: async (p: { library?: string }) => ({
-        bookIds: [],
+        bookIds: idsUpTo(1096),
         total: 1096,
-        num: 0,
+        num: 1096,
         offset: 0,
         sort: "title",
         libraryId: p.library,
@@ -60,6 +61,7 @@ function deps(o: Opts = {}): ToolDeps {
         guard(id);
         return 0;
       },
+      indexedBookIds: () => idsUpTo(1064),
     } as unknown as ToolDeps["index"],
     log,
   };

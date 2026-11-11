@@ -3,6 +3,7 @@
 // searched, so we fall back to ISBN) and the title-weak check in proposal.ts. This is the
 // single source of truth for the raw-filename heuristics — the raw_filename_title quality
 // check (curation/quality.ts) routes through looksLikeRawFilename so the two stay in sync.
+// slugTitleQuery turns a slug-shaped one back into a searchable title query (#549).
 //
 // Heuristics (see issue #200): all-digits, a digit-pair id (215479-01), an ASIN, a
 // *.ext leftover, an all-lowercase hyphenated slug, a placeholder word (Cover, "book (3)"),
@@ -72,4 +73,34 @@ export function isPlaceholderTitle(title: string): boolean {
 export function isUsableTitle(title: string, authors: string[] = []): boolean {
   const t = title.trim();
   return t.length >= 3 && !looksLikeRawFilename(t, authors);
+}
+
+// Word's PDF export prefixes the document title: "Microsoft Word - Report.docx".
+const WORD_PREFIX = /^microsoft word\s*-\s*/i;
+// A slug with no spaces whose words are joined by - or _: "modular-monoliths", "ddd_distilled".
+const JOINED_SLUG = /^[\p{L}\p{N}]+(?:[-_]+[\p{L}\p{N}]+)+$/u;
+// One word ("top" from top.dvi) is too little to search on; two letter-bearing words are a title.
+const MIN_QUERY_WORDS = 2;
+
+/**
+ * Derive a title query from a slug-shaped filename title (#549): strips a "Microsoft Word - "
+ * prefix and a file extension, and turns a space-free `-`/`_` slug into words
+ * ("modular-monoliths" → "modular monoliths") when it is filename-shaped (wrapped, all-lowercase,
+ * or flagged by looksLikeRawFilename) — never a mixed-case title like "Self-Hosting". Returns
+ * undefined when the title is not slug-shaped, or when what is left is an identifier (digits,
+ * ASIN, placeholder) or a single word.
+ */
+export function slugTitleQuery(title: string): string | undefined {
+  const t = title.trim();
+  let q = t.replace(WORD_PREFIX, "").replace(EXT, "").trim();
+  const unwrapped = q !== t;
+  // Mixed-case joins ("Self-Hosting", "Docker-Deep-Dive") are real titles; only split a slug
+  // that came out of a filename wrapper, is all-lowercase, or the shared predicate flags.
+  const filenameSlug = unwrapped || q === q.toLowerCase() || looksLikeRawFilename(t);
+  if (filenameSlug && JOINED_SLUG.test(q)) q = q.replace(/[-_]+/g, " ");
+  q = q.replace(/\s+/g, " ").trim();
+  if (q === t) return undefined; // not slug-shaped: nothing was unwrapped
+  if (DIGITS.test(q) || DIGIT_PAIR.test(q) || ASIN.test(q) || PLACEHOLDER.test(q)) return undefined;
+  const words = q.split(" ").filter((w) => /\p{L}/u.test(w));
+  return words.length >= MIN_QUERY_WORDS ? q : undefined;
 }

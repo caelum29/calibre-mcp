@@ -3,8 +3,8 @@
 
 import type { Book } from "./book.js";
 
-/** Accepted shapes for one field's new value. */
-export type ChangeValue = string | number | string[] | Record<string, string>;
+/** Accepted shapes for one field's new value; a `null` identifier scheme removes it (#563). */
+export type ChangeValue = string | number | string[] | Record<string, string | null>;
 
 /** Built-in fields settable via set_metadata (custom `#columns` are also allowed). */
 export const KNOWN_FIELDS = [
@@ -138,7 +138,8 @@ function sameNameSet(a: unknown, b: unknown): boolean {
 
 const DAY_MS = 86_400_000;
 
-// ±1 day: Calibre stores a date-only pubdate as a local midnight, read back in UTC
+// ±1 day: Calibre stores a date-only pubdate as a local midnight, read back in UTC, and moves
+// the 1st to the 2nd and a month's last day back one (except 31 Dec) on purpose (#495)
 function sameDay(a: unknown, b: unknown): boolean {
   const day = (v: unknown) => (typeof v === "string" ? Date.parse(v.slice(0, 10)) : Number.NaN);
   const da = day(a);

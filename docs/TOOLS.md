@@ -32,7 +32,7 @@ Confirms the server can reach your running Calibre Content Server (end to end, v
 `calibredb`) and reports semantic-search status — whether the embedding model and its
 dependency are present, how many vectors the index holds, and the index generation
 (`indexVersion`, read from the index itself — flagged **stale** with a rebuild hint when it
-doesn't match the running server). It also prints the server version, MCP SDK version, `calibredb` path, Content Server URL and write-gate state, plus a per-library index line (`Index: My Books (id: My_Books) [default]: 1064/1092 indexed · … · Other Books (id: Other_Books): none`; `indexes[].isDefault`) so unindexed books are visible and every library id is at hand. The semantic-search line names the library its counts describe (`…; My_Books index v4: 1064 books / …`, `semantic.libraryId`). An index another process holds locked shows as `busy — index locked by another process, retry` (`state: "busy"`), not as unreadable. Past 20 libraries the text ends with `… +K more — full list in structuredContent / calibre_list_libraries`; `indexes` keeps them all; books indexed keyword-only (FTS-searchable, out of semantic search's reach) are labelled, e.g. `1064/1092 indexed (40 without embeddings)`. A library refused for a
+doesn't match the running server). It also prints the server version, MCP SDK version, `calibredb` path, Content Server URL and write-gate state, plus a per-library index line (`Index: My Books (id: My_Books) [default]: 1064/1092 indexed · … · Other Books (id: Other_Books): none`; `indexes[].isDefault`) so unindexed books are visible and every library id is at hand. `indexed` counts only books the library still holds: index rows of removed or merged books are not counted. When ping can't check the count against the library in time (a big or slow library), it shows the raw row count marked `(count not checked against the library)` (`indexes[].indexedUnchecked: true`); that count may include removed books. The semantic-search line names the library its counts describe (`…; My_Books index v4: 1064 books / …`, `semantic.libraryId`). An index another process holds locked shows as `busy — index locked by another process, retry` (`state: "busy"`), not as unreadable. Past 20 libraries the text ends with `… +K more — full list in structuredContent / calibre_list_libraries`; `indexes` keeps them all; books indexed keyword-only (FTS-searchable, out of semantic search's reach) are labelled, e.g. `1064/1092 indexed (40 without embeddings)`. A library refused for a
 [case-only id clash](#case-clashing-library-ids) shows as `not indexable` (`state: "conflict"`,
 with `conflictsWith` naming the other id), and the semantic-search line prints the refusal
 instead of a build hint.
@@ -86,7 +86,11 @@ of contents or front matter; for a definitional or topic question within a book,
 Library-scope searches automatically subtract books in **exclusion-marker** bundles (saved
 searches whose name starts with `-`), and say so in the result: `exclusions applied: [-noise]
 (pass include_excluded=true to disable)`. There is no silent subtraction — if nothing is
-reported, nothing was subtracted.
+reported, nothing was subtracted. Exclusions are global: they also cut an explicit `filter`
+bundle (`include_excluded: true` is the way around them), and the note then says how many of
+the bundle's books they removed (`exclusions applied: [-noise] removed 3 books from the
+filter …`; `structuredContent.exclusionsRemoved`), so `filter: zz (0 books)` is never mistaken
+for an empty bundle.
 
 **Date keywords (Calibre 9.18+).** In `mode: meta`, date fields (`date` = added, `pubdate`,
 `last_modified`) accept `lastmonth`, `thisyear`, `lastyear`, and `Nmonthsago` / `Nyearsago` with
@@ -315,7 +319,8 @@ figure support need a `force: true` rebuild before `target: figures` finds them.
 | `include_excluded` | boolean | `false` | Include books from `-`-named exclusion bundles |
 
 Like `calibre_search`, library-scope calls subtract exclusion-marker bundles by default and
-report it (`exclusions applied: […]`). The filter never touches the index — it restricts
+report it (`exclusions applied: […]`, with the removed-book count when a `filter` is also set,
+as in `calibre_search`). The filter never touches the index — it restricts
 candidates at query time, so creating or changing bundles needs no re-index.
 
 Every successful response carries the index generation once — `indexVersion` in
@@ -344,9 +349,11 @@ reports them as `booksPreserved`). Each book's
 figure captions (see `calibre_get_figures`) are indexed alongside its text, powering
 `calibre_semantic_search` with `target: figures`.
 
-Indexing only ever adds or replaces books, so books you later **remove or merge away** keep
-their (now unreachable) passages in the index. Pass `prune: true` to reconcile: it deletes the
-index entries for every book that is no longer in the library and reports how many it dropped.
+Indexing only ever adds or replaces books. `calibre_remove_book` and `calibre_merge_books` drop
+the books they remove from the index themselves, but books removed or merged **in the Calibre
+GUI** (or whose drop failed because the index was busy) keep their now unreachable passages.
+Pass `prune: true` to reconcile: it deletes the index entries for every book that is no longer
+in the library and reports how many it dropped.
 
 The index build writes only to the server's own local index directory — not to your Calibre
 library — so it runs without enabling library writes. Only `enableFts: true` needs them.
@@ -399,7 +406,12 @@ exact title + authors; `mode: similar` groups fuzzily (any script; edition suffi
 stay separate); each group carries a **merge-safety score**. `mode: compare` diffs two or more specific books field by field and recommends which to
 keep. It never merges anything — that's `calibre_merge_books`. Mixed-language groups are flagged
 as likely translations (not true duplicates), and a language difference caps the merge-safety
-score with a review warning.
+score with a review warning. Groups and compare reports also carry a same-work verdict
+(`workMatch`: `same`, `edition?` or `different`), the same one `calibre_merge_books` warns on.
+An unmarked title next to one that names a later edition ("Learn Ansible" vs "Learn Ansible -
+Second Edition") is `edition?`: it still groups, but merge safety is capped at 0.3 with a
+"possibly different editions" review line. `different` (title, author or edition mismatch, e.g.
+two hand-picked `compare` ids) is capped the same way with a "not the same work" line.
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
@@ -444,6 +456,12 @@ title + first author) and queries Open Library, then Google Books. **Preview onl
 a proposal plus a ready-to-apply `changes` object and never writes. Apply the proposal with
 `calibre_update_book`.
 
+A slug-shaped filename title is turned back into words and searched: `modular-monoliths` →
+`modular monoliths`, `Microsoft Word - Report Name.docx` → `Report Name`. That match is a guess,
+so its confidence is capped at 0.40 and a `WARNING` line (also in `warnings`) asks you to verify
+it before applying. A title that is only an identifier (`795731065`, `B0CZS7H23N`, `top.dvi`)
+can't be searched: without an ISBN the tool refuses and asks for one.
+
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
 | `id` (or `bookId`) | number \| uuid | *(required)* | The book to look up |
@@ -482,10 +500,20 @@ Set metadata fields on one book — title, authors, tags, series, series_index, 
 publisher, pubdate, languages, comments, identifiers, or any `#custom` column. Omitted fields
 are left untouched. Returns the applied before/after diff.
 
-Partial `pubdate` values are normalised to the first day before writing: `"2020"` stores
-`2020-01-01`, `"2020-05"` stores `2020-05-01` (Calibre would otherwise fill the missing parts
-from today's date). The diff shows the stored date. `identifiers` must be an object
-(`{"isbn": "9780132350884"}`); the `"isbn:…"` string form is rejected with `invalid_input`.
+Every field replaces its value, except `identifiers`, which **merges by scheme**: listed schemes
+are set, unlisted ones stay, and `null` removes one. Scheme names are case-insensitive
+(`ISBN` sets the book's `isbn`). On a book with `{"url": "…", "doi": "…"}`,
+`{"identifiers": {"isbn": "9780132350884", "doi": null}}` leaves `{"url": "…", "isbn":
+"9780132350884"}`. The diff shows the full map before and after.
+
+Partial `pubdate` values are sent as the first day of the period: `"2020"` is sent as
+`2020-01-01`, `"2020-05"` as `2020-05-01` (Calibre would otherwise fill the missing parts from
+today's date). Calibre then moves any date-only value off the edges of its month, so the month
+and year read correctly in every timezone: the 1st is stored as the 2nd, and the last day of a
+month as the day before, except 31 December. So `"2020"` stores `2020-01-02`, `"2020-05"` stores
+`2020-05-02`, and `2020-01-31` stores `2020-01-30`. The diff shows the stored date.
+`identifiers` must be an object (`{"isbn": "9780132350884"}`); the `"isbn:…"` string form is
+rejected with `invalid_input`.
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
@@ -518,7 +546,7 @@ combined with `tags_add`/`tags_remove`.
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `changes` | object | — | Field → new value applied to every selected book (a list replaces the whole list) |
+| `changes` | object | — | Field → new value applied to every selected book (a list replaces the whole list; `identifiers` merges per book by scheme, `null` removes one — see `calibre_update_book`) |
 | `tags_add` | array of strings | — | Tags to add to each book, keeping its other tags; an existing tag keeps the library's spelling |
 | `tags_remove` | array of strings | — | Tags to remove from each book (case-insensitive); a missing tag is a no-op |
 | `ids` | array of ids | — | Books to change (one of `ids`/`query`/`filter` required; `ids` cannot be combined with `query` or `filter`) |
@@ -590,7 +618,13 @@ separators as spaces, so its edition is recognised.
 Trash and can be restored from the Calibre GUI. Dry-run by default: without `confirm: true` it
 lists what *would* be removed and writes nothing. Ids that are not books in the library are
 skipped and named (`notFoundIds`, "Not found (skipped)"), in the dry-run and on apply alike; if
-none of the ids is a book, the call is a `not_found` error.
+none of the ids is a book, the call is a `not_found` error. Once the removal is confirmed, the
+removed books are also dropped from the semantic index, so search stops returning them. That
+step never waits on an index another process holds and never fails the removal: if it can't
+run, the result carries one `Semantic index not updated: …` line (`indexNote`), and a later
+`calibre_build_index` with `prune: true` cleans up. Only removals made through this tool (or
+`calibre_merge_books`) are followed: books removed in the Calibre GUI stay in the index until
+`calibre_build_index` runs with `prune: true`.
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
@@ -607,9 +641,14 @@ books into a target (the target's copy wins conflicts), merge metadata per Calib
 trash the sources. Modes: `merge` (the default) trashes sources after merging; `safe` keeps the
 sources; `formatsOnly` moves formats and leaves metadata untouched. Dry-run by default —
 without `confirm: true` it prints the full plan (survivor, format moves, metadata changes,
-trash list) and writes nothing. Trashed sources stay recoverable from Calibre's trash for about
+trash list) and writes nothing. The plan warns, without refusing, when a source does not look
+like the same work as the target, or may be a different edition of it (the same verdict as
+`calibre_find_duplicates`). Trashed sources stay recoverable from Calibre's trash for about
 two weeks. Deletion always happens last, so an interrupted merge never loses data — just re-run
-the same call to finish.
+the same call to finish. Once the trash step is confirmed, the trashed sources are dropped from
+the semantic index the same way `calibre_remove_book` does it (a failure only adds the
+`indexNote` line). Merges done in the Calibre GUI are not followed: their sources stay in the
+index until `calibre_build_index` runs with `prune: true`.
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
@@ -672,7 +711,9 @@ Writes are off by default and protected by two independent switches:
    `CALIBRE_MCP_ENABLE_WRITE` is set (`1` / `true` / `yes`), or you tick *Enable writes* in the
    Claude Desktop bundle settings. The gate works per call: with it off, the preview-first tools
    below stay listed (announced read-only) and their previews work, while the call that would
-   write (`apply: true`, `preview: false`, `confirm: true`) returns `write_disabled`.
+   write (`apply: true`, `preview: false`, `confirm: true`) returns `write_disabled`. Each such
+   preview says so up front: `writeEnabled: false` in `structuredContent` and a text line naming
+   the remedy (`… needs writes enabled (CALIBRE_MCP_ENABLE_WRITE).`).
    `calibre_update_book` and `calibre_add_book` have no preview, so they stay hidden.
 2. **The Calibre-side gate.** The Content Server must permit local writes. The server embedded
    in the Calibre GUI is read-only by default — enable *Sharing over the net → Advanced → allow

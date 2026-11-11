@@ -10,7 +10,8 @@ import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
 import { CalibreCliError, CalibreCliTimeoutError } from "../../src/domain/errors.js";
-import type { BaseDeps, ToolDeps } from "../../src/tools/deps.js";
+import type { ToolDeps } from "../../src/tools/deps.js";
+import { noPruneIndex, type WithPrune } from "./fake-prune-index.js";
 import type { ToolResult } from "../../src/tools/types.js";
 import { textOf } from "./text-of.js";
 
@@ -63,7 +64,7 @@ const book = (id: number, tags = ["old"]): Book => ({
 });
 
 /** The re-read after the failed write: no change, or the re-read itself fails. */
-const metaDeps = (calibredb: ReturnType<typeof failing>, reRead: "unchanged" | "throws"): BaseDeps =>
+const metaDeps = (calibredb: ReturnType<typeof failing>, reRead: "unchanged" | "throws"): WithPrune =>
   ({
     config: loadConfig({}),
     content: {
@@ -77,7 +78,8 @@ const metaDeps = (calibredb: ReturnType<typeof failing>, reRead: "unchanged" | "
     calibre: { calibredb },
     sleep: async () => {},
     log,
-  }) as unknown as BaseDeps;
+    ...noPruneIndex,
+  }) as unknown as WithPrune;
 
 interface Case {
   name: string;
@@ -192,7 +194,8 @@ describe("calibre_merge_books — every failed-write outcome on the first step (
       calibre: { calibredb } as unknown as ToolDeps["calibre"],
       extractor: {} as ToolDeps["extractor"],
       log,
-    } as unknown as BaseDeps;
+      ...noPruneIndex,
+    } as unknown as WithPrune;
     return mergeBooksTool.handler({ targetId: 10, sourceIds: [12], mode: "merge", confirm: true }, deps);
   };
 

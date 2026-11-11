@@ -117,6 +117,7 @@ async function annotations(
     filterFields = {
       ...(fr.res.bundle ? { filter: fr.res.bundle.name } : {}),
       ...(fr.res.markers.length > 0 ? { exclusionsApplied: fr.res.markers.map((m) => m.name) } : {}),
+      ...(fr.res.excludedBooks !== undefined ? { exclusionsRemoved: fr.res.excludedBooks } : {}),
     };
   }
 

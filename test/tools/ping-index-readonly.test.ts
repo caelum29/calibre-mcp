@@ -9,6 +9,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
+import { withLiveIds } from "./fake-live-ids.js";
 import { EMBED_DIM, INDEX_VERSION, MODEL_ID } from "../../src/semantic/model.js";
 import { SqliteIndexStore } from "../../src/semantic/store/index.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
@@ -51,7 +52,7 @@ function deps(indexDir: string): PingDeps {
       resolveLibraryId: async () => LIB,
       probeWriteAccess: async () => ({ access: "allowed" as const }),
       libraryInfo: async () => ({ libraryMap: { [LIB]: "Programming Books" }, defaultLibrary: LIB }),
-      search: async () => ({ total: 10 }),
+      search: withLiveIds(async () => ({ total: 10 })),
     } as unknown as ToolDeps["content"],
     calibre: { listLibraries: async () => "" } as unknown as ToolDeps["calibre"],
     extractor: {} as ToolDeps["extractor"],

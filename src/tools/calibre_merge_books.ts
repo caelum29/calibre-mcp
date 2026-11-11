@@ -13,14 +13,16 @@ import { buildSetMetadataArgs } from "../calibre/metadata-fields.js";
 import type { ChangeValue } from "../domain/book-fields.js";
 import { downloadToFile } from "../calibre/http.js";
 import type { Book } from "../domain/book.js";
-import { isSimilarMatch } from "../domain/curation/normalize.js";
+import { workMatch } from "../domain/curation/normalize.js";
 import { CalibreCliError } from "../domain/errors.js";
 import { mergeBuiltinMetadata, mergeCustomMetadata, planFormatMoves } from "../domain/merge.js";
 import type { FormatMove } from "../domain/merge.js";
 import { CoercedBool, CoercedInt, jsonArray } from "./coerce.js";
 import { defineTool } from "./define.js";
 import { fence, toolError, toolOk, errorFromCatch } from "./result.js";
-import type { BaseDeps } from "./deps.js";
+import type { DepsWithIndex } from "./deps.js";
+import type { IndexWriter } from "../semantic/store/types.js";
+import { pruneRemovedBooks } from "../app/prune-removed.js";
 import type { ErrorCode } from "../domain/error-codes.js";
 import {
   settleFailedStep,
@@ -32,6 +34,9 @@ import {
 } from "../app/write-policy.js";
 import { presentFailedWrite, type FailedWrite, type UnconfirmedWording } from "./write-failure.js";
 import { formatOnTarget, sourcesRemoved } from "../app/merge-verify.js";
+
+/** Merge's deps: the library plus the index prune port for trashed sources (#496). */
+export type MergeBooksDeps = DepsWithIndex<Pick<IndexWriter, "deleteBooks">>;
 
 /** One executed (or planned) write step in the merge ledger. */
 interface Step {
@@ -114,11 +119,13 @@ export const mergeBooksTool = defineTool({
     formatMoves: z.array(z.object({ format: z.string(), sourceId: z.number(), action: z.string() })).optional(),
     metadataChanges: z.record(z.string(), z.unknown()).optional(),
     steps: z.array(z.object({ step: z.string(), status: z.string(), note: z.string().optional() })).optional(),
+    // #496: present only when the index prune after the trash step failed — the merge itself committed
+    indexNote: z.string().optional(),
   },
   annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
   write: true,
   writeCall: (args) => args.confirm,
-  handler: async (args, deps) => {
+  handler: async (args, deps: MergeBooksDeps) => {
     try {
       const sourceIds = [...new Set(args.sourceIds)];
       if (sourceIds.length === 0) {
@@ -170,11 +177,18 @@ export const mergeBooksTool = defineTool({
       // Advisory only — merge never refuses on dissimilarity (#38 Q5).
       const warnings: string[] = [];
       for (const s of sources) {
-        // Different key, different edition/volume, or a title with no letters (#241, #242).
-        if (!isSimilarMatch(target, s)) {
+        // Same verdict as find_duplicates scoring (#550): different key, edition/volume or a
+        // title with no letters (#241, #242), or an unmarked title vs a later edition.
+        const match = workMatch(target, s);
+        if (match === "different") {
           warnings.push(
             `Source #${s.id} "${s.title}" does not look like the same work as the target ` +
               `(title, author or edition mismatch). Advisory only — confirm proceeds regardless.`,
+          );
+        } else if (match === "edition?") {
+          warnings.push(
+            `Source #${s.id} "${s.title}" may be a different edition of the target (only one ` +
+              `title names a later edition). Advisory only — confirm proceeds regardless.`,
           );
         }
       }
@@ -281,7 +295,7 @@ interface MergeJob {
  * sources, delete ALWAYS last. Any failure aborts the remaining steps; because nothing
  * is deleted until every prior step verified, an abort never loses data (issue #33).
  */
-async function executeMerge(deps: BaseDeps, job: MergeJob) {
+async function executeMerge(deps: MergeBooksDeps, job: MergeJob) {
   const { target, sourceIds, mode } = job;
   const libId = await deps.content.resolveLibraryId(job.library);
   const base = deps.config.serverUrl.replace(/\/+$/, "");
@@ -433,11 +447,13 @@ async function executeMerge(deps: BaseDeps, job: MergeJob) {
   }
 
   for (const s of steps) if (s.status === "pending") s.status = "not-run";
-  return ledgerResult(job, steps);
+  // "done" = calibredb replied or the re-read confirmed every source gone: the index follows (#496)
+  const indexNote = removeStep?.status === "done" ? pruneRemovedBooks(deps, libId, sourceIds) : undefined;
+  return ledgerResult(job, steps, indexNote);
 }
 
 /** Classify the ledger per issue #33: isError ONLY when nothing was committed. */
-function ledgerResult(job: MergeJob, steps: Step[]) {
+function ledgerResult(job: MergeJob, steps: Step[], indexNote?: string) {
   const { target, sourceIds, mode } = job;
   const failed = steps.filter((s) => s.status === "failed");
   const committed = steps.some((s) => s.status === "done");
@@ -448,6 +464,7 @@ function ledgerResult(job: MergeJob, steps: Step[]) {
     mode,
     warnings: job.warnings,
     steps: steps.map(({ step, status, note }) => ({ step, status, note })),
+    ...(indexNote ? { indexNote } : {}),
   };
 
   if (failed.length === 0) {
@@ -457,7 +474,8 @@ function ledgerResult(job: MergeJob, steps: Step[]) {
       steps.length === 0
         ? `Nothing to do — #${target.id} already has every source format and no metadata differs.`
         : `Merged ${sourceIds.length} source(s) into #${target.id}.${kept}${trashed}`;
-    return toolOk([{ type: "text", text: `${summary}\nSteps:\n${ledger}` }], {
+    const note = indexNote ? `\n${indexNote}` : "";
+    return toolOk([{ type: "text", text: `${summary}\nSteps:\n${ledger}${note}` }], {
       ...structured,
       status: "merged",
     });
