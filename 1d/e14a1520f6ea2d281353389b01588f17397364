@@ -1,0 +1,25 @@
+test/domain/curation/same-work-550.test.ts
+  s_6b059008ba1d3f::t_f5ee2190e414ad 1-113
+  s_6b059008ba1d3f::t_dd42512187c3e0 114-135
+test/tools/find-duplicates.handler.test.ts
+  s_6b059008ba1d3f::t_212fba57cd5cfc 174-210
+  s_6b059008ba1d3f::t_8697d0825317f1 211-218
+test/tools/merge-books.handler.test.ts
+  s_6b059008ba1d3f::t_212fba57cd5cfc 180-191
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1de14a1520f6ea2d281353389b01588f17397364",
+  "prompts": {},
+  "sessions": {
+    "s_6b059008ba1d3f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "acdc1069-4417-49fb-8338-88e8e14b0132",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
