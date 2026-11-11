@@ -593,6 +593,10 @@ step, and the text says the same. When exactly one library book has the reported
 (ignoring case, accents and punctuation), `duplicateOf` and the text name it, e.g.
 `Not added: calibredb skipped …/free-as-in-freedom.epub "Free as in Freedom" as a duplicate of book #928 (same title and author).`
 With no single match, it says the matching book could not be identified, and does not guess.
+When calibredb adds nothing and its error output is not a duplicate report (a traceback,
+`Unsupported format`, a permission error), the result is `skipped: "unknown"`, with calibredb's
+own line in `reason` (and the text) and a `hint` to check the file. It is never labelled a
+duplicate. Empty error output still counts as a duplicate skip.
 
 After the add, a read-only duplicate probe checks each new book against the library, including
 other books added in the same call. It flags a book with the same ISBN, or the same work as

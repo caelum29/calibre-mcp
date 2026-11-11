@@ -51,6 +51,38 @@ export function parseSkippedTitles(stderr: string): string[] {
   return titles;
 }
 
+/** Why an add came back with no new ids (#555). */
+type NoIdsOutcome = { kind: "duplicate"; title?: string } | { kind: "unknown"; said: string };
+
+// Longest calibredb excerpt quoted back; a traceback must not flood the result.
+const SAID_MAX = 300;
+
+/**
+ * Classify a no-new-ids add. A parsed duplicate report (stderr, or stdout) → duplicate. Empty
+ * stderr → duplicate too: the report format comes from Calibre's code, not a live capture, so
+ * an unparsed real skip must keep its label. Any other stderr is an unexplained failure.
+ */
+export function classifyNoIds(stdout: string, stderr: string): NoIdsOutcome {
+  for (const stream of [stderr, stdout]) {
+    if (stream.split(/\r?\n/).some((l) => l.includes("--duplicates"))) {
+      return { kind: "duplicate", title: parseSkippedTitles(stream)[0] };
+    }
+  }
+  const lines = stderr
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (lines.length === 0) return { kind: "duplicate" };
+  // a traceback's useful line is its last one (the exception), not "Traceback (most recent…"
+  const said = lines.some((l) => l.startsWith("Traceback")) ? lines[lines.length - 1]! : lines[0]!;
+  return { kind: "unknown", said: said.length > SAID_MAX ? `${said.slice(0, SAID_MAX)}…` : said };
+}
+
+/** Next step after an add that added nothing for an unknown reason (#555). */
+const UNKNOWN_HINT =
+  "Check the file (format, permissions, not corrupt) and retry; calibre_search for its title shows whether " +
+  "it is already in the library.";
+
 /** Next step for a skipped add, shared by text and structuredContent (#555). */
 function skipHint(matchId: number | undefined, title: string | undefined): string {
   if (matchId !== undefined) {
@@ -85,7 +117,9 @@ export const addBookTool = defineTool({
       .optional(),
     notProbed: z.array(z.number()).optional(),
     // set when calibredb added nothing: it skips a title+author duplicate (#555)
-    skipped: z.enum(["duplicate"]).optional(),
+    skipped: z.enum(["duplicate", "unknown"]).optional(),
+    // calibredb's own words when it added nothing for an unknown reason
+    reason: z.string().optional(),
     duplicateOf: z.number().optional(),
     hint: z.string().optional(),
   },
@@ -118,7 +152,7 @@ export const addBookTool = defineTool({
       }
 
       const addedIds = parseAddedIds(stdout);
-      if (addedIds.length === 0) return await skippedResult(deps, check.resolved, stderr, args.library);
+      if (addedIds.length === 0) return await noIdsResult(deps, check.resolved, stdout, stderr, args.library);
       const summary = `Added ${addedIds.length} book(s) (id ${addedIds.join(", ")}) from ${check.resolved}.`;
 
       // Advisory only (#204): calibredb's duplicate check misses raw-titled imports, so look again.
@@ -151,17 +185,35 @@ export const addBookTool = defineTool({
 });
 
 /**
- * calibredb added nothing: it skips a file whose title+author already exist (#555). Say so in
- * both channels, naming the existing book only when exactly one title matches.
+ * calibredb added nothing (#555). A duplicate skip says so in both channels, naming the
+ * existing book only when exactly one title matches; any other cause is reported as unknown.
  */
-async function skippedResult(deps: BaseDeps, resolved: string, stderr: string, library?: string): Promise<ToolResult> {
-  const title = parseSkippedTitles(stderr)[0];
+async function noIdsResult(
+  deps: BaseDeps,
+  resolved: string,
+  stdout: string,
+  stderr: string,
+  library?: string,
+): Promise<ToolResult> {
+  const outcome = classifyNoIds(stdout, stderr);
+  if (outcome.kind === "unknown") {
+    // not a duplicate: say what calibredb said, never guess a reason (#555 review)
+    const text = `No book was added from ${resolved}; calibredb said: ${outcome.said}\nNext: ${UNKNOWN_HINT}`;
+    return toolOk([{ type: "text", text }], {
+      addedIds: [],
+      path: resolved,
+      skipped: "unknown",
+      reason: outcome.said,
+      hint: UNKNOWN_HINT,
+    });
+  }
+  const title = outcome.title;
   let matchId: number | undefined;
   if (title !== undefined) {
     try {
       matchId = await findSkippedDuplicate(deps, title, library);
     } catch (err) {
-      // a failed lookup only loses the id; the skip itself is certain
+      // a failed lookup only loses the id, never the skip result
       deps.log.warn("add_book skipped-duplicate lookup failed", {
         reason: err instanceof Error ? err.message : String(err),
       });
