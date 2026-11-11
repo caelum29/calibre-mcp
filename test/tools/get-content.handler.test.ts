@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { getContentTool } from "../../src/tools/calibre_get_content.js";
+import { encodeContentCursor } from "../../src/tools/content-cursor.js";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
@@ -23,12 +24,17 @@ const baseBook: Book = {
 interface FakeOpts {
   book?: Partial<Book>;
   getText?: () => Promise<ExtractedText>;
+  // records which book/library the handler asked for (cursor-only calls, #536)
+  getBookCalls?: { id: number; library?: string }[];
 }
 
 // Full-port fakes (#316): stubs for what the handler reads, the rest throw if reached.
 function deps(opts: FakeOpts = {}): BaseDeps {
   const content = fakeContent({
-    getBook: async (): Promise<Book> => ({ ...baseBook, ...opts.book }),
+    getBook: async (id: number, library?: string): Promise<Book> => {
+      opts.getBookCalls?.push({ id, library });
+      return { ...baseBook, ...opts.book };
+    },
     resolveLibraryId: async () => asLibId("Programming_Books"),
   });
   const extractor = fakeExtractor({
@@ -152,6 +158,90 @@ describe("calibre_get_content handler", () => {
       );
       expect(r.isError).toBeFalsy();
       expect((r.content[0] as { text: string }).text).not.toContain("More remains");
+    });
+  });
+
+  // The cursor binds {id, format}, and the description says to pass nextCursor verbatim,
+  // so a model that drops id on the follow-up call must still continue the book (#536).
+  describe("cursor-only call (#536)", () => {
+    const cursorFor = (id: number, format: string, offset = 8_000) => encodeContentCursor({ offset, id, format });
+    const textOf = (r: { content: unknown[] }) => (r.content[0] as { text: string }).text;
+
+    it("continues the book the cursor was minted for when id is omitted", async () => {
+      const calls: { id: number; library?: string }[] = [];
+      const r = await getContentTool.handler(
+        args({ id: undefined, cursor: cursorFor(7, "pdf") }),
+        deps({ book: { id: 7 }, getBookCalls: calls }),
+      );
+      expect(r.isError).toBeFalsy();
+      expect(calls[0]?.id).toBe(7);
+      expect((r.structuredContent as { offset: number }).offset).toBe(8_000);
+    });
+
+    it("walks a nextCursor chain without id", async () => {
+      const first = await getContentTool.handler(args(), deps());
+      const cursor = first.structuredContent?.nextCursor as string;
+      const second = await getContentTool.handler(args({ id: undefined, cursor }), deps());
+      expect(second.isError).toBeFalsy();
+      expect((second.structuredContent as { offset: number }).offset).toBe(8_000);
+    });
+
+    it("takes the format from the cursor, not the default preference", async () => {
+      // epub outranks pdf in the default preference, so only the cursor can pick pdf
+      const r = await getContentTool.handler(
+        args({ id: undefined, cursor: cursorFor(1, "pdf") }),
+        deps({ book: { formats: ["epub", "pdf"] } }),
+      );
+      expect(r.isError).toBeFalsy();
+      expect(r.structuredContent).toMatchObject({ format: "pdf" });
+    });
+
+    it("errors when an explicit format disagrees with the cursor's format", async () => {
+      const r = await getContentTool.handler(
+        args({ id: undefined, format: "epub", cursor: cursorFor(1, "pdf") }),
+        deps({ book: { formats: ["epub", "pdf"] } }),
+      );
+      expect(r.isError).toBe(true);
+      expect(textOf(r)).toContain("minted for book 1 (pdf)");
+    });
+
+    it("passes the library param through (a cursor does not carry the library)", async () => {
+      const calls: { id: number; library?: string }[] = [];
+      await getContentTool.handler(
+        args({ id: undefined, cursor: cursorFor(1, "pdf"), library: "Humanities" }),
+        deps({ getBookCalls: calls }),
+      );
+      expect(calls[0]).toEqual({ id: 1, library: "Humanities" });
+    });
+
+    it("gives the invalid-cursor message, not 'Provide id', for an undecodable cursor", async () => {
+      const r = await getContentTool.handler(args({ id: undefined, cursor: "char:40000" }), deps());
+      expect(r.isError).toBe(true);
+      expect(textOf(r)).toContain("Invalid cursor");
+    });
+
+    it("keeps the cursor/offset mutual-exclusion error without id", async () => {
+      const r = await getContentTool.handler(args({ id: undefined, cursor: cursorFor(1, "pdf"), offset: 100 }), deps());
+      expect(r.isError).toBe(true);
+      expect(textOf(r)).toContain("not both");
+    });
+
+    it("still errors when id names a different book than the cursor", async () => {
+      const r = await getContentTool.handler(args({ id: 2, cursor: cursorFor(1, "pdf") }), deps({ book: { id: 2 } }));
+      expect(r.isError).toBe(true);
+      expect(textOf(r)).toContain("minted for book 1");
+    });
+
+    it("returns the chapter map of the cursor's book with structure=true", async () => {
+      // the map ignores the cursor's offset but still needs to know which book
+      const calls: { id: number; library?: string }[] = [];
+      const r = await getContentTool.handler(
+        args({ id: undefined, structure: true, cursor: cursorFor(7, "pdf") }),
+        deps({ book: { id: 7 }, getBookCalls: calls }),
+      );
+      expect(r.isError).toBeFalsy();
+      expect(calls[0]?.id).toBe(7);
+      expect(r.structuredContent).toHaveProperty("chapters");
     });
   });
 
