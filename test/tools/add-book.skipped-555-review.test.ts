@@ -1,5 +1,5 @@
 // #555 review: only a duplicate report (or empty stderr) is a duplicate skip; any other
-// no-ids output is an unknown failure. Plus the parser variants and a failing lookup.
+// no-ids output is an error (follow-up to #555). Plus the parser variants and a failing lookup.
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -24,9 +24,10 @@ afterAll(() => rmSync(root, { recursive: true, force: true }));
 
 const HEADER =
   "The following books were not added as they already exist in the database (see --duplicates option or --automerge option):";
-const UNKNOWN_HINT =
-  "Check the file (format, permissions, not corrupt) and retry; calibre_search for its title shows whether " +
-  "it is already in the library.";
+const FORMAT_HINT =
+  "Convert the file to a format Calibre imports (EPUB, PDF, MOBI, AZW3…), then retry calibre_add_book.";
+const PERMISSION_HINT = "Give the Calibre server process read access to the file, then retry calibre_add_book.";
+const OTHER_HINT = "Check that the file opens and is not corrupt, then retry calibre_add_book.";
 
 const free928: Book = {
   id: 928,
@@ -67,64 +68,72 @@ const text = (r: { content: { type: string; text?: string }[] }) =>
   r.content.map((b) => (b.type === "text" ? b.text : "")).join("\n");
 
 describe("calibre_add_book no-ids outcomes (#555 review)", () => {
-  it("reports a Python traceback as unknown, quoting the exception line", async () => {
+  // Follow-up to #555: a non-duplicate no-ids add is an error in our own words, not `skipped: "unknown"`.
+  it("returns a Python traceback as a calibre_error without quoting it", async () => {
     const stderr =
       "Traceback (most recent call last):\n" +
       '  File "/Applications/calibre.app/Contents/Frameworks/plugins/python-lib.bypy.frozen/calibre/db/cli/main.py", line 1\n' +
       "ValueError: invalid literal for int() with base 10: 'x'\n";
     const r = await run({ stderr });
     expect(r.structuredContent).toEqual({
-      addedIds: [],
-      path: real,
-      skipped: "unknown",
-      reason: "ValueError: invalid literal for int() with base 10: 'x'",
-      hint: UNKNOWN_HINT,
+      error: `No book was added from ${real}: calibredb reported an error (details are in the server log).`,
+      errorCode: "calibre_error",
+      hint: OTHER_HINT,
     });
   });
 
-  it("reports an Unsupported format message as unknown", async () => {
+  it("returns an Unsupported format message as an invalid_input error", async () => {
     const r = await run({ stderr: "Unsupported format: xyz\n" });
     expect(r.structuredContent).toEqual({
-      addedIds: [],
-      path: real,
-      skipped: "unknown",
-      reason: "Unsupported format: xyz",
-      hint: UNKNOWN_HINT,
+      error: `No book was added from ${real}: Calibre does not support this file's format.`,
+      errorCode: "invalid_input",
+      hint: FORMAT_HINT,
     });
   });
 
-  it("reports a PermissionError as unknown", async () => {
+  it("returns a PermissionError as an invalid_input error", async () => {
     const stderr = `PermissionError: [Errno 13] Permission denied: '${real}'\n`;
     const r = await run({ stderr });
     expect(r.structuredContent).toEqual({
-      addedIds: [],
-      path: real,
-      skipped: "unknown",
-      reason: `PermissionError: [Errno 13] Permission denied: '${real}'`,
-      hint: UNKNOWN_HINT,
+      error: `No book was added from ${real}: the Calibre server could not read the file (permission denied).`,
+      errorCode: "invalid_input",
+      hint: PERMISSION_HINT,
     });
   });
 
-  it("says the same in the text: no book added, calibredb's words, the next step", async () => {
+  it("says the same in the text: no book added, why, the code and the next step", async () => {
     const r = await run({ stderr: "Unsupported format: xyz\n" });
     expect(text(r)).toBe(
-      `No book was added from ${real}; calibredb said: Unsupported format: xyz\nNext: ${UNKNOWN_HINT}`,
+      `Error: No book was added from ${real}: Calibre does not support this file's format.\n` +
+        `Code: invalid_input\nNext: ${FORMAT_HINT}`,
     );
   });
 
-  it("does not use duplicate wording for an unknown failure", async () => {
+  it("does not use duplicate wording for a failure", async () => {
     const r = await run({ stderr: "Unsupported format: xyz\n" });
-    expect([text(r).includes("duplicate"), r.isError]).toEqual([false, undefined]);
+    expect([text(r).includes("duplicate"), r.isError]).toEqual([false, true]);
   });
 
-  it("caps a very long calibredb line", async () => {
+  it("never quotes a very long calibredb line", async () => {
     const r = await run({ stderr: `${"e".repeat(400)}\n` });
-    expect(r.structuredContent?.reason).toBe(`${"e".repeat(300)}…`);
+    expect(text(r).includes("eeee")).toBe(false);
   });
 
   it("treats whitespace-only stderr as empty (a duplicate skip)", async () => {
     const r = await run({ stderr: "  \n\t\n" });
     expect([r.structuredContent?.skipped, r.structuredContent?.duplicateOf]).toEqual(["duplicate", undefined]);
+  });
+
+  it("keeps a stdout duplicate report a skip when stderr carries a warning", async () => {
+    const r = await run({
+      stdout: `${HEADER}\n  Free as in Freedom\n    ${real}\n`,
+      stderr: "Warning: font cache rebuilt\n",
+    });
+    expect([r.isError, r.structuredContent?.skipped, r.structuredContent?.duplicateOf]).toEqual([
+      undefined,
+      "duplicate",
+      928,
+    ]);
   });
 
   it("finds the duplicate report in stdout too", async () => {

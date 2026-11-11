@@ -85,13 +85,9 @@
             },
             "type": "array"
           },
-          "reason": {
-            "type": "string"
-          },
           "skipped": {
             "enum": [
-              "duplicate",
-              "unknown"
+              "duplicate"
             ],
             "type": "string"
           }
