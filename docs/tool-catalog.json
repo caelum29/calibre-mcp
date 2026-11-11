@@ -157,6 +157,9 @@
             },
             "type": "array"
           },
+          "exclusionsRemoved": {
+            "type": "number"
+          },
           "filter": {
             "type": "string"
           },
@@ -2117,6 +2120,9 @@
             },
             "type": "array"
           },
+          "exclusionsRemoved": {
+            "type": "number"
+          },
           "filter": {
             "type": "string"
           },
@@ -2310,6 +2316,9 @@
               "type": "string"
             },
             "type": "array"
+          },
+          "exclusionsRemoved": {
+            "type": "number"
           },
           "figures": {
             "items": {

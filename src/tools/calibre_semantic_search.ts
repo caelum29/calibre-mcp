@@ -70,6 +70,7 @@ export const semanticSearchTool = defineTool({
     note: z.string().optional(),
     filter: z.string().optional(),
     exclusionsApplied: z.array(z.string()).optional(),
+    exclusionsRemoved: z.number().optional(),
     bookIds: z.array(z.number()).optional(),
     // Index generation that produced every location in this response (#136) — charStart/
     // charEnd/charOffset/page are valid only within it; clients persisting citations pin to it.
@@ -248,10 +249,15 @@ interface FilterCtx {
 const UNSCOPED: FilterCtx = { fRes: { markers: [] } };
 
 /** filter/exclusions mirrored into structuredContent + the board payload. */
-function filterFields(scope: FilterCtx): { filter?: string; exclusionsApplied?: string[] } {
+function filterFields(scope: FilterCtx): {
+  filter?: string;
+  exclusionsApplied?: string[];
+  exclusionsRemoved?: number;
+} {
   return {
     ...(scope.fRes.bundle ? { filter: scope.fRes.bundle.name } : {}),
     ...(scope.fRes.markers.length > 0 ? { exclusionsApplied: scope.fRes.markers.map((m) => m.name) } : {}),
+    ...(scope.fRes.excludedBooks !== undefined ? { exclusionsRemoved: scope.fRes.excludedBooks } : {}),
   };
 }
 

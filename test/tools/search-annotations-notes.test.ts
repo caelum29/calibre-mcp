@@ -171,6 +171,14 @@ describe("calibre_search mode=annotations (#500)", () => {
     expect(textOf(r)).toContain("filter: Rust");
   });
 
+  it("should_report_how_many_books_the_markers_removed_from_the_filter_in_both_channels", async () => {
+    // the fake content.search answers total 7 for every query, incl. the removed-books count
+    const f = deps(() => raw("annotations-search-scoped"));
+    const r = await run({ query: "commit", mode: "annotations", filter: "Rust" }, f.d);
+    expect(textOf(r)).toContain("exclusions applied: [-hidden] removed 7 books from the filter");
+    expect(sc(r)).toMatchObject({ exclusionsApplied: ["-hidden"], exclusionsRemoved: 7 });
+  });
+
   it("should_apply_exclusion_markers_without_a_filter", async () => {
     const f = deps(() => raw("annotations-search-commit"));
     await run({ query: "commit", mode: "annotations" }, f.d);

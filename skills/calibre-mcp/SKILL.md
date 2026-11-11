@@ -67,6 +67,9 @@ Use them to scope work to a topic instead of the whole 800-book library:
 - **Exclusion markers**: bundles named `-something` are auto-subtracted from discovery searches
   (`calibre_search`, `calibre_semantic_search` library scope). The result always says what was
   subtracted (`exclusions applied: […]`); pass `include_excluded: true` to see everything.
+  Markers are global: they also cut an explicit `filter`, and the note says how many of that
+  bundle's books they removed (`… removed N books from the filter`) — a `(0 books)` filter with
+  that note is not an empty bundle, retry with `include_excluded: true`.
   Targeting the marker itself (`filter: "-outdated"`) shows exactly its books.
 - **Maintenance sees everything**: `quality_report`/`find_duplicates`/`bulk_update` accept
   `filter` but never auto-subtract markers — noise books need curation most.
