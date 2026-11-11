@@ -1,0 +1,21 @@
+src/ui/debug.js
+  s_c132e1c003220b::t_417e9cead690c0 65-90
+src/ui/generated/widgets.ts
+  s_c132e1c003220b::t_4b0aaac3d3bf24 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eb34d361860e783ecbc458025fd758fe6b2bdfb1",
+  "prompts": {},
+  "sessions": {
+    "s_c132e1c003220b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "95f1021e-cd48-4ccb-81b2-69681e566736",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
