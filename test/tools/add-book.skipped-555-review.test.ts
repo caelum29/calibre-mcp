@@ -69,7 +69,7 @@ const text = (r: { content: { type: string; text?: string }[] }) =>
 
 describe("calibre_add_book no-ids outcomes (#555 review)", () => {
   // Follow-up to #555: a non-duplicate no-ids add is an error in our own words, not `skipped: "unknown"`.
-  it("returns a Python traceback as a write_failed error without quoting it", async () => {
+  it("returns a Python traceback as a calibre_error without quoting it", async () => {
     const stderr =
       "Traceback (most recent call last):\n" +
       '  File "/Applications/calibre.app/Contents/Frameworks/plugins/python-lib.bypy.frozen/calibre/db/cli/main.py", line 1\n' +
@@ -77,7 +77,7 @@ describe("calibre_add_book no-ids outcomes (#555 review)", () => {
     const r = await run({ stderr });
     expect(r.structuredContent).toEqual({
       error: `No book was added from ${real}: calibredb reported an error (details are in the server log).`,
-      errorCode: "write_failed",
+      errorCode: "calibre_error",
       hint: OTHER_HINT,
     });
   });
@@ -91,12 +91,12 @@ describe("calibre_add_book no-ids outcomes (#555 review)", () => {
     });
   });
 
-  it("returns a PermissionError as a write_failed error", async () => {
+  it("returns a PermissionError as an invalid_input error", async () => {
     const stderr = `PermissionError: [Errno 13] Permission denied: '${real}'\n`;
     const r = await run({ stderr });
     expect(r.structuredContent).toEqual({
       error: `No book was added from ${real}: the Calibre server could not read the file (permission denied).`,
-      errorCode: "write_failed",
+      errorCode: "invalid_input",
       hint: PERMISSION_HINT,
     });
   });

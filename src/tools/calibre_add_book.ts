@@ -36,19 +36,21 @@ export function parseAddedIds(stdout: string): number[] {
 }
 
 /** Our own words and one next step per failure cause; calibredb's text stays in the log. */
-const FAILURES: Record<AddFailureCause, { code: "invalid_input" | "write_failed"; why: string; hint: string }> = {
+const FAILURES: Record<AddFailureCause, { code: "invalid_input" | "calibre_error"; why: string; hint: string }> = {
   unsupported_format: {
     code: "invalid_input",
     why: "Calibre does not support this file's format.",
     hint: "Convert the file to a format Calibre imports (EPUB, PDF, MOBI, AZW3…), then retry calibre_add_book.",
   },
+  // the user's file can't be read: an input problem, not a server fault (docs/STABILITY.md)
   permission_denied: {
-    code: "write_failed",
+    code: "invalid_input",
     why: "the Calibre server could not read the file (permission denied).",
     hint: "Give the Calibre server process read access to the file, then retry calibre_add_book.",
   },
+  // nothing reached the library, so not write_failed ("a write reached Calibre and failed")
   other: {
-    code: "write_failed",
+    code: "calibre_error",
     why: "calibredb reported an error (details are in the server log).",
     hint: "Check that the file opens and is not corrupt, then retry calibre_add_book.",
   },
@@ -172,7 +174,7 @@ async function noIdsResult(
     const message = `No book was added from ${resolved}: ${f.why}`;
     return f.code === "invalid_input"
       ? toolError("invalid_input", message, { hint: f.hint })
-      : toolError("write_failed", message, { hint: f.hint });
+      : toolError("calibre_error", message, { hint: f.hint });
   }
   const title = outcome.title;
   let matchId: number | undefined;

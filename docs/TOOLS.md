@@ -600,8 +600,8 @@ step, and the text says the same. When exactly one library book has the reported
 With no single match, it says the matching book could not be identified, and does not guess.
 When calibredb adds nothing and its error output is not a duplicate report, the call is an
 error (`isError`), never a skip. The message says in plain words why no book was added, with
-one next step. An unsupported format is `invalid_input`; a permission error or any other
-failure is `write_failed`. calibredb's raw output (tracebacks included) goes to the server log,
+one next step. An unsupported format or an unreadable file (permission denied) is
+`invalid_input`; any other failure is `calibre_error`. calibredb's raw output (tracebacks included) goes to the server log,
 not into the result. Empty error output still counts as a duplicate skip.
 
 After the add, a read-only duplicate probe checks each new book against the library, including
