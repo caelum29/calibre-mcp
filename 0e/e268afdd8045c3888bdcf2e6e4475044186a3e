@@ -1,0 +1,28 @@
+src/server.ts
+  s_d9a4590e130330::t_d692506fe7ea7f 24,147,158-164
+docs/TOOLS.md
+  s_d9a4590e130330::t_630c067db4ab76 667-669
+src/tools/write-gate.ts
+  s_d9a4590e130330::t_964a5d7ec92757 57-58,72-75
+  s_d9a4590e130330::t_d692506fe7ea7f 5,8-13,41-56,59-71,76-81
+docs/tool-catalog.json
+  s_d9a4590e130330::t_9bd2204e52f3a4 617-620,691-694,1433-1436,1570-1573,1948-1951
+skills/calibre-mcp/SKILL.md
+  s_d9a4590e130330::t_630c067db4ab76 27-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0ee268afdd8045c3888bdcf2e6e4475044186a3e",
+  "prompts": {},
+  "sessions": {
+    "s_d9a4590e130330": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "59545b9e-4b8e-4234-a52d-c531f3be42d7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
