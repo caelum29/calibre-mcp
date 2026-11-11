@@ -1,0 +1,26 @@
+test/tools/semantic-search.handler.test.ts
+  s_f458d4f89d9ff6::t_7a7f16eda80125 754-780
+test/tools/search-annotations-notes.test.ts
+  s_f458d4f89d9ff6::t_7a7f16eda80125 174-181
+src/app/bundles.ts
+  s_f458d4f89d9ff6::t_f8125678da218e 275-278,280-291,294-295
+test/tools/bundle-filter.test.ts
+  s_f458d4f89d9ff6::t_7a7f16eda80125 4,12-18,20-21,260-294
+  s_f458d4f89d9ff6::t_9e202c38fcf559 295
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5ee8f3892307a91d632e02a869f822f4cfa3db73",
+  "prompts": {},
+  "sessions": {
+    "s_f458d4f89d9ff6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "92d6f525-fac6-4721-af08-697d3b914e9e",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
