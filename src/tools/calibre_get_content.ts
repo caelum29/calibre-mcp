@@ -15,6 +15,26 @@ import { bookIdArg } from "./resolve-id.js";
 import { resolveNumericId } from "../app/resolve-id.js";
 import { fence, toolError, toolOk, bookNotFound, errorFromCatch } from "./result.js";
 
+const INVALID_CURSOR =
+  "Invalid cursor — pass the exact nextCursor token from the previous calibre_get_content response (it is opaque), or use the numeric offset param to jump to a char position. Cursors minted before a server upgrade are also invalid: restart the book from the beginning.";
+
+/**
+ * The book a call targets: an explicit id/bookId, else the book a cursor was minted for.
+ * The cursor binds {id, format} and the model is told to pass nextCursor verbatim, so it
+ * reasonably drops id on the follow-up call (#536). `format` is set only for cursor-only calls.
+ */
+function targetBook(a: {
+  id?: number | string;
+  bookId?: number | string;
+  cursor?: string;
+}): { id: number | string; format?: string } | { error: string } {
+  const explicit = bookIdArg(a);
+  if (explicit !== undefined) return { id: explicit };
+  if (a.cursor === undefined) return { error: "Provide id (the book's db id or uuid)." };
+  const cur = decodeContentCursor(a.cursor);
+  return cur ? { id: cur.id, format: cur.format } : { error: INVALID_CURSOR };
+}
+
 export const getContentTool = defineTool({
   name: "calibre_get_content",
   title: "Read book text",
@@ -72,14 +92,16 @@ export const getContentTool = defineTool({
   },
   annotations: { readOnlyHint: true, openWorldHint: true },
   handler: async (args, deps, ctx) => {
-    const idArg = bookIdArg(args);
-    if (idArg === undefined) return toolError("invalid_input", "Provide id (the book's db id or uuid).");
+    const target = targetBook(args);
+    if ("error" in target) return toolError("invalid_input", target.error);
+    const idArg = target.id;
     try {
       const numericId = await resolveNumericId(deps, idArg, args.library);
       if (numericId === undefined) return toolError("not_found", `No book with id/uuid ${idArg}`);
 
       const book = await deps.content.getBook(numericId, args.library);
-      const fmt = chooseExtractFormat(book.formats, args.format);
+      // an explicit format still wins; the cursor match check below then decides
+      const fmt = chooseExtractFormat(book.formats, args.format ?? target.format);
       if (!fmt) {
         const avail = book.formats.length ? book.formats.join(", ") : "none";
         return toolError(
@@ -186,12 +208,7 @@ export const getContentTool = defineTool({
         );
       }
       const cur = decodeContentCursor(args.cursor);
-      if (args.cursor !== undefined && !cur) {
-        return toolError(
-          "invalid_input",
-          "Invalid cursor — pass the exact nextCursor token from the previous calibre_get_content response (it is opaque), or use the numeric offset param to jump to a char position. Cursors minted before a server upgrade are also invalid: restart the book from the beginning.",
-        );
-      }
+      if (args.cursor !== undefined && !cur) return toolError("invalid_input", INVALID_CURSOR);
       if (cur && (cur.id !== numericId || cur.format !== fmt)) {
         return toolError(
           "invalid_input",
@@ -230,7 +247,7 @@ export const getContentTool = defineTool({
       });
     } catch (err) {
       if (err instanceof CalibreHttpError && err.status === 404) {
-        return bookNotFound(args.id);
+        return bookNotFound(idArg);
       }
       return errorFromCatch(err);
     }
