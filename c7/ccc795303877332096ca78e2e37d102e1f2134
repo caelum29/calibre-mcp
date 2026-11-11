@@ -1,0 +1,19 @@
+test/tools/bundle-filter.test.ts
+  s_f458d4f89d9ff6::t_a8731063910e78 215-251
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c7ccc795303877332096ca78e2e37d102e1f2134",
+  "prompts": {},
+  "sessions": {
+    "s_f458d4f89d9ff6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "92d6f525-fac6-4721-af08-697d3b914e9e",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
