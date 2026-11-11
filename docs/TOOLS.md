@@ -664,7 +664,9 @@ Writes are off by default and protected by two independent switches:
    `CALIBRE_MCP_ENABLE_WRITE` is set (`1` / `true` / `yes`), or you tick *Enable writes* in the
    Claude Desktop bundle settings. The gate works per call: with it off, the preview-first tools
    below stay listed (announced read-only) and their previews work, while the call that would
-   write (`apply: true`, `preview: false`, `confirm: true`) returns `write_disabled`.
+   write (`apply: true`, `preview: false`, `confirm: true`) returns `write_disabled`. Each such
+   preview says so up front: `writeEnabled: false` in `structuredContent` and a text line naming
+   the remedy (`… needs writes enabled (CALIBRE_MCP_ENABLE_WRITE).`).
    `calibre_update_book` and `calibre_add_book` have no preview, so they stay hidden.
 2. **The Calibre-side gate.** The Content Server must permit local writes. The server embedded
    in the Calibre GUI is read-only by default — enable *Sharing over the net → Advanced → allow
