@@ -811,12 +811,16 @@
                 },
                 "mixedLanguages": {
                   "type": "boolean"
+                },
+                "workMatch": {
+                  "type": "string"
                 }
               },
               "required": [
                 "bookIds",
                 "mergeSafety",
-                "mixedLanguages"
+                "mixedLanguages",
+                "workMatch"
               ],
               "type": "object"
             },
@@ -839,6 +843,9 @@
           },
           "offset": {
             "type": "number"
+          },
+          "workMatch": {
+            "type": "string"
           }
         },
         "required": [
