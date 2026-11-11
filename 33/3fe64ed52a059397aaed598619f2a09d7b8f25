@@ -1,0 +1,53 @@
+test/tools/ping-review.test.ts
+  s_a12fa420782097::t_0bce21a0587509 99
+  s_a12fa420782097::t_6c69bca8814a0f 8,32,57
+test/tools/ping-index-readonly.test.ts
+  s_a12fa420782097::t_b2160d78dfad35 12
+  s_a12fa420782097::t_6c69bca8814a0f 55
+test/app/library-index-440.test.ts
+  s_a12fa420782097::t_2320fa1eb05611 44
+test/app/library-index.test.ts
+  s_a12fa420782097::t_b0ac3034e44f46 24-30,42-43,84,109-118,154-163
+src/app/library-index.ts
+  s_a12fa420782097::t_2739ba7352b6cd 28-32,44-47,57-61,134-135
+test/tools/ping-index-budget.test.ts
+  s_a12fa420782097::t_23222e4ed7eee7 111-113
+  s_a12fa420782097::t_6c69bca8814a0f 11,37,49
+  s_a12fa420782097::t_0bce21a0587509 143-144
+docs/SEMANTIC-SEARCH.md
+  s_a12fa420782097::t_037695aa15a96b 62-69
+test/tools/ping-header.test.ts
+  s_a12fa420782097::t_0bce21a0587509 118
+  s_a12fa420782097::t_6c69bca8814a0f 8,43,56
+docs/TOOLS.md
+  s_a12fa420782097::t_037695aa15a96b 35,608-610,633-634
+test/tools/prune-removed-496-guards.test.ts
+  s_a12fa420782097::t_1aa5ad6b42b595 1-119
+test/tools/ping-index-440.test.ts
+  s_a12fa420782097::t_b2160d78dfad35 9
+  s_a12fa420782097::t_6c69bca8814a0f 36,38,64
+test/app/library-index-live-walk-496.test.ts
+  s_a12fa420782097::t_1b6d06cd5241a3 1-83
+  s_a12fa420782097::t_a88c07ca55a80f 84-92
+src/tools/calibre_ping.ts
+  s_a12fa420782097::t_fe845e775ff8b2 256-261
+test/tools/fake-live-ids.ts
+  s_a12fa420782097::t_6c69bca8814a0f 8,13-15
+  s_a12fa420782097::t_6141b03475531d 1-7,9-12,16-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "333fe64ed52a059397aaed598619f2a09d7b8f25",
+  "prompts": {},
+  "sessions": {
+    "s_a12fa420782097": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "950e0666-58f9-4b58-b61d-b219db79ab11",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
