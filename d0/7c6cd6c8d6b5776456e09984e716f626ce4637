@@ -1,0 +1,19 @@
+src/calibre/figure-inventory.ts
+  s_783bfe5aaa36cb::t_883df9bf9ba281 308-314,316
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d07c6cd6c8d6b5776456e09984e716f626ce4637",
+  "prompts": {},
+  "sessions": {
+    "s_783bfe5aaa36cb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8aeb92f2-3fc2-4503-b113-fcc3b46514b8",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
