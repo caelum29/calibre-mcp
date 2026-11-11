@@ -432,6 +432,11 @@ invalid ISBNs, author-sort mismatches, series gaps, and suspect (glued/junk) aut
 with `ids`, a `query`, or a specific list of `checks`. The raw-filename findings feed straight
 into `calibre_recover_metadata`.
 
+`raw_filename_title` flags identifiers (`795731065`, `B0CZS7H23N`), file extensions, slugs
+(`modular-monoliths`, `building.large.language.models`), download-site tags (`- PDFDrive.com`,
+`(z-lib.org)`, `- libgen.li`), a `[Source] ` prefix, `Kindle img`, and copy suffixes (` copy`,
+` (1)`). `calibre_recover_metadata` strips these wrappers and searches what is left.
+
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
 | `checks` | array of `missing_metadata` \| `raw_filename_title` \| `isbn_invalid` \| `author_sort_mismatch` \| `series_gaps` \| `authors_suspect` | *(all)* | Which checks to run |
