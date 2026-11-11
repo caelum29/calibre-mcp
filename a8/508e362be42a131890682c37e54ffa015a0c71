@@ -1,0 +1,19 @@
+src/tools/coerce.ts
+  s_f458d4f89d9ff6::t_7f7ac3f38d6eee 73-76,80-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a8508e362be42a131890682c37e54ffa015a0c71",
+  "prompts": {},
+  "sessions": {
+    "s_f458d4f89d9ff6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "92d6f525-fac6-4721-af08-697d3b914e9e",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
