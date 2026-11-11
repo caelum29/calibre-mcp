@@ -1,0 +1,21 @@
+test/tools/prune-removed-496.test.ts
+  s_a12fa420782097::t_1070751354cc08 16,113
+  s_a12fa420782097::t_6789e645062f5d 1-15,17-112,114-247
+  s_a12fa420782097::t_ac8d3661f81fb6 248
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bfdc03ef7a6849431db74291edf18a532b59fff2",
+  "prompts": {},
+  "sessions": {
+    "s_a12fa420782097": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "950e0666-58f9-4b58-b61d-b219db79ab11",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
