@@ -1,0 +1,28 @@
+docs/TOOLS.md
+  s_6b059008ba1d3f::t_e2a5cbe03cc328 596-599
+skills/calibre-mcp/SKILL.md
+  s_6b059008ba1d3f::t_e2a5cbe03cc328 195-196
+src/tools/calibre_add_book.ts
+  s_6b059008ba1d3f::t_c4461e489ab245 188-189
+  s_6b059008ba1d3f::t_17a0fec1fa0e59 54-85,120-122,155,191-210,216
+test/tools/add-book.skipped-555-review.test.ts
+  s_6b059008ba1d3f::t_ea5091ea0c6f70 1-164
+docs/tool-catalog.json
+  s_6b059008ba1d3f::t_e2a5cbe03cc328 88-90,93-94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "43e177efa32b411ab34e5f49bfc345244a2ca41d",
+  "prompts": {},
+  "sessions": {
+    "s_6b059008ba1d3f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "acdc1069-4417-49fb-8338-88e8e14b0132",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
