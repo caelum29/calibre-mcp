@@ -1,0 +1,20 @@
+test/tools/add-book.skipped-555.test.ts
+  s_6b059008ba1d3f::t_584da760bc36c7 1-140
+  s_6b059008ba1d3f::t_5086fedd120a1c 141-148
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "67e6a012788d726164a76cb63fc8b6abdbc66d1e",
+  "prompts": {},
+  "sessions": {
+    "s_6b059008ba1d3f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "acdc1069-4417-49fb-8338-88e8e14b0132",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
