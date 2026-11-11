@@ -74,7 +74,8 @@ export interface ToolDescriptor<Shape extends z.ZodRawShape = z.ZodRawShape, D =
   title: string;
   description: string; // ≤~256 chars, routing-policy prose (DESIGN §2/§9.1)
   inputSchema: Shape;
-  outputSchema?: z.ZodRawShape;
+  // classic ZodType (what every tool builds), so a field can be safeParse-d on its own
+  outputSchema?: Record<string, z.ZodType>;
   annotations: ToolAnnotations;
   /** A library write: gated by CALIBRE_MCP_ENABLE_WRITE per call (see `writeCall`). */
   write?: boolean;
@@ -105,7 +106,7 @@ export interface AnyToolDescriptor {
   title: string;
   description: string;
   inputSchema: z.ZodRawShape;
-  outputSchema?: z.ZodRawShape;
+  outputSchema?: Record<string, z.ZodType>;
   annotations: ToolAnnotations;
   write?: boolean;
   /** See ToolDescriptor.writeCall. */

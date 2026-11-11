@@ -18,6 +18,7 @@ import { toolError, toolOk, errorFromCatch } from "./result.js";
 import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "../app/write-policy.js";
 import type { BaseDeps } from "./deps.js";
 import type { ToolResult } from "./types.js";
+import { classifyNoIds, type AddFailureCause } from "../calibre/add-report.js";
 
 /**
  * Pull the numeric ids out of calibredb's "Added book ids: 1, 2" success line. Matching is
@@ -34,54 +35,26 @@ export function parseAddedIds(stdout: string): number[] {
     .filter((n) => Number.isInteger(n));
 }
 
-/**
- * Titles calibredb reports as skipped duplicates. Its report goes to stderr: a header that
- * names the `--duplicates` option (the header text itself is localized), then one indented
- * title per skipped book; the file paths go to stdout.
- */
-export function parseSkippedTitles(stderr: string): string[] {
-  const lines = stderr.split(/\r?\n/);
-  const start = lines.findIndex((l) => l.includes("--duplicates"));
-  if (start < 0) return [];
-  const titles: string[] = [];
-  for (const l of lines.slice(start + 1)) {
-    if (!/^\s+\S/.test(l)) break;
-    titles.push(l.trim());
-  }
-  return titles;
-}
-
-/** Why an add came back with no new ids (#555). */
-type NoIdsOutcome = { kind: "duplicate"; title?: string } | { kind: "unknown"; said: string };
-
-// Longest calibredb excerpt quoted back; a traceback must not flood the result.
-const SAID_MAX = 300;
-
-/**
- * Classify a no-new-ids add. A parsed duplicate report (stderr, or stdout) → duplicate. Empty
- * stderr → duplicate too: the report format comes from Calibre's code, not a live capture, so
- * an unparsed real skip must keep its label. Any other stderr is an unexplained failure.
- */
-export function classifyNoIds(stdout: string, stderr: string): NoIdsOutcome {
-  for (const stream of [stderr, stdout]) {
-    if (stream.split(/\r?\n/).some((l) => l.includes("--duplicates"))) {
-      return { kind: "duplicate", title: parseSkippedTitles(stream)[0] };
-    }
-  }
-  const lines = stderr
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter(Boolean);
-  if (lines.length === 0) return { kind: "duplicate" };
-  // a traceback's useful line is its last one (the exception), not "Traceback (most recent…"
-  const said = lines.some((l) => l.startsWith("Traceback")) ? lines[lines.length - 1]! : lines[0]!;
-  return { kind: "unknown", said: said.length > SAID_MAX ? `${said.slice(0, SAID_MAX)}…` : said };
-}
-
-/** Next step after an add that added nothing for an unknown reason (#555). */
-const UNKNOWN_HINT =
-  "Check the file (format, permissions, not corrupt) and retry; calibre_search for its title shows whether " +
-  "it is already in the library.";
+/** Our own words and one next step per failure cause; calibredb's text stays in the log. */
+const FAILURES: Record<AddFailureCause, { code: "invalid_input" | "write_failed"; why: string; hint: string }> = {
+  unsupported_format: {
+    code: "invalid_input",
+    why: "Calibre does not support this file's format.",
+    hint: "Convert the file to a format Calibre imports (EPUB, PDF, MOBI, AZW3…), then retry calibre_add_book.",
+  },
+  permission_denied: {
+    code: "write_failed",
+    why: "the Calibre server could not read the file (permission denied).",
+    hint: "Give the Calibre server process read access to the file, then retry calibre_add_book.",
+  },
+  other: {
+    code: "write_failed",
+    why: "calibredb reported an error (details are in the server log).",
+    hint:
+      "Check that the file opens and is not corrupt, then retry calibre_add_book; calibre_search for its title " +
+      "shows whether it is already in the library.",
+  },
+};
 
 /** Next step for a skipped add, shared by text and structuredContent (#555). */
 function skipHint(matchId: number | undefined, title: string | undefined): string {
@@ -117,9 +90,7 @@ export const addBookTool = defineTool({
       .optional(),
     notProbed: z.array(z.number()).optional(),
     // set when calibredb added nothing: it skips a title+author duplicate (#555)
-    skipped: z.enum(["duplicate", "unknown"]).optional(),
-    // calibredb's own words when it added nothing for an unknown reason
-    reason: z.string().optional(),
+    skipped: z.enum(["duplicate"]).optional(),
     duplicateOf: z.number().optional(),
     hint: z.string().optional(),
   },
@@ -186,7 +157,7 @@ export const addBookTool = defineTool({
 
 /**
  * calibredb added nothing (#555). A duplicate skip says so in both channels, naming the
- * existing book only when exactly one title matches; any other cause is reported as unknown.
+ * existing book only when exactly one title matches; any other cause is an error.
  */
 async function noIdsResult(
   deps: BaseDeps,
@@ -196,16 +167,14 @@ async function noIdsResult(
   library?: string,
 ): Promise<ToolResult> {
   const outcome = classifyNoIds(stdout, stderr);
-  if (outcome.kind === "unknown") {
-    // not a duplicate: say what calibredb said, never guess a reason (#555 review)
-    const text = `No book was added from ${resolved}; calibredb said: ${outcome.said}\nNext: ${UNKNOWN_HINT}`;
-    return toolOk([{ type: "text", text }], {
-      addedIds: [],
-      path: resolved,
-      skipped: "unknown",
-      reason: outcome.said,
-      hint: UNKNOWN_HINT,
-    });
+  if (outcome.kind === "failed") {
+    // nothing was written: an error in our own words; the raw output goes to the log only
+    deps.log.warn("add_book added nothing", { cause: outcome.cause, stderr: outcome.stderr });
+    const f = FAILURES[outcome.cause];
+    const message = `No book was added from ${resolved}: ${f.why}`;
+    return f.code === "invalid_input"
+      ? toolError("invalid_input", message, { hint: f.hint })
+      : toolError("write_failed", message, { hint: f.hint });
   }
   const title = outcome.title;
   let matchId: number | undefined;

@@ -40,11 +40,8 @@ export async function probeDuplicates(
     if (!added) continue;
     const isbn = isbnKey(added);
     const isbnIds = isbn ? await searchIds(deps, `identifiers:isbn:${isbn}`, library) : [];
-    const words = foldAccents(added.title)
-      .split(/[^\p{L}\p{N}\p{M}]+/u)
-      .filter(Boolean)
-      .slice(0, 8);
-    const titleIds = words.length > 0 ? await searchIds(deps, `title:"${words.join(" ")}"`, library) : [];
+    const words = titleWordsQuery(added.title);
+    const titleIds = words ? await searchIds(deps, words, library) : [];
     // `title:"…"` is a contains match: "Clean Code A Handbook" never finds "Clean Code" (#370).
     const main = searchable(mainTitle(added.title) ?? "");
     const mainIds = main ? await searchIds(deps, `title:"${escapeQuoted(main)}"`, library) : [];
@@ -66,15 +63,22 @@ export async function findSkippedDuplicate(
   title: string,
   library?: string,
 ): Promise<number | undefined> {
+  const query = titleWordsQuery(title);
+  if (!query) return undefined;
+  const ids = await searchIds(deps, query, library);
+  const pool = await deps.content.booksByIds(ids, library);
+  const candidates = [...pool.values()].filter((b) => b !== null && b !== undefined);
+  return pickSkippedMatch(title, candidates);
+}
+
+// `title:"w1 w2 …"` over the title's first 8 words (letters/digits only, so no quoting needed),
+// or undefined for a title with no words.
+function titleWordsQuery(title: string): string | undefined {
   const words = foldAccents(title)
     .split(/[^\p{L}\p{N}\p{M}]+/u)
     .filter(Boolean)
     .slice(0, 8);
-  if (words.length === 0) return undefined;
-  const ids = await searchIds(deps, `title:"${words.join(" ")}"`, library);
-  const pool = await deps.content.booksByIds(ids, library);
-  const candidates = [...pool.values()].filter((b) => b !== null && b !== undefined);
-  return pickSkippedMatch(title, candidates);
+  return words.length > 0 ? `title:"${words.join(" ")}"` : undefined;
 }
 
 // A leading `=` (exact) / `~` (regex) / `^` turns Calibre's `title:` into another match kind; an
