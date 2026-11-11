@@ -404,7 +404,12 @@ exact title + authors; `mode: similar` groups fuzzily (any script; edition suffi
 stay separate); each group carries a **merge-safety score**. `mode: compare` diffs two or more specific books field by field and recommends which to
 keep. It never merges anything — that's `calibre_merge_books`. Mixed-language groups are flagged
 as likely translations (not true duplicates), and a language difference caps the merge-safety
-score with a review warning.
+score with a review warning. Groups and compare reports also carry a same-work verdict
+(`workMatch`: `same`, `edition?` or `different`), the same one `calibre_merge_books` warns on.
+An unmarked title next to one that names a later edition ("Learn Ansible" vs "Learn Ansible -
+Second Edition") is `edition?`: it still groups, but merge safety is capped at 0.3 with a
+"possibly different editions" review line. `different` (title, author or edition mismatch, e.g.
+two hand-picked `compare` ids) is capped the same way with a "not the same work" line.
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
@@ -449,6 +454,12 @@ title + first author) and queries Open Library, then Google Books. **Preview onl
 a proposal plus a ready-to-apply `changes` object and never writes. Apply the proposal with
 `calibre_update_book`.
 
+A slug-shaped filename title is turned back into words and searched: `modular-monoliths` →
+`modular monoliths`, `Microsoft Word - Report Name.docx` → `Report Name`. That match is a guess,
+so its confidence is capped at 0.40 and a `WARNING` line (also in `warnings`) asks you to verify
+it before applying. A title that is only an identifier (`795731065`, `B0CZS7H23N`, `top.dvi`)
+can't be searched: without an ISBN the tool refuses and asks for one.
+
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
 | `id` (or `bookId`) | number \| uuid | *(required)* | The book to look up |
@@ -487,6 +498,12 @@ Set metadata fields on one book — title, authors, tags, series, series_index, 
 publisher, pubdate, languages, comments, identifiers, or any `#custom` column. Omitted fields
 are left untouched. Returns the applied before/after diff.
 
+Every field replaces its value, except `identifiers`, which **merges by scheme**: listed schemes
+are set, unlisted ones stay, and `null` removes one. Scheme names are case-insensitive
+(`ISBN` sets the book's `isbn`). On a book with `{"url": "…", "doi": "…"}`,
+`{"identifiers": {"isbn": "9780132350884", "doi": null}}` leaves `{"url": "…", "isbn":
+"9780132350884"}`. The diff shows the full map before and after.
+
 Partial `pubdate` values are normalised to the first day before writing: `"2020"` stores
 `2020-01-01`, `"2020-05"` stores `2020-05-01` (Calibre would otherwise fill the missing parts
 from today's date). The diff shows the stored date. `identifiers` must be an object
@@ -522,7 +539,7 @@ combined with `tags_add`/`tags_remove`.
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `changes` | object | — | Field → new value applied to every selected book (a list replaces the whole list) |
+| `changes` | object | — | Field → new value applied to every selected book (a list replaces the whole list; `identifiers` merges per book by scheme, `null` removes one — see `calibre_update_book`) |
 | `tags_add` | array of strings | — | Tags to add to each book, keeping its other tags; an existing tag keeps the library's spelling |
 | `tags_remove` | array of strings | — | Tags to remove from each book (case-insensitive); a missing tag is a no-op |
 | `ids` | array of ids | — | Books to change (one of `ids`/`query`/`filter` required; `ids` cannot be combined with `query` or `filter`) |
@@ -604,7 +621,9 @@ books into a target (the target's copy wins conflicts), merge metadata per Calib
 trash the sources. Modes: `merge` (the default) trashes sources after merging; `safe` keeps the
 sources; `formatsOnly` moves formats and leaves metadata untouched. Dry-run by default —
 without `confirm: true` it prints the full plan (survivor, format moves, metadata changes,
-trash list) and writes nothing. Trashed sources stay recoverable from Calibre's trash for about
+trash list) and writes nothing. The plan warns, without refusing, when a source does not look
+like the same work as the target, or may be a different edition of it (the same verdict as
+`calibre_find_duplicates`). Trashed sources stay recoverable from Calibre's trash for about
 two weeks. Deletion always happens last, so an interrupted merge never loses data — just re-run
 the same call to finish.
 

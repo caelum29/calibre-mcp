@@ -23,6 +23,7 @@ import type { ToolResult } from "./types.js";
 import type { Book } from "../domain/book.js";
 import { selectBooks } from "../app/select-books.js";
 import { ChangeValueSchema } from "./calibre_update_book.js";
+import { mergeIdentifierChanges } from "../app/merge-identifiers.js";
 import {
   WRITE_REFUSED_MESSAGE,
   classifyTransient,
@@ -50,6 +51,7 @@ export const bulkUpdateTool = defineTool({
     "without writing unless preview is set false. A book set is required (never all books). " +
     "A list in changes replaces the whole list; to add or remove tags while keeping the rest, use " +
     "tags_add / tags_remove (merged per book, case-insensitive, not together with changes.tags). " +
+    "changes.identifiers merges per book by scheme (listed schemes set, others kept, null removes one). " +
     "Previews work without writes; applying needs CALIBRE_MCP_ENABLE_WRITE.",
   inputSchema: {
     changes: jsonRecord(ChangeValueSchema).optional(),
@@ -184,7 +186,9 @@ export const bulkUpdateTool = defineTool({
       const planBook = (b: Book) => {
         const merge: TagMerge | undefined = tagOps ? mergeTags(b.tags, added, tagsRemove) : undefined;
         // per-book changes: the merged tags differ per book; verify checks this, not the raw params
-        const bookChanges = merge ? { ...changes, tags: merge.tags } : changes;
+        // identifiers merge per book too, so each book keeps its own unlisted schemes (#563)
+        const merged = mergeIdentifierChanges(b, changes);
+        const bookChanges = merge ? { ...merged, tags: merge.tags } : merged;
         const diff = previewBookChanges(b, bookChanges);
         return {
           id: b.id,
@@ -315,14 +319,15 @@ export const bulkUpdateTool = defineTool({
 
 /**
  * A book's preview warnings. A list set replaces the whole list — easy to miss for a one-item set
- * (not for a tags merge, which keeps what it doesn't remove) — and a case-only edit of a
+ * (not for a tags merge or identifiers, which keep what they don't remove — #563) — and a case-only edit of a
  * tag/author renames the shared item on every book.
  */
 function previewWarnings(diff: FieldDiff[], tagsMerged: boolean): string[] {
   return diff.flatMap((d) =>
-    [tagsMerged && d.field === "tags" ? undefined : listReplacementNote(d), ...caseRenameNotes(d)].filter(
-      (n): n is string => !!n,
-    ),
+    [
+      (tagsMerged && d.field === "tags") || d.field === "identifiers" ? undefined : listReplacementNote(d),
+      ...caseRenameNotes(d),
+    ].filter((n): n is string => !!n),
   );
 }
 
