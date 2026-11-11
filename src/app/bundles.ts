@@ -272,16 +272,27 @@ export async function resolveFilter(deps: BaseDeps, req: FilterRequest): Promise
   // an empty bundle (#564). Best-effort: a failed count drops the number, never the search.
   if (res.bundle && res.markers.length > 0) {
     const union = res.markers.map((m) => `search:"=${m.name}"`).join(" or ");
+    const cap = Math.min(BUNDLES_COLD_TIMEOUT_MS, req.timeoutMs ?? BUNDLES_COLD_TIMEOUT_MS);
+    // Raced against a timer too: a hung count must never starve the real search (the port's own
+    // timeout is not guaranteed to fire).
+    let timer: NodeJS.Timeout | undefined;
     try {
-      const page = await deps.content.search({
-        query: `(${res.bundle.expression}) and (${union})`,
-        library: req.library,
-        num: 0,
-        timeoutMs: req.timeoutMs,
-      });
-      res.excludedBooks = page.total;
+      const page = await Promise.race([
+        deps.content.search({
+          query: `(${res.bundle.expression}) and (${union})`,
+          library: req.library,
+          num: 0,
+          timeoutMs: cap,
+        }),
+        new Promise<undefined>((resolve) => {
+          timer = setTimeout(() => resolve(undefined), cap);
+        }),
+      ]);
+      if (page) res.excludedBooks = page.total;
     } catch {
       // count is advisory
+    } finally {
+      clearTimeout(timer);
     }
   }
 

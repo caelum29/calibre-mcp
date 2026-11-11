@@ -751,3 +751,30 @@ describe("calibre_semantic_search unknown bundle filter (#367)", () => {
     expect({ isError: r.isError, code: r.structuredContent?.errorCode }).toEqual({ isError: true, code: "timeout" });
   });
 });
+
+// #564: markers also cut an explicit filter; the note says how many books they removed.
+describe("calibre_semantic_search exclusion count on a filter (#564)", () => {
+  beforeEach(() => invalidateBundleCache());
+
+  it("should_report_the_removed_count_in_text_and_structured_content", async () => {
+    const d = deps(preloaded());
+    d.calibre = fakeCalibre({
+      calibredb: async () => ({
+        stdout: 'Name: Rust\nSearch string: tags:"=Rust"\nName: -hidden\nSearch string: tags:"=Hidden"\n',
+        stderr: "",
+      }),
+    });
+    d.content = fakeContent({
+      virtualLibraries: async () => ({}),
+      resolveLibraryId: async () => asLibId(LIB),
+      search: async (p: { query: string }) =>
+        p.query === '(tags:"=Rust") and (search:"=-hidden")'
+          ? { bookIds: [4, 5, 6, 7], total: 4, num: 4, offset: 0, sort: "", libraryId: LIB }
+          : { bookIds: [1, 2], total: 2, num: 2, offset: 0, sort: "", libraryId: LIB },
+    });
+    const r = await semanticSearchTool.handler(args({ filter: "Rust" }), d);
+    const texts = r.content.filter((b): b is { type: "text"; text: string } => b.type === "text").map((b) => b.text);
+    expect(texts.join("\n")).toContain("exclusions applied: [-hidden] removed 4 books from the filter");
+    expect(r.structuredContent).toMatchObject({ filter: "Rust", exclusionsApplied: ["-hidden"], exclusionsRemoved: 4 });
+  });
+});

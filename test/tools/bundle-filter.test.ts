@@ -1,7 +1,7 @@
 // #93 filter layer: resolveFilter/buildScopedQuery semantics + the calibre_search wiring
 // (expression expansion, FTS id-set restriction, honesty lines, unknown-filter affordance).
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadConfig } from "../../src/config.js";
 import type { Book } from "../../src/domain/book.js";
 import type { SearchPage } from "../../src/domain/search.js";
@@ -9,8 +9,16 @@ import { log, type LogSink } from "../../src/logging.js";
 
 // Typed as the narrow sink ToolDeps expects (an annotation, not a cast).
 const sink: LogSink = log;
-import { buildScopedQuery, invalidateBundleCache, resolveFilter, scopeExpression } from "../../src/app/bundles.js";
+import {
+  BUNDLES_COLD_TIMEOUT_MS,
+  buildScopedQuery,
+  invalidateBundleCache,
+  resolveFilter,
+  scopeExpression,
+} from "../../src/app/bundles.js";
 import { searchTool } from "../../src/tools/calibre_search.js";
+import { boardDataTool } from "../../src/tools/calibre_board_data.js";
+import { BoardCache } from "../../src/ui/board-cache.js";
 import { fakeFts, type FakeFtsHit } from "./fake-fts.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
 import type { SearchDeps, SearchIndex } from "../../src/tools/calibre_search.js";
@@ -247,5 +255,41 @@ describe("exclusion count on an explicit filter (#564)", () => {
     expect(t).toContain("filter: Rust (0 books)");
     expect(t).toContain("exclusions applied: [-noise] removed 3 books from the filter");
     expect(r.structuredContent).toMatchObject({ exclusionsApplied: ["-noise"], exclusionsRemoved: 3 });
+  });
+});
+
+// #564 review: the count is advisory — it must never hold the search hostage, and the board
+// payload (widget re-pull path) must carry it too.
+describe("exclusion count — cap and board payload (#564)", () => {
+  const REMOVED_Q = '(tags:"=Rust") and (search:"=-noise")';
+
+  afterEach(() => vi.useRealTimers());
+
+  it("a count that never resolves is dropped after the cold cap; the search still returns its hits", async () => {
+    vi.useFakeTimers();
+    const { deps } = fake();
+    const real = deps.content.search.bind(deps.content);
+    deps.content.search = (p) => (p.query === REMOVED_Q ? new Promise(() => {}) : real(p));
+    const pending = searchTool.handler(
+      { query: "async", mode: "meta", scope: "library", limit: 20, filter: "Rust" },
+      deps,
+    );
+    await vi.advanceTimersByTimeAsync(BUNDLES_COLD_TIMEOUT_MS);
+    const r = await pending;
+    const text = r.content.find((c) => c.type === "text");
+    const t = text && "text" in text ? text.text : "";
+    expect(t).toContain("Found 2 books");
+    expect(t).toContain("exclusions applied: [-noise] (pass include_excluded=true to disable)");
+    expect(r.structuredContent).toMatchObject({ bookIds: [1, 2], exclusionsApplied: ["-noise"] });
+    expect(r.structuredContent).not.toHaveProperty("exclusionsRemoved");
+  });
+
+  it("the cached board payload carries exclusionsRemoved for the widget re-pull", async () => {
+    const cache = new BoardCache();
+    const { deps } = fake({ pages: [{ match: (q) => q === REMOVED_Q, page: { bookIds: [7, 8, 9] } }] });
+    (deps as { boardCache?: BoardCache }).boardCache = cache;
+    await searchTool.handler({ query: "async", mode: "meta", scope: "library", limit: 20, filter: "Rust" }, deps);
+    const r = await boardDataTool.handler({ tool: "calibre_search" }, deps);
+    expect(r.structuredContent).toMatchObject({ filter: "Rust", exclusionsApplied: ["-noise"], exclusionsRemoved: 3 });
   });
 });
