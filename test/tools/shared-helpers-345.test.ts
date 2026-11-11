@@ -42,7 +42,8 @@ describe("bookNotFound", () => {
   it("is the library-scoped 404", () => {
     const r = bookNotFound(42);
     expect([text(r), r.structuredContent?.errorCode]).toEqual([
-      "Error: No book with id 42 in the requested library\nCode: not_found",
+      "Error: No book with id 42 in the requested library\nCode: not_found\n" +
+        "Next: Find the book's id with calibre_search, or check calibre_list_libraries — the id may belong to another library.",
       "not_found",
     ]);
   });

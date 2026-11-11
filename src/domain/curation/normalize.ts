@@ -139,6 +139,37 @@ export function isSimilarMatch(a: Book, b: Book): boolean {
 }
 
 /**
+ * The one "same work?" verdict (#550), shared by `similar` scoring, `compare` and the merge
+ * preview: `same` = a duplicate; `edition?` = same key, but only one side names a later
+ * edition (an unmarked title may be the 1st edition, or a copy that lost its marker);
+ * `different` = different key or a conflicting edition/volume signal.
+ */
+export type WorkMatch = "same" | "edition?" | "different";
+
+/** Verdict for one pair of books; see {@link WorkMatch}. */
+export function workMatch(a: Book, b: Book): WorkMatch {
+  if (!isSimilarMatch(a, b)) return "different";
+  const ea = similarParts(a)!.edition ?? 1;
+  const eb = similarParts(b)!.edition ?? 1;
+  // An unmarked title reads as the 1st edition: "X" vs "X 1st Edition" stays a duplicate.
+  return ea === eb ? "same" : "edition?";
+}
+
+const WORK_MATCH_RANK: Record<WorkMatch, number> = { same: 0, "edition?": 1, different: 2 };
+
+/** Worst pairwise verdict across a set of books (a 1-book set is `same`). */
+export function groupWorkMatch(books: Book[]): WorkMatch {
+  let worst: WorkMatch = "same";
+  for (let i = 0; i < books.length; i++) {
+    for (let j = i + 1; j < books.length; j++) {
+      const m = workMatch(books[i]!, books[j]!);
+      if (WORK_MATCH_RANK[m] > WORK_MATCH_RANK[worst]) worst = m;
+    }
+  }
+  return worst;
+}
+
+/**
  * Heuristic "Firstname Lastname" → "Lastname, Firstname" (author-sort form). Independent
  * reimplementation from the documented convention — NOT a port of Calibre's GPL routine,
  * so it intentionally handles only the common cases:

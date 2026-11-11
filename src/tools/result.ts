@@ -90,7 +90,15 @@ export function errorFromCatch(err: unknown): ToolResult {
   return toolError(errorCodeFor(err), err instanceof Error ? err.message : String(err));
 }
 
-/** 404 for a book id the target library does not hold (the id may exist in another library). */
-export function bookNotFound(id: number | string | undefined): ToolResult {
-  return toolError("not_found", `No book with id ${id} in the requested library`);
+/** The one next step a missing book gets, in text (`Next:`) and structuredContent.hint (#498). */
+const BOOK_NOT_FOUND_HINT =
+  "Find the book's id with calibre_search, or check calibre_list_libraries — the id may belong to another library.";
+
+/**
+ * 404 for a book id the target library does not hold (the id may exist in another library).
+ * `idOrUuid` is the wording for tools that also accept a uuid and resolve it before reading.
+ */
+export function bookNotFound(id: number | string | undefined, opts: { idOrUuid?: boolean } = {}): ToolResult {
+  const message = opts.idOrUuid ? `No book with id/uuid ${id}` : `No book with id ${id} in the requested library`;
+  return toolError("not_found", message, { hint: BOOK_NOT_FOUND_HINT });
 }

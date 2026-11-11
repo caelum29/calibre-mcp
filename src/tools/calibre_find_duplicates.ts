@@ -14,6 +14,21 @@ import { bookResourceLink } from "./resource-link.js";
 import { selectBooks } from "../app/select-books.js";
 import { fence, renderResult, toolError, toolOk, toolErrorFrom, errorFromCatch } from "./result.js";
 import type { ContentBlock } from "./types.js";
+import type { WorkMatch } from "../domain/curation/normalize.js";
+
+/** REVIEW line for a set that may not be one work (#550); undefined for `same`. */
+function workMatchNote(m: WorkMatch): string | undefined {
+  if (m === "edition?") {
+    return (
+      "⚠ REVIEW — possibly different editions: one title names a later edition " +
+      '(e.g. "Second Edition"), the other none. Confirm with the user before merging.'
+    );
+  }
+  if (m === "different") {
+    return "⚠ REVIEW — not the same work (title, author or edition mismatch). Do NOT merge without confirming with the user.";
+  }
+  return undefined;
+}
 
 export const findDuplicatesTool = defineTool({
   name: "calibre_find_duplicates",
@@ -41,10 +56,19 @@ export const findDuplicatesTool = defineTool({
     keep: z.number().optional(),
     mergeSafety: z.number().optional(),
     languagesDiffer: z.boolean().optional(),
+    // same | edition? | different — the shared same-work verdict (#550); not same caps mergeSafety.
+    workMatch: z.string().optional(),
     // Mirrors of the text payload for structured-only clients (#199): the page's group
     // boundaries (identical/similar) and the field-by-field diff + compared ids (compare).
     groups: z
-      .array(z.object({ bookIds: z.array(z.number()), mergeSafety: z.number(), mixedLanguages: z.boolean() }))
+      .array(
+        z.object({
+          bookIds: z.array(z.number()),
+          mergeSafety: z.number(),
+          mixedLanguages: z.boolean(),
+          workMatch: z.string(),
+        }),
+      )
       .optional(),
     bookIds: z.array(z.number()).optional(),
     diff: z.array(z.object({ field: z.string(), agree: z.boolean(), values: z.array(z.string()) })).optional(),
@@ -82,19 +106,22 @@ export const findDuplicatesTool = defineTool({
             `different-language editions/translations, not duplicates. Do NOT merge or delete ` +
             `without confirming with the user.`
           : "";
+        const workNote = workMatchNote(report.workMatch);
         const text =
           `Comparing books ${report.bookIds.join(", ")} — ` +
           `mergeSafety ${report.mergeSafety.toFixed(2)}, recommend keeping book ${report.keep}\n` +
           // legend ties the =/≠ marks to diff[].agree, so both channels read the same way (#199)
           "Legend: = values agree, ≠ values differ\n" +
           lines.join("\n") +
-          warning;
+          warning +
+          (workNote ? `\n${workNote}` : "");
         return toolOk([{ type: "text", text: fence("COMPARISON", text) }], {
           mode: "compare",
           keep: report.keep,
           mergeSafety: report.mergeSafety,
           count: report.bookIds.length,
           languagesDiffer: langDiff !== undefined,
+          workMatch: report.workMatch,
           bookIds: report.bookIds,
           diff: report.diffs.map(({ field, agree, values }) => ({ field, agree, values })),
         });
@@ -127,7 +154,8 @@ export const findDuplicatesTool = defineTool({
         `Showing ${pageGroups.length ? offset + 1 : 0}–${offset + pageGroups.length}.`;
       content.push({ type: "text", text: header });
 
-      const groupModels: { bookIds: number[]; mergeSafety: number; mixedLanguages: boolean }[] = [];
+      const groupModels: { bookIds: number[]; mergeSafety: number; mixedLanguages: boolean; workMatch: WorkMatch }[] =
+        [];
       for (const g of pageGroups) {
         // Show each book's language: a mixed-language group is a translation pair, not a
         // duplicate, and that must be visible before anyone merges (#51).
@@ -138,11 +166,15 @@ export const findDuplicatesTool = defineTool({
           )
           .join("\n");
         const mixedLangs = new Set(g.books.flatMap((b) => b.languages.map((l) => l.toLowerCase())));
-        const note = mixedLangs.size > 1 ? "\n⚠ REVIEW — mixed languages: likely translations, not duplicates." : "";
+        const workNote = workMatchNote(g.workMatch);
+        const note =
+          (mixedLangs.size > 1 ? "\n⚠ REVIEW — mixed languages: likely translations, not duplicates." : "") +
+          (workNote ? `\n${workNote}` : "");
         groupModels.push({
           bookIds: g.books.map((b) => b.id),
           mergeSafety: g.mergeSafety,
           mixedLanguages: mixedLangs.size > 1,
+          workMatch: g.workMatch,
         });
         content.push({
           type: "text",

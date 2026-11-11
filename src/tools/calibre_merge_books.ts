@@ -13,7 +13,7 @@ import { buildSetMetadataArgs } from "../calibre/metadata-fields.js";
 import type { ChangeValue } from "../domain/book-fields.js";
 import { downloadToFile } from "../calibre/http.js";
 import type { Book } from "../domain/book.js";
-import { isSimilarMatch } from "../domain/curation/normalize.js";
+import { workMatch } from "../domain/curation/normalize.js";
 import { CalibreCliError } from "../domain/errors.js";
 import { mergeBuiltinMetadata, mergeCustomMetadata, planFormatMoves } from "../domain/merge.js";
 import type { FormatMove } from "../domain/merge.js";
@@ -170,11 +170,18 @@ export const mergeBooksTool = defineTool({
       // Advisory only — merge never refuses on dissimilarity (#38 Q5).
       const warnings: string[] = [];
       for (const s of sources) {
-        // Different key, different edition/volume, or a title with no letters (#241, #242).
-        if (!isSimilarMatch(target, s)) {
+        // Same verdict as find_duplicates scoring (#550): different key, edition/volume or a
+        // title with no letters (#241, #242), or an unmarked title vs a later edition.
+        const match = workMatch(target, s);
+        if (match === "different") {
           warnings.push(
             `Source #${s.id} "${s.title}" does not look like the same work as the target ` +
               `(title, author or edition mismatch). Advisory only — confirm proceeds regardless.`,
+          );
+        } else if (match === "edition?") {
+          warnings.push(
+            `Source #${s.id} "${s.title}" may be a different edition of the target (only one ` +
+              `title names a later edition). Advisory only — confirm proceeds regardless.`,
           );
         }
       }

@@ -171,3 +171,48 @@ describe("calibre_find_duplicates groups[] / diff[] in structuredContent (#199)"
     for (const d of diff) expect(allText(r)).toContain(`${d.agree ? "=" : "≠"} ${d.field}: ${d.values.join(" | ")}`);
   });
 });
+
+// #550: an unmarked title vs a "Second Edition" title reads as REVIEW on both channels.
+describe("calibre_find_duplicates edition doubt (#550)", () => {
+  const fixture = [
+    book({ id: 990, title: "Learn Ansible", authors: ["Russ McKendrick"], formats: ["PDF"] }),
+    book({
+      id: 543,
+      title: "Learn Ansible - Second Edition: Automate",
+      authors: ["Russ McKendrick"],
+      formats: ["PDF"],
+    }),
+  ];
+  const text = (r: { content: { type: string; text?: string }[] }) =>
+    r.content.map((b) => (b.type === "text" ? b.text : "")).join("\n");
+
+  it("compare: states the edition doubt in the text", async () => {
+    const r = await findDuplicatesTool.handler(args({ mode: "compare", ids: [990, 543] }), deps(fixture));
+    expect(text(r)).toContain("⚠ REVIEW — possibly different editions");
+  });
+
+  it("compare: mirrors workMatch and the lowered mergeSafety in structuredContent", async () => {
+    const r = await findDuplicatesTool.handler(args({ mode: "compare", ids: [990, 543] }), deps(fixture));
+    expect(r.structuredContent).toMatchObject({ mergeSafety: 0.3, workMatch: "edition?" });
+  });
+
+  it("compare: says two different works are not the same work", async () => {
+    const pair = [
+      book({ id: 1377, title: "zz-v1-check A", authors: ["T"] }),
+      book({ id: 1378, title: "zz-v1-check B", authors: ["T"] }),
+    ];
+    const r = await findDuplicatesTool.handler(args({ mode: "compare", ids: [1377, 1378] }), deps(pair));
+    expect([text(r).includes("⚠ REVIEW — not the same work"), r.structuredContent?.workMatch]).toEqual([
+      true,
+      "different",
+    ]);
+  });
+
+  it("similar: notes the edition doubt on the group in both channels", async () => {
+    const r = await findDuplicatesTool.handler(args({ mode: "similar" }), deps(fixture));
+    expect([text(r).includes("⚠ REVIEW — possibly different editions"), r.structuredContent?.groups]).toEqual([
+      true,
+      [{ bookIds: [990, 543], mergeSafety: 0.3, mixedLanguages: false, workMatch: "edition?" }],
+    ]);
+  });
+});
