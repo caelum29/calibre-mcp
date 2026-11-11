@@ -1,0 +1,24 @@
+docs/TOOLS.md
+  s_0618547d906c4d::t_ea4dd8f3901d97 502-506
+  s_0618547d906c4d::t_9501df99e1042d 507-509
+src/calibre/metadata-fields.ts
+  s_0618547d906c4d::t_ea4dd8f3901d97 37
+src/domain/book-fields.ts
+  s_0618547d906c4d::t_ea4dd8f3901d97 141-142
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2913f26e42b93044f7f728095167e38cba26d172",
+  "prompts": {},
+  "sessions": {
+    "s_0618547d906c4d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06b59239-c7c3-4054-98e8-722639f3d182",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
