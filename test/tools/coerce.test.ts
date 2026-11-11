@@ -48,4 +48,21 @@ describe("limitParam", () => {
   it("defaults on garbage instead of throwing", () => {
     expect(limitParam(50, 20).parse("abc")).toBe(20);
   });
+  // #552: a value below 1 falls back to the default, never a silent 1
+  it.each([
+    [0, "limit", 50, 20],
+    [-5, "topK", 50, 10],
+    [0, "maxChars", 40_000, 8_000],
+    [0.5, "fractional below 1", 50, 20],
+    [-0.5, "negative fraction", 50, 20],
+    ["0", "string zero", 50, 20],
+    ["-5", "string negative", 50, 20],
+  ])("falls back to the default for %s (%s)", (input, _name, max, def) => {
+    expect(limitParam(max, def).parse(input)).toBe(def);
+  });
+  it("still truncates fractions >= 1 and clamps to max", () => {
+    expect(limitParam(50, 20).parse(1.9)).toBe(1);
+    expect(limitParam(50, 20).parse("1")).toBe(1);
+    expect(limitParam(50, 20).parse(51)).toBe(50);
+  });
 });
