@@ -138,7 +138,8 @@ function sameNameSet(a: unknown, b: unknown): boolean {
 
 const DAY_MS = 86_400_000;
 
-// ±1 day: Calibre stores a date-only pubdate as a local midnight, read back in UTC
+// ±1 day: Calibre stores a date-only pubdate as a local midnight, read back in UTC, and moves
+// the 1st to the 2nd and a month's last day back one (except 31 Dec) on purpose (#495)
 function sameDay(a: unknown, b: unknown): boolean {
   const day = (v: unknown) => (typeof v === "string" ? Date.parse(v.slice(0, 10)) : Number.NaN);
   const da = day(a);

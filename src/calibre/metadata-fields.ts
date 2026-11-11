@@ -34,6 +34,7 @@ export function formatFieldValue(field: string, value: ChangeValue): string {
   }
   // Calibre fills the missing parts of a partial date from today (2020 → 2020-<this month>-15),
   // so the stored date would depend on when the write ran (#423): pin them to the first day.
+  // Calibre then stores the 1st as the 2nd, which keeps the month right in every timezone (#495).
   if (field === "pubdate" && typeof value === "string") {
     const v = value.trim();
     if (/^\d{4}$/.test(v)) return `${v}-01-01`;
