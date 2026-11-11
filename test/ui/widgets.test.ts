@@ -18,6 +18,13 @@ const boards = [board, semanticBoard, coverflow, semanticCoverflow];
 const all = [...boards, card];
 const every = [...all, figures];
 
+/** Pull the board's pure tool-input predicate out of the emitted widget and run it. */
+function noBoardPredicate(html: string): (args: unknown) => boolean {
+  const src = /function isNoBoardCall\(a\) \{[\s\S]*?\n {2}\}/.exec(html)?.[0];
+  if (!src) throw new Error("isNoBoardCall not found in the board widget");
+  return new Function(`${src}; return isNoBoardCall;`)() as (args: unknown) => boolean;
+}
+
 describe("widget templates", () => {
   it("should_substitute_all_placeholder_tokens", () => {
     for (const html of every) {
@@ -118,6 +125,33 @@ describe("widget templates", () => {
   it("should_collapse_on_count_only_searches", () => {
     // Issue #67: count answers are aggregates — the board collapses on countOnly input.
     for (const html of boards) expect(html).toContain("countOnly");
+  });
+
+  it("should_collapse_on_calls_whose_results_are_not_book_lists", () => {
+    // Issue #535: annotations, notes and figure hits carry no board payload, so the
+    // board must collapse on tool-input instead of pulling and landing in its error state.
+    for (const html of boards) {
+      const collapses = noBoardPredicate(html);
+      for (const args of [
+        { mode: "annotations", query: "the" },
+        { mode: "notes", query: "the" },
+        { target: "figures", query: "brain" },
+        { scope: "book", bookId: 1, query: "x" },
+        { countOnly: true, query: "x" },
+        { countOnly: "true", query: "x" },
+      ]) {
+        expect(collapses(args), JSON.stringify(args)).toBe(true);
+      }
+      for (const args of [
+        { mode: "meta", query: "python" },
+        { mode: "fts", query: "python" },
+        { query: "python" },
+        { scope: "library", target: "text", query: "python" },
+        null,
+      ]) {
+        expect(collapses(args), JSON.stringify(args)).toBe(false);
+      }
+    }
   });
 
   it("should_offer_one_open_button_per_format_on_multi_format_books", () => {
