@@ -1,0 +1,90 @@
+src/semantic/store/writer.ts
+  s_a12fa420782097::t_bb8c06df915443 168,171-175
+test/tools/merge-books-unverified-413.test.ts
+  s_a12fa420782097::t_416102d66c52fa 10-11,72-73
+docs/TOOLS.md
+  s_a12fa420782097::t_a0041e841136db 35,344-348,584-588,607-609
+docs/SEMANTIC-SEARCH.md
+  s_a12fa420782097::t_a0041e841136db 57-65
+test/tools/gateway-5xx-busy-494.test.ts
+  s_a12fa420782097::t_416102d66c52fa 14-15,41,56-57
+src/semantic/store/types.ts
+  s_a12fa420782097::t_bb8c06df915443 208-212
+test/tools/remove-book.handler.test.ts
+  s_a12fa420782097::t_416102d66c52fa 6-7,21,35
+test/tools/merge-books-transient-417.test.ts
+  s_a12fa420782097::t_416102d66c52fa 10-11,54-55
+src/tools/calibre_remove_book.ts
+  s_a12fa420782097::t_258e5a6dbda9df 16-21,40-41,46,112-113,121-122,125
+test/tools/ping-calibre-version.test.ts
+  s_a12fa420782097::t_9c924b098a272e 42
+  s_a12fa420782097::t_ca102e042d74eb 43
+src/semantic/store/schema.ts
+  s_a12fa420782097::t_bb8c06df915443 205-219
+test/tools/write-failure-matrix-417.test.ts
+  s_a12fa420782097::t_416102d66c52fa 13-14,67,81-82,197-198
+test/app/library-index.test.ts
+  s_a12fa420782097::t_8aef30a3bbe733 55
+  s_a12fa420782097::t_9c924b098a272e 36
+test/tools/merge-books-dropped-413.test.ts
+  s_a12fa420782097::t_416102d66c52fa 11-12,85-86
+test/tools/merge-books.handler.test.ts
+  s_a12fa420782097::t_416102d66c52fa 17-18,93-94
+src/semantic/store/index.ts
+  s_a12fa420782097::t_bb8c06df915443 140-141
+test/tools/ping-index-budget.test.ts
+  s_a12fa420782097::t_9c924b098a272e 48
+  s_a12fa420782097::t_ca102e042d74eb 49
+test/integration/merge.live.test.ts
+  s_a12fa420782097::t_416102d66c52fa 25-26,59-60
+test/tools/ping-review.test.ts
+  s_a12fa420782097::t_8aef30a3bbe733 108
+  s_a12fa420782097::t_ca102e042d74eb 57
+  s_a12fa420782097::t_9c924b098a272e 56
+test/tools/fake-prune-index.ts
+  s_a12fa420782097::t_3342253767cd0d 1-12
+src/tools/calibre_ping.ts
+  s_a12fa420782097::t_7458d11ecd470c 28
+  s_a12fa420782097::t_101bcec0641ca7 18
+skills/calibre-mcp/SKILL.md
+  s_a12fa420782097::t_a0041e841136db 172-174
+docs/tool-catalog.json
+  s_a12fa420782097::t_a0041e841136db 1504-1506,1903-1905
+src/app/prune-removed.ts
+  s_a12fa420782097::t_101bcec0641ca7 20-24
+  s_a12fa420782097::t_b1be6de37a75bb 1-19,25-37
+src/tools/calibre_merge_books.ts
+  s_a12fa420782097::t_b2e7bfb08e85c5 23-25,38-40,122-123,128,291,443-445,449,460,470-471
+test/tools/ping-header.test.ts
+  s_a12fa420782097::t_ca102e042d74eb 56
+  s_a12fa420782097::t_9c924b098a272e 55
+src/semantic/store/freshness.ts
+  s_a12fa420782097::t_bb8c06df915443 76-81
+src/app/library-index.ts
+  s_a12fa420782097::t_7458d11ecd470c 7,33-47,49-58,67,119-121
+  s_a12fa420782097::t_7d0141b06c9a19 62-63
+  s_a12fa420782097::t_cfabef97000be7 115-116,118,122
+  s_a12fa420782097::t_101bcec0641ca7 48
+  s_a12fa420782097::t_485cb04246f222 59-61,64-65
+  s_a12fa420782097::t_6a3bc597146549 66
+test/tools/merge-books-transient-417-review.test.ts
+  s_a12fa420782097::t_416102d66c52fa 10-11,54-55
+test/tools/ping-index-440.test.ts
+  s_a12fa420782097::t_ca102e042d74eb 63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "41bebef8752ede36ae7a152f4984b476f1790ce8",
+  "prompts": {},
+  "sessions": {
+    "s_a12fa420782097": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "950e0666-58f9-4b58-b61d-b219db79ab11",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
