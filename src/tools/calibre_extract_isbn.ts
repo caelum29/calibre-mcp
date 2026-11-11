@@ -11,6 +11,7 @@ import { isValidIsbn } from "../domain/curation/isbn.js";
 import { BookId, CoercedBool } from "./coerce.js";
 import { defineTool } from "./define.js";
 import { scanForIsbn, scanOutcomeHint } from "../app/isbn-scan.js";
+import { CalibreHttpError } from "../domain/errors.js";
 import { bookIdArg } from "./resolve-id.js";
 import { resolveNumericId } from "../app/resolve-id.js";
 import { toolError, toolOk, errorFromCatch, bookNotFound } from "./result.js";
@@ -122,6 +123,8 @@ export const extractIsbnTool = defineTool({
         applied: true,
       });
     } catch (err) {
+      // a numeric id the library lacks 404s at getBook: same steer as the uuid path (#498)
+      if (err instanceof CalibreHttpError && err.status === 404) return bookNotFound(idArg);
       return errorFromCatch(err);
     }
   },
