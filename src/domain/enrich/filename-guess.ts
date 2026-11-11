@@ -85,13 +85,19 @@ const MIN_QUERY_WORDS = 2;
 /**
  * Derive a title query from a slug-shaped filename title (#549): strips a "Microsoft Word - "
  * prefix and a file extension, and turns a space-free `-`/`_` slug into words
- * ("modular-monoliths" → "modular monoliths"). Returns undefined when the title is not
- * slug-shaped, or when what is left is an identifier (digits, ASIN, placeholder) or a single word.
+ * ("modular-monoliths" → "modular monoliths") when it is filename-shaped (wrapped, all-lowercase,
+ * or flagged by looksLikeRawFilename) — never a mixed-case title like "Self-Hosting". Returns
+ * undefined when the title is not slug-shaped, or when what is left is an identifier (digits,
+ * ASIN, placeholder) or a single word.
  */
 export function slugTitleQuery(title: string): string | undefined {
   const t = title.trim();
   let q = t.replace(WORD_PREFIX, "").replace(EXT, "").trim();
-  if (JOINED_SLUG.test(q)) q = q.replace(/[-_]+/g, " ");
+  const unwrapped = q !== t;
+  // Mixed-case joins ("Self-Hosting", "Docker-Deep-Dive") are real titles; only split a slug
+  // that came out of a filename wrapper, is all-lowercase, or the shared predicate flags.
+  const filenameSlug = unwrapped || q === q.toLowerCase() || looksLikeRawFilename(t);
+  if (filenameSlug && JOINED_SLUG.test(q)) q = q.replace(/[-_]+/g, " ");
   q = q.replace(/\s+/g, " ").trim();
   if (q === t) return undefined; // not slug-shaped: nothing was unwrapped
   if (DIGITS.test(q) || DIGIT_PAIR.test(q) || ASIN.test(q) || PLACEHOLDER.test(q)) return undefined;
