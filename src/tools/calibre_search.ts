@@ -37,7 +37,7 @@ import { defineTool } from "./define.js";
 import { bookResourceLink } from "./resource-link.js";
 import { resolveNumericId } from "../app/resolve-id.js";
 import { ENABLE_FTS_STEPS, KEYWORD_SEARCH_FALLBACK } from "./remediation.js";
-import { fence, renderResult, toolError, toolOk, toolErrorFrom, errorFromCatch } from "./result.js";
+import { fence, renderResult, toolError, toolOk, toolErrorFrom, errorFromCatch, bookNotFound } from "./result.js";
 import type { ContentBlock, ToolResult } from "./types.js";
 import type { BaseDeps, DepsWithIndex } from "./deps.js";
 import type { IndexFreshness } from "../semantic/store/index.js";
@@ -545,7 +545,7 @@ export const searchTool = defineTool({
         if (args.bookId === undefined) return toolError("invalid_input", "scope=book requires bookId");
         if (!fts) return ftsUnavailable();
         const bookId = await resolveNumericId(deps, args.bookId, args.library);
-        if (bookId === undefined) return toolError("not_found", `No book with id/uuid ${args.bookId}`);
+        if (bookId === undefined) return bookNotFound(args.bookId, { idOrUuid: true });
         return await ftsBookScope({ args, deps, fts, deadline, signal: ctx?.signal }, bookId);
       }
       const fr = await resolveFilter(deps, {

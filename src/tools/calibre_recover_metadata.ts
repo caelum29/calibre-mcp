@@ -61,7 +61,7 @@ export const recoverMetadataTool = defineTool({
     if (idArg === undefined) return toolError("invalid_input", "Provide id (the book's db id or uuid).");
     try {
       const numericId = await resolveNumericId(deps, idArg, args.library);
-      if (numericId === undefined) return toolError("not_found", `No book with id/uuid ${idArg}`);
+      if (numericId === undefined) return bookNotFound(idArg, { idOrUuid: true });
       const book = await deps.content.getBook(numericId, args.library);
 
       // Pick the lookup key: existing valid ISBN → text-scraped ISBN → usable title.

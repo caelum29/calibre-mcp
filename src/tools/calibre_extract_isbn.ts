@@ -13,7 +13,7 @@ import { defineTool } from "./define.js";
 import { scanForIsbn, scanOutcomeHint } from "../app/isbn-scan.js";
 import { bookIdArg } from "./resolve-id.js";
 import { resolveNumericId } from "../app/resolve-id.js";
-import { toolError, toolOk, errorFromCatch } from "./result.js";
+import { toolError, toolOk, errorFromCatch, bookNotFound } from "./result.js";
 import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "../app/write-policy.js";
 
 export const extractIsbnTool = defineTool({
@@ -44,7 +44,7 @@ export const extractIsbnTool = defineTool({
     if (idArg === undefined) return toolError("invalid_input", "Provide id (the book's db id or uuid).");
     try {
       const numericId = await resolveNumericId(deps, idArg, args.library);
-      if (numericId === undefined) return toolError("not_found", `No book with id/uuid ${idArg}`);
+      if (numericId === undefined) return bookNotFound(idArg, { idOrUuid: true });
       const book = await deps.content.getBook(numericId, args.library);
 
       const currentIsbn =
