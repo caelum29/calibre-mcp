@@ -139,7 +139,10 @@ then drill into a hit: `calibre_search scope:book bookId:N` or
 `calibre_get_content` with `structure:true` first for the outline, then walk with `cursor`.
 
 **Update metadata:**
-`calibre_update_book` with `changes: {tags: [...], title: "...", rating: 8}`.
+`calibre_update_book` with `changes: {tags: [...], title: "...", rating: 8}`. Each field
+replaces its value, except `identifiers`, which merges by scheme: `{identifiers: {isbn: "978…"}}`
+keeps the book's url/doi/etc., and `{identifiers: {url: null}}` removes one scheme. Same in
+`calibre_bulk_update`.
 
 **Batch tag by search:**
 `calibre_bulk_update` with `query: "title:SQL"` and `tags_add: ["SQL"]` (keeps each book's other

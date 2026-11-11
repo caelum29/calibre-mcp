@@ -3,8 +3,8 @@
 
 import type { Book } from "./book.js";
 
-/** Accepted shapes for one field's new value. */
-export type ChangeValue = string | number | string[] | Record<string, string>;
+/** Accepted shapes for one field's new value; a `null` identifier scheme removes it (#563). */
+export type ChangeValue = string | number | string[] | Record<string, string | null>;
 
 /** Built-in fields settable via set_metadata (custom `#columns` are also allowed). */
 export const KNOWN_FIELDS = [

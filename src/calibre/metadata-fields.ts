@@ -19,7 +19,9 @@ export function formatFieldValue(field: string, value: ChangeValue): string {
         'identifiers must be an object of scheme → value, e.g. {"isbn": "9780132350884"}',
       );
     }
+    // a null scheme means "remove": leave it out rather than write the literal "null" (#563)
     return Object.entries(value)
+      .filter(([, v]) => v !== null)
       .map(([scheme, v]) => `${scheme}:${v}`)
       .join(",");
   }

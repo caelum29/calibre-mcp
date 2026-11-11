@@ -479,6 +479,11 @@ Set metadata fields on one book — title, authors, tags, series, series_index, 
 publisher, pubdate, languages, comments, identifiers, or any `#custom` column. Omitted fields
 are left untouched. Returns the applied before/after diff.
 
+Every field replaces its value, except `identifiers`, which **merges by scheme**: listed schemes
+are set, unlisted ones stay, and `null` removes one. On a book with `{"url": "…", "doi": "…"}`,
+`{"identifiers": {"isbn": "9780132350884", "doi": null}}` leaves `{"url": "…", "isbn":
+"9780132350884"}`. The diff shows the full map before and after.
+
 Partial `pubdate` values are normalised to the first day before writing: `"2020"` stores
 `2020-01-01`, `"2020-05"` stores `2020-05-01` (Calibre would otherwise fill the missing parts
 from today's date). The diff shows the stored date. `identifiers` must be an object
@@ -514,7 +519,7 @@ combined with `tags_add`/`tags_remove`.
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `changes` | object | — | Field → new value applied to every selected book (a list replaces the whole list) |
+| `changes` | object | — | Field → new value applied to every selected book (a list replaces the whole list; `identifiers` merges per book by scheme, `null` removes one — see `calibre_update_book`) |
 | `tags_add` | array of strings | — | Tags to add to each book, keeping its other tags; an existing tag keeps the library's spelling |
 | `tags_remove` | array of strings | — | Tags to remove from each book (case-insensitive); a missing tag is a no-op |
 | `ids` | array of ids | — | Books to change (one of `ids`/`query`/`filter` required; `ids` cannot be combined with `query` or `filter`) |

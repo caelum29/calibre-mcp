@@ -541,11 +541,13 @@ describe("calibre_bulk_update preview flags list replacement (#306)", () => {
     expect(t).toContain("languages: 2 → 1 (replaces all existing languages)");
   });
 
-  it("flags identifiers by key count", async () => {
+  it("does not flag an identifiers merge as a replacement (#563)", async () => {
     const t = await previewText({ identifiers: { isbn: "1" } }, [
       book({ id: 1, identifiers: { isbn: "9", doi: "x", goodreads: "7" } }),
     ]);
-    expect(t).toContain("identifiers: 3 → 1 (replaces all existing identifiers)");
+    // identifiers merge by scheme (#563): unlisted schemes stay, so nothing is "replaced"
+    expect(t).not.toContain("replaces all existing identifiers");
+    expect(t).toContain(`identifiers: {"isbn":"9","doi":"x","goodreads":"7"} → {"isbn":"1","doi":"x","goodreads":"7"}`);
   });
 
   it("flags string forms of list fields the way calibredb splits them", async () => {
