@@ -177,6 +177,18 @@ describe("calibre_merge_books dry run", () => {
     expect((r.content[0] as { text: string }).text).not.toContain("does not look like the same work");
   });
 
+  // #550: an unmarked target vs a "Second Edition" source is a likely edition pair.
+  it("warns when the source is a spelled-out later edition of an unmarked target", async () => {
+    const d = fakeDeps({
+      books: [
+        book({ id: 990, title: "Learn Ansible", authors: ["Russ McKendrick"] }),
+        book({ id: 543, title: "Learn Ansible - Second Edition: Automate", authors: ["Russ McKendrick"] }),
+      ],
+    });
+    const r = await run({ targetId: 990, sourceIds: [543] }, d);
+    expect((r.content[0] as { text: string }).text).toContain("may be a different edition of the target");
+  });
+
   it("omits the metadata diff in formatsOnly mode", async () => {
     const d = fakeDeps();
     const r = await run({ targetId: 10, sourceIds: [12], mode: "formatsOnly" }, d);

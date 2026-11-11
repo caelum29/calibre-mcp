@@ -399,7 +399,12 @@ exact title + authors; `mode: similar` groups fuzzily (any script; edition suffi
 stay separate); each group carries a **merge-safety score**. `mode: compare` diffs two or more specific books field by field and recommends which to
 keep. It never merges anything — that's `calibre_merge_books`. Mixed-language groups are flagged
 as likely translations (not true duplicates), and a language difference caps the merge-safety
-score with a review warning.
+score with a review warning. Groups and compare reports also carry a same-work verdict
+(`workMatch`: `same`, `edition?` or `different`), the same one `calibre_merge_books` warns on.
+An unmarked title next to one that names a later edition ("Learn Ansible" vs "Learn Ansible -
+Second Edition") is `edition?`: it still groups, but merge safety is capped at 0.3 with a
+"possibly different editions" review line. `different` (title, author or edition mismatch, e.g.
+two hand-picked `compare` ids) is capped the same way with a "not the same work" line.
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
@@ -599,7 +604,9 @@ books into a target (the target's copy wins conflicts), merge metadata per Calib
 trash the sources. Modes: `merge` (the default) trashes sources after merging; `safe` keeps the
 sources; `formatsOnly` moves formats and leaves metadata untouched. Dry-run by default —
 without `confirm: true` it prints the full plan (survivor, format moves, metadata changes,
-trash list) and writes nothing. Trashed sources stay recoverable from Calibre's trash for about
+trash list) and writes nothing. The plan warns, without refusing, when a source does not look
+like the same work as the target, or may be a different edition of it (the same verdict as
+`calibre_find_duplicates`). Trashed sources stay recoverable from Calibre's trash for about
 two weeks. Deletion always happens last, so an interrupted merge never loses data — just re-run
 the same call to finish.
 

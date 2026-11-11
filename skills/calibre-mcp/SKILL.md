@@ -166,7 +166,9 @@ tell them applying it needs `CALIBRE_MCP_ENABLE_WRITE`.
 **Dedupe:**
 `calibre_find_duplicates mode:similar` → inspect groups with `mode:compare ids:[...]` →
 `calibre_merge_books` with `targetId` = the compare report's "recommend keeping book N" and
-the rest as `sourceIds` (dry-run plan → confirm with user → `confirm:true`). Formats move to
+the rest as `sourceIds` (dry-run plan → confirm with user → `confirm:true`). A
+`⚠ REVIEW` line (mixed languages, possibly different editions, not the same work) means ask the
+user before merging, whatever the score. Formats move to
 the target (its copy wins), metadata merges per Calibre's rules, sources land in Calibre's
 trash (recoverable ~14 days). `mode:safe` keeps sources; plain `calibre_remove_book` is for
 discarding a record without keeping anything from it.

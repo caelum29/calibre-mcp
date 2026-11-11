@@ -4,7 +4,14 @@
 // it only scores how safe a human/agent merge would be so conflicts surface first.
 
 import type { Book } from "../book.js";
-import { editionsCompatible, identicalKey, similarParts, type SimilarParts } from "./normalize.js";
+import {
+  editionsCompatible,
+  groupWorkMatch,
+  identicalKey,
+  similarParts,
+  type SimilarParts,
+  type WorkMatch,
+} from "./normalize.js";
 
 export type DuplicateMode = "identical" | "similar";
 
@@ -14,6 +21,8 @@ export interface DupGroup {
   books: Book[];
   /** 1 = safe to merge (consistent metadata); lower = conflicts that need review. */
   mergeSafety: number;
+  /** Whether the books read as one work (#550); anything but `same` caps mergeSafety. */
+  workMatch: WorkMatch;
 }
 
 /** Distinct, non-empty ISBNs present across a group. */
@@ -66,6 +75,19 @@ export function mergeSafety(books: Book[]): number {
     score = Math.min(score - 0.3, TRANSLATION_CEILING);
   }
   return Math.max(0, Math.min(1, score));
+}
+
+/**
+ * Ceiling when the books may not be one work (#550) — like a translation, a likely edition
+ * pair or a title/author mismatch must read as REVIEW, never as a clean 0.8 duplicate.
+ */
+const WORK_CEILING = 0.3;
+
+/** mergeSafety plus the shared same-work verdict, capped when the verdict is not `same`. */
+function scoreSet(books: Book[]): { mergeSafety: number; workMatch: WorkMatch } {
+  const work = groupWorkMatch(books);
+  const score = mergeSafety(books);
+  return { mergeSafety: work === "same" ? score : Math.min(score, WORK_CEILING), workMatch: work };
 }
 
 /** Number of edition signals a book carries — the most specific books seed clusters. */
@@ -128,7 +150,7 @@ export function findDuplicateGroups(books: Book[], mode: DuplicateMode): DupGrou
   const groups: DupGroup[] = [];
   for (const [key, members] of buckets) {
     if (members.length < 2) continue;
-    groups.push({ key, books: members, mergeSafety: mergeSafety(members) });
+    groups.push({ key, books: members, ...scoreSet(members) });
   }
   // Least safe first; ties broken by larger group.
   groups.sort((a, b) => a.mergeSafety - b.mergeSafety || b.books.length - a.books.length);
@@ -148,6 +170,8 @@ export interface ComparisonReport {
   bookIds: number[];
   diffs: FieldDiff[];
   mergeSafety: number;
+  /** Whether the books read as one work (#550); anything but `same` caps mergeSafety. */
+  workMatch: WorkMatch;
   /** Book id recommended to keep (most complete record). */
   keep: number;
 }
@@ -196,7 +220,7 @@ export function compareBooks(books: Book[]): ComparisonReport {
   return {
     bookIds: books.map((b) => b.id),
     diffs,
-    mergeSafety: mergeSafety(books),
+    ...scoreSet(books),
     keep: keep.id,
   };
 }
