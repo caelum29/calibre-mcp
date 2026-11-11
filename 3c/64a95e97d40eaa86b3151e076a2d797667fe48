@@ -1,0 +1,21 @@
+test/tools/recover-metadata-slug.test.ts
+  s_a7e734b50897ac::t_f42422499bcbbd 77-78
+  s_a7e734b50897ac::t_536f8b9ea73034 1-76,79-108
+  s_a7e734b50897ac::t_a411215f04e943 109-116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3c64a95e97d40eaa86b3151e076a2d797667fe48",
+  "prompts": {},
+  "sessions": {
+    "s_a7e734b50897ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1169afa2-73f5-4947-b770-81b7de000813",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
