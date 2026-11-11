@@ -162,6 +162,8 @@ replaces the whole list, or a case-only rename that renames a tag on every book.
 `calibre_extract_isbn` (preview) → `calibre_recover_metadata` → confirm with user →
 `calibre_update_book` with the proposed fields. With writes off, show the user the proposal and
 tell them applying it needs `CALIBRE_MCP_ENABLE_WRITE`.
+A slug title (`modular-monoliths`) is searched as `modular monoliths` at capped confidence
+(0.40, with a `WARNING`): show the user the matched title and get a yes before applying.
 
 **Dedupe:**
 `calibre_find_duplicates mode:similar` → inspect groups with `mode:compare ids:[...]` →
