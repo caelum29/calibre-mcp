@@ -74,7 +74,7 @@ export const updateBookTool = defineTool({
       const idArg = bookIdArg(args);
       if (idArg === undefined) return toolError("invalid_input", "Provide id (the book's db id or uuid).");
       const numericId = await resolveNumericId(deps, idArg, args.library);
-      if (numericId === undefined) return toolError("not_found", `No book with id/uuid ${idArg}`);
+      if (numericId === undefined) return bookNotFound(idArg, { idOrUuid: true });
 
       const before = await deps.content.getBook(numericId, args.library);
 
