@@ -1,0 +1,19 @@
+test/integration/write-gate-preview-hint-554.test.ts
+  s_d9a4590e130330::t_8feb45965f8db2 1-96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5ae210a7ab26fab00f4860cad0379f7c2247d80b",
+  "prompts": {},
+  "sessions": {
+    "s_d9a4590e130330": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "59545b9e-4b8e-4234-a52d-c531f3be42d7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
