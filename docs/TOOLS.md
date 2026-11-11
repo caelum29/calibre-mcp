@@ -164,7 +164,7 @@ The map reports which `detector` built it, in this order of precedence:
 | `id` (or `bookId`) | number \| uuid | *(required)* | The book to read |
 | `format` | string | *(auto)* | Which format to extract (e.g. `epub`, `pdf`); auto-picks the best (EPUB → Markdown → PDF → TXT/AZW3/MOBI/DOCX/ODT/HTMLZ/FB2/RTF) |
 | `maxChars` | number | `8000` | Max characters per excerpt (max 40000) |
-| `sentenceAware` | boolean | `true` | Trim excerpt edges to sentence boundaries |
+| `sentenceAware` | boolean | `true` | End each excerpt at the last sentence end (`.!?` + space), else at a paragraph break; a wrapped line end or a PDF page break never counts. Consecutive excerpts stay gap-free |
 | `structure` | boolean | `false` | Return a chapter map instead of book text |
 | `cursor` | string | — | Continuation token from a previous response (pass verbatim) |
 | `offset` | number | — | Character position to start from; mutually exclusive with `cursor` |
