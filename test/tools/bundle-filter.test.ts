@@ -212,3 +212,40 @@ describe("calibre_search + filter", () => {
     expect(r.isError).toBe(true);
   });
 });
+
+// #564: exclusion markers stay global and also cut an explicit filter — the note must say how
+// many books they removed, so "filter: Rust (0 books)" never reads as an empty bundle.
+describe("exclusion count on an explicit filter (#564)", () => {
+  const REMOVED_Q = '(tags:"=Rust") and (search:"=-noise")';
+  const pages = [{ match: (q: string) => q === REMOVED_Q, page: { bookIds: [7, 8, 9] } }, { page: { bookIds: [] } }];
+
+  it("resolveFilter counts the bundle books the markers remove", async () => {
+    const { deps, queries } = fake({ pages });
+    const r = await resolveFilter(deps, { filter: "Rust", autoExclude: true });
+    if (!r.ok) throw new Error(r.error);
+    expect(queries).toContain(REMOVED_Q);
+    expect(r.res.excludedBooks).toBe(3);
+  });
+
+  it("no extra count without a filter or with include_excluded", async () => {
+    const { deps } = fake({ pages });
+    const a = await resolveFilter(deps, { autoExclude: true });
+    const b = await resolveFilter(deps, { filter: "Rust", includeExcluded: true, autoExclude: true });
+    if (!a.ok || !b.ok) throw new Error("resolve failed");
+    expect(a.res.excludedBooks).toBeUndefined();
+    expect(b.res.excludedBooks).toBeUndefined();
+  });
+
+  it("calibre_search reports the removed count in text AND structuredContent", async () => {
+    const { deps } = fake({ pages });
+    const r = await searchTool.handler(
+      { query: "async", mode: "meta", scope: "library", limit: 20, filter: "Rust" },
+      deps,
+    );
+    const text = r.content.find((c) => c.type === "text");
+    const t = text && "text" in text ? text.text : "";
+    expect(t).toContain("filter: Rust (0 books)");
+    expect(t).toContain("exclusions applied: [-noise] removed 3 books from the filter");
+    expect(r.structuredContent).toMatchObject({ exclusionsApplied: ["-noise"], exclusionsRemoved: 3 });
+  });
+});
