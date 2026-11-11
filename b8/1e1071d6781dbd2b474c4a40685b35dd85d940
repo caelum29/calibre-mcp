@@ -1,0 +1,39 @@
+src/domain/book-fields.ts
+  s_0618547d906c4d::t_3032951947a869 6-7
+src/calibre/metadata-fields.ts
+  s_0618547d906c4d::t_3032951947a869 22,24
+test/tools/bulk-update.handler.test.ts
+  s_0618547d906c4d::t_0fbd7b0f393ace 544,548-550
+src/tools/calibre_bulk_update.ts
+  s_0618547d906c4d::t_7f79acb3a0ff66 54
+  s_0618547d906c4d::t_521b80cda93872 327-330
+  s_0618547d906c4d::t_3032951947a869 26,189-191,322
+skills/calibre-mcp/SKILL.md
+  s_0618547d906c4d::t_7f79acb3a0ff66 142-145
+src/tools/calibre_update_book.ts
+  s_0618547d906c4d::t_521b80cda93872 43
+  s_0618547d906c4d::t_3032951947a869 17,36,62-63,81-82
+docs/TOOLS.md
+  s_0618547d906c4d::t_7f79acb3a0ff66 482-486,522
+docs/tool-catalog.json
+  s_0618547d906c4d::t_437022c9e9b852 411,432-435,2491,2525-2528
+src/app/merge-identifiers.ts
+  s_0618547d906c4d::t_3032951947a869 1-18,23-28
+  s_0618547d906c4d::t_e6e9baf42acf39 19-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b81e1071d6781dbd2b474c4a40685b35dd85d940",
+  "prompts": {},
+  "sessions": {
+    "s_0618547d906c4d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06b59239-c7c3-4054-98e8-722639f3d182",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
