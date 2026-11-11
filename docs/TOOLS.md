@@ -303,7 +303,9 @@ ready-made `calibre_get_figures` call to fetch the actual image (never the pixel
 
 All modes need an index built by `calibre_build_index` first. If you only built a keyword-only
 (model-free) index, `keyword` mode works, `vector` errors with guidance, and `hybrid` degrades
-to keyword with a note. Figure captions enter the index at build time, so books indexed before
+to keyword with a note (`semanticAvailable: false` here means this index can't do vector
+ranking). The guidance says to rebuild without `keywordOnly` when the embedding model is
+installed, and gives install steps only when it isn't. Figure captions enter the index at build time, so books indexed before
 figure support need a `force: true` rebuild before `target: figures` finds them.
 
 | Parameter | Type | Default | Meaning |
@@ -341,7 +343,11 @@ background; re-run the same call to get its result. Only one build runs per libr
 call made while another build is running reports that build's progress instead of starting a
 second one. Books already up to date are skipped, so a re-run after an interruption resumes. The first
 embedding build downloads the model (~118 MB, one-time), then runs offline. Set `keywordOnly: true` to build a model-free keyword index (zero ML
-dependencies); this also happens automatically if the embedding model isn't installed. Re-run
+dependencies); this also happens automatically if the embedding model isn't installed. The
+result's `semanticAvailable` says whether the embedding model is usable on this server, not what
+this build did (`keywordOnly` says that): after a requested keyword-only build with the model
+present it is `true`, and the note says to rebuild without `keywordOnly` for vector & hybrid
+search. Install steps appear only when the model is really missing. Re-run
 after adding books; use `force: true` to re-index books that haven't changed. An embedding
 build treats books indexed without embeddings (keyword-only) as out of date and re-indexes them
 without `force`; a keyword-only build never overwrites a book that already has embeddings (it

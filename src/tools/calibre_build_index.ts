@@ -15,6 +15,7 @@ import { enableFts, type FtsOutcome } from "../app/enable-fts.js";
 import { runIndexBuild, type BuildIndexDeps, type BuildSummary } from "../app/build-index.js";
 import type { LibId } from "../calibre/lib-id.js";
 import { INSTALL_TRANSFORMERS } from "./remediation.js";
+import { embedderUsable } from "../semantic/status.js";
 import { toolError, toolOk, errorFromCatch } from "./result.js";
 import {
   backgroundFailedResult,
@@ -89,9 +90,13 @@ export const buildIndexTool = defineTool({
     booksDone: z.number().optional(),
     indexedIds: z.array(z.number()).optional(),
     keywordOnly: z.boolean().optional(),
-    // Degradation surfacing (issue #41): false whenever the built index has no embeddings —
-    // requested (keywordOnly=true) or auto-degraded — with the reason spelled out.
-    semanticAvailable: z.boolean().optional(),
+    // #559: the embedding model's availability, not the build mode (keywordOnly says that).
+    semanticAvailable: z
+      .boolean()
+      .optional()
+      .describe(
+        "Is the embedding model usable on this server? true even for a requested keywordOnly build when the model is present (vector & hybrid then need a rebuild without keywordOnly); false only when it is missing or failed to load. The build mode is keywordOnly.",
+      ),
     semanticReason: z.string().optional(),
     // Per result kind: final = every per-book failure; still running = failures so far;
     // background build failed = [0] is the reason.
@@ -228,7 +233,9 @@ async function runBuild(
   }
   // Same buckets as the progress text, so the cancel summary and "Books so far" agree.
   if (outcome.kind === "cancelled") return cancelledResult(outcome.counts);
-  return summaryResult(outcome.summary);
+  // a requested keyword-only build never warmed the model: probe it without loading (#559)
+  const s = outcome.summary;
+  return summaryResult({ ...s, embedderAvailable: s.embedderAvailable ?? embedderUsable(deps.embedder) });
 }
 
 /** The FTS line of the summary: always names the status so clients that drop structuredContent see it. */
@@ -260,7 +267,14 @@ function summaryResult(s: BuildSummary): ToolResult {
   // The auto-degrade warning LEADS the text block — an automatic downgrade must never
   // read as an unqualified success (issue #41: keywordOnly:true + failures:[] looked fine).
   let degradeWarning: string | undefined;
-  if (s.keywordOnlyReason === "requested") {
+  if (s.keywordOnlyReason === "requested" && s.embedderAvailable) {
+    // the model is there: a normal rebuild is the whole fix, no install steps (#559)
+    semanticReason =
+      "keywordOnly=true requested — no embeddings built; the embedding model is available, so a rebuild without keywordOnly (force=true) enables vector & hybrid search.";
+    notes.push(
+      'Keyword-only index (no embeddings): mode:"keyword" search works now. The embedding model is available: for vector & hybrid semantic search, rebuild without keywordOnly (force=true).',
+    );
+  } else if (s.keywordOnlyReason === "requested") {
     semanticReason =
       "keywordOnly=true requested — no embeddings built; vector & hybrid semantic search need an embedding rebuild.";
     // semanticReason stays short (machine-scannable); the full 3-branch fix goes in the note text.
@@ -330,7 +344,7 @@ function summaryResult(s: BuildSummary): ToolResult {
     ...(s.removedIds ? { removedIds: s.removedIds } : {}),
     elapsedMs: s.elapsedMs,
     keywordOnly: s.keywordOnly,
-    semanticAvailable: !s.keywordOnly,
+    semanticAvailable: s.embedderAvailable === true,
     ...(semanticReason !== undefined ? { semanticReason } : {}),
     ...(bookDetails.length > 0 ? { bookDetails } : {}),
     failures,

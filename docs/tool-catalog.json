@@ -414,6 +414,7 @@
             "type": "string"
           },
           "semanticAvailable": {
+            "description": "Is the embedding model usable on this server? true even for a requested keywordOnly build when the model is present (vector & hybrid then need a rebuild without keywordOnly); false only when it is missing or failed to load. The build mode is keywordOnly.",
             "type": "boolean"
           },
           "semanticReason": {
@@ -2537,6 +2538,7 @@
             "type": "string"
           },
           "semanticAvailable": {
+            "description": "Can vector & hybrid ranking run on this library's index? false when the index is keyword-only (no embeddings); semanticReason and the note say whether a rebuild or a model install is the fix.",
             "type": "boolean"
           },
           "semanticReason": {

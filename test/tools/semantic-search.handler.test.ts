@@ -62,6 +62,8 @@ const throwingEmbedder: Embedder = {
   countTokens() {
     throw new Error("EMBEDDER_UNAVAILABLE");
   },
+  // an unusable model: the #559 availability probe must say so without touching the disk
+  loadState: () => "failed",
 };
 
 function deps(

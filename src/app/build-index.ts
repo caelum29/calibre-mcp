@@ -99,6 +99,11 @@ export interface BuildSummary extends BuildCounts {
   rerankerWarmupFailed: boolean;
   /** Set when a query selected more than LARGE_SELECTION books (the resume note, #138). */
   largeSelection?: number;
+  /**
+   * Is the embedding model usable (#559)? Independent of the build mode. Undefined for a requested
+   * keyword-only build: it skips the warmup, so the caller probes the model (a disk/load-state check).
+   */
+  embedderAvailable?: boolean;
   /** prune=true only: what was dropped, or why the prune was skipped. */
   prune?: { pruned: PruneCounts } | { skipped: string };
   /**
@@ -319,6 +324,8 @@ export async function runIndexBuild(
       bookDetails,
       keywordOnly,
       ...(keywordOnlyReason !== undefined ? { keywordOnlyReason } : {}),
+      // the warmup answered for every mode but a requested keyword-only build (it skips it)
+      ...(keywordOnlyReason !== "requested" ? { embedderAvailable: keywordOnlyReason === undefined } : {}),
       rerankerWarmupFailed,
       ...(largeSelection !== undefined ? { largeSelection } : {}),
       ...(prune ? { prune } : {}),
