@@ -114,3 +114,42 @@ describe("calibre_recover_metadata — slug titles (#549)", () => {
     expect(onIdent.isError).toBe(true);
   });
 });
+
+// #549 review: the de-slug must not reach real titles that merely contain - . + (round 1).
+describe("calibre_recover_metadata — real hyphenated titles stay real (#549)", () => {
+  it.each([
+    "Self-Hosting",
+    "Docker-Deep-Dive",
+    "Node.js in Action",
+    "C++ Primer",
+    "Site Reliability Engineering - 2nd ed",
+  ])("searches %j as-is, uncapped, unwarned, and never proposes over its title", async (raw) => {
+    const seen: Seen = { titles: [] };
+    // The provider title only partly agrees: a weak current title would be replaced by it.
+    const hits: ProviderHit[] = [{ source: "openlibrary", confidence: 0.6, title: `${raw} Handbook`, publisher: "P" }];
+    const r = await recoverMetadataTool.handler({ id: 1 }, deps(book({ title: raw }), hits, seen));
+    expect(r.isError).toBeFalsy();
+    expect(seen.titles).toEqual([{ title: raw, author: undefined }]);
+    expect(r.structuredContent?.lookupKey).toBe(`title:${raw}`);
+    expect(r.structuredContent?.confidence).toBe(0.6);
+    expect(r.structuredContent?.warnings).toEqual([]);
+    expect(r.structuredContent?.changes).toEqual({ publisher: "P" });
+    expect(text(r)).not.toContain("WARNING");
+  });
+
+  it("caps every proposed field's confidence at 0.40 for a de-slugged lookup", async () => {
+    const hits: ProviderHit[] = [
+      { source: "openlibrary", confidence: 0.6, title: "Modular Monoliths", authors: ["Jane Doe"], publisher: "P" },
+    ];
+    const r = await recoverMetadataTool.handler(
+      { id: 1 },
+      deps(book({ title: "modular-monoliths", authors: ["Unknown"] }), hits, { titles: [] }),
+    );
+    expect(r.structuredContent?.changes).toEqual({ title: "Modular Monoliths", authors: ["Jane Doe"], publisher: "P" });
+    const fieldLines = text(r)
+      .split("\n")
+      .filter((l) => /^ {2}(title|authors|publisher): /.test(l));
+    expect(fieldLines).toHaveLength(3);
+    for (const l of fieldLines) expect(l).toContain("[openlibrary, 0.40, ");
+  });
+});
