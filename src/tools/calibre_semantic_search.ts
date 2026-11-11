@@ -33,6 +33,7 @@ const BUILD_LIBRARY_INDEX = "Run calibre_build_index with a bookId, ids, or quer
 import type { ContentBlock, ToolResult } from "./types.js";
 import type { BaseDeps, DepsWithIndex } from "./deps.js";
 import { errorCodeFor } from "../domain/error-codes.js";
+import { figureLocation, figureLocationLabel } from "../domain/figures/location.js";
 
 export const semanticSearchTool = defineTool({
   name: "calibre_semantic_search",
@@ -113,7 +114,8 @@ export const semanticSearchTool = defineTool({
           title: z.string(),
           authors: z.array(z.string()),
           figIndex: z.number(),
-          page: z.number(),
+          page: z.number().optional().describe("PDF hits only: the page number."),
+          section: z.number().optional().describe("EPUB hits only: the spine-section index (shown as §N)."),
           caption: z.string(),
           format: z.string(),
           source: z.string().optional(),
@@ -529,7 +531,7 @@ async function figuresTarget(
     header("figure", ranked.length, args, maxScore, lowConfidence, rr) +
       ` Fetch pixels via calibre_get_figures { bookId, indexes: [figIndex] }.` +
       (ranked.some((r) => r.hit.format !== "pdf")
-        ? ` ~p.N on EPUB hits = approximate page (spine-document ordinal, as in the calibre_get_figures listing).`
+        ? ` §N on EPUB hits = spine-section index (EPUB has no pages; same number as the calibre_get_figures listing).`
         : ""),
     note,
   );
@@ -539,9 +541,8 @@ async function figuresTarget(
     const h = r.hit;
     const ctx = deps.index.chunkAt(libraryId, h.bookId, h.charOffset);
     const snippet = ctx ? ctx.body.slice(0, SNIPPET_CHARS) : undefined;
-    // EPUB "page" is the spine-document ordinal — same number the get_figures listing shows,
-    // flagged approximate (#105).
-    const pagePart = h.format === "pdf" ? `p.${h.page},` : `~p.${h.page},`;
+    // EPUB's number is the spine-section index, not a page (#553) — same as the get_figures listing.
+    const pagePart = `${figureLocationLabel(h.format, h.page)},`;
     const srcPart = h.source ? ` ${h.source},` : "";
     const fenced = fence(
       `FIGURE book ${h.bookId} #${h.figIndex} (${pagePart}${srcPart} @${h.charOffset}) ${scoreLabel(r)}`,
@@ -556,7 +557,7 @@ async function figuresTarget(
       title: h.title,
       authors: h.authors,
       figIndex: h.figIndex,
-      page: h.page,
+      ...figureLocation(h.format, h.page),
       caption: h.caption,
       format: h.format,
       ...(h.source !== undefined ? { source: h.source } : {}),

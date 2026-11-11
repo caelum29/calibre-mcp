@@ -1143,7 +1143,7 @@
         "openWorldHint": true,
         "readOnlyHint": true
       },
-      "description": "List a book's figures — images the text references, identified by caption (Figure 1-2 / Рис. 3.1) — with page + caption per figure, then fetch chosen ones as images via indexes (≤3 per call). Captions let you pick figures before spending image tokens. In MCP Apps hosts the fetched figures also render for the user in an in-chat viewer, so you can point at them by figure number — but describe only what the pixels you received actually show.",
+      "description": "List a book's figures — images the text references, identified by caption (Figure 1-2 / Рис. 3.1) — with location (PDF page p.N / EPUB spine section §N) + caption per figure, then fetch chosen ones as images via indexes (≤3 per call). Captions let you pick figures before spending image tokens. In MCP Apps hosts the fetched figures also render for the user in an in-chat viewer, so you can point at them by figure number — but describe only what the pixels you received actually show.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {
@@ -2333,9 +2333,14 @@
                   "type": "string"
                 },
                 "page": {
+                  "description": "PDF hits only: the page number.",
                   "type": "number"
                 },
                 "rerankScore": {
+                  "type": "number"
+                },
+                "section": {
+                  "description": "EPUB hits only: the spine-section index (shown as §N).",
                   "type": "number"
                 },
                 "source": {
@@ -2350,7 +2355,6 @@
                 "title",
                 "authors",
                 "figIndex",
-                "page",
                 "caption",
                 "format",
                 "charOffset"

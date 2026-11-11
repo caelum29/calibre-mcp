@@ -62,7 +62,7 @@ __DEBUG__
       var b = blocks[i] || {};
       if (b.type === "image") {
         if (b.data && b.mimeType) {
-          var f = pendingCap || { index: null, page: "", source: "", caption: "" };
+          var f = pendingCap || { index: null, loc: "", source: "", caption: "" };
           f.url = "data:" + b.mimeType + ";base64," + b.data;
           figures.push(f);
         }
@@ -84,11 +84,13 @@ __DEBUG__
   }
 
   // "Figure index 3 (p.35, raster, image/jpeg 132.0 KB) — Figure 1.1: Clean Architecture"
+  // EPUB lines carry "§5" (spine section) instead of "p.35" (#553). The location label is kept
+  // as delivered, so a later change to the line's shape needs no new parser rule.
   function parseCaption(m) {
     var parts = String(m[2] || "").split(", ");
     return {
       index: +m[1],
-      page: String(parts[0] || "").replace(/^p\./, ""),
+      loc: String(parts[0] || "").trim(),
       source: parts[1] || "",
       caption: (m[3] || "").trim(),
       w: 0,
@@ -121,7 +123,7 @@ __DEBUG__
 
   function capText(f) { return f.caption || "Untitled figure"; }
   function provText(f) {
-    var s = "p." + (f.page || "?") + (f.source ? " \u00B7 " + f.source : "");
+    var s = (f.loc || "?") + (f.source ? " \u00B7 " + f.source : "");
     if (f.w && f.h) s += " \u00B7 " + f.w + "\u00D7" + f.h;
     return s;
   }
