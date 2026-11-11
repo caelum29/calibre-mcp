@@ -70,13 +70,16 @@ export const CoercedBool = (): z.ZodType<boolean> =>
     return v; // unrecognized → let z.boolean() reject
   }, z.boolean());
 
-/** Page-size param: coerce → int → clamp to [1, max]; default `def` when omitted/garbage. */
+/**
+ * Page-size param: coerce → int → clamp down to `max`; default `def` when omitted, garbage or < 1
+ * (#552: a non-positive value is a sloppy client, not a request for 1 result/char).
+ */
 export function limitParam(max: number, def: number) {
   return z
     .preprocess((v) => {
-      const n = Number(v);
-      if (!Number.isFinite(n)) return def;
-      return Math.min(max, Math.max(1, Math.trunc(n)));
+      const n = Math.trunc(Number(v));
+      if (!Number.isFinite(n) || n < 1) return def;
+      return Math.min(max, n);
     }, z.number().int())
     .default(def);
 }

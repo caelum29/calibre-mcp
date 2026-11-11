@@ -40,7 +40,7 @@ ID `My_Books`. Calibre GUI + Content Server on `:8080` are normally running.
 | `calibre_search` | Find books by metadata or full text; also keyword search *inside* one book; highlights/bookmarks and author/series/tag notes (Calibre 9.18+) | `query`, `mode: meta\|fts\|annotations\|notes`, `scope: library\|book`, `bookId`, `sort`, `limit`, `cursor`, `filter` (bundle), `include_excluded` |
 | `calibre_get_book` | Full metadata + formats + cover for one book | `id` (number or uuid) |
 | `calibre_get_content` | Read book text chunk-by-chunk without flooding context | `id`, `maxChars` (default 8k, max 40k), `cursor`, `structure` (outline), `sentenceAware` |
-| `calibre_get_figures` | List a book's captioned figures, then fetch ≤3 as images (also rendered for the user in an in-chat figure viewer on MCP Apps hosts) | `id`, `indexes` (omit to list), `detail: standard\|high`, `include_uncaptioned`, `format` |
+| `calibre_get_figures` | List a book's captioned figures (location: PDF page `p.N`, EPUB spine section `§N`), then fetch ≤3 as images (also rendered for the user in an in-chat figure viewer on MCP Apps hosts) | `id`, `indexes` (omit to list), `detail: standard\|high`, `include_uncaptioned`, `format` |
 | `calibre_list_categories` | Tags/authors/series/etc. values + counts; schema discovery | `field`, `valueFilter` (regex), `limit`, `cursor` |
 | `calibre_list_libraries` | Library map + default | — |
 | `calibre_semantic_search` | Meaning-based search across the library or within one book | `query`, `scope: library\|book`, `bookId`, `mode: hybrid\|vector\|keyword`, `topK`, `filter` (bundle), `include_excluded` |
@@ -139,7 +139,10 @@ then drill into a hit: `calibre_search scope:book bookId:N` or
 `calibre_get_content` with `structure:true` first for the outline, then walk with `cursor`.
 
 **Update metadata:**
-`calibre_update_book` with `changes: {tags: [...], title: "...", rating: 8}`.
+`calibre_update_book` with `changes: {tags: [...], title: "...", rating: 8}`. Each field
+replaces its value, except `identifiers`, which merges by scheme: `{identifiers: {isbn: "978…"}}`
+keeps the book's url/doi/etc., and `{identifiers: {url: null}}` removes one scheme (scheme names are case-insensitive). Same in
+`calibre_bulk_update`.
 
 **Batch tag by search:**
 `calibre_bulk_update` with `query: "title:SQL"` and `tags_add: ["SQL"]` (keeps each book's other
@@ -162,11 +165,15 @@ replaces the whole list, or a case-only rename that renames a tag on every book.
 `calibre_extract_isbn` (preview) → `calibre_recover_metadata` → confirm with user →
 `calibre_update_book` with the proposed fields. With writes off, show the user the proposal and
 tell them applying it needs `CALIBRE_MCP_ENABLE_WRITE`.
+A slug title (`modular-monoliths`) is searched as `modular monoliths` at capped confidence
+(0.40, with a `WARNING`): show the user the matched title and get a yes before applying.
 
 **Dedupe:**
 `calibre_find_duplicates mode:similar` → inspect groups with `mode:compare ids:[...]` →
 `calibre_merge_books` with `targetId` = the compare report's "recommend keeping book N" and
-the rest as `sourceIds` (dry-run plan → confirm with user → `confirm:true`). Formats move to
+the rest as `sourceIds` (dry-run plan → confirm with user → `confirm:true`). A
+`⚠ REVIEW` line (mixed languages, possibly different editions, not the same work) means ask the
+user before merging, whatever the score. Formats move to
 the target (its copy wins), metadata merges per Calibre's rules, sources land in Calibre's
 trash (recoverable ~14 days). `mode:safe` keeps sources; plain `calibre_remove_book` is for
 discarding a record without keeping anything from it. Both drop the removed books from the

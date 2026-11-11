@@ -164,7 +164,7 @@ The map reports which `detector` built it, in this order of precedence:
 | `id` (or `bookId`) | number \| uuid | *(required)* | The book to read |
 | `format` | string | *(auto)* | Which format to extract (e.g. `epub`, `pdf`); auto-picks the best (EPUB → Markdown → PDF → TXT/AZW3/MOBI/DOCX/ODT/HTMLZ/FB2/RTF) |
 | `maxChars` | number | `8000` | Max characters per excerpt (max 40000) |
-| `sentenceAware` | boolean | `true` | Trim excerpt edges to sentence boundaries |
+| `sentenceAware` | boolean | `true` | End each excerpt at the last sentence end (`.!?` + space), else at a paragraph break; a wrapped line end or a PDF page break never counts. Consecutive excerpts stay gap-free |
 | `structure` | boolean | `false` | Return a chapter map instead of book text |
 | `cursor` | string | — | Continuation token from a previous response (pass verbatim) |
 | `offset` | number | — | Character position to start from; mutually exclusive with `cursor` |
@@ -175,18 +175,20 @@ The map reports which `detector` built it, in this order of precedence:
 ### `calibre_get_figures`
 
 See a book's **figures** — the images its text refers to, identified by an adjacent caption
-(`Figure 1-2. …`, `Рис. 3.1. …`). Call it without `indexes` to **list** figures (page, caption,
+(`Figure 1-2. …`, `Рис. 3.1. …`). Call it without `indexes` to **list** figures (location, caption,
 source) so you can judge relevance before spending image tokens; then pass `indexes` to fetch
 up to 3 of them as actual images in the chat. Raw uncaptioned images (covers, decorations,
 inline equation art) are hidden unless `include_uncaptioned: true`. Captions that wrap
 across lines are read whole, and in PDFs a caption set apart from its number (beside it, or
 in a side column below it) is read from the page layout; a figure printed with just its
 number (`Рис. 7.2` under a diagram) is listed as *label only*, and a caption cut for length ends in `…`. Indexes count
-hidden uncaptioned images too, so the default list can skip numbers.
+hidden uncaptioned images too, so the default list can skip numbers. A figure's location is a
+**page** for PDF (`p.35`, `page` in the structured result) and a **section** for EPUB (`§5`,
+`section`): the index of the spine document it sits in, since EPUB has no pages.
 
 In MCP Apps hosts (Claude Desktop), a fetch also renders the figures **for you** in an in-chat
 viewer — a large reading pane with a margin rail when several figures come back, click (or
-Enter) to zoom to 100% and drag to pan, caption and page under each one. A figure that couldn't
+Enter) to zoom to 100% and drag to pan, caption and location (`p.N` / `§N`) under each one. A figure that couldn't
 be extracted shows as a quiet placard instead of an error, and the listing call renders nothing
 at all. Text-only hosts just get the images in the transcript, as before.
 
@@ -290,7 +292,8 @@ On a library refused for a [case-only id clash](#case-clashing-library-ids) it f
 code `library_id_collision` instead of "no index yet".
 
 `target: figures` searches **figure captions** instead of body text — use it when you're after
-a diagram, chart, or schema. Hits return the caption, page, the surrounding passage, and a
+a diagram, chart, or schema. Hits return the caption, its location (`page` / `p.N` for PDF, `section` / `§N` — the
+spine-section index — for EPUB), the surrounding passage, and a
 ready-made `calibre_get_figures` call to fetch the actual image (never the pixels directly).
 `target` is orthogonal to `scope`: figure search works library-wide or within one book.
 
@@ -398,7 +401,12 @@ exact title + authors; `mode: similar` groups fuzzily (any script; edition suffi
 stay separate); each group carries a **merge-safety score**. `mode: compare` diffs two or more specific books field by field and recommends which to
 keep. It never merges anything — that's `calibre_merge_books`. Mixed-language groups are flagged
 as likely translations (not true duplicates), and a language difference caps the merge-safety
-score with a review warning.
+score with a review warning. Groups and compare reports also carry a same-work verdict
+(`workMatch`: `same`, `edition?` or `different`), the same one `calibre_merge_books` warns on.
+An unmarked title next to one that names a later edition ("Learn Ansible" vs "Learn Ansible -
+Second Edition") is `edition?`: it still groups, but merge safety is capped at 0.3 with a
+"possibly different editions" review line. `different` (title, author or edition mismatch, e.g.
+two hand-picked `compare` ids) is capped the same way with a "not the same work" line.
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
@@ -443,6 +451,12 @@ title + first author) and queries Open Library, then Google Books. **Preview onl
 a proposal plus a ready-to-apply `changes` object and never writes. Apply the proposal with
 `calibre_update_book`.
 
+A slug-shaped filename title is turned back into words and searched: `modular-monoliths` →
+`modular monoliths`, `Microsoft Word - Report Name.docx` → `Report Name`. That match is a guess,
+so its confidence is capped at 0.40 and a `WARNING` line (also in `warnings`) asks you to verify
+it before applying. A title that is only an identifier (`795731065`, `B0CZS7H23N`, `top.dvi`)
+can't be searched: without an ISBN the tool refuses and asks for one.
+
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
 | `id` (or `bookId`) | number \| uuid | *(required)* | The book to look up |
@@ -481,6 +495,12 @@ Set metadata fields on one book — title, authors, tags, series, series_index, 
 publisher, pubdate, languages, comments, identifiers, or any `#custom` column. Omitted fields
 are left untouched. Returns the applied before/after diff.
 
+Every field replaces its value, except `identifiers`, which **merges by scheme**: listed schemes
+are set, unlisted ones stay, and `null` removes one. Scheme names are case-insensitive
+(`ISBN` sets the book's `isbn`). On a book with `{"url": "…", "doi": "…"}`,
+`{"identifiers": {"isbn": "9780132350884", "doi": null}}` leaves `{"url": "…", "isbn":
+"9780132350884"}`. The diff shows the full map before and after.
+
 Partial `pubdate` values are normalised to the first day before writing: `"2020"` stores
 `2020-01-01`, `"2020-05"` stores `2020-05-01` (Calibre would otherwise fill the missing parts
 from today's date). The diff shows the stored date. `identifiers` must be an object
@@ -516,7 +536,7 @@ combined with `tags_add`/`tags_remove`.
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `changes` | object | — | Field → new value applied to every selected book (a list replaces the whole list) |
+| `changes` | object | — | Field → new value applied to every selected book (a list replaces the whole list; `identifiers` merges per book by scheme, `null` removes one — see `calibre_update_book`) |
 | `tags_add` | array of strings | — | Tags to add to each book, keeping its other tags; an existing tag keeps the library's spelling |
 | `tags_remove` | array of strings | — | Tags to remove from each book (case-insensitive); a missing tag is a no-op |
 | `ids` | array of ids | — | Books to change (one of `ids`/`query`/`filter` required; `ids` cannot be combined with `query` or `filter`) |
@@ -602,7 +622,9 @@ books into a target (the target's copy wins conflicts), merge metadata per Calib
 trash the sources. Modes: `merge` (the default) trashes sources after merging; `safe` keeps the
 sources; `formatsOnly` moves formats and leaves metadata untouched. Dry-run by default —
 without `confirm: true` it prints the full plan (survivor, format moves, metadata changes,
-trash list) and writes nothing. Trashed sources stay recoverable from Calibre's trash for about
+trash list) and writes nothing. The plan warns, without refusing, when a source does not look
+like the same work as the target, or may be a different edition of it (the same verdict as
+`calibre_find_duplicates`). Trashed sources stay recoverable from Calibre's trash for about
 two weeks. Deletion always happens last, so an interrupted merge never loses data — just re-run
 the same call to finish. Once the trash step is confirmed, the trashed sources are dropped from
 the semantic index the same way `calibre_remove_book` does it (a failure only adds the

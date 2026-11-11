@@ -408,7 +408,7 @@
         "idempotentHint": false,
         "readOnlyHint": false
       },
-      "description": "Apply the same metadata changes (tags, series, publisher, etc.) to a set of books selected by ids, a search query, or filter (a bundle name). Preview-first: returns the per-book diff without writing unless preview is set false. A book set is required (never all books). A list in changes replaces the whole list; to add or remove tags while keeping the rest, use tags_add / tags_remove (merged per book, case-insensitive, not together with changes.tags). Previews work without writes; applying needs CALIBRE_MCP_ENABLE_WRITE.",
+      "description": "Apply the same metadata changes (tags, series, publisher, etc.) to a set of books selected by ids, a search query, or filter (a bundle name). Preview-first: returns the per-book diff without writing unless preview is set false. A book set is required (never all books). A list in changes replaces the whole list; to add or remove tags while keeping the rest, use tags_add / tags_remove (merged per book, case-insensitive, not together with changes.tags). changes.identifiers merges per book by scheme (listed schemes set, others kept, null removes one). Previews work without writes; applying needs CALIBRE_MCP_ENABLE_WRITE.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {
@@ -429,7 +429,10 @@
                 },
                 {
                   "additionalProperties": {
-                    "type": "string"
+                    "type": [
+                      "string",
+                      "null"
+                    ]
                   },
                   "propertyNames": {
                     "type": "string"
@@ -811,12 +814,16 @@
                 },
                 "mixedLanguages": {
                   "type": "boolean"
+                },
+                "workMatch": {
+                  "type": "string"
                 }
               },
               "required": [
                 "bookIds",
                 "mergeSafety",
-                "mixedLanguages"
+                "mixedLanguages",
+                "workMatch"
               ],
               "type": "object"
             },
@@ -839,6 +846,9 @@
           },
           "offset": {
             "type": "number"
+          },
+          "workMatch": {
+            "type": "string"
           }
         },
         "required": [
@@ -1143,7 +1153,7 @@
         "openWorldHint": true,
         "readOnlyHint": true
       },
-      "description": "List a book's figures — images the text references, identified by caption (Figure 1-2 / Рис. 3.1) — with page + caption per figure, then fetch chosen ones as images via indexes (≤3 per call). Captions let you pick figures before spending image tokens. In MCP Apps hosts the fetched figures also render for the user in an in-chat viewer, so you can point at them by figure number — but describe only what the pixels you received actually show.",
+      "description": "List a book's figures — images the text references, identified by caption (Figure 1-2 / Рис. 3.1) — with location (PDF page p.N / EPUB spine section §N) + caption per figure, then fetch chosen ones as images via indexes (≤3 per call). Captions let you pick figures before spending image tokens. In MCP Apps hosts the fetched figures also render for the user in an in-chat viewer, so you can point at them by figure number — but describe only what the pixels you received actually show.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {
@@ -2339,9 +2349,14 @@
                   "type": "string"
                 },
                 "page": {
+                  "description": "PDF hits only: the page number.",
                   "type": "number"
                 },
                 "rerankScore": {
+                  "type": "number"
+                },
+                "section": {
+                  "description": "EPUB hits only: the spine-section index (shown as §N).",
                   "type": "number"
                 },
                 "source": {
@@ -2356,7 +2371,6 @@
                 "title",
                 "authors",
                 "figIndex",
-                "page",
                 "caption",
                 "format",
                 "charOffset"
@@ -2491,7 +2505,7 @@
         "idempotentHint": true,
         "readOnlyHint": false
       },
-      "description": "Replace metadata fields on one book: `changes` maps each field (title, authors, tags, series, rating, identifiers, comments, or any #custom column) to its new value. Omitted fields are untouched. Requires writes to be enabled.",
+      "description": "Replace metadata fields on one book: `changes` maps each field (title, authors, tags, series, rating, identifiers, comments, or any #custom column) to its new value. Omitted fields are untouched. `identifiers` merges by scheme (case-insensitive) instead: listed schemes are set, others stay, null removes one ({\"isbn\": \"978…\", \"url\": null}). Requires writes to be enabled.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {
@@ -2525,7 +2539,10 @@
                 },
                 {
                   "additionalProperties": {
-                    "type": "string"
+                    "type": [
+                      "string",
+                      "null"
+                    ]
                   },
                   "propertyNames": {
                     "type": "string"

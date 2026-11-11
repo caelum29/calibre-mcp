@@ -10,7 +10,7 @@ import { authorSuspectReason, normalizeAuthors } from "../curation/authors.js";
 import { foldAccents } from "../curation/normalize.js";
 import { toIsbn13 } from "../curation/isbn.js";
 import { isEmptyDate } from "../merge.js";
-import { looksLikeRawFilename } from "./filename-guess.js";
+import { looksLikeRawFilename, slugTitleQuery } from "./filename-guess.js";
 import type { ProposedField, Proposal, ProviderHit } from "./types.js";
 
 const UNKNOWN_AUTHOR = new Set(["", "unknown", "unknown author"]);
@@ -24,9 +24,9 @@ const STOP_WORDS = new Set(
 // Below any provider's fuzzy-search score (0.6): a contradicted ISBN hit is the least trustworthy.
 const MISMATCH_CONFIDENCE = 0.3;
 
-/** A title is weak if it's missing or a raw import filename. */
+/** A title is weak if it's missing, a raw import filename, or a slug recover de-slugs (#549). */
 function titleIsWeak(title: string, authors: string[]): boolean {
-  return title.trim().length === 0 || looksLikeRawFilename(title, authors);
+  return title.trim().length === 0 || looksLikeRawFilename(title, authors) || slugTitleQuery(title) !== undefined;
 }
 
 /**
