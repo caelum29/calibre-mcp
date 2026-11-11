@@ -4,7 +4,7 @@
 
 import type { Book } from "../book.js";
 import { normalizeIsbn } from "./isbn.js";
-import { isSimilarMatch } from "./normalize.js";
+import { foldAccents, isSimilarMatch } from "./normalize.js";
 
 /** A just-added book that looks like it duplicates other books. */
 export interface PossibleDuplicate {
@@ -72,4 +72,22 @@ export function matchAddedBook(added: Book, candidates: Book[]): PossibleDuplica
   const of = [...new Set([...byIsbn, ...byTitle])].sort((a, b) => a - b);
   if (of.length === 0) return undefined;
   return { id: added.id, of, reason: byIsbn.length > 0 ? "isbn" : "title" };
+}
+
+// Case, accents, punctuation and spacing only: calibredb's own check already matched the
+// authors, so anything looser than this could name a different book (#555).
+function titleKey(title: string): string {
+  return foldAccents(title.toLowerCase()).replace(/[^\p{L}\p{N}\p{M}]+/gu, "");
+}
+
+/**
+ * The library book calibredb skipped an add against (#555): the ONE candidate whose title
+ * equals `title` up to case, accents and punctuation. Undefined when none or several match —
+ * the skip result must never name the wrong book.
+ */
+export function pickSkippedMatch(title: string, candidates: Book[]): number | undefined {
+  const key = titleKey(title);
+  if (!key) return undefined;
+  const hits = candidates.filter((c) => titleKey(c.title) === key);
+  return hits.length === 1 ? hits[0]!.id : undefined;
 }

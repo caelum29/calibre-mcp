@@ -529,7 +529,8 @@ rejected with `invalid_input`.
 > Ask: *"tag book 187 as kafka and add a 5-star rating"* · *"set the author of book 512 to Donald Knuth"*
 
 **Result.** structuredContent holds `id`, `changed` (`{ field, before, after }` per field that
-actually changed) and `noop` (`true` when every value was already current). A timed-out write,
+actually changed) and `noop` (`true` when every value was already current, with `reason: "values already current"`,
+the same words as the text). A timed-out write,
 or one whose connection dropped mid-request, may still have committed, so the tool re-reads the
 book. When the re-read shows every requested value, the call succeeds, `confirmedByReRead` is
 `"timeout"` or `"dropped"`, and the text says so (e.g. `Updated book 187: tags. Confirmed by a
@@ -590,6 +591,17 @@ The same warnings appear as `⚠` lines in the text:
 Import a local ebook file (EPUB/PDF/MOBI/…) into the library. The file must live under an
 allowed import root (`CALIBRE_MCP_ADD_ROOTS`) and be reachable by the Calibre server process.
 Returns the new book id(s) (`addedIds`).
+
+calibredb does not import a file whose title and author are already in the library. That is
+not an error: the result has `addedIds: []`, `skipped: "duplicate"` and a `hint` with the next
+step, and the text says the same. When exactly one library book has the reported title
+(ignoring case, accents and punctuation), `duplicateOf` and the text name it, e.g.
+`Not added: calibredb skipped …/free-as-in-freedom.epub "Free as in Freedom" as a duplicate of book #928 (same title and author).`
+With no single match, it says the matching book could not be identified, and does not guess.
+When calibredb adds nothing and its error output is not a duplicate report (a traceback,
+`Unsupported format`, a permission error), the result is `skipped: "unknown"`, with calibredb's
+own line in `reason` (and the text) and a `hint` to check the file. It is never labelled a
+duplicate. Empty error output still counts as a duplicate skip.
 
 After the add, a read-only duplicate probe checks each new book against the library, including
 other books added in the same call. It flags a book with the same ISBN, or the same work as

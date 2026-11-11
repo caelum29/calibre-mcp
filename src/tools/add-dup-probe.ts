@@ -9,6 +9,7 @@ import {
   mainTitle,
   matchAddedBook,
   MAX_PROBED,
+  pickSkippedMatch,
   type PossibleDuplicate,
 } from "../domain/curation/add-probe.js";
 import type { BaseDeps } from "./deps.js";
@@ -54,6 +55,26 @@ export async function probeDuplicates(
     if (hit) duplicates.push(hit);
   }
   return duplicates;
+}
+
+/**
+ * Find the library book calibredb skipped an add against, by the title it reported (#555).
+ * Undefined when no single book matches. Throws on read failure — the caller degrades.
+ */
+export async function findSkippedDuplicate(
+  deps: BaseDeps,
+  title: string,
+  library?: string,
+): Promise<number | undefined> {
+  const words = foldAccents(title)
+    .split(/[^\p{L}\p{N}\p{M}]+/u)
+    .filter(Boolean)
+    .slice(0, 8);
+  if (words.length === 0) return undefined;
+  const ids = await searchIds(deps, `title:"${words.join(" ")}"`, library);
+  const pool = await deps.content.booksByIds(ids, library);
+  const candidates = [...pool.values()].filter((b) => b !== null && b !== undefined);
+  return pickSkippedMatch(title, candidates);
 }
 
 // A leading `=` (exact) / `~` (regex) / `^` turns Calibre's `title:` into another match kind; an
