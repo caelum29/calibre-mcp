@@ -1,0 +1,21 @@
+test/tools/content-chunk.test.ts
+  s_d9a4590e130330::t_720bb82f01d0a9 51-65,69-110,117-154
+  s_d9a4590e130330::t_cd21679c5bc5ee 111-116
+  s_d9a4590e130330::t_23776cdc435ed6 66-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e60f87e04b13bbf9c5e3cb98bde529524b92e8d5",
+  "prompts": {},
+  "sessions": {
+    "s_d9a4590e130330": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "59545b9e-4b8e-4234-a52d-c531f3be42d7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
