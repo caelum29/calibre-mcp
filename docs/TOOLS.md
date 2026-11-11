@@ -483,7 +483,8 @@ publisher, pubdate, languages, comments, identifiers, or any `#custom` column. O
 are left untouched. Returns the applied before/after diff.
 
 Every field replaces its value, except `identifiers`, which **merges by scheme**: listed schemes
-are set, unlisted ones stay, and `null` removes one. On a book with `{"url": "…", "doi": "…"}`,
+are set, unlisted ones stay, and `null` removes one. Scheme names are case-insensitive
+(`ISBN` sets the book's `isbn`). On a book with `{"url": "…", "doi": "…"}`,
 `{"identifiers": {"isbn": "9780132350884", "doi": null}}` leaves `{"url": "…", "isbn":
 "9780132350884"}`. The diff shows the full map before and after.
 

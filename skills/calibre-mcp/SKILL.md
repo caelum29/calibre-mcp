@@ -141,7 +141,7 @@ then drill into a hit: `calibre_search scope:book bookId:N` or
 **Update metadata:**
 `calibre_update_book` with `changes: {tags: [...], title: "...", rating: 8}`. Each field
 replaces its value, except `identifiers`, which merges by scheme: `{identifiers: {isbn: "978…"}}`
-keeps the book's url/doi/etc., and `{identifiers: {url: null}}` removes one scheme. Same in
+keeps the book's url/doi/etc., and `{identifiers: {url: null}}` removes one scheme (scheme names are case-insensitive). Same in
 `calibre_bulk_update`.
 
 **Batch tag by search:**

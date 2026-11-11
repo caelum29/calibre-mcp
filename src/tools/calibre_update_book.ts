@@ -40,7 +40,7 @@ export const updateBookTool = defineTool({
   name: "calibre_update_book",
   title: "Update book metadata",
   description:
-    'Replace metadata fields on one book: `changes` maps each field (title, authors, tags, series, rating, identifiers, comments, or any #custom column) to its new value. Omitted fields are untouched. `identifiers` merges by scheme instead: listed schemes are set, others stay, null removes one ({"isbn": "978…", "url": null}). Requires writes to be enabled.',
+    'Replace metadata fields on one book: `changes` maps each field (title, authors, tags, series, rating, identifiers, comments, or any #custom column) to its new value. Omitted fields are untouched. `identifiers` merges by scheme (case-insensitive) instead: listed schemes are set, others stay, null removes one ({"isbn": "978…", "url": null}). Requires writes to be enabled.',
   inputSchema: {
     id: BookId().optional(),
     bookId: BookId().optional(),
