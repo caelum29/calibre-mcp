@@ -76,6 +76,8 @@ const unavailableEmbedder: Embedder = {
   countTokens() {
     throw new Error("EMBEDDER_NOT_LOADED");
   },
+  // no model in this process: the #559 availability probe must say so without touching the disk
+  loadState: () => "failed",
 };
 
 /** Fake reranker that only counts warmups — the build tool never calls rerank(). */
@@ -319,8 +321,11 @@ describe("calibre_build_index handler", () => {
     expect(store.hasVectors("Programming_Books")).toBe(false);
   });
 
-  it("requested keywordOnly's note carries the universal install + restart remediation (#47)", async () => {
-    const r = await buildIndexTool.handler(args({ bookId: 1, keywordOnly: true }), deps());
+  it("requested keywordOnly's note carries the universal install + restart remediation when the model is missing (#47, #559)", async () => {
+    const r = await buildIndexTool.handler(
+      args({ bookId: 1, keywordOnly: true }),
+      deps({ embedder: unavailableEmbedder }),
+    );
     expect(r.isError).toBeFalsy();
     expectUniversalRemediation((r.content[0] as { text: string }).text);
   });
@@ -495,8 +500,11 @@ describe("semantic degradation surfacing (issue #41 / #46)", () => {
     expect(text.indexOf("Embedding model unavailable")).toBe(0);
   });
 
-  it("requested keywordOnly carries semanticAvailable:false + a keywordOnly reason", async () => {
-    const r = await buildIndexTool.handler(args({ bookId: 1, keywordOnly: true }), deps());
+  it("requested keywordOnly with the model missing carries semanticAvailable:false + a keywordOnly reason", async () => {
+    const r = await buildIndexTool.handler(
+      args({ bookId: 1, keywordOnly: true }),
+      deps({ embedder: unavailableEmbedder }),
+    );
     expect(r.isError).toBeFalsy();
     expect(r.structuredContent?.semanticAvailable).toBe(false);
     expect(r.structuredContent?.semanticReason as string).toContain("keywordOnly");

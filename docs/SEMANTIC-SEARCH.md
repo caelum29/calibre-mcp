@@ -79,6 +79,11 @@ to upgrade to full semantic search — books indexed without embeddings count as
 date, so no `force` is needed. A keyword-only build never replaces a book's existing
 embeddings, and `calibre_ping` reports how many books are indexed without them.
 
+A keyword-only index you asked for (`keywordOnly: true`) while the model is installed needs no
+install: rebuild without `keywordOnly` (`force: true`). The build result's `semanticAvailable`
+reports whether the model is usable on the server, so it stays `true` in that case; install
+steps appear only when the model is really missing.
+
 ## Answering a query
 
 ```

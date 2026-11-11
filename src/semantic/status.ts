@@ -221,6 +221,19 @@ function shortModel(model: string): string {
 }
 
 /**
+ * Is the embedding model usable in this process (#559)? The in-process load outcome decides when
+ * there is one; before any load, the disk-level dependency probe does. Never loads the model.
+ */
+export function embedderUsable(
+  embedder: Pick<Embedder, "loadState">,
+  fromDir: string = path.dirname(fileURLToPath(import.meta.url)),
+): boolean {
+  const state = embedder.loadState?.() ?? "not-attempted";
+  if (state !== "not-attempted") return state === "loaded";
+  return dependencyInstalledFrom(fromDir);
+}
+
+/**
  * DISK-LEVEL dependency probe: walk parent dirs like Node's resolver, checking each
  * node_modules for @huggingface/transformers' package.json. No import() — so Node 24's
  * negative cache (which makes a live retry lie) can't taint the answer.

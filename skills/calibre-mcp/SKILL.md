@@ -130,7 +130,9 @@ identifiers:false   # no ISBN etc.
 - **PDF quality**: text-based PDFs (O'Reilly, Manning) extract fine; scanned PDFs produce
   empty/garbled text — Calibre has no OCR.
 - **Semantic search**: if it reports no/partial index, run `calibre_build_index` first
-  (scoped to `ids`/`query` for speed, or full library).
+  (scoped to `ids`/`query` for speed, or full library). A keyword-only index with the model
+  installed (build_index `semanticAvailable: true`) only needs a rebuild without `keywordOnly`;
+  install steps only when the model is missing.
 
 ## Common Workflows
 

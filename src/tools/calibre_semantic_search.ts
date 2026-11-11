@@ -26,6 +26,7 @@ import { defineTool } from "./define.js";
 import { bookResourceLink } from "./resource-link.js";
 import { resolveNumericId } from "../app/resolve-id.js";
 import { INSTALL_TRANSFORMERS } from "./remediation.js";
+import { embedderUsable } from "../semantic/status.js";
 import { fence, toolError, toolOk, toolErrorFrom } from "./result.js";
 
 // the message's own step doubles as the hint, so the error text states it once (#437)
@@ -65,7 +66,12 @@ export const semanticSearchTool = defineTool({
     maxRerank: z.number().optional(),
     // Degradation surfacing (issue #41): false when the index has no vectors, so semantic
     // (vector/hybrid) ranking can't run for this library — with the reason spelled out.
-    semanticAvailable: z.boolean().optional(),
+    semanticAvailable: z
+      .boolean()
+      .optional()
+      .describe(
+        "Can vector & hybrid ranking run on this library's index? false when the index is keyword-only (no embeddings); semanticReason and the note say whether a rebuild or a model install is the fix.",
+      ),
     semanticReason: z.string().optional(),
     note: z.string().optional(),
     filter: z.string().optional(),
@@ -160,14 +166,20 @@ export const semanticSearchTool = defineTool({
       let mode = args.mode;
       let note: string | undefined;
       if ((mode === "vector" || mode === "hybrid") && !sem.semanticAvailable) {
+        // install steps only when the model is really missing; with it present a rebuild is the fix (#559)
+        const modelReady = embedderUsable(deps.embedder);
         if (mode === "vector") {
           return toolError(
             "dependency_missing",
-            `This index was built keyword-only (no embeddings), so vector search is unavailable. ${INSTALL_TRANSFORMERS} Then rebuild with calibre_build_index { force: true }, or use mode:"keyword" now (no model needed).`,
+            modelReady
+              ? 'This index was built keyword-only (no embeddings), so vector search is unavailable. The embedding model is available: rebuild with calibre_build_index { force: true } (without keywordOnly), or use mode:"keyword" now.'
+              : `This index was built keyword-only (no embeddings), so vector search is unavailable. ${INSTALL_TRANSFORMERS} Then rebuild with calibre_build_index { force: true }, or use mode:"keyword" now (no model needed).`,
           );
         }
         mode = "keyword";
-        note = `Index is keyword-only (no embeddings) — showing keyword (FTS) matches. For semantic ranking: ${INSTALL_TRANSFORMERS} Then rebuild with calibre_build_index force=true.`;
+        note = modelReady
+          ? "Index is keyword-only (no embeddings) — showing keyword (FTS) matches. For semantic ranking, rebuild with calibre_build_index force=true (the embedding model is available)."
+          : `Index is keyword-only (no embeddings) — showing keyword (FTS) matches. For semantic ranking: ${INSTALL_TRANSFORMERS} Then rebuild with calibre_build_index force=true.`;
       }
       const effArgs: Args = { ...args, mode };
 
