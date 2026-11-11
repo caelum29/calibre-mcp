@@ -1,0 +1,20 @@
+test/calibre/epub-figures-scan-errors-485.test.ts
+  s_783bfe5aaa36cb::t_000b8f1feb7567 1-62
+  s_783bfe5aaa36cb::t_1a9cfbdc94e1ac 63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e38c713b7c3a77427b6a1e1ba6f186e3e367a561",
+  "prompts": {},
+  "sessions": {
+    "s_783bfe5aaa36cb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8aeb92f2-3fc2-4503-b113-fcc3b46514b8",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
