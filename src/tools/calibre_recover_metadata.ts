@@ -194,7 +194,7 @@ export const recoverMetadataTool = defineTool({
       );
     } catch (err) {
       if (err instanceof CalibreHttpError && err.status === 404) {
-        return bookNotFound(args.id);
+        return bookNotFound(bookIdArg(args));
       }
       return errorFromCatch(err);
     }
