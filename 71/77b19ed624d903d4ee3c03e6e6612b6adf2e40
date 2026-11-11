@@ -1,0 +1,20 @@
+test/tools/keyword-only-steer-559.test.ts
+  s_a12fa420782097::t_ba7d19a9628518 123
+  s_a12fa420782097::t_6110b7ef9c4bc5 1-122,124-184
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7177b19ed624d903d4ee3c03e6e6612b6adf2e40",
+  "prompts": {},
+  "sessions": {
+    "s_a12fa420782097": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "950e0666-58f9-4b58-b61d-b219db79ab11",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
