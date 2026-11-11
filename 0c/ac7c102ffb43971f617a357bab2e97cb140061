@@ -1,0 +1,20 @@
+test/tools/raw-filename-shapes.test.ts
+  s_a7e734b50897ac::t_ab85e961f436a8 1-40,42-100,104-109
+  s_a7e734b50897ac::t_4e197fe5a3c478 41,101-103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0cac7c102ffb43971f617a357bab2e97cb140061",
+  "prompts": {},
+  "sessions": {
+    "s_a7e734b50897ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1169afa2-73f5-4947-b770-81b7de000813",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
