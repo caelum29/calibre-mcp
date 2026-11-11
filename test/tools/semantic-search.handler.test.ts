@@ -637,6 +637,26 @@ describe("target=figures (D-018/#83/#86)", () => {
     expect((r as { _meta?: unknown })._meta).toBeUndefined();
   });
 
+  it("should_give_epub_hits_a_section_and_pdf_hits_a_page (#553)", async () => {
+    const r = await semanticSearchTool.handler(figArgs(), deps(withFigures()));
+    const figs = r.structuredContent?.figures as Array<Record<string, unknown>>;
+    const byBook = Object.fromEntries(figs.map((f) => [f.bookId, f]));
+    expect([byBook[1]!.page, "section" in byBook[1]!, byBook[2]!.section, "page" in byBook[2]!]).toEqual([
+      42,
+      false,
+      7,
+      false,
+    ]);
+    const text = r.content
+      .filter((b): b is { type: "text"; text: string } => b.type === "text")
+      .map((b) => b.text)
+      .join("\n");
+    expect(text).toContain("FIGURE book 1 #3 (p.42, page-render,");
+    expect(text).toContain("FIGURE book 2 #0 (§7, raster,");
+    expect(text).toContain("§N on EPUB hits = spine-section index");
+    expect(text).not.toContain("~p.");
+  });
+
   it("the chunk cosine floor does NOT transfer: low caption cosine is not low-confidence", async () => {
     // Query axis 0 vs a caption vector at ~0.6 cosine — far below the 0.78 chunk floor.
     const s = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
