@@ -164,7 +164,7 @@ The map reports which `detector` built it, in this order of precedence:
 | `id` (or `bookId`) | number \| uuid | *(required)* | The book to read |
 | `format` | string | *(auto)* | Which format to extract (e.g. `epub`, `pdf`); auto-picks the best (EPUB → Markdown → PDF → TXT/AZW3/MOBI/DOCX/ODT/HTMLZ/FB2/RTF) |
 | `maxChars` | number | `8000` | Max characters per excerpt (max 40000) |
-| `sentenceAware` | boolean | `true` | Trim excerpt edges to sentence boundaries |
+| `sentenceAware` | boolean | `true` | End each excerpt at the last sentence end (`.!?` + space), else at a paragraph break; a wrapped line end or a PDF page break never counts. Consecutive excerpts stay gap-free |
 | `structure` | boolean | `false` | Return a chapter map instead of book text |
 | `cursor` | string | — | Continuation token from a previous response (pass verbatim) |
 | `offset` | number | — | Character position to start from; mutually exclusive with `cursor` |
@@ -175,18 +175,20 @@ The map reports which `detector` built it, in this order of precedence:
 ### `calibre_get_figures`
 
 See a book's **figures** — the images its text refers to, identified by an adjacent caption
-(`Figure 1-2. …`, `Рис. 3.1. …`). Call it without `indexes` to **list** figures (page, caption,
+(`Figure 1-2. …`, `Рис. 3.1. …`). Call it without `indexes` to **list** figures (location, caption,
 source) so you can judge relevance before spending image tokens; then pass `indexes` to fetch
 up to 3 of them as actual images in the chat. Raw uncaptioned images (covers, decorations,
 inline equation art) are hidden unless `include_uncaptioned: true`. Captions that wrap
 across lines are read whole, and in PDFs a caption set apart from its number (beside it, or
 in a side column below it) is read from the page layout; a figure printed with just its
 number (`Рис. 7.2` under a diagram) is listed as *label only*, and a caption cut for length ends in `…`. Indexes count
-hidden uncaptioned images too, so the default list can skip numbers.
+hidden uncaptioned images too, so the default list can skip numbers. A figure's location is a
+**page** for PDF (`p.35`, `page` in the structured result) and a **section** for EPUB (`§5`,
+`section`): the index of the spine document it sits in, since EPUB has no pages.
 
 In MCP Apps hosts (Claude Desktop), a fetch also renders the figures **for you** in an in-chat
 viewer — a large reading pane with a margin rail when several figures come back, click (or
-Enter) to zoom to 100% and drag to pan, caption and page under each one. A figure that couldn't
+Enter) to zoom to 100% and drag to pan, caption and location (`p.N` / `§N`) under each one. A figure that couldn't
 be extracted shows as a quiet placard instead of an error, and the listing call renders nothing
 at all. Text-only hosts just get the images in the transcript, as before.
 
@@ -290,7 +292,8 @@ On a library refused for a [case-only id clash](#case-clashing-library-ids) it f
 code `library_id_collision` instead of "no index yet".
 
 `target: figures` searches **figure captions** instead of body text — use it when you're after
-a diagram, chart, or schema. Hits return the caption, page, the surrounding passage, and a
+a diagram, chart, or schema. Hits return the caption, its location (`page` / `p.N` for PDF, `section` / `§N` — the
+spine-section index — for EPUB), the surrounding passage, and a
 ready-made `calibre_get_figures` call to fetch the actual image (never the pixels directly).
 `target` is orthogonal to `scope`: figure search works library-wide or within one book.
 

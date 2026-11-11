@@ -305,9 +305,15 @@ export class FigureInventoryService implements FigureSource {
         if (!abs.startsWith(path.resolve(extractDir) + path.sep)) throw new FiguresError("SCAN_FAILED");
         return readFile(abs, "utf8");
       };
-      const opfPath = parseContainerRootfile(await readInside("META-INF/container.xml"));
+      // a missing container.xml/OPF is a broken book: fail typed, never leak the raw ENOENT
+      // (and its scratch path) to the model
+      const readRequired = (href: string): Promise<string> =>
+        readInside(href).catch(() => {
+          throw new FiguresError("SCAN_FAILED");
+        });
+      const opfPath = parseContainerRootfile(await readRequired("META-INF/container.xml"));
       if (!opfPath) throw new FiguresError("SCAN_FAILED");
-      const spineHrefs = parseOpfSpine(await readInside(opfPath), opfPath);
+      const spineHrefs = parseOpfSpine(await readRequired(opfPath), opfPath);
       const docs: SpineDoc[] = [];
       for (const href of spineHrefs) {
         // missing/binary spine items (rare, broken books) are skipped, not fatal

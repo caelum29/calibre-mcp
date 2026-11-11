@@ -5,6 +5,7 @@
 
 import { z } from "zod";
 import type { FigureInventory } from "../domain/figures/inventory.js";
+import { figureLocation, figureLocationLabel } from "../domain/figures/location.js";
 import type { SkippedFigure } from "../calibre/figure-inventory.js";
 import { CalibreHttpError, FiguresError, type FiguresErrorCode } from "../domain/errors.js";
 import { log } from "../logging.js";
@@ -35,7 +36,7 @@ export const getFiguresTool = defineTool({
   name: "calibre_get_figures",
   title: "Get book figures",
   description:
-    "List a book's figures — images the text references, identified by caption (Figure 1-2 / Рис. 3.1) — with page + caption per figure, then fetch chosen ones as images via indexes (≤3 per call). Captions let you pick figures before spending image tokens. In MCP Apps hosts the fetched figures also render for the user in an in-chat viewer, so you can point at them by figure number — but describe only what the pixels you received actually show.",
+    "List a book's figures — images the text references, identified by caption (Figure 1-2 / Рис. 3.1) — with location (PDF page p.N / EPUB spine section §N) + caption per figure, then fetch chosen ones as images via indexes (≤3 per call). Captions let you pick figures before spending image tokens. In MCP Apps hosts the fetched figures also render for the user in an in-chat viewer, so you can point at them by figure number — but describe only what the pixels you received actually show.",
   inputSchema: {
     id: BookId().optional(),
     bookId: BookId().optional(),
@@ -167,9 +168,11 @@ function listFigures(
         ? "(label only — no caption text)"
         : "(uncaptioned)";
     const label = e.label ? ` ${e.label}` : "";
-    return `${e.index} | p.${e.page} | ${e.source}${label} | ${cap}`;
+    return `${e.index} | ${figureLocationLabel(fmt, e.page)} | ${e.source}${label} | ${cap}`;
   });
-  const body = rows.length ? `index | page | source | caption\n${rows.join("\n")}` : "(none)";
+  // EPUB has no pages: its number is the spine-section index (#553).
+  const locCol = fmt === "pdf" ? "page" : "section";
+  const body = rows.length ? `index | ${locCol} | source | caption\n${rows.join("\n")}` : "(none)";
   const fenced = fence("FIGURE LIST", body);
   const text = `${head}${note ? `\n${note}` : ""}\n${fenced}`;
   return toolOk([{ type: "text", text }], {
@@ -178,7 +181,7 @@ function listFigures(
     scanned: inventory.scanned,
     entries: visible.map((e) => ({
       index: e.index,
-      page: e.page,
+      ...figureLocation(fmt, e.page),
       label: e.label,
       caption: e.caption,
       source: e.source,
@@ -235,7 +238,7 @@ async function fetchFigures(
     const kb = (f.image.bytes / 1024).toFixed(1);
     blocks.push({
       type: "text",
-      text: `Figure index ${f.index} (p.${entry?.page}, ${entry?.source}, ${f.image.mimeType} ${kb} KB${cap ? "" : ", uncaptioned"})${cap}`,
+      text: `Figure index ${f.index} (${figureLocationLabel(fmt, entry?.page)}, ${entry?.source}, ${f.image.mimeType} ${kb} KB${cap ? "" : ", uncaptioned"})${cap}`,
     });
     blocks.push({ type: "image", data: f.image.data, mimeType: f.image.mimeType });
     returned.push({ index: f.index, mimeType: f.image.mimeType, bytes: f.image.bytes });
