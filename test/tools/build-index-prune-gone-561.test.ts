@@ -137,9 +137,7 @@ describe("calibre_build_index prune=true with a removed id in the selection (#56
     expect(text(r)).not.toContain("HTTP 404");
     // one mention of the removed id in the text, with what happened to it
     expect(text(r).match(/#1377/g)).toHaveLength(1);
-    expect(text(r)).toContain(
-      "Selected but no longer in the library: #1377 — removed from the index, not counted as failed.",
-    );
+    expect(text(r)).toContain("Selected but no longer in the library: #1377 — removed from the index, not a failure.");
     expect(store.indexedBookIds(LIB).sort((a, b) => a - b)).toEqual([1]);
   });
 
