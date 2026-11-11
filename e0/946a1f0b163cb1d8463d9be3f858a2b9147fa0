@@ -1,0 +1,31 @@
+src/tools/calibre_update_book.ts
+  s_783bfe5aaa36cb::t_d01ad64e6c4e9a 77
+src/tools/calibre_search.ts
+  s_783bfe5aaa36cb::t_669db75ace9073 40
+  s_783bfe5aaa36cb::t_d01ad64e6c4e9a 548
+src/tools/result.ts
+  s_783bfe5aaa36cb::t_d01ad64e6c4e9a 93-103
+test/tools/shared-helpers-345.test.ts
+  s_783bfe5aaa36cb::t_669db75ace9073 45-46
+src/tools/calibre_recover_metadata.ts
+  s_783bfe5aaa36cb::t_d01ad64e6c4e9a 64
+src/tools/calibre_extract_isbn.ts
+  s_783bfe5aaa36cb::t_d01ad64e6c4e9a 47
+  s_783bfe5aaa36cb::t_669db75ace9073 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e0946a1f0b163cb1d8463d9be3f858a2b9147fa0",
+  "prompts": {},
+  "sessions": {
+    "s_783bfe5aaa36cb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8aeb92f2-3fc2-4503-b113-fcc3b46514b8",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
