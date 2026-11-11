@@ -1,0 +1,19 @@
+test/tools/book-not-found-numeric-498.test.ts
+  s_783bfe5aaa36cb::t_43bf2652c653f0 1-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2dba74361757cb6ddc88ba8c0b6abda5ea38a135",
+  "prompts": {},
+  "sessions": {
+    "s_783bfe5aaa36cb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8aeb92f2-3fc2-4503-b113-fcc3b46514b8",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
