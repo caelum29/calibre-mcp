@@ -14,6 +14,7 @@ import {
   type PrepareResult,
 } from "./index-book.js";
 import { resolveNumericId } from "./resolve-id.js";
+import { CalibreHttpError } from "../domain/errors.js";
 import { runBookPipeline } from "../semantic/book-pipeline.js";
 import type { BuildProgress } from "../semantic/index-builds.js";
 import type { IndexFreshness, IndexWriter, LibraryIdCheck, PruneCounts } from "../semantic/store/index.js";
@@ -100,6 +101,11 @@ export interface BuildSummary extends BuildCounts {
   largeSelection?: number;
   /** prune=true only: what was dropped, or why the prune was skipped. */
   prune?: { pruned: PruneCounts } | { skipped: string };
+  /**
+   * prune=true only (#561): selected ids that 404'd because the library no longer holds them.
+   * Pruned with the other orphans and kept out of `failures`.
+   */
+  removedIds?: number[];
   elapsedMs: number;
 }
 
@@ -265,10 +271,11 @@ export async function runIndexBuild(
     },
   });
   // Tally in selection order, so the result reads the same whatever order books finished in.
+  const bookFailures: { bookId: number; error: unknown }[] = [];
   for (const o of outcomes) {
     if (!o.ok) {
       // A book cut short by the cancel did not fail — it just never finished.
-      if (!cutShort.has(o.bookId)) failures.push(`book ${o.bookId}: ${describeError(o.error)}`);
+      if (!cutShort.has(o.bookId)) bookFailures.push({ bookId: o.bookId, error: o.error });
     } else if (o.prepared.kind === "skipped") {
       booksSkipped++;
     } else if (o.prepared.kind === "refreshed") {
@@ -290,12 +297,19 @@ export async function runIndexBuild(
     booksSkipped,
     booksRefreshed,
     booksPreserved,
-    failures,
+    failures: [...failures, ...bookFailures.map(describeBookFailure)],
     chunks: totalChunks,
   };
   if (signal?.aborted) return { kind: "cancelled", counts };
 
-  const prune = req.prune ? await pruneOrphans(deps, libraryId, req.library) : undefined;
+  const pruneRun = req.prune ? await pruneOrphans(deps, libraryId, req.library) : undefined;
+  const prune = pruneRun?.result;
+  // A selected book that 404s and is absent from the listing the prune just checked was
+  // removed, not broken (#561): pruned with the orphans, never counted as failed.
+  const removed = pruneRun?.live ? bookFailures.filter((f) => isRemoved(f, pruneRun.live!)) : [];
+  if (removed.length > 0) {
+    counts.failures = [...failures, ...bookFailures.filter((f) => !removed.includes(f)).map(describeBookFailure)];
+  }
   return {
     kind: "done",
     summary: {
@@ -308,6 +322,7 @@ export async function runIndexBuild(
       rerankerWarmupFailed,
       ...(largeSelection !== undefined ? { largeSelection } : {}),
       ...(prune ? { prune } : {}),
+      ...(removed.length > 0 ? { removedIds: removed.map((f) => f.bookId) } : {}),
       elapsedMs: Date.now() - started,
     },
   };
@@ -323,7 +338,7 @@ async function pruneOrphans(
   deps: BuildIndexDeps,
   libraryId: string,
   library: string | undefined,
-): Promise<{ pruned: PruneCounts } | { skipped: string }> {
+): Promise<{ result: NonNullable<BuildSummary["prune"]>; live?: ReadonlySet<number> }> {
   try {
     // Empty query = every book: the keep-set must be complete, or live rows get deleted.
     const live = await allMatchingIds(deps, "", library);
@@ -331,10 +346,21 @@ async function pruneOrphans(
     // would wipe the whole index. Refuse instead.
     if (live.size === 0) throw new Error("the library reported 0 books");
     const orphans = deps.index.indexedBookIds(libraryId).filter((id) => !live.has(id));
-    return { pruned: deps.index.deleteBooks(libraryId, orphans) };
+    // `live` only on success: a skipped prune leaves gone-ness unknown, so 404s stay failures
+    return { result: { pruned: deps.index.deleteBooks(libraryId, orphans) }, live };
   } catch (err) {
-    return { skipped: describeError(err) };
+    return { result: { skipped: describeError(err) } };
   }
+}
+
+/** The per-book failure line, e.g. `book 7: extraction failed`. */
+function describeBookFailure(f: { bookId: number; error: unknown }): string {
+  return `book ${f.bookId}: ${describeError(f.error)}`;
+}
+
+/** Removed, not failed (#561): a 404 for a book the complete live listing does not hold. */
+function isRemoved(f: { bookId: number; error: unknown }, live: ReadonlySet<number>): boolean {
+  return f.error instanceof CalibreHttpError && f.error.status === 404 && !live.has(f.bookId);
 }
 
 /**

@@ -384,6 +384,12 @@
           "prunedFigures": {
             "type": "number"
           },
+          "removedIds": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          },
           "runningBuild": {
             "enum": [
               "this",

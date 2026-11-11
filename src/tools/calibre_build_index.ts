@@ -66,6 +66,8 @@ export const buildIndexTool = defineTool({
     prunedBooks: z.number().optional(),
     prunedChunks: z.number().optional(),
     prunedFigures: z.number().optional(),
+    // #561: selected ids gone from the library (404 + absent from the prune listing) — not failures
+    removedIds: z.array(z.number()).optional(),
     elapsedMs: z.number().optional(),
     // enableFts=true only (#447): what happened to Calibre's own full-text indexing.
     fts: z
@@ -297,6 +299,11 @@ function summaryResult(s: BuildSummary): ToolResult {
           : "Prune found no stale books — the index matches the library.",
     );
   }
+  if (s.removedIds) {
+    notes.push(
+      `Selected but no longer in the library: ${s.removedIds.map((id) => `#${id}`).join(", ")} — removed from the index, not a failure.`,
+    );
+  }
 
   const { failures, bookDetails } = s;
   // Surface the first few failure reasons in the text block — clients that ignore
@@ -320,6 +327,7 @@ function summaryResult(s: BuildSummary): ToolResult {
     chunks: s.chunks,
     figures: s.figures,
     ...(pruned ? { prunedBooks: pruned.books, prunedChunks: pruned.chunks, prunedFigures: pruned.figures } : {}),
+    ...(s.removedIds ? { removedIds: s.removedIds } : {}),
     elapsedMs: s.elapsedMs,
     keywordOnly: s.keywordOnly,
     semanticAvailable: !s.keywordOnly,
