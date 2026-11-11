@@ -253,7 +253,12 @@ function indexEntry(i: LibraryIndex): string {
   const head = `${i.name} (id: ${i.id})${i.isDefault ? " [default]" : ""}`;
   switch (i.state) {
     case "ok":
-      return `${head}: ${i.indexed}/${i.total ?? "?"} indexed${i.withoutEmbeddings ? ` (${i.withoutEmbeddings} without embeddings)` : ""}`;
+      return (
+        `${head}: ${i.indexed}/${i.total ?? "?"} indexed` +
+        (i.withoutEmbeddings ? ` (${i.withoutEmbeddings} without embeddings)` : "") +
+        // same fact as indexes[].indexedUnchecked: the count may include removed books (#496)
+        (i.indexedUnchecked ? " (count not checked against the library)" : "")
+      );
     case "none":
       return `${head}: none`;
     case "stale":

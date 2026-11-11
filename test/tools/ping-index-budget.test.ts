@@ -8,6 +8,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
+import { idsUpTo, withLiveIds } from "./fake-live-ids.js";
 import { LibraryBusyTracker } from "../../src/calibre/busy.js";
 import { ContentServerClient } from "../../src/calibre/content-server.js";
 import { EMBED_DIM, INDEX_VERSION, MODEL_ID } from "../../src/semantic/model.js";
@@ -33,7 +34,7 @@ function deps(o: Over = {}): PingDeps {
       resolveLibraryId: async () => "Programming_Books",
       probeWriteAccess: async () => ({ access: "allowed" as const }),
       libraryInfo: o.libraryInfo ?? (async () => ({ libraryMap: MAP, defaultLibrary: "Programming_Books" })),
-      search: o.search ?? (async () => ({ total: 1092 })),
+      search: withLiveIds(o.search ?? (async () => ({ total: 1092 }))),
     } as unknown as ToolDeps["content"],
     calibre: { listLibraries: async () => "" } as unknown as ToolDeps["calibre"],
     extractor: {} as ToolDeps["extractor"],
@@ -45,7 +46,7 @@ function deps(o: Over = {}): PingDeps {
       stats: () => ({ books: 1064, chunks: 10, figures: 0 }),
       vectorCount: () => 1,
       booksMissingVectors: () => o.booksMissingVectors ?? 0,
-      indexedBookIds: () => [],
+      indexedBookIds: () => idsUpTo(1064),
     } satisfies PingDeps["index"],
     log,
   };
@@ -107,7 +108,9 @@ describe("calibre_ping Index budget against a slow Content Server (#318)", () =>
     vi.useFakeTimers();
     const p = ping.handler({}, deps({ search: never }));
     expect(await settledBy(p, BUDGET_MS)).toBe(true);
-    expect(indexLine(await p)).toBe("Index: Programming Books (id: Programming_Books) [default]: 1064/? indexed");
+    expect(indexLine(await p)).toBe(
+      "Index: Programming Books (id: Programming_Books) [default]: 1064/? indexed (count not checked against the library)",
+    );
   });
 
   it("should_report_libraries_unavailable_within_the_budget_when_libraryInfo_hangs", async () => {
@@ -137,7 +140,8 @@ describe("calibre_ping Index budget against a slow Content Server (#318)", () =>
     const p = ping.handler({}, deps({ libraryInfo: slowInfo, search }));
     await vi.advanceTimersByTimeAsync(BUDGET_MS);
     await p;
-    expect(seen).toEqual([BUDGET_MS - 3000]);
+    // 1092 books = two live-id pages (#496), both inside what libraryInfo left
+    expect(seen).toEqual([BUDGET_MS - 3000, BUDGET_MS - 3000]);
   });
 
   it("should_not_flag_the_library_busy_when_the_count_times_out_on_a_real_client", async () => {

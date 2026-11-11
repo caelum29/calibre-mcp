@@ -25,6 +25,11 @@ export interface LibraryIndex {
   total?: number | null;
   /** Books in the index with no (or partial) embeddings — keyword-only rows. */
   withoutEmbeddings?: number;
+  /**
+   * #496: `indexed` is the raw row count, not checked against the library's live ids (the id
+   * walk timed out, failed or hit its cap), so it may include removed or merged books.
+   */
+  indexedUnchecked?: true;
 }
 
 /** The reads the report makes: library list + one count per library, and index coverage. */
@@ -36,6 +41,10 @@ export interface LibraryIndexDeps {
 
 /** Ids per search page for the live-id walk; most libraries fit in one. */
 const LIVE_PAGE = 1000;
+// The walk's own cap inside ping's shared budget: one big or slow library must not use it all.
+// The first page carries the total (the old count request), so it may use the shared budget.
+const LIVE_WALK_MS = 2000;
+const LIVE_MAX_PAGES = 5;
 
 /** The library's total and, when the walk finished in time, every live id (#496). */
 async function liveIds(
@@ -45,8 +54,11 @@ async function liveIds(
 ): Promise<{ total: number | null; ids?: Set<number> }> {
   const ids = new Set<number>();
   let total: number | null = null;
-  for (let offset = 0; ;) {
-    const left = deadline.remainingMs();
+  const walk = new Deadline(LIVE_WALK_MS);
+  for (let n = 0, offset = 0; ; n++) {
+    if (n === LIVE_MAX_PAGES) return { total };
+    const left = n === 0 ? deadline.remainingMs() : Math.min(deadline.remainingMs(), walk.remainingMs());
+    if (left === 0) return { total };
     const page = await within(
       deps.content
         .search({ query: "", library, num: LIVE_PAGE, offset, timeoutMs: left, noBreaker: true })
@@ -119,7 +131,8 @@ export async function libraryIndexReport(deps: LibraryIndexDeps): Promise<Librar
         const { total, ids } = await liveIds(deps, id, deadline);
         // Only books the library still holds count (#496): rows of removed/merged books are
         // orphans. Without a complete live set, fall back to the raw row count.
-        const indexed = ids ? rowIds.filter((b) => ids.has(b)).length : rows;
+        if (!ids) return { ...lib, state: "ok", indexed: rows, total, withoutEmbeddings, indexedUnchecked: true };
+        const indexed = rowIds.filter((b) => ids.has(b)).length;
         return { ...lib, state: "ok", indexed, total, withoutEmbeddings };
       } catch (err) {
         if (err instanceof LibraryIdCollisionError) return { ...lib, state: "conflict", conflictsWith: err.owner };

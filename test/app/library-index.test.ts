@@ -21,7 +21,13 @@ function deps(o: Over = {}, searches: SearchParams[] = []): LibraryIndexDeps {
       search: async (p) => {
         searches.push(p);
         const r = await (o.search ?? (async () => ({ total: 50 })))(p);
-        return { bookIds: [], num: 0, offset: 0, sort: "", libraryId: p.library ?? "A", ...r };
+        // live ids 1..total, paged like the Content Server (#496 live-id walk)
+        const from = p.offset ?? 0;
+        const bookIds = Array.from(
+          { length: Math.max(0, Math.min(p.num ?? r.total, r.total - from)) },
+          (_, i) => from + i + 1,
+        );
+        return { bookIds, num: bookIds.length, offset: from, sort: "", libraryId: p.library ?? "A", ...r };
       },
     },
     index: {
@@ -33,7 +39,8 @@ function deps(o: Over = {}, searches: SearchParams[] = []): LibraryIndexDeps {
         return { books: 40, chunks: 400, figures: 0 };
       },
       booksMissingVectors: () => 3,
-      indexedBookIds: () => [],
+      // the 40 indexed books are all live, so the checked count equals the row count
+      indexedBookIds: () => Array.from({ length: 40 }, (_, i) => i + 1),
     },
   };
 }
@@ -74,6 +81,7 @@ describe("libraryIndexReport (#346)", () => {
       indexed: 40,
       total: null,
       withoutEmbeddings: 3,
+      indexedUnchecked: true,
     });
   });
 
@@ -98,7 +106,16 @@ describe("libraryIndexReport (#346)", () => {
     expect(settled).toBe("pending");
     await vi.advanceTimersByTimeAsync(1);
     expect(settled).toEqual([
-      { id: "A", name: "Alpha", isDefault: true, state: "ok", indexed: 40, total: null, withoutEmbeddings: 3 },
+      {
+        id: "A",
+        name: "Alpha",
+        isDefault: true,
+        state: "ok",
+        indexed: 40,
+        total: null,
+        withoutEmbeddings: 3,
+        indexedUnchecked: true,
+      },
     ]);
   });
 
@@ -134,7 +151,16 @@ describe("libraryIndexReport (#346)", () => {
     expect(settled).toBe("pending");
     await vi.advanceTimersByTimeAsync(1);
     expect(settled).toEqual([
-      { id: "A", name: "Alpha", isDefault: true, state: "ok", indexed: 40, total: null, withoutEmbeddings: 3 },
+      {
+        id: "A",
+        name: "Alpha",
+        isDefault: true,
+        state: "ok",
+        indexed: 40,
+        total: null,
+        withoutEmbeddings: 3,
+        indexedUnchecked: true,
+      },
     ]);
   });
 });
