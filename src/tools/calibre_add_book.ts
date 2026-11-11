@@ -6,10 +6,18 @@ import { calibredbArgv } from "../calibre/calibredb-argv.js";
 import { z } from "zod";
 import { defineTool } from "./define.js";
 import { ADD_ROOTS_STEP, validateAddPath } from "./add-path.js";
-import { probeDuplicates, renderHint, renderNotProbed, renderProbeFailed } from "./add-dup-probe.js";
+import {
+  findSkippedDuplicate,
+  probeDuplicates,
+  renderHint,
+  renderNotProbed,
+  renderProbeFailed,
+} from "./add-dup-probe.js";
 import { unprobedIds, type PossibleDuplicate } from "../domain/curation/add-probe.js";
 import { toolError, toolOk, errorFromCatch } from "./result.js";
 import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "../app/write-policy.js";
+import type { BaseDeps } from "./deps.js";
+import type { ToolResult } from "./types.js";
 
 /**
  * Pull the numeric ids out of calibredb's "Added book ids: 1, 2" success line. Matching is
@@ -26,12 +34,45 @@ export function parseAddedIds(stdout: string): number[] {
     .filter((n) => Number.isInteger(n));
 }
 
+/**
+ * Titles calibredb reports as skipped duplicates. Its report goes to stderr: a header that
+ * names the `--duplicates` option (the header text itself is localized), then one indented
+ * title per skipped book; the file paths go to stdout.
+ */
+export function parseSkippedTitles(stderr: string): string[] {
+  const lines = stderr.split(/\r?\n/);
+  const start = lines.findIndex((l) => l.includes("--duplicates"));
+  if (start < 0) return [];
+  const titles: string[] = [];
+  for (const l of lines.slice(start + 1)) {
+    if (!/^\s+\S/.test(l)) break;
+    titles.push(l.trim());
+  }
+  return titles;
+}
+
+/** Next step for a skipped add, shared by text and structuredContent (#555). */
+function skipHint(matchId: number | undefined, title: string | undefined): string {
+  if (matchId !== undefined) {
+    return (
+      `calibre_get_book id=${matchId} shows the existing record; to weigh it against other ` +
+      `copies, run calibre_find_duplicates mode=compare ids=[${matchId},<other id>].`
+    );
+  }
+  const find = title
+    ? `calibre_search query='title:"${title.replace(/"/g, "")}"'`
+    : "calibre_search by the book's title";
+  return `Find the existing book with ${find}, then review it with calibre_find_duplicates mode=compare.`;
+}
+
 export const addBookTool = defineTool({
   name: "calibre_add_book",
   title: "Add a book file",
   description:
     "Import a local ebook file (EPUB/PDF/MOBI/…) into the library by its `path`. The file must live under an " +
-    "allowed import root and be reachable by the Calibre server process. Flags possible duplicates (advisory). Requires writes to be enabled.",
+    "allowed import root and be reachable by the Calibre server process. A file whose title and author are already in the library is NOT imported: the result says " +
+    "`skipped: duplicate` and names the existing book. After a real add, it flags possible duplicates calibredb " +
+    "missed. Requires writes to be enabled.",
   inputSchema: {
     path: z.string().min(1),
     library: z.string().optional(),
@@ -43,6 +84,10 @@ export const addBookTool = defineTool({
       .array(z.object({ id: z.number(), of: z.array(z.number()), reason: z.enum(["isbn", "title"]) }))
       .optional(),
     notProbed: z.array(z.number()).optional(),
+    // set when calibredb added nothing: it skips a title+author duplicate (#555)
+    skipped: z.enum(["duplicate"]).optional(),
+    duplicateOf: z.number().optional(),
+    hint: z.string().optional(),
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
   write: true,
@@ -59,10 +104,11 @@ export const addBookTool = defineTool({
       const libId = await deps.content.resolveLibraryId(args.library);
 
       let stdout: string;
+      let stderr: string;
       try {
         // Imports/conversions can legitimately exceed the 30s default; the group-kill
         // in spawn.ts still bounds a true hang.
-        ({ stdout } = await deps.calibre.calibredb(calibredbArgv(["add"], [check.resolved]), {
+        ({ stdout, stderr } = await deps.calibre.calibredb(calibredbArgv(["add"], [check.resolved]), {
           library: libId,
           timeoutMs: 120_000,
         }));
@@ -72,22 +118,18 @@ export const addBookTool = defineTool({
       }
 
       const addedIds = parseAddedIds(stdout);
-      const summary =
-        addedIds.length > 0
-          ? `Added ${addedIds.length} book(s) (id ${addedIds.join(", ")}) from ${check.resolved}.`
-          : `calibredb reported no new ids (possible duplicate) for ${check.resolved}.`;
+      if (addedIds.length === 0) return await skippedResult(deps, check.resolved, stderr, args.library);
+      const summary = `Added ${addedIds.length} book(s) (id ${addedIds.join(", ")}) from ${check.resolved}.`;
 
       // Advisory only (#204): calibredb's duplicate check misses raw-titled imports, so look again.
       // The add already committed — a failed probe must never turn it into an error.
       let dups: PossibleDuplicate[] = [];
       let failure: string | undefined;
-      if (addedIds.length > 0) {
-        try {
-          dups = await probeDuplicates(deps, addedIds, args.library);
-        } catch (err) {
-          failure = err instanceof Error ? err.message : String(err);
-          deps.log.warn("add_book duplicate probe failed", { reason: failure });
-        }
+      try {
+        dups = await probeDuplicates(deps, addedIds, args.library);
+      } catch (err) {
+        failure = err instanceof Error ? err.message : String(err);
+        deps.log.warn("add_book duplicate probe failed", { reason: failure });
       }
       // the cap depends only on the ids, so its note survives a failed probe
       const notProbed = unprobedIds(addedIds);
@@ -107,3 +149,36 @@ export const addBookTool = defineTool({
     }
   },
 });
+
+/**
+ * calibredb added nothing: it skips a file whose title+author already exist (#555). Say so in
+ * both channels, naming the existing book only when exactly one title matches.
+ */
+async function skippedResult(deps: BaseDeps, resolved: string, stderr: string, library?: string): Promise<ToolResult> {
+  const title = parseSkippedTitles(stderr)[0];
+  let matchId: number | undefined;
+  if (title !== undefined) {
+    try {
+      matchId = await findSkippedDuplicate(deps, title, library);
+    } catch (err) {
+      // a failed lookup only loses the id; the skip itself is certain
+      deps.log.warn("add_book skipped-duplicate lookup failed", {
+        reason: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+  const hint = skipHint(matchId, title);
+  const what = title ? ` "${title}"` : "";
+  const head =
+    matchId !== undefined
+      ? `Not added: calibredb skipped ${resolved}${what} as a duplicate of book #${matchId} (same title and author).`
+      : `Not added: calibredb skipped ${resolved}${what} as a duplicate (a book with the same title and author is ` +
+        `already in the library); the matching book could not be identified with confidence.`;
+  return toolOk([{ type: "text", text: `${head} Nothing was written.\nNext: ${hint}` }], {
+    addedIds: [],
+    path: resolved,
+    skipped: "duplicate",
+    ...(matchId !== undefined ? { duplicateOf: matchId } : {}),
+    hint,
+  });
+}

@@ -35,6 +35,9 @@ export const ChangeValueSchema = z.union([
   z.record(z.string(), z.string()),
 ]);
 
+// One wording for both channels: text-only clients and JSON-only clients read the same reason.
+const NOOP_REASON = "values already current";
+
 export const updateBookTool = defineTool({
   name: "calibre_update_book",
   title: "Update book metadata",
@@ -50,6 +53,8 @@ export const updateBookTool = defineTool({
     id: z.number().optional(),
     changed: z.array(z.object({ field: z.string(), before: z.unknown(), after: z.unknown() })).optional(),
     noop: z.boolean().optional(),
+    // why a no-op changed nothing — the text says it too (#555)
+    reason: z.string().optional(),
     // set only when a re-read, not calibredb's reply, confirmed the write (#370)
     confirmedByReRead: z.enum(["dropped", "timeout"]).optional(),
   },
@@ -111,11 +116,16 @@ export const updateBookTool = defineTool({
         const noop = changed.length === 0;
         // text must agree with `noop` — text-only clients never see structuredContent (#216)
         const text = noop
-          ? `No changes applied to book ${numericId} (values already current). ` + `(the verification re-read failed)`
+          ? `No changes applied to book ${numericId} (${NOOP_REASON}). ` + `(the verification re-read failed)`
           : `Updated book ${numericId}: ${changedNames(changed)}. ` +
             `(diff shows intended values — the verification re-read failed)` +
             diffText(changed);
-        return toolOk([{ type: "text", text }], { id: numericId, changed, noop });
+        return toolOk([{ type: "text", text }], {
+          id: numericId,
+          changed,
+          noop,
+          ...(noop ? { reason: NOOP_REASON } : {}),
+        });
       }
       return appliedResult(numericId, before, after, fields);
     } catch (err) {
@@ -145,13 +155,14 @@ function appliedResult(id: number, before: Book, after: Book, fields: string[], 
     .filter((c) => !sameFieldValue(c.before, c.after));
   const noop = changed.length === 0;
   const summary = noop
-    ? `No changes applied to book ${id} (values already current).`
+    ? `No changes applied to book ${id} (${NOOP_REASON}).`
     : `Updated book ${id}: ${changedNames(changed)}.`;
   const note = confirmedBy ? reReadNote(confirmedBy) : "";
   return toolOk([{ type: "text", text: summary + note + diffText(changed) }], {
     id,
     changed,
     noop,
+    ...(noop ? { reason: NOOP_REASON } : {}),
     ...(confirmedBy ? { confirmedByReRead: confirmedBy } : {}),
   });
 }

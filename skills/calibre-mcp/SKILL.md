@@ -177,7 +177,9 @@ metadata via recover_metadata).
 
 **Add a book:**
 `calibre_add_book path:"/Users/me/Downloads/file.epub"` (path must be under the allowed
-roots; if refused, the error names them).
+roots; if refused, the error names them). A file whose title + author already exist is not
+imported: `skipped: "duplicate"` + `duplicateOf` (when one book matches) — tell the user it is
+already there instead of retrying.
 
 **Extract book text to a file / send to NotebookLM:**
 1. `calibre_get_book` → check formats and disk path

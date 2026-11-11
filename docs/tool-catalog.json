@@ -12,7 +12,7 @@
         "idempotentHint": false,
         "readOnlyHint": false
       },
-      "description": "Import a local ebook file (EPUB/PDF/MOBI/…) into the library by its `path`. The file must live under an allowed import root and be reachable by the Calibre server process. Flags possible duplicates (advisory). Requires writes to be enabled.",
+      "description": "Import a local ebook file (EPUB/PDF/MOBI/…) into the library by its `path`. The file must live under an allowed import root and be reachable by the Calibre server process. A file whose title and author are already in the library is NOT imported: the result says `skipped: duplicate` and names the existing book. After a real add, it flags possible duplicates calibredb missed. Requires writes to be enabled.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "properties": {
@@ -39,6 +39,12 @@
               "type": "number"
             },
             "type": "array"
+          },
+          "duplicateOf": {
+            "type": "number"
+          },
+          "hint": {
+            "type": "string"
           },
           "notProbed": {
             "items": {
@@ -78,6 +84,12 @@
               "type": "object"
             },
             "type": "array"
+          },
+          "skipped": {
+            "enum": [
+              "duplicate"
+            ],
+            "type": "string"
           }
         },
         "type": "object"
@@ -2595,6 +2607,9 @@
           },
           "noop": {
             "type": "boolean"
+          },
+          "reason": {
+            "type": "string"
           }
         },
         "type": "object"
