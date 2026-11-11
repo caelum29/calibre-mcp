@@ -1,0 +1,19 @@
+test/tools/build-index-prune-gone-561.test.ts
+  s_a12fa420782097::t_7b14b3aff43989 140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d11ade906bb7245e8204ac4e829272688e20e665",
+  "prompts": {},
+  "sessions": {
+    "s_a12fa420782097": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "950e0666-58f9-4b58-b61d-b219db79ab11",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
