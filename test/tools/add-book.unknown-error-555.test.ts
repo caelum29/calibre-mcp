@@ -55,12 +55,16 @@ describe("calibre_add_book non-duplicate failure (follow-up to #555)", () => {
     );
   });
 
-  it("returns a permission error as write_failed", async () => {
+  it("returns a permission error as invalid_input", async () => {
     const r = await addBookTool.handler(
       { path: file },
       deps(`PermissionError: [Errno 13] Permission denied: '${real}'\n`),
     );
-    expect([r.isError, r.structuredContent?.errorCode]).toEqual([true, "write_failed"]);
+    expect([r.isError, r.structuredContent?.errorCode, r.structuredContent?.hint]).toEqual([
+      true,
+      "invalid_input",
+      "Give the Calibre server process read access to the file, then retry calibre_add_book.",
+    ]);
   });
 
   it("explains a permission error in our own words", async () => {
@@ -73,9 +77,13 @@ describe("calibre_add_book non-duplicate failure (follow-up to #555)", () => {
     );
   });
 
-  it("returns any other stderr as write_failed", async () => {
+  it("returns any other stderr as calibre_error", async () => {
     const r = await addBookTool.handler({ path: file }, deps(TRACEBACK));
-    expect([r.isError, r.structuredContent?.errorCode]).toEqual([true, "write_failed"]);
+    expect([r.isError, r.structuredContent?.errorCode, r.structuredContent?.hint]).toEqual([
+      true,
+      "calibre_error",
+      "Check that the file opens and is not corrupt, then retry calibre_add_book.",
+    ]);
   });
 
   it("never quotes a traceback", async () => {
