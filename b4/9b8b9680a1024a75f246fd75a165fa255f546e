@@ -1,0 +1,24 @@
+test/ui/figures-location.test.ts
+  s_e38f8b0a744a26::t_d839abdaebd3c1 1-43
+test/tools/get-figures.section.test.ts
+  s_e38f8b0a744a26::t_1534d123f4666f 1-99
+  s_e38f8b0a744a26::t_d4ec841550854a 100-101
+test/tools/semantic-search.handler.test.ts
+  s_e38f8b0a744a26::t_b42b48efcca4d0 640-659
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b49b8b9680a1024a75f246fd75a165fa255f546e",
+  "prompts": {},
+  "sessions": {
+    "s_e38f8b0a744a26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a48fc88c-9626-4c3b-93e8-5ad9d3554e77",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
