@@ -18,7 +18,8 @@ import { filterErrorText } from "./writes-remedy.js";
 import { z } from "zod";
 import { type RankedHits, type RetrievalMode, retrieve } from "../semantic/retrieve.js";
 import { SNIPPET_CHARS } from "../semantic/snippet.js";
-import type { ChunkIndex, FigureIndex, IndexFreshness, LibraryHit } from "../semantic/store/index.js";
+import type { ChunkIndex, FigureIndex, IndexFreshness, IndexWriter, LibraryHit } from "../semantic/store/index.js";
+import { findGoneBookIds } from "../app/live-hits.js";
 import { type FilterResolution, honestyLines, restrictSet, resolveFilter } from "../app/bundles.js";
 import { boardMeta } from "./board-meta.js";
 import { BookId, CoercedBool, limitParam } from "./coerce.js";
@@ -196,6 +197,14 @@ export const semanticSearchTool = defineTool({
         }
         const numericId = await resolveNumericId(deps, effArgs.bookId, effArgs.library);
         if (numericId === undefined) return toolError("not_found", `No book with id/uuid ${effArgs.bookId}`);
+        // a numeric id is not looked up anywhere else: a book removed in the GUI may still have
+        // rows, or have lost them to an earlier search's prune (#579)
+        if (typeof effArgs.bookId === "number" && (await findGoneBookIds(deps, libraryId, [numericId])).size > 0) {
+          return toolError(
+            "not_found",
+            `No book with id ${numericId} in this library: it was removed or merged since it was indexed. Find it again with calibre_search or a library-scope search.`,
+          );
+        }
         if (!deps.index.isBookIndexed(libraryId, numericId)) {
           return toolError(
             "index_missing",
@@ -274,12 +283,14 @@ function filterFields(scope: FilterCtx): {
 }
 
 /**
- * The index ports calibre_semantic_search reads (#272): presence/provenance checks plus chunk and
- * figure retrieval — never writes.
+ * The index ports calibre_semantic_search uses (#272): presence/provenance checks plus chunk and
+ * figure retrieval, and the prune of rows whose book the library no longer holds (#579).
  */
 export type SemanticIndex = Pick<IndexFreshness, "hasIndex" | "indexMeta" | "hasVectors" | "isBookIndexed"> &
   ChunkIndex &
-  FigureIndex;
+  FigureIndex &
+  // the one write: best-effort prune of hits whose book is gone (#579)
+  Pick<IndexWriter, "deleteBooks">;
 /** calibre_semantic_search's deps: BaseDeps plus the SemanticIndex port. */
 export type SemanticDeps = DepsWithIndex<SemanticIndex>;
 
@@ -332,6 +343,8 @@ async function libraryScope(
     mode: args.mode,
     topK: args.topK,
     ...(scope.allow ? { allow: scope.allow } : {}),
+    // books removed or merged in the GUI since the last pruning build drop out here (#579)
+    gone: (ids) => findGoneBookIds(deps, libraryId, ids),
   });
   const ranked = rr.hits;
   const note = joinNotes(degradeNote, ...rr.notes);
@@ -523,6 +536,8 @@ async function figuresTarget(
     topK: args.topK,
     ...(bookId !== undefined ? { bookId } : {}),
     ...(scope.allow ? { allow: scope.allow } : {}),
+    // scope=book was checked before ranking; library-wide hits drop gone books here (#579)
+    ...(bookId === undefined ? { gone: (ids: readonly number[]) => findGoneBookIds(deps, libraryId, ids) } : {}),
   });
   const ranked = rr.hits;
   const note = joinNotes(degradeNote, ...rr.notes);

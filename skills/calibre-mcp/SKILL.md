@@ -184,7 +184,9 @@ the target (its copy wins), metadata merges per Calibre's rules, sources land in
 trash (recoverable ~14 days). `mode:safe` keeps sources; plain `calibre_remove_book` is for
 discarding a record without keeping anything from it. Both drop the removed books from the
 semantic index on their own; a `Semantic index not updated` line means run
-`calibre_build_index prune:true` later (also the fix after removals in the Calibre GUI).
+`calibre_build_index prune:true` later. Semantic search drops hits on books removed in the
+Calibre GUI (unless Calibre is too slow to confirm within 1.5 s); `prune:true` clears their
+leftover rows.
 
 **Library cleanup sweep:**
 `calibre_quality_report` → fix per issue class (tags via bulk_update, ISBNs via extract_isbn,

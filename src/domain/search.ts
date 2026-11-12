@@ -48,3 +48,13 @@ export interface SearchPage {
   /** The resolved library id (underscored form). */
   libraryId: string;
 }
+
+/**
+ * The page's id list when it really is one (every entry a number), else undefined. Read paths
+ * that act on the ids (#496 ping walk, #579 live-hit check) must treat a malformed page as "no
+ * answer", never as "no books".
+ */
+export function pageIds(page: Pick<SearchPage, "bookIds">): number[] | undefined {
+  const got: unknown = page.bookIds;
+  return Array.isArray(got) && got.every((id): id is number => typeof id === "number") ? got : undefined;
+}

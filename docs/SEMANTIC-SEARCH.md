@@ -61,9 +61,16 @@ index once the removal is confirmed, so semantic search stops returning them. Th
 best-effort: if another process holds the index at that moment, the removal still succeeds and
 its result says the index was not updated.
 
-Only removals and merges done through this server's tools are followed. Books removed or merged
-in the Calibre GUI stay in the index, and can still come up in semantic search, until
-`calibre_build_index` runs with `prune: true`, which drops every index entry whose book is gone.
+Books removed or merged in the Calibre GUI are caught at search time. Before answering,
+`calibre_semantic_search` asks Calibre, in one request, which of its hit books still exist, and
+leaves out the ones that don't, for text and figure results alike. The search can then return
+fewer than `topK` hits (dropped hits are not backfilled). It also drops those books from the index (best-effort, the same way as
+above), so the next search doesn't run into them again. A `scope: book` search on a book that
+is gone answers `not_found`.
+
+The check never holds up a search: if Calibre doesn't answer within 1.5 s, or the answer can't
+be trusted, the hits come back unchecked. `calibre_build_index` with `prune: true` still drops
+every index entry whose book is gone, including books no search has hit yet.
 
 `calibre_ping` counts only books the library still holds as indexed. When it can't check that in
 time, it shows the raw count marked `(count not checked against the library)`.

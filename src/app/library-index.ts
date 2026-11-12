@@ -8,6 +8,8 @@ import type { IndexFreshness } from "../semantic/store/types.js";
 import type { LibraryInfo } from "../domain/library.js";
 import { staleness } from "../semantic/staleness.js";
 import { Deadline } from "../shared/deadline.js";
+import { within } from "../shared/within.js";
+import { pageIds } from "../domain/search.js";
 import { LibraryIdCollisionError } from "../domain/library-id-collision.js";
 import { isIndexBusy } from "../semantic/index-busy.js";
 
@@ -70,10 +72,10 @@ async function liveIds(
     total ??= page.total;
     // a page with no id list, or an empty one short of the total, is an incomplete walk:
     // no live set (ping falls back to the raw count), never "0 live"
-    const got: unknown = page.bookIds;
-    if (!Array.isArray(got)) return { total };
+    const got = pageIds(page);
+    if (!got) return { total };
     if (got.length === 0) return offset >= page.total ? { total, ids } : { total };
-    for (const id of got as number[]) ids.add(id);
+    for (const id of got) ids.add(id);
     offset += got.length;
     if (offset >= page.total) return { total, ids };
   }
@@ -81,21 +83,6 @@ async function liveIds(
 
 /** The whole index section (libraryInfo + every count) gets one short budget, so ping stays fast. */
 const INDEX_DEADLINE_MS = 5000;
-
-/** Resolves `fallback` if `p` has not settled by `ms`; the timer never outlives the race. */
-async function within<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
-  let timer: NodeJS.Timeout | undefined;
-  try {
-    return await Promise.race([
-      p,
-      new Promise<T>((resolve) => {
-        timer = setTimeout(() => resolve(fallback), ms);
-      }),
-    ]);
-  } finally {
-    clearTimeout(timer);
-  }
-}
 
 /**
  * Per-library index coverage, or undefined when the library list is unavailable. Each library
