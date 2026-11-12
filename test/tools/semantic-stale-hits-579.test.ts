@@ -236,3 +236,36 @@ describe("a slow or failing existence check keeps today's hits (#579)", () => {
     expect(text(r)).not.toContain("Semantic index not updated");
   });
 });
+
+describe("confidence and errors after a gone book is dropped (#579, Desktop check)", () => {
+  /** Reranker scoring book 2's passage high and book 1's low. */
+  const reranker = {
+    async rerank(_q: string, passages: string[]) {
+      return passages.map((p) => (p.includes("book 2") ? 0.99 : 0.05));
+    },
+    async warmup() {},
+  };
+
+  it("should_judge_confidence_on_the_live_hits_only", async () => {
+    const r = await semanticSearchTool.handler(args(), { ...deps(store(), liveSearch([1])), reranker });
+    expect(r.structuredContent).toMatchObject({ bookIds: [1], maxRerank: 0.05, lowConfidence: true });
+  });
+
+  it("should_not_quote_the_gone_books_score_in_the_header", async () => {
+    const r = await semanticSearchTool.handler(args(), { ...deps(store(), liveSearch([1])), reranker });
+    expect(text(r)).toContain("max rerank 0.050");
+  });
+
+  it("should_answer_not_found_for_a_gone_book_whose_rows_are_already_pruned", async () => {
+    const r = await semanticSearchTool.handler(args({ scope: "book", bookId: 3 }), deps(store(), liveSearch([1, 2])));
+    expect(r.structuredContent?.errorCode).toBe("not_found");
+  });
+
+  it("should_keep_index_missing_for_a_live_book_that_is_not_indexed", async () => {
+    const r = await semanticSearchTool.handler(
+      args({ scope: "book", bookId: 3 }),
+      deps(store(), liveSearch([1, 2, 3])),
+    );
+    expect(r.structuredContent?.errorCode).toBe("index_missing");
+  });
+});
