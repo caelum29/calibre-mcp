@@ -252,35 +252,40 @@ body[data-collapsed="1"]{display:none}
   }
 
   /* ================= data: parse the notification content[] =================
-     Block order (probe #111): [0] header text, then (caption text, image) pairs in
-     fetch order, then the anti-confabulation steering line, then Desktop's injected
-     widget note. Both trailing lines stay hidden. The image mime comes from the block
-     (the host transcodes to WebP), never from the mime named in the caption line. */
+     The server emits a header, then (caption text, image) pairs in fetch order, then the
+     anti-confabulation steering line. Claude Desktop regroups that before the widget sees
+     it \u2014 all text blocks first, then all images (#537) \u2014 so captions pair with images by
+     order, never by adjacency. Non-figure text stays hidden. The image mime comes from the
+     block (the host transcodes to WebP), never from the mime named in the caption line. */
   var RE_FIG = /^Figure index (\d+) \(([^)]*)\)(?:\s+\u2014\s+([\s\S]*))?$/;
   var RE_SKIP = /^Figure index (\d+) skipped: ([\s\S]*)$/;
 
-  function onToolResult(res) {
-    var blocks = (res && res.content) || [];
-    var figures = [], stubs = [], pendingCap = null;
+  // Every fetched figure gets exactly one caption line, so the nth line belongs to the nth image.
+  function parseFigures(blocks) {
+    var caps = [], images = [], stubs = [], figures = [], b;
     for (var i = 0; i < blocks.length; i++) {
-      var b = blocks[i] || {};
-      if (b.type === "image") {
-        if (b.data && b.mimeType) {
-          var f = pendingCap || { index: null, loc: "", source: "", caption: "" };
-          f.url = "data:" + b.mimeType + ";base64," + b.data;
-          figures.push(f);
-        }
-        pendingCap = null;
-        continue;
-      }
-      if (b.type !== "text") { pendingCap = null; continue; }
+      b = blocks[i] || {};
+      if (b.type === "image") { images.push(b); continue; }
+      if (b.type !== "text") continue;
       var t = String(b.text || "").trim();
       var skip = RE_SKIP.exec(t);
-      if (skip) { stubs.push({ index: +skip[1], skipped: skip[2] }); pendingCap = null; continue; }
+      if (skip) { stubs.push({ index: +skip[1], skipped: skip[2] }); continue; }
       var fig = RE_FIG.exec(t);
-      pendingCap = fig ? parseCaption(fig) : null;
+      if (fig) caps.push(parseCaption(fig));
     }
-    M.items = figures.concat(stubs);
+    for (var j = 0; j < images.length; j++) {
+      b = images[j];
+      // a malformed image still uses up its caption, so later pairs stay aligned
+      if (!b.data || !b.mimeType) continue;
+      var f = caps[j] || { index: null, loc: "", source: "", caption: "", w: 0, h: 0 };
+      f.url = "data:" + b.mimeType + ";base64," + b.data;
+      figures.push(f);
+    }
+    return figures.concat(stubs);
+  }
+
+  function onToolResult(res) {
+    M.items = parseFigures((res && res.content) || []);
     V = { sel: 0, zoom: false };
     if (M.items.length) { setState("results"); return; }
     // No figures and no skips: either a list call (collapse) or a genuine failure.
@@ -557,4 +562,3 @@ body[data-collapsed="1"]{display:none}
 </script>
 </body>
 </html>
-
