@@ -1,0 +1,21 @@
+test/tools/semantic-stale-hits-579.test.ts
+  s_4cdef7fcb2077f::t_d9cfbb4cfcca73 101-102
+  s_4cdef7fcb2077f::t_e0341c6ee52d80 1-100,103-229
+  s_4cdef7fcb2077f::t_b8d0726a955136 230-238
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2a9980994c72be7720fea413a82d8191f532fa1e",
+  "prompts": {},
+  "sessions": {
+    "s_4cdef7fcb2077f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb229cce-5271-4a0b-aa92-0828d74cca0b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
