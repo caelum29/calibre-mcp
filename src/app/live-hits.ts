@@ -42,17 +42,6 @@ export async function goneBooks(
   return gone;
 }
 
-/** Hits whose book the library still holds, in their ranked order (see {@link goneBooks}). */
-export async function liveHits<H>(
-  deps: LiveHitsDeps,
-  libraryId: string,
-  hits: readonly H[],
-  bookIdOf: (hit: H) => number,
-): Promise<H[]> {
-  const gone = await goneBooks(deps, libraryId, hits.map(bookIdOf));
-  return gone.size === 0 ? [...hits] : hits.filter((h) => !gone.has(bookIdOf(h)));
-}
-
 /** The live subset of `asked`, or undefined when the answer can't be trusted. */
 async function liveSubset(
   deps: LiveHitsDeps,

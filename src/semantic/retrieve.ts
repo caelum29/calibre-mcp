@@ -66,10 +66,17 @@ interface BaseRequest {
   topK: number;
 }
 
+/**
+ * Of these hit books, the ones the library no longer holds (#579). Runs after the rerank and
+ * before confidence, so a dropped hit's scores never speak for the rest. Must not throw.
+ */
+export type GoneBooks = (bookIds: readonly number[]) => Promise<ReadonlySet<number>>;
+
 /** Rank BOOKS by their best-matching passage, optionally restricted to an allowed id set. */
 export interface LibraryRequest extends BaseRequest {
   scope: "library";
   allow?: ReadonlySet<number>;
+  gone?: GoneBooks;
 }
 
 /** Rank PASSAGES within one indexed book. */
@@ -83,6 +90,7 @@ export interface FiguresRequest extends BaseRequest {
   scope: "figures";
   bookId?: number;
   allow?: ReadonlySet<number>;
+  gone?: GoneBooks;
 }
 
 export type RetrievalRequest = LibraryRequest | BookRequest | FiguresRequest;
@@ -142,10 +150,13 @@ export async function retrieve(
 ): Promise<RankedHits<LibraryHit> | RankedHits<BookHit> | RankedHits<FigureHit>> {
   const weights = opts.rrfWeights ?? RRF_WEIGHTS;
   if (req.scope === "library") {
-    const rr = await applyRerank(await rankBooks(req, deps, weights), req, deps, {
-      body: (r) => r.hit.body,
-      tie: (r) => [r.hit.bookId, r.hit.bookId],
-    });
+    const rr = await dropGone(
+      await applyRerank(await rankBooks(req, deps, weights), req, deps, {
+        body: (r) => r.hit.body,
+        tie: (r) => [r.hit.bookId, r.hit.bookId],
+      }),
+      req.gone,
+    );
     // Display only (#243): re-cut each snippet around the query terms after ranking is final.
     const hits = rr.hits.map((r) => ({ ...r, hit: withSnippet(r.hit, req.query) }));
     return outcome(rr, hits, confidence(hits, deps.config.semanticFloor, rr), rr.note);
@@ -168,10 +179,13 @@ export async function retrieve(
       demoted > 0 ? `${demoted} front-matter passage(s) (TOC/praise/foreword) demoted below body matches.` : undefined;
     return outcome(rr, hits, confidence(hits, deps.config.semanticFloor, rr), rr.note, demotedNote);
   }
-  const rr = await applyRerank(await rankFigures(req, deps, weights), req, deps, {
-    body: (r) => r.hit.caption,
-    tie: (r) => [r.hit.bookId, r.hit.figureId],
-  });
+  const rr = await dropGone(
+    await applyRerank(await rankFigures(req, deps, weights), req, deps, {
+      body: (r) => r.hit.caption,
+      tie: (r) => [r.hit.bookId, r.hit.figureId],
+    }),
+    req.gone,
+  );
   const floorNote =
     req.mode !== "keyword" && rr.hits.length > 0 && FIGURES_SEMANTIC_FLOOR === null ? FIGURES_FLOOR_NOTE : undefined;
   return outcome(rr, rr.hits, confidence(rr.hits, FIGURES_SEMANTIC_FLOOR, rr), rr.note, floorNote);
@@ -350,6 +364,20 @@ async function applyRerank<T extends { rerankScore?: number }>(
     deps.log.warn("rerank skipped", { reason });
     return { hits: fused(), reranked: false, note: reason === "RERANKER_BUSY" ? RERANK_BUSY_NOTE : RERANK_NOTE };
   }
+}
+
+/** Drop hits whose book is gone (#579); maxRerank then comes from the hits that are left. */
+async function dropGone<T extends { hit: { bookId: number }; rerankScore?: number }>(
+  rr: RerankOutcome<T>,
+  gone: GoneBooks | undefined,
+): Promise<RerankOutcome<T>> {
+  if (!gone || rr.hits.length === 0) return rr;
+  const dead = await gone(rr.hits.map((r) => r.hit.bookId));
+  if (dead.size === 0) return rr;
+  const hits = rr.hits.filter((r) => !dead.has(r.hit.bookId));
+  const scores = hits.map((r) => r.rerankScore).filter((s): s is number => s !== undefined);
+  const { maxRerank: _dropped, ...rest } = rr;
+  return { ...rest, hits, ...(rr.reranked && scores.length ? { maxRerank: Math.max(...scores) } : {}) };
 }
 
 /**

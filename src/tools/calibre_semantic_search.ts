@@ -19,7 +19,7 @@ import { z } from "zod";
 import { type RankedHits, type RetrievalMode, retrieve } from "../semantic/retrieve.js";
 import { SNIPPET_CHARS } from "../semantic/snippet.js";
 import type { ChunkIndex, FigureIndex, IndexFreshness, IndexWriter, LibraryHit } from "../semantic/store/index.js";
-import { goneBooks, liveHits } from "../app/live-hits.js";
+import { goneBooks } from "../app/live-hits.js";
 import { type FilterResolution, honestyLines, restrictSet, resolveFilter } from "../app/bundles.js";
 import { boardMeta } from "./board-meta.js";
 import { BookId, CoercedBool, limitParam } from "./coerce.js";
@@ -197,18 +197,19 @@ export const semanticSearchTool = defineTool({
         }
         const numericId = await resolveNumericId(deps, effArgs.bookId, effArgs.library);
         if (numericId === undefined) return toolError("not_found", `No book with id/uuid ${effArgs.bookId}`);
+        // a numeric id is not looked up anywhere else: a book removed in the GUI may still have
+        // rows, or have lost them to an earlier search's prune (#579)
+        if (typeof effArgs.bookId === "number" && (await goneBooks(deps, libraryId, [numericId])).size > 0) {
+          return toolError(
+            "not_found",
+            `No book with id ${numericId} in this library: it was removed or merged since it was indexed. Find it again with calibre_search or a library-scope search.`,
+          );
+        }
         if (!deps.index.isBookIndexed(libraryId, numericId)) {
           return toolError(
             "index_missing",
             `Book ${numericId} is not indexed. Run calibre_build_index { bookId: ${numericId} } first.`,
             { hint: `Run calibre_build_index { bookId: ${numericId} } first` },
-          );
-        }
-        // a numeric id is not looked up anywhere else: a book removed in the GUI still has rows (#579)
-        if (typeof effArgs.bookId === "number" && (await goneBooks(deps, libraryId, [numericId])).size > 0) {
-          return toolError(
-            "not_found",
-            `No book with id ${numericId} in this library: it was removed or merged since it was indexed. Find it again with calibre_search or a library-scope search.`,
           );
         }
         if (effArgs.target === "figures") {
@@ -342,9 +343,10 @@ async function libraryScope(
     mode: args.mode,
     topK: args.topK,
     ...(scope.allow ? { allow: scope.allow } : {}),
+    // books removed or merged in the GUI since the last pruning build drop out here (#579)
+    gone: (ids) => goneBooks(deps, libraryId, ids),
   });
-  // books removed or merged in the GUI since the last pruning build drop out here (#579)
-  const ranked = await liveHits(deps, libraryId, rr.hits, (r) => r.hit.bookId);
+  const ranked = rr.hits;
   const note = joinNotes(degradeNote, ...rr.notes);
   if (ranked.length === 0) {
     // Zero results attach no board (issue #68) — an empty shelf adds nothing over the text.
@@ -534,9 +536,10 @@ async function figuresTarget(
     topK: args.topK,
     ...(bookId !== undefined ? { bookId } : {}),
     ...(scope.allow ? { allow: scope.allow } : {}),
+    // scope=book was checked before ranking; library-wide hits drop gone books here (#579)
+    ...(bookId === undefined ? { gone: (ids: readonly number[]) => goneBooks(deps, libraryId, ids) } : {}),
   });
-  // scope=book was checked before ranking; library-wide hits drop gone books here (#579)
-  const ranked = bookId === undefined ? await liveHits(deps, libraryId, rr.hits, (r) => r.hit.bookId) : rr.hits;
+  const ranked = rr.hits;
   const note = joinNotes(degradeNote, ...rr.notes);
   if (ranked.length === 0) {
     return toolOk(
