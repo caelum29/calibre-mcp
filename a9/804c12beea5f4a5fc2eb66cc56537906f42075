@@ -1,0 +1,34 @@
+src/domain/search.ts
+  s_4cdef7fcb2077f::t_3541d91dd3aef2 51-60
+docs/SEMANTIC-SEARCH.md
+  s_4cdef7fcb2077f::t_cd4def1c3bbc6f 67
+src/app/live-hits.ts
+  s_4cdef7fcb2077f::t_3541d91dd3aef2 10,28,35,62-63,66
+src/tools/calibre_semantic_search.ts
+  s_4cdef7fcb2077f::t_3541d91dd3aef2 22,202,347,540
+skills/calibre-mcp/SKILL.md
+  s_4cdef7fcb2077f::t_cd4def1c3bbc6f 187-189
+docs/TOOLS.md
+  s_4cdef7fcb2077f::t_cd4def1c3bbc6f 313-314,675-677
+src/app/library-index.ts
+  s_4cdef7fcb2077f::t_3541d91dd3aef2 12,75-76,78
+src/semantic/retrieve.ts
+  s_4cdef7fcb2077f::t_3541d91dd3aef2 375-377,379-380
+  s_4cdef7fcb2077f::t_c96b130141263d 381-383
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a9804c12beea5f4a5fc2eb66cc56537906f42075",
+  "prompts": {},
+  "sessions": {
+    "s_4cdef7fcb2077f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb229cce-5271-4a0b-aa92-0828d74cca0b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
