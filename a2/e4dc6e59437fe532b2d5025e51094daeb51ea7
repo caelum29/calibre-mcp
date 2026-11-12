@@ -1,0 +1,14 @@
+CHANGELOG.md
+  h_e22d73abc85ef9 17,21-36,41-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a2e4dc6e59437fe532b2d5025e51094daeb51ea7",
+  "prompts": {},
+  "humans": {
+    "h_e22d73abc85ef9": {
+      "author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
