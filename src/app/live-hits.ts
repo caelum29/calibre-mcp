@@ -7,6 +7,7 @@ import type { LogSink } from "../logging.js";
 import type { IndexWriter } from "../semantic/store/types.js";
 import { within } from "../shared/within.js";
 import { pruneRemovedBooks } from "./prune-removed.js";
+import { pageIds } from "../domain/search.js";
 
 /** The ports the check uses: one id search, and the index prune for what it finds gone. */
 export interface LiveHitsDeps {
@@ -24,13 +25,14 @@ export const LIVE_CHECK_MS = 1500;
  * every book is live, and also when the check failed, timed out or got an answer that does not
  * fit the question: then nothing is dropped (today's behaviour). Never throws.
  */
-export async function goneBooks(
+export async function findGoneBookIds(
   deps: LiveHitsDeps,
   libraryId: string,
   bookIds: readonly number[],
 ): Promise<ReadonlySet<number>> {
   const asked = [...new Set(bookIds)];
   if (asked.length === 0) return new Set();
+  // the request's own timeout may not fire in time (a stuck socket); the race is the hard cap
   const live = await within(liveSubset(deps, libraryId, asked), LIVE_CHECK_MS, undefined);
   if (!live) {
     deps.log.warn("live-hit check skipped; stale hits are kept", { libraryId, ids: asked.length });
@@ -57,12 +59,11 @@ async function liveSubset(
       // a slow read-only probe must not flag the library busy for the real calls after it
       noBreaker: true,
     });
-    const got: unknown = page.bookIds;
-    if (!Array.isArray(got)) return undefined;
+    const got = pageIds(page);
+    if (!got) return undefined;
     const want = new Set(asked);
     // an id we did not ask about means the server answered some other question
-    if (!got.every((id) => typeof id === "number" && want.has(id))) return undefined;
-    return new Set(got as number[]);
+    return got.every((id) => want.has(id)) ? new Set(got) : undefined;
   } catch (err) {
     deps.log.warn("live-hit check failed", { libraryId, error: String(err) });
     return undefined;

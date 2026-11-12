@@ -310,7 +310,8 @@ figure support need a `force: true` rebuild before `target: figures` finds them.
 
 Results only name books the library still holds. Before answering, the search asks Calibre in
 one request which of its hit books still exist, and drops the ones removed or merged since they
-were indexed (also in the Calibre GUI), so a search can return fewer than `topK` hits. Those
+were indexed (also in the Calibre GUI). Dropped hits are not replaced by lower-ranked ones, so
+a search can return fewer than `topK` hits; the next search ranks without them. Those
 books are dropped from the index too, best-effort. With `scope: book`, a book that is gone is a
 `not_found` error. If Calibre does not answer that check within 1.5 s, the hits are returned
 unchecked, as before.
@@ -671,9 +672,9 @@ like the same work as the target, or may be a different edition of it (the same 
 two weeks. Deletion always happens last, so an interrupted merge never loses data — just re-run
 the same call to finish. Once the trash step is confirmed, the trashed sources are dropped from
 the semantic index the same way `calibre_remove_book` does it (a failure only adds the
-`indexNote` line). Sources of a merge done in the Calibre GUI never show up in
-`calibre_semantic_search` results; their index rows go when a search hits them or on
-`calibre_build_index` with `prune: true`.
+`indexNote` line). Sources of a merge done in the Calibre GUI are dropped from
+`calibre_semantic_search` results the same way (see that tool); their index rows go when a
+search hits them or on `calibre_build_index` with `prune: true`.
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|

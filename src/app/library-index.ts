@@ -9,6 +9,7 @@ import type { LibraryInfo } from "../domain/library.js";
 import { staleness } from "../semantic/staleness.js";
 import { Deadline } from "../shared/deadline.js";
 import { within } from "../shared/within.js";
+import { pageIds } from "../domain/search.js";
 import { LibraryIdCollisionError } from "../domain/library-id-collision.js";
 import { isIndexBusy } from "../semantic/index-busy.js";
 
@@ -71,10 +72,10 @@ async function liveIds(
     total ??= page.total;
     // a page with no id list, or an empty one short of the total, is an incomplete walk:
     // no live set (ping falls back to the raw count), never "0 live"
-    const got: unknown = page.bookIds;
-    if (!Array.isArray(got)) return { total };
+    const got = pageIds(page);
+    if (!got) return { total };
     if (got.length === 0) return offset >= page.total ? { total, ids } : { total };
-    for (const id of got as number[]) ids.add(id);
+    for (const id of got) ids.add(id);
     offset += got.length;
     if (offset >= page.total) return { total, ids };
   }

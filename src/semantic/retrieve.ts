@@ -372,12 +372,17 @@ async function dropGone<T extends { hit: { bookId: number }; rerankScore?: numbe
   gone: GoneBooks | undefined,
 ): Promise<RerankOutcome<T>> {
   if (!gone || rr.hits.length === 0) return rr;
-  const dead = await gone(rr.hits.map((r) => r.hit.bookId));
-  if (dead.size === 0) return rr;
-  const hits = rr.hits.filter((r) => !dead.has(r.hit.bookId));
+  const goneIds = await gone(rr.hits.map((r) => r.hit.bookId));
+  if (goneIds.size === 0) return rr;
+  const hits = rr.hits.filter((r) => !goneIds.has(r.hit.bookId));
   const scores = hits.map((r) => r.rerankScore).filter((s): s is number => s !== undefined);
-  const { maxRerank: _dropped, ...rest } = rr;
-  return { ...rest, hits, ...(rr.reranked && scores.length ? { maxRerank: Math.max(...scores) } : {}) };
+  const maxRerank = rr.reranked && scores.length ? Math.max(...scores) : undefined;
+  return {
+    hits,
+    reranked: rr.reranked,
+    ...(rr.note ? { note: rr.note } : {}),
+    ...(maxRerank !== undefined ? { maxRerank } : {}),
+  };
 }
 
 /**

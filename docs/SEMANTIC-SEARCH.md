@@ -64,7 +64,7 @@ its result says the index was not updated.
 Books removed or merged in the Calibre GUI are caught at search time. Before answering,
 `calibre_semantic_search` asks Calibre, in one request, which of its hit books still exist, and
 leaves out the ones that don't, for text and figure results alike. The search can then return
-fewer than `topK` hits. It also drops those books from the index (best-effort, the same way as
+fewer than `topK` hits (dropped hits are not backfilled). It also drops those books from the index (best-effort, the same way as
 above), so the next search doesn't run into them again. A `scope: book` search on a book that
 is gone answers `not_found`.
 

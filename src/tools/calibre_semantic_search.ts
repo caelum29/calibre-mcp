@@ -19,7 +19,7 @@ import { z } from "zod";
 import { type RankedHits, type RetrievalMode, retrieve } from "../semantic/retrieve.js";
 import { SNIPPET_CHARS } from "../semantic/snippet.js";
 import type { ChunkIndex, FigureIndex, IndexFreshness, IndexWriter, LibraryHit } from "../semantic/store/index.js";
-import { goneBooks } from "../app/live-hits.js";
+import { findGoneBookIds } from "../app/live-hits.js";
 import { type FilterResolution, honestyLines, restrictSet, resolveFilter } from "../app/bundles.js";
 import { boardMeta } from "./board-meta.js";
 import { BookId, CoercedBool, limitParam } from "./coerce.js";
@@ -199,7 +199,7 @@ export const semanticSearchTool = defineTool({
         if (numericId === undefined) return toolError("not_found", `No book with id/uuid ${effArgs.bookId}`);
         // a numeric id is not looked up anywhere else: a book removed in the GUI may still have
         // rows, or have lost them to an earlier search's prune (#579)
-        if (typeof effArgs.bookId === "number" && (await goneBooks(deps, libraryId, [numericId])).size > 0) {
+        if (typeof effArgs.bookId === "number" && (await findGoneBookIds(deps, libraryId, [numericId])).size > 0) {
           return toolError(
             "not_found",
             `No book with id ${numericId} in this library: it was removed or merged since it was indexed. Find it again with calibre_search or a library-scope search.`,
@@ -344,7 +344,7 @@ async function libraryScope(
     topK: args.topK,
     ...(scope.allow ? { allow: scope.allow } : {}),
     // books removed or merged in the GUI since the last pruning build drop out here (#579)
-    gone: (ids) => goneBooks(deps, libraryId, ids),
+    gone: (ids) => findGoneBookIds(deps, libraryId, ids),
   });
   const ranked = rr.hits;
   const note = joinNotes(degradeNote, ...rr.notes);
@@ -537,7 +537,7 @@ async function figuresTarget(
     ...(bookId !== undefined ? { bookId } : {}),
     ...(scope.allow ? { allow: scope.allow } : {}),
     // scope=book was checked before ranking; library-wide hits drop gone books here (#579)
-    ...(bookId === undefined ? { gone: (ids: readonly number[]) => goneBooks(deps, libraryId, ids) } : {}),
+    ...(bookId === undefined ? { gone: (ids: readonly number[]) => findGoneBookIds(deps, libraryId, ids) } : {}),
   });
   const ranked = rr.hits;
   const note = joinNotes(degradeNote, ...rr.notes);
