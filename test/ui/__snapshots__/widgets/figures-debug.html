@@ -208,18 +208,38 @@ body[data-collapsed="1"]{display:none}
     else if (t) delete document.documentElement.dataset.theme;
   }
   /* ================= probe debug (CALIBRE_MCP_WIDGET_DEBUG, issues #69/#72) ================= */
+  // Collapsed by default to a corner chip, so the overlay never hides the widget it probes (#537).
+  var dbgBox = document.createElement("div");
+  dbgBox.style.cssText = "position:fixed;left:0;right:0;bottom:0;z-index:9999;pointer-events:none;" +
+    "display:flex;flex-direction:column;align-items:flex-end";
+  var dbgBtn = document.createElement("button");
+  dbgBtn.type = "button";
+  dbgBtn.style.cssText = "pointer-events:auto;margin:0 4px 4px 0;padding:1px 7px;border-radius:6px;" +
+    "font:10px/1.4 ui-monospace,Menlo,monospace;background:rgba(0,0,0,.72);color:#9f9;cursor:pointer";
   var dbgPre = document.createElement("pre");
   dbgPre.id = "dbgLog";
-  dbgPre.style.cssText = "position:fixed;left:0;right:0;bottom:0;z-index:9999;margin:0;" +
+  dbgPre.style.cssText = "pointer-events:auto;align-self:stretch;margin:0;display:none;" +
     "padding:6px 8px;max-height:40vh;overflow:auto;font:10px/1.4 ui-monospace,Menlo,monospace;" +
     "background:rgba(0,0,0,.82);color:#9f9;user-select:text;white-space:pre-wrap;overflow-wrap:anywhere";
-  document.body.appendChild(dbgPre);
+  var dbgOpen = false, dbgCount = 0;
+  function dbgLabel() { dbgBtn.textContent = "dbg " + dbgCount + (dbgOpen ? " ▾" : " ▸"); }
+  dbgBtn.addEventListener("click", function () {
+    dbgOpen = !dbgOpen;
+    dbgPre.style.display = dbgOpen ? "block" : "none";
+    dbgLabel();
+  });
+  dbgLabel();
+  dbgBox.appendChild(dbgBtn);
+  dbgBox.appendChild(dbgPre);
+  document.body.appendChild(dbgBox);
   function dbgJson(v) {
     try { return String(JSON.stringify(v)).slice(0, 4000); } catch (e) { return String(v); }
   }
   function dbgLine(s) {
     dbgPre.appendChild(document.createTextNode(s + "\n"));
     dbgPre.scrollTop = dbgPre.scrollHeight;
+    dbgCount++;
+    dbgLabel();
     // Mirror to the server log; must never recurse or break the widget.
     try {
       dbgRawRequest("tools/call", { name: "calibre_widget_log", arguments: { line: s } })
@@ -246,6 +266,27 @@ body[data-collapsed="1"]{display:none}
       function (e) { dbgLine("<- " + reqId + " ERR " + dbgJson(e)); dbgSnapshot(method); throw e; }
     );
   };
+
+  // The shape of the tool-result notification as the host delivers it (#537: the figures
+  // viewer loses captions, so the host's content[] must differ from what the server sent).
+  // Image data is reduced to its length; text to its first 160 chars.
+  window.addEventListener("message", function (ev) {
+    var m = ev.data;
+    if (!m || m.jsonrpc !== "2.0" || m.method !== "ui/notifications/tool-result") return;
+    var p = m.params || {};
+    var res = p.result || p;
+    var blocks = (res && res.content) || [];
+    dbgLine("<= tool-result paramsKeys=" + dbgJson(Object.keys(p)) +
+      " resultKeys=" + dbgJson(Object.keys(res || {})) + " blocks=" + blocks.length);
+    blocks.forEach(function (b, i) {
+      b = b || {};
+      var shape = { type: b.type, keys: Object.keys(b) };
+      if (b.mimeType) shape.mimeType = b.mimeType;
+      if (typeof b.data === "string") shape.dataLen = b.data.length;
+      if (typeof b.text === "string") { shape.textLen = b.text.length; shape.text = b.text.slice(0, 160); }
+      dbgLine("<=   [" + i + "] " + dbgJson(shape));
+    });
+  });
 
   /* ---- CSP / image-load probe: why covers render in Desktop Chat but not the Code tab ---- */
   // Host context: the effective CSP may come from a <meta> the host injects or from the
@@ -353,35 +394,40 @@ body[data-collapsed="1"]{display:none}
   }
 
   /* ================= data: parse the notification content[] =================
-     Block order (probe #111): [0] header text, then (caption text, image) pairs in
-     fetch order, then the anti-confabulation steering line, then Desktop's injected
-     widget note. Both trailing lines stay hidden. The image mime comes from the block
-     (the host transcodes to WebP), never from the mime named in the caption line. */
+     The server emits a header, then (caption text, image) pairs in fetch order, then the
+     anti-confabulation steering line. Claude Desktop regroups that before the widget sees
+     it \u2014 all text blocks first, then all images (#537) \u2014 so captions pair with images by
+     order, never by adjacency. Non-figure text stays hidden. The image mime comes from the
+     block (the host transcodes to WebP), never from the mime named in the caption line. */
   var RE_FIG = /^Figure index (\d+) \(([^)]*)\)(?:\s+\u2014\s+([\s\S]*))?$/;
   var RE_SKIP = /^Figure index (\d+) skipped: ([\s\S]*)$/;
 
-  function onToolResult(res) {
-    var blocks = (res && res.content) || [];
-    var figures = [], stubs = [], pendingCap = null;
+  // Every fetched figure gets exactly one caption line, so the nth line belongs to the nth image.
+  function parseFigures(blocks) {
+    var caps = [], images = [], stubs = [], figures = [], b;
     for (var i = 0; i < blocks.length; i++) {
-      var b = blocks[i] || {};
-      if (b.type === "image") {
-        if (b.data && b.mimeType) {
-          var f = pendingCap || { index: null, loc: "", source: "", caption: "" };
-          f.url = "data:" + b.mimeType + ";base64," + b.data;
-          figures.push(f);
-        }
-        pendingCap = null;
-        continue;
-      }
-      if (b.type !== "text") { pendingCap = null; continue; }
+      b = blocks[i] || {};
+      if (b.type === "image") { images.push(b); continue; }
+      if (b.type !== "text") continue;
       var t = String(b.text || "").trim();
       var skip = RE_SKIP.exec(t);
-      if (skip) { stubs.push({ index: +skip[1], skipped: skip[2] }); pendingCap = null; continue; }
+      if (skip) { stubs.push({ index: +skip[1], skipped: skip[2] }); continue; }
       var fig = RE_FIG.exec(t);
-      pendingCap = fig ? parseCaption(fig) : null;
+      if (fig) caps.push(parseCaption(fig));
     }
-    M.items = figures.concat(stubs);
+    for (var j = 0; j < images.length; j++) {
+      b = images[j];
+      // a malformed image still uses up its caption, so later pairs stay aligned
+      if (!b.data || !b.mimeType) continue;
+      var f = caps[j] || { index: null, loc: "", source: "", caption: "", w: 0, h: 0 };
+      f.url = "data:" + b.mimeType + ";base64," + b.data;
+      figures.push(f);
+    }
+    return figures.concat(stubs);
+  }
+
+  function onToolResult(res) {
+    M.items = parseFigures((res && res.content) || []);
     V = { sel: 0, zoom: false };
     if (M.items.length) { setState("results"); return; }
     // No figures and no skips: either a list call (collapse) or a genuine failure.
@@ -658,4 +704,3 @@ body[data-collapsed="1"]{display:none}
 </script>
 </body>
 </html>
-
