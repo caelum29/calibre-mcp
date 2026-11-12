@@ -1,0 +1,27 @@
+test/ui/__snapshots__/widgets/figures-debug.html
+  s_366727486cee0c::t_9c1b52bed4dcfc 211-218,221,224-234,241-242,270-290,397-401,405-407,409-411,414,416,418-430
+src/ui/figures/figures.js
+  s_366727486cee0c::t_b75f41bf449bbb 51-55,59-61,63-65,68,70-78,80-84
+src/ui/generated/widgets.ts
+  s_366727486cee0c::t_6714672efab082 9,11
+test/ui/__snapshots__/widgets/figures-nodebug.html
+  s_366727486cee0c::t_7d360fc65baf09 255-259,263-265,267-269,272,274,276-288
+test/ui/figures-pairing.test.ts
+  s_366727486cee0c::t_e71e3b2bb993ee 1-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8826cef64f1057a9ee8499bdb1bb2fe47fb7f903",
+  "prompts": {},
+  "sessions": {
+    "s_366727486cee0c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "25685b3e-666e-488c-9181-304a572fba29",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
