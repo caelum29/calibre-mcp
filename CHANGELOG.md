@@ -9,6 +9,53 @@ inserts its generated section above the newest entry. Hand-written notes still g
 `[Unreleased]`; when merging a release PR, fold them into the generated section and leave
 `[Unreleased]` empty.
 
+## [0.13.0](https://github.com/caelum29/calibre-mcp/compare/v0.12.0...v0.13.0) (2026-11-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* **quality-report:** `calibre_quality_report` no longer has a `readability` input. It was never implemented and is now ignored like any unknown input; the never-built "binary mode" line is gone from `calibre_find_duplicates` too ([#447](https://github.com/caelum29/calibre-mcp/issues/447))
+
+### Added
+
+* **write-gate:** writes are gated per call. With `CALIBRE_MCP_ENABLE_WRITE` off, preview-first tools stay listed and their previews still work (they carry `writeEnabled: false` and the line that says how to enable writes); a real write is refused with `write_disabled`, and tools with no preview are hidden ([#435](https://github.com/caelum29/calibre-mcp/issues/435), [#519](https://github.com/caelum29/calibre-mcp/issues/519), [#554](https://github.com/caelum29/calibre-mcp/issues/554))
+* **search:** `calibre_search` reads Calibre 9.18 annotations (highlights, bookmarks) and notes ([#500](https://github.com/caelum29/calibre-mcp/issues/500))
+* **calibre:** the server detects the Calibre version and shows it in `calibre_ping`; annotations and notes on a Calibre older than 9.18 return `calibre_too_old` ([#499](https://github.com/caelum29/calibre-mcp/issues/499))
+* **ping:** reports whether Calibre itself accepts writes (the GUI setting "Allow un-authenticated local connections to make changes", or `--enable-local-write`), names library ids and the default library on the Index line, and reports a locked index as busy ([#439](https://github.com/caelum29/calibre-mcp/issues/439), [#440](https://github.com/caelum29/calibre-mcp/issues/440))
+* **build-index:** `enableFts: true` turns on Calibre's full-text index for the library through the routed write path ([#447](https://github.com/caelum29/calibre-mcp/issues/447))
+* **bulk-update:** `tags_add` / `tags_remove` add or remove tags without replacing the whole list ([#321](https://github.com/caelum29/calibre-mcp/issues/321))
+* **errors:** every error text ends with labelled `Code:` and `Next:` lines, so text-only clients see the error code and one next step ([#437](https://github.com/caelum29/calibre-mcp/issues/437), [#498](https://github.com/caelum29/calibre-mcp/issues/498))
+* **ui:** the cover board shows the search query, mode and bundle
+
+
+### Changed
+
+* **resources:** book resource URIs carry the library id, `calibre://book/{libId}/{id}`, so a link points at the same book from any default library ([#432](https://github.com/caelum29/calibre-mcp/issues/432))
+* **search:** every ranking stage breaks ties by id, so equal scores always come back in the same order ([#412](https://github.com/caelum29/calibre-mcp/issues/412), [#457](https://github.com/caelum29/calibre-mcp/issues/457))
+* **calibre:** an unknown library name is an error instead of a guessed library id; in `calibre_ping` an unknown `CALIBRE_MCP_LIBRARY` reads as a config error, not as Calibre being unreachable ([#438](https://github.com/caelum29/calibre-mcp/issues/438))
+* **semantic:** a library whose id differs from another one's only in letter case (a collision on case-insensitive APFS) is refused, and the library indexed first keeps the index ([#388](https://github.com/caelum29/calibre-mcp/issues/388), [#414](https://github.com/caelum29/calibre-mcp/issues/414))
+
+
+### Fixed
+
+* **semantic:** `calibre_semantic_search` no longer returns books that were removed or merged. Removals through `calibre_remove_book` / `calibre_merge_books` drop the books from the index right away; for removals in the Calibre GUI, search checks its hits against the library (one request, capped at 1.5 s) and drops and prunes the gone ones. `calibre_ping` counts only books the library still holds ([#496](https://github.com/caelum29/calibre-mcp/issues/496), [#579](https://github.com/caelum29/calibre-mcp/issues/579))
+* **semantic:** search candidate caches refresh per changed book when another process commits to the index; a keyword-only index steers to a rebuild when the embedding model is present; snippets never cut a surrogate pair ([#325](https://github.com/caelum29/calibre-mcp/issues/325), [#337](https://github.com/caelum29/calibre-mcp/issues/337), [#370](https://github.com/caelum29/calibre-mcp/issues/370), [#559](https://github.com/caelum29/calibre-mcp/issues/559))
+* **build-index:** a selected book the library no longer holds is reported as pruned, not failed; progress counts and the cancel summary add up; the FTS enable step is verified when its reply is lost ([#325](https://github.com/caelum29/calibre-mcp/issues/325), [#447](https://github.com/caelum29/calibre-mcp/issues/447), [#561](https://github.com/caelum29/calibre-mcp/issues/561))
+* **writes:** a write whose reply is lost is checked by a re-read against the intended values, not just for any change, on every retry attempt; the result says when success came from a re-read, in text and `structuredContent`. Merge steps dropped mid-request are settled the same way and never claim nothing changed ([#342](https://github.com/caelum29/calibre-mcp/issues/342), [#370](https://github.com/caelum29/calibre-mcp/issues/370), [#413](https://github.com/caelum29/calibre-mcp/issues/413), [#417](https://github.com/caelum29/calibre-mcp/issues/417))
+* **errors:** a gateway 5xx from Calibre is `calibre_busy`, not `calibre_unreachable`; each failed write names one next step ([#417](https://github.com/caelum29/calibre-mcp/issues/417), [#494](https://github.com/caelum29/calibre-mcp/issues/494), [#529](https://github.com/caelum29/calibre-mcp/issues/529))
+* **busy:** the half-open breaker admits one probe call, not every concurrent call ([#343](https://github.com/caelum29/calibre-mcp/issues/343))
+* **add-book:** the duplicate probe matches the way curation does (filename slugs, editions, main title) and reports its cap; a skipped title+author duplicate is reported as a skip, and any other failed add as an error (`calibre_error`, or `invalid_input` for an unreadable file) ([#341](https://github.com/caelum29/calibre-mcp/issues/341), [#370](https://github.com/caelum29/calibre-mcp/issues/370), [#555](https://github.com/caelum29/calibre-mcp/issues/555))
+* **update-book:** identifiers merge by scheme (scheme names folded to lowercase) in `calibre_update_book` and `calibre_bulk_update`; bad identifiers are `invalid_input`; partial pubdates are normalised ([#421](https://github.com/caelum29/calibre-mcp/issues/421), [#423](https://github.com/caelum29/calibre-mcp/issues/423), [#563](https://github.com/caelum29/calibre-mcp/issues/563))
+* **remove-book:** unknown ids are reported as not found, in the dry-run and on apply ([#519](https://github.com/caelum29/calibre-mcp/issues/519))
+* **duplicates:** `similar`, `compare` and the merge preview share one same-work verdict ([#550](https://github.com/caelum29/calibre-mcp/issues/550))
+* **metadata:** slug titles are looked up as de-slugged queries, real hyphenated titles are left alone, and bare binary digit runs are not ISBN candidates ([#445](https://github.com/caelum29/calibre-mcp/issues/445), [#549](https://github.com/caelum29/calibre-mcp/issues/549))
+* **quality-report:** flags dot slugs, download-site suffixes, `[source]` prefixes, `copy` and Kindle image titles as raw filenames ([#558](https://github.com/caelum29/calibre-mcp/issues/558))
+* **get-content:** a cursor-only call continues where it left off; `sentenceAware` ends chunks at sentence ends, not line wraps ([#536](https://github.com/caelum29/calibre-mcp/issues/536), [#551](https://github.com/caelum29/calibre-mcp/issues/551))
+* **search:** FTS highlighting reuses the EN+RU stemmer and never highlights `NOT` operands; column filters in `mode: fts` get a steer to `mode: meta`; user text can't be read as a `calibredb` flag; FTS5 syntax errors are `invalid_input`; whole-book annotations carry the book title ([#340](https://github.com/caelum29/calibre-mcp/issues/340), [#370](https://github.com/caelum29/calibre-mcp/issues/370), [#389](https://github.com/caelum29/calibre-mcp/issues/389), [#419](https://github.com/caelum29/calibre-mcp/issues/419), [#500](https://github.com/caelum29/calibre-mcp/issues/500), [#519](https://github.com/caelum29/calibre-mcp/issues/519))
+* **figures:** EPUB figures carry section `§N`, not a page; captions pair with images by order; fragment rasters fall back to a page render; EPUBs without `container.xml` or an OPF fail with a typed `SCAN_FAILED`; the index stores the full multi-line caption (re-index a book to pick it up) ([#422](https://github.com/caelum29/calibre-mcp/issues/422), [#428](https://github.com/caelum29/calibre-mcp/issues/428), [#485](https://github.com/caelum29/calibre-mcp/issues/485), [#537](https://github.com/caelum29/calibre-mcp/issues/537), [#553](https://github.com/caelum29/calibre-mcp/issues/553))
+* **ui:** the cover board collapses on annotations, notes and figure-hit calls ([#535](https://github.com/caelum29/calibre-mcp/issues/535))
+* **misc:** `limit`-style params below 1 fall back to the default; a publication year keeps its plausible-year floor; `recentErrors` collapses repeats; progress-log names can't collide ([#344](https://github.com/caelum29/calibre-mcp/issues/344), [#347](https://github.com/caelum29/calibre-mcp/issues/347), [#370](https://github.com/caelum29/calibre-mcp/issues/370), [#552](https://github.com/caelum29/calibre-mcp/issues/552))
+
 ## [0.12.0](https://github.com/caelum29/calibre-mcp/compare/v0.11.0...v0.12.0) (2026-10-30)
 
 
