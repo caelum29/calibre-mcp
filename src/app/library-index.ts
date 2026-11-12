@@ -8,6 +8,7 @@ import type { IndexFreshness } from "../semantic/store/types.js";
 import type { LibraryInfo } from "../domain/library.js";
 import { staleness } from "../semantic/staleness.js";
 import { Deadline } from "../shared/deadline.js";
+import { within } from "../shared/within.js";
 import { LibraryIdCollisionError } from "../domain/library-id-collision.js";
 import { isIndexBusy } from "../semantic/index-busy.js";
 
@@ -81,21 +82,6 @@ async function liveIds(
 
 /** The whole index section (libraryInfo + every count) gets one short budget, so ping stays fast. */
 const INDEX_DEADLINE_MS = 5000;
-
-/** Resolves `fallback` if `p` has not settled by `ms`; the timer never outlives the race. */
-async function within<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
-  let timer: NodeJS.Timeout | undefined;
-  try {
-    return await Promise.race([
-      p,
-      new Promise<T>((resolve) => {
-        timer = setTimeout(() => resolve(fallback), ms);
-      }),
-    ]);
-  } finally {
-    clearTimeout(timer);
-  }
-}
 
 /**
  * Per-library index coverage, or undefined when the library list is unavailable. Each library

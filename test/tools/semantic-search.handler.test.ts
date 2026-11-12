@@ -12,6 +12,7 @@ import { l2normalize } from "../../src/semantic/vector.js";
 import type { SemanticDeps } from "../../src/tools/calibre_semantic_search.js";
 import { asLibId } from "../../src/calibre/lib-id.js";
 import { fakeCalibre, fakeContent, fakeExtractor, fakeFigures } from "./fake-ports.js";
+import { withLiveHitCheck } from "./fake-live-ids.js";
 
 const LIB = "Programming_Books";
 
@@ -76,7 +77,8 @@ function deps(
   const content = fakeContent({
     virtualLibraries: async () => ({}),
     resolveLibraryId: async () => asLibId(LIB),
-    search: async () => ({ bookIds: [], total: 0, num: 0, offset: 0, sort: "", libraryId: LIB }),
+    // every hit is live (#579): the live-hit check echoes the ids it is asked about
+    search: withLiveHitCheck(),
   });
   return {
     config: loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:", ...env }),

@@ -308,6 +308,13 @@ ranking). The guidance says to rebuild without `keywordOnly` when the embedding 
 installed, and gives install steps only when it isn't. Figure captions enter the index at build time, so books indexed before
 figure support need a `force: true` rebuild before `target: figures` finds them.
 
+Results only name books the library still holds. Before answering, the search asks Calibre in
+one request which of its hit books still exist, and drops the ones removed or merged since they
+were indexed (also in the Calibre GUI), so a search can return fewer than `topK` hits. Those
+books are dropped from the index too, best-effort. With `scope: book`, a book that is gone is a
+`not_found` error. If Calibre does not answer that check within 1.5 s, the hits are returned
+unchecked, as before.
+
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
 | `query` | string | *(required)* | What you're looking for, in natural language |
@@ -357,7 +364,8 @@ figure captions (see `calibre_get_figures`) are indexed alongside its text, powe
 
 Indexing only ever adds or replaces books. `calibre_remove_book` and `calibre_merge_books` drop
 the books they remove from the index themselves, but books removed or merged **in the Calibre
-GUI** (or whose drop failed because the index was busy) keep their now unreachable passages.
+GUI** (or whose drop failed because the index was busy) keep their now unreachable passages
+until a semantic search hits them (it skips and drops them).
 Pass `prune: true` to reconcile: it deletes the index entries for every book that is no longer
 in the library and reports how many it dropped. A selected id the library no longer holds (it 404s and is missing from the listing the prune checked) is listed once as `Selected but no longer in the library: #N — removed from the index, not a failure.` (`removedIds`), not as a failed book. Without `prune`, or when the prune is skipped, it still counts as failed.
 
@@ -639,8 +647,8 @@ removed books are also dropped from the semantic index, so search stops returnin
 step never waits on an index another process holds and never fails the removal: if it can't
 run, the result carries one `Semantic index not updated: …` line (`indexNote`), and a later
 `calibre_build_index` with `prune: true` cleans up. Only removals made through this tool (or
-`calibre_merge_books`) are followed: books removed in the Calibre GUI stay in the index until
-`calibre_build_index` runs with `prune: true`.
+`calibre_merge_books`) are dropped right away; books removed in the Calibre GUI are dropped by
+the first `calibre_semantic_search` that hits them, or by `calibre_build_index` with `prune: true`.
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
@@ -663,8 +671,9 @@ like the same work as the target, or may be a different edition of it (the same 
 two weeks. Deletion always happens last, so an interrupted merge never loses data — just re-run
 the same call to finish. Once the trash step is confirmed, the trashed sources are dropped from
 the semantic index the same way `calibre_remove_book` does it (a failure only adds the
-`indexNote` line). Merges done in the Calibre GUI are not followed: their sources stay in the
-index until `calibre_build_index` runs with `prune: true`.
+`indexNote` line). Sources of a merge done in the Calibre GUI never show up in
+`calibre_semantic_search` results; their index rows go when a search hits them or on
+`calibre_build_index` with `prune: true`.
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|

@@ -91,6 +91,7 @@ function semanticDeps(cache: BoardCache): SemanticDeps {
       searchFiguresFts: () => [],
       figureCount: () => 0,
       figuresInSpan: () => [],
+      deleteBooks: () => ({ books: 0, chunks: 0, figures: 0 }),
     } satisfies SemanticIndex,
     boardCache: cache,
     log,

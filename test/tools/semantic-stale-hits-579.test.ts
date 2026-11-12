@@ -5,7 +5,7 @@
 import { describe, expect, it } from "vitest";
 import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
-import type { SearchPage, SearchParams } from "../../src/calibre/content-server.js";
+import type { SearchPage, SearchParams } from "../../src/domain/search.js";
 import { asLibId } from "../../src/calibre/lib-id.js";
 import type { Embedder } from "../../src/semantic/embedder.js";
 import { EMBED_DIM } from "../../src/semantic/model.js";
@@ -14,6 +14,7 @@ import { l2normalize } from "../../src/semantic/vector.js";
 import { semanticSearchTool, type SemanticDeps } from "../../src/tools/calibre_semantic_search.js";
 import type { ToolResult } from "../../src/tools/types.js";
 import { fakeCalibre, fakeContent, fakeExtractor, fakeFigures } from "./fake-ports.js";
+import { withLiveHitCheck } from "./fake-live-ids.js";
 
 const LIB = "Programming_Books";
 
@@ -58,11 +59,10 @@ function store(): SqliteIndexStore {
 
 /** A library holding `live`: answers our `id:=a or id:=b` check with the live subset. */
 function liveSearch(live: readonly number[], calls: SearchParams[] = []) {
-  return async (p: SearchParams): Promise<SearchPage> => {
+  const check = withLiveHitCheck(undefined, (id) => live.includes(id));
+  return (p: SearchParams): Promise<SearchPage> => {
     calls.push(p);
-    const asked = [...p.query.matchAll(/id:=(\d+)/g)].map((m) => Number(m[1]));
-    const bookIds = asked.filter((id) => live.includes(id));
-    return { bookIds, total: bookIds.length, num: bookIds.length, offset: 0, sort: "title", libraryId: LIB };
+    return check(p);
   };
 }
 
@@ -162,7 +162,7 @@ describe("calibre_semantic_search drops books the library no longer holds (#579)
       deps(index, liveSearch([1])),
     );
     expect(r.isError).toBe(true);
-    expect(r.structuredContent?.code).toBe("not_found");
+    expect(r.structuredContent?.errorCode).toBe("not_found");
     expect(text(r)).toContain("2");
     expect(index.isBookIndexed(LIB, 2)).toBe(false);
   });
