@@ -267,7 +267,11 @@ function summaryResult(s: BuildSummary): ToolResult {
   // The auto-degrade warning LEADS the text block — an automatic downgrade must never
   // read as an unqualified success (issue #41: keywordOnly:true + failures:[] looked fine).
   let degradeWarning: string | undefined;
-  if (s.keywordOnlyReason === "requested" && s.embedderAvailable) {
+  if (s.keywordOnlyReason === "requested" && s.booksIndexed === 0 && s.failures.length === 0) {
+    // nothing was built keyword-only this call: a "force rebuild" hint would be pointless (#594)
+    semanticReason = "keywordOnly=true requested — nothing was rebuilt; the selected books are already indexed.";
+    notes.push("The selected books are already indexed, nothing rebuilt — no keyword-only build was needed.");
+  } else if (s.keywordOnlyReason === "requested" && s.embedderAvailable) {
     // the model is there: a normal rebuild is the whole fix, no install steps (#559)
     semanticReason =
       "keywordOnly=true requested — no embeddings built; the embedding model is available, so a rebuild without keywordOnly (force=true) enables vector & hybrid search.";

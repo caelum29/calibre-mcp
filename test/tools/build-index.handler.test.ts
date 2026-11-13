@@ -362,6 +362,17 @@ describe("atomic writes + mixed-capability writers (issue #197)", () => {
     ]);
   });
 
+  it("keywordOnly on an already fully indexed book does not steer to a forced rebuild (#594)", async () => {
+    const store = newStore();
+    await buildIndexTool.handler(args({ bookId: 1 }), deps({ store }));
+    const r = await buildIndexTool.handler(args({ bookId: 1, keywordOnly: true }), deps({ store }));
+    const text = (r.content[0] as { text: string }).text;
+    expect(r.structuredContent).toMatchObject({ booksIndexed: 0, booksSkipped: 1 });
+    expect(text).toContain("already indexed");
+    expect(text).not.toContain("force=true");
+    expect(r.structuredContent?.semanticReason as string).not.toContain("force=true");
+  });
+
   it("names preserved books in the text block, not just structuredContent", async () => {
     const store = newStore();
     await buildIndexTool.handler(args({ bookId: 1 }), deps({ store }));
