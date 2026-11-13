@@ -17,7 +17,8 @@ export interface InputVerdict {
   paramNotes?: string[];
 }
 
-// parsed args object → its verdict; the SDK hands the validated value to the handler unchanged
+// parsed args object → its verdict, recorded for EVERY validated value: the SDK hands that exact
+// object to the handler, and a missing entry means it no longer does (fail closed, never run blind)
 const VERDICTS = new WeakMap<object, InputVerdict>();
 
 /** The verdict recorded for parsed `args`, if validation found anything. */
@@ -44,7 +45,7 @@ export function tolerantInputSchema(shape: z.ZodRawShape) {
       return { value };
     }
     const paramNotes = limitNotes(shape, raw, parsed.data);
-    if (paramNotes.length) VERDICTS.set(parsed.data, { paramNotes });
+    VERDICTS.set(parsed.data, paramNotes.length ? { paramNotes } : {});
     return { value: parsed.data };
   };
   return { "~standard": { ...std, validate } } as Pick<typeof object, "~standard">;
@@ -64,11 +65,24 @@ function limitNotes(shape: z.ZodRawShape, raw: unknown, parsed: Record<string, u
 
 const INVALID_INPUT_HINT = "fix the named argument to match the tool's input schema, then call again";
 
-/** The in-contract error for a call whose arguments failed the schema, or undefined to run it. */
+/**
+ * The in-contract error for a call whose arguments failed the schema, or undefined to run it. Args
+ * with no recorded verdict mean the SDK stopped passing the validated object through: refuse rather
+ * than run a handler on args that may be the `{}` of an invalid call.
+ */
 export function refuseInvalidInput(toolName: string, args: unknown): ToolResult | undefined {
-  const invalid = inputVerdict(args)?.invalid;
-  if (invalid === undefined) return undefined;
-  return toolError("invalid_input", `Invalid arguments for ${toolName} — ${invalid}`, { hint: INVALID_INPUT_HINT });
+  const verdict = inputVerdict(args);
+  if (verdict === undefined) {
+    return toolError(
+      "internal",
+      `${toolName} could not confirm its arguments were validated (the MCP SDK no longer passes the validated object through).`,
+      { hint: "report this to the calibre-mcp maintainers; no tool call can run until it is fixed" },
+    );
+  }
+  if (verdict.invalid === undefined) return undefined;
+  return toolError("invalid_input", `Invalid arguments for ${toolName} — ${verdict.invalid}`, {
+    hint: INVALID_INPUT_HINT,
+  });
 }
 
 /** Does this input shape have a limit param, so its results may carry `paramNotes`? */

@@ -305,10 +305,11 @@ export function renderLabelledLinesDoc(): string {
     else for (const l of entry.lines) add(`\`${tool}\``, l);
   }
   // #493: the SDK answers these before a handler runs, so they never pass through toolError
+  // (input-validation failures do since #590: they reach the handler wrapper as invalid_input)
   const sdk = [
     "",
-    "Errors the MCP SDK answers before a handler runs carry no `Code:` or `Next:` line: input-validation",
-    "failures, and a direct call to `calibre_update_book` or `calibre_add_book` while writes are off.",
+    "Errors the MCP SDK answers before a handler runs carry no `Code:` or `Next:` line: a direct call",
+    "to `calibre_update_book` or `calibre_add_book` while writes are off.",
   ];
   return [...rows, ...sdk, "", "Tools whose text has no Labelled lines beyond the error lines:", "", ...none].join(
     "\n",

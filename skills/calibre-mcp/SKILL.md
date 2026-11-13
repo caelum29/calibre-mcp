@@ -256,7 +256,9 @@ GUI preference); if a write is refused, that's the first thing to check. `calibr
 
 ## When a tool fails
 
-An `isError` result already says what to do next — follow it. When the cause stays unclear
+An `isError` result already says what to do next — follow it. A limit (`limit`, `topK`,
+`maxChars`) out of range is not an error: the result says which value was used instead
+(`structuredContent.paramNotes`, one line in the text). When the cause stays unclear
 or the same failure repeats, call `calibre_ping`: its `recent errors` list the server's own
 failures with tool and `call` id, plus today's log file path. Its `Index:` line lists every
 library as `Name (id: Lib_Id) [default]: …`: pass that id, not the display name, as `library`. With file access, read the
