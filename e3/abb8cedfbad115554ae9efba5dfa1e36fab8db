@@ -1,0 +1,28 @@
+test/integration/input-verdict-identity.test.ts
+  s_afa9fbb47d8d4f::t_0c96e0e3e77871 1-46
+src/tools/labelled-lines.ts
+  s_afa9fbb47d8d4f::t_2a83bc2fc36af1 308,311-312
+skills/calibre-mcp/SKILL.md
+  s_afa9fbb47d8d4f::t_d2b796471c1c19 259-261
+docs/TOOLS.md
+  s_afa9fbb47d8d4f::t_d2b796471c1c19 342-344,731-732
+  s_afa9fbb47d8d4f::t_2a83bc2fc36af1 24-29,814-815
+src/tools/input-contract.ts
+  s_afa9fbb47d8d4f::t_d35f1100ac396f 20-21,48,68-72,74-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e3abb8cedfbad115554ae9efba5dfa1e36fab8db",
+  "prompts": {},
+  "sessions": {
+    "s_afa9fbb47d8d4f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bda9439b-b5c4-498d-8559-11e4071ec5ba",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
