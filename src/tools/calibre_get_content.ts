@@ -110,6 +110,13 @@ export const getContentTool = defineTool({
         );
       }
 
+      // the fallback stays (the model needs the text, not the format) but is announced (#592)
+      const wanted = (args.format ?? target.format)?.toLowerCase();
+      const fmtNote =
+        wanted && wanted !== fmt
+          ? `format: ${wanted} not in this book (has ${book.formats.join(", ")}) — used ${fmt}.\n`
+          : "";
+
       const libId = await deps.content.resolveLibraryId(args.library);
       const base = deps.config.serverUrl.replace(/\/+$/, "");
       const downloadUrl = `${base}/get/${fmt.toUpperCase()}/${numericId}/${encodeURIComponent(libId)}`;
@@ -188,7 +195,7 @@ export const getContentTool = defineTool({
             ? "No chapters detected — walk the book with the plain cursor (omit structure=true)."
             : `n | heading | ~tokens | cursor\n${chapters.map((c) => `${c.n} | ${c.heading} | ~${c.approxTokens} | ${c.cursor}`).join("\n")}`;
         const fencedChapters = fence("CHAPTERS", body);
-        return toolOk([{ type: "text", text: `${head}\n${fencedChapters}` }], {
+        return toolOk([{ type: "text", text: `${head}\n${fmtNote}${fencedChapters}` }], {
           chapters,
           hasToc: struct.hasToc,
           detector: struct.detector,
@@ -235,7 +242,7 @@ export const getContentTool = defineTool({
       // The cursor rides in the text block too — some clients drop structuredContent (#26).
       const footer = nextCursor ? `\nMore remains — continue with cursor: ${nextCursor}` : "";
       const fenced = `${fence("BOOK CONTENT", chunk.slice)}${footer}`;
-      return toolOk([{ type: "text", text: `${header}\n${fenced}` }], {
+      return toolOk([{ type: "text", text: `${header}\n${fmtNote}${fenced}` }], {
         offset: chunk.start,
         count: chunk.slice.length,
         totalChars: chunk.totalChars,
