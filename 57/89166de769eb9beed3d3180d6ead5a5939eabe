@@ -1,0 +1,19 @@
+test/tools/build-index.handler.test.ts
+  s_b3b44d406fb19b::t_5785181a12bbad 365-375
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5789166de769eb9beed3d3180d6ead5a5939eabe",
+  "prompts": {},
+  "sessions": {
+    "s_b3b44d406fb19b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6241f7b7-f299-473a-9334-9aa65292acaf",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
