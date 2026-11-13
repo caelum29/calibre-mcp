@@ -1,0 +1,19 @@
+test/calibre/figure-fetch-passthrough.test.ts
+  s_125cb346af25ef::t_84ca428aff694b 1-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f9c22bd1239346d54708593015a3ed8e4ef01a52",
+  "prompts": {},
+  "sessions": {
+    "s_125cb346af25ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46d17262-fb50-489d-b04b-650fb46f9d17",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
