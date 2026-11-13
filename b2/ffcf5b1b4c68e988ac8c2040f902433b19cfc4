@@ -1,0 +1,24 @@
+src/app/remove-settle.ts
+  s_5b6936d1a977d4::t_dcd416ee7640cb 1-36
+src/tools/calibre_remove_book.ts
+  s_5b6936d1a977d4::t_21fae6507f72ce 21,112-114,138-171
+  s_5b6936d1a977d4::t_cd80c67b08c308 194-197
+  s_5b6936d1a977d4::t_93217eac3a8f62 7
+  s_5b6936d1a977d4::t_ed6eeb31449206 15-17,108,117,126,172-193,198-204
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b2ffcf5b1b4c68e988ac8c2040f902433b19cfc4",
+  "prompts": {},
+  "sessions": {
+    "s_5b6936d1a977d4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6fd464f0-7e50-470e-99c2-75afd3a8b1dc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
