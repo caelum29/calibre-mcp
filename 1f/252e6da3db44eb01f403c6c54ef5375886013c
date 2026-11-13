@@ -1,0 +1,29 @@
+src/tools/write-failure.ts
+  s_5b6936d1a977d4::t_f0f40f8bc8a879 6
+src/app/remove-settle.ts
+  s_5b6936d1a977d4::t_f0f40f8bc8a879 3-4,7-15,46-71
+  s_5b6936d1a977d4::t_550856d19eb7a2 72
+src/app/write-policy.ts
+  s_5b6936d1a977d4::t_c53c540be06fd2 192-213
+src/tools/calibre_merge_books.ts
+  s_5b6936d1a977d4::t_c53c540be06fd2 38,424
+  s_5b6936d1a977d4::t_f0f40f8bc8a879 32-33,36
+src/tools/calibre_remove_book.ts
+  s_5b6936d1a977d4::t_f0f40f8bc8a879 16-17,167
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1f252e6da3db44eb01f403c6c54ef5375886013c",
+  "prompts": {},
+  "sessions": {
+    "s_5b6936d1a977d4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6fd464f0-7e50-470e-99c2-75afd3a8b1dc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
