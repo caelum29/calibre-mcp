@@ -1,0 +1,21 @@
+docs/STABILITY.md
+  s_dfeff5388c33c0::t_836027d4e0af16 73-78
+docs/TOOLS.md
+  s_dfeff5388c33c0::t_a11ff1905fc699 175,314-315,341-343,370-371,498-502,672-677
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "96511656f8eb489b932617d9ee96f20748726e5c",
+  "prompts": {},
+  "sessions": {
+    "s_dfeff5388c33c0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "21530990-fef5-4e36-8b7d-f05aef638dc6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
