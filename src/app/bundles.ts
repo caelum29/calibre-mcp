@@ -354,12 +354,23 @@ export async function restrictSet(
 /**
  * The honesty lines every scoped response must carry in TEXT content (clients strip
  * structuredContent): what was scoped, what was subtracted, how to opt out.
+ * `indexedBooks` (semantic search only) = how many of the `bundleBooks` are in the index.
  */
-export function honestyLines(res: FilterResolution, bundleBooks?: number): string[] {
+export function honestyLines(res: FilterResolution, bundleBooks?: number, indexedBooks?: number): string[] {
   const lines: string[] = [];
   if (res.bundle) {
-    const n = bundleBooks !== undefined ? ` (${bundleBooks} books)` : "";
-    lines.push(`filter: ${res.bundle.name}${n}`);
+    // Unindexed filtered books can't match a semantic query: say so, else 0 hits reads as "no relevant passages" (#556).
+    const gap = bundleBooks !== undefined && indexedBooks !== undefined && indexedBooks < bundleBooks;
+    const n =
+      bundleBooks === undefined
+        ? ""
+        : gap
+          ? ` (${bundleBooks} books, ${indexedBooks} indexed)`
+          : ` (${bundleBooks} books)`;
+    const steer = gap
+      ? ` — run calibre_build_index { query: ${JSON.stringify(scopeExpression(res))} } to index the rest`
+      : "";
+    lines.push(`filter: ${res.bundle.name}${n}${steer}`);
   }
   if (res.markers.length > 0) {
     const removed =

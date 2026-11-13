@@ -782,3 +782,55 @@ describe("calibre_semantic_search exclusion count on a filter (#564)", () => {
     expect(r.structuredContent).toMatchObject({ filter: "Rust", exclusionsApplied: ["-hidden"], exclusionsRemoved: 4 });
   });
 });
+
+// #556: the filter note says how many of the filtered books are indexed, so an empty result on an
+// unindexed bundle doesn't read as "no relevant passages".
+describe("calibre_semantic_search indexed count on a filter (#556)", () => {
+  beforeEach(() => invalidateBundleCache());
+
+  async function noteFor(filteredIds: number[]): Promise<string> {
+    const d = deps(preloaded()); // books 1 and 2 are indexed
+    d.calibre = fakeCalibre({
+      calibredb: async () => ({ stdout: 'Name: b\nSearch string: tags:"=x"\n', stderr: "" }),
+    });
+    d.content = fakeContent({
+      virtualLibraries: async () => ({}),
+      resolveLibraryId: async () => asLibId(LIB),
+      search: withLiveHitCheck(async (p) =>
+        p.query === '(tags:"=x")'
+          ? {
+              bookIds: filteredIds,
+              total: filteredIds.length,
+              num: filteredIds.length,
+              offset: 0,
+              sort: "",
+              libraryId: LIB,
+            }
+          : { bookIds: [], total: 0, num: 0, offset: 0, sort: "", libraryId: LIB },
+      ),
+    });
+    const r = await semanticSearchTool.handler(args({ filter: "b" }), d);
+    return r.content
+      .filter((c): c is { type: "text"; text: string } => c.type === "text")
+      .map((c) => c.text)
+      .join("\n");
+  }
+
+  it("should_report_zero_indexed_and_steer_to_build_index", async () => {
+    const text = await noteFor([5, 6]);
+    expect(text).toContain("filter: b (2 books, 0 indexed)");
+    expect(text).toContain("calibre_build_index");
+  });
+
+  it("should_report_partial_coverage_and_steer_to_build_index", async () => {
+    const text = await noteFor([1, 5, 6, 7]);
+    expect(text).toContain("filter: b (4 books, 1 indexed)");
+    expect(text).toContain("calibre_build_index");
+  });
+
+  it("should_not_steer_when_every_filtered_book_is_indexed", async () => {
+    const text = await noteFor([1, 2]);
+    expect(text).toContain("filter: b (2 books)");
+    expect(text).not.toContain("calibre_build_index");
+  });
+});
