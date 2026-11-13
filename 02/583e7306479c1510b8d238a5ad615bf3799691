@@ -1,0 +1,37 @@
+src/ui/board/coverflow.css
+  s_683d5db8b1587e::t_9993983f154110 21
+src/ui/generated/widgets.ts
+  s_683d5db8b1587e::t_9993983f154110 5
+test/ui/__snapshots__/widgets/board-calibre_search-coverflow-debug.html
+  s_683d5db8b1587e::t_774d5a9f026925 254
+test/ui/__snapshots__/widgets/board-calibre_search-coverflow-nodebug.html
+  s_683d5db8b1587e::t_64eef7782be353 254
+test/ui/__snapshots__/widgets/board-calibre_search-shelf-debug.html
+  s_683d5db8b1587e::t_e37c5c8f5a7dfb 254
+test/ui/__snapshots__/widgets/board-calibre_search-shelf-nodebug.html
+  s_683d5db8b1587e::t_185998ead30f19 254
+test/ui/__snapshots__/widgets/board-calibre_semantic_search-coverflow-debug.html
+  s_683d5db8b1587e::t_8b3728ea3265c1 254
+test/ui/__snapshots__/widgets/board-calibre_semantic_search-coverflow-nodebug.html
+  s_683d5db8b1587e::t_eb746b97ab47f5 254
+test/ui/__snapshots__/widgets/board-calibre_semantic_search-shelf-debug.html
+  s_683d5db8b1587e::t_59621c483b3fdb 254
+test/ui/__snapshots__/widgets/board-calibre_semantic_search-shelf-nodebug.html
+  s_683d5db8b1587e::t_37ab7c48f08c5b 254
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "02583e7306479c1510b8d238a5ad615bf3799691",
+  "prompts": {},
+  "sessions": {
+    "s_683d5db8b1587e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "50c97114-789a-456a-aebe-6cfed3903d8e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
