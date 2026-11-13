@@ -69,7 +69,7 @@ Use them to scope work to a topic instead of the whole 800-book library:
   (`calibre_search`, `calibre_semantic_search` library scope). The result always says what was
   subtracted (`exclusions applied: […]`); pass `include_excluded: true` to see everything.
   Markers are global: they also cut an explicit `filter`, and the note says how many of that
-  bundle's books they removed (`… removed N books from the filter`) — a `(0 books)` filter with
+  bundle's books they removed (`… removed N books from the filter`, `exclusionsRemoved`) — a `(0 books)` filter with
   that note is not an empty bundle, retry with `include_excluded: true`.
   Targeting the marker itself (`filter: "-outdated"`) shows exactly its books.
 - **Maintenance sees everything**: `quality_report`/`find_duplicates`/`bulk_update` accept
@@ -181,10 +181,14 @@ the rest as `sourceIds` (dry-run plan → confirm with user → `confirm:true`).
 `⚠ REVIEW` line (mixed languages, possibly different editions, not the same work) means ask the
 user before merging, whatever the score. Formats move to
 the target (its copy wins), metadata merges per Calibre's rules, sources land in Calibre's
-trash (recoverable ~14 days). `mode:safe` keeps sources; plain `calibre_remove_book` is for
+trash (recoverable ~14 days). Duplicate groups and compare reports carry a same-work verdict
+`workMatch` (`same` | `edition?` | `different`) — merge_books warns on the same verdict; `edition?`
+(one title names a later edition) and `different` cap merge safety at 0.3, so never merge them
+unconfirmed. `mode:safe` keeps sources; plain `calibre_remove_book` is for
 discarding a record without keeping anything from it. Both drop the removed books from the
-semantic index on their own; a `Semantic index not updated` line means run
-`calibre_build_index prune:true` later. Semantic search drops hits on books removed in the
+semantic index on their own; a `Semantic index not updated` line (`indexNote`) means run
+`calibre_build_index prune:true` later (it lists selected ids no longer in the library as
+`removedIds`, "not a failure"). Semantic search drops hits on books removed in the
 Calibre GUI (unless Calibre is too slow to confirm within 1.5 s); `prune:true` clears their
 leftover rows.
 
@@ -226,7 +230,9 @@ LIB='http://localhost:8080/#My_Books'
 
 CLI writes require the Content Server to allow local writes (`--enable-local-write` /
 GUI preference); if a write is refused, that's the first thing to check. `calibre_ping`'s
-`calibre writes:` line (`calibreWriteAccess`) says whether Calibre currently accepts writes.
+`calibre writes:` line (`calibreWriteAccess`) says whether Calibre currently accepts writes. A
+ping index count marked `(count not checked against the library)` (`indexedUnchecked`) is a raw
+row count and may include removed books.
 
 ## Examples
 
