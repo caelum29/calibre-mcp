@@ -189,6 +189,28 @@ export function reReadNote(cause: ReReadCause): string {
     : " Confirmed by a re-read after calibredb timed out.";
 }
 
+/** How each {@link ReReadCause} reads inside a steer, e.g. `calibredb timed out and the re-read …`. */
+export const REREAD_CAUSE_TEXT: Record<ReReadCause, string> = {
+  timeout: "calibredb timed out",
+  dropped: "the connection dropped mid-request",
+};
+
+/** A tool's own wording for a write a re-read could not confirm, with the step it spells out. */
+export interface UnconfirmedWording {
+  text: string;
+  /** The verify-first step; must appear verbatim in `text`. */
+  hint: string;
+}
+
+/**
+ * The steer for a write that may have committed but a re-read could not confirm (#33, #413), e.g.
+ * `calibredb timed out and the re-read does not confirm the removal — verify with … before retrying`.
+ */
+export function unconfirmedNote(cause: ReReadCause, what: string, verify: string): UnconfirmedWording {
+  const hint = `verify with ${verify} before retrying`;
+  return { text: `${REREAD_CAUSE_TEXT[cause]} and the re-read does not confirm ${what} — ${hint}`, hint };
+}
+
 /** Longest value shown per side in a {@link foreignNote}. */
 const MAX_NOTE_VALUE = 60;
 

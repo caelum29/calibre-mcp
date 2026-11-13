@@ -3,7 +3,7 @@
 // render through it. The DECISIONS (what a failure amounts to) stay in app/write-policy.ts.
 
 import { describeTransient, foreignNote, WRITE_REFUSED_MESSAGE } from "../app/write-policy.js";
-import type { FailedWriteOutcome, ReReadCause, UnconfirmedCheck } from "../app/write-policy.js";
+import type { FailedWriteOutcome, ReReadCause, UnconfirmedCheck, UnconfirmedWording } from "../app/write-policy.js";
 import { defaultHint, errorCodeFor, type ErrorCode } from "../domain/error-codes.js";
 
 /** A failed write as the model sees it: the closed error code plus the text that states the next step. */
@@ -15,13 +15,6 @@ export interface FailedWriteText {
    * unexpected failure, the code's generic hint. The tool passes code, text and hint on unchanged.
    */
   hint: string | undefined;
-}
-
-/** A tool's own wording for a write a re-read could not confirm, with the step it spells out. */
-export interface UnconfirmedWording {
-  text: string;
-  /** The verify-first step; must appear verbatim in `text`. */
-  hint: string;
 }
 
 /** The outcomes this presenter renders: everything a re-read did not show landing. */

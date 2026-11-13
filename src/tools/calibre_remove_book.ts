@@ -4,7 +4,7 @@
 // additionally confirm-gated: without confirm=true it returns a dry-run of what WOULD be
 // removed and writes nothing (in-band confirmation; MCP elicitation is a LATER upgrade).
 // The dry-run is a SUCCESS result, not isError — an error here reads as "dangerous/failed"
-// and makes agents refuse the confirm step.
+// and makes agents refuse the confirm step. A timed-out or dropped remove is settled by a re-read (#584).
 
 import { writeStep } from "./writes-remedy.js";
 import { z } from "zod";
@@ -12,10 +12,13 @@ import { BookId, CoercedBool, jsonArray } from "./coerce.js";
 import { defineTool } from "./define.js";
 import { resolveNumericId } from "../app/resolve-id.js";
 import { toolError, toolOk, errorFromCatch } from "./result.js";
-import { isWriteRefused, WRITE_REFUSED_MESSAGE } from "../app/write-policy.js";
+import { isLanded, reReadNote, type ReReadCause } from "../app/write-policy.js";
+import { settleFailedRemove, unconfirmedRemove } from "../app/remove-settle.js";
+import { presentFailedWrite } from "./write-failure.js";
 import { pruneRemovedBooks } from "../app/prune-removed.js";
 import type { DepsWithIndex } from "./deps.js";
 import type { IndexWriter } from "../semantic/store/types.js";
+import type { ToolResult } from "./types.js";
 
 /** Remove's deps: the library plus the index prune port (#496). */
 export type RemoveBookDeps = DepsWithIndex<Pick<IndexWriter, "deleteBooks">>;
@@ -102,14 +105,16 @@ export const removeBookTool = defineTool({
       // calibredb remove takes a comma-separated id list; needs the library ID, not display name.
       const libId = await deps.content.resolveLibraryId(args.library);
       const removeIds = targets.map((t) => t.id);
+      let confirmedBy: ReReadCause | undefined;
       try {
         await deps.calibre.calibredb(["remove", removeIds.join(",")], { library: libId });
       } catch (err) {
-        if (isWriteRefused(err)) return toolError("write_refused", WRITE_REFUSED_MESSAGE);
-        throw err;
+        const settled = await settleRemoveError(deps, { libId, removeIds, library: args.library, skipped }, err);
+        if (typeof settled !== "string") return settled;
+        confirmedBy = settled;
       }
 
-      // calibredb replied: the remove is confirmed, so the index follows it (best-effort, #496)
+      // calibredb replied (or a re-read saw every id gone): the index follows it (best-effort, #496)
       const indexNote = pruneRemovedBooks(deps, libId, removeIds);
       return toolOk(
         [
@@ -118,6 +123,7 @@ export const removeBookTool = defineTool({
             text:
               `Removed ${removeIds.length} book(s): ${removeIds.join(", ")}. ` +
               `They went to Calibre's Trash and can be restored from the Calibre GUI.` +
+              (confirmedBy ? reReadNote(confirmedBy) : "") +
               (skipped ? `\n${skipped}` : "") +
               (indexNote ? `\n${indexNote}` : ""),
           },
@@ -129,3 +135,37 @@ export const removeBookTool = defineTool({
     }
   },
 });
+
+/** The confirmed remove a failed `calibredb remove` was about; `skipped` is the not-found line. */
+interface FailedRemoveCall {
+  libId: string;
+  removeIds: number[];
+  library?: string;
+  skipped: string;
+}
+
+/**
+ * Settle a failed `calibredb remove` (#584): a timeout or drop may have committed, so it is
+ * re-read, never reported as a plain failure. Returns the cause when the re-read saw every id
+ * gone (a success), else the error result; rethrows what never reached the server.
+ */
+async function settleRemoveError(
+  deps: RemoveBookDeps,
+  call: FailedRemoveCall,
+  err: unknown,
+): Promise<ReReadCause | ToolResult> {
+  const { libId, removeIds } = call;
+  const { outcome, gone, remaining } = await settleFailedRemove(deps, removeIds, err, call.library);
+  if (isLanded(outcome)) return outcome.cause;
+  if (outcome.kind === "unexpected" || outcome.kind === "transient") throw err;
+  // ids the re-read shows gone are removed: the index follows them even when the rest is unconfirmed
+  const pruneNote = gone.length > 0 ? pruneRemovedBooks(deps, libId, gone) : undefined;
+  const { code, text, hint } = presentFailedWrite(outcome, {
+    id: remaining[0] ?? removeIds[0] ?? 0,
+    retries: 0,
+    err,
+    unconfirmed: (cause, check) => unconfirmedRemove(cause, check.status, { gone, remaining }),
+  });
+  const extra = [call.skipped, pruneNote].filter(Boolean).join("\n");
+  return toolError(code, extra ? `${text}\n${extra}` : text, { hint });
+}
