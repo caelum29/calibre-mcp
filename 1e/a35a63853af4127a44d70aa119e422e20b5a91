@@ -1,0 +1,22 @@
+test/tools/semantic-search.short-query-590.test.ts
+  s_afa9fbb47d8d4f::t_ee79c45ee246d6 1-76
+test/integration/input-contract-590-591.test.ts
+  s_afa9fbb47d8d4f::t_ba61a4389a1c7b 1-117,119-183
+  s_afa9fbb47d8d4f::t_2ca900e02a7ed9 118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1ea35a63853af4127a44d70aa119e422e20b5a91",
+  "prompts": {},
+  "sessions": {
+    "s_afa9fbb47d8d4f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bda9439b-b5c4-498d-8559-11e4071ec5ba",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
