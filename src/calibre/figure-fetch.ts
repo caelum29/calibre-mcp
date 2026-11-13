@@ -27,7 +27,7 @@ const PT_TO_PX = RENDER_DPI / 72;
 /** Encoded image ready for an MCP ImageContent block. */
 export interface EncodedImage {
   data: string; // base64, no data: prefix
-  mimeType: "image/png" | "image/jpeg";
+  mimeType: "image/png" | "image/jpeg" | "image/gif" | "image/webp";
   bytes: number;
 }
 
@@ -156,6 +156,17 @@ export async function inlineSvgToFile(html: string, ordinal: number, scratch: st
   return file;
 }
 
+/** Image MIME type from magic bytes; PNG fallback keeps the old label for unknown data. */
+export function sniffImageMime(buf: Buffer): "image/png" | "image/jpeg" | "image/gif" | "image/webp" {
+  if (buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return "image/jpeg";
+  if (buf.subarray(0, 3).toString("latin1") === "GIF") return "image/gif";
+  // WebP = "RIFF" <size> "WEBP"
+  if (buf.subarray(0, 4).toString("latin1") === "RIFF" && buf.subarray(8, 12).toString("latin1") === "WEBP") {
+    return "image/webp";
+  }
+  return "image/png";
+}
+
 /**
  * Resize to the detail cap and encode PNG vs JPEG, returning the smaller
  * (line-art keeps PNG, photos flip to JPEG). sips is macOS-only; without it the
@@ -165,7 +176,7 @@ export async function encodeSmallest(run: Runner, imageFile: string, maxSide: nu
   const sips = findBin("sips");
   if (!sips) {
     const raw = await readFile(imageFile);
-    return { data: raw.toString("base64"), mimeType: "image/png", bytes: raw.length };
+    return { data: raw.toString("base64"), mimeType: sniffImageMime(raw), bytes: raw.length };
   }
   const dims = await run(sips, ["-g", "pixelWidth", "-g", "pixelHeight", imageFile]);
   const wh = [...dims.matchAll(/pixel(?:Width|Height):\s*(\d+)/g)].map((m) => Number(m[1]));
