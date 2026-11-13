@@ -1,0 +1,21 @@
+src/tools/calibre_build_index.ts
+  s_b3b44d406fb19b::t_cfa9820ba4bf95 270
+  s_b3b44d406fb19b::t_3ec7147c25ef9f 273
+  s_b3b44d406fb19b::t_1ba65cefeb16e3 271-272,274
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "abf3eceb08a666aaf668fcf2e4a33e1035aa13a4",
+  "prompts": {},
+  "sessions": {
+    "s_b3b44d406fb19b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6241f7b7-f299-473a-9334-9aa65292acaf",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": null
+    }
+  }
+}
