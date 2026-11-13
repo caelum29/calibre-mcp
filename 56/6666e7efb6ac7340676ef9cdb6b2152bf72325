@@ -1,0 +1,19 @@
+skills/calibre-mcp/SKILL.md
+  s_dfeff5388c33c0::t_07e3e64622bad5 72,184-187,189-191,233-235
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "566666e7efb6ac7340676ef9cdb6b2152bf72325",
+  "prompts": {},
+  "sessions": {
+    "s_dfeff5388c33c0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "21530990-fef5-4e36-8b7d-f05aef638dc6",
+        "model": "unknown"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
