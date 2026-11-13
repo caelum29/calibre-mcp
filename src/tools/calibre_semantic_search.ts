@@ -230,7 +230,8 @@ export const semanticSearchTool = defineTool({
       if (!fr.ok) return toolErrorFrom(fr.cause, filterErrorText(fr, deps.config.writeEnabled));
       const allow = await restrictSet(deps, fr.res, effArgs.library);
       const scope: FilterCtx = { fRes: fr.res, ...(allow ? { allow } : {}) };
-      note = joinNotes(note, ...honestyLines(fr.res, allow?.size));
+      const indexed = allow ? [...allow].filter((id) => deps.index.isBookIndexed(libraryId, id)).length : undefined;
+      note = joinNotes(note, ...honestyLines(fr.res, allow?.size, indexed));
 
       if (effArgs.target === "figures") {
         return withIndexVersion(
