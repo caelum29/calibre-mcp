@@ -9,6 +9,33 @@ inserts its generated section above the newest entry. Hand-written notes still g
 `[Unreleased]`; when merging a release PR, fold them into the generated section and leave
 `[Unreleased]` empty.
 
+## [0.14.0](https://github.com/caelum29/calibre-mcp/compare/v0.13.0...v0.14.0) (2026-11-13)
+
+
+### Added
+
+* **recover-metadata:** fall back to a title query when the ISBN finds nothing ([#593](https://github.com/caelum29/calibre-mcp/issues/593)) ([db6381f](https://github.com/caelum29/calibre-mcp/commit/db6381fad65962c059a424a643f00c5bdc018b1b))
+* **semantic_search:** report indexed count in the bundle filter note ([25574b9](https://github.com/caelum29/calibre-mcp/commit/25574b90879857a0d365e92982b2b109749995ff))
+* **semantic_search:** report indexed count in the bundle filter note ([#556](https://github.com/caelum29/calibre-mcp/issues/556)) ([d11776e](https://github.com/caelum29/calibre-mcp/commit/d11776ee01adcc3daca624f3cdc873db9a7ca085))
+
+
+### Fixed
+
+* **build-index:** no forced-rebuild hint when nothing was built keyword-only ([3d3997b](https://github.com/caelum29/calibre-mcp/commit/3d3997ba60ccbc02e8f00fc20511a8f90483ec87))
+* **build-index:** no forced-rebuild hint when nothing was built keyword-only ([#594](https://github.com/caelum29/calibre-mcp/issues/594)) ([abf3ece](https://github.com/caelum29/calibre-mcp/commit/abf3eceb08a666aaf668fcf2e4a33e1035aa13a4))
+* **figures:** label pass-through image by magic bytes ([5d025c5](https://github.com/caelum29/calibre-mcp/commit/5d025c51952dc916044270dfad0bda8febb64fa4))
+* **figures:** label pass-through image by magic bytes ([#486](https://github.com/caelum29/calibre-mcp/issues/486)) ([cbfe4f0](https://github.com/caelum29/calibre-mcp/commit/cbfe4f0fc719b5805289f7d483c98839833ff378))
+* **get-content:** note when a format override falls back ([#592](https://github.com/caelum29/calibre-mcp/issues/592)) ([0d5f39d](https://github.com/caelum29/calibre-mcp/commit/0d5f39d329132cbe72728bd067ba88dd829153ad))
+* **get-content:** note when a format override falls back ([#592](https://github.com/caelum29/calibre-mcp/issues/592)) ([ddc5903](https://github.com/caelum29/calibre-mcp/commit/ddc5903a4ea0e1a9d164dc4366b3638a685985f3))
+* **input:** fail closed when the validated args object is lost; document the input contract ([#590](https://github.com/caelum29/calibre-mcp/issues/590), [#591](https://github.com/caelum29/calibre-mcp/issues/591)) ([e3abb8c](https://github.com/caelum29/calibre-mcp/commit/e3abb8cedfbad115554ae9efba5dfa1e36fab8db))
+* **input:** schema violations, blank filters and limit fallbacks follow the error contract ([830b986](https://github.com/caelum29/calibre-mcp/commit/830b9861288bb717a39a46fb853f5d74130b87ac))
+* **input:** schema violations, blank filters and limit fallbacks follow the error contract ([#590](https://github.com/caelum29/calibre-mcp/issues/590), [#591](https://github.com/caelum29/calibre-mcp/issues/591)) ([9b68174](https://github.com/caelum29/calibre-mcp/commit/9b681747fae179eb6ec81d5ed8c3d7ae385bcc92))
+* **recover-metadata:** fall back to a title query when the ISBN finds nothing ([#593](https://github.com/caelum29/calibre-mcp/issues/593)) ([8900a90](https://github.com/caelum29/calibre-mcp/commit/8900a90bf4a835e2c302d5c3c46d13a569cb8df5))
+* **remove:** settle a timed-out or dropped calibredb remove by a re-read ([f9f3bb6](https://github.com/caelum29/calibre-mcp/commit/f9f3bb609bfefbfa3016dbb204986b36fc6a2dac))
+* **remove:** settle a timed-out or dropped calibredb remove by a re-read ([#584](https://github.com/caelum29/calibre-mcp/issues/584)) ([b2ffcf5](https://github.com/caelum29/calibre-mcp/commit/b2ffcf5b1b4c68e988ac8c2040f902433b19cfc4))
+* **ui:** give the coverflow action buttons a bottom gap ([a514251](https://github.com/caelum29/calibre-mcp/commit/a514251e2c47338f0ee2d2a79f3fdc81bf27edf2))
+* **ui:** give the coverflow action buttons a bottom gap ([02583e7](https://github.com/caelum29/calibre-mcp/commit/02583e7306479c1510b8d238a5ad615bf3799691))
+
 ## [0.13.0](https://github.com/caelum29/calibre-mcp/compare/v0.12.0...v0.13.0) (2026-11-12)
 
 
