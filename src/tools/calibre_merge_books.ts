@@ -29,10 +29,13 @@ import {
   settleFailedWrite,
   isLanded,
   isUnverified,
+  unconfirmedNote,
+  REREAD_CAUSE_TEXT,
   type ReReadCause,
   type UnconfirmedCheck,
+  type UnconfirmedWording,
 } from "../app/write-policy.js";
-import { presentFailedWrite, type FailedWrite, type UnconfirmedWording } from "./write-failure.js";
+import { presentFailedWrite, type FailedWrite } from "./write-failure.js";
 import { formatOnTarget, sourcesRemoved } from "../app/merge-verify.js";
 
 /** Merge's deps: the library plus the index prune port for trashed sources (#496). */
@@ -56,17 +59,6 @@ interface Step {
 /** The benign `--dont-replace` collision: target already holds that format (probe §1). */
 function isFormatCollision(err: unknown): boolean {
   return err instanceof CalibreCliError && /already exists for book/i.test(err.stderr ?? "");
-}
-
-const CAUSE_TEXT: Record<ReReadCause, string> = {
-  timeout: "calibredb timed out",
-  dropped: "the connection dropped mid-request",
-};
-
-// The steer for a write that may have committed but a re-read could not confirm (#33, #413).
-function unconfirmedNote(cause: ReReadCause, what: string, verify: string): UnconfirmedWording {
-  const hint = `verify with ${verify} before retrying`;
-  return { text: `${CAUSE_TEXT[cause]} and the re-read does not confirm ${what} — ${hint}`, hint };
 }
 
 /** Mark `step` failed from a settled outcome; an unverified one gets the caller's re-read steer. */
@@ -429,7 +421,7 @@ async function executeMerge(deps: MergeBooksDeps, job: MergeJob) {
               const hint = `verify with ${verify}`;
               return {
                 text:
-                  `${CAUSE_TEXT[cause]}; ${remaining.map((id) => `#${id}`).join(", ")} still exist` +
+                  `${REREAD_CAUSE_TEXT[cause]}; ${remaining.map((id) => `#${id}`).join(", ")} still exist` +
                   (gone.length > 0 ? ` (${gone.map((id) => `#${id}`).join(", ")} already in the trash)` : "") +
                   ` — ${hint}, then ${rerun}`,
                 hint,

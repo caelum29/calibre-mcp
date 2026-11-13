@@ -13,8 +13,8 @@ import { defineTool } from "./define.js";
 import { resolveNumericId } from "../app/resolve-id.js";
 import { toolError, toolOk, errorFromCatch } from "./result.js";
 import { isLanded, reReadNote, type ReReadCause } from "../app/write-policy.js";
-import { settleFailedRemove } from "../app/remove-settle.js";
-import { presentFailedWrite, type UnconfirmedWording } from "./write-failure.js";
+import { settleFailedRemove, unconfirmedRemove } from "../app/remove-settle.js";
+import { presentFailedWrite } from "./write-failure.js";
 import { pruneRemovedBooks } from "../app/prune-removed.js";
 import type { DepsWithIndex } from "./deps.js";
 import type { IndexWriter } from "../semantic/store/types.js";
@@ -164,41 +164,8 @@ async function settleRemoveError(
     id: remaining[0] ?? removeIds[0] ?? 0,
     retries: 0,
     err,
-    unconfirmed: (cause, check) => unconfirmedRemove(cause, check.status, gone, remaining),
+    unconfirmed: (cause, check) => unconfirmedRemove(cause, check.status, { gone, remaining }),
   });
   const extra = [call.skipped, pruneNote].filter(Boolean).join("\n");
   return toolError(code, extra ? `${text}\n${extra}` : text, { hint });
-}
-
-const CAUSE_TEXT: Record<ReReadCause, string> = {
-  timeout: "calibredb timed out",
-  dropped: "the connection dropped mid-request",
-};
-
-const idList = (ids: readonly number[]): string => ids.map((id) => `#${id}`).join(", ");
-
-/** Steer for a remove a re-read did not confirm: name what is left, and what already went to the Trash. */
-function unconfirmedRemove(
-  cause: ReReadCause,
-  status: "not-landed" | "unverifiable",
-  gone: readonly number[],
-  remaining: readonly number[],
-): UnconfirmedWording {
-  const trashed = gone.length > 0 ? ` (${idList(gone)} already in the Trash)` : "";
-  const verify = `calibre_get_book id=${remaining.join(" / id=")}`;
-  // a re-run with an already-trashed id fails not_found, so it names only what is left
-  const rerun = `re-run with ids=[${remaining.join(",")}] and confirm=true`;
-  if (status === "not-landed") {
-    const hint = `verify with ${verify}`;
-    const verb = remaining.length === 1 ? "exists" : "exist";
-    return {
-      text: `${CAUSE_TEXT[cause]}; ${idList(remaining)} still ${verb}${trashed} — ${hint}, then ${rerun}.`,
-      hint,
-    };
-  }
-  const hint = `verify with ${verify} before retrying`;
-  return {
-    text: `${CAUSE_TEXT[cause]} and the re-read does not confirm the removal of ${idList(remaining)}${trashed} — ${hint}; if any still exists, ${rerun}.`,
-    hint,
-  };
 }
