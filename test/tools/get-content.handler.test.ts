@@ -442,3 +442,25 @@ describe("calibre_get_content handler", () => {
     });
   });
 });
+
+// #592: an explicit format the book lacks falls back, but says so instead of staying silent.
+describe("calibre_get_content format override the book lacks (#592)", () => {
+  it("adds a note naming the requested, available and used formats", async () => {
+    const r = await getContentTool.handler(args({ format: "mobi" }), deps({ book: { formats: ["pdf", "epub"] } }));
+    expect(r.isError).toBeFalsy();
+    expect((r.content[0] as { text: string }).text).toContain(
+      "format: mobi not in this book (has pdf, epub) — used epub.",
+    );
+    expect(r.structuredContent).toMatchObject({ format: "epub" });
+  });
+
+  it("adds no note when the override is honoured", async () => {
+    const r = await getContentTool.handler(args({ format: "pdf" }), deps({ book: { formats: ["pdf", "epub"] } }));
+    expect((r.content[0] as { text: string }).text).not.toContain("not in this book");
+  });
+
+  it("adds no note when no override is given", async () => {
+    const r = await getContentTool.handler(args(), deps({ book: { formats: ["pdf", "epub"] } }));
+    expect((r.content[0] as { text: string }).text).not.toContain("not in this book");
+  });
+});
