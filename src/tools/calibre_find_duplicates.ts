@@ -7,7 +7,7 @@ import { filterErrorText } from "./writes-remedy.js";
 import { z } from "zod";
 import { compareBooks, findDuplicateGroups } from "../domain/curation/duplicates.js";
 import { buildScopedQuery, honestyLines, resolveFilter } from "../app/bundles.js";
-import { BookId, CursorParam, jsonArray, limitParam } from "./coerce.js";
+import { BookId, CursorParam, jsonArray, limitParam, OptionalFilter } from "./coerce.js";
 import { pageCursor, pageOffset, selectionKey } from "./cursor.js";
 import { defineTool } from "./define.js";
 import { bookResourceLink } from "./resource-link.js";
@@ -39,7 +39,7 @@ export const findDuplicatesTool = defineTool({
     mode: z.enum(["identical", "similar", "compare"]).default("identical"),
     ids: jsonArray(BookId()).optional(),
     query: z.string().max(512).optional(),
-    filter: z.string().trim().min(1).max(256).optional(),
+    filter: OptionalFilter(),
     library: z.string().optional(),
     limit: limitParam(200, 50),
     cursor: CursorParam,

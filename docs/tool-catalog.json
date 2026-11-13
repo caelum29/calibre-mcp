@@ -877,6 +877,13 @@
           "offset": {
             "type": "number"
           },
+          "paramNotes": {
+            "description": "A line per limit param that fell back to its default or max instead of the value sent",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "workMatch": {
             "type": "string"
           }
@@ -1161,6 +1168,13 @@
           "offset": {
             "type": "number"
           },
+          "paramNotes": {
+            "description": "A line per limit param that fell back to its default or max instead of the value sent",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "text": {
             "type": "string"
           },
@@ -1301,6 +1315,13 @@
           },
           "offset": {
             "type": "number"
+          },
+          "paramNotes": {
+            "description": "A line per limit param that fell back to its default or max instead of the value sent",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
           },
           "total": {
             "type": "number"
@@ -1805,6 +1826,13 @@
           "offset": {
             "type": "number"
           },
+          "paramNotes": {
+            "description": "A line per limit param that fell back to its default or max instead of the value sent",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "total": {
             "type": "number"
           }
@@ -2055,7 +2083,6 @@
           },
           "query": {
             "maxLength": 512,
-            "minLength": 1,
             "type": "string"
           },
           "scope": {
@@ -2233,6 +2260,13 @@
           "offset": {
             "type": "number"
           },
+          "paramNotes": {
+            "description": "A line per limit param that fell back to its default or max instead of the value sent",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "query": {
             "type": "string"
           },
@@ -2303,7 +2337,6 @@
           },
           "query": {
             "maxLength": 512,
-            "minLength": 1,
             "type": "string"
           },
           "scope": {
@@ -2447,6 +2480,13 @@
           },
           "note": {
             "type": "string"
+          },
+          "paramNotes": {
+            "description": "A line per limit param that fell back to its default or max instead of the value sent",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
           },
           "passages": {
             "items": {

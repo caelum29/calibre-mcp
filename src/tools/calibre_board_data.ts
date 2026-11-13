@@ -7,6 +7,7 @@
 
 import { z } from "zod";
 import type { BoardPayload } from "../ui/board-cache.js";
+import { OptionalFilter } from "./coerce.js";
 import { defineTool } from "./define.js";
 import { toolError, toolOk } from "./result.js";
 import { errorCodeFor } from "../domain/error-codes.js";
@@ -23,7 +24,7 @@ export const boardDataTool = defineTool({
     // The originating search's library/filter args, echoed back by the widget (#215) —
     // the same query in another library or bundle is a different board.
     library: z.string().optional(),
-    filter: z.string().trim().min(1).max(256).optional(),
+    filter: OptionalFilter(),
   },
   outputSchema: {
     tool: z.string().optional(),

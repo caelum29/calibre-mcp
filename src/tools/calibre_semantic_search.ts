@@ -22,7 +22,7 @@ import type { ChunkIndex, FigureIndex, IndexFreshness, IndexWriter, LibraryHit }
 import { findGoneBookIds } from "../app/live-hits.js";
 import { type FilterResolution, honestyLines, restrictSet, resolveFilter } from "../app/bundles.js";
 import { boardMeta } from "./board-meta.js";
-import { BookId, CoercedBool, limitParam } from "./coerce.js";
+import { BookId, CoercedBool, limitParam, OptionalFilter } from "./coerce.js";
 import { defineTool } from "./define.js";
 import { bookResourceLink } from "./resource-link.js";
 import { resolveNumericId } from "../app/resolve-id.js";
@@ -31,6 +31,8 @@ import { embedderUsable } from "../semantic/status.js";
 import { fence, toolError, toolOk, toolErrorFrom } from "./result.js";
 
 // the message's own step doubles as the hint, so the error text states it once (#437)
+const SHORT_QUERY_NOTE =
+  'Very short query: semantic ranking has little to go on. For an exact term use mode:"keyword"; for a topic, give a longer query.';
 const BUILD_LIBRARY_INDEX = "Run calibre_build_index with a bookId, ids, or query first";
 import type { ContentBlock, ToolResult } from "./types.js";
 import type { BaseDeps, DepsWithIndex } from "./deps.js";
@@ -43,7 +45,7 @@ export const semanticSearchTool = defineTool({
   description:
     "Meaning-based search for `query` over the local index. scope=library ranks books; scope=book (needs bookId) ranks passages within one book. target=figures searches figure captions instead of text — use when the user asks for a diagram/chart/schema; hits point at calibre_get_figures for the pixels. mode=hybrid (default) fuses semantic + keyword matches; mode=vector is semantic-only; mode=keyword is exact keyword/FTS (no model at query time). All modes need an index built by calibre_build_index. filter accepts a bundle name to scope library searches (list bundles via calibre_manage_bundles). Model inference is serialized: prefer one call at a time — parallel calls queue, and past a few the extras skip the rerank.",
   inputSchema: {
-    query: z.string().min(1).max(512),
+    query: z.string().max(512),
     scope: z.enum(["library", "book"]).default("library"),
     // What corpus is searched (orthogonal to scope, which says WHERE). Open enum by design:
     // a future "code" target over Listing captions is anticipated (D-018 amendment, #83).
@@ -52,7 +54,7 @@ export const semanticSearchTool = defineTool({
     bookId: BookId().optional(),
     topK: limitParam(50, 10),
     library: z.string().optional(),
-    filter: z.string().trim().min(1).max(256).optional(),
+    filter: OptionalFilter(),
     include_excluded: CoercedBool().optional(),
   },
   outputSchema: {
@@ -139,6 +141,10 @@ export const semanticSearchTool = defineTool({
   },
   annotations: { readOnlyHint: true, openWorldHint: false },
   handler: async (args, deps: SemanticDeps) => {
+    // the schema keeps a plain string (#590): an empty query gets the error contract, not the SDK's text
+    if (args.query.trim() === "") {
+      return toolError("invalid_input", "query is empty.", { hint: "pass a non-empty query: a word or phrase" });
+    }
     try {
       const libraryId = await deps.content.resolveLibraryId(args.library);
 
@@ -182,6 +188,8 @@ export const semanticSearchTool = defineTool({
           ? "Index is keyword-only (no embeddings) — showing keyword (FTS) matches. For semantic ranking, rebuild with calibre_build_index force=true (the embedding model is available)."
           : `Index is keyword-only (no embeddings) — showing keyword (FTS) matches. For semantic ranking: ${INSTALL_TRANSFORMERS} Then rebuild with calibre_build_index force=true.`;
       }
+      // 1–2 characters (Go, AI) are real queries, but carry little meaning for the embedder (#590)
+      if (mode !== "keyword" && args.query.trim().length < 3) note = joinNotes(note, SHORT_QUERY_NOTE);
       const effArgs: Args = { ...args, mode };
 
       if (effArgs.scope === "book") {

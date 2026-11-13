@@ -16,7 +16,7 @@ import {
 } from "../domain/book-fields.js";
 import type { ChangeValue, FieldDiff } from "../domain/book-fields.js";
 import { buildScopedQuery, honestyLines, resolveFilter } from "../app/bundles.js";
-import { BookId, CoercedBool, jsonArray, jsonRecord, jsonStringList } from "./coerce.js";
+import { BookId, CoercedBool, jsonArray, jsonRecord, jsonStringList, OptionalFilter } from "./coerce.js";
 import { defineTool } from "./define.js";
 import { fence, toolError, toolOk, toolErrorFrom, errorFromCatch } from "./result.js";
 import type { ToolResult } from "./types.js";
@@ -59,7 +59,7 @@ export const bulkUpdateTool = defineTool({
     tags_remove: jsonStringList(),
     ids: jsonArray(BookId()).optional(),
     query: z.string().optional(),
-    filter: z.string().trim().min(1).max(256).optional(),
+    filter: OptionalFilter(),
     library: z.string().optional(),
     preview: CoercedBool().default(true),
   },
