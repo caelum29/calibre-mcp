@@ -2582,6 +2582,15 @@
           },
           "target": {
             "type": "string"
+          },
+          "timings": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "propertyNames": {
+              "type": "string"
+            },
+            "type": "object"
           }
         },
         "type": "object"

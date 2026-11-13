@@ -318,7 +318,10 @@ can open them for you: *"check the calibre-mcp logs for errors today"*):
   | `client` | `client` / MCP `clientInfo.name` |
 - **No file access?** `calibre_ping` lists the last server errors and the log path.
 - **More detail:** `CALIBRE_MCP_LOG_LEVEL=debug`. The same lines also go to stderr
-  (prefixed `[calibre-mcp]`), which the client keeps in its own MCP log.
+  (prefixed `[calibre-mcp]`), which the client keeps in its own MCP log. At this level
+  `calibre_semantic_search` also reports its own latency per stage (embed, vector,
+  keyword, rerank, calibre round trips, total) as a `Timings (debug):` header line and a
+  `timings` field.
 
 Logs contain book ids, titles and search queries — never book text; your home folder
 is written as `~`.
