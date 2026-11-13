@@ -6,6 +6,7 @@
 // Lookup key: existing valid ISBN → else an ISBN scraped from the book text → else the title
 // (+first author) if usable, or a title de-slugged from a filename ("modular-monoliths" →
 // "modular monoliths", #549) at capped confidence. Providers are queried in order; the first with a hit wins.
+// An ISBN no provider knows falls back to the title (+first author) query (#593).
 
 import { NEEDS_WRITES } from "./writes-remedy.js";
 import { z } from "zod";
@@ -114,20 +115,40 @@ export const recoverMetadataTool = defineTool({
 
       let hits: ProviderHit[] = [];
       let usedSource: string | undefined;
-      for (const p of providers) {
-        const res = byIsbn ? await p.lookupByIsbn(isbn!) : await p.searchByTitleAuthor(titleQuery, author);
-        if (res.length) {
-          hits = res;
-          usedSource = p.name;
-          break;
+      const firstHit = async (search: (p: Provider) => Promise<ProviderHit[]>) => {
+        for (const p of providers) {
+          const res = await search(p);
+          if (res.length) {
+            hits = res;
+            usedSource = p.name;
+            return;
+          }
+        }
+      };
+      await firstHit((p) => (byIsbn ? p.lookupByIsbn(isbn!) : p.searchByTitleAuthor(titleQuery, author)));
+
+      // An unlisted ISBN says nothing about the title: retry by title before giving up (#593).
+      const isbnKey = lookupKey;
+      let isbnMissNote: string | undefined;
+      let titleKey: string | undefined;
+      if (hits.length === 0 && byIsbn && isUsableTitle(book.title, book.authors)) {
+        titleKey = `title:${book.title}${author ? ` / ${author}` : ""}`;
+        await firstHit((p) => p.searchByTitleAuthor(book.title, author));
+        if (hits.length) {
+          lookupKey = titleKey;
+          isbnMissNote = `${isbnKey} found nothing; matched by title`;
         }
       }
 
       if (hits.length === 0) {
         return toolError(
           "not_found",
-          `No metadata found for ${lookupKey} on ${order.join(", ")}. ` +
-            (byIsbn ? "The ISBN may be unlisted." : "Try a different title or add an ISBN."),
+          `No metadata found for ${isbnKey}${titleKey ? ` or ${titleKey}` : ""} on ${order.join(", ")}. ` +
+            (byIsbn
+              ? titleKey
+                ? "The ISBN may be unlisted and the title found no match."
+                : "The ISBN may be unlisted."
+              : "Try a different title or add an ISBN."),
         );
       }
 
@@ -135,6 +156,7 @@ export const recoverMetadataTool = defineTool({
       // The proposal's confidence, not the raw hit's: a title mismatch lowers it (#198).
       let confidence = proposal.confidence ?? hits[0]!.confidence;
       const warnings = proposal.warnings ?? [];
+      if (isbnMissNote) warnings.push(isbnMissNote);
       if (slugQuery) {
         confidence = Math.min(confidence, SLUG_QUERY_CONFIDENCE);
         for (const f of proposal.fields) f.confidence = Math.min(f.confidence, SLUG_QUERY_CONFIDENCE);
