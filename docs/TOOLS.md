@@ -172,7 +172,7 @@ The map reports which `detector` built it, in this order of precedence:
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
 | `id` (or `bookId`) | number \| uuid | *(required)* | The book to read |
-| `format` | string | *(auto)* | Which format to extract (e.g. `epub`, `pdf`); auto-picks the best (EPUB → Markdown → PDF → TXT/AZW3/MOBI/DOCX/ODT/HTMLZ/FB2/RTF) |
+| `format` | string | *(auto)* | Which format to extract (e.g. `epub`, `pdf`); auto-picks the best (EPUB → Markdown → PDF → TXT/AZW3/MOBI/DOCX/ODT/HTMLZ/FB2/RTF). A format the book doesn't have falls back to the auto-pick, with a line saying so: `format: mobi not in this book (has pdf, epub) — used epub.` |
 | `maxChars` | number | `8000` | Max characters per excerpt (max 40000) |
 | `sentenceAware` | boolean | `true` | End each excerpt at the last sentence end (`.!?` + space), else at a paragraph break; a wrapped line end or a PDF page break never counts. Consecutive excerpts stay gap-free |
 | `structure` | boolean | `false` | Return a chapter map instead of book text |
@@ -311,7 +311,8 @@ All modes need an index built by `calibre_build_index` first. If you only built 
 (model-free) index, `keyword` mode works, `vector` errors with guidance, and `hybrid` degrades
 to keyword with a note (`semanticAvailable: false` here means this index can't do vector
 ranking). The guidance says to rebuild without `keywordOnly` when the embedding model is
-installed, and gives install steps only when it isn't. Figure captions enter the index at build time, so books indexed before
+installed, and gives install steps only when it isn't (a `keywordOnly` call that rebuilt nothing
+because every book was already indexed says so instead). Figure captions enter the index at build time, so books indexed before
 figure support need a `force: true` rebuild before `target: figures` finds them.
 
 Results only name books the library still holds. Before answering, the search asks Calibre in
@@ -337,7 +338,9 @@ unchecked, as before.
 Like `calibre_search`, library-scope calls subtract exclusion-marker bundles by default and
 report it (`exclusions applied: […]`, with the removed-book count when a `filter` is also set,
 as in `calibre_search`). The filter never touches the index — it restricts
-candidates at query time, so creating or changing bundles needs no re-index.
+candidates at query time, so creating or changing bundles needs no re-index. When some of the
+filtered books aren't indexed yet, the filter note says how many are, and steers to the build:
+`filter: databases (12 books, 5 indexed) — run calibre_build_index { query: "…" } to index the rest`.
 
 A very short `query` (1–2 characters, like `Go` or `AI`) in `hybrid`/`vector` mode still runs, with
 a note: semantic ranking has little to go on, so use `mode: "keyword"` for an exact term or give a longer query.
@@ -364,7 +367,8 @@ dependencies); this also happens automatically if the embedding model isn't inst
 result's `semanticAvailable` says whether the embedding model is usable on this server, not what
 this build did (`keywordOnly` says that): after a requested keyword-only build with the model
 present it is `true`, and the note says to rebuild without `keywordOnly` for vector & hybrid
-search. Install steps appear only when the model is really missing. Re-run
+search. When the call built nothing because every selected book was already indexed, the note
+says so ("already indexed, nothing rebuilt") and steers to no rebuild. Install steps appear only when the model is really missing. Re-run
 after adding books; use `force: true` to re-index books that haven't changed. An embedding
 build treats books indexed without embeddings (keyword-only) as out of date and re-indexes them
 without `force`; a keyword-only build never overwrites a book that already has embeddings (it
@@ -490,6 +494,11 @@ A slug-shaped filename title is turned back into words and searched: `modular-mo
 so its confidence is capped at 0.40 and a `WARNING` line (also in `warnings`) asks you to verify
 it before applying. A title that is only an identifier (`795731065`, `B0CZS7H23N`, `top.dvi`)
 can't be searched: without an ISBN the tool refuses and asks for one.
+
+When an ISBN finds nothing on any provider and the book has a usable title, the tool retries
+with title + first author before giving up. A match then reports the title key as `lookupKey`
+and adds a `WARNING isbn:… found nothing; matched by title` line; if both fail, the
+`not_found` message names both queries.
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
@@ -659,6 +668,12 @@ run, the result carries one `Semantic index not updated: …` line (`indexNote`)
 `calibre_build_index` with `prune: true` cleans up. Only removals made through this tool (or
 `calibre_merge_books`) are dropped right away; books removed in the Calibre GUI are dropped by
 the first `calibre_semantic_search` that hits them, or by `calibre_build_index` with `prune: true`.
+
+If `calibredb remove` times out or the connection drops, the removal may still have happened, so
+the tool re-reads the ids instead of reporting a failure (it never retries). All gone → a normal
+success, with a line saying a re-read confirmed it. Some still there, or the re-read fails →
+`write_unverified`, naming the ids left and steering to `calibre_get_book` before a re-run; ids
+confirmed gone are still dropped from the index.
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
