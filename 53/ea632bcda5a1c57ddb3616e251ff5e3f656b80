@@ -1,0 +1,20 @@
+test/tools/get-content.handler.test.ts
+  s_817770d809bfd0::t_ac5a73af8d36ec 445-464
+  s_817770d809bfd0::t_ebb7b22aa76580 465-466
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "53ea632bcda5a1c57ddb3616e251ff5e3f656b80",
+  "prompts": {},
+  "sessions": {
+    "s_817770d809bfd0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "abfc3c21-f149-4973-b558-ba9afd3dbcb9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
