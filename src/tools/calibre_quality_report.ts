@@ -7,7 +7,7 @@ import { NEEDS_WRITES } from "./writes-remedy.js";
 import { z } from "zod";
 import { ALL_CHECKS, type QualityCheck, runQualityChecks } from "../domain/curation/quality.js";
 import { buildScopedQuery, honestyLines, resolveFilter } from "../app/bundles.js";
-import { BookId, CursorParam, jsonArray, limitParam } from "./coerce.js";
+import { BookId, CursorParam, jsonArray, limitParam, OptionalFilter } from "./coerce.js";
 import { pageCursor, pageOffset, selectionKey } from "./cursor.js";
 import { defineTool } from "./define.js";
 import { selectBooks } from "../app/select-books.js";
@@ -31,7 +31,7 @@ export const qualityReportTool = defineTool({
     checks: jsonArray(CHECK_ENUM).optional(),
     ids: jsonArray(BookId()).optional(),
     query: z.string().max(512).optional(),
-    filter: z.string().trim().min(1).max(256).optional(),
+    filter: OptionalFilter(),
     library: z.string().optional(),
     limit: limitParam(500, 100),
     cursor: CursorParam,

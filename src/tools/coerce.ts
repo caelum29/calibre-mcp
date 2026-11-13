@@ -70,19 +70,58 @@ export const CoercedBool = (): z.ZodType<boolean> =>
     return v; // unrecognized → let z.boolean() reject
   }, z.boolean());
 
+/** The range a {@link limitParam} accepts: values above `max` clamp to it, the rest fall back to `def`. */
+export interface LimitBounds {
+  max: number;
+  def: number;
+}
+
+// limitParam schemas → their bounds, so the registration layer can say when one fell back (#591)
+const LIMIT_BOUNDS = new WeakMap<z.ZodType, LimitBounds>();
+
 /**
  * Page-size param: coerce → int → clamp down to `max`; default `def` when omitted, garbage or < 1
  * (#552: a non-positive value is a sloppy client, not a request for 1 result/char).
  */
 export function limitParam(max: number, def: number) {
-  return z
+  const schema = z
     .preprocess((v) => {
       const n = Math.trunc(Number(v));
       if (!Number.isFinite(n) || n < 1) return def;
       return Math.min(max, n);
     }, z.number().int())
     .default(def);
+  LIMIT_BOUNDS.set(schema, { max, def });
+  return schema;
 }
+
+/** The bounds of a {@link limitParam} schema, or undefined for any other schema. */
+export function limitParamBounds(schema: unknown): LimitBounds | undefined {
+  return typeof schema === "object" && schema !== null ? LIMIT_BOUNDS.get(schema as z.ZodType) : undefined;
+}
+
+/**
+ * One line saying a limit param did not get the value the caller sent (#591), or undefined when it
+ * did or was absent. null and "" count as absent: clients send them for an unset optional.
+ */
+export function limitNote(name: string, raw: unknown, { max, def }: LimitBounds): string | undefined {
+  if (raw === undefined || raw === null || raw === "") return undefined;
+  const n = Math.trunc(Number(raw));
+  if (!Number.isFinite(n)) return `${name} ${JSON.stringify(raw)} is not a number; used the default ${def}.`;
+  if (n < 1) return `${name} ${n} is below 1; used the default ${def}.`;
+  if (n > max) return `${name} ${n} is above the max ${max}; used ${max}.`;
+  return undefined;
+}
+
+/**
+ * Optional bundle/search filter (#590): blank or whitespace-only means unset, like {@link CursorParam} —
+ * clients send "" for an absent optional, which used to fail `.min(1)` before the handler ran.
+ */
+export const OptionalFilter = () =>
+  z.preprocess(
+    (v) => (v === null || (typeof v === "string" && v.trim() === "") ? undefined : v),
+    z.string().trim().min(1).max(256).optional(),
+  );
 
 /**
  * Opaque pagination cursor — a raw string we mint and decode ourselves (see cursor.ts). A client

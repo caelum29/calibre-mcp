@@ -30,7 +30,7 @@ import {
   resolveFilter,
   scopeExpression,
 } from "../app/bundles.js";
-import { BookId, CoercedBool, CursorParam, limitParam } from "./coerce.js";
+import { BookId, CoercedBool, CursorParam, limitParam, OptionalFilter } from "./coerce.js";
 import { pageCursor, pageOffset } from "./cursor.js";
 import { boardMeta } from "./board-meta.js";
 import { defineTool } from "./define.js";
@@ -470,7 +470,7 @@ export const searchTool = defineTool({
   description:
     'Find books by `query`: exact title, author, ISBN, tag, or Calibre query syntax (mode=meta), or full text (mode=fts). mode=fts words match independently and stemmed (events matches event); wrap a phrase in double quotes for an exact match ("event sourcing"); supports AND/OR/NOT between terms (uppercase, e.g. a NOT b). scope=book returns short keyword snippets from inside one book; first hits often land in TOC/front matter — for definitional or topic questions within a book prefer calibre_semantic_search scope=book (ranked passages with char offsets). Use calibre_semantic_search for meaning/topic queries. For "how many" questions use countOnly=true (returns only the count). filter accepts a bundle name to scope the search (list bundles via calibre_manage_bundles). Calibre 9.18+: mode=annotations searches highlights, their notes and bookmark titles (filter applies; scope=book + bookId searches one book, query "*" lists all its annotations); mode=notes searches notes attached to authors, series, tags, publisher (filters do not apply), and query "authors:Name" (or series:/tags:/publisher:/#custom:, item may be quoted) shows the whole note of that item.',
   inputSchema: {
-    query: z.string().min(1).max(512),
+    query: z.string().max(512),
     mode: z.enum(["meta", "fts", "annotations", "notes"]).optional().default("meta"),
     scope: z.enum(["library", "book"]).optional().default("library"),
     bookId: BookId().optional(),
@@ -480,7 +480,7 @@ export const searchTool = defineTool({
     limit: limitParam(50, 20),
     cursor: CursorParam,
     countOnly: CoercedBool().optional(),
-    filter: z.string().trim().min(1).max(256).optional(),
+    filter: OptionalFilter(),
     include_excluded: CoercedBool().optional(),
   },
   outputSchema: {
@@ -529,6 +529,12 @@ export const searchTool = defineTool({
   },
   annotations: { readOnlyHint: true, openWorldHint: true },
   handler: async (args, deps: SearchDeps, ctx) => {
+    // the schema keeps a plain string (#590): an empty query gets the error contract, not the SDK's text
+    if (args.query.trim() === "") {
+      return toolError("invalid_input", "query is empty.", {
+        hint: 'pass a non-empty query (mode=annotations with scope=book: "*" lists all annotations)',
+      });
+    }
     // One budget for every Calibre sub-call below (bundle listing, id resolution, FTS, snippets).
     const deadline = new Deadline();
     try {

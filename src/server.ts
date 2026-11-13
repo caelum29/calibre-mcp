@@ -23,6 +23,13 @@ import { parseBookResourceId, readBookResource } from "./resources/book.js";
 import { allTools, assertWriteClassification } from "./tools/registry.js";
 import { isListed, previewHint, refuseWriteCall, sessionAnnotations, sessionOutputSchema } from "./tools/write-gate.js";
 import { toolError } from "./tools/result.js";
+import {
+  hasLimitParam,
+  PARAM_NOTES_OUTPUT,
+  refuseInvalidInput,
+  tolerantInputSchema,
+  withParamNotes,
+} from "./tools/input-contract.js";
 import type { ToolContext } from "./tools/types.js";
 import type { ToolDeps } from "./tools/deps.js";
 import { OperationCancelledError } from "./domain/errors.js";
@@ -138,29 +145,32 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
   // Register every descriptor; bridge the SDK-free ToolResult ⇄ CallToolResult. Handlers
   // already return-not-throw; the try/catch here is a defense-in-depth safety net (DESIGN §3).
   for (const t of allTools) {
+    const output = sessionOutputSchema(t);
     const toolConfig = {
       title: t.title,
       description: t.description,
       // v2 takes Standard Schemas, not raw Zod shapes: wrap the descriptor's shapes here (the
       // seam) so tool modules keep their SDK-agnostic raw shapes.
-      inputSchema: z.object(t.inputSchema),
-      outputSchema: sessionOutputSchema(t) && z.object(sessionOutputSchema(t)!),
+      // A violation reaches the handler below as a verdict, not the SDK's bare text (#590).
+      inputSchema: tolerantInputSchema(t.inputSchema),
+      // limit-param tools may say a value fell back (#591)
+      outputSchema: output && z.object(hasLimitParam(t.inputSchema) ? { ...output, ...PARAM_NOTES_OUTPUT } : output),
       annotations: sessionAnnotations(t, config.writeEnabled),
     };
     // ToolResult is structurally a CallToolResult minus the SDK's loose index signature;
     // cast once here (the seam) rather than weaken the shared ToolResult type.
     const handler = async (args: unknown, extra: Extra): Promise<CallToolResult> =>
       logged(t.name, args, extra, async () => {
+        const invalid = refuseInvalidInput(t.name, args);
+        if (invalid) return invalid as CallToolResult;
         // The write gate per call (#435): refuse a Write call before its handler ever runs.
         const refused = refuseWriteCall(t, args, config.writeEnabled);
         if (refused) return refused as CallToolResult;
         try {
           // gate-off previews say that applying will be refused (#554)
-          return previewHint(
-            t,
+          return withParamNotes(
             args,
-            await t.handler(args, deps, toolContext(extra)),
-            config.writeEnabled,
+            previewHint(t, args, await t.handler(args, deps, toolContext(extra)), config.writeEnabled),
           ) as CallToolResult;
         } catch (err) {
           if (err instanceof OperationCancelledError) {

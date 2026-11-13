@@ -21,6 +21,12 @@ tools expect.
 Errors: a failed call returns its message followed by a `Code: <errorCode>` line and, when the
 message doesn't already say it, a `Next: <step>` line (see
 [Troubleshooting → Reading an error](TROUBLESHOOTING.md#troubleshooting)).
+Arguments that break a tool's schema (an unknown `mode`, an over-long or empty `query`) fail with
+`Code: invalid_input` and name the argument. A blank optional string such as `filter: ""` counts as unset.
+
+Limits: an out-of-range `limit`, `topK` or `maxChars` is not an error. The server uses the default
+(for a value below 1 or not a number) or the max, and says so in one line, e.g.
+`topK -5 is below 1; used the default 10.`, mirrored in `structuredContent.paramNotes`.
 
 ---
 
@@ -332,6 +338,9 @@ Like `calibre_search`, library-scope calls subtract exclusion-marker bundles by 
 report it (`exclusions applied: […]`, with the removed-book count when a `filter` is also set,
 as in `calibre_search`). The filter never touches the index — it restricts
 candidates at query time, so creating or changing bundles needs no re-index.
+
+A very short `query` (1–2 characters, like `Go` or `AI`) in `hybrid`/`vector` mode still runs, with
+a note: semantic ranking has little to go on, so use `mode: "keyword"` for an exact term or give a longer query.
 
 Every successful response carries the index generation once — `indexVersion` in
 `structuredContent` plus one line in the text. Character offsets and figure pages are valid
@@ -719,7 +728,8 @@ is refused with `write_disabled`.
 
 **Using bundles.** Once created, bundles plug into the read tools via their `filter` parameter:
 `calibre_search`, `calibre_semantic_search` (library scope), `calibre_bulk_update`,
-`calibre_quality_report`, and `calibre_find_duplicates` all accept `filter: "<bundle name>"`.
+`calibre_quality_report`, and `calibre_find_duplicates` all accept `filter: "<bundle name>"`
+(`filter: ""` means no bundle).
 Discovery searches additionally subtract every `-`-named exclusion bundle by default (opt out
 per call with `include_excluded: true`); maintenance/write tools never auto-subtract — quality
 and dedupe work is most needed exactly on the noise books. Passing an exclusion marker itself
@@ -801,8 +811,8 @@ only the part named here is contract. The table is generated from the server's r
 | `calibre_ping` | `log file` | `log file: <path>\|off (stderr only)` | `logFile` |
 | `calibre_ping` | `recent errors` | `recent errors: <N>[ (<M> occurrences)]` | `recentErrors` |
 
-Errors the MCP SDK answers before a handler runs carry no `Code:` or `Next:` line: input-validation
-failures, and a direct call to `calibre_update_book` or `calibre_add_book` while writes are off.
+Errors the MCP SDK answers before a handler runs carry no `Code:` or `Next:` line: a direct call
+to `calibre_update_book` or `calibre_add_book` while writes are off.
 
 Tools whose text has no Labelled lines beyond the error lines:
 
