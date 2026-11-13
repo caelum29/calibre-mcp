@@ -1,0 +1,19 @@
+test/tools/recover-metadata-title-fallback.test.ts
+  s_6caab447037bdd::t_232dee8eb049eb 1-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4844e4b46d7d1aff18ba3db91d36822bf68755c8",
+  "prompts": {},
+  "sessions": {
+    "s_6caab447037bdd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "147b364a-4d6a-4b16-a568-dfcfc7ad9f93",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
