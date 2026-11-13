@@ -1,0 +1,20 @@
+src/calibre/figure-fetch.ts
+  s_125cb346af25ef::t_044da5bf82ed87 30
+  s_125cb346af25ef::t_9cfc8947b7fbc0 159-169,179
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cbfe4f0fc719b5805289f7d483c98839833ff378",
+  "prompts": {},
+  "sessions": {
+    "s_125cb346af25ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46d17262-fb50-489d-b04b-650fb46f9d17",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
