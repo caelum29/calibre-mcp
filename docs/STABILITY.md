@@ -70,10 +70,12 @@ closed set (structured result and the `Code:` line of the text), and a `Next:` l
 already states the step. Adding or removing a code is a contract change. The next step is the generic
 one; a call site may give a sharper one.
 
-Errors the MCP SDK answers before any handler runs are outside this contract and carry no
-`errorCode`, `Code:` or `Next:`: input-validation failures (an argument that doesn't fit the tool's
-schema), and a direct call to `calibre_update_book` or `calibre_add_book` while writes are off (both
-tools are hidden then). Adding the lines to these errors later would be a minor change.
+Input-validation failures (an argument that doesn't fit the tool's schema: an empty or over-long
+`query`, an unknown enum value, a missing required argument) are inside this contract: they return
+`invalid_input` with the `Code:` and `Next:` lines, naming the argument. The one error the MCP SDK
+still answers before any handler runs is a direct call to `calibre_update_book` or `calibre_add_book`
+while writes are off (both tools are hidden then); it carries no `errorCode`, `Code:` or `Next:`.
+Adding the lines to it later would be a minor change.
 
 | Code | Meaning | Default next step |
 |---|---|---|
