@@ -7,6 +7,9 @@ import { isServerFault } from "./domain/error-codes.js";
 import { capArray, capString, type Logger } from "./logging.js";
 
 const ARG_STRING_MAX = 120;
+// A top-level `query` is the agent's own search text, bounded by most tools' schemas at 512; a longer one logs as its length (#627).
+const QUERY_ARG_MAX = 512;
+const HITS_MAX = 10;
 const ARG_ARRAY_MAX = 10;
 const ERROR_TEXT_MAX = 300;
 
@@ -21,7 +24,8 @@ export function summarizeArgs(args: unknown): Record<string, unknown> | undefine
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(args)) {
     if (v === undefined) continue;
-    out[k] = summarizeValue(v);
+    // queries are exempt from the free-text cap: real agent query shapes are what the log is read for
+    out[k] = k === "query" && typeof v === "string" && v.length <= QUERY_ARG_MAX ? v : summarizeValue(v);
   }
   return Object.keys(out).length ? out : undefined;
 }
@@ -60,6 +64,52 @@ export function redactArgvEchoes(text: string, argv: readonly string[]): string 
 /** Short random id; unique enough to correlate one call's lines within a day's file. */
 export function newCallId(): string {
   return randomBytes(4).toString("hex");
+}
+
+const SEMANTIC_SEARCH = "calibre_semantic_search";
+
+/**
+ * Size and hit summary of a tool result for the closing `tool call` line (#627): `textChars` /
+ * `structuredChars` for every tool (what each client shows the model), and for a successful
+ * `calibre_semantic_search` the ranked `hits` as numbers only — never snippet, body, caption or title.
+ */
+export function summarizeResult(tool: string, result: ResultLike | undefined): Record<string, unknown> {
+  if (result === undefined) return {};
+  const textChars = (result.content ?? []).reduce(
+    (n, b) => (b.type === "text" && typeof b.text === "string" ? n + b.text.length : n),
+    0,
+  );
+  const sc = result.structuredContent;
+  const out: Record<string, unknown> = { textChars };
+  if (sc !== undefined && sc !== null) {
+    try {
+      out.structuredChars = JSON.stringify(sc)?.length;
+    } catch {
+      // BigInt or a cycle: logging must never change the call's result — omit the size
+    }
+  }
+  if (tool === SEMANTIC_SEARCH && result.isError !== true && sc !== null && typeof sc === "object") {
+    const env = sc as Record<string, unknown>;
+    out.hits = capArray(hitsOf(env), HITS_MAX, (h) => h);
+    if (typeof env.lowConfidence === "boolean") out.lowConfidence = env.lowConfidence;
+    if (typeof env.maxRerank === "number") out.maxRerank = env.maxRerank;
+  }
+  return out;
+}
+
+function hitsOf(env: Record<string, unknown>): Record<string, unknown>[] {
+  const pick = (h: unknown, keys: readonly string[], base: Record<string, unknown>) => {
+    const o = (h ?? {}) as Record<string, unknown>;
+    return { ...base, ...Object.fromEntries(keys.filter((k) => o[k] !== undefined).map((k) => [k, o[k]])) };
+  };
+  const list = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
+  if (Array.isArray(env.results)) {
+    return env.results.map((h, i) => pick(h, ["bookId", "charStart", "snippetStart"], { rank: i + 1 }));
+  }
+  if (Array.isArray(env.passages)) {
+    return env.passages.map((h, i) => pick(h, ["charStart"], { rank: i + 1, bookId: env.bookId }));
+  }
+  return list(env.figures).map((h, i) => pick(h, ["bookId", "figIndex", "charOffset"], { rank: i + 1 }));
 }
 
 interface ResultLike {
@@ -108,6 +158,7 @@ export async function withCallLog<R extends ResultLike>(
         // The steer text the model saw — what an agent needs to explain the failure.
         ...(isError ? { error: errorTextOf(result) } : {}),
         ...(result === undefined ? { threw: true } : {}),
+        ...summarizeResult(tool, result),
         args: summarizeArgs(args),
       };
       // A server-fault result logs at error so ping's ring shows it with its hint (#325); any

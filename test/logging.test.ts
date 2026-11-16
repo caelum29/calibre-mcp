@@ -117,6 +117,13 @@ describe("logger file sink", () => {
     expect(readFileSync(path.join(dir, "README.md"), "utf8")).toContain('msg:"tool call"');
   });
 
+  it("should_document_the_result_summary_keys_in_the_readme", () => {
+    const dir = tempDir();
+    setup().logger.configure({ dir });
+    const readme = readFileSync(path.join(dir, "README.md"), "utf8");
+    expect(["hits", "textChars", "structuredChars"].filter((k) => !readme.includes(k))).toEqual([]);
+  });
+
   it("should_keep_exactly_7_days_today_included", () => {
     const dir = tempDir();
     for (const d of ["2026-10-23", "2026-10-24", "2026-10-29"])
@@ -169,7 +176,7 @@ describe("logger file sink", () => {
 
 describe("boundValue", () => {
   it("should_cap_long_strings_with_a_visible_marker", () => {
-    expect(boundValue("x".repeat(600))).toMatch(/^x{500}…\(\+100 chars\)$/);
+    expect(boundValue("x".repeat(600))).toMatch(/^x{512}…\(\+88 chars\)$/);
   });
 
   it("should_cap_long_arrays_with_a_visible_marker", () => {

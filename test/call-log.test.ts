@@ -266,3 +266,160 @@ describe("parseTraceparent — #325 W3C versioning", () => {
     expect(parseTraceparent(tp)).toEqual({});
   });
 });
+
+// #627: the closing line records what a search returned and how big each result was.
+describe("withCallLog result summary (#627)", () => {
+  const search = (sc: Record<string, unknown>, text = "hello") => ({
+    content: [{ type: "text", text }],
+    structuredContent: sc,
+  });
+  const lib = (n: number) =>
+    Array.from({ length: n }, (_, i) => ({
+      bookId: 100 + i,
+      title: `SECRET TITLE ${i}`,
+      authors: ["A"],
+      charStart: 1000 * (i + 1),
+      charEnd: 1000 * (i + 1) + 500,
+      snippetStart: 1000 * (i + 1) + 40,
+      snippet: `SECRET SNIPPET ${i}`,
+    }));
+
+  async function metaOf(tool: string, result: object, args: unknown = {}) {
+    const { logger, records, now } = setup();
+    await withCallLog(logger, { tool, args, now }, async () => result);
+    return records()[0]!.meta as Record<string, unknown>;
+  }
+
+  it("should_log_library_hits_in_order_with_lowConfidence_and_maxRerank", async () => {
+    const meta = await metaOf(
+      "calibre_semantic_search",
+      search({ scope: "library", lowConfidence: true, maxRerank: 0.31, results: lib(3) }),
+    );
+    expect({ hits: meta.hits, lowConfidence: meta.lowConfidence, maxRerank: meta.maxRerank }).toEqual({
+      hits: [
+        { rank: 1, bookId: 100, charStart: 1000, snippetStart: 1040 },
+        { rank: 2, bookId: 101, charStart: 2000, snippetStart: 2040 },
+        { rank: 3, bookId: 102, charStart: 3000, snippetStart: 3040 },
+      ],
+      lowConfidence: true,
+      maxRerank: 0.31,
+    });
+  });
+
+  it("should_log_book_scope_hits_with_the_envelope_book_id", async () => {
+    const meta = await metaOf(
+      "calibre_semantic_search",
+      search({
+        scope: "book",
+        bookId: 77,
+        passages: [
+          { charStart: 10, charEnd: 20, body: "SECRET BODY 1" },
+          { charStart: 500, charEnd: 600, body: "SECRET BODY 2" },
+        ],
+      }),
+    );
+    expect(meta.hits).toEqual([
+      { rank: 1, bookId: 77, charStart: 10 },
+      { rank: 2, bookId: 77, charStart: 500 },
+    ]);
+  });
+
+  it("should_log_figure_hits_as_book_figIndex_and_charOffset", async () => {
+    const meta = await metaOf(
+      "calibre_semantic_search",
+      search({
+        target: "figures",
+        figures: [
+          {
+            bookId: 5,
+            title: "T",
+            authors: [],
+            figIndex: 3,
+            caption: "SECRET CAPTION",
+            format: "PDF",
+            charOffset: 900,
+          },
+        ],
+      }),
+    );
+    expect(meta.hits).toEqual([{ rank: 1, bookId: 5, figIndex: 3, charOffset: 900 }]);
+  });
+
+  it("should_cap_hits_at_10_with_an_items_marker", async () => {
+    const meta = await metaOf("calibre_semantic_search", search({ results: lib(12) }));
+    const hits = meta.hits as unknown[];
+    expect({ length: hits.length, last: hits[10], tenth: hits[9] }).toEqual({
+      length: 11,
+      last: "…(+2 items)",
+      tenth: { rank: 10, bookId: 109, charStart: 10000, snippetStart: 10040 },
+    });
+  });
+
+  it("should_not_put_snippet_body_caption_or_title_text_in_meta", async () => {
+    const meta = await metaOf(
+      "calibre_semantic_search",
+      search({
+        results: lib(2),
+        passages: [{ charStart: 1, charEnd: 2, body: "SECRET BODY" }],
+        figures: [{ bookId: 1, figIndex: 0, caption: "SECRET CAPTION", charOffset: 1, title: "SECRET TITLE" }],
+      }),
+    );
+    expect(JSON.stringify(meta)).not.toContain("SECRET");
+  });
+
+  it("should_log_an_empty_hits_array_for_a_zero_hit_search", async () => {
+    const meta = await metaOf("calibre_semantic_search", search({ scope: "library", count: 0 }));
+    expect(meta.hits).toEqual([]);
+  });
+
+  it("should_log_no_hits_for_an_error_result_or_another_tool", async () => {
+    const err = await metaOf("calibre_semantic_search", {
+      isError: true,
+      content: [{ type: "text", text: "boom" }],
+      structuredContent: { errorCode: "not_found", results: lib(1) },
+    });
+    const other = await metaOf("calibre_search", search({ results: lib(1) }));
+    expect({ err: "hits" in err, other: "hits" in other }).toEqual({ err: false, other: false });
+  });
+
+  it("should_measure_text_and_structured_chars_ignoring_resource_links", async () => {
+    const sc = { a: 1, b: "xy" };
+    const meta = await metaOf("calibre_get_book", {
+      content: [
+        { type: "text", text: "12345" },
+        { type: "resource_link", uri: "calibre://book/1", name: "a much longer name than five" },
+        { type: "text", text: "678" },
+      ],
+      structuredContent: sc,
+    });
+    expect({ textChars: meta.textChars, structuredChars: meta.structuredChars }).toEqual({
+      textChars: 8,
+      structuredChars: JSON.stringify(sc).length,
+    });
+  });
+
+  it("should_omit_structuredChars_without_structuredContent_and_log_sizes_on_errors", async () => {
+    const meta = await metaOf("calibre_get_book", { isError: true, content: [{ type: "text", text: "nope!" }] });
+    expect({ textChars: meta.textChars, has: "structuredChars" in meta }).toEqual({ textChars: 5, has: false });
+  });
+
+  it("should_log_a_400_char_query_verbatim_but_still_redact_other_long_args", async () => {
+    const q = "q".repeat(400);
+    const meta = await metaOf("calibre_semantic_search", { content: [] }, { query: q, comments: "c".repeat(400) });
+    expect(meta.args).toEqual({ query: q, comments: "[text, 400 chars]" });
+  });
+});
+
+describe("withCallLog result safety (#627)", () => {
+  it("should_return_the_original_result_and_omit_structuredChars_when_it_cannot_be_serialized", async () => {
+    const { logger, records, now } = setup();
+    const result = { content: [{ type: "text", text: "abc" }], structuredContent: { n: 10n } };
+    const got = await withCallLog(logger, { tool: "calibre_get_book", args: {}, now }, async () => result);
+    const meta = records()[0]!.meta as Record<string, unknown>;
+    expect({ same: got === result, textChars: meta.textChars, has: "structuredChars" in meta }).toEqual({
+      same: true,
+      textChars: 3,
+      has: false,
+    });
+  });
+});
