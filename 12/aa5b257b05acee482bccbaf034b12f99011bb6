@@ -1,0 +1,24 @@
+test/call-log.test.ts
+  s_ad3aabf55e6d32::t_046ba94b7ff480 269-403
+  s_ad3aabf55e6d32::t_684f14d80d90e3 404-411
+test/logging.test.ts
+  s_ad3aabf55e6d32::t_046ba94b7ff480 120-126,179
+test/pair-search-reads.test.ts
+  s_ad3aabf55e6d32::t_3a8e1e58219c65 1-88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "12aa5b257b05acee482bccbaf034b12f99011bb6",
+  "prompts": {},
+  "sessions": {
+    "s_ad3aabf55e6d32": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "341b7b19-6086-43d5-80eb-3d0d0827dd49",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
