@@ -210,7 +210,8 @@ Failure semantics:
 The blind two-judge pass over the live library (`scripts/judged-*`, #602) keeps its grades in a
 **judgment store**: one append-only JSONL per query set, named `<first 12 hex of the query set's
 sha256>.jsonl` (the hash is over the canonical JSON of `queries.json`, so re-indenting the file
-keeps the store, while any query edit, case or whitespace included, starts a new one). It lives
+keeps the store, while any query edit, case or whitespace included, starts a new one; the canonical
+JSON keeps key order, so reordering the keys of a query also starts a new store). It lives
 under the gitignored `docs/dev/evals/judgments/` with the run dirs, because both describe a private
 library; it is never committed and never runs in CI. Each record holds query id, book id,
 `charStart`/`charEnd` (figures: the figure offset as both), `indexVersion`, the rubric version, the
@@ -220,7 +221,9 @@ was adjudicated, the run and when it was judged.
 **Matching.** A hit reuses a stored grade when query id, book id, `indexVersion` and rubric version
 are equal and the two ranges overlap by at least half of the shorter range (a figure matches only the
 equal offset; touching passages never match). Several matches: the larger overlap, then the newer
-record, then the closer span. `--strict-text` also requires the judged-text hash to be equal (for
+record, then the closer span. One record grades at most one hit of a query: the (hit, record)
+matches are assigned greedily in that order (the better-ranked hit first on a full tie), and a hit
+whose matches are all taken stays unjudged, so the next dump sends it to the judges. `--strict-text` also requires the judged-text hash to be equal (for
 snippet-window A/Bs, where the location stays and the shown text changes). A hit no record covers
 is **unjudged** (`null`): never relevant, and counted in Hole@5.
 
