@@ -6,9 +6,9 @@ import {
   cleanHeading,
   FM_SHORT_SECTION_CHARS,
   frontMatterEnd,
-  isFrontMatterTitle,
   leadingFrontMatter,
 } from "../../../src/domain/structure/front-matter.js";
+import { isFrontMatterTitle } from "../../../src/domain/structure/front-matter-titles.js";
 
 const body = (n: number) =>
   "Body prose sentence about the topic at hand. ".repeat(Math.ceil(n / 45)).slice(0, n) + "\n\n";
