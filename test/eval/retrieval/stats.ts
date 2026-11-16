@@ -28,7 +28,7 @@ const sum = (xs: number[]) => xs.reduce((s, x) => s + x, 0);
 export const mean = (xs: number[]): number => (xs.length === 0 ? 0 : sum(xs) / xs.length);
 
 /** Sample standard deviation (n − 1); 0 for fewer than two values. */
-function sampleSd(xs: number[]): number {
+export function sampleSd(xs: number[]): number {
   if (xs.length < 2) return 0;
   const m = mean(xs);
   return Math.sqrt(xs.reduce((s, x) => s + (x - m) ** 2, 0) / (xs.length - 1));

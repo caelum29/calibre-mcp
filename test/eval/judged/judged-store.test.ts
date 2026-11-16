@@ -163,7 +163,7 @@ describe("NDCG@5 and the ideal ranking", () => {
     expect(ndcgAt5([0, 0, 0, 0, 0, 2], [2])).toBe(0);
   });
   it("takes the best five stored grades of the query at that indexVersion", () => {
-    const store = [2, 1, 0, -1, 2, 1, 1].map((grade, i) =>
+    const store = ([2, 1, 0, -1, 2, 1, 1] as const).map((grade, i) =>
       rec({ grade, charStart: i * 10_000, charEnd: i * 10_000 + 1 }),
     );
     const other = [rec({ grade: 2, indexVersion: 5 }), rec({ grade: 2, qid: "para-02" }), rec({ grade: 2, rubric: 2 })];
