@@ -1,0 +1,473 @@
+# Retrieval eval — 2026-11-16-5abdc650-hardkinds
+
+Model `Xenova/multilingual-e5-small` · index v4 · corpus 27 books / 63 chunks · 98 queries (33 RU-involved) · topK=10 · rerank: onnx-community/bge-reranker-v2-m3-ONNX q8 (196 reranked rows) · git 5abdc650
+
+## Headline
+
+- **hybrid**: overall nDCG@10 **0.9474** / Hit@1 0.8916 — RU-involved nDCG@10 **0.9517** / Hit@1 0.8929 (RU gap -0.0043) — negatives flagged 1
+- **vector**: overall nDCG@10 **0.9394** / Hit@1 0.8795 — RU-involved nDCG@10 **0.9533** / Hit@1 0.8929 (RU gap -0.0139) — negatives flagged 1
+- **keyword**: overall nDCG@10 **0.7336** / Hit@1 0.7108 — RU-involved nDCG@10 **0.5** / Hit@1 0.5 (RU gap 0.2336) — negatives flagged 0
+- weakest kind in hybrid: **no-overlap-paraphrase** (nDCG@10 0.6718)
+- weakest kind in vector: **no-overlap-paraphrase** (nDCG@10 0.6811)
+- weakest kind in keyword: **cross-lingual** (nDCG@10 0)
+
+## Overall (negatives excluded)
+
+| mode | n | Hit@1 | Recall@5 | MRR | nDCG@10 |
+|------|---|-------|----------|-----|---------|
+| hybrid | 83 | 0.8916 | 0.988 | 0.9301 | 0.9474 |
+| vector | 83 | 0.8795 | 0.988 | 0.9231 | 0.9394 |
+| keyword | 83 | 0.7108 | 0.747 | 0.7289 | 0.7336 |
+
+## RU-involved (cross-lingual + RU-monolingual + RU-flagged) — the known weak axis
+
+| mode | n | Hit@1 | Recall@5 | MRR | nDCG@10 |
+|------|---|-------|----------|-----|---------|
+| hybrid | 28 | 0.8929 | 1 | 0.9357 | 0.9517 |
+| vector | 28 | 0.8929 | 1 | 0.9375 | 0.9533 |
+| keyword | 28 | 0.5 | 0.5 | 0.5 | 0.5 |
+
+## By kind
+
+### semantic-paraphrase
+
+| mode | n | Hit@1 | Recall@5 | MRR | nDCG@10 |
+|------|---|-------|----------|-----|---------|
+| hybrid | 16 | 0.9375 | 1 | 0.9688 | 0.9769 |
+| vector | 16 | 0.9375 | 1 | 0.9688 | 0.9769 |
+| keyword | 16 | 1 | 1 | 1 | 1 |
+
+### exact-identifier
+
+| mode | n | Hit@1 | Recall@5 | MRR | nDCG@10 |
+|------|---|-------|----------|-----|---------|
+| hybrid | 14 | 0.8571 | 1 | 0.9048 | 0.9286 |
+| vector | 14 | 0.7857 | 0.9286 | 0.8571 | 0.8758 |
+| keyword | 14 | 1 | 1 | 1 | 1 |
+
+### cross-lingual
+
+| mode | n | Hit@1 | Recall@5 | MRR | nDCG@10 |
+|------|---|-------|----------|-----|---------|
+| hybrid | 8 | 1 | 1 | 1 | 1 |
+| vector | 8 | 1 | 1 | 1 | 1 |
+| keyword | 8 | 0 | 0 | 0 | 0 |
+
+### ru-monolingual
+
+| mode | n | Hit@1 | Recall@5 | MRR | nDCG@10 |
+|------|---|-------|----------|-----|---------|
+| hybrid | 8 | 1 | 1 | 1 | 1 |
+| vector | 8 | 1 | 1 | 1 | 1 |
+| keyword | 8 | 1 | 1 | 1 | 1 |
+
+### front-matter-trap
+
+| mode | n | Hit@1 | Recall@5 | MRR | nDCG@10 |
+|------|---|-------|----------|-----|---------|
+| hybrid | 6 | 1 | 1 | 1 | 1 |
+| vector | 6 | 1 | 1 | 1 | 1 |
+| keyword | 6 | 0.6667 | 1 | 0.8333 | 0.877 |
+
+### figure-caption
+
+| mode | n | Hit@1 | Recall@5 | MRR | nDCG@10 |
+|------|---|-------|----------|-----|---------|
+| hybrid | 9 | 0.8889 | 1 | 0.9444 | 0.959 |
+| vector | 9 | 0.8889 | 1 | 0.9444 | 0.959 |
+| keyword | 9 | 0.7778 | 0.7778 | 0.7778 | 0.7778 |
+
+### confuser-pair
+
+| mode | n | Hit@1 | Recall@5 | MRR | nDCG@10 |
+|------|---|-------|----------|-----|---------|
+| hybrid | 8 | 1 | 1 | 1 | 1 |
+| vector | 8 | 1 | 1 | 1 | 1 |
+| keyword | 8 | 0.75 | 0.875 | 0.8125 | 0.8289 |
+
+### no-overlap-paraphrase
+
+| mode | n | Hit@1 | Recall@5 | MRR | nDCG@10 |
+|------|---|-------|----------|-----|---------|
+| hybrid | 8 | 0.375 | 0.875 | 0.5667 | 0.6718 |
+| vector | 8 | 0.375 | 1 | 0.5771 | 0.6811 |
+| keyword | 8 | 0 | 0 | 0 | 0 |
+
+### raw-title
+
+| mode | n | Hit@1 | Recall@5 | MRR | nDCG@10 |
+|------|---|-------|----------|-----|---------|
+| hybrid | 6 | 1 | 1 | 1 | 1 |
+| vector | 6 | 1 | 1 | 1 | 1 |
+| keyword | 6 | 0.6667 | 0.6667 | 0.6667 | 0.6667 |
+
+## Negatives (no relevant answer exists — low-confidence signal)
+
+| mode | n | flagged rate |
+|------|---|--------------|
+| hybrid | 6 | 1 |
+| vector | 6 | 1 |
+| keyword | 6 | 0 |
+
+### Figure negatives (target=figures; gate inactive until the figures floor is calibrated)
+
+| mode | n | flagged rate |
+|------|---|--------------|
+| hybrid | 3 | 1 |
+| vector | 3 | 1 |
+| keyword | 3 | 0.3333 |
+
+`flagged` = the tool returned zero results OR set lowConfidence for a query with no valid answer.
+
+## Per-query
+
+### mode=hybrid
+
+| id | kind | scope | ru | Hit@1 | R@5 | RR | nDCG@10 | maxScore | top-3 retrieved |
+|----|------|-------|----|-------|-----|----|---------|----------|-----------------|
+| sp-01 | semantic-paraphrase | library |  | 1 | 1 | 1 | 1 | 0.8383 | 101, 120, 106 |
+| sp-02 | semantic-paraphrase | library |  | 1 | 1 | 1 | 1 | 0.8871 | 102, 107, 124 |
+| sp-03 | semantic-paraphrase | library |  | 1 | 1 | 1 | 1 | 0.8712 | 103, 117, 105 |
+| sp-04 | semantic-paraphrase | library |  | 1 | 1 | 1 | 1 | 0.8619 | 104, 109, 102 |
+| sp-05 | semantic-paraphrase | library |  | 1 | 1 | 1 | 1 | 0.8363 | 105, 122, 117 |
+| sp-06 | semantic-paraphrase | library |  | 1 | 1 | 1 | 1 | 0.8697 | 106, 122, 120 |
+| sp-07 | semantic-paraphrase | library |  | 1 | 1 | 1 | 1 | 0.85 | 107, 105, 101 |
+| sp-08 | semantic-paraphrase | library |  | 1 | 1 | 1 | 1 | 0.872 | 108, 117, 116 |
+| sp-09 | semantic-paraphrase | library |  | 1 | 1 | 1 | 1 | 0.8591 | 109, 119, 110 |
+| sp-10 | semantic-paraphrase | library |  | 1 | 1 | 1 | 1 | 0.8571 | 110, 109, 122 |
+| sp-11 | semantic-paraphrase | library |  | 0 | 1 | 0.5 | 0.6309 | 0.8507 | 116, 101, 109 |
+| sp-12 | semantic-paraphrase | library |  | 1 | 1 | 1 | 1 | 0.8937 | 104, 123, 117 |
+| sp-13 | semantic-paraphrase | library |  | 1 | 1 | 1 | 1 | 0.8484 | 106, 109, 119 |
+| sp-14 | semantic-paraphrase | library |  | 1 | 1 | 1 | 1 | 0.892 | 103, 117, 119 |
+| spb-01 | semantic-paraphrase | book |  | 1 | 1 | 1 | 1 | 0.8579 | @0-1526, @1526-2851 |
+| spb-02 | semantic-paraphrase | book |  | 1 | 1 | 1 | 1 | 0.8697 | @1048-2686, @0-1048 |
+| id-01 | exact-identifier | library |  | 1 | 1 | 1 | 1 | 0.8644 | 109, 121, 105 |
+| id-02 | exact-identifier | library |  | 1 | 1 | 1 | 1 | 0.8711 | 110, 126, 122 |
+| id-03 | exact-identifier | library |  | 1 | 1 | 1 | 1 | 0.8423 | 107, 104, 101 |
+| id-04 | exact-identifier | library |  | 1 | 1 | 1 | 1 | 0.8206 | 105, 109, 116 |
+| id-05 | exact-identifier | library |  | 0 | 1 | 0.3333 | 0.5 | 0.8281 | 110, 109, 107 |
+| id-06 | exact-identifier | library |  | 1 | 1 | 1 | 1 | 0.8617 | 106, 120, 101 |
+| id-07 | exact-identifier | library |  | 1 | 1 | 1 | 1 | 0.8461 | 101, 110, 121 |
+| id-08 | exact-identifier | library | ✓ | 1 | 1 | 1 | 1 | 0.8063 | 111, 113, 127 |
+| id-09 | exact-identifier | library |  | 1 | 1 | 1 | 1 | 0.8153 | 105, 119, 121 |
+| id-10 | exact-identifier | library |  | 1 | 1 | 1 | 1 | 0.8625 | 110, 103, 105 |
+| id-11 | exact-identifier | library |  | 1 | 1 | 1 | 1 | 0.8247 | 109, 110, 121 |
+| id-12 | exact-identifier | library |  | 0 | 1 | 0.3333 | 0.5 | 0.8532 | 110, 103, 102 |
+| idb-01 | exact-identifier | book |  | 1 | 1 | 1 | 1 | 0.831 | @1384-2692, @0-1384 |
+| idb-02 | exact-identifier | book |  | 1 | 1 | 1 | 1 | 0.8628 | @1430-2604, @0-1430 |
+| xl-01 | cross-lingual | library | ✓ | 1 | 1 | 1 | 1 | 0.8202 | 108, 126, 114 |
+| xl-02 | cross-lingual | library | ✓ | 1 | 1 | 1 | 1 | 0.8262 | 101, 109, 114 |
+| xl-03 | cross-lingual | library | ✓ | 1 | 1 | 1 | 1 | 0.8307 | 105, 125, 121 |
+| xl-04 | cross-lingual | library | ✓ | 1 | 1 | 1 | 1 | 0.817 | 109, 103, 118 |
+| xl-05 | cross-lingual | library | ✓ | 1 | 1 | 1 | 1 | 0.8111 | 113, 119, 109 |
+| xl-06 | cross-lingual | library | ✓ | 1 | 1 | 1 | 1 | 0.8198 | 112, 126, 125 |
+| xl-07 | cross-lingual | library | ✓ | 1 | 1 | 1 | 1 | 0.8247 | 111, 108, 125 |
+| xl-08 | cross-lingual | library | ✓ | 1 | 1 | 1 | 1 | 0.8353 | 115, 122, 110 |
+| ru-01 | ru-monolingual | library | ✓ | 1 | 1 | 1 | 1 | 0.8668 | 112, 116, 114 |
+| ru-02 | ru-monolingual | library | ✓ | 1 | 1 | 1 | 1 | 0.8957 | 111, 127, 117 |
+| ru-03 | ru-monolingual | library | ✓ | 1 | 1 | 1 | 1 | 0.8735 | 114, 127, 124 |
+| ru-04 | ru-monolingual | library | ✓ | 1 | 1 | 1 | 1 | 0.8567 | 113, 121, 115 |
+| ru-05 | ru-monolingual | library | ✓ | 1 | 1 | 1 | 1 | 0.8773 | 114, 101, 110 |
+| ru-06 | ru-monolingual | library | ✓ | 1 | 1 | 1 | 1 | 0.8735 | 115, 124, 106 |
+| rub-01 | ru-monolingual | book | ✓ | 1 | 1 | 1 | 1 | 0.8361 | @0-1253, @1253-2307 |
+| rub-02 | ru-monolingual | book | ✓ | 1 | 1 | 1 | 1 | 0.8399 | @0-1816, @1816-2795 |
+| fmt-01 | front-matter-trap | book |  | 1 | 1 | 1 | 1 | 0.8943 | @3677-5459, @1906-3677, @5459-7523 |
+| fmt-02 | front-matter-trap | book |  | 1 | 1 | 1 | 1 | 0.8733 | @1906-3677, @3677-5459, @7523-8331 |
+| fmt-03 | front-matter-trap | book |  | 1 | 1 | 1 | 1 | 0.8654 | @5459-7523, @7523-8331, @3677-5459 |
+| fmt-04 | front-matter-trap | book |  | 1 | 1 | 1 | 1 | 0.8779 | @1963-4009, @4009-5688, @5688-6994 |
+| fmt-05 | front-matter-trap | book |  | 1 | 1 | 1 | 1 | 0.8899 | @6994-8926, @8926-10847, @4009-5688 |
+| fmt-06 | front-matter-trap | book |  | 1 | 1 | 1 | 1 | 0.8707 | @10847-12407, @8926-10847, @1963-4009 |
+| neg-01 | negative | library |  | — | — | — | flagged ✓ | 0.792 | 116, 113, 109 |
+| neg-02 | negative | library |  | — | — | — | flagged ✓ | 0.8024 | 116, 117, 104 |
+| neg-03 | negative | library |  | — | — | — | flagged ✓ | 0.8141 | 117, 127, 123 |
+| neg-04 | negative | library | ✓ | — | — | — | flagged ✓ | 0.7696 | 108, 124, 114 |
+| neg-05 | negative | library | ✓ | — | — | — | flagged ✓ | 0.7791 | 125, 112, 126 |
+| neg-06 | negative | library |  | — | — | — | flagged ✓ | 0.7733 | 117, 116, 111 |
+| fig-01 | figure-caption | library |  | 1 | 1 | 1 | 1 | 0.9037 | fig-103#0, fig-106#0, fig-105#0 |
+| fig-02 | figure-caption | library |  | 1 | 1 | 1 | 1 | 0.8884 | fig-103#1, fig-106#0, fig-103#0 |
+| fig-03 | figure-caption | library |  | 1 | 1 | 1 | 1 | 0.8928 | fig-105#0, fig-105#1, fig-106#0 |
+| fig-04 | figure-caption | library |  | 1 | 1 | 1 | 1 | 0.898 | fig-106#0, fig-103#0, fig-105#0 |
+| fig-05 | figure-caption | library |  | 1 | 1 | 1 | 1 | 0.8716 | fig-108#0, fig-105#0, fig-106#0 |
+| fig-ru-01 | figure-caption | library | ✓ | 1 | 1 | 1 | 1 | 0.8983 | fig-112#0, fig-106#0, fig-103#0 |
+| fig-ru-02 | figure-caption | library | ✓ | 1 | 1 | 1 | 1 | 0.8856 | fig-113#0, fig-106#0, fig-103#0 |
+| fig-xl-01 | figure-caption | library | ✓ | 0 | 1 | 0.5 | 0.6309 | 0.7973 | fig-106#0, fig-105#0, fig-105#1 |
+| fig-xl-02 | figure-caption | library | ✓ | 1 | 1 | 1 | 1 | 0.842 | fig-113#0, fig-106#0, fig-103#0 |
+| figneg-01 | figure-negative | library |  | — | — | — | flagged ✓ | 0.7927 | fig-106#0, fig-103#0, fig-105#0 |
+| figneg-02 | figure-negative | library |  | — | — | — | flagged ✓ | 0.7749 | fig-113#1, fig-106#0, fig-103#0 |
+| figneg-03 | figure-negative | library | ✓ | — | — | — | flagged ✓ | 0.8054 | fig-108#0, fig-106#0, fig-112#0 |
+| cp-01 | confuser-pair | library |  | 1 | 1 | 1 | 1 | 0.8639 | 101, 110, 118 |
+| cp-02 | confuser-pair | library |  | 1 | 1 | 1 | 1 | 0.897 | 118, 109, 101 |
+| cp-03 | confuser-pair | library |  | 1 | 1 | 1 | 1 | 0.8849 | 103, 122, 117 |
+| cp-04 | confuser-pair | library | ✓ | 1 | 1 | 1 | 1 | 0.8435 | 119, 109, 107 |
+| cp-05 | confuser-pair | library |  | 1 | 1 | 1 | 1 | 0.8818 | 106, 120, 109 |
+| cp-06 | confuser-pair | library |  | 1 | 1 | 1 | 1 | 0.8974 | 120, 106, 109 |
+| cp-07 | confuser-pair | library | ✓ | 1 | 1 | 1 | 1 | 0.8471 | 121, 107, 122 |
+| cp-08 | confuser-pair | library | ✓ | 1 | 1 | 1 | 1 | 0.8588 | 107, 121, 117 |
+| nop-01 | no-overlap-paraphrase | library |  | 0 | 0 | 0.1667 | 0.3562 | 0.8432 | 107, 104, 110 |
+| nop-02 | no-overlap-paraphrase | library |  | 0 | 1 | 0.3333 | 0.5 | 0.8457 | 117, 107, 123 |
+| nop-03 | no-overlap-paraphrase | library |  | 0 | 1 | 0.3333 | 0.5 | 0.8507 | 107, 121, 124 |
+| nop-04 | no-overlap-paraphrase | book |  | 1 | 1 | 1 | 1 | 0.8213 | @1430-2686, @0-1430 |
+| nop-05 | no-overlap-paraphrase | book |  | 1 | 1 | 1 | 1 | 0.8617 | @1694-2629, @0-1694 |
+| nop-06 | no-overlap-paraphrase | library | ✓ | 0 | 1 | 0.5 | 0.6309 | 0.8227 | 102, 121, 117 |
+| nop-07 | no-overlap-paraphrase | library | ✓ | 1 | 1 | 1 | 1 | 0.8225 | 127, 111, 114 |
+| nop-08 | no-overlap-paraphrase | library | ✓ | 0 | 1 | 0.2 | 0.3869 | 0.8082 | 108, 112, 105 |
+| an-01 | adjacent-negative | library |  | — | — | — | flagged ✓ | 0.8524 | 101, 102, 109 |
+| an-02 | adjacent-negative | library |  | — | — | — | flagged ✓ | 0.8428 | 105, 101, 103 |
+| an-03 | adjacent-negative | library |  | — | — | — | flagged ✓ | 0.8286 | 110, 109, 105 |
+| an-04 | adjacent-negative | library |  | — | — | — | flagged ✓ | 0.8237 | 110, 114, 101 |
+| an-05 | adjacent-negative | library | ✓ | — | — | — | flagged ✓ | 0.8179 | 113, 109, 114 |
+| an-06 | adjacent-negative | library | ✓ | — | — | — | flagged ✓ | 0.8488 | 115, 109, 110 |
+| rt-01 | raw-title | library |  | 1 | 1 | 1 | 1 | 0.8483 | 125, 101, 113 |
+| rt-02 | raw-title | library |  | 1 | 1 | 1 | 1 | 0.8212 | 126, 112, 117 |
+| rt-03 | raw-title | library | ✓ | 1 | 1 | 1 | 1 | 0.8631 | 127, 111, 117 |
+| rt-04 | raw-title | library |  | 1 | 1 | 1 | 1 | 0.8771 | 125, 126, 109 |
+| rt-05 | raw-title | library |  | 1 | 1 | 1 | 1 | 0.8869 | 126, 114, 107 |
+| rt-06 | raw-title | library |  | 1 | 1 | 1 | 1 | 0.8823 | 126, 125, 112 |
+
+### mode=vector
+
+| id | kind | scope | ru | Hit@1 | R@5 | RR | nDCG@10 | maxScore | top-3 retrieved |
+|----|------|-------|----|-------|-----|----|---------|----------|-----------------|
+| sp-01 | semantic-paraphrase | library |  | 1 | 1 | 1 | 1 | 0.8383 | 101, 120, 106 |
+| sp-02 | semantic-paraphrase | library |  | 1 | 1 | 1 | 1 | 0.8871 | 102, 124, 117 |
+| sp-03 | semantic-paraphrase | library |  | 1 | 1 | 1 | 1 | 0.8712 | 103, 117, 105 |
+| sp-04 | semantic-paraphrase | library |  | 1 | 1 | 1 | 1 | 0.8619 | 104, 109, 102 |
+| sp-05 | semantic-paraphrase | library |  | 1 | 1 | 1 | 1 | 0.8363 | 105, 122, 117 |
+| sp-06 | semantic-paraphrase | library |  | 1 | 1 | 1 | 1 | 0.8697 | 106, 122, 120 |
+| sp-07 | semantic-paraphrase | library |  | 1 | 1 | 1 | 1 | 0.85 | 107, 105, 101 |
+| sp-08 | semantic-paraphrase | library |  | 1 | 1 | 1 | 1 | 0.872 | 108, 117, 116 |
+| sp-09 | semantic-paraphrase | library |  | 1 | 1 | 1 | 1 | 0.8591 | 109, 110, 103 |
+| sp-10 | semantic-paraphrase | library |  | 1 | 1 | 1 | 1 | 0.8571 | 110, 109, 122 |
+| sp-11 | semantic-paraphrase | library |  | 0 | 1 | 0.5 | 0.6309 | 0.8507 | 116, 101, 109 |
+| sp-12 | semantic-paraphrase | library |  | 1 | 1 | 1 | 1 | 0.8937 | 104, 123, 117 |
+| sp-13 | semantic-paraphrase | library |  | 1 | 1 | 1 | 1 | 0.8484 | 106, 109, 119 |
+| sp-14 | semantic-paraphrase | library |  | 1 | 1 | 1 | 1 | 0.892 | 103, 117, 119 |
+| spb-01 | semantic-paraphrase | book |  | 1 | 1 | 1 | 1 | 0.8579 | @0-1526, @1526-2851 |
+| spb-02 | semantic-paraphrase | book |  | 1 | 1 | 1 | 1 | 0.8697 | @1048-2686, @0-1048 |
+| id-01 | exact-identifier | library |  | 1 | 1 | 1 | 1 | 0.8644 | 109, 121, 105 |
+| id-02 | exact-identifier | library |  | 1 | 1 | 1 | 1 | 0.8711 | 110, 126, 122 |
+| id-03 | exact-identifier | library |  | 1 | 1 | 1 | 1 | 0.8423 | 107, 104, 101 |
+| id-04 | exact-identifier | library |  | 1 | 1 | 1 | 1 | 0.8206 | 105, 109, 116 |
+| id-05 | exact-identifier | library |  | 0 | 0 | 0 | 0 | 0.8281 | 109, 123, 117 |
+| id-06 | exact-identifier | library |  | 1 | 1 | 1 | 1 | 0.8617 | 106, 120, 101 |
+| id-07 | exact-identifier | library |  | 1 | 1 | 1 | 1 | 0.8461 | 101, 121, 109 |
+| id-08 | exact-identifier | library | ✓ | 1 | 1 | 1 | 1 | 0.8063 | 111, 113, 127 |
+| id-09 | exact-identifier | library |  | 0 | 1 | 0.5 | 0.6309 | 0.8153 | 119, 105, 121 |
+| id-10 | exact-identifier | library |  | 1 | 1 | 1 | 1 | 0.8625 | 110, 103, 105 |
+| id-11 | exact-identifier | library |  | 1 | 1 | 1 | 1 | 0.8247 | 109, 110, 121 |
+| id-12 | exact-identifier | library |  | 0 | 1 | 0.5 | 0.6309 | 0.8532 | 103, 102, 118 |
+| idb-01 | exact-identifier | book |  | 1 | 1 | 1 | 1 | 0.831 | @1384-2692, @0-1384 |
+| idb-02 | exact-identifier | book |  | 1 | 1 | 1 | 1 | 0.8628 | @1430-2604, @0-1430 |
+| xl-01 | cross-lingual | library | ✓ | 1 | 1 | 1 | 1 | 0.8202 | 108, 126, 114 |
+| xl-02 | cross-lingual | library | ✓ | 1 | 1 | 1 | 1 | 0.8262 | 101, 109, 114 |
+| xl-03 | cross-lingual | library | ✓ | 1 | 1 | 1 | 1 | 0.8307 | 105, 125, 121 |
+| xl-04 | cross-lingual | library | ✓ | 1 | 1 | 1 | 1 | 0.817 | 109, 103, 118 |
+| xl-05 | cross-lingual | library | ✓ | 1 | 1 | 1 | 1 | 0.8111 | 113, 109, 118 |
+| xl-06 | cross-lingual | library | ✓ | 1 | 1 | 1 | 1 | 0.8198 | 112, 126, 125 |
+| xl-07 | cross-lingual | library | ✓ | 1 | 1 | 1 | 1 | 0.8247 | 111, 108, 125 |
+| xl-08 | cross-lingual | library | ✓ | 1 | 1 | 1 | 1 | 0.8353 | 115, 122, 110 |
+| ru-01 | ru-monolingual | library | ✓ | 1 | 1 | 1 | 1 | 0.8668 | 112, 116, 114 |
+| ru-02 | ru-monolingual | library | ✓ | 1 | 1 | 1 | 1 | 0.8957 | 111, 127, 117 |
+| ru-03 | ru-monolingual | library | ✓ | 1 | 1 | 1 | 1 | 0.8735 | 114, 127, 124 |
+| ru-04 | ru-monolingual | library | ✓ | 1 | 1 | 1 | 1 | 0.8567 | 113, 121, 115 |
+| ru-05 | ru-monolingual | library | ✓ | 1 | 1 | 1 | 1 | 0.8773 | 114, 101, 110 |
+| ru-06 | ru-monolingual | library | ✓ | 1 | 1 | 1 | 1 | 0.8735 | 115, 124, 106 |
+| rub-01 | ru-monolingual | book | ✓ | 1 | 1 | 1 | 1 | 0.8361 | @0-1253, @1253-2307 |
+| rub-02 | ru-monolingual | book | ✓ | 1 | 1 | 1 | 1 | 0.8399 | @0-1816, @1816-2795 |
+| fmt-01 | front-matter-trap | book |  | 1 | 1 | 1 | 1 | 0.8943 | @3677-5459, @1906-3677, @5459-7523 |
+| fmt-02 | front-matter-trap | book |  | 1 | 1 | 1 | 1 | 0.8733 | @1906-3677, @3677-5459, @7523-8331 |
+| fmt-03 | front-matter-trap | book |  | 1 | 1 | 1 | 1 | 0.8654 | @5459-7523, @7523-8331, @3677-5459 |
+| fmt-04 | front-matter-trap | book |  | 1 | 1 | 1 | 1 | 0.8779 | @1963-4009, @4009-5688, @5688-6994 |
+| fmt-05 | front-matter-trap | book |  | 1 | 1 | 1 | 1 | 0.8899 | @6994-8926, @8926-10847, @4009-5688 |
+| fmt-06 | front-matter-trap | book |  | 1 | 1 | 1 | 1 | 0.8707 | @10847-12407, @8926-10847, @1963-4009 |
+| neg-01 | negative | library |  | — | — | — | flagged ✓ | 0.792 | 116, 113, 109 |
+| neg-02 | negative | library |  | — | — | — | flagged ✓ | 0.8024 | 116, 104, 109 |
+| neg-03 | negative | library |  | — | — | — | flagged ✓ | 0.8141 | 127, 117, 123 |
+| neg-04 | negative | library | ✓ | — | — | — | flagged ✓ | 0.7696 | 108, 124, 114 |
+| neg-05 | negative | library | ✓ | — | — | — | flagged ✓ | 0.7791 | 125, 112, 126 |
+| neg-06 | negative | library |  | — | — | — | flagged ✓ | 0.7609 | 117, 111, 108 |
+| fig-01 | figure-caption | library |  | 1 | 1 | 1 | 1 | 0.9037 | fig-103#0, fig-106#0, fig-105#0 |
+| fig-02 | figure-caption | library |  | 1 | 1 | 1 | 1 | 0.8884 | fig-103#1, fig-106#0, fig-103#0 |
+| fig-03 | figure-caption | library |  | 1 | 1 | 1 | 1 | 0.8928 | fig-105#0, fig-105#1, fig-106#0 |
+| fig-04 | figure-caption | library |  | 1 | 1 | 1 | 1 | 0.898 | fig-106#0, fig-103#0, fig-105#0 |
+| fig-05 | figure-caption | library |  | 1 | 1 | 1 | 1 | 0.8716 | fig-108#0, fig-105#0, fig-106#0 |
+| fig-ru-01 | figure-caption | library | ✓ | 1 | 1 | 1 | 1 | 0.8983 | fig-112#0, fig-106#0, fig-103#0 |
+| fig-ru-02 | figure-caption | library | ✓ | 1 | 1 | 1 | 1 | 0.8856 | fig-113#0, fig-106#0, fig-103#0 |
+| fig-xl-01 | figure-caption | library | ✓ | 0 | 1 | 0.5 | 0.6309 | 0.7973 | fig-106#0, fig-105#0, fig-105#1 |
+| fig-xl-02 | figure-caption | library | ✓ | 1 | 1 | 1 | 1 | 0.842 | fig-113#0, fig-106#0, fig-103#0 |
+| figneg-01 | figure-negative | library |  | — | — | — | flagged ✓ | 0.7927 | fig-106#0, fig-103#0, fig-105#0 |
+| figneg-02 | figure-negative | library |  | — | — | — | flagged ✓ | 0.7749 | fig-113#1, fig-106#0, fig-103#0 |
+| figneg-03 | figure-negative | library | ✓ | — | — | — | flagged ✓ | 0.8054 | fig-108#0, fig-106#0, fig-112#0 |
+| cp-01 | confuser-pair | library |  | 1 | 1 | 1 | 1 | 0.8639 | 101, 110, 118 |
+| cp-02 | confuser-pair | library |  | 1 | 1 | 1 | 1 | 0.897 | 118, 109, 101 |
+| cp-03 | confuser-pair | library |  | 1 | 1 | 1 | 1 | 0.8849 | 103, 117, 109 |
+| cp-04 | confuser-pair | library | ✓ | 1 | 1 | 1 | 1 | 0.8435 | 119, 109, 107 |
+| cp-05 | confuser-pair | library |  | 1 | 1 | 1 | 1 | 0.8818 | 106, 120, 109 |
+| cp-06 | confuser-pair | library |  | 1 | 1 | 1 | 1 | 0.8974 | 120, 106, 109 |
+| cp-07 | confuser-pair | library | ✓ | 1 | 1 | 1 | 1 | 0.8471 | 121, 107, 122 |
+| cp-08 | confuser-pair | library | ✓ | 1 | 1 | 1 | 1 | 0.8588 | 107, 121, 117 |
+| nop-01 | no-overlap-paraphrase | library |  | 0 | 1 | 0.2 | 0.3869 | 0.8432 | 107, 104, 101 |
+| nop-02 | no-overlap-paraphrase | library |  | 0 | 1 | 0.3333 | 0.5 | 0.8457 | 117, 107, 123 |
+| nop-03 | no-overlap-paraphrase | library |  | 0 | 1 | 0.3333 | 0.5 | 0.8507 | 107, 121, 124 |
+| nop-04 | no-overlap-paraphrase | book |  | 1 | 1 | 1 | 1 | 0.8213 | @1430-2686, @0-1430 |
+| nop-05 | no-overlap-paraphrase | book |  | 1 | 1 | 1 | 1 | 0.8617 | @1694-2629, @0-1694 |
+| nop-06 | no-overlap-paraphrase | library | ✓ | 0 | 1 | 0.5 | 0.6309 | 0.8227 | 102, 121, 117 |
+| nop-07 | no-overlap-paraphrase | library | ✓ | 1 | 1 | 1 | 1 | 0.8225 | 127, 111, 114 |
+| nop-08 | no-overlap-paraphrase | library | ✓ | 0 | 1 | 0.25 | 0.4307 | 0.8082 | 108, 112, 105 |
+| an-01 | adjacent-negative | library |  | — | — | — | flagged ✓ | 0.8524 | 101, 102, 122 |
+| an-02 | adjacent-negative | library |  | — | — | — | flagged ✓ | 0.8428 | 105, 101, 103 |
+| an-03 | adjacent-negative | library |  | — | — | — | flagged ✓ | 0.8286 | 110, 109, 105 |
+| an-04 | adjacent-negative | library |  | — | — | — | flagged ✓ | 0.8237 | 110, 114, 101 |
+| an-05 | adjacent-negative | library | ✓ | — | — | — | flagged ✓ | 0.8179 | 113, 109, 114 |
+| an-06 | adjacent-negative | library | ✓ | — | — | — | flagged ✓ | 0.8488 | 115, 109, 110 |
+| rt-01 | raw-title | library |  | 1 | 1 | 1 | 1 | 0.8483 | 125, 101, 113 |
+| rt-02 | raw-title | library |  | 1 | 1 | 1 | 1 | 0.8212 | 126, 112, 117 |
+| rt-03 | raw-title | library | ✓ | 1 | 1 | 1 | 1 | 0.8631 | 127, 111, 117 |
+| rt-04 | raw-title | library |  | 1 | 1 | 1 | 1 | 0.8771 | 125, 126, 109 |
+| rt-05 | raw-title | library |  | 1 | 1 | 1 | 1 | 0.8869 | 126, 114, 107 |
+| rt-06 | raw-title | library |  | 1 | 1 | 1 | 1 | 0.8823 | 126, 125, 112 |
+
+### mode=keyword
+
+| id | kind | scope | ru | Hit@1 | R@5 | RR | nDCG@10 | maxScore | top-3 retrieved |
+|----|------|-------|----|-------|-----|----|---------|----------|-----------------|
+| sp-01 | semantic-paraphrase | library |  | 1 | 1 | 1 | 1 |  | 101, 116, 119 |
+| sp-02 | semantic-paraphrase | library |  | 1 | 1 | 1 | 1 |  | 102, 107, 122 |
+| sp-03 | semantic-paraphrase | library |  | 1 | 1 | 1 | 1 |  | 103, 118, 120 |
+| sp-04 | semantic-paraphrase | library |  | 1 | 1 | 1 | 1 |  | 104, 117, 116 |
+| sp-05 | semantic-paraphrase | library |  | 1 | 1 | 1 | 1 |  | 105, 116, 106 |
+| sp-06 | semantic-paraphrase | library |  | 1 | 1 | 1 | 1 |  | 106, 122, 120 |
+| sp-07 | semantic-paraphrase | library |  | 1 | 1 | 1 | 1 |  | 107, 120, 105 |
+| sp-08 | semantic-paraphrase | library |  | 1 | 1 | 1 | 1 |  | 108, 117, 106 |
+| sp-09 | semantic-paraphrase | library |  | 1 | 1 | 1 | 1 |  | 109, 103, 119 |
+| sp-10 | semantic-paraphrase | library |  | 1 | 1 | 1 | 1 |  | 110, 122, 119 |
+| sp-11 | semantic-paraphrase | library |  | 1 | 1 | 1 | 1 |  | 101, 119, 122 |
+| sp-12 | semantic-paraphrase | library |  | 1 | 1 | 1 | 1 |  | 104, 105, 107 |
+| sp-13 | semantic-paraphrase | library |  | 1 | 1 | 1 | 1 |  | 106, 116, 120 |
+| sp-14 | semantic-paraphrase | library |  | 1 | 1 | 1 | 1 |  | 103, 119, 117 |
+| spb-01 | semantic-paraphrase | book |  | 1 | 1 | 1 | 1 |  | @0-1526, @1526-2851 |
+| spb-02 | semantic-paraphrase | book |  | 1 | 1 | 1 | 1 |  | @1048-2686, @0-1048 |
+| id-01 | exact-identifier | library |  | 1 | 1 | 1 | 1 |  | 109 |
+| id-02 | exact-identifier | library |  | 1 | 1 | 1 | 1 |  | 110 |
+| id-03 | exact-identifier | library |  | 1 | 1 | 1 | 1 |  | 107, 109, 110 |
+| id-04 | exact-identifier | library |  | 1 | 1 | 1 | 1 |  | 105 |
+| id-05 | exact-identifier | library |  | 1 | 1 | 1 | 1 |  | 107, 116, 104 |
+| id-06 | exact-identifier | library |  | 1 | 1 | 1 | 1 |  | 106, 120 |
+| id-07 | exact-identifier | library |  | 1 | 1 | 1 | 1 |  | 101, 110, 118 |
+| id-08 | exact-identifier | library | ✓ | 1 | 1 | 1 | 1 |  | 111, 109, 113 |
+| id-09 | exact-identifier | library |  | 1 | 1 | 1 | 1 |  | 105 |
+| id-10 | exact-identifier | library |  | 1 | 1 | 1 | 1 |  | 110 |
+| id-11 | exact-identifier | library |  | 1 | 1 | 1 | 1 |  | 109 |
+| id-12 | exact-identifier | library |  | 1 | 1 | 1 | 1 |  | 102, 103, 110 |
+| idb-01 | exact-identifier | book |  | 1 | 1 | 1 | 1 |  | @1384-2692, @0-1384 |
+| idb-02 | exact-identifier | book |  | 1 | 1 | 1 | 1 |  | @1430-2604 |
+| xl-01 | cross-lingual | library | ✓ | 0 | 0 | 0 | 0 |  | 127, 113, 114 |
+| xl-02 | cross-lingual | library | ✓ | 0 | 0 | 0 | 0 |  | 114, 127, 121 |
+| xl-03 | cross-lingual | library | ✓ | 0 | 0 | 0 | 0 |  | 114, 113, 127 |
+| xl-04 | cross-lingual | library | ✓ | 0 | 0 | 0 | 0 |  | 113, 115, 127 |
+| xl-05 | cross-lingual | library | ✓ | 0 | 0 | 0 | 0 |  | 108, 119, 125 |
+| xl-06 | cross-lingual | library | ✓ | 0 | 0 | 0 | 0 |  | 126, 117, 116 |
+| xl-07 | cross-lingual | library | ✓ | 0 | 0 | 0 | 0 |  | 120, 117, 106 |
+| xl-08 | cross-lingual | library | ✓ | 0 | 0 | 0 | 0 |  | 122, 103, 117 |
+| ru-01 | ru-monolingual | library | ✓ | 1 | 1 | 1 | 1 |  | 112, 113, 121 |
+| ru-02 | ru-monolingual | library | ✓ | 1 | 1 | 1 | 1 |  | 111, 115, 113 |
+| ru-03 | ru-monolingual | library | ✓ | 1 | 1 | 1 | 1 |  | 114, 127, 112 |
+| ru-04 | ru-monolingual | library | ✓ | 1 | 1 | 1 | 1 |  | 113, 115, 112 |
+| ru-05 | ru-monolingual | library | ✓ | 1 | 1 | 1 | 1 |  | 114, 113, 121 |
+| ru-06 | ru-monolingual | library | ✓ | 1 | 1 | 1 | 1 |  | 115, 113, 111 |
+| rub-01 | ru-monolingual | book | ✓ | 1 | 1 | 1 | 1 |  | @0-1253, @1253-2307 |
+| rub-02 | ru-monolingual | book | ✓ | 1 | 1 | 1 | 1 |  | @0-1816, @1816-2795 |
+| fmt-01 | front-matter-trap | book |  | 1 | 1 | 1 | 1 |  | @3677-5459, @5459-7523, @1906-3677 |
+| fmt-02 | front-matter-trap | book |  | 0 | 1 | 0.5 | 0.6309 |  | @3677-5459, @1906-3677, @7523-8331 |
+| fmt-03 | front-matter-trap | book |  | 0 | 1 | 0.5 | 0.6309 |  | @7523-8331, @5459-7523, @3677-5459 |
+| fmt-04 | front-matter-trap | book |  | 1 | 1 | 1 | 1 |  | @1963-4009, @8926-10847, @5688-6994 |
+| fmt-05 | front-matter-trap | book |  | 1 | 1 | 1 | 1 |  | @6994-8926, @8926-10847, @4009-5688 |
+| fmt-06 | front-matter-trap | book |  | 1 | 1 | 1 | 1 |  | @10847-12407, @8926-10847, @5688-6994 |
+| neg-01 | negative | library |  | — | — | — | NOT flagged |  | 119, 116, 117 |
+| neg-02 | negative | library |  | — | — | — | NOT flagged |  | 104, 106, 117 |
+| neg-03 | negative | library |  | — | — | — | NOT flagged |  | 117, 119, 118 |
+| neg-04 | negative | library | ✓ | — | — | — | NOT flagged |  | 111, 115, 113 |
+| neg-05 | negative | library | ✓ | — | — | — | NOT flagged |  | 115, 113 |
+| neg-06 | negative | library |  | — | — | — | NOT flagged |  | 101, 117, 116 |
+| fig-01 | figure-caption | library |  | 1 | 1 | 1 | 1 |  | fig-103#0, fig-105#0, fig-103#1 |
+| fig-02 | figure-caption | library |  | 1 | 1 | 1 | 1 |  | fig-103#1, fig-103#0, fig-106#0 |
+| fig-03 | figure-caption | library |  | 1 | 1 | 1 | 1 |  | fig-105#0, fig-105#1, fig-103#0 |
+| fig-04 | figure-caption | library |  | 1 | 1 | 1 | 1 |  | fig-106#0, fig-103#0, fig-105#0 |
+| fig-05 | figure-caption | library |  | 1 | 1 | 1 | 1 |  | fig-108#0, fig-103#0, fig-105#0 |
+| fig-ru-01 | figure-caption | library | ✓ | 1 | 1 | 1 | 1 |  | fig-112#0 |
+| fig-ru-02 | figure-caption | library | ✓ | 1 | 1 | 1 | 1 |  | fig-113#0, fig-113#1 |
+| fig-xl-01 | figure-caption | library | ✓ | 0 | 0 | 0 | 0 |  |  |
+| fig-xl-02 | figure-caption | library | ✓ | 0 | 0 | 0 | 0 |  | fig-103#1, fig-106#0, fig-108#0 |
+| figneg-01 | figure-negative | library |  | — | — | — | NOT flagged |  | fig-108#0, fig-103#0, fig-105#0 |
+| figneg-02 | figure-negative | library |  | — | — | — | NOT flagged |  | fig-108#0, fig-103#0, fig-105#0 |
+| figneg-03 | figure-negative | library | ✓ | — | — | — | flagged ✓ |  |  |
+| cp-01 | confuser-pair | library |  | 1 | 1 | 1 | 1 |  | 101, 118, 110 |
+| cp-02 | confuser-pair | library |  | 1 | 1 | 1 | 1 |  | 118, 109, 124 |
+| cp-03 | confuser-pair | library |  | 1 | 1 | 1 | 1 |  | 103, 118, 126 |
+| cp-04 | confuser-pair | library | ✓ | 0 | 0 | 0 | 0 |  | 121, 114, 113 |
+| cp-05 | confuser-pair | library |  | 0 | 1 | 0.5 | 0.6309 |  | 120, 106, 122 |
+| cp-06 | confuser-pair | library |  | 1 | 1 | 1 | 1 |  | 120, 106, 109 |
+| cp-07 | confuser-pair | library | ✓ | 1 | 1 | 1 | 1 |  | 121, 114, 113 |
+| cp-08 | confuser-pair | library | ✓ | 1 | 1 | 1 | 1 |  | 107, 121, 113 |
+| nop-01 | no-overlap-paraphrase | library |  | 0 | 0 | 0 | 0 |  | 110, 104, 107 |
+| nop-02 | no-overlap-paraphrase | library |  | 0 | 0 | 0 | 0 |  | 119, 104, 101 |
+| nop-03 | no-overlap-paraphrase | library |  | 0 | 0 | 0 | 0 |  | 107, 102, 116 |
+| nop-04 | no-overlap-paraphrase | book |  | 0 | 0 | 0 | 0 |  |  |
+| nop-05 | no-overlap-paraphrase | book |  | 0 | 0 | 0 | 0 |  |  |
+| nop-06 | no-overlap-paraphrase | library | ✓ | 0 | 0 | 0 | 0 |  | 111, 115 |
+| nop-07 | no-overlap-paraphrase | library | ✓ | 0 | 0 | 0 | 0 |  | 113, 112, 121 |
+| nop-08 | no-overlap-paraphrase | library | ✓ | 0 | 0 | 0 | 0 |  | 114, 121 |
+| an-01 | adjacent-negative | library |  | — | — | — | NOT flagged |  | 102, 101, 109 |
+| an-02 | adjacent-negative | library |  | — | — | — | NOT flagged |  | 105, 119, 103 |
+| an-03 | adjacent-negative | library |  | — | — | — | NOT flagged |  | 102, 105, 103 |
+| an-04 | adjacent-negative | library |  | — | — | — | NOT flagged |  | 118, 104, 110 |
+| an-05 | adjacent-negative | library | ✓ | — | — | — | NOT flagged |  | 113, 127, 111 |
+| an-06 | adjacent-negative | library | ✓ | — | — | — | NOT flagged |  | 115, 114, 113 |
+| rt-01 | raw-title | library |  | 0 | 0 | 0 | 0 |  | 102, 106, 117 |
+| rt-02 | raw-title | library |  | 0 | 0 | 0 | 0 |  | 102, 106, 117 |
+| rt-03 | raw-title | library | ✓ | 1 | 1 | 1 | 1 |  | 127, 114, 112 |
+| rt-04 | raw-title | library |  | 1 | 1 | 1 | 1 |  | 125, 109, 102 |
+| rt-05 | raw-title | library |  | 1 | 1 | 1 | 1 |  | 126, 123, 102 |
+| rt-06 | raw-title | library |  | 1 | 1 | 1 | 1 |  | 126, 125, 117 |
+
+
+## Held-out (#632)
+
+```text
+held-out (#632): 28 frozen queries, report-only; 95% percentile bootstrap CI (seed 0x358)
+held-out hybrid: n 23, Hit@1 0.913 [0.783, 1.000], nDCG@10 0.957 [0.888, 1.000]; negatives flagged 5/5
+held-out vector: n 23, Hit@1 0.913 [0.783, 1.000], nDCG@10 0.959 [0.894, 1.000]; negatives flagged 5/5
+held-out keyword: n 23, Hit@1 0.696 [0.478, 0.870], nDCG@10 0.723 [0.533, 0.897]; negatives flagged 0/5
+```
+
+```text
+report-only axes (#363, thresholds.reportOnlyAxes; never gated)
+  snippetMarker: trend: higher is better, target 1.0: for book-scope queries, the #243 snippet window of the first passage that holds a labelled marker shows that marker
+    hybrid: marker shown 9/14 (0.643)
+    vector: marker shown 9/14 (0.643)
+    keyword: marker shown 8/12 (0.667)
+  spanHit: trend: higher is better: book-scope span-hit@1/@3/@5 = share of positive book-scope queries whose labelled marker sits in a top-k passage that overlaps its span
+    hybrid: @1 14/14 (1.000), @3 14/14 (1.000), @5 14/14 (1.000)
+    vector: @1 14/14 (1.000), @3 14/14 (1.000), @5 14/14 (1.000)
+    keyword: @1 10/14 (0.714), @3 12/14 (0.857), @5 12/14 (0.857)
+  confidence: trend: false-flag rate (lowConfidence on Hit@1 = 1 positives) down; AUC of maxRerank and of the top1-top2 rerank margin for telling Hit@1 = 1 apart from misses + negatives up (0.5 = the signal is noise). Reranked rows only.
+    hybrid: false-flag 25/74 (0.338), AUC maxRerank 0.948, AUC margin 0.951 (n=98)
+    vector: false-flag 27/73 (0.370), AUC maxRerank 0.954, AUC margin 0.965 (n=98)
+    keyword: n/a (no reranked rows)
+  latency: trend: lower is better; p50/p95 per-query ms per mode, same-machine comparisons only (wall-clock, noisy)
+    hybrid: p50 6678 ms, p95 7694 ms (n=98)
+    vector: p50 6225 ms, p95 7064 ms (n=98)
+    keyword: p50 5 ms, p95 14 ms (n=98)
+  ablation: trend: `--gate` prints overall Hit@1 / nDCG@10 per mode x rerank on/off; a fusion change shows in the OFF column, a reranker change in the ON-OFF gap. Chunk-size variants are not wired yet.
+    printed by `pnpm eval --gate` (needs the rerank on + off passes)
+  confuserAt1: trend: lower is better (#359): share of confuser-pair queries whose rank 1 is one of the query's listed confusers (a near-topic book that shares vocabulary but does not answer)
+    hybrid: confuser at rank 1 0/8 (0.000)
+    vector: confuser at rank 1 0/8 (0.000)
+    keyword: confuser at rank 1 1/8 (0.125)
+  adjacentNegative: trend: higher is better, target 1.0 (#359): share of adjacent-negative queries (on-domain questions the corpus cannot answer) flagged by zero results or lowConfidence
+    hybrid: flagged 6/6 (1.000)
+    vector: flagged 6/6 (1.000)
+    keyword: flagged 0/6 (0.000)
+  highlightInvariant: trend: violations must be 0 (no highlight on a non-query word or a NOT operand). Not measured by this harness yet: highlights come from calibre_search's FTS path, which the fixture doesn't run.
+    not measured by this harness
+```

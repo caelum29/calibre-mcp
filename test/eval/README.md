@@ -107,22 +107,32 @@ records (`HarnessOptions.timing`), so
 
 ### Layout
 
-- `queries.json` — 70 golden queries `{ id, kind, scope, query, ru?, heldOut?, relevant }`. Kinds
-  (count): `semantic-paraphrase` (16), `exact-identifier` (14), `figure-caption` (9),
-  `cross-lingual` RU↔EN (8), `ru-monolingual` (8), `front-matter-trap` (6), `negative` (6)
-  and `figure-negative` (3) — the two negative kinds have no right answer and measure the
-  low-confidence signal, leaving 61 positives. 24/70 are RU-involved (`ru: true`): RU is the known weak axis (memory: "RU=0 chapters=RU-gap")
-  and is first-class here, not an afterthought. `scope: "book"` queries label relevant
-  passages as char spans + a `marker` substring (the harness fails loudly if a fixture
-  edit invalidates a span).
-- `corpus/` + `corpus.json` — 17 self-authored fixture "books" (12 EN incl. 2 code-heavy,
-  5 RU), committed as text. Two are front-matter traps: 116 (plain-text praise/TOC,
+- `queries.json` — 98 golden queries `{ id, kind, scope, query, ru?, heldOut?, confusers?,
+  relevant, why? }`. Kinds (count): `semantic-paraphrase` (16), `exact-identifier` (14),
+  `figure-caption` (9), `cross-lingual` RU↔EN (8), `ru-monolingual` (8), `front-matter-trap`
+  (6), `negative` (6), `figure-negative` (3), and the #359 hard kinds `confuser-pair` (8),
+  `no-overlap-paraphrase` (8), `adjacent-negative` (6), `raw-title` (6). The three negative
+  kinds have no right answer and measure the low-confidence signal, leaving 83 positives.
+  33/98 are RU-involved (`ru: true`): RU is the known weak axis and is first-class here, not
+  an afterthought. `scope: "book"` queries label relevant passages as char spans + a
+  `marker` substring (the harness fails loudly if a fixture edit invalidates a span). The
+  hard kinds are capability kinds (`thresholds.capabilityKinds`): their drops are listed,
+  never failed, until a rule commit promotes a kind. Each `confuser-pair` names the
+  near-topic book that must not win rank 1 (`confusers`, report-only axis `confuserAt1`).
+  Each `no-overlap-paraphrase` query shares no token at all with its target book
+  (`leak-guard.test.ts`, `leak-guard-fts.test.ts`), so keyword Hit@1 = 0 by construction.
+  `adjacent-negative` is scored like `negative` but stays out of `negativesFlagged` and
+  `rerankFloor` (axis `adjacentNegative`). Every #359 query carries a one-line `why`.
+- `corpus/` + `corpus.json` — 27 self-authored fixture "books" (20 EN incl. 2 code-heavy,
+  7 RU), committed as text. Two are front-matter traps: 116 (plain-text praise/TOC,
   D-016's chapter detector) and 117 (`headingStructured`, EPUB→Markdown-shaped — only the
-  #102 `leadingFrontMatter` rule finds its boundary; a smoke test pins that). `corpus/figures/`
-  holds caption inventories for 6 books (the figure-caption kinds); **embeddings are built at eval time** (decision: committing a
-  prebuilt index would rot on every INDEX_VERSION bump; the model is cached after the
-  first run so CI/offline cost is seconds). Don't casually edit fixtures — span labels
-  point into them.
+  #102 `leadingFrontMatter` rule finds its boundary; a smoke test pins that). 118–127 back
+  the #359 kinds. 125–127 have a raw filename as `title` and authors `Unknown`; their
+  `realTitle` is for the #363 title-prefix ablation and is never read by the harness.
+  `corpus/figures/` holds caption inventories for 6 books (the figure-caption kinds);
+  **embeddings are built at eval time** (decision: committing a prebuilt index would rot on
+  every INDEX_VERSION bump; the model is cached after the first run so CI/offline cost is
+  seconds). Don't casually edit fixtures — span labels point into them.
 - `metrics.ts` — self-written Hit@1 / Recall@k / MRR / binary nDCG@k (no framework dep).
 - `harness.ts` — builds the fixture index through the real tools with fake
   content/extractor deps, runs every query per mode, aggregates. `patchDeps` is the
@@ -265,6 +275,34 @@ Append-only: one entry per re-freeze, newest last. Every number names its corpus
   lists changed on either tier, no Hit@1 change, cosine maxScore |Δ| 0.0000. The `linux`
   platform-drift entries (on id-09/xl-05, fusionOnly hybrid id-05) are all still solved at
   Hit@1, and none of them is held out.
+- **2026-11-16, #359 (hard fixture kinds).** Rule commit first: `capabilityKinds` (the four
+  kinds are report-only in all three tiers, the promotion rule, the headroom criterion) and the
+  `confuserAt1` / `adjacentNegative` axes. Then 10 self-authored books (118–127) and 28
+  queries: `confuser-pair` 8, `no-overlap-paraphrase` 8, `adjacent-negative` 6,
+  `raw-title` 6, 8 of them held out (2 per kind) [27-book fixture, 98 queries, 33
+  RU-involved]. Measuring runs before the freeze found new books taking existing queries.
+  The books were reworded or replaced, never the labels:
+  - `id-11` "C++": a C++ book became a Rust-traits book.
+  - `id-06`: book 120 lost "reflog".
+  - `sp-01`: 122 lost its GC wording.
+  - `id-05`: 124 lost `'none'`.
+  - `neg-04`/`neg-05`: books 126 and 127 lifted them over the cosine floor, so 126 became an
+    espresso book and 127 was made factual.
+  - Hash-tier `sp-03`, `id-06` and `ru-03`: FNV token and slot collisions, reworded.
+
+  The no-overlap guard became strict: `ftsMatch` ORs every query token, stop words included,
+  so each query shares no token at all with its target book. Re-froze all three tiers at
+  5abdc650: `pnpm eval:hash-freeze` (294 rows), `pnpm eval --tag hardkinds` (on) and
+  `--rerank off --tag hardkinds-rerankoff` (fusionOnly). 131 of 210 existing top-10 lists
+  changed per tier. Two existing Hit@1 breaks are accepted, with their reasons in
+  `reports/2026-11-16-hardkinds-rebaseline.md`:
+  - on/vector `id-09`: cross-encoder noise, 0.00067 vs 0.00033.
+  - fusionOnly/vector `sp-01`: e5 margin 0.0004.
+
+  Headroom held for every kind (≥ 15% failing in at least one of the six configurations).
+  Keyword Hit@1 on no-overlap is 0/8 in both reports. The `linux` platform-drift entry
+  on/vector `id-09` was dropped, because the new baseline no longer solves it; the other four
+  entries are still solved.
 
 ### Rules
 

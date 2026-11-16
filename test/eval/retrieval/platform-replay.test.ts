@@ -8,7 +8,14 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { evaluateFusionOnlyGate, evaluateGate, evaluateListDiff, type GateResult, type Thresholds } from "./gate.js";
+import {
+  evaluateFusionOnlyGate,
+  evaluateGate,
+  evaluateListDiff,
+  type GateResult,
+  type PlatformDriftEntry,
+  type Thresholds,
+} from "./gate.js";
 import { gateRuleFor } from "./gate-guards.js";
 import type { EvalReport } from "./harness.js";
 
@@ -18,6 +25,22 @@ const thresholds = read<Thresholds>("thresholds.json");
 
 // the baselines these nightlies ran against; pinned, so a later re-freeze doesn't rewrite the evidence
 const ON_BASE = read<EvalReport>("reports/2026-10-24-f8bb617-v4-t431-fixture.json");
+// the platform-drift entries declared for those baselines (#364); pinned like the baselines,
+// because later re-freezes prune thresholds.linux (#359 dropped on/vector/id-09)
+const drift = (tier: PlatformDriftEntry["tier"], mode: PlatformDriftEntry["mode"], id: string): PlatformDriftEntry => ({
+  tier,
+  mode,
+  id,
+  reason: "declared 2026-11-16 (#364)",
+  seen: "nightlies 2026-11-06..2026-11-15",
+});
+const REPLAY_DRIFT: PlatformDriftEntry[] = [
+  drift("on", "hybrid", "id-09"),
+  drift("on", "vector", "id-09"),
+  drift("on", "hybrid", "xl-05"),
+  drift("on", "vector", "xl-05"),
+  drift("fusionOnly", "hybrid", "id-05"),
+];
 const OFF_BASE = read<EvalReport>("reports/2026-11-05-eec059d-tiebreak-rerankoff.json");
 
 const OUTCOMES = [
@@ -40,6 +63,7 @@ const OUTCOMES = [
 /** Both passes of `--gate` (non-regression, score drift, platform-drift, list diff) under one rule. */
 function replay(platform: string, onRel: string, offRel: string): { on: GateResult; off: GateResult } {
   const rule = gateRuleFor(platform, thresholds);
+  const platformDrift = rule.name === "linux" ? REPLAY_DRIFT : [];
   const on = read<EvalReport>(onRel);
   const off = read<EvalReport>(offRel);
   const list = (cur: EvalReport, base: EvalReport, tier: "on" | "fusionOnly") =>
@@ -50,9 +74,9 @@ function replay(platform: string, onRel: string, offRel: string): { on: GateResu
     drops: [...a.drops, ...b.drops],
   });
   return {
-    on: merge(evaluateGate(on, ON_BASE, thresholds, rule.platformDrift), list(on, ON_BASE, "on")),
+    on: merge(evaluateGate(on, ON_BASE, thresholds, platformDrift), list(on, ON_BASE, "on")),
     off: merge(
-      evaluateFusionOnlyGate(off, OFF_BASE, thresholds.fusionOnly!, rule.platformDrift),
+      evaluateFusionOnlyGate(off, OFF_BASE, thresholds.fusionOnly!, platformDrift),
       list(off, OFF_BASE, "fusionOnly"),
     ),
   };
