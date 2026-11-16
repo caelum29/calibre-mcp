@@ -1,0 +1,27 @@
+test/eval/retrieval/reports/2026-11-15-cebaace-linux-nightly.json
+  s_0424857dbed483::t_7f0753ba5bccf1 1-5777
+test/eval/retrieval/platform-replay.test.ts
+  s_0424857dbed483::t_7f0753ba5bccf1 1-102
+test/eval/retrieval/reports/2026-11-15-cebaace-linux-nightly-rerankoff.json
+  s_0424857dbed483::t_7f0753ba5bccf1 1-5505
+test/eval/retrieval/reports/2026-11-13-f7f5306-linux-nightly-rerankoff.json
+  s_0424857dbed483::t_7f0753ba5bccf1 1-5505
+test/eval/retrieval/reports/2026-11-13-f7f5306-linux-nightly.json
+  s_0424857dbed483::t_7f0753ba5bccf1 1-5777
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a78c1360475e578d339d9fa3d2b65c2e11a30536",
+  "prompts": {},
+  "sessions": {
+    "s_0424857dbed483": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "58641194-5b10-4ebd-bb7c-55af19b98a57",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
