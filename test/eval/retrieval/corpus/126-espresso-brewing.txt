@@ -33,10 +33,10 @@ tamper level.
 
 ## Temperature and milk
 
-Most machines brew at about 93 °C. Light roasts often taste better a degree or two hotter,
+Most machines brew at about 93 degrees Celsius. Light roasts often taste better a degree or two hotter,
 dark roasts a degree or two cooler. For a cappuccino or a flat white, purge the steam wand,
 keep its tip just under the surface of cold milk to draw in air for the first few seconds,
-then sink it a little deeper to spin the milk into a fine, glossy microfoam at about 60 °C.
+then sink it a little deeper to spin the milk into a fine, glossy microfoam at about 60 degrees Celsius.
 
 ## Water and cleaning
 

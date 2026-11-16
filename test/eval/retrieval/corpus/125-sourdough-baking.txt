@@ -11,7 +11,7 @@ bakes and needs a feed or two at room temperature to wake up before it is used.
 
 The evening before baking, build a levain: a small portion of starter fed with a larger
 amount of flour and water, for example 20 g starter, 50 g flour and 50 g water. Leave it
-for eight to twelve hours at about 22 °C until it has risen, is domed and full of bubbles,
+for eight to twelve hours at about 22 degrees Celsius until it has risen, is domed and full of bubbles,
 and a spoonful floats in water. Used too young, it lifts the bread weakly; used long past
 its peak, it brings harsh acidity and tired gluten.
 
@@ -26,7 +26,7 @@ Instead of kneading, give the dough four sets of stretch and folds thirty minute
 lift one side, fold it over the middle, rotate the bowl, repeat. Then leave it alone. Bulk
 fermentation is finished when the dough has grown by about half, shows bubbles at the
 sides of the container and jiggles when the bowl is shaken — usually four to six hours at
-24 °C, longer in a cool kitchen. Judge by the dough, not by the clock.
+24 degrees Celsius, longer in a cool kitchen. Judge by the dough, not by the clock.
 
 ## Shaping, proofing and the bake
 
@@ -34,9 +34,9 @@ Pre-shape the dough into a loose round, rest it for twenty minutes, then shape i
 and place it seam up in a floured banneton. Proofing in the refrigerator overnight deepens
 the flavour and firms the dough so that it scores cleanly.
 
-Bake in a preheated Dutch oven at 250 °C: twenty minutes with the lid on, so the trapped
+Bake in a preheated Dutch oven at 250 degrees Celsius: twenty minutes with the lid on, so the trapped
 steam keeps the crust soft while the loaf springs up, then twenty to twenty-five minutes
-uncovered at 230 °C until the crust is deep brown. Let the loaf cool for at least an hour
+uncovered at 230 degrees Celsius until the crust is deep brown. Let the loaf cool for at least an hour
 before cutting; the crumb is still setting inside.
 
 Hydration is the weight of water divided by the weight of flour. Seventy percent gives a

@@ -19,7 +19,7 @@ argument the value itself is the key. For several arguments, a tuple of them ser
 Python and a joined string such as `${a}|${b}` is common in JavaScript. Objects are the
 trap: two calls with structurally equal objects produce different keys if the cache
 compares references, and a mutable object used as a key can be modified after it was
-stored, silently corrupting the lookup. Libraries such as Python's `functools.lru_cache`
+stored, silently corrupting the search. Libraries such as Python's `functools.lru_cache`
 refuse unhashable arguments for exactly this reason.
 
 ## When memoization lies
@@ -41,6 +41,6 @@ which fits most access patterns; time-to-live eviction expires entries after a f
 In JavaScript a `WeakMap` keyed by objects lets an entry vanish as soon as its key object is
 unreachable from the rest of the program.
 
-Measure before memoizing. A cache lookup costs hashing the arguments and a table probe;
+Measure before memoizing. A cache probe costs hashing the arguments and a table probe;
 for a function that is already cheap, the bookkeeping can cost more than the call it
 replaces.
