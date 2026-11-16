@@ -8,7 +8,6 @@
 
 import { writeFileSync } from "node:fs";
 import path from "node:path";
-import { DatabaseSync } from "node:sqlite";
 import { parseArgs } from "node:util";
 import { ContentServerClient } from "../src/calibre/content-server.js";
 import { Extractor, peekTextCache } from "../src/calibre/extract.js";
@@ -21,7 +20,9 @@ import { frontMatterEnd } from "../src/domain/structure/front-matter.js";
 import { loadRuntimeConfig } from "../src/runtime-config.js";
 import { structureOf } from "../src/semantic/book-encoder.js";
 import { isFrontMatterSpan } from "../src/semantic/front-matter-flag.js";
-import { indexFileName } from "../src/semantic/store/schema.js";
+import { log } from "../src/logging.js";
+import { IndexFileOwners } from "../src/semantic/store/library-owner.js";
+import { IndexConnections } from "../src/semantic/store/schema.js";
 
 const { values: opt } = parseArgs({
   options: {
@@ -41,13 +42,30 @@ const content = new ContentServerClient(config);
 // Only built for --extract: a cache hit never reaches the Extractor, so the default run writes nothing.
 const extractor = opt.extract ? new Extractor(config, new FigureInventoryService(config)) : undefined;
 
-// readOnly: the dump must never migrate, checkpoint or otherwise write the production index.
-const db = new DatabaseSync(path.join(indexDir, indexFileName(libraryId)), { readOnly: true });
-const spansOf = db.prepare(
-  "SELECT char_start, char_end, front_matter FROM chunks WHERE book_id = ? ORDER BY char_start",
-);
-const indexed = (db.prepare("SELECT book_id FROM books ORDER BY book_id").all() as { book_id: number }[]).map((r) =>
-  Number(r.book_id),
+// IndexConnections.read opens a short-lived READ-ONLY handle per call (never creates,
+// migrates or writes the file); the dump must never touch the production index.
+const conn = new IndexConnections({ ...config, indexDir }, log, new IndexFileOwners(indexDir));
+interface SpanRow {
+  char_start: number;
+  char_end: number;
+  front_matter: number;
+}
+const spansOf = (bookId: number): SpanRow[] =>
+  conn.read(
+    libraryId,
+    (db) =>
+      db
+        .prepare("SELECT char_start, char_end, front_matter FROM chunks WHERE book_id = ? ORDER BY char_start")
+        .all(bookId) as unknown as SpanRow[],
+    [],
+  );
+const indexed = conn.read(
+  libraryId,
+  (db) =>
+    (db.prepare("SELECT book_id FROM books ORDER BY book_id").all() as { book_id: number }[]).map((r) =>
+      Number(r.book_id),
+    ),
+  [] as number[],
 );
 const ids = opt.ids ? opt.ids.split(",").map((s) => Number(s.trim())) : indexed;
 
@@ -83,7 +101,7 @@ for (const [i, bookId] of ids.entries()) {
     const structure = structureOf(src);
     const { chapters, detector } = detectChapters(src.text, structure);
     const fmEnd = frontMatterEnd(src.text, structure);
-    const spans = spansOf.all(bookId) as { char_start: number; char_end: number; front_matter: number }[];
+    const spans = spansOf(bookId);
     const flagged = spans.filter((s) =>
       isFrontMatterSpan({ charStart: Number(s.char_start), charEnd: Number(s.char_end) }, fmEnd),
     ).length;
@@ -108,6 +126,5 @@ for (const [i, bookId] of ids.entries()) {
     say(`${i + 1}/${ids.length} #${bookId} failed: ${err instanceof Error ? err.message : String(err)}`);
   }
 }
-db.close();
 writeFileSync(opt.out, lines.join("\n") + "\n", "utf8");
 say(`wrote ${lines.length} rows to ${opt.out}`);
