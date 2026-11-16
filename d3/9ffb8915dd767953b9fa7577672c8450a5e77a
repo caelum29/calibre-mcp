@@ -1,0 +1,22 @@
+scripts/judged-lib.ts
+  s_32c0bddc34d42e::t_41e518f684173d 150-164
+  s_32c0bddc34d42e::t_f75434c4f23c8d 165-166,170,188
+test/eval/judged/judged-lib.test.ts
+  s_32c0bddc34d42e::t_d655c57841e602 56-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d39ffb8915dd767953b9fa7577672c8450a5e77a",
+  "prompts": {},
+  "sessions": {
+    "s_32c0bddc34d42e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1204911f-271d-4627-be5e-ad5ef843420a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
