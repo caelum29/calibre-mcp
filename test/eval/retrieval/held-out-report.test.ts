@@ -32,7 +32,7 @@ const report = (live: boolean): EvalReport =>
 describe("heldOutLines", () => {
   it("reports n, Hit@1 and nDCG@10 with bootstrap intervals over the held-out rows only", () => {
     expect(heldOutLines(report(false))).toEqual([
-      "held-out (#632): 20 frozen queries, report-only; 95% percentile bootstrap CI (seed 0x358)",
+      "held-out (#632): 28 frozen queries, report-only; 95% percentile bootstrap CI (seed 0x358)",
       "held-out hybrid: n 2, Hit@1 0.500 [0.000, 1.000], nDCG@10 0.750 [0.500, 1.000]; negatives flagged 1/2",
     ]);
   });
@@ -75,10 +75,10 @@ describe("runPass prints and writes the held-out section", () => {
     }
     const stdout = out.join("");
     expect(stdout).toMatch(
-      /^held-out keyword: n 17, Hit@1 \d\.\d{3} \[\d\.\d{3}, \d\.\d{3}\], nDCG@10 .*negatives flagged \d\/3$/m,
+      /^held-out keyword: n 23, Hit@1 \d\.\d{3} \[\d\.\d{3}, \d\.\d{3}\], nDCG@10 .*negatives flagged \d\/5$/m,
     );
     const md = readFileSync(mdPath, "utf8");
     expect(md).toContain("## Held-out (#632)");
-    expect(md).toMatch(/^held-out keyword: n 17, /m);
+    expect(md).toMatch(/^held-out keyword: n 23, /m);
   }, 30_000);
 });

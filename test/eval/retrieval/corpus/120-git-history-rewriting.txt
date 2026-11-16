@@ -1,0 +1,48 @@
+## Why rewrite history at all
+
+A feature branch collects commits named "wip", "fix typo" and "really fix it this time".
+Before such a branch is shared, it is worth shaping it into a short series of commits
+that each make one reviewable change. Git lets you rewrite local history freely; the
+only rule is to stop once others have built on top of it.
+
+## Interactive rebase
+
+`git rebase -i HEAD~5` opens a todo list of the last five commits, oldest first. Each
+line begins with a command. `pick` keeps a commit as it is, `reword` stops to edit its
+message, `edit` pauses so you can amend its content or split it in two, `squash` folds it
+into the commit above and combines both messages, and `fixup` folds it in while
+discarding its message. Reordering lines reorders the commits; deleting a line drops the
+commit entirely.
+
+The autosquash workflow saves the bookkeeping. Commit a correction with
+`git commit --fixup=<sha>`, and later `git rebase -i --autosquash main` moves every fixup
+commit next to its target and marks it `fixup` automatically. Setting
+`rebase.autoSquash = true` makes that the default.
+
+## Amending and splitting
+
+`git commit --amend` replaces the most recent commit with a new one that includes the
+staged changes, and optionally a new message. To split an older commit, mark it `edit`,
+run `git reset HEAD^` when the rebase stops, and stage and commit the pieces separately
+before `git rebase --continue`.
+
+## Recovering from mistakes
+
+Every rewrite creates new commits and leaves the old ones unreferenced, not deleted. The
+reflog records where HEAD and each branch pointed over the last ninety days, so
+`git reflog` followed by `git reset --hard HEAD@{3}` undoes a rebase that went wrong.
+`ORIG_HEAD` is set by rebase and reset as a shortcut to the previous tip.
+
+When a rewritten branch must be published again, use `git push --force-with-lease`
+rather than a plain force push: it refuses to overwrite the remote branch if someone
+else has pushed to it since you last fetched. For rewriting a whole repository — purging
+a leaked secret or a huge binary from every commit — `git filter-repo` replaces the old
+`filter-branch` and runs orders of magnitude faster.
+
+## Keeping a branch current
+
+`git pull --rebase` fetches the remote branch and replays your local commits on top of it
+instead of recording a merge commit, which keeps a personal branch free of noise. When the
+same correction has to be reapplied again and again during long rebases, enabling
+`rerere` ("reuse recorded resolution") lets Git remember how you resolved a hunk the first
+time and apply that resolution by itself on the next pass.

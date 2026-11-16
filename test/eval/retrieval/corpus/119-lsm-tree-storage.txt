@@ -1,0 +1,47 @@
+## Writes first, reads later
+
+A log-structured merge tree is built for workloads that write far more than they read:
+event logs, metrics, messaging, time series. Instead of updating a page in place, every
+write is appended to a write-ahead log for durability and inserted into an in-memory
+sorted structure called the memtable, usually a skip list or a red-black tree. A write
+therefore costs one sequential append and one memory insertion, no matter how large the
+data set has grown.
+
+## Memtables and SSTables
+
+When the memtable reaches a size threshold it is frozen and flushed to disk as a sorted
+string table, an SSTable: an immutable file of key-value pairs in key order, with a small
+sparse index of block offsets at its end. A new empty memtable takes over the incoming
+writes. Because files are never modified after they are written, the disk only ever
+sees large sequential writes, which suits spinning disks and flash alike.
+
+A read must look in the memtable first and then in every SSTable from newest to oldest,
+stopping at the first file that holds the key. Deletes are writes too: a tombstone
+marker shadows older values until it is eventually discarded.
+
+## Compaction
+
+Left alone, the number of files would grow forever and reads would slow down with it.
+A background compaction process merges several SSTables into one, keeping the newest
+version of each key and dropping tombstoned and overwritten entries. Size-tiered
+compaction merges files of similar size and keeps write amplification low; leveled
+compaction, as in RocksDB and LevelDB, keeps each level a single sorted run ten times
+larger than the one above it, which bounds the number of files a read must check at the
+price of rewriting the same data many times.
+
+## Bloom filters and amplification
+
+To avoid opening files that cannot contain a key, every SSTable carries a Bloom filter:
+a compact bit array that answers "definitely not here" or "maybe here" with a tunable
+false positive rate. A point lookup for a missing key then touches almost no disk at
+all.
+
+Every design here is a trade between three costs. Write amplification is how many times
+a byte is rewritten by compaction, read amplification is how many files a lookup
+consults, and space amplification is how much obsolete data waits on disk for the next
+merge. Cassandra, ScyllaDB, RocksDB and the storage engines behind many key-value stores
+all pick their own point on that triangle.
+
+Range scans are the weak spot. A scan has to open an iterator over the memtable and over
+every overlapping SSTable and merge them on the fly, so a design that is excellent for
+appends and point lookups can still lose to an in-place structure on long ordered reads.

@@ -1,0 +1,48 @@
+## Copies were the problem
+
+Before C++11, returning a large object from a function or pushing it into a container
+meant copying it: every element of a vector, every character of a string, duplicated
+into fresh heap memory and then the original destroyed a moment later. Programmers
+twisted their interfaces around output parameters to avoid that waste. Move semantics
+let the language say what was meant all along: the source is about to die, so steal its
+resources instead of duplicating them.
+
+## Rvalue references and std::move
+
+A new reference type, `T&&`, binds to temporaries — values with no name that nobody can
+observe afterwards. A class opts in by writing a move constructor `Widget(Widget&& other)`
+and a move assignment operator. Inside them, the new object takes over the pointer,
+the size and the capacity, and then sets the source's pointer to null so that its
+destructor frees nothing.
+
+`std::move` itself moves nothing. It is a cast to an rvalue reference: a promise from the
+programmer that the named object may be plundered. Writing `auto b = std::move(a);`
+invokes the move constructor, and `a` is still a live object afterwards. Its destructor
+will run at the end of the scope like any other.
+
+## The moved-from state
+
+The standard library guarantees only that a moved-from object is in a valid but
+unspecified state. You may assign a new value to it or destroy it; reading its contents
+is legal but meaningless. A moved-from `std::string` is usually empty, a moved-from
+`std::vector` usually has size zero, but neither is promised. The compiler does not stop
+you from reading `a` after `std::move(a)`: it compiles cleanly, and the bug shows up at
+run time, if at all. Static analyzers and the `bugprone-use-after-move` check of
+clang-tidy are the only safety net.
+
+## The rule of five and noexcept
+
+If a class manages a resource by hand, it needs all five special members: destructor,
+copy constructor, copy assignment, move constructor, move assignment. Better still is the
+rule of zero: hold resources in `std::unique_ptr` or standard containers and let the
+compiler generate every member correctly.
+
+Mark move operations `noexcept`. When a `std::vector` grows it must relocate its
+elements, and it will only move them if the move constructor promises not to throw;
+otherwise it falls back to copying, to keep its strong exception guarantee. A forgotten
+`noexcept` silently turns every reallocation back into a deep copy.
+
+Perfect forwarding completes the picture: a template taking `T&&` together with
+`std::forward<T>` passes each argument on as an lvalue or an rvalue, exactly as the
+caller supplied it, so factory functions such as `std::make_unique` neither copy nor lose
+the chance to move.

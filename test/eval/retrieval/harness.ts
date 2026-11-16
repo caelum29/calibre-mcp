@@ -108,6 +108,8 @@ export interface CorpusBook {
   headingStructured?: boolean;
   /** Synthetic figure inventory (relative to corpus/) — fed through the REAL marker-injection path. */
   figures?: string;
+  /** #359 raw-title books: the real title, for the #363 title-prefix ablation; never read here. */
+  realTitle?: string;
 }
 
 export interface Corpus {

@@ -1,0 +1,44 @@
+## The drivetrain
+
+A chain wears with every kilometre. The pins and rollers grind down and the chain
+effectively lengthens, which people call chain stretch. A stretched chain no longer meshes
+cleanly with the cassette and chainrings and wears their teeth into hooks, so replacing a
+cheap chain early saves replacing the expensive cogs later. Check it with a chain checker
+tool every thousand kilometres or so: at 0.5 percent elongation on an 11- or 12-speed
+drivetrain, or 0.75 percent on older ones, fit a new chain. Clean and lubricate it after
+wet rides: wipe the chain, apply one drop of lubricant per roller, wait a few minutes and
+wipe off the excess, which otherwise collects grit.
+
+## Adjusting the rear derailleur
+
+Two limit screws stop the derailleur from throwing the chain past the smallest or the
+largest cog. Shift onto the smallest cog and turn the H screw until the jockey wheel sits
+directly under that cog; shift onto the largest cog and set the L screw the same way. The
+barrel adjuster then tunes cable tension: if the chain hesitates to climb to a larger cog,
+turn the adjuster anticlockwise a quarter turn at a time; if it hesitates to drop to a
+smaller one, turn it clockwise. A bent derailleur hanger defeats every adjustment and has
+to be straightened with an alignment tool first.
+
+## Brakes
+
+Rim brake pads wear down to their grooves and must be replaced before the metal backing
+touches the rim. Hydraulic disc brakes need their pads checked for thickness, at least
+half a millimetre of material, and their rotors kept free of oil; a contaminated pad
+squeals and loses power and is usually cheaper to replace than to clean. When a lever
+feels spongy, air has entered the system and the brake needs bleeding with the fluid the
+manufacturer specifies: mineral oil and DOT fluid must never be mixed.
+
+## Tyres and punctures
+
+Run the pressure printed on the tyre sidewall as a range, lower for wide tyres and rough
+roads, and check it weekly because tubes lose air slowly. To fix a puncture, remove the
+wheel, lever one bead off the rim, find the hole by inflating the tube and listening, and
+always run a finger around the inside of the tyre to find the thorn or glass that caused
+it before fitting the patched or new tube.
+
+## Wheels
+
+A wheel that wobbles side to side when spun is out of true. Tighten the spoke on the
+opposite side of the wobble and loosen its neighbour by a quarter turn each, then spin and
+check again; small, alternating corrections bring it back far more reliably than one big
+turn on a single spoke.

@@ -1,0 +1,39 @@
+## What the header promises
+
+Cross-site scripting works because a user agent executes every script that ends up in a
+document, whether the site's authors put it there or an attacker injected it through a
+comment field or a crafted URL. Content Security Policy changes that default. The server
+sends a `Content-Security-Policy` response header listing where scripts, styles, images,
+fonts and frames may come from, and the user agent refuses to fetch or execute anything
+outside that list. An injected `<script src="https://evil.example/x.js">` is simply
+blocked, and an attempt is reported instead of executed.
+
+## Directives and source lists
+
+A policy is a set of directives separated by semicolons. `default-src 'self'` sets the
+fallback for every resource type: only the document's own scheme, domain and port.
+`script-src 'self' https://cdn.example.com` then narrows scripts to that one external
+domain. `img-src`, `style-src`, `connect-src` (for fetch and WebSocket targets),
+`frame-ancestors` (which sites may embed this document) and `form-action` each govern
+their own kind of resource. Keywords such as `'none'` block a type entirely, and a scheme
+such as `https:` admits any domain over TLS — usually too broad to be useful.
+
+## Inline scripts, nonces and hashes
+
+The most important effect of a policy is that inline `<script>` blocks and `onclick`
+attributes are blocked by default, because an injected script is almost always inline.
+`'unsafe-inline'` switches that protection off and should be avoided. Instead, the server
+generates a fresh random nonce for every response and writes it both into the header,
+`script-src 'nonce-r4nd0m'`, and into each legitimate script tag, `<script nonce="r4nd0m">`.
+An attacker cannot guess the nonce, so injected tags fail. For static inline scripts a
+SHA-256 hash of the script text in the policy serves the same purpose. `'strict-dynamic'`
+lets a trusted, nonce-bearing script add further scripts without listing every domain.
+
+## Rolling it out safely
+
+A policy that is too strict breaks a site just as surely as an attack. Start with
+`Content-Security-Policy-Report-Only`: the user agent enforces nothing but posts a JSON
+violation report to the endpoint named by `report-to` for every resource the policy would
+have blocked. Collect reports for a few weeks, fix or allow the legitimate violations,
+then switch the header to enforcing mode. Policies kept in a single place in the server
+configuration, rather than scattered across templates, stay reviewable as the site grows.

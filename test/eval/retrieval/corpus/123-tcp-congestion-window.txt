@@ -1,0 +1,46 @@
+## Two windows, one limit
+
+A TCP endpoint may not put more unacknowledged bytes on the wire than the smaller of two
+windows. The receive window is advertised by the peer and protects its buffer. The
+congestion window, cwnd, is kept privately by the source and protects the network: it is
+the source's running estimate of how many bytes the path between the hosts can absorb
+without queues in the routers overflowing. Nobody tells the source this number; it has to
+be discovered by probing, and it keeps changing as other flows join and leave.
+
+The useful size of the window is the bandwidth-delay product: link rate times round-trip
+time. A 100 Mbit/s path with an 80 ms round trip needs about one megabyte in flight to
+stay busy. Anything less leaves the link idle while the source waits for acknowledgments.
+
+## Slow start
+
+A new flow knows nothing about the path, so it begins small. Modern stacks set the initial
+window to ten segments, roughly 14 KB, as standardized in RFC 6928. Then every
+acknowledged segment grows cwnd by one segment. Since a whole window of segments is
+acknowledged every round trip, the window doubles each round trip: 10, 20, 40, 80
+segments. Despite its name, slow start is exponential growth, and it is the reason a
+short web request rarely uses the full bandwidth of a fast link — the transfer ends before
+the window has grown.
+
+Slow start ends when cwnd reaches the slow-start threshold, ssthresh, or when the first
+loss is detected.
+
+## Congestion avoidance
+
+Above the threshold the growth becomes linear: cwnd rises by about one segment per round
+trip. This additive increase probes gently for spare capacity instead of doubling into a
+full router queue.
+
+## Reacting to loss
+
+The source infers congestion from loss. Three duplicate acknowledgments for the same byte
+signal that one segment was lost while later ones still arrived; with fast retransmit and
+fast recovery, the lost segment is resent at once, ssthresh is set to half of cwnd, and cwnd
+is cut to that new threshold. This halving is the multiplicative decrease of AIMD, the rule
+that lets competing flows converge to a fair share. A retransmission timeout is the
+severe case: nothing has been acknowledged for a whole timeout period, so cwnd falls back
+to a single segment and slow start begins again from scratch.
+
+CUBIC, the default on Linux, replaces the linear phase with a cubic curve centred on the
+window size at the last loss, recovering fast toward that size and probing carefully
+around it. BBR takes another route and models bottleneck bandwidth and round-trip time directly
+instead of treating loss as the only signal.
