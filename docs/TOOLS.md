@@ -293,7 +293,8 @@ best recall; `mode: vector` is semantic-only; `mode: keyword` is exact keyword m
 needs no model at query time.
 
 Library-scope hits show a snippet cut around your query's terms, not the head of the matched
-passage. Each hit's text label reads `MATCH book <id> @<start>-<end> snippet@<offset>`, and
+passage. When the passage holds none of your terms (a meaning-only match), the snippet shows its
+head, opened at the first sentence start if the passage begins mid-sentence. Each hit's text label reads `MATCH book <id> @<start>-<end> snippet@<offset>`, and
 `structuredContent.results[].snippetStart` carries the same offset. Pass it to
 `calibre_get_content` as `offset` to read on from the snippet; `charStart`/`charEnd` still span
 the whole passage.

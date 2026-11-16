@@ -8,8 +8,9 @@ export const SNIPPET_CHARS = 320;
 
 // Query stems shorter than this are skipped (в, и, of: noise even off the stopword list).
 const MIN_TERM_CHARS = 3;
-// How far back from a term to look for the start of its sentence. Basis: heuristic, not
-// measured (#243 review) — about half a snippet width (SNIPPET_CHARS / 2); revisit if windows open mid-sentence.
+// How far back from a term to look for the start of its sentence, and how far a mid-sentence
+// chunk head may skip forward to one (#657). Basis: heuristic, not measured (#243 review) —
+// about half a snippet width (SNIPPET_CHARS / 2): skipping more would hide more than it gains.
 const MAX_SENTENCE_LEAD = 160;
 // Near the chunk end a window may start late (at its sentence) only while it keeps this share
 // of the width; below that it shifts back to `end - width` so the snippet isn't a sliver.
@@ -51,19 +52,19 @@ export interface SnippetWindow {
  * Pick the `width`-char window of a chunk whose distinct query terms weigh most (each term
  * counts 1 / its occurrences in the chunk; ties → earliest), opened at the sentence of an
  * informative hit (a term near the rarest one's weight). Falls back to the chunk head when no term
- * occurs (a semantic-only hit) or the chunk fits in one snippet.
+ * occurs (a semantic-only hit) or the chunk fits in one snippet; a head that opens mid-sentence
+ * moves to its first sentence start (#657).
  *
  * Terms are matched on stems (the keyword half's transform, so Cyrillic inflections match) and
  * weighted by rarity within the chunk, so a rare query term outweighs a generic one that is
  * everywhere.
  */
 export function snippetWindow(body: string, query: string, width: number = SNIPPET_CHARS): SnippetWindow {
-  const head = { start: 0, text: wholeSlice(body, 0, width) };
-  if (body.length <= width) return head;
+  if (body.length <= width) return { start: 0, text: body };
   const terms = queryTerms(query);
-  if (terms.size === 0) return head;
+  if (terms.size === 0) return cut(body, headStart(body, width), width);
   const hits = [...stemmedTokens(body)].filter((t) => terms.has(t.stem));
-  if (hits.length === 0) return head;
+  if (hits.length === 0) return cut(body, headStart(body, width), width);
 
   const occurrences = new Map<string, number>();
   for (const h of hits) occurrences.set(h.stem, (occurrences.get(h.stem) ?? 0) + 1);
@@ -84,9 +85,30 @@ export function snippetWindow(body: string, query: string, width: number = SNIPP
     for (const stem of inside) score += weight(stem);
     if (score > best.score) best = { start, score };
   }
-  const start = pairStart(body, best.start);
+  return cut(body, best.start, width);
+}
+
+/** The `width`-unit window at `at` (moved off a split pair), "…"-prefixed when it starts past 0. */
+function cut(body: string, at: number, width: number): SnippetWindow {
+  const start = pairStart(body, at);
   const text = wholeSlice(body, start, start + width);
   return { start, text: start > 0 ? `…${text}` : text };
+}
+
+/**
+ * Head-fallback start: 0, unless the chunk opens mid-sentence (first non-space char lowercase —
+ * chunking splits hard-wrapped lines, so heads often do) and a sentence starts within
+ * MAX_SENTENCE_LEAD chars while leaving MIN_TAIL_SHARE of the width after it.
+ */
+function headStart(body: string, width: number): number {
+  const first = body.search(/\S/);
+  if (first === -1 || !/\p{Ll}/u.test(body[first]!)) return 0;
+  for (const m of body.slice(first).matchAll(SENTENCE_END)) {
+    const start = first + m.index + m[0].length;
+    const fits = start <= MAX_SENTENCE_LEAD && body.length - start >= width * MIN_TAIL_SHARE;
+    return fits ? start : 0;
+  }
+  return 0;
 }
 
 // A UTF-16 cut between the two halves of an astral char (emoji, 𝔸) leaves a lone surrogate:
