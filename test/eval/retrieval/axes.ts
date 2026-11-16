@@ -1,7 +1,8 @@
 // Report-only eval axes (#363, thresholds.reportOnlyAxes): snippet marker rate, book-scope
-// span-hit@k, confidence calibration (false-flag rate + AUC), p50/p95 latency and the rerank
-// on/off ablation matrix. Printed by every `pnpm eval` run; no gate reads them (D-012: an axis
-// becomes a gate only through a new rule commit before the run that measures it).
+// span-hit@k, confidence calibration (false-flag rate + AUC), p50/p95 latency, the rerank
+// on/off ablation matrix, and the #359 confuser@1 / adjacent-negative flagged rates. Printed by
+// every `pnpm eval` run; no gate reads them (D-012: an axis becomes a gate only through a new
+// rule commit before the run that measures it).
 
 import type { Thresholds } from "./gate.js";
 import type { EvalReport, Mode, PerQueryRow } from "./harness.js";
@@ -24,6 +25,10 @@ export interface ModeAxes {
     marginN: number;
   };
   latency?: { n: number; p50: number; p95: number };
+  /** #359 confuser-pair rows: how many put a listed confuser at rank 1 (lower is better). */
+  confuserAt1?: { n: number; atRank1: number };
+  /** #359 adjacent-negative rows: how many were flagged (higher is better). */
+  adjacentNegative?: { n: number; flagged: number };
 }
 
 /**
@@ -82,6 +87,15 @@ export function computeAxes(report: EvalReport): Partial<Record<Mode, ModeAxes>>
     if (confidence) axes.confidence = confidence;
     const ms = rows.map((r) => r.durationMs).filter((x): x is number => x !== undefined);
     if (ms.length) axes.latency = { n: ms.length, p50: percentile(ms, 0.5), p95: percentile(ms, 0.95) };
+    const confuser = rows.filter((r) => r.kind === "confuser-pair");
+    if (confuser.length) {
+      const top = (r: PerQueryRow) => r.retrieved[0];
+      const atRank1 = confuser.filter((r) => top(r) !== undefined && (r.confusers ?? []).map(String).includes(top(r)!));
+      axes.confuserAt1 = { n: confuser.length, atRank1: atRank1.length };
+    }
+    const adjacent = rows.filter((r) => r.kind === "adjacent-negative");
+    if (adjacent.length)
+      axes.adjacentNegative = { n: adjacent.length, flagged: adjacent.filter((r) => r.flagged === true).length };
     out[mode] = axes;
   }
   return out;
@@ -113,6 +127,10 @@ export function renderAxes(
         : `    ${m}: n/a (no reranked rows)`,
     latency: (m, { latency: l }) =>
       l ? `    ${m}: p50 ${l.p50} ms, p95 ${l.p95} ms (n=${l.n})` : `    ${m}: n/a (no timings)`,
+    confuserAt1: (m, { confuserAt1: c }) =>
+      c ? `    ${m}: confuser at rank 1 ${ratio(c.atRank1, c.n)}` : `    ${m}: n/a (no confuser-pair rows)`,
+    adjacentNegative: (m, { adjacentNegative: a }) =>
+      a ? `    ${m}: flagged ${ratio(a.flagged, a.n)}` : `    ${m}: n/a (no adjacent-negative rows)`,
   };
   const lines = ["report-only axes (#363, thresholds.reportOnlyAxes; never gated)"];
   for (const [name, axis] of Object.entries(cfg)) {

@@ -13,11 +13,12 @@ import { loadCorpus, loadQueries, runRetrievalEval } from "./harness.js";
 const base = { indexDir: ":memory:", embedder: hashEmbedder } as const;
 
 describe("retrieval eval harness (model-free smoke)", () => {
-  it("query set holds the prompt-04 contract: 40-70 queries, ~1/3 RU-involved, all kinds", () => {
+  it("query set holds the prompt-04 contract: 40-110 queries, ~1/3 RU-involved, all kinds", () => {
     const { texts, markers } = loadCorpus();
     const queries = loadQueries(texts, markers); // also validates every span/figure label
     expect(queries.length).toBeGreaterThanOrEqual(40);
-    expect(queries.length).toBeLessThanOrEqual(70);
+    // #359 added 28 hard-kind queries on top of 70; the cap guards against unreviewed growth
+    expect(queries.length).toBeLessThanOrEqual(110);
     const ru = queries.filter((q) => q.ru === true).length;
     expect(ru / queries.length).toBeGreaterThanOrEqual(1 / 3);
     const kinds = new Set(queries.map((q) => q.kind));
@@ -29,6 +30,10 @@ describe("retrieval eval harness (model-free smoke)", () => {
       "negative",
       "figure-caption",
       "figure-negative",
+      "confuser-pair",
+      "no-overlap-paraphrase",
+      "adjacent-negative",
+      "raw-title",
     ]) {
       expect(kinds).toContain(k);
     }
@@ -77,12 +82,14 @@ describe("retrieval eval harness (model-free smoke)", () => {
 
   it("runs the full golden set end-to-end and produces a complete report", async () => {
     const report = await runRetrievalEval({ ...base, modes: ["keyword"] });
-    expect(report.meta.queryCount).toBe(70);
-    expect(report.meta.corpus.books).toBe(17);
-    expect(report.overall.keyword?.n).toBe(61); // 70 minus 6 negatives minus 3 figure-negatives
+    expect(report.meta.queryCount).toBe(98);
+    expect(report.meta.corpus.books).toBe(27);
+    // 98 minus 6 negatives, 3 figure-negatives and 6 adjacent negatives (#359)
+    expect(report.overall.keyword?.n).toBe(83);
     expect(report.negatives.keyword?.n).toBe(6);
     expect(report.figureNegatives.keyword?.n).toBe(3);
-    expect(report.perQuery).toHaveLength(70);
+    expect(report.perQuery).toHaveLength(98);
+    expect(report.meta.ruInvolved).toBe(33);
     // figure-caption rows really ran through target=figures and retrieved figure keys
     const fig = report.perQuery.find((r) => r.id === "fig-01");
     expect(fig?.target).toBe("figures");

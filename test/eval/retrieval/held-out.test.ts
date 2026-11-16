@@ -37,9 +37,12 @@ const FROZEN = [
   "xl-07",
 ];
 
+// #359's hard kinds, drawn the same way over its 28 queries (8, 2 per kind) and frozen too.
+const FROZEN_359 = ["an-02", "an-04", "cp-03", "cp-04", "nop-07", "nop-08", "rt-02", "rt-05"];
+
 describe("held-out set (#632)", () => {
-  it("is exactly the 20 frozen ids", () => {
-    expect([...heldOutIds()].sort()).toEqual(FROZEN);
+  it("is exactly the frozen ids: 20 from #632 plus 8 from #359", () => {
+    expect([...heldOutIds()].sort()).toEqual([...FROZEN, ...FROZEN_359].sort());
   });
 
   it("has the declared per-kind counts", () => {
@@ -55,6 +58,10 @@ describe("held-out set (#632)", () => {
       "front-matter-trap": 2,
       negative: 2,
       "figure-negative": 1,
+      "confuser-pair": 2,
+      "no-overlap-paraphrase": 2,
+      "adjacent-negative": 2,
+      "raw-title": 2,
     });
   });
 

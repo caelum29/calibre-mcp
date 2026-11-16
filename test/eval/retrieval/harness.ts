@@ -45,7 +45,16 @@ export type QueryKind =
   | "negative"
   // Phase B figure kinds (#85/#86): caption semantic search (target=figures) + its negatives.
   | "figure-caption"
-  | "figure-negative";
+  | "figure-negative"
+  // #359 hard kinds (capability, not regression — thresholds.capabilityKinds):
+  // a near-topic book that shares vocabulary but doesn't answer must not win rank 1
+  | "confuser-pair"
+  // meaning without shared words: no content stem of the query occurs in the target book
+  | "no-overlap-paraphrase"
+  // on-domain question the corpus can't answer; scored like a negative (flagged)
+  | "adjacent-negative"
+  // book whose title is a raw filename and authors "Unknown"
+  | "raw-title";
 
 /** A labeled relevant passage for a scope=book query (char offsets into the fixture text). */
 export interface SpanLabel {
@@ -80,6 +89,10 @@ export interface GoldenQuery {
   diagnostic?: boolean;
   /** Frozen held-out query (#632): tuning scorers skip it; `pnpm eval` reports it apart. */
   heldOut?: true;
+  /** confuser-pair (#359): near-topic bookIds that share vocabulary but don't answer. */
+  confusers?: number[];
+  /** #359: one-line note on what makes the query hard (authoring record, never read). */
+  why?: string;
   /** Library scope: relevant bookIds. Book scope: spans. Figures: figure labels. Empty for negatives. */
   relevant: Array<number | SpanLabel | FigureLabel>;
 }
@@ -95,6 +108,8 @@ export interface CorpusBook {
   headingStructured?: boolean;
   /** Synthetic figure inventory (relative to corpus/) — fed through the REAL marker-injection path. */
   figures?: string;
+  /** #359 raw-title books: the real title, for the #363 title-prefix ablation; never read here. */
+  realTitle?: string;
 }
 
 export interface Corpus {
@@ -175,6 +190,11 @@ export function withoutHeldOut(report: EvalReport, heldOut: Set<string> = heldOu
     report.perQuery.filter((r) => !heldOut.has(r.id)),
     report.meta,
   );
+}
+
+/** Kinds with no right answer, scored by `flagged` (zero results or lowConfidence), not rank metrics. */
+export function isNegativeKind(kind: QueryKind): boolean {
+  return kind === "negative" || kind === "figure-negative" || kind === "adjacent-negative";
 }
 
 /** Load the golden queries and fail loudly if any span/figure label drifted from its fixture. */
@@ -259,6 +279,8 @@ export interface PerQueryRow {
   metrics?: QueryMetrics;
   /** Negatives: whether the tool signalled "nothing here" (zero results or low confidence). */
   flagged?: boolean;
+  /** confuser-pair rows (#359): the query's confuser bookIds, for the confuser@1 axis. */
+  confusers?: number[];
   maxScore?: number;
   /** Top cross-encoder sigmoid score when the rerank stage ran (RERANK_FLOOR calibration). */
   maxRerank?: number;
@@ -567,7 +589,7 @@ function assertHandlerChecksRan(done: ReadonlySet<string>, modes: Mode[], live: 
 /** Which handler round-trips a run owes: library scope in every mode, plus book scope once (fixture only). */
 function handlerCheckKey(q: GoldenQuery, mode: Mode, out: QueryOutcome, bookChecked: boolean): string | undefined {
   // a non-empty ranking only — two empty lists would match without proving anything
-  if (q.target || q.kind === "negative" || out.count === 0) return undefined;
+  if (q.target || isNegativeKind(q.kind) || out.count === 0) return undefined;
   if (q.scope === "library") return `library:${mode}`;
   return bookChecked ? undefined : "book";
 }
@@ -596,7 +618,8 @@ export function toRow(q: GoldenQuery, mode: Mode, out: QueryOutcome): PerQueryRo
   if (out.top2Rerank !== undefined) row.top2Rerank = Number(out.top2Rerank.toPrecision(4));
   if (out.spanHit !== undefined) row.spanHit = out.spanHit;
   if (out.snippetHasMarker !== undefined) row.snippetHasMarker = out.snippetHasMarker;
-  if (q.kind === "negative" || q.kind === "figure-negative") {
+  if (q.confusers) row.confusers = q.confusers;
+  if (isNegativeKind(q.kind)) {
     row.flagged = out.count === 0 || out.lowConfidence === true;
   } else {
     if (out.count > 0) row.lowConfidence = out.lowConfidence === true;
@@ -637,7 +660,7 @@ export async function runRetrievalEval(opts: HarnessOptions): Promise<EvalReport
     queries = queries
       .filter((q) => q.scope === "library") // span labels don't transfer to real books
       .filter((q) => !q.target || q.target === "text") // live figure labels are #87's work
-      .filter((q) => q.kind === "negative" || (labels[q.id]?.length ?? 0) > 0)
+      .filter((q) => isNegativeKind(q.kind) || (labels[q.id]?.length ?? 0) > 0)
       .map((q) => ({ ...q, relevant: labels[q.id] ?? [] }));
     progress(`live mode: ${queries.length} labeled queries against library ${libraryId}`);
   } else {

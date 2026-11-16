@@ -48,6 +48,7 @@ import {
   refuseBaselineOverwrite,
 } from "./gate-guards.js";
 import {
+  capabilityKindsOf,
   evaluateFusionOnlyGate,
   evaluateGate,
   evaluateListDiff,
@@ -420,7 +421,7 @@ export async function main(platform: string = process.platform): Promise<void> {
     // #363 ablation axis (report-only): needs both passes, so it prints here
     process.stdout.write(`\n${ablationMatrix(on.report, off.report).join("\n")}\n`);
     const offResult = withList(
-      evaluateFusionOnlyGate(off.report, baselines.off, fusion, rule.platformDrift),
+      evaluateFusionOnlyGate(off.report, baselines.off, fusion, rule.platformDrift, capabilityKindsOf(thresholds)),
       off.report,
       baselines.off,
       "fusionOnly",

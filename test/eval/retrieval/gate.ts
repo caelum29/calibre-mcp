@@ -71,6 +71,15 @@ export interface Thresholds {
     /** Declared Hit@1 breaks that are CPU drift, skipped by exactly (tier, mode, id). */
     platformDrift: PlatformDriftEntry[];
   };
+  /**
+   * #359 capability kinds: hard kinds that measure headroom. Their Hit@1 drops are listed as
+   * report-only in every tier; promoting a kind to a regression guard = removing it here.
+   */
+  capabilityKinds?: {
+    kinds: QueryKind[];
+    /** Pre-freeze headroom criterion: per kind, this failing share in at least one configuration. */
+    headroom?: { minFailingShare: number; configurations: number };
+  };
   /** #363 report-only axes: each states a trend; `gate: false` — printed, never read by a gate. */
   reportOnlyAxes?: Record<string, { gate: false; trend: string; measured?: boolean }>;
   /** Tier-0 hash-embedder gate inside `pnpm test` (#357): per-query rank baseline, Hit@1 rule. */
@@ -121,6 +130,47 @@ export interface GateResult {
 }
 
 const MODES: Mode[] = ["hybrid", "vector", "keyword"];
+
+/** The only kinds `capabilityKinds` may list (#359): a regression kind there would stop being gated. */
+const CAPABILITY_KINDS: readonly QueryKind[] = [
+  "confuser-pair",
+  "no-overlap-paraphrase",
+  "adjacent-negative",
+  "raw-title",
+];
+const CAPABILITY_KEYS = ["$comment", "kinds", "headroom"];
+
+/** Throw unless every entry is a distinct capability kind; `at` names the source in the message. */
+function checkCapabilityList(kinds: unknown, at: string): QueryKind[] {
+  if (!Array.isArray(kinds)) throw new Error(`${at} must be an array`);
+  const seen = new Set<unknown>();
+  for (const k of kinds) {
+    if (!CAPABILITY_KINDS.includes(k as QueryKind)) {
+      throw new Error(`${at}: ${JSON.stringify(k)} is not a capability kind (allowed: ${CAPABILITY_KINDS.join(", ")})`);
+    }
+    if (seen.has(k)) throw new Error(`${at}: duplicate ${JSON.stringify(k)}`);
+    seen.add(k);
+  }
+  return kinds as QueryKind[];
+}
+
+/**
+ * The validated `thresholds.capabilityKinds.kinds` ([] when the block is absent). Throws on an
+ * unknown key, a non-capability kind or a duplicate, on every platform: a typo would otherwise be
+ * a silent no-op and a listed regression kind would silently stop being gated (#359 review).
+ */
+export function capabilityKindsOf(t: Thresholds): QueryKind[] {
+  const block = t.capabilityKinds as unknown;
+  if (block === undefined) return [];
+  if (typeof block !== "object" || block === null) throw new Error("thresholds.capabilityKinds must be an object");
+  const unknown = Object.keys(block).filter((k) => !CAPABILITY_KEYS.includes(k));
+  if (unknown.length) {
+    throw new Error(
+      `thresholds.capabilityKinds has unknown key ${unknown.join(", ")} (allowed: ${CAPABILITY_KEYS.join(", ")})`,
+    );
+  }
+  return checkCapabilityList((block as { kinds?: unknown }).kinds, "thresholds.capabilityKinds.kinds");
+}
 
 function rowsOf(report: EvalReport, mode: Mode): PerQueryRow[] {
   return report.perQuery.filter((r) => r.mode === mode);
@@ -189,6 +239,20 @@ function driftEntriesCheck(
 }
 
 const DRIFT_TAG = " [platform drift]";
+const CAPABILITY_TAG = " [capability]";
+
+/** Info line listing a mode's capability-kind drops (#359); only when capability kinds are declared. */
+function capabilityCheck(prefix: string, mode: Mode, capability: Set<string>, broken: BrokenRow[]): GateCheck[] {
+  if (capability.size === 0) return [];
+  return [
+    {
+      name: `${prefix} ${mode}: capability kinds (report-only)`,
+      active: false,
+      pass: true,
+      detail: `${broken.length} broken${broken.length ? `: ${broken.map((b) => b.id).join(", ")}` : ""}`,
+    },
+  ];
+}
 
 function dropLine(mode: Mode, { base, cur }: BrokenRow, tag = ""): string {
   const now = cur ? `Hit@1=${cur.metrics?.hit1 ?? "?"} top3=[${cur.retrieved.slice(0, 3).join(", ")}]` : "MISSING";
@@ -208,6 +272,7 @@ export function evaluateGate(
   const checks: GateCheck[] = [];
   const drops: string[] = [];
   const drift = platformDrift.filter((e) => e.tier === "on");
+  const capability = new Set<string>(capabilityKindsOf(t));
 
   // 1. Non-regression vs baseline: per-query Hit@1, text kinds only (figure kinds have no
   //    baseline rows). A query missing from the current run counts as broken — a silently
@@ -215,8 +280,12 @@ export function evaluateGate(
   for (const mode of MODES) {
     const cfg = t.nonRegression[mode];
     if (!cfg) continue;
-    const { gated: broken, skipped } = splitDrift(brokenHit1(current, baseline, mode), mode, drift);
+    const split = splitDrift(brokenHit1(current, baseline, mode), mode, drift);
+    const { skipped } = split;
+    const broken = split.gated.filter((b) => !capability.has(b.base.kind));
+    const capBroken = split.gated.filter((b) => capability.has(b.base.kind));
     for (const b of broken) drops.push(dropLine(mode, b));
+    for (const b of capBroken) drops.push(dropLine(mode, b, CAPABILITY_TAG));
     for (const b of skipped) drops.push(dropLine(mode, b, DRIFT_TAG));
     checks.push({
       name: `non-regression ${mode}: broken Hit@1 queries`,
@@ -225,6 +294,7 @@ export function evaluateGate(
       detail: `${broken.length} broken (allowed ${cfg.maxBrokenHit1Queries})${broken.length ? `: ${broken.map((b) => b.id).join(", ")}` : ""}`,
     });
     checks.push(...driftSkipCheck("non-regression", mode, drift, skipped));
+    checks.push(...capabilityCheck("non-regression", mode, capability, capBroken));
     if (cfg.negativesFlagged !== undefined) {
       const negs = rowsOf(current, mode).filter((r) => r.kind === "negative");
       const flagged = negs.filter((r) => r.flagged === true).length;
@@ -270,14 +340,17 @@ export function evaluateGate(
 /**
  * Fusion-only tier (#356): per-query Hit@1 non-regression of a --rerank off run against the
  * frozen OFF baseline. Report-only kinds (cross-lingual) are listed, never failed;
- * `platformDrift` entries of the `fusionOnly` tier are skipped (Linux rule, #364).
+ * `platformDrift` entries of the `fusionOnly` tier are skipped (Linux rule, #364); drops of
+ * `capabilityKinds` (#359, thresholds.capabilityKinds.kinds) are listed, never failed.
  */
 export function evaluateFusionOnlyGate(
   current: EvalReport,
   baseline: EvalReport,
   cfg: NonNullable<Thresholds["fusionOnly"]>,
   platformDrift: PlatformDriftEntry[] = [],
+  capabilityKinds: QueryKind[] = [],
 ): GateResult {
+  const capability = new Set<string>(checkCapabilityList(capabilityKinds, "thresholds.capabilityKinds.kinds"));
   const checks: GateCheck[] = [];
   const drops: string[] = [];
   const drift = platformDrift.filter((e) => e.tier === "fusionOnly");
@@ -294,10 +367,14 @@ export function evaluateFusionOnlyGate(
   for (const mode of MODES) {
     const limit = cfg.nonRegression[mode];
     if (!limit) continue;
-    const { gated: broken, skipped } = splitDrift(brokenHit1(current, baseline, mode), mode, drift);
+    const split = splitDrift(brokenHit1(current, baseline, mode), mode, drift);
+    const { skipped } = split;
+    const capBroken = split.gated.filter((b) => capability.has(b.base.kind));
+    const broken = split.gated.filter((b) => !capability.has(b.base.kind));
     const gated = broken.filter((b) => !reportOnly.has(b.base.kind));
     const noted = broken.filter((b) => reportOnly.has(b.base.kind));
     for (const b of broken) drops.push(dropLine(mode, b, reportOnly.has(b.base.kind) ? " [report-only]" : ""));
+    for (const b of capBroken) drops.push(dropLine(mode, b, CAPABILITY_TAG));
     for (const b of skipped) drops.push(dropLine(mode, b, DRIFT_TAG));
     checks.push({
       name: `fusion-only ${mode}: broken Hit@1 queries`,
@@ -306,6 +383,7 @@ export function evaluateFusionOnlyGate(
       detail: `${gated.length} broken (allowed ${limit.maxBrokenHit1Queries})${ids(gated)}`,
     });
     checks.push(...driftSkipCheck("fusion-only", mode, drift, skipped));
+    checks.push(...capabilityCheck("fusion-only", mode, capability, capBroken));
     for (const kind of cfg.reportOnlyKinds) {
       const ofKind = noted.filter((b) => b.base.kind === kind);
       checks.push({

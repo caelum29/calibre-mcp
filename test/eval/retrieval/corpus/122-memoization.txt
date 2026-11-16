@@ -1,0 +1,45 @@
+## The idea in one sentence
+
+Memoization stores the result of a function call in a table keyed by its arguments, so
+that a later call with the same arguments returns the stored result instead of computing
+it a second time. The table is a cache that lives beside the function; the caller never
+notices it, except that the answer arrives faster.
+
+The classic demonstration is the recursive Fibonacci function. Written naively, `fib(40)`
+makes more than three hundred million calls, because `fib(38)` is computed twice,
+`fib(37)` three times, and so on down the tree. With a memo table, every value from
+`fib(0)` to `fib(40)` is computed exactly once and the cost collapses from exponential to
+linear. Dynamic programming is the same insight applied bottom-up: fill the table in
+order rather than letting recursion discover it.
+
+## Building the cache key
+
+The key must capture everything that decides the result. For a single number or string
+argument the value itself is the key. For several arguments, a tuple of them serves in
+Python and a joined string such as `${a}|${b}` is common in JavaScript. Objects are the
+trap: two calls with structurally equal objects produce different keys if the cache
+compares references, and a mutable object used as a key can be modified after it was
+stored, silently corrupting the search. Libraries such as Python's `functools.lru_cache`
+refuse unhashable arguments for exactly this reason.
+
+## When memoization lies
+
+A memoized function must be deterministic: the same arguments must always yield the same
+result, and calling it must have no side effects that the program relies on. If the
+function reads `Date.now()`, a global variable, a file or a registry, the stored result
+is only a snapshot of one moment, and every later call returns that old snapshot as if
+nothing had happened since. A memoized function that writes a log line or sends a
+request does so only on the first call, and all the later calls are silently dropped.
+Keep caching to computations whose result is fixed by their arguments alone.
+
+## Bounding the table
+
+An unbounded memo table grows with every distinct argument and never shrinks, which in a
+long-running server turns a shortcut into a leak with a polite name. A bounded cache evicts
+entries: least recently used (LRU) eviction drops the entry untouched for the longest,
+which fits most access patterns; time-to-live eviction expires entries after a fixed age.
+A size cap of a few thousand entries is usually enough for a hot function.
+
+Measure before memoizing. A cache probe costs hashing the arguments and a table probe;
+for a function that is already cheap, the bookkeeping can cost more than the call it
+replaces.

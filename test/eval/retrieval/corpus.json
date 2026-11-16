@@ -1,5 +1,5 @@
 {
-  "comment": "Fixture corpus manifest for the retrieval eval. bookId is the fake Calibre id; file lives in corpus/. Titles/authors feed the real '[title › authors]' embedding context prefix, so keep them descriptive of the topic. All texts are self-authored for this repo (MIT, deterministic — never regenerate casually: queries.json labels char spans into them). Books with a 'figures' field carry a synthetic figure inventory (figures/*.json) fed through the REAL marker-injection path at eval time (#85/#86); the .txt files stay untouched - markers place via the page-1 fallback.",
+  "comment": "Fixture corpus manifest for the retrieval eval. bookId is the fake Calibre id; file lives in corpus/. Titles/authors feed the real '[title › authors]' embedding context prefix, so keep them descriptive of the topic — except the #359 raw-title books 125-127, whose title is a raw filename on purpose (authors 'Unknown'; 'realTitle' is for the #363 title-prefix ablation and is never read by the harness). All texts are self-authored for this repo (MIT, deterministic — never regenerate casually: queries.json labels char spans into them). Books with a 'figures' field carry a synthetic figure inventory (figures/*.json) fed through the REAL marker-injection path at eval time (#85/#86); the .txt files stay untouched - markers place via the page-1 fallback.",
   "libraryId": "eval_fixture",
   "books": [
     { "bookId": 101, "file": "101-rust-ownership.txt", "title": "Ownership and Borrowing in Rust", "authors": ["Eval Fixture"], "language": "en" },
@@ -18,6 +18,16 @@
     { "bookId": 114, "file": "114-ru-morphology.txt", "title": "Морфология русского языка: падежи, склонение, вид глагола", "authors": ["Eval Fixture"], "language": "ru" },
     { "bookId": 115, "file": "115-ru-cryptography.txt", "title": "Криптография: симметричные шифры, открытый ключ, подпись", "authors": ["Eval Fixture"], "language": "ru" },
     { "bookId": 116, "file": "116-ddd-front-matter.txt", "title": "Strategic Software Design: Bounded Contexts and the Ubiquitous Language", "authors": ["Eval Fixture"], "language": "en" },
-    { "bookId": 117, "file": "117-observability-epub.txt", "title": "Observability in Practice: Events, Traces, and SLOs", "authors": ["Eval Fixture"], "language": "en", "headingStructured": true }
+    { "bookId": 117, "file": "117-observability-epub.txt", "title": "Observability in Practice: Events, Traces, and SLOs", "authors": ["Eval Fixture"], "language": "en", "headingStructured": true },
+    { "bookId": 118, "file": "118-rust-traits-dispatch.txt", "title": "Traits and Generics: Static and Dynamic Dispatch", "authors": ["Eval Fixture"], "language": "en" },
+    { "bookId": 119, "file": "119-lsm-tree-storage.txt", "title": "Log-Structured Merge Trees: Memtables, SSTables, Compaction", "authors": ["Eval Fixture"], "language": "en" },
+    { "bookId": 120, "file": "120-git-history-rewriting.txt", "title": "Shaping a Commit Series: Interactive Rebase, Fixups, Force Pushes", "authors": ["Eval Fixture"], "language": "en" },
+    { "bookId": 121, "file": "121-ru-service-worker-cache.txt", "title": "Service Worker и Cache Storage: кэш на стороне клиента", "authors": ["Eval Fixture"], "language": "ru" },
+    { "bookId": 122, "file": "122-memoization.txt", "title": "Memoization: Caching Function Results", "authors": ["Eval Fixture"], "language": "en" },
+    { "bookId": 123, "file": "123-tcp-congestion-window.txt", "title": "TCP Congestion Control: The Congestion Window", "authors": ["Eval Fixture"], "language": "en" },
+    { "bookId": 124, "file": "124-content-security-policy.txt", "title": "Content Security Policy: Restricting Script Sources", "authors": ["Eval Fixture"], "language": "en" },
+    { "bookId": 125, "file": "125-sourdough-baking.txt", "title": "B07XQ4K2LM.pdf", "authors": ["Unknown"], "language": "en", "realTitle": "Sourdough at Home: Starter, Levain and the Bake" },
+    { "bookId": 126, "file": "126-espresso-brewing.txt", "title": "main.dvi", "authors": ["Unknown"], "language": "en", "realTitle": "Espresso at Home: Dialing In, Puck Prep, Milk" },
+    { "bookId": 127, "file": "127-ru-amateur-telescope.txt", "title": "614289377", "authors": ["Unknown"], "language": "ru", "realTitle": "Любительский телескоп: выбор и первые наблюдения" }
   ]
 }

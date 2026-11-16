@@ -120,10 +120,13 @@ export function evaluateHashGate(
   current: EvalReport,
   baseline: RankBaseline,
   rule: NonNullable<Thresholds["hashGate"]>,
+  capabilityKinds: QueryKind[] = [],
 ): GateResult {
   const ranked = fromRankBaseline(toRankBaseline(current));
   return evaluateGate(ranked, fromRankBaseline(baseline), {
     baselineReport: rule.baselineReport ?? "hash-baseline.json",
     nonRegression: rule.nonRegression,
+    // #359: capability-kind drops are listed, never failed, in the hash tier too
+    ...(capabilityKinds.length ? { capabilityKinds: { kinds: capabilityKinds } } : {}),
   });
 }

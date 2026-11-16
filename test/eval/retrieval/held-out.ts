@@ -3,7 +3,7 @@
 // it, and the report JSON shape doesn't change. A set of 20 is noisy, so every number carries
 // its 95% percentile bootstrap interval (fixed seed, stats.ts).
 
-import { heldOutIds, type EvalReport } from "./harness.js";
+import { heldOutIds, isNegativeKind, type EvalReport } from "./harness.js";
 import { mean, pairedBootstrapCI, SEED } from "./stats.js";
 
 const f3 = (n: number) => n.toFixed(3);
@@ -26,7 +26,7 @@ export function heldOutLines(report: EvalReport, heldOut: Set<string> = heldOutI
   for (const mode of report.meta.modes) {
     const rows = report.perQuery.filter((r) => r.mode === mode && heldOut.has(r.id));
     const scored = rows.filter((r) => r.metrics !== undefined).map((r) => r.metrics!);
-    const negs = rows.filter((r) => r.kind === "negative" || r.kind === "figure-negative");
+    const negs = rows.filter((r) => isNegativeKind(r.kind));
     lines.push(
       `held-out ${mode}: n ${scored.length}, Hit@1 ${withCi(scored.map((x) => x.hit1))}, ` +
         `nDCG@10 ${withCi(scored.map((x) => x.ndcg10))}; negatives flagged ${negs.filter((r) => r.flagged === true).length}/${negs.length}`,

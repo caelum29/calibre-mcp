@@ -7,7 +7,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { reversed } from "./broken-store.js";
-import type { Thresholds } from "./gate.js";
+import { capabilityKindsOf, type Thresholds } from "./gate.js";
 import { evaluateHashGate, fromRankBaseline, runHashEval, toRankBaseline, type RankBaseline } from "./hash-gate.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -25,12 +25,16 @@ describe("hash-embedder tier-0 gate", () => {
   it(
     "the current pipeline breaks no baseline Hit@1 in any mode",
     async () => {
-      const result = evaluateHashGate(await runHashEval(), baseline, rule);
+      // #359: capability-kind drops are listed, never failed, in this tier too
+      const result = evaluateHashGate(await runHashEval(), baseline, rule, capabilityKindsOf(thresholds));
       expect(result.drops).toEqual([]);
       expect(result.checks.map((c) => `${c.pass ? "PASS" : "FAIL"} ${c.name} — ${c.detail}`)).toEqual([
         "PASS non-regression hybrid: broken Hit@1 queries — 0 broken (allowed 0)",
+        "PASS non-regression hybrid: capability kinds (report-only) — 0 broken",
         "PASS non-regression vector: broken Hit@1 queries — 0 broken (allowed 0)",
+        "PASS non-regression vector: capability kinds (report-only) — 0 broken",
         "PASS non-regression keyword: broken Hit@1 queries — 0 broken (allowed 0)",
+        "PASS non-regression keyword: capability kinds (report-only) — 0 broken",
       ]);
       expect(result.pass).toBe(true);
     },
