@@ -120,6 +120,7 @@ describe("rerank stage", () => {
   };
   const lib = (bookId: number, score: number): LibraryHit => ({
     bookId,
+    chunkId: bookId,
     title: `B${bookId}`,
     authors: [],
     score,

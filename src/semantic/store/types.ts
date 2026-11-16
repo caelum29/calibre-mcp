@@ -85,6 +85,8 @@ export interface BookMeta {
 /** A library-scope hit: the best-matching chunk of a book. */
 export interface LibraryHit {
   bookId: number;
+  /** The chunk this hit shows; internal (rerank candidates are deduplicated on it, #604), never in tool output. */
+  chunkId: number;
   title: string;
   authors: string[];
   score: number;

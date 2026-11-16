@@ -8,6 +8,7 @@ import type { ChunkIndex, FigureIndex, LibraryHit } from "../../src/semantic/sto
 
 const hit = (bookId: number, score = 0): LibraryHit => ({
   bookId,
+  chunkId: bookId,
   title: `Book ${bookId}`,
   authors: ["A"],
   score,

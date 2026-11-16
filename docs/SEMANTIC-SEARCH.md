@@ -112,9 +112,13 @@ Two refinements worth knowing about:
 - **Reranking.** If the optional reranker model is present (`bge-reranker-v2-m3`,
   ~576 MB, downloaded on first index build), the top ~30 fused candidates are
   re-scored by a cross-encoder that reads the query and passage *together* — a
-  noticeably sharper final ordering. Without the model, results keep the fused
-  order. Disable with `CALIBRE_MCP_RERANK=off`. Reranking takes seconds of CPU, so
-  rerank calls run one at a time in arrival order; when more than two are already
+  noticeably sharper final ordering. In library scope a book among the keyword
+  half's top five whose best keyword passage differs from its best semantic passage
+  sends both passages; the book shows whichever scores higher. The cross-encoder
+  still reads at most 30 passages per search, so the top 25–30 books are re-scored.
+  Without the model, results keep the fused order. Disable with
+  `CALIBRE_MCP_RERANK=off`. Reranking takes seconds of CPU, so rerank calls run one
+  at a time in arrival order; when more than two are already
   waiting, a new search skips the rerank (fused order + a "reranker busy" note) rather
   than waiting past the client's request timeout.
 - **Front-matter demotion.** In book scope, chunks from front matter (table of

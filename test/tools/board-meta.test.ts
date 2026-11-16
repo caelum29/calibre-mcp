@@ -56,6 +56,7 @@ function metaSearchDeps(cache: BoardCache): SearchDeps {
 
 const libHit = (bookId: number): LibraryHit => ({
   bookId,
+  chunkId: bookId,
   title: `Book ${bookId}`,
   authors: ["A"],
   score: 0.9,

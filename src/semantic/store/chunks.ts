@@ -63,6 +63,7 @@ export class SqliteChunkIndex implements ChunkIndex {
       const body = String(chunk?.body ?? "");
       out.push({
         bookId,
+        chunkId: best.chunkId,
         title: String(book?.title ?? `book ${bookId}`),
         authors: parseAuthors(book?.authors),
         score: best.score,
@@ -136,6 +137,7 @@ export class SqliteChunkIndex implements ChunkIndex {
       const body = String(r.body ?? "");
       out.push({
         bookId,
+        chunkId: Number(r.chunk_id),
         title: String(book?.title ?? `book ${bookId}`),
         authors: parseAuthors(book?.authors),
         score: Number(r.score), // bm25: negative, lower (more negative) is a better match
