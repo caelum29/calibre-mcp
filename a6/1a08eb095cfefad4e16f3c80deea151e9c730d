@@ -1,0 +1,24 @@
+scripts/judged-compare-lib.ts
+  s_1213dfa361df4a::t_ff27608e3ae293 1-67
+test/eval/judged/judged-compare.test.ts
+  s_1213dfa361df4a::t_8de9ad6f50eaf4 1-122,128-144,150-190,195-212,217-224
+  s_1213dfa361df4a::t_1d090b51dfdac8 123-127,145-149,191-194,213-216
+scripts/judged-compare.ts
+  s_1213dfa361df4a::t_ff27608e3ae293 1-3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a61a08eb095cfefad4e16f3c80deea151e9c730d",
+  "prompts": {},
+  "sessions": {
+    "s_1213dfa361df4a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b75eeccc-59bf-408d-a50b-bb10c6f3aca8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
