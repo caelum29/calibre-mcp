@@ -32,14 +32,14 @@ nothing had happened since. A memoized function that writes a log line or sends 
 request does so only on the first call, and all the later calls are silently dropped.
 Keep caching to computations whose result is fixed by their arguments alone.
 
-## Bounding the memory
+## Bounding the table
 
 An unbounded memo table grows with every distinct argument and never shrinks, which in a
-long-running server is a memory leak with a polite name. A bounded cache evicts entries:
-least recently used (LRU) eviction drops the entry untouched for the longest, which fits
-most access patterns; time-to-live eviction expires entries after a fixed age. In
-JavaScript a `WeakMap` keyed by objects lets the garbage collector reclaim entries whose
-keys are no longer reachable anywhere else.
+long-running server turns a shortcut into a leak with a polite name. A bounded cache evicts
+entries: least recently used (LRU) eviction drops the entry untouched for the longest,
+which fits most access patterns; time-to-live eviction expires entries after a fixed age.
+In JavaScript a `WeakMap` keyed by objects lets an entry vanish as soon as its key object is
+unreachable from the rest of the program.
 
 Measure before memoizing. A cache lookup costs hashing the arguments and a table probe;
 for a function that is already cheap, the bookkeeping can cost more than the call it

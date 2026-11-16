@@ -15,7 +15,7 @@ fallback for every resource type: only the document's own scheme, domain and por
 `script-src 'self' https://cdn.example.com` then narrows scripts to that one external
 domain. `img-src`, `style-src`, `connect-src` (for fetch and WebSocket targets),
 `frame-ancestors` (which sites may embed this document) and `form-action` each govern
-their own kind of resource. Keywords such as `'none'` block a type entirely, and a scheme
+their own kind of resource. Listing no sources at all blocks a type entirely, and a scheme
 such as `https:` admits any domain over TLS — usually too broad to be useful.
 
 ## Inline scripts, nonces and hashes

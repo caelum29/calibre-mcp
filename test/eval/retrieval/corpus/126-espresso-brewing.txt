@@ -1,0 +1,45 @@
+## The recipe in three numbers
+
+An espresso recipe is a dose, a yield and a time. A common starting point is 18 g of ground
+coffee in the basket, 36 g of liquid in the cup, and 25 to 30 seconds from pressing the
+button to stopping the shot. The ratio of yield to dose, here 1:2, sets the strength; the
+time tells you whether the water found the right resistance on its way through the puck.
+
+Weigh both the dose and the yield on a scale with a resolution of 0.1 g. Volume markings on
+cups are useless, because crema makes the same mass of coffee look very different from one
+shot to the next.
+
+## Dialing in the grinder
+
+Grind size is the main control. If the shot runs fast and tastes sour, thin and sharp,
+the grounds are too coarse: water rushes through without extracting enough of the sugars
+and heavier compounds. Grind finer. If it runs slow and tastes bitter, harsh and dry, the
+grounds are too fine and the shot is over-extracted. Grind coarser. Change one thing at a
+time, pull another shot, taste, and write the result down; a grinder usually needs several
+shots before a new setting has fully cleared the old grounds from its burrs.
+
+Fresh beans behave differently from old ones. Beans rested for a week or two after roasting
+release less carbon dioxide and extract more evenly than beans roasted yesterday; beans
+older than a month or so lose aroma and often need a finer grind to reach the same time.
+
+## Puck preparation
+
+Uneven density in the puck lets water find a channel, a path of low resistance that
+over-extracts a narrow column and leaves the rest under-extracted. The symptoms are spurts
+from the bottom of a naked portafilter, a pale blond stream early in the shot, and a cup
+that is sour and bitter at once. Break up clumps with a fine needle tool, level the bed,
+and tamp once, straight and firmly; the exact force matters far less than keeping the
+tamper level.
+
+## Temperature and milk
+
+Most machines brew at about 93 °C. Light roasts often taste better a degree or two hotter,
+dark roasts a degree or two cooler. For a cappuccino or a flat white, purge the steam wand,
+keep its tip just under the surface of cold milk to draw in air for the first few seconds,
+then sink it a little deeper to spin the milk into a fine, glossy microfoam at about 60 °C.
+
+## Water and cleaning
+
+Use soft, filtered water: hard water leaves limescale in the boiler, and very soft water
+tastes flat. Backflush the group head with plain water after each session and with a
+detergent once a week, and soak the basket and portafilter so old oils do not turn rancid.

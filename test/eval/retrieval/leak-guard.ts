@@ -28,3 +28,15 @@ export function leakedStems(query: string, text: string): string[] {
   const inText = new Set([...stemmedTokens(text)].map((t) => t.stem));
   return contentStems(query).filter((s) => inText.has(s));
 }
+
+/**
+ * Every token of `query` (stemmed exactly as the keyword half does, stop words and short stems
+ * included) that also occurs in `text`. The keyword half ORs all of them (ftsMatch), so only
+ * an empty result keeps keyword search from returning `text` for this query at all.
+ */
+export function ftsOverlap(query: string, text: string): string[] {
+  const inText = new Set([...stemmedTokens(text)].map((t) => t.stem));
+  const out: string[] = [];
+  for (const t of stemmedTokens(query)) if (inText.has(t.stem) && !out.includes(t.stem)) out.push(t.stem);
+  return out;
+}

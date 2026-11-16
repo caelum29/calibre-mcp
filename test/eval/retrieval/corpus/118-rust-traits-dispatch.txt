@@ -1,0 +1,47 @@
+## Traits describe behaviour
+
+A Rust trait names a set of methods that a type promises to provide. `trait Shape { fn
+area(&self) -> f64; }` says nothing about how a circle or a square stores its fields; it
+only says that anything implementing `Shape` can report an area. Implementations are
+written separately, `impl Shape for Circle { ... }`, and may live next to the trait or next
+to the type, but the orphan rule forbids implementing a foreign trait for a foreign type,
+so two crates can never supply conflicting implementations.
+
+Traits may provide default method bodies, require other traits as supertraits, and carry
+associated types: `Iterator` declares `type Item;` and every iterator chooses its own item
+type once, instead of the caller naming it at every use.
+
+## Generics and static dispatch
+
+A generic function `fn total<T: Shape>(items: &[T]) -> f64` accepts a slice of any single
+type that implements `Shape`. The compiler monomorphizes it: for every concrete type used
+with it, a separate specialized copy of the function is generated, and each call is a
+direct, inlinable call. This is static dispatch. It costs nothing at run time, but it
+duplicates code for every instantiation and makes compile times and binary sizes grow with
+the number of types.
+
+The `impl Trait` syntax is shorthand for the same idea. In argument position,
+`fn draw(s: impl Shape)` is an anonymous generic parameter; in return position it hides a
+single concrete type behind the trait, which is how closures and long iterator chains are
+returned without spelling out their unnameable types.
+
+## Trait objects and dynamic dispatch
+
+When a collection must hold different types at once — circles and squares in one vector —
+generics are not enough. A trait object, `Box<dyn Shape>` or `&dyn Shape`, is a fat
+pointer: one pointer to the value and one to a vtable, a table of function pointers for
+that type's implementation of the trait. Calling `area()` through it loads the function
+pointer from the vtable and jumps to it. This is dynamic dispatch: one compiled copy of the
+calling code, at the price of an indirect call that the optimizer usually cannot inline.
+
+Not every trait can be made into an object. A trait is object safe only if its methods do
+not return `Self` and do not take generic type parameters, because a vtable needs one
+fixed entry per method. `Clone` fails the first rule, which is why `Box<dyn Clone>` does not
+compile.
+
+## Choosing between them
+
+Prefer generics when the set of types is known at each call site and speed matters, as in
+numeric code and iterator adapters. Prefer trait objects for heterogeneous collections,
+plugin registries and to keep compile times down in large programs. Many libraries offer
+both: a generic core and a thin `dyn` wrapper for callers who need type erasure.

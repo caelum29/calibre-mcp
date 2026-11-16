@@ -28,10 +28,11 @@ before `git rebase --continue`.
 
 ## Recovering from mistakes
 
-Every rewrite creates new commits and leaves the old ones unreferenced, not deleted. The
-reflog records where HEAD and each branch pointed over the last ninety days, so
-`git reflog` followed by `git reset --hard HEAD@{3}` undoes a rebase that went wrong.
-`ORIG_HEAD` is set by rebase and reset as a shortcut to the previous tip.
+Every rewrite creates new commits and leaves the old ones unreferenced, not deleted; they
+stay in the object database until garbage collection prunes them weeks later. Rebase and
+reset record the previous branch tip in `ORIG_HEAD`, so `git reset --hard ORIG_HEAD`
+undoes a rebase that went wrong, as long as no other rewrite has happened since. Before a
+risky rewrite, `git branch backup` costs nothing and keeps the old tip reachable by name.
 
 When a rewritten branch must be published again, use `git push --force-with-lease`
 rather than a plain force push: it refuses to overwrite the remote branch if someone

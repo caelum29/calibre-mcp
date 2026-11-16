@@ -19,15 +19,15 @@
     { "bookId": 115, "file": "115-ru-cryptography.txt", "title": "Криптография: симметричные шифры, открытый ключ, подпись", "authors": ["Eval Fixture"], "language": "ru" },
     { "bookId": 116, "file": "116-ddd-front-matter.txt", "title": "Strategic Software Design: Bounded Contexts and the Ubiquitous Language", "authors": ["Eval Fixture"], "language": "en" },
     { "bookId": 117, "file": "117-observability-epub.txt", "title": "Observability in Practice: Events, Traces, and SLOs", "authors": ["Eval Fixture"], "language": "en", "headingStructured": true },
-    { "bookId": 118, "file": "118-cpp-move-semantics.txt", "title": "C++ Move Semantics: Rvalue References and std::move", "authors": ["Eval Fixture"], "language": "en" },
+    { "bookId": 118, "file": "118-rust-traits-dispatch.txt", "title": "Rust Traits and Generics: Static and Dynamic Dispatch", "authors": ["Eval Fixture"], "language": "en" },
     { "bookId": 119, "file": "119-lsm-tree-storage.txt", "title": "Log-Structured Merge Trees: Memtables, SSTables, Compaction", "authors": ["Eval Fixture"], "language": "en" },
-    { "bookId": 120, "file": "120-git-history-rewriting.txt", "title": "Rewriting Git History: Interactive Rebase, Fixups, Reflog", "authors": ["Eval Fixture"], "language": "en" },
+    { "bookId": 120, "file": "120-git-history-rewriting.txt", "title": "Rewriting Git History: Interactive Rebase, Fixups, Force Pushes", "authors": ["Eval Fixture"], "language": "en" },
     { "bookId": 121, "file": "121-ru-service-worker-cache.txt", "title": "Service Worker и Cache Storage: кэш на стороне клиента", "authors": ["Eval Fixture"], "language": "ru" },
     { "bookId": 122, "file": "122-memoization.txt", "title": "Memoization: Caching Function Results", "authors": ["Eval Fixture"], "language": "en" },
     { "bookId": 123, "file": "123-tcp-congestion-window.txt", "title": "TCP Congestion Control: The Congestion Window", "authors": ["Eval Fixture"], "language": "en" },
     { "bookId": 124, "file": "124-content-security-policy.txt", "title": "Content Security Policy: Restricting Script Sources", "authors": ["Eval Fixture"], "language": "en" },
     { "bookId": 125, "file": "125-sourdough-baking.txt", "title": "B07XQ4K2LM.pdf", "authors": ["Unknown"], "language": "en", "realTitle": "Sourdough at Home: Starter, Levain and the Bake" },
-    { "bookId": 126, "file": "126-bicycle-maintenance.txt", "title": "main.dvi", "authors": ["Unknown"], "language": "en", "realTitle": "Bicycle Maintenance: Drivetrain, Brakes, Tyres" },
+    { "bookId": 126, "file": "126-espresso-brewing.txt", "title": "main.dvi", "authors": ["Unknown"], "language": "en", "realTitle": "Espresso at Home: Dialing In, Puck Prep, Milk" },
     { "bookId": 127, "file": "127-ru-amateur-telescope.txt", "title": "614289377", "authors": ["Unknown"], "language": "ru", "realTitle": "Любительский телескоп: выбор и первые наблюдения" }
   ]
 }
