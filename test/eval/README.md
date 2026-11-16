@@ -241,6 +241,16 @@ Append-only: one entry per re-freeze, newest last. Every number names its corpus
   hybrid/vector rank `Node.js` second behind 103 (the cross-encoder's order). The `linux`
   platform-drift entries (on id-09/xl-05, fusionOnly hybrid id-05) are all still solved at Hit@1
   by the new baselines.
+- **2026-11-16, #604 (library rerank also scores the keyword half's chunk, Fix A).** No rule
+  change (no guard queries). Step 1 (`pnpm eval --gate` on the code, old baselines) [17-book
+  fixture]: the fusion-only pass and the hash tier showed 0 list changes (neither runs the
+  reranker); the on pass changed 19 hybrid top-10 lists, with no Hit@1 change and vector/keyword
+  untouched. Every move is a book whose keyword chunk outscored its vector chunk (a kept score is
+  the max over the book's candidates, so only those books can move up). One maxScore move,
+  hybrid `neg-06` 0.7609 → 0.7733, is book 116's own vector cosine entering the top 10. Re-froze
+  the on baseline only: `pnpm eval --tag 604` → `reports/2026-11-16-08ca3695-604.json`
+  (identical to step 1's on pass). fusionOnly and hash baselines unchanged; the `linux`
+  platform-drift entries are all still solved at Hit@1.
 
 ### Rules
 
