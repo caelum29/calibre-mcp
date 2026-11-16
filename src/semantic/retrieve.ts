@@ -107,6 +107,24 @@ export interface RetrievalOptions {
   rrfWeights?: readonly number[];
 }
 
+/**
+ * How a hit got its place (#650), for debug output: 1-based ranks in each half's candidate list
+ * and after fusion, and whether the cross-encoder scored it. Ranks are absent when the unit was
+ * not in that list or the stage did not run.
+ */
+export interface HitProvenance {
+  vectorRank?: number;
+  keywordRank?: number;
+  /** Hybrid only. */
+  fusedRank?: number;
+  /** True when the cross-encoder scored this hit (a library book: at least one of its candidates). */
+  rerankPool: boolean;
+  /** Library hybrid only: the half whose best chunk is shown ("both" when it is the same chunk). */
+  chunkFrom?: "vector" | "keyword" | "both";
+  /** Library only: the rerank score of the book's other candidate chunk, when two were scored (#604). */
+  otherRerankScore?: number;
+}
+
 /** One ranked hit plus the scores that produced its position. */
 export interface Ranked<H> {
   hit: H;
@@ -117,6 +135,8 @@ export interface Ranked<H> {
   cosine?: number;
   /** Cross-encoder sigmoid score, set when the rerank stage reordered this hit. */
   rerankScore?: number;
+  /** Set by retrieve() on every hit; the adapter shows it only at debug level (#650). */
+  provenance?: HitProvenance;
 }
 
 /** retrieve()'s outcome: topK hits in emitted order + the honesty fields the adapter renders. */
@@ -257,10 +277,36 @@ function fuse<H>({ vec, kw, idOf, tieOf }: Halves<H>, k: number, w: readonly num
     const [bb, bu] = tieOf(hitOf(b.id));
     return b.score - a.score || ab - bb || au - bu;
   });
-  return fused.slice(0, k).map((f): Ranked<H> => {
+  const vRank = rankMap(vec, idOf);
+  const kRank = rankMap(kw, idOf);
+  return fused.slice(0, k).map((f, i): Ranked<H> => {
     const v = vById.get(f.id);
-    return { hit: hitOf(f.id), cosine: v?.score };
+    const provenance: HitProvenance = {
+      ...(vRank.has(f.id) ? { vectorRank: vRank.get(f.id) } : {}),
+      ...(kRank.has(f.id) ? { keywordRank: kRank.get(f.id) } : {}),
+      fusedRank: i + 1,
+      rerankPool: false,
+    };
+    return { hit: hitOf(f.id), cosine: v?.score, provenance };
   });
+}
+
+/** id → 1-based position in one half's candidate list. */
+function rankMap<H>(list: H[], idOf: (h: H) => number): Map<number, number> {
+  const out = new Map<number, number>();
+  list.forEach((h, i) => {
+    if (!out.has(idOf(h))) out.set(idOf(h), i + 1);
+  });
+  return out;
+}
+
+/** One half's hits as ranked items with their half rank (keyword/vector modes, #650). */
+function single<H>(hits: Array<H & { score: number }>, half: "vector" | "keyword"): Ranked<H>[] {
+  return hits.map((hit, i) =>
+    half === "vector"
+      ? { hit, cosine: hit.score, provenance: { vectorRank: i + 1, rerankPool: false } }
+      : { hit, provenance: { keywordRank: i + 1, rerankPool: false } },
+  );
 }
 
 /** Rank books per mode. hybrid RRF-fuses the two halves; vector/keyword use one half each. */
@@ -271,18 +317,29 @@ async function rankBooks(
 ): Promise<Pooled<LibraryHit>[]> {
   const { libraryId, allow } = req;
   if (req.mode === "keyword") {
-    return deps.index.searchLibraryFts(libraryId, req.query, req.topK, allow).map((hit) => ({ hit }));
+    return single(deps.index.searchLibraryFts(libraryId, req.query, req.topK, allow), "keyword");
   }
   const k = poolK(req, deps);
   const q = await deps.embedder.embedQuery(req.query);
   if (req.mode === "vector") {
-    return deps.index.searchLibrary(libraryId, q, k, allow).map((hit) => ({ hit, cosine: hit.score }));
+    return single(deps.index.searchLibrary(libraryId, q, k, allow), "vector");
   }
   // hybrid: fuse book rankings from both halves by bookId (vector first — weights order).
   const vec = deps.index.searchLibrary(libraryId, q, POOL, allow);
   const kw = deps.index.searchLibraryFts(libraryId, req.query, POOL, allow);
-  const fused = fuse({ vec, kw, idOf: (h) => h.bookId, tieOf: (h) => [h.bookId, h.bookId] }, k, w);
+  const fused = withChunkSource(fuse({ vec, kw, idOf: (h) => h.bookId, tieOf: (h) => [h.bookId, h.bookId] }, k, w), kw);
   return rerankActive(req, deps) ? withKeywordCandidates(fused, kw) : fused;
+}
+
+/** Record which half's best chunk a fused book shows (#650): vector, keyword, or the same chunk in both. */
+function withChunkSource(fused: Ranked<LibraryHit>[], kw: LibraryHit[]): Ranked<LibraryHit>[] {
+  const kById = new Map(kw.map((h) => [h.bookId, h]));
+  return fused.map((r) => {
+    const k = kById.get(r.hit.bookId);
+    // a cosine marks the vector half's hit (fuse keeps it when both halves have the book)
+    const chunkFrom = r.cosine === undefined ? "keyword" : k?.chunkId === r.hit.chunkId ? "both" : "vector";
+    return { ...r, provenance: { ...r.provenance!, chunkFrom } };
+  });
 }
 
 /**
@@ -304,12 +361,12 @@ function withKeywordCandidates(fused: Ranked<LibraryHit>[], kw: LibraryHit[]): P
 async function rankPassages(req: BookRequest, deps: RetrievalDeps, w: readonly number[]): Promise<Ranked<BookHit>[]> {
   const { libraryId, bookId } = req;
   if (req.mode === "keyword") {
-    return deps.index.searchBookFts(libraryId, bookId, req.query, req.topK).map((hit) => ({ hit }));
+    return single(deps.index.searchBookFts(libraryId, bookId, req.query, req.topK), "keyword");
   }
   const k = poolK(req, deps);
   const q = await deps.embedder.embedQuery(req.query);
   if (req.mode === "vector") {
-    return deps.index.searchBook(libraryId, bookId, q, k).map((hit) => ({ hit, cosine: hit.score }));
+    return single(deps.index.searchBook(libraryId, bookId, q, k), "vector");
   }
   const vec = deps.index.searchBook(libraryId, bookId, q, POOL);
   const kw = deps.index.searchBookFts(libraryId, bookId, req.query, POOL);
@@ -324,12 +381,12 @@ async function rankFigures(
 ): Promise<Ranked<FigureHit>[]> {
   const { libraryId, bookId, allow } = req;
   if (req.mode === "keyword") {
-    return deps.index.searchFiguresFts(libraryId, req.query, req.topK, bookId, allow).map((hit) => ({ hit }));
+    return single(deps.index.searchFiguresFts(libraryId, req.query, req.topK, bookId, allow), "keyword");
   }
   const k = poolK(req, deps);
   const q = await deps.embedder.embedQuery(req.query);
   if (req.mode === "vector") {
-    return deps.index.searchFigures(libraryId, q, k, bookId, allow).map((hit) => ({ hit, cosine: hit.score }));
+    return single(deps.index.searchFigures(libraryId, q, k, bookId, allow), "vector");
   }
   const vec = deps.index.searchFigures(libraryId, q, POOL, bookId, allow);
   const kw = deps.index.searchFiguresFts(libraryId, req.query, POOL, bookId, allow);
@@ -386,8 +443,16 @@ async function applyRerank<H>(
       let best = 0;
       for (let i = 1; i < cands.length; i++) if ((scores[at + i] ?? 0) > (scores[at + best] ?? 0)) best = i;
       const rerankScore = scores[at + best] ?? 0;
+      const other = cands.length > 1 ? (scores[at + (best === 0 ? 1 : 0)] ?? 0) : undefined;
       at += cands.length;
-      return { ...plain(r), hit: cands[best]!, rerankScore };
+      // extra candidates are the keyword half's chunk (#604), so keeping one means the keyword half supplied it
+      const provenance: HitProvenance = {
+        ...r.provenance!,
+        rerankPool: true,
+        ...(best > 0 ? { chunkFrom: "keyword" as const } : {}),
+        ...(other !== undefined ? { otherRerankScore: other } : {}),
+      };
+      return { ...plain(r), hit: cands[best]!, rerankScore, provenance };
     });
     scored.sort((a, b) => {
       const [ab, au] = keys.tie(a.hit);

@@ -351,6 +351,12 @@ Every successful response carries the index generation once — `indexVersion` i
 only within that generation; store it with any citation you persist (see
 [Citation provenance](SEMANTIC-SEARCH.md#citation-provenance-indexversion)).
 
+At `CALIBRE_MCP_LOG_LEVEL=debug` the response also carries per-stage `timings` and, on every
+hit, a `provenance` object (vector and keyword half ranks, fused rank, whether the reranker
+scored it, and for library books which half's passage is shown), mirrored as a `debug:` line
+before each hit's fenced text. Ranking is the same at every log level
+([Troubleshooting → Logs](TROUBLESHOOTING.md#logs)).
+
 > Ask: *"which of my books explain consumer-group rebalancing?"* · *"find passages in book 187 about idempotent producers"* (`scope: book`) · *"find a diagram of the JWT signature flow"* (`target: figures`) · *"what do my databases books say about LSM trees?"* (`filter: databases`)
 
 ### `calibre_build_index`

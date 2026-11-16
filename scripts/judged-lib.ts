@@ -29,6 +29,8 @@ export interface RawHit {
   text: string;
   cosine?: number;
   rerankScore?: number;
+  /** Debug-level ranking provenance (#650): half ranks, fused rank, rerank pool. Never blinded into a batch. */
+  provenance?: Record<string, unknown>;
 }
 
 /** One mode's run of one query. */
@@ -104,6 +106,7 @@ interface StructuredHit {
   contextSnippet?: string;
   cosine?: number;
   rerankScore?: number;
+  provenance?: Record<string, unknown>;
 }
 
 /** Normalize one tool result (library results / book passages / figures) into a RawRun. */
@@ -123,6 +126,7 @@ export function toRawRun(
     text: h.snippet ?? h.body ?? [h.caption, h.contextSnippet].filter(Boolean).join("\n--- context ---\n"),
     ...(h.cosine !== undefined ? { cosine: h.cosine } : {}),
     ...(h.rerankScore !== undefined ? { rerankScore: h.rerankScore } : {}),
+    ...(h.provenance ? { provenance: h.provenance } : {}),
   }));
   const num = (k: string) => (typeof structured[k] === "number" ? (structured[k] as number) : undefined);
   const timings = structured.timings as Record<string, number> | undefined;

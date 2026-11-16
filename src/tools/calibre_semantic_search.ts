@@ -16,7 +16,7 @@
 
 import { filterErrorText } from "./writes-remedy.js";
 import { z } from "zod";
-import { type RankedHits, type RetrievalMode, retrieve } from "../semantic/retrieve.js";
+import { type HitProvenance, type RankedHits, type RetrievalMode, retrieve } from "../semantic/retrieve.js";
 import { SNIPPET_CHARS } from "../semantic/snippet.js";
 import type { ChunkIndex, FigureIndex, IndexFreshness, IndexWriter, LibraryHit } from "../semantic/store/index.js";
 import { findGoneBookIds } from "../app/live-hits.js";
@@ -39,6 +39,21 @@ import type { ContentBlock, ToolResult } from "./types.js";
 import type { BaseDeps, DepsWithIndex } from "./deps.js";
 import { errorCodeFor } from "../domain/error-codes.js";
 import { figureLocation, figureLocationLabel } from "../domain/figures/location.js";
+
+// Debug-level ranking provenance per hit (#650), the same shape for every scope.
+const ProvenanceSchema = z
+  .object({
+    vectorRank: z.number().optional(),
+    keywordRank: z.number().optional(),
+    fusedRank: z.number().optional(),
+    rerankPool: z.boolean(),
+    chunkFrom: z.enum(["vector", "keyword", "both"]).optional(),
+    otherRerankScore: z.number().optional(),
+  })
+  .optional()
+  .describe(
+    "Only at CALIBRE_MCP_LOG_LEVEL=debug: 1-based vector/keyword half ranks, fused rank (hybrid), whether the cross-encoder scored the hit, and for library books which half's chunk is shown.",
+  );
 
 export const semanticSearchTool = defineTool({
   name: "calibre_semantic_search",
@@ -104,6 +119,7 @@ export const semanticSearchTool = defineTool({
           // Book offset the snippet starts at (#243) — calibre_get_content offset= jumps there.
           snippetStart: z.number().optional(),
           snippet: z.string(),
+          provenance: ProvenanceSchema,
         }),
       )
       .optional(),
@@ -116,6 +132,7 @@ export const semanticSearchTool = defineTool({
           rerankScore: z.number().optional(),
           frontMatter: z.boolean().optional(),
           body: z.string(),
+          provenance: ProvenanceSchema,
         }),
       )
       .optional(),
@@ -138,6 +155,7 @@ export const semanticSearchTool = defineTool({
           contextCharStart: z.number().optional(),
           contextCharEnd: z.number().optional(),
           contextSnippet: z.string().optional(),
+          provenance: ProvenanceSchema,
         }),
       )
       .optional(),
@@ -394,13 +412,14 @@ async function libraryScope(
     },
   ];
   const results: Record<string, unknown>[] = [];
+  const debug = deps.config.logLevel === "debug";
   for (const r of ranked) {
     const link = bookResourceLink({ id: r.hit.bookId, title: r.hit.title, authors: r.hit.authors }, libraryId);
     link.description = [scoreLabel(r), r.hit.authors.join(", ")].filter(Boolean).join(" — ");
     blocks.push(link);
     const at = r.hit.snippetStart !== undefined ? ` snippet@${r.hit.snippetStart}` : "";
     const fenced = fence(`MATCH book ${r.hit.bookId} @${r.hit.charStart}-${r.hit.charEnd}${at}`, r.hit.snippet);
-    blocks.push({ type: "text", text: fenced });
+    blocks.push({ type: "text", text: withProvenanceLine(fenced, r, debug) });
     results.push({
       bookId: r.hit.bookId,
       title: r.hit.title,
@@ -411,6 +430,7 @@ async function libraryScope(
       charEnd: r.hit.charEnd,
       ...(r.hit.snippetStart !== undefined ? { snippetStart: r.hit.snippetStart } : {}),
       snippet: fenced,
+      ...provenanceField(r, debug),
     });
   }
 
@@ -476,10 +496,11 @@ async function bookScope(
 
   const blocks: ContentBlock[] = [{ type: "text", text: head }];
   const passages: Record<string, unknown>[] = [];
+  const debug = deps.config.logLevel === "debug";
   for (const r of ranked) {
     const fm = r.hit.frontMatter ? " [front matter]" : "";
     const fenced = fence(`PASSAGE @${r.hit.charStart}-${r.hit.charEnd}${fm} ${scoreLabel(r)}`, r.hit.body);
-    blocks.push({ type: "text", text: fenced });
+    blocks.push({ type: "text", text: withProvenanceLine(fenced, r, debug) });
     passages.push({
       charStart: r.hit.charStart,
       charEnd: r.hit.charEnd,
@@ -487,6 +508,7 @@ async function bookScope(
       ...(r.rerankScore !== undefined ? { rerankScore: r.rerankScore } : {}),
       ...(r.hit.frontMatter ? { frontMatter: true } : {}),
       body: fenced,
+      ...provenanceField(r, debug),
     });
   }
 
@@ -588,6 +610,7 @@ async function figuresTarget(
   );
   const blocks: ContentBlock[] = [{ type: "text", text: head }];
   const figures: Record<string, unknown>[] = [];
+  const debug = deps.config.logLevel === "debug";
   for (const r of ranked) {
     const h = r.hit;
     const ctx = deps.index.chunkAt(libraryId, h.bookId, h.charOffset);
@@ -601,7 +624,7 @@ async function figuresTarget(
     );
     blocks.push({
       type: "text",
-      text: `Figure #${h.figIndex} in "${h.title}" (book ${h.bookId}) — fetch: calibre_get_figures { bookId: ${h.bookId}, indexes: [${h.figIndex}] }\n${fenced}`,
+      text: `Figure #${h.figIndex} in "${h.title}" (book ${h.bookId}) — fetch: calibre_get_figures { bookId: ${h.bookId}, indexes: [${h.figIndex}] }\n${withProvenanceLine(fenced, r, debug)}`,
     });
     figures.push({
       bookId: h.bookId,
@@ -617,6 +640,7 @@ async function figuresTarget(
       charOffset: h.charOffset,
       ...(ctx ? { contextCharStart: ctx.charStart, contextCharEnd: ctx.charEnd } : {}),
       ...(snippet !== undefined ? { contextSnippet: snippet } : {}),
+      ...provenanceField(r, debug),
     });
   }
 
@@ -651,6 +675,30 @@ function withIndexVersion(res: ToolResult, indexVersion: number | undefined): To
       ? [{ ...first, text: `${first.text}\n${line}` }, ...rest]
       : [{ type: "text", text: line }, ...res.content];
   return { ...res, content, structuredContent: { ...res.structuredContent, indexVersion } };
+}
+
+/** Debug level (#650): the hit's provenance as a structured field; nothing at the default level. */
+function provenanceField(r: { provenance?: HitProvenance }, debug: boolean): { provenance?: HitProvenance } {
+  return debug && r.provenance ? { provenance: r.provenance } : {};
+}
+
+/** Debug level (#650): one provenance line right before the hit's fence, never inside the fenced book text. */
+function withProvenanceLine(fenced: string, r: { provenance?: HitProvenance }, debug: boolean): string {
+  if (!debug || !r.provenance) return fenced;
+  const p = r.provenance;
+  const parts = [
+    ...(p.vectorRank !== undefined ? [`vector #${p.vectorRank}`] : []),
+    ...(p.keywordRank !== undefined ? [`keyword #${p.keywordRank}`] : []),
+    ...(p.fusedRank !== undefined ? [`fused #${p.fusedRank}`] : []),
+    p.rerankPool ? "rerank pool" : "not in rerank pool",
+    ...(p.chunkFrom
+      ? [
+          `chunk from ${p.chunkFrom}` +
+            (p.otherRerankScore !== undefined ? ` (other chunk rerank ${p.otherRerankScore.toFixed(3)})` : ""),
+        ]
+      : []),
+  ];
+  return `debug: ${parts.join(" · ")}\n${fenced}`;
 }
 
 /** Debug mode: append the stage breakdown to the header text + structuredContent (successes only). */

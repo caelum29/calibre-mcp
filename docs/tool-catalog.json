@@ -2433,6 +2433,39 @@
                   "description": "PDF hits only: the page number.",
                   "type": "number"
                 },
+                "provenance": {
+                  "additionalProperties": false,
+                  "description": "Only at CALIBRE_MCP_LOG_LEVEL=debug: 1-based vector/keyword half ranks, fused rank (hybrid), whether the cross-encoder scored the hit, and for library books which half's chunk is shown.",
+                  "properties": {
+                    "chunkFrom": {
+                      "enum": [
+                        "vector",
+                        "keyword",
+                        "both"
+                      ],
+                      "type": "string"
+                    },
+                    "fusedRank": {
+                      "type": "number"
+                    },
+                    "keywordRank": {
+                      "type": "number"
+                    },
+                    "otherRerankScore": {
+                      "type": "number"
+                    },
+                    "rerankPool": {
+                      "type": "boolean"
+                    },
+                    "vectorRank": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "rerankPool"
+                  ],
+                  "type": "object"
+                },
                 "rerankScore": {
                   "type": "number"
                 },
@@ -2507,6 +2540,39 @@
                 "frontMatter": {
                   "type": "boolean"
                 },
+                "provenance": {
+                  "additionalProperties": false,
+                  "description": "Only at CALIBRE_MCP_LOG_LEVEL=debug: 1-based vector/keyword half ranks, fused rank (hybrid), whether the cross-encoder scored the hit, and for library books which half's chunk is shown.",
+                  "properties": {
+                    "chunkFrom": {
+                      "enum": [
+                        "vector",
+                        "keyword",
+                        "both"
+                      ],
+                      "type": "string"
+                    },
+                    "fusedRank": {
+                      "type": "number"
+                    },
+                    "keywordRank": {
+                      "type": "number"
+                    },
+                    "otherRerankScore": {
+                      "type": "number"
+                    },
+                    "rerankPool": {
+                      "type": "boolean"
+                    },
+                    "vectorRank": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "rerankPool"
+                  ],
+                  "type": "object"
+                },
                 "rerankScore": {
                   "type": "number"
                 }
@@ -2544,6 +2610,39 @@
                 },
                 "cosine": {
                   "type": "number"
+                },
+                "provenance": {
+                  "additionalProperties": false,
+                  "description": "Only at CALIBRE_MCP_LOG_LEVEL=debug: 1-based vector/keyword half ranks, fused rank (hybrid), whether the cross-encoder scored the hit, and for library books which half's chunk is shown.",
+                  "properties": {
+                    "chunkFrom": {
+                      "enum": [
+                        "vector",
+                        "keyword",
+                        "both"
+                      ],
+                      "type": "string"
+                    },
+                    "fusedRank": {
+                      "type": "number"
+                    },
+                    "keywordRank": {
+                      "type": "number"
+                    },
+                    "otherRerankScore": {
+                      "type": "number"
+                    },
+                    "rerankPool": {
+                      "type": "boolean"
+                    },
+                    "vectorRank": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "rerankPool"
+                  ],
+                  "type": "object"
                 },
                 "rerankScore": {
                   "type": "number"
