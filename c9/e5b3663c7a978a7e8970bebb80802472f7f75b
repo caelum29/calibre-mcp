@@ -1,0 +1,35 @@
+test/eval/README.md
+  s_0424857dbed483::t_25db38209cd1e5 110-127,129-135,278-305
+test/eval/retrieval/list-diff.test.ts
+  s_0424857dbed483::t_7bf90636bb88c0 204
+test/eval/retrieval/platform-replay.test.ts
+  s_0424857dbed483::t_de2db6fe46bee1 11-18,28-43,66,77,79
+test/eval/retrieval/reports/2026-11-16-5abdc650-hardkinds-rerankoff.json
+  s_0424857dbed483::t_12455cfd29d28a 1-8012
+test/eval/retrieval/reports/2026-11-16-5abdc650-hardkinds-rerankoff.md
+  s_0424857dbed483::t_506ba01c5dd305 1-473
+test/eval/retrieval/reports/2026-11-16-5abdc650-hardkinds.json
+  s_0424857dbed483::t_bdb701ca02c0de 1-8404
+test/eval/retrieval/reports/2026-11-16-5abdc650-hardkinds.md
+  s_0424857dbed483::t_5821fbf87981d8 1-473
+test/eval/retrieval/reports/2026-11-16-hardkinds-rebaseline.md
+  s_0424857dbed483::t_9970fb944ee74a 1-446
+test/eval/retrieval/thresholds.json
+  s_0424857dbed483::t_5251cd94db8e81 3-4,87-88,100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c9e5b3663c7a978a7e8970bebb80802472f7f75b",
+  "prompts": {},
+  "sessions": {
+    "s_0424857dbed483": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "58641194-5b10-4ebd-bb7c-55af19b98a57",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
