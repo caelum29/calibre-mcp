@@ -3,115 +3,115 @@
     "qid": "para-01",
     "hid": "para-01#1",
     "grade": 0,
-    "reason": "sharding"
+    "reason": "synthetic reason para-01#1"
   },
   {
     "qid": "para-01",
     "hid": "para-01#2",
     "grade": 0,
-    "reason": "bitcoin"
+    "reason": "synthetic reason para-01#2"
   },
   {
     "qid": "para-01",
     "hid": "para-01#3",
     "grade": 0,
-    "reason": "backups"
+    "reason": "synthetic reason para-01#3"
   },
   {
     "qid": "para-01",
     "hid": "para-01#4",
     "grade": 0,
-    "reason": "ml"
+    "reason": "synthetic reason para-01#4"
   },
   {
     "qid": "para-01",
     "hid": "para-01#5",
     "grade": 0,
-    "reason": "bitcoin"
+    "reason": "synthetic reason para-01#5"
   },
   {
     "qid": "para-01",
     "hid": "para-01#6",
     "grade": 0,
-    "reason": "disk blocks"
+    "reason": "synthetic reason para-01#6"
   },
   {
     "qid": "para-01",
     "hid": "para-01#7",
     "grade": 0,
-    "reason": "hard forks"
+    "reason": "synthetic reason para-01#7"
   },
   {
     "qid": "para-01",
     "hid": "para-01#8",
     "grade": 0,
-    "reason": "blockchain"
+    "reason": "synthetic reason para-01#8"
   },
   {
     "qid": "book-01",
     "hid": "book-01#1",
     "grade": 1,
-    "reason": "quorum basics, claims overlap guarantees freshness",
+    "reason": "synthetic reason book-01#1",
     "coverage": "L"
   },
   {
     "qid": "book-01",
     "hid": "book-01#2",
     "grade": 2,
-    "reason": "lists edge cases where stale values return despite w+r>n",
+    "reason": "synthetic reason book-01#2",
     "coverage": "E"
   },
   {
     "qid": "book-01",
     "hid": "book-01#3",
     "grade": 1,
-    "reason": "non-linearizable example, not about quorums",
+    "reason": "synthetic reason book-01#3",
     "coverage": "L"
   },
   {
     "qid": "book-01",
     "hid": "book-01#4",
     "grade": 1,
-    "reason": "quorum read with read repair after outage",
+    "reason": "synthetic reason book-01#4",
     "coverage": "L"
   },
   {
     "qid": "book-01",
     "hid": "book-01#5",
     "grade": 2,
-    "reason": "start of limitations of quorum consistency",
+    "reason": "synthetic reason book-01#5",
     "coverage": "S"
   },
   {
     "qid": "fig-01",
     "hid": "fig-01#1",
     "grade": 0,
-    "reason": "client-side rendering sequence diagram"
+    "reason": "synthetic reason fig-01#1"
   },
   {
     "qid": "fig-01",
     "hid": "fig-01#2",
     "grade": 2,
-    "reason": "TCP three-way handshake diagram",
+    "reason": "synthetic reason fig-01#2",
     "coverage": "E"
   },
   {
     "qid": "fig-01",
     "hid": "fig-01#3",
     "grade": 0,
-    "reason": "serialization data flow"
+    "reason": "synthetic reason fig-01#3"
   },
   {
     "qid": "fig-01",
     "hid": "fig-01#4",
     "grade": 0,
-    "reason": "server-side rendering diagram"
+    "reason": "synthetic reason fig-01#4"
   },
   {
     "qid": "fig-01",
     "hid": "fig-01#5",
     "grade": 1,
-    "reason": "socket API call sequence",
+    "reason": "synthetic reason fig-01#5",
     "coverage": "L"
   }
 ]

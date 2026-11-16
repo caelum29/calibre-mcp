@@ -3,115 +3,115 @@
     "qid": "para-01",
     "hid": "para-01#1",
     "grade": 0,
-    "reason": "Shard chunk balancing, not partition consistency"
+    "reason": "synthetic reason para-01#1"
   },
   {
     "qid": "para-01",
     "hid": "para-01#2",
     "grade": 0,
-    "reason": "Bitcoin SPV headers, unrelated"
+    "reason": "synthetic reason para-01#2"
   },
   {
     "qid": "para-01",
     "hid": "para-01#3",
     "grade": 0,
-    "reason": "Backup copy rules, not partition trade-off"
+    "reason": "synthetic reason para-01#3"
   },
   {
     "qid": "para-01",
     "hid": "para-01#4",
     "grade": 0,
-    "reason": "ML train/test split, word match only"
+    "reason": "synthetic reason para-01#4"
   },
   {
     "qid": "para-01",
     "hid": "para-01#5",
     "grade": 0,
-    "reason": "Bitcoin SPV, unrelated"
+    "reason": "synthetic reason para-01#5"
   },
   {
     "qid": "para-01",
     "hid": "para-01#6",
     "grade": 0,
-    "reason": "Mirrored disk block recovery, not network partition"
+    "reason": "synthetic reason para-01#6"
   },
   {
     "qid": "para-01",
     "hid": "para-01#7",
     "grade": 0,
-    "reason": "Blockchain hard fork, unrelated"
+    "reason": "synthetic reason para-01#7"
   },
   {
     "qid": "para-01",
     "hid": "para-01#8",
     "grade": 0,
-    "reason": "Blockchain ledger generalities"
+    "reason": "synthetic reason para-01#8"
   },
   {
     "qid": "book-01",
     "hid": "book-01#1",
     "grade": 1,
     "coverage": "L",
-    "reason": "Quorum basics; claims reads are up to date"
+    "reason": "synthetic reason book-01#1"
   },
   {
     "qid": "book-01",
     "hid": "book-01#2",
     "grade": 2,
     "coverage": "S",
-    "reason": "Stale values despite w+r>n edge cases"
+    "reason": "synthetic reason book-01#2"
   },
   {
     "qid": "book-01",
     "hid": "book-01#3",
     "grade": 1,
     "coverage": "L",
-    "reason": "Linearizability example, no quorum link"
+    "reason": "synthetic reason book-01#3"
   },
   {
     "qid": "book-01",
     "hid": "book-01#4",
     "grade": 1,
     "coverage": "L",
-    "reason": "Read repair after outage, not quorum staleness"
+    "reason": "synthetic reason book-01#4"
   },
   {
     "qid": "book-01",
     "hid": "book-01#5",
     "grade": 1,
     "coverage": "S",
-    "reason": "Limitations of quorum intro, mostly overlap guarantee"
+    "reason": "synthetic reason book-01#5"
   },
   {
     "qid": "fig-01",
     "hid": "fig-01#1",
     "grade": 0,
-    "reason": "Client-side rendering sequence diagram"
+    "reason": "synthetic reason fig-01#1"
   },
   {
     "qid": "fig-01",
     "hid": "fig-01#2",
     "grade": 2,
     "coverage": "E",
-    "reason": "TCP three-way handshake figure"
+    "reason": "synthetic reason fig-01#2"
   },
   {
     "qid": "fig-01",
     "hid": "fig-01#3",
     "grade": 0,
-    "reason": "API serialization figure"
+    "reason": "synthetic reason fig-01#3"
   },
   {
     "qid": "fig-01",
     "hid": "fig-01#4",
     "grade": 0,
-    "reason": "Server-side rendering sequence diagram"
+    "reason": "synthetic reason fig-01#4"
   },
   {
     "qid": "fig-01",
     "hid": "fig-01#5",
     "grade": 1,
     "coverage": "L",
-    "reason": "TCP socket call sequence, not handshake packets"
+    "reason": "synthetic reason fig-01#5"
   }
 ]

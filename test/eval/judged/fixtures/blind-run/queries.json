@@ -6,28 +6,28 @@
     "scope": "library",
     "bookId": null,
     "target": "text",
-    "query": "keeping two copies of data in agreement after a network split",
-    "mustCover": "Trade-off between consistency and availability when a network partition separates replicas (CAP / partition tolerance).",
+    "query": "synthetic query for para-01",
+    "mustCover": "synthetic mustCover for para-01",
     "expectedBooks": [
       {
         "id": 138,
-        "title": "Designing Data-Intensive Applications (1st ed.)"
+        "title": "Book 138"
       },
       {
         "id": 1068,
-        "title": "Designing Data-Intensive Applications (2nd ed.)"
+        "title": "Book 1068"
       },
       {
         "id": 1338,
-        "title": "Database Internals"
+        "title": "Book 1338"
       },
       {
         "id": 695,
-        "title": "Think Distributed Systems"
+        "title": "Book 695"
       },
       {
         "id": 412,
-        "title": "Foundations of Scalable Systems"
+        "title": "Book 412"
       }
     ]
   },
@@ -38,12 +38,12 @@
     "scope": "book",
     "bookId": 138,
     "target": "text",
-    "query": "where does this book show that reading from a majority of replicas can still return stale data",
-    "mustCover": "Linearizability vs quorum reads; non-linearizable execution despite a strict quorum. (phrase seen in book: \"strict quorum reads and writes ... nonlinearizable execution\")",
+    "query": "synthetic query for book-01",
+    "mustCover": "synthetic mustCover for book-01",
     "expectedBooks": [
       {
         "id": 138,
-        "title": "Designing Data-Intensive Applications (1st ed.)"
+        "title": "Book 138"
       }
     ]
   },
@@ -54,12 +54,12 @@
     "scope": "library",
     "bookId": null,
     "target": "figures",
-    "query": "sequence diagram of a client and server exchanging packets before any data can flow over a new connection",
-    "mustCover": "Figure \"Three-way handshake\" (High Performance Browser Networking, Fig 2-1).",
+    "query": "synthetic query for fig-01",
+    "mustCover": "synthetic mustCover for fig-01",
     "expectedBooks": [
       {
         "id": 1227,
-        "title": "High Performance Browser Networking"
+        "title": "Book 1227"
       }
     ]
   }
