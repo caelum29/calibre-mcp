@@ -11,7 +11,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { evaluateGate, type Thresholds } from "./gate.js";
-import type { EvalReport, Mode, PerQueryRow } from "./harness.js";
+import { heldOutIds, type EvalReport, type Mode, type PerQueryRow } from "./harness.js";
 import { signTest } from "./stats.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -68,8 +68,11 @@ export function flagged(row: PerQueryRow, floor: number): boolean {
   return cosineLow || (row.maxRerank !== undefined && row.maxRerank < floor);
 }
 
-function population(r: EvalReport, modes: Mode[]): PerQueryRow[] {
-  return r.perQuery.filter((row) => modes.includes(row.mode) && row.reranked === true && row.maxRerank !== undefined);
+/** Reranked rows of `modes`, held-out queries (#632) excluded: the floor is a fitted value. */
+function population(r: EvalReport, modes: Mode[], heldOut: Set<string>): PerQueryRow[] {
+  return r.perQuery.filter(
+    (row) => modes.includes(row.mode) && row.reranked === true && row.maxRerank !== undefined && !heldOut.has(row.id),
+  );
 }
 
 function falseFlags(rows: PerQueryRow[], floor: number, t: FloorThresholds) {
@@ -102,14 +105,20 @@ function vsCurrent(rows: PerQueryRow[], floor: number, t: FloorThresholds): Floo
   return { unflagged, newlyFlagged, signP: signTest(unflagged, newlyFlagged) };
 }
 
+/**
+ * Score every candidate floor. Held-out queries (#632) are skipped in the fixture and the live
+ * report (live reuses the fixture ids). `zeroBrokenPass` is the merge gate on the full fixture
+ * report, computed by the caller: it stays on the full set, as it is not a selection objective.
+ */
 export function scoreFloors(
   t: FloorThresholds,
   fixture: EvalReport,
   live?: EvalReport,
   zeroBrokenPass = true,
 ): FloorResult {
-  const fx = population(fixture, t.population.fixture.modes);
-  const lv = live ? population(live, t.population.live.modes) : undefined;
+  const heldOut = heldOutIds();
+  const fx = population(fixture, t.population.fixture.modes, heldOut);
+  const lv = live ? population(live, t.population.live.modes, heldOut) : undefined;
   const negs = fx.filter((r) => isNegative(r.kind, t)).map((r) => r.maxRerank!);
   const hit1 = fx.filter((r) => !isNegative(r.kind, t) && r.metrics?.hit1 === 1).map((r) => r.maxRerank!);
   const maxNegative = negs.length ? Math.max(...negs) : 0;

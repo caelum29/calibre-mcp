@@ -166,6 +166,17 @@ export function heldOutIds(): Set<string> {
   return new Set(queries.filter((q) => q.heldOut === true).map((q) => q.id));
 }
 
+/**
+ * The report without the held-out rows, every aggregate recomputed from the remaining rows: a
+ * tuning scorer must not trust precomputed `byKind` / `ruInvolved`, which include them (#632).
+ */
+export function withoutHeldOut(report: EvalReport, heldOut: Set<string> = heldOutIds()): EvalReport {
+  return assemble(
+    report.perQuery.filter((r) => !heldOut.has(r.id)),
+    report.meta,
+  );
+}
+
 /** Load the golden queries and fail loudly if any span/figure label drifted from its fixture. */
 export function loadQueries(texts: Map<number, string>, markers?: Map<number, FigureMarker[]>): GoldenQuery[] {
   const queries = JSON.parse(readFileSync(path.join(HERE, "queries.json"), "utf8")) as GoldenQuery[];

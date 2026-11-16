@@ -24,19 +24,22 @@ const t: SweepThresholds = {
 
 const agg = (ndcg10: number) => ({ hybrid: { n: 1, hit1: ndcg10, recall5: 1, mrr: ndcg10, ndcg10 } });
 
-function row(id: string, kind: QueryKind, hit1: number): PerQueryRow {
+function row(id: string, kind: QueryKind, ndcg10: number, hit1: number, ru: boolean): PerQueryRow {
   return {
     id,
     kind,
     scope: "library",
     mode: "hybrid",
-    ru: false,
+    ru,
     retrieved: [],
-    metrics: { hit1, recall5: 1, rr: hit1, ndcg10: hit1 },
+    metrics: { hit1, recall5: 1, rr: hit1, ndcg10 },
   };
 }
 
-/** Report with given RU / cross-lingual / exact-identifier nDCG and per-query exact-id Hit@1. */
+/**
+ * Report with given RU / cross-lingual / exact-identifier nDCG and per-query exact-id Hit@1. The
+ * scorer recomputes aggregates from the rows (#632), so each group is backed by one row.
+ */
 function report(ru: number, xl: number, exact: number, exactHit1 = 1): EvalReport {
   return {
     meta: { modes: ["hybrid"] } as EvalReport["meta"],
@@ -45,7 +48,11 @@ function report(ru: number, xl: number, exact: number, exactHit1 = 1): EvalRepor
     byKind: { "cross-lingual": agg(xl), "exact-identifier": agg(exact) },
     negatives: {},
     figureNegatives: {},
-    perQuery: [row("id-01", "exact-identifier", exactHit1)],
+    perQuery: [
+      row("ru-01", "ru-monolingual", ru, 1, true),
+      row("xl-01", "cross-lingual", xl, 1, false),
+      row("id-01", "exact-identifier", exact, exactHit1, false),
+    ],
   };
 }
 
