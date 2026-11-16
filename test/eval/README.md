@@ -222,6 +222,26 @@ Failure semantics:
   entries against the next nightly logs: drop entries the new baseline no longer solves, add a
   query that now breaks on Linux only with its reason and how often it was seen.
 
+### Baseline re-freeze log
+
+Append-only: one entry per re-freeze, newest last. Every number names its corpus.
+
+- **2026-11-16, #634 (identifier tokens reach the raw `body` column).** Rule commit first: two
+  `exact-identifier` guards, `id-11` `C++` → 109 and `id-12` `Node.js` → 102 (the only fixture
+  books holding these tokens; the fixture has no `c#`). Then `pnpm eval:hash-freeze` (210 rows),
+  `pnpm eval --tag 634` → `reports/2026-11-16-5c8ed2df-634.json` (on) and
+  `pnpm eval --rerank off --tag 634-rerankoff` → `reports/2026-11-16-44dcf56e-634-rerankoff.json`
+  (fusionOnly). The on report was measured before the branch was rebased onto #667/#669 (harness
+  rule and snippet start, no ranking change); the final `--gate` on the pushed head reproduces it.
+  Changed top-10 lists on the 68 earlier queries [17-book fixture]: only `sp-13` ("three-way
+  merge"), whose raw token `three-way` now also matches book 109 ("three-way" partitioning):
+  keyword (on and fusionOnly) rank 4–5 swap 105 ↔ 109, fusionOnly hybrid rank 5 105 → 103, 109
+  enters at rank 6. Its relevant book 106 stays at rank 1 everywhere; no Hit@1 changes; cosine
+  maxScore |Δ| 0.0000. New rows: keyword Hit@1 = 1 for both guards in both passes; rerank-on
+  hybrid/vector rank `Node.js` second behind 103 (the cross-encoder's order). The `linux`
+  platform-drift entries (on id-09/xl-05, fusionOnly hybrid id-05) are all still solved at Hit@1
+  by the new baselines.
+
 ### Rules
 
 - `pnpm eval` is NOT part of `pnpm test` (it needs the embedding model and real minutes);
