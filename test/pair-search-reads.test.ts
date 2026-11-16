@@ -77,7 +77,7 @@ describe("pairSearchReads", () => {
     expect(r.sizes).toEqual({
       "calibre_semantic_search:library": { textChars: { n: 3, median: 300, p95: 400 } },
       "calibre_semantic_search:book": { textChars: { n: 1, median: 200, p95: 200 } },
-      calibre_get_content: { textChars: { n: 4, median: 2000, p95: 3000 } },
+      calibre_get_content: { textChars: { n: 3, median: 2000, p95: 3000 } },
     });
   });
 
