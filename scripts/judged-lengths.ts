@@ -5,8 +5,7 @@
 
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { DatabaseSync } from "node:sqlite";
-import { indexFileName } from "../src/semantic/store/schema.js";
+import { indexFileName, readBookChunkCounts } from "../src/semantic/store/schema.js";
 import { gradesFor, type BlindKey, type FinalGrade, type RawRecord } from "./judged-lib.js";
 
 /** library id → book id → chunk count (book-lengths.json). */
@@ -137,16 +136,7 @@ export function readBookLengths(indexDir: string, libraries: readonly string[]):
   for (const lib of libraries) {
     const file = join(indexDir, indexFileName(lib));
     if (!existsSync(file)) continue;
-    const db = new DatabaseSync(file, { readOnly: true });
-    try {
-      const rows = db.prepare("SELECT book_id, chunk_count FROM books").all() as Array<{
-        book_id: number;
-        chunk_count: number;
-      }>;
-      out[lib] = Object.fromEntries(rows.map((r) => [String(r.book_id), Number(r.chunk_count)]));
-    } finally {
-      db.close();
-    }
+    out[lib] = Object.fromEntries([...readBookChunkCounts(file)].map(([id, n]) => [String(id), n]));
   }
   return out;
 }
