@@ -1,0 +1,36 @@
+test/eval/judged/judged-lib.test.ts
+  s_acefbb564cb02d::t_275d41ce2fcd8a 148-153
+  s_acefbb564cb02d::t_ec495ddd6ea84f 121-147,154-235
+  s_acefbb564cb02d::t_d939091c4d8944 3-18
+scripts/judged-lib.ts
+  s_acefbb564cb02d::t_b04a401d11ef29 303-336
+  s_acefbb564cb02d::t_75a9d593a2aaf7 4-5,26-27,42-43,71-77,81-82,86-91,99,122,135,175-188,191-238,254,259-262,276
+  s_acefbb564cb02d::t_275d41ce2fcd8a 189-190
+scripts/judged-score.ts
+  s_acefbb564cb02d::t_6a56db17b16509 3-5,12,14,19-21,24,45,49-50,53,56,58-62,73-75,83-86,94-127,164-193
+  s_acefbb564cb02d::t_275d41ce2fcd8a 77
+  s_acefbb564cb02d::t_2c2614e9c1430b 194
+scripts/judged-blind.workflow.js
+  s_acefbb564cb02d::t_080b0514560174 88
+  s_acefbb564cb02d::t_67cf82480841e1 112-113,115,119-124
+  s_acefbb564cb02d::t_3763f6f1dc5589 73
+  s_acefbb564cb02d::t_45dc282a1c1882 49-50,55-60
+  s_acefbb564cb02d::t_c2388be44d096c 38-39,42
+  s_acefbb564cb02d::t_e9e09b4c4298ed 82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "87840b4bcbe22088e18264ff2078d257071916b5",
+  "prompts": {},
+  "sessions": {
+    "s_acefbb564cb02d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c7f8ed24-36a5-43a6-8c8a-b51a2bfd5997",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
