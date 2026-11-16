@@ -35,14 +35,55 @@
   "scoreDrift": {
     "$comment": "#325 per-query maxScore drift (cosine modes only; keyword maxScore is bm25), |delta| <= maxScoreEpsilon vs the baseline, every baseline row must be matched. The #325 aggregate metricEpsilon (0.005) was REMOVED by #358: a rank 2->3 move shifts nDCG@10 by only 0.0022 over 59 positives and passed it. Rank changes are now caught exactly by listDiff. A deliberate model/ranking change re-baselines (baselineReport) instead of widening this.",
     "maxScoreEpsilon": 0.01,
-    "$maxScoreEpsilonComment": "unmeasured, tracked in #364: same-platform runs are bit-identical (max |delta| 0.0000 over 136 rows), so this is a cross-platform / ORT-drift allowance that needs a Linux model run to measure. Do not tune it without that measurement.",
+    "$maxScoreEpsilonComment": "Cross-platform / ORT-drift allowance. Same-platform runs are bit-identical (max |delta| 0.0000 over 136 rows). Measured by #364 on the Linux nightly (ubuntu-24.04, 17-book fixture, 10 runs 2026-11-06..2026-11-15) vs the macOS baseline: max |delta| 0.0067 (outcome A) / 0.0059 (outcome B), inside 0.01, which stays. Re-measure before tuning it.",
     "maxScoreModes": ["hybrid", "vector"]
   },
   "listDiff": {
-    "$comment": "#358, declared BEFORE the measuring run (D-012); it reuses the existing frozen baselines, which already hold every row's top-10 `retrieved` list. Every baseline row (all kinds, all modes, negatives included) must reproduce its top-topK list exactly — same keys, same order; a missing row counts as changed. Applies to all three tiers: `on` (baselineReport), `fusionOnly` (fusionOnly.baselineReport) and `hash` (hashGate.baselineReport). This makes gains ratchet too: an improvement also changes a list, so it fails until it is either re-frozen or listed in allowFile. allowFile entries are {tier, mode, id, retrieved, reason}: an entry allows exactly that new top-topK list (not 'any change') and needs a non-empty reason. Ties are not broken by id in the store, so a list that differs only across platforms is a nondeterminism bug to fix, never an allow entry.",
+    "$comment": "#358, declared BEFORE the measuring run (D-012); it reuses the existing frozen baselines, which already hold every row's top-10 `retrieved` list. Every baseline row (all kinds, all modes, negatives included) must reproduce its top-topK list exactly — same keys, same order; a missing row counts as changed. Applies to all three tiers: `on` (baselineReport), `fusionOnly` (fusionOnly.baselineReport) and `hash` (hashGate.baselineReport). This makes gains ratchet too: an improvement also changes a list, so it fails until it is either re-frozen or listed in allowFile. allowFile entries are {tier, mode, id, retrieved, reason}: an entry allows exactly that new top-topK list (not 'any change') and needs a non-empty reason. Ties are broken by id (#392 decision 3), so on the hash tier a list that differs only across platforms is a nondeterminism bug to fix, never an allow entry. On the model tiers (on, fusionOnly) Linux runner CPUs drift numerically in ONNX Runtime (93-108 of 204 lists change per nightly, #364), so the Linux rule (`linux` below) reports their list diff instead of failing; macOS keeps it exact.",
     "topK": 10,
     "allowFile": "list-diff-allow.json",
     "$decisionsComment": "#392 decisions (Artem, 2026-11-05). (1) Keep the ratchet on all three tiers, hash tier included; a deliberate hash-tier change re-freezes in one command, `pnpm eval:hash-freeze` (it also drops the now-stale hash-tier allow-file entries), and the hash-tier list-diff failure names that command. (3) Ties get a total tie-break by id; that is a ranking change, so it lands in its own PR with a full `pnpm eval --gate` and a re-freeze (parks for Artem)."
+  },
+  "linux": {
+    "$comment": "#364 Linux nightly rule (Artem, grilling 2026-11-16), declared + committed BEFORE the confirming nightly runs (D-012). `pnpm eval --gate` reads it only on linux (gateRuleFor in gate-guards.ts); every other platform keeps the exact rule. Two differences from the exact rule: (1) listDiff 'report': the top-10 list diff runs and prints its count but never fails (a reasonless allow entry still does); (2) per-query Hit@1 non-regression skips the platformDrift entries, by exactly {tier, mode, id}; a skipped break prints as info, and an entry whose query the baseline does not solve at Hit@1 is stale and fails. Everything else is gated as on macOS: negatives flagged, figure floors, heading front matter, maxScore epsilon, golden-set hash. Why not a frozen Linux baseline: the nightly alternates between two outcomes (A 7 of 10 runs, B 3 of 10 [17-book fixture, 2026-11-06..2026-11-15]), so any single Linux report fails on the other. Entries were drafted from the 10 nightly logs (agent-drafted, reasons below); after re-freezing the on or fusionOnly baseline, re-check them against the next nightly logs. Evidence: reports/2026-11-15-cebaace-linux-nightly*.json (outcome A) and reports/2026-11-13-f7f5306-linux-nightly*.json (outcome B), replayed by platform-replay.test.ts.",
+    "listDiff": "report",
+    "platformDrift": [
+      {
+        "tier": "on",
+        "mode": "hybrid",
+        "id": "id-09",
+        "reason": "'overlayfs': the cross-encoder scores both top candidates near zero (macOS 105 at maxRerank 0.00033; Linux 110 at 0.00036-0.00037 vs 105 at 0.00032-0.00033), far below RERANK_FLOOR, so ORT kernel noise swaps 105 and 110.",
+        "seen": "10 of 10 nightlies 2026-11-06..2026-11-15"
+      },
+      {
+        "tier": "on",
+        "mode": "vector",
+        "id": "id-09",
+        "reason": "Same rows as on/hybrid id-09: the reranker re-sorts the whole fixture, so vector and hybrid get the same top 2 and the same noise-level swap of 105 and 110.",
+        "seen": "10 of 10 nightlies 2026-11-06..2026-11-15"
+      },
+      {
+        "tier": "on",
+        "mode": "hybrid",
+        "id": "xl-05",
+        "reason": "RU 'chess openings' (cross-lingual): top-2 rerank scores 0.00068 vs 0.00064 on outcome A, a noise-level margin far below RERANK_FLOOR, so 109 overtakes 113; outcome B keeps 113 at Hit@1.",
+        "seen": "7 of 10 nightlies (outcome A)"
+      },
+      {
+        "tier": "on",
+        "mode": "vector",
+        "id": "xl-05",
+        "reason": "Same rows as on/hybrid xl-05: the reranker re-sorts the whole fixture, so vector and hybrid share the noise-level 109/113 swap.",
+        "seen": "7 of 10 nightlies (outcome A)"
+      },
+      {
+        "tier": "fusionOnly",
+        "mode": "hybrid",
+        "id": "id-05",
+        "reason": "'If-None-Match' with rerank off: on outcome B the e5 cosines shift by ~0.001 on Linux and the vector list puts 103 first (macOS 117, 103, 107; B 103, 117, 116, 107), so 103 (vector 1, keyword 4) ties 107 (keyword 1, vector 4) in RRF and the id tie-break picks 103. Keyword is unchanged; outcome A keeps 107 at Hit@1.",
+        "seen": "3 of 10 nightlies (outcome B)"
+      }
+    ]
   },
   "goldenSet": {
     "$comment": "#392 decision 2 (Artem, 2026-11-05), declared + committed BEFORE the baselines are stamped/re-frozen (D-012). Replaces what the removed #325 aggregate ε used to catch: a queries.json relevance-label edit that leaves every top-10 list identical. Every baseline records goldenSetHash = sha256 of the canonical (parsed, re-serialized) queries.json it was measured on: queries, kinds and relevance labels; formatting does not count. A run whose hash differs from its baseline's, or a baseline with no hash, fails that tier. Fix = re-freeze the baseline (rule first): `pnpm eval:hash-freeze` for hash, a new `pnpm eval` run for on/fusionOnly. Fixture corpus edits are not hashed: span labels already fail the harness loudly when a fixture edit moves them.",

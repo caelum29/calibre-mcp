@@ -40,8 +40,9 @@ pnpm eval --compare a.json b.json  # paired stats of two existing reports (no ev
 `--gate` checks, per `thresholds.json`: per-query Hit@1 non-regression per mode, negatives
 flagged (6/6 hybrid+vector), figure-caption query count + hybrid floors, figure-negative query
 count (its flagged rate stays informational until the figures floor is calibrated), the
-heading front-matter block, per-query maxScore drift (±0.01 — an unmeasured cross-platform
-allowance, tracked in #364), and the **top-10 list diff** (#358, `thresholds.listDiff`).
+heading front-matter block, per-query maxScore drift (±0.01, a cross-platform allowance; the
+Linux nightly measured max |Δ| 0.0067 over 10 runs, #364), and the **top-10 list diff** (#358,
+`thresholds.listDiff`).
 
 The list diff requires every baseline row (every kind and mode, negatives included) to
 reproduce its top-10 `retrieved` list exactly; a missing row counts as changed. It replaced the
@@ -140,10 +141,13 @@ records (`HarnessOptions.timing`), so
 - `thresholds.json` — every eval gate rule, each declared and committed BEFORE the run that
   measures it (D-012 protocol; Phase B record = issue #85 verdict comment). `baselineReport`
   names the frozen report the gates compare against; `fusionOnly.baselineReport` names the
-  OFF pass's own.
+  OFF pass's own; `linux` is the Linux nightly rule (#364).
 - `gate.ts` — the mechanical PASS/FAIL behind `pnpm eval --gate`: per-query Hit@1
   non-regression, figure-caption floors, front-matter block, maxScore drift; plus
-  `evaluateFusionOnlyGate` for the OFF pass and `evaluateListDiff` for every tier.
+  `evaluateFusionOnlyGate` for the OFF pass and `evaluateListDiff` for every tier. Each takes
+  the platform-drift entries / list-diff mode of the rule `gateRuleFor` (`gate-guards.ts`) picks.
+- `platform-replay.test.ts` — replays the committed Linux nightly reports through both gate
+  rules (#364).
 - `stats.ts` — paired permutation test, bootstrap CI, sign test, MDE; `--compare`.
 - `list-diff-allow.json` — intended top-10 list changes (empty while the baselines hold).
 - `golden-set.ts` + `golden-set.test.ts` — the golden-set hash and its per-tier check (#392).
@@ -180,18 +184,43 @@ ids in `src/semantic/` no longer match the key text. The job logs and summarizes
 `model cache hit: true|false` (the first run, and any run after a key change, is a miss and
 downloads ~0.7 GB). The report JSON/md go to the `eval-reports` artifact (30 days).
 
+The job logs the runner's CPU model and CPU count (`lscpu`) to the log and the job summary
+before the gate, so the two Linux outcomes below can be checked against the CPU they ran on.
+
+**Linux gate rule (#364, `thresholds.linux`).** `--gate` picks its rule from the platform it
+runs on: `linux` gets the declared `linux` block, every other platform the exact rule. The
+macOS-frozen baselines don't reproduce on the Linux runners: the embedding and rerank runtime
+(ONNX Runtime) drifts numerically between runner CPUs, so 93–108 of the 204 top-10 lists change
+per run [17-book fixture, nightlies 2026-11-06 → 11-15], with ties already broken by id. Linux
+also alternates between two outcomes (A: rerank-ON id-09 + xl-05 lose Hit@1, 7 of 10 runs; B:
+id-09 ON + fusion-only hybrid id-05, 3 of 10), so no single Linux report could serve as a
+baseline. Under the Linux rule:
+
+- the top-10 list diff runs and prints its count, but never fails (a reasonless allow entry
+  still does);
+- per-query Hit@1 non-regression skips the declared `platformDrift` entries
+  `{tier, mode, id, reason, seen}`; a skipped break prints as info. An entry whose query the
+  baseline does not solve at Hit@1 is stale and fails, like a stale allow entry;
+- everything else is gated as on macOS: negatives flagged, figure floors, heading front
+  matter, maxScore ±0.01 and the golden-set hash.
+
+`platform-replay.test.ts` replays one nightly report of each outcome
+(`reports/*-linux-nightly*.json`) through both rules inside `pnpm test`: the Linux rule passes,
+the exact rule fails. It also fails when a `platformDrift` entry goes stale against the current
+baselines.
+
 Failure semantics:
 
-- **Now: report-only.** The frozen baselines (`thresholds.json`) were measured on macOS, and no
-  Linux baseline or cross-platform ε exists yet, so a failing gate on Linux may be platform
-  drift (ORT, transformers.js), not a regression. The gate step runs with `continue-on-error`:
-  the run stays green, and the outcome is in an annotation and the job summary. The workflow is
-  not a required check, uses no secrets and a read-only token.
-- **Later: blocking.** Once a Linux report is frozen as a baseline and the cross-platform
-  tolerance is measured, drop `continue-on-error` so a failing gate turns the nightly red (and
-  consider making it required for the release workflow). The tier-0 hash gate in `pnpm test`
-  already blocks every PR (it stores ranks, not float scores, so it is platform-safe).
-- Nothing here re-freezes a baseline; a Linux baseline follows the usual rule-first re-freeze.
+- **Now: report-only.** The gate step runs with `continue-on-error`: the run stays green, and
+  the outcome is in an annotation and the job summary. The workflow is not a required check,
+  uses no secrets and a read-only token.
+- **Later: blocking.** After 7 consecutive nightly runs pass under the Linux rule, a follow-up
+  PR drops `continue-on-error` so a failing gate turns the nightly red. The tier-0 hash gate in
+  `pnpm test` already blocks every PR (it stores ranks, not float scores, so it is
+  platform-safe and has no Linux rule).
+- After re-freezing the rerank-on or fusion-only baseline, re-check the `linux` platform-drift
+  entries against the next nightly logs: drop entries the new baseline no longer solves, add a
+  query that now breaks on Linux only with its reason and how often it was seen.
 
 ### Rules
 
