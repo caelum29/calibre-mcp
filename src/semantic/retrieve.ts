@@ -21,6 +21,13 @@ const VECTOR_RRF_WEIGHT = 1.0;
 const KEYWORD_RRF_WEIGHT = 1.0;
 const RRF_WEIGHTS: readonly number[] = [VECTOR_RRF_WEIGHT, KEYWORD_RRF_WEIGHT];
 
+// Library rerank candidates (#604, Fix A): fusion keys books, so a book in both halves would only
+// show the cross-encoder its vector chunk. Its keyword chunk joins as a second candidate, but only
+// for the keyword half's top books: a second candidate for every book would, under the 30-pair
+// cap, halve the books the reranker sees (Artem, grilling 2026-11-16).
+const CANDIDATES_PER_BOOK = 2;
+const KEYWORD_CANDIDATE_BOOKS = 5;
+
 // Figures cosine floor (D-018/#83): the chunk-calibrated config.semanticFloor (0.78) does NOT
 // transfer to short captions — cosine scales are corpus-dependent (D-012). Disabled (null)
 // until the #85 two-tier calibration (fixture tier: flags 100% of figure-negatives, zeroes no
@@ -103,7 +110,10 @@ export interface RetrievalOptions {
 /** One ranked hit plus the scores that produced its position. */
 export interface Ranked<H> {
   hit: H;
-  /** Cosine, when the vector half contributed this hit (absent for keyword-only). */
+  /**
+   * Cosine, when the vector half contributed this item (absent for keyword-only). Library: the
+   * book's vector-best chunk, even when the rerank kept its keyword chunk as the hit (#604).
+   */
   cosine?: number;
   /** Cross-encoder sigmoid score, set when the rerank stage reordered this hit. */
   rerankScore?: number;
@@ -151,8 +161,8 @@ export async function retrieve(
   if (req.scope === "library") {
     const rr = await dropGone(
       await applyRerank(await rankBooks(req, deps, weights), req, deps, {
-        body: (r) => r.hit.body,
-        tie: (r) => [r.hit.bookId, r.hit.bookId],
+        body: (h) => h.body,
+        tie: (h) => [h.bookId, h.bookId],
       }),
       req.gone,
     );
@@ -162,8 +172,8 @@ export async function retrieve(
   }
   if (req.scope === "book") {
     const rr = await applyRerank(await rankPassages(req, deps, weights), req, deps, {
-      body: (r) => r.hit.body,
-      tie: (r) => [0, r.hit.chunkId], // one book: passages tie-break on chunk id alone
+      body: (h) => h.body,
+      tie: (h) => [0, h.chunkId], // one book: passages tie-break on chunk id alone
     });
     // Front-matter demotion (issue #18): TOC/praise/foreword chunks are keyword-dense but
     // semantically empty, so they win exactly the definitional queries where body content is
@@ -180,8 +190,8 @@ export async function retrieve(
   }
   const rr = await dropGone(
     await applyRerank(await rankFigures(req, deps, weights), req, deps, {
-      body: (r) => r.hit.caption,
-      tie: (r) => [r.hit.bookId, r.hit.figureId],
+      body: (h) => h.caption,
+      tie: (h) => [h.bookId, h.figureId],
     }),
     req.gone,
   );
@@ -258,7 +268,7 @@ async function rankBooks(
   req: LibraryRequest,
   deps: RetrievalDeps,
   w: readonly number[],
-): Promise<Ranked<LibraryHit>[]> {
+): Promise<Pooled<LibraryHit>[]> {
   const { libraryId, allow } = req;
   if (req.mode === "keyword") {
     return deps.index.searchLibraryFts(libraryId, req.query, req.topK, allow).map((hit) => ({ hit }));
@@ -271,7 +281,23 @@ async function rankBooks(
   // hybrid: fuse book rankings from both halves by bookId (vector first — weights order).
   const vec = deps.index.searchLibrary(libraryId, q, POOL, allow);
   const kw = deps.index.searchLibraryFts(libraryId, req.query, POOL, allow);
-  return fuse({ vec, kw, idOf: (h) => h.bookId, tieOf: (h) => [h.bookId, h.bookId] }, k, w);
+  const fused = fuse({ vec, kw, idOf: (h) => h.bookId, tieOf: (h) => [h.bookId, h.bookId] }, k, w);
+  return rerankActive(req, deps) ? withKeywordCandidates(fused, kw) : fused;
+}
+
+/**
+ * Give a fused book its keyword-half chunk as a second rerank candidate (#604) when the book is
+ * in both halves, the two halves picked different chunks, and the book is in the keyword half's
+ * top KEYWORD_CANDIDATE_BOOKS. The vector chunk stays first, so it keeps the book on equal scores.
+ */
+function withKeywordCandidates(fused: Ranked<LibraryHit>[], kw: LibraryHit[]): Pooled<LibraryHit>[] {
+  const kwTop = new Map(kw.slice(0, KEYWORD_CANDIDATE_BOOKS).map((h) => [h.bookId, h]));
+  return fused.map((r) => {
+    const k = kwTop.get(r.hit.bookId);
+    // a cosine marks the vector half's hit; a keyword-only book already shows its keyword chunk
+    if (r.cosine === undefined || !k || k.chunkId === r.hit.chunkId) return r;
+    return { ...r, more: [k].slice(0, CANDIDATES_PER_BOOK - 1) };
+  });
 }
 
 /** Rank passages within one book per mode, mirroring rankBooks but fusing on chunkId. */
@@ -310,6 +336,9 @@ async function rankFigures(
   return fuse({ vec, kw, idOf: (h) => h.figureId, tieOf: (h) => [h.bookId, h.figureId] }, k, w);
 }
 
+/** A fused item on its way into the rerank stage: `more` holds its extra candidates (library, #604). */
+type Pooled<H> = Ranked<H> & { more?: H[] };
+
 /** The rerank stage's outcome: topK results (reordered when it ran) + honesty fields. */
 interface RerankOutcome<T> {
   hits: T[];
@@ -319,21 +348,24 @@ interface RerankOutcome<T> {
 }
 
 /**
- * Cross-encoder rerank (D-011): score (query, chunk body) pairs over the top-RERANK_POOL fused
- * candidates and emit them by reranker score; fused candidates past the cap keep their fused
- * order after the reranked head (no rerank score claimed — the latency guard at high topK).
+ * Cross-encoder rerank (D-011): score (query, candidate body) pairs for a prefix of the fused
+ * order and emit those items by their best candidate's score; items past the prefix keep their
+ * fused order after the reranked head (no rerank score claimed — the latency guard at high topK).
+ * The prefix admits items in fused order while their candidates fit in RERANK_POOL pairs; the first
+ * item that does not fit ends it, so the scored items are always a prefix of the fused order. An
+ * item with several candidates (library, #604) keeps the best-scoring one, the first on a tie.
  * Always-on for hybrid/vector when a reranker is wired (CALIBRE_MCP_RERANK=off opts out);
  * keyword mode skips it. Degrades (never fails): errors fall back to the fused order + a note.
  */
-async function applyRerank<T extends { rerankScore?: number }>(
-  pool: T[],
+async function applyRerank<H>(
+  pool: Pooled<H>[],
   req: BaseRequest,
   deps: RetrievalDeps,
   // body: the text the cross-encoder scores; tie: (book id, unit id), the ascending order for
   // equal rerank scores (#392) instead of the fused order
-  keys: { body: (r: T) => string; tie: (r: T) => readonly [number, number] },
-): Promise<RerankOutcome<T>> {
-  const fused = () => pool.slice(0, req.topK);
+  keys: { body: (h: H) => string; tie: (h: H) => readonly [number, number] },
+): Promise<RerankOutcome<Ranked<H>>> {
+  const fused = () => pool.slice(0, req.topK).map(plain);
   // Absent reranker = not wired in this deployment/test — silently keep the fused order.
   if (req.mode === "keyword" || pool.length === 0 || !deps.reranker) {
     return { hits: fused(), reranked: false };
@@ -343,26 +375,55 @@ async function applyRerank<T extends { rerankScore?: number }>(
     return { hits: fused(), reranked: false, note: RERANK_DISABLED_NOTE };
   }
   try {
-    const head = pool.slice(0, RERANK_POOL);
+    const head = admit(pool);
+    const passages = head.flatMap((r) => candidatesOf(r).map(keys.body));
     const t0 = performance.now();
-    const scores = await deps.reranker.rerank(
-      req.query,
-      head.map((r) => keys.body(r)),
-    );
-    deps.log.debug("rerank stage", { pairs: head.length, ms: Math.round(performance.now() - t0) });
-    const scored = head.map((r, i) => ({ ...r, rerankScore: scores[i] ?? 0 }));
+    const scores = await deps.reranker.rerank(req.query, passages);
+    deps.log.debug("rerank stage", { pairs: passages.length, ms: Math.round(performance.now() - t0) });
+    let at = 0;
+    const scored = head.map((r) => {
+      const cands = candidatesOf(r);
+      let best = 0;
+      for (let i = 1; i < cands.length; i++) if ((scores[at + i] ?? 0) > (scores[at + best] ?? 0)) best = i;
+      const rerankScore = scores[at + best] ?? 0;
+      at += cands.length;
+      return { ...plain(r), hit: cands[best]!, rerankScore };
+    });
     scored.sort((a, b) => {
-      const [ab, au] = keys.tie(a);
-      const [bb, bu] = keys.tie(b);
+      const [ab, au] = keys.tie(a.hit);
+      const [bb, bu] = keys.tie(b.hit);
       return b.rerankScore - a.rerankScore || ab - bb || au - bu;
     });
-    const hits = [...scored, ...pool.slice(RERANK_POOL)].slice(0, req.topK);
+    const hits = [...scored, ...pool.slice(head.length).map(plain)].slice(0, req.topK);
     return { hits, reranked: true, maxRerank: scored[0]?.rerankScore };
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
     deps.log.warn("rerank skipped", { reason });
     return { hits: fused(), reranked: false, note: reason === "RERANKER_BUSY" ? RERANK_BUSY_NOTE : RERANK_NOTE };
   }
+}
+
+/** An item's rerank candidates: its hit first, then any extra candidates. */
+function candidatesOf<H>(r: Pooled<H>): H[] {
+  return [r.hit, ...(r.more ?? [])];
+}
+
+/** The longest prefix of the fused order whose candidates fit in RERANK_POOL pairs (ADR-0011 latency cap). */
+function admit<H>(pool: Pooled<H>[]): Pooled<H>[] {
+  const head: Pooled<H>[] = [];
+  let pairs = 0;
+  for (const r of pool) {
+    const n = candidatesOf(r).length;
+    if (pairs + n > RERANK_POOL) break; // no skipping ahead: the scored items stay a prefix
+    head.push(r);
+    pairs += n;
+  }
+  return head;
+}
+
+/** The item without its extra candidates, so they never reach the hits retrieve() returns. */
+function plain<H>({ more: _more, ...r }: Pooled<H>): Ranked<H> {
+  return r;
 }
 
 /** Drop hits whose book is gone (#579); maxRerank then comes from the hits that are left. */

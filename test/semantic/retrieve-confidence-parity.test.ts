@@ -22,6 +22,7 @@ function deps(cosines: number[], rerank: number | undefined | "throws"): Retriev
     searchLibrary: () =>
       cosines.map((score, i) => ({
         bookId: i + 1,
+        chunkId: i + 1,
         title: "T",
         authors: ["A"],
         score,

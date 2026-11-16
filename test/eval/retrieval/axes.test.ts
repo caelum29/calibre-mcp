@@ -185,7 +185,10 @@ describe("harness row fields (hash embedder, fake reranker)", () => {
     expect(r.perQuery.filter((x) => x.scope !== "book").every((x) => x.spanHit === undefined)).toBe(true);
     const twoPlus = r.perQuery.filter((x) => x.reranked === true && x.retrieved.length >= 2);
     expect(twoPlus.length).toBeGreaterThan(0);
-    expect(twoPlus.every((x) => x.top2Rerank === 0.3333)).toBe(true);
+    // a library book with two rerank candidates (#604) takes two positional scores (1/2, 1/3),
+    // so the next book gets 1/4; one-candidate scopes keep 1/3
+    expect([...new Set(twoPlus.map((x) => x.top2Rerank))].sort()).toEqual([0.25, 0.3333]);
+    expect(twoPlus.filter((x) => x.scope !== "library").every((x) => x.top2Rerank === 0.3333)).toBe(true);
     expect(
       r.perQuery.filter((x) => x.metrics && x.retrieved.length > 0).every((x) => typeof x.lowConfidence === "boolean"),
     ).toBe(true);
