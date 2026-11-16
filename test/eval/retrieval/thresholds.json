@@ -112,6 +112,11 @@
     },
     "maxDurationMs": 30000
   },
+  "capabilityKinds": {
+    "$comment": "#359 hard fixture kinds, declared + committed BEFORE any run that measures them (D-012). They measure headroom (capability), not regressions: in every tier (rerank on = nonRegression above, fusion-only, hash) a Hit@1 drop of a query of these kinds is LISTED as report-only and never fails the gate, the way fusionOnly.reportOnlyKinds treats cross-lingual. The top-10 list diff and the golden-set hash still cover their rows, so any change to them is still seen. adjacent-negative is scored like a negative (flagged = zero results or lowConfidence) but stays out of nonRegression.negativesFlagged (kind `negative` only) and out of rerankFloor.negativeSeparation; its flagged rate and the confuser-pair confuser@1 rate are report-only axes (reportOnlyAxes.adjacentNegative / confuserAt1). PROMOTION: a later rule commit removes a kind from `kinds`; from then on a solved query of that kind may not break (no re-freeze needed: the baselines already hold its rows). HEADROOM (checked once, before the freeze, from the two re-freeze reports, rerank on and off x three modes = six configurations): each kind has >= 15% failing queries in at least one configuration (adjacent-negative: unflagged); a kind that misses it gets harder queries once, before the freeze, and the PR lists every replaced query. Keyword-mode Hit@1 on no-overlap-paraphrase must be 0 in both reports (lexical-leak guard in pnpm test). Decided: one re-baseline of the existing three tiers, no separate fixture tier (Artem, grilling 2026-11-16).",
+    "kinds": ["confuser-pair", "no-overlap-paraphrase", "adjacent-negative", "raw-title"],
+    "headroom": { "minFailingShare": 0.15, "configurations": 6 }
+  },
   "$reportOnlyAxesComment": "#363, declared + committed BEFORE any measuring run (D-012). Every axis below is REPORT-ONLY (`gate: false`): every `pnpm eval` run prints it and the md report lists it, no gate reads it. Each states the trend it is watched for; promoting one to a gate is a new rule commit before the run that measures it. The new per-row fields (durationMs, snippetHasMarker, top2Rerank, spanHit, lowConfidence) are additive and optional, so the frozen baselines stay valid without them. durationMs is wall-clock, recorded only by the `pnpm eval` CLI (never in `pnpm test`), and never read by the hash tier, the list diff or any baseline comparison.",
   "reportOnlyAxes": {
     "snippetMarker": {
@@ -133,6 +138,14 @@
     "ablation": {
       "gate": false,
       "trend": "`--gate` prints overall Hit@1 / nDCG@10 per mode x rerank on/off; a fusion change shows in the OFF column, a reranker change in the ON-OFF gap. Chunk-size variants are not wired yet."
+    },
+    "confuserAt1": {
+      "gate": false,
+      "trend": "lower is better (#359): share of confuser-pair queries whose rank 1 is one of the query's listed confusers (a near-topic book that shares vocabulary but does not answer)"
+    },
+    "adjacentNegative": {
+      "gate": false,
+      "trend": "higher is better, target 1.0 (#359): share of adjacent-negative queries (on-domain questions the corpus cannot answer) flagged by zero results or lowConfidence"
     },
     "highlightInvariant": {
       "gate": false,

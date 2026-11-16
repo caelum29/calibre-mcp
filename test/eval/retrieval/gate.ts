@@ -75,7 +75,11 @@ export interface Thresholds {
    * #359 capability kinds: hard kinds that measure headroom. Their Hit@1 drops are listed as
    * report-only in every tier; promoting a kind to a regression guard = removing it here.
    */
-  capabilityKinds?: { kinds: QueryKind[] };
+  capabilityKinds?: {
+    kinds: QueryKind[];
+    /** Pre-freeze headroom criterion: per kind, this failing share in at least one configuration. */
+    headroom?: { minFailingShare: number; configurations: number };
+  };
   /** #363 report-only axes: each states a trend; `gate: false` — printed, never read by a gate. */
   reportOnlyAxes?: Record<string, { gate: false; trend: string; measured?: boolean }>;
   /** Tier-0 hash-embedder gate inside `pnpm test` (#357): per-query rank baseline, Hit@1 rule. */
