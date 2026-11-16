@@ -1,6 +1,21 @@
 // Unit tests for the blind judged-eval helpers: blinding must hide mode/rank yet unblind exactly.
 import { describe, expect, it } from "vitest";
-import { blindRecord, cohenKappa, gradesFor, metrics, toRawRun, type RawRecord } from "../../../scripts/judged-lib.js";
+import {
+  blindRecord,
+  blindTextLengths,
+  cohenKappa,
+  coverageSplit,
+  gradesFor,
+  isDispute,
+  metrics,
+  qidOf,
+  resolveGrades,
+  rubricViolations,
+  toRawRun,
+  type FinalGrade,
+  type Grade,
+  type RawRecord,
+} from "../../../scripts/judged-lib.js";
 
 const query = {
   id: "para-01",
@@ -101,5 +116,120 @@ describe("toRawRun", () => {
   it("should_read_book_scope_passages_with_the_query_book_id", () => {
     const run = toRawRun({ passages: [{ charStart: 5, body: "p" }], lowConfidence: false }, false, "", { bookId: 7 });
     expect(run.hits[0]).toMatchObject({ bookId: 7, at: 5, text: "p" });
+  });
+});
+
+// frozen rubric (#602): -1 = can't judge, coverage E/S/L on positive grades
+const g = (hid: string, grade: Grade["grade"], coverage?: Grade["coverage"], reason?: string): Grade => ({
+  qid: qidOf(hid),
+  hid,
+  grade,
+  ...(coverage ? { coverage } : {}),
+  ...(reason ? { reason } : {}),
+});
+const byHid = (...gs: Grade[]) => new Map(gs.map((x) => [x.hid, x]));
+
+describe("isDispute", () => {
+  it("should_dispute_a_minus_one_against_a_graded_item", () => {
+    expect(isDispute(g("q#1", -1), g("q#1", 0))).toBe(true);
+  });
+
+  it("should_dispute_the_same_positive_grade_with_different_coverage", () => {
+    expect(isDispute(g("q#1", 2, "E"), g("q#1", 2, "L"))).toBe(true);
+  });
+
+  it("should_not_dispute_matching_zero_grades", () => {
+    expect(isDispute(g("q#1", 0), g("q#1", 0))).toBe(false);
+  });
+});
+
+describe("resolveGrades", () => {
+  it("should_leave_minus_one_pairs_out_of_kappa", () => {
+    const r = resolveGrades(
+      ["q#1", "q#2"],
+      byHid(g("q#1", -1), g("q#2", 2, "E")),
+      byHid(g("q#1", 1, "S"), g("q#2", 2, "E")),
+      new Map(),
+    );
+    expect(r.kappaPairs).toEqual([[2, 2]]);
+  });
+
+  it("should_count_a_shared_minus_one_as_agreement_in_raw_agreement", () => {
+    const r = resolveGrades(["q#1"], byHid(g("q#1", -1)), byHid(g("q#1", -1)), new Map());
+    expect([r.gradedPairs, r.agreedPairs]).toEqual([1, 1]);
+  });
+
+  it("should_take_the_adjudicated_grade_and_coverage_for_a_dispute", () => {
+    const r = resolveGrades(["q#1"], byHid(g("q#1", 2, "E")), byHid(g("q#1", 2, "S")), byHid(g("q#1", 2, "S")));
+    expect(r.final.get("q#1")).toEqual({ grade: 2, coverage: "S" });
+  });
+
+  it("should_count_an_unadjudicated_dispute_as_unresolved", () => {
+    const r = resolveGrades(["q#1"], byHid(g("q#1", -1)), byHid(g("q#1", 1, "L")), new Map());
+    expect(r.unresolved).toBe(1);
+  });
+});
+
+describe("rubricViolations", () => {
+  it("should_flag_minus_one_without_a_reason", () => {
+    expect(rubricViolations([g("q#1", -1)])).toEqual([{ hid: "q#1", problem: "-1 without a reason" }]);
+  });
+
+  it("should_flag_a_positive_grade_without_coverage", () => {
+    expect(rubricViolations([g("q#1", 1)])).toEqual([{ hid: "q#1", problem: "grade 1 without coverage" }]);
+  });
+
+  it("should_accept_a_minus_one_with_a_reason", () => {
+    expect(rubricViolations([g("q#1", -1, undefined, "table fragment")])).toEqual([]);
+  });
+});
+
+describe("metrics with -1", () => {
+  it("should_never_count_minus_one_as_a_hit", () => {
+    expect(metrics([[-1, -1, 1]]).hit5).toBe(0);
+  });
+});
+
+describe("coverageSplit", () => {
+  it("should_split_positive_grades_by_coverage_and_skip_zero_and_minus_one", () => {
+    const final = new Map<string, FinalGrade>([
+      ["q#1", { grade: 2, coverage: "E" }],
+      ["q#2", { grade: 1, coverage: "L" }],
+      ["q#3", { grade: 1 }],
+      ["q#4", { grade: 0 }],
+      ["q#5", { grade: -1 }],
+    ]);
+    expect(coverageSplit(final.keys(), final)).toEqual({
+      "2": { E: 1, S: 0, L: 0, none: 0 },
+      "1": { E: 0, S: 0, L: 1, none: 1 },
+    });
+  });
+});
+
+describe("baseline import fields", () => {
+  it("should_keep_the_passage_end_offset", () => {
+    const run = toRawRun({ results: [{ bookId: 1, charStart: 5, charEnd: 90, snippet: "s" }] }, false, "", {});
+    expect(run.hits[0]?.charEnd).toBe(90);
+  });
+
+  it("should_use_the_marker_offset_as_the_end_for_figures", () => {
+    const run = toRawRun({ figures: [{ bookId: 1, charOffset: 42, caption: "c" }] }, false, "", {});
+    expect(run.hits[0]?.charEnd).toBe(42);
+  });
+
+  it("should_record_the_index_version", () => {
+    expect(toRawRun({ results: [], indexVersion: 4 }, false, "", {}).indexVersion).toBe(4);
+  });
+
+  it("should_keep_end_offsets_out_of_blind_items", () => {
+    const withEnd: RawRecord = { query, runs: { hybrid: { isError: false, hits: [{ ...hit(1, 0), charEnd: 9 }] } } };
+    expect(Object.keys(blindRecord(withEnd).blind.items[0]!).sort()).toEqual(["hid", "text", "title"]);
+  });
+});
+
+describe("blindTextLengths", () => {
+  it("should_map_each_blind_item_to_its_text_length", () => {
+    const lengths = blindTextLengths([rec]);
+    expect([...lengths.values()].sort()).toEqual([2, 2, 2, 2]);
   });
 });
