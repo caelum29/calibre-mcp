@@ -1,0 +1,39 @@
+test/eval/judged/fixtures/blind-run/judgements/B-batch-01.json
+  s_1213dfa361df4a::t_0752709e49a09a 1-117
+test/eval/judged/fixtures/blind-run/judgements/A-batch-01.json
+  s_1213dfa361df4a::t_0752709e49a09a 1-117
+scripts/judged-store.ts
+  s_1213dfa361df4a::t_3f53f0186084b4 1-140
+test/eval/judged/fixtures/blind-run/blind/batch-01.json
+  s_1213dfa361df4a::t_0752709e49a09a 1-113
+test/eval/judged/judged-store.test.ts
+  s_1213dfa361df4a::t_274e7f5f68b733 3
+  s_1213dfa361df4a::t_b96e6a04edeef1 218,222-223,228,235-237,290-291,295,306-307,323
+  s_1213dfa361df4a::t_371990f1f33174 1-2,4-217,219-221,224-227,229-234,238-289,292-294,296-305,308-322,324-349
+  s_1213dfa361df4a::t_68c44e9502a387 350-361
+test/eval/judged/fixtures/blind-run/raw-hits.jsonl
+  s_1213dfa361df4a::t_0752709e49a09a 1-3
+test/eval/judged/fixtures/blind-run/queries.json
+  s_1213dfa361df4a::t_0752709e49a09a 1-66
+test/eval/judged/fixtures/blind-run/blind-key.json
+  s_1213dfa361df4a::t_0752709e49a09a 1
+  s_1213dfa361df4a::t_ef980f49406900 2-20
+test/eval/judged/fixtures/blind-run/judgements/adjudicated-batch-01.json
+  s_1213dfa361df4a::t_0752709e49a09a 1-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6c285a924af2ec4a8622276cfd7105009dae594e",
+  "prompts": {},
+  "sessions": {
+    "s_1213dfa361df4a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b75eeccc-59bf-408d-a50b-bb10c6f3aca8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
