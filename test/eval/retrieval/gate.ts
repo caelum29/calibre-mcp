@@ -61,6 +61,16 @@ export interface Thresholds {
   goldenSet?: {
     tiers: ListDiffTier[];
   };
+  /**
+   * Linux nightly rule (#364): the macOS-frozen baselines vs a runner whose ONNX Runtime kernels
+   * drift numerically. Read only on Linux (`gateRuleFor`); macOS keeps the exact rule.
+   */
+  linux?: {
+    /** "report": the top-k list diff prints its count but never fails. */
+    listDiff: "report";
+    /** Declared Hit@1 breaks that are CPU drift, skipped by exactly (tier, mode, id). */
+    platformDrift: PlatformDriftEntry[];
+  };
   /** #363 report-only axes: each states a trend; `gate: false` — printed, never read by a gate. */
   reportOnlyAxes?: Record<string, { gate: false; trend: string; measured?: boolean }>;
   /** Tier-0 hash-embedder gate inside `pnpm test` (#357): per-query rank baseline, Hit@1 rule. */
@@ -71,6 +81,27 @@ export interface Thresholds {
     /** Vitest timeout for one full hash run — the "< 30 s" budget. */
     maxDurationMs: number;
   };
+}
+
+/** Tiers a platform-drift entry can exempt: the two model passes (the hash tier is platform-safe). */
+export const PLATFORM_DRIFT_TIERS = ["on", "fusionOnly"] as const;
+
+/** One declared platform-drift exemption (#364): a Linux Hit@1 break that is CPU drift, not a regression. */
+export interface PlatformDriftEntry {
+  tier: (typeof PLATFORM_DRIFT_TIERS)[number];
+  mode: Mode;
+  id: string;
+  reason: string;
+  /** How often the break showed in the nightly logs it was drafted from. */
+  seen: string;
+}
+
+/** The comparison rule one `--gate` run applies, picked from the platform (`gateRuleFor`). */
+export interface GateRule {
+  name: "exact" | "linux";
+  /** False on Linux: a changed top-k list is an info line, not a failure. */
+  listDiffBlocking: boolean;
+  platformDrift: PlatformDriftEntry[];
 }
 
 export interface GateCheck {
@@ -110,14 +141,73 @@ function brokenHit1(current: EvalReport, baseline: EvalReport, mode: Mode): Brok
     .map((base) => ({ base, cur: curById.get(base.id), id: base.id }));
 }
 
+/** Split broken rows into the gated ones and those a platform-drift entry of `tier` exempts. */
+function splitDrift(
+  broken: BrokenRow[],
+  mode: Mode,
+  entries: PlatformDriftEntry[],
+): { gated: BrokenRow[]; skipped: BrokenRow[] } {
+  const exempt = new Set(entries.filter((e) => e.mode === mode).map((e) => e.id));
+  return { gated: broken.filter((b) => !exempt.has(b.id)), skipped: broken.filter((b) => exempt.has(b.id)) };
+}
+
+/** Info line listing the platform-drift skips of one mode; only modes with entries get one. */
+function driftSkipCheck(prefix: string, mode: Mode, entries: PlatformDriftEntry[], skipped: BrokenRow[]): GateCheck[] {
+  if (!entries.some((e) => e.mode === mode)) return [];
+  return [
+    {
+      name: `${prefix} ${mode}: platform drift (skipped)`,
+      active: false,
+      pass: true,
+      detail: `${skipped.length} broken${skipped.length ? `: ${skipped.map((b) => b.id).join(", ")}` : ""}`,
+    },
+  ];
+}
+
+/**
+ * Stale platform-drift entries fail (#364): an entry for a query the baseline does not solve at
+ * Hit@1 exempts nothing, and would silently exempt a later regression once a re-freeze solves it.
+ */
+function driftEntriesCheck(
+  tier: PlatformDriftEntry["tier"],
+  entries: PlatformDriftEntry[],
+  baseline: EvalReport,
+): GateCheck[] {
+  if (entries.length === 0) return [];
+  const solved = new Set(baseline.perQuery.filter((r) => r.metrics?.hit1 === 1).map((r) => rowKey(r.mode, r.id)));
+  const stale = entries.map((e) => rowKey(e.mode, e.id)).filter((k) => !solved.has(k));
+  return [
+    {
+      name: `platform-drift entries (${tier})`,
+      active: true,
+      pass: stale.length === 0,
+      detail: stale.length
+        ? `${entries.length} entries, ${stale.length} stale (the baseline does not solve them at Hit@1 — delete them): ${stale.join(", ")}`
+        : `${entries.length} entries, all solved by the baseline`,
+    },
+  ];
+}
+
+const DRIFT_TAG = " [platform drift]";
+
 function dropLine(mode: Mode, { base, cur }: BrokenRow, tag = ""): string {
   const now = cur ? `Hit@1=${cur.metrics?.hit1 ?? "?"} top3=[${cur.retrieved.slice(0, 3).join(", ")}]` : "MISSING";
   return `${rowKey(mode, base.id)} (${base.kind})${tag}: baseline Hit@1=1 → now ${now}`;
 }
 
-export function evaluateGate(current: EvalReport, baseline: EvalReport, t: Thresholds): GateResult {
+/**
+ * The ON-pass gate. `platformDrift` (Linux rule, #364) exempts declared Hit@1 breaks of the `on`
+ * tier; empty (the default, and the hash tier) keeps the exact rule.
+ */
+export function evaluateGate(
+  current: EvalReport,
+  baseline: EvalReport,
+  t: Thresholds,
+  platformDrift: PlatformDriftEntry[] = [],
+): GateResult {
   const checks: GateCheck[] = [];
   const drops: string[] = [];
+  const drift = platformDrift.filter((e) => e.tier === "on");
 
   // 1. Non-regression vs baseline: per-query Hit@1, text kinds only (figure kinds have no
   //    baseline rows). A query missing from the current run counts as broken — a silently
@@ -125,14 +215,16 @@ export function evaluateGate(current: EvalReport, baseline: EvalReport, t: Thres
   for (const mode of MODES) {
     const cfg = t.nonRegression[mode];
     if (!cfg) continue;
-    const broken = brokenHit1(current, baseline, mode);
+    const { gated: broken, skipped } = splitDrift(brokenHit1(current, baseline, mode), mode, drift);
     for (const b of broken) drops.push(dropLine(mode, b));
+    for (const b of skipped) drops.push(dropLine(mode, b, DRIFT_TAG));
     checks.push({
       name: `non-regression ${mode}: broken Hit@1 queries`,
       active: true,
       pass: broken.length <= cfg.maxBrokenHit1Queries,
       detail: `${broken.length} broken (allowed ${cfg.maxBrokenHit1Queries})${broken.length ? `: ${broken.map((b) => b.id).join(", ")}` : ""}`,
     });
+    checks.push(...driftSkipCheck("non-regression", mode, drift, skipped));
     if (cfg.negativesFlagged !== undefined) {
       const negs = rowsOf(current, mode).filter((r) => r.kind === "negative");
       const flagged = negs.filter((r) => r.flagged === true).length;
@@ -170,21 +262,25 @@ export function evaluateGate(current: EvalReport, baseline: EvalReport, t: Thres
   }
 
   if (t.scoreDrift) checks.push(...scoreDriftChecks(current, baseline, t.scoreDrift));
+  checks.push(...driftEntriesCheck("on", drift, baseline));
 
   return gateResult(checks, drops);
 }
 
 /**
  * Fusion-only tier (#356): per-query Hit@1 non-regression of a --rerank off run against the
- * frozen OFF baseline. Report-only kinds (cross-lingual) are listed, never failed.
+ * frozen OFF baseline. Report-only kinds (cross-lingual) are listed, never failed;
+ * `platformDrift` entries of the `fusionOnly` tier are skipped (Linux rule, #364).
  */
 export function evaluateFusionOnlyGate(
   current: EvalReport,
   baseline: EvalReport,
   cfg: NonNullable<Thresholds["fusionOnly"]>,
+  platformDrift: PlatformDriftEntry[] = [],
 ): GateResult {
   const checks: GateCheck[] = [];
   const drops: string[] = [];
+  const drift = platformDrift.filter((e) => e.tier === "fusionOnly");
   // an ON run here would re-sort away the fusion order this tier exists to see
   const isOff = current.meta.rerank.startsWith("off") && current.meta.rerankedRows === 0;
   checks.push({
@@ -198,16 +294,18 @@ export function evaluateFusionOnlyGate(
   for (const mode of MODES) {
     const limit = cfg.nonRegression[mode];
     if (!limit) continue;
-    const broken = brokenHit1(current, baseline, mode);
+    const { gated: broken, skipped } = splitDrift(brokenHit1(current, baseline, mode), mode, drift);
     const gated = broken.filter((b) => !reportOnly.has(b.base.kind));
     const noted = broken.filter((b) => reportOnly.has(b.base.kind));
     for (const b of broken) drops.push(dropLine(mode, b, reportOnly.has(b.base.kind) ? " [report-only]" : ""));
+    for (const b of skipped) drops.push(dropLine(mode, b, DRIFT_TAG));
     checks.push({
       name: `fusion-only ${mode}: broken Hit@1 queries`,
       active: true,
       pass: gated.length <= limit.maxBrokenHit1Queries,
       detail: `${gated.length} broken (allowed ${limit.maxBrokenHit1Queries})${ids(gated)}`,
     });
+    checks.push(...driftSkipCheck("fusion-only", mode, drift, skipped));
     for (const kind of cfg.reportOnlyKinds) {
       const ofKind = noted.filter((b) => b.base.kind === kind);
       checks.push({
@@ -218,6 +316,7 @@ export function evaluateFusionOnlyGate(
       });
     }
   }
+  checks.push(...driftEntriesCheck("fusionOnly", drift, baseline));
   return gateResult(checks, drops);
 }
 
@@ -373,13 +472,17 @@ function firstDiff(was: string[], now: string[], topK: number): string {
 /**
  * Top-k list diff (#358): every baseline row must reproduce its top-k `retrieved` list exactly,
  * or match an allow entry naming that exact new list. Catches rank moves Hit@1 can't see
- * (a 2→3 shift) and makes gains ratchet. Missing rows count as changed.
+ * (a 2→3 shift) and makes gains ratchet. Missing rows count as changed. `blocking: false` (the
+ * Linux rule, #364) prints the changes and stale entries as info; a reasonless entry still fails.
  */
 export function evaluateListDiff(
   current: EvalReport,
   baseline: EvalReport,
-  opts: { tier: ListDiffTier; topK: number; allow: AllowEntry[] },
+  opts: { tier: ListDiffTier; topK: number; allow: AllowEntry[]; blocking?: boolean },
 ): GateResult {
+  const blocking = opts.blocking ?? true;
+  // Linux model tiers drift numerically between runner CPUs, so their lists can't reproduce macOS
+  const ro = blocking ? "" : ", report-only";
   const entries = opts.allow.filter((e) => e.tier === opts.tier);
   const allowBy = new Map(entries.map((e) => [rowKey(e.mode, e.id), e]));
   const used = new Set<string>();
@@ -415,16 +518,17 @@ export function evaluateListDiff(
   const hashHint = opts.tier === "hash" ? ` — intended? ${refreezeHint("hash")}` : "";
   const checks: GateCheck[] = [
     {
-      name: `top-${opts.topK} list diff (${opts.tier})`,
-      active: true,
+      name: `top-${opts.topK} list diff (${opts.tier}${ro})`,
+      active: blocking,
       pass: unallowed.length === 0,
       detail:
         `${changed} changed, ${used.size} allowed (of ${baseline.perQuery.length} rows)` +
         (unallowed.length ? `: ${unallowed.join(", ")}${hashHint}` : ""),
     },
     {
-      name: `allow-file entries (${opts.tier})`,
-      active: true,
+      // a reasonless entry fails on every platform; staleness is list equality, so Linux only reports it
+      name: `allow-file entries (${opts.tier}${noReason.length ? "" : ro})`,
+      active: blocking || noReason.length > 0,
       pass: noReason.length === 0 && stale.length === 0,
       detail: entriesDetail,
     },

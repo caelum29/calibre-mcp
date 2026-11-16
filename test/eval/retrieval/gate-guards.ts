@@ -2,7 +2,16 @@
 // before the ~8 min ON pass, and no run may overwrite a frozen baseline report.
 
 import path from "node:path";
-import { LIST_DIFF_TIERS, rowKey, type AllowEntry, type ListDiffTier, type Thresholds } from "./gate.js";
+import {
+  LIST_DIFF_TIERS,
+  PLATFORM_DRIFT_TIERS,
+  rowKey,
+  type AllowEntry,
+  type GateRule,
+  type ListDiffTier,
+  type PlatformDriftEntry,
+  type Thresholds,
+} from "./gate.js";
 import { ALL_MODES, type EvalReport, type Mode } from "./harness.js";
 
 /** Flag combinations the gate refuses, checked before any pass runs. */
@@ -125,4 +134,58 @@ export function checkAllowEntries(
     if (e.reason.trim() === "") problems.push(`${at}: empty reason`);
   }
   return problems;
+}
+
+/**
+ * Pick the gate rule from the platform (#364): `linux` with a declared `thresholds.linux` block
+ * gets the tolerant Linux rule, anything else the exact rule. The block is shape-checked on every
+ * platform, so a malformed entry fails on a macOS run before it reaches the nightly.
+ */
+export function gateRuleFor(platform: string, t: Thresholds): GateRule {
+  const linux = t.linux;
+  if (linux) checkLinuxBlock(linux);
+  if (platform !== "linux" || !linux) return { name: "exact", listDiffBlocking: true, platformDrift: [] };
+  return { name: "linux", listDiffBlocking: false, platformDrift: linux.platformDrift };
+}
+
+const LINUX_KEYS = ["$comment", "listDiff", "platformDrift"];
+
+/**
+ * Shape-check the whole `thresholds.linux` block: a misspelled key would otherwise drop every
+ * drift entry, and a misspelled listDiff mode would still read as report-only.
+ */
+function checkLinuxBlock(linux: NonNullable<Thresholds["linux"]>): void {
+  const unknown = Object.keys(linux).filter((k) => !LINUX_KEYS.includes(k));
+  if (unknown.length) {
+    throw new Error(`thresholds.linux has unknown key ${unknown.join(", ")} (allowed: ${LINUX_KEYS.join(", ")})`);
+  }
+  const mode: unknown = linux.listDiff;
+  if (mode !== "report") {
+    throw new Error(
+      `thresholds.linux.listDiff must be "report" (got ${mode === undefined ? "undefined" : JSON.stringify(mode)})`,
+    );
+  }
+  checkPlatformDrift(linux.platformDrift);
+}
+
+/** Shape-check `thresholds.linux.platformDrift`; throws naming the first bad entry. */
+function checkPlatformDrift(entries: unknown): asserts entries is PlatformDriftEntry[] {
+  const at = "thresholds.linux.platformDrift";
+  if (!Array.isArray(entries)) throw new Error(`${at} must be an array`);
+  const seen = new Set<string>();
+  entries.forEach((e: unknown, i) => {
+    const bad = (why: string) => new Error(`${at} #${i}: ${why}`);
+    if (typeof e !== "object" || e === null) throw bad("must be an object");
+    const r = e as Record<string, unknown>;
+    if (!PLATFORM_DRIFT_TIERS.includes(r.tier as PlatformDriftEntry["tier"]))
+      throw bad(`tier must be one of ${PLATFORM_DRIFT_TIERS.join(", ")}`);
+    if (!ALL_MODES.includes(r.mode as Mode)) throw bad(`mode must be one of ${ALL_MODES.join(", ")}`);
+    for (const key of ["id", "reason", "seen"] as const) {
+      const v = r[key];
+      if (typeof v !== "string" || v.trim() === "") throw bad(`${key} must be a non-empty string`);
+    }
+    const k = `${r.tier as string}/${rowKey(r.mode as Mode, r.id as string)}`;
+    if (seen.has(k)) throw bad(`duplicate entry for ${k}`);
+    seen.add(k);
+  });
 }
