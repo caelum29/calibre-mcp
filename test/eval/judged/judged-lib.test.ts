@@ -143,6 +143,33 @@ describe("toRawRun", () => {
     });
   });
 
+  it("should_keep_debug_provenance_on_raw_hits (#650)", () => {
+    const provenance = { vectorRank: 3, keywordRank: 12, fusedRank: 7, rerankPool: true, chunkFrom: "keyword" };
+    const run = toRawRun({ results: [{ bookId: 1, charStart: 0, snippet: "s", provenance }] }, false, "", {});
+    expect(run.hits[0]!.provenance).toEqual(provenance);
+  });
+
+  it("should_never_put_provenance_into_blind_items (#650)", () => {
+    const provenance = { vectorRank: 1, fusedRank: 1, rerankPool: true };
+    const blindRec: RawRecord = {
+      query,
+      runs: {
+        hybrid: {
+          isError: false,
+          hits: [
+            { ...hit(1, 0), provenance },
+            { ...hit(2, 10), provenance },
+          ],
+        },
+      },
+    };
+    const items = blindRecord(blindRec).blind.items;
+    expect(items.map((i) => [Object.keys(i).sort(), JSON.stringify(i).includes("rerankPool")])).toEqual([
+      [["hid", "text", "title"], false],
+      [["hid", "text", "title"], false],
+    ]);
+  });
+
   it("should_read_book_scope_passages_with_the_query_book_id", () => {
     const run = toRawRun({ passages: [{ charStart: 5, body: "p" }], lowConfidence: false }, false, "", { bookId: 7 });
     expect(run.hits[0]).toMatchObject({ bookId: 7, at: 5, text: "p" });

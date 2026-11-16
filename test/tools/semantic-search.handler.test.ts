@@ -891,3 +891,171 @@ describe("calibre_semantic_search debug timings", () => {
     expect(headText(r)).not.toContain("Timings");
   });
 });
+
+// #650: at debug level every hit carries how it got there (half ranks, fused rank, rerank pool,
+// and for library books the half whose chunk is shown), in structuredContent and the text.
+describe("calibre_semantic_search debug provenance (#650)", () => {
+  beforeEach(() => invalidateBundleCache());
+  const DEBUG = { CALIBRE_MCP_LOG_LEVEL: "debug" };
+  type Entry = Record<string, unknown>;
+  const entries = (r: ToolResult, key: "results" | "passages" | "figures") => r.structuredContent?.[key] as Entry[];
+  const provOf = (r: ToolResult, key: "results" | "passages" | "figures") => entries(r, key).map((e) => e.provenance);
+  const texts = (r: ToolResult) => r.content.flatMap((b) => (b.type === "text" ? [b.text] : []));
+
+  /**
+   * Book 1: vector #1 via its intro chunk, keyword #2 via its "ownership" chunk (two candidates);
+   * book 3: keyword #1, no vectors (keyword half only); book 2: vector #2 only.
+   * Fused: 1 (both halves), 3 (keyword #1), 2 (vector #2).
+   */
+  function halves(): SqliteIndexStore {
+    const s = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
+    s.replaceBook(LIB, { bookId: 1, title: "Book One", authors: ["A"] }, [
+      { charStart: 0, charEnd: 10, body: "intro text", vector: axis(0) },
+      { charStart: 10, charEnd: 30, body: "ownership rules apply", vector: axis(2) },
+    ]);
+    s.replaceBook(LIB, { bookId: 2, title: "Book Two", authors: ["B"] }, [
+      { charStart: 0, charEnd: 18, body: "async passage here", vector: fading(1, 4) },
+    ]);
+    s.replaceBook(LIB, { bookId: 3, title: "Book Three", authors: ["C"] }, [
+      { charStart: 0, charEnd: 19, body: "ownership ownership" },
+    ]);
+    return s;
+  }
+  const rer = () => scoreByBody({ "ownership rules": 0.9, "intro text": 0.2, "ownership ownership": 0.5 });
+
+  it("should_report_half_ranks_fused_rank_pool_and_chunk_source_for_hybrid_library_hits", async () => {
+    const r = await semanticSearchTool.handler(args(), deps(halves(), queryEmbedder, rer(), DEBUG));
+    expect(entries(r, "results").map((e) => [e.bookId, e.provenance])).toEqual([
+      [
+        1,
+        {
+          vectorRank: 1,
+          keywordRank: 2,
+          fusedRank: 1,
+          rerankPool: true,
+          chunkFrom: "keyword",
+          otherRerankScore: 0.2,
+        },
+      ],
+      [3, { keywordRank: 1, fusedRank: 2, rerankPool: true, chunkFrom: "keyword" }],
+      [2, { vectorRank: 2, fusedRank: 3, rerankPool: true, chunkFrom: "vector" }],
+    ]);
+  });
+
+  it("should_report_only_the_keyword_rank_in_keyword_mode", async () => {
+    const r = await semanticSearchTool.handler(
+      args({ mode: "keyword" }),
+      deps(halves(), throwingEmbedder, undefined, DEBUG),
+    );
+    expect(provOf(r, "results")).toEqual([
+      { keywordRank: 1, rerankPool: false },
+      { keywordRank: 2, rerankPool: false },
+    ]);
+  });
+
+  it("should_report_only_the_vector_rank_and_pool_in_vector_mode", async () => {
+    const r = await semanticSearchTool.handler(args({ mode: "vector" }), deps(halves(), queryEmbedder, rer(), DEBUG));
+    expect(entries(r, "results").map((e) => [e.bookId, e.provenance])).toEqual([
+      [1, { vectorRank: 1, rerankPool: true }],
+      [2, { vectorRank: 2, rerankPool: true }],
+    ]);
+  });
+
+  it("should_report_hits_past_the_pair_cap_outside_the_rerank_pool", async () => {
+    const s = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
+    const n = RERANK_POOL + 2;
+    for (let b = 1; b <= n; b++) {
+      s.replaceBook(LIB, { bookId: b, title: `Book ${b}`, authors: [] }, [
+        { charStart: 0, charEnd: 5, body: `text ${b}`, vector: fading(b, n + 1) },
+      ]);
+    }
+    const r = await semanticSearchTool.handler(
+      args({ mode: "vector", topK: n }),
+      deps(s, queryEmbedder, scoreByBody({}), DEBUG),
+    );
+    const pool = provOf(r, "results").map((p) => (p as Entry).rerankPool);
+    expect([pool.filter((x) => x === true).length, pool.slice(RERANK_POOL)]).toEqual([RERANK_POOL, [false, false]]);
+  });
+
+  it("should_report_every_hit_outside_the_rerank_pool_when_the_reranker_fails", async () => {
+    const r = await semanticSearchTool.handler(args(), deps(halves(), queryEmbedder, brokenReranker, DEBUG));
+    expect(provOf(r, "results").map((p) => (p as Entry).rerankPool)).toEqual([false, false, false]);
+  });
+
+  it("should_report_per_chunk_ranks_in_book_scope", async () => {
+    const r = await semanticSearchTool.handler(
+      args({ scope: "book", bookId: 1 }),
+      deps(halves(), queryEmbedder, scoreByBody({ "ownership rules": 0.9, "intro text": 0.2 }), DEBUG),
+    );
+    expect(entries(r, "passages").map((e) => [e.charStart, e.provenance])).toEqual([
+      [10, { vectorRank: 2, keywordRank: 1, fusedRank: 1, rerankPool: true }],
+      [0, { vectorRank: 1, fusedRank: 2, rerankPool: true }],
+    ]);
+  });
+
+  it("should_report_per_figure_ranks_for_figure_hits", async () => {
+    const s = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
+    const fig = (figIndex: number, caption: string, v: Float32Array) => ({
+      figIndex,
+      page: 1,
+      caption,
+      charOffset: 0,
+      format: "pdf",
+      source: "page-render" as const,
+      vector: v,
+    });
+    s.replaceBook(
+      LIB,
+      { bookId: 1, title: "Book One", authors: ["A"] },
+      [{ charStart: 0, charEnd: 10, body: "intro text", vector: axis(0) }],
+      [fig(0, "ownership diagram", axis(2)), fig(1, "plain picture", axis(0))],
+    );
+    const r = await semanticSearchTool.handler(
+      args({ target: "figures" }),
+      deps(s, queryEmbedder, scoreByBody({ "ownership diagram": 0.9, "plain picture": 0.1 }), DEBUG),
+    );
+    expect(entries(r, "figures").map((e) => [e.figIndex, e.provenance])).toEqual([
+      [0, { vectorRank: 2, keywordRank: 1, fusedRank: 1, rerankPool: true }],
+      [1, { vectorRank: 1, fusedRank: 2, rerankPool: true }],
+    ]);
+  });
+
+  it("should_put_one_debug_line_right_before_each_hit_fence_with_the_fence_unchanged", async () => {
+    const dbg = await semanticSearchTool.handler(args(), deps(halves(), queryEmbedder, rer(), DEBUG));
+    const plain = await semanticSearchTool.handler(args(), deps(halves(), queryEmbedder, rer()));
+    const fences = entries(plain, "results").map((e) => e.snippet as string);
+    expect(texts(dbg).filter((t) => t.startsWith("debug: "))).toEqual([
+      `debug: vector #1 · keyword #2 · fused #1 · rerank pool · chunk from keyword (other chunk rerank 0.200)\n${fences[0]}`,
+      `debug: keyword #1 · fused #2 · rerank pool · chunk from keyword\n${fences[1]}`,
+      `debug: vector #2 · fused #3 · rerank pool · chunk from vector\n${fences[2]}`,
+    ]);
+  });
+
+  it("should_say_not_in_rerank_pool_when_the_rerank_did_not_score_the_hit", async () => {
+    const r = await semanticSearchTool.handler(
+      args({ mode: "keyword" }),
+      deps(halves(), throwingEmbedder, undefined, DEBUG),
+    );
+    expect(
+      texts(r)
+        .filter((t) => t.startsWith("debug: "))
+        .map((t) => t.split("\n")[0]),
+    ).toEqual(["debug: keyword #1 · not in rerank pool", "debug: keyword #2 · not in rerank pool"]);
+  });
+
+  it("should_carry_no_provenance_and_no_debug_line_at_the_default_log_level", async () => {
+    const r = await semanticSearchTool.handler(args(), deps(halves(), queryEmbedder, rer()));
+    const keys = ["results", "passages", "figures"].flatMap((k) =>
+      ((r.structuredContent?.[k] as Entry[] | undefined) ?? []).filter((e) => "provenance" in e),
+    );
+    expect([keys, texts(r).some((t) => t.includes("debug: "))]).toEqual([[], false]);
+  });
+
+  it("should_return_the_same_hits_in_the_same_order_with_the_same_scores_at_both_levels", async () => {
+    const view = (r: ToolResult) =>
+      entries(r, "results").map((e) => [e.bookId, e.cosine, e.rerankScore, e.charStart, e.snippet]);
+    const dbg = await semanticSearchTool.handler(args(), deps(halves(), queryEmbedder, rer(), DEBUG));
+    const plain = await semanticSearchTool.handler(args(), deps(halves(), queryEmbedder, rer()));
+    expect(view(dbg)).toEqual(view(plain));
+  });
+});

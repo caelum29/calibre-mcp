@@ -324,7 +324,12 @@ can open them for you: *"check the calibre-mcp logs for errors today"*):
   (prefixed `[calibre-mcp]`), which the client keeps in its own MCP log. At this level
   `calibre_semantic_search` also reports its own latency per stage (embed, vector,
   keyword, rerank, calibre round trips, total) as a `Timings (debug):` header line and a
-  `timings` field.
+  `timings` field. Every hit also says how it got its place: a `provenance` field on each
+  entry of `results` / `passages` / `figures`, and a `debug:` line right before the hit's
+  fenced text, e.g. `debug: vector #3 · keyword #12 · fused #7 · rerank pool · chunk from
+  keyword (other chunk rerank 0.051)`. It gives the 1-based rank in the vector and keyword
+  halves, the fused rank (hybrid), whether the reranker scored the hit, and for library
+  books which half's passage is shown and the reranker's score for the other one.
 
 Logs contain book ids, titles and search queries — never book text; your home folder
 is written as `~`.
