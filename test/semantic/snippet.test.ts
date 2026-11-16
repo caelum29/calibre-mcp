@@ -83,6 +83,7 @@ describe("snippetWindow", () => {
 
   it("every window is a real slice of the chunk at its start", () => {
     const bodies = [
+      "changes how teams own their systems. " + NEUTRAL.repeat(20),
       NEUTRAL.repeat(40) + "Only the final line names Paxos.",
       "word ".repeat(300) + "Paxos",
       "Intro. " + "lorem ".repeat(40) + "Paxos keeps going. " + TAIL,
@@ -144,5 +145,111 @@ describe("snippetWindow edge cases (#325)", () => {
     const w = snippetWindow(body, "Raft консенсус");
     expect(w.start).toBe(head.length);
     expect(raw(w).startsWith(hit)).toBe(true);
+  });
+});
+
+// #657: the head fallback (no topic term in the query or in the chunk) opens at a sentence start
+// when the chunk head is mid-sentence (first non-space char lowercase), within 160 chars.
+describe("snippetWindow head fallback opens at a sentence start (#657)", () => {
+  const EN_MID = "changes how teams own their systems. "; // 37 chars, lowercase head
+  const RU_MID = "ется голосованием большинства узлов. "; // 37 chars, Cyrillic lowercase head
+  const RU_NEXT = "Каждый узел хранит копию журнала. "; // capitalised next sentence
+  const NOTHING = "nothing here"; // no query term in any body below
+  const STOP_ONLY = "how does the"; // no topic term at all
+
+  it("EN: a mid-sentence head opens at the next sentence, with the cut marker", () => {
+    const body = EN_MID + NEUTRAL.repeat(20);
+    expect(snippetWindow(body, NOTHING)).toEqual({
+      start: 37,
+      text: "…" + body.slice(37, 37 + SNIPPET_CHARS),
+    });
+  });
+
+  it("EN: the same move applies when the query has no topic term (stopwords only)", () => {
+    const body = EN_MID + NEUTRAL.repeat(20);
+    expect(snippetWindow(body, STOP_ONLY)).toEqual({
+      start: 37,
+      text: "…" + body.slice(37, 37 + SNIPPET_CHARS),
+    });
+  });
+
+  it("RU: a Cyrillic lowercase head opens at the next sentence", () => {
+    const body = RU_MID + RU_NEXT.repeat(15);
+    const w = snippetWindow(body, "консенсус");
+    expect(w).toEqual({ start: 37, text: "…" + body.slice(37, 37 + SNIPPET_CHARS) });
+    expect(w.text.startsWith("…Каждый узел хранит копию журнала.")).toBe(true);
+  });
+
+  it("a newline counts as a sentence start for the head", () => {
+    const body = "the end of a wrapped line\n" + NEUTRAL.repeat(20); // newline at 25
+    expect(snippetWindow(body, NOTHING)).toEqual({ start: 26, text: "…" + body.slice(26, 26 + SNIPPET_CHARS) });
+  });
+
+  it("leading whitespace before a lowercase head does not stop the move", () => {
+    const body = "  " + EN_MID + NEUTRAL.repeat(20); // sentence start at 39
+    expect(snippetWindow(body, NOTHING)).toEqual({ start: 39, text: "…" + body.slice(39, 39 + SNIPPET_CHARS) });
+  });
+
+  it("a capitalised head keeps the head", () => {
+    const body = NEUTRAL.repeat(20);
+    expect(snippetWindow(body, NOTHING)).toEqual({ start: 0, text: body.slice(0, SNIPPET_CHARS) });
+  });
+
+  it("a head that starts with a digit keeps the head", () => {
+    const body = "3 replicas keep the log safe. " + NEUTRAL.repeat(20);
+    expect(snippetWindow(body, NOTHING)).toEqual({ start: 0, text: body.slice(0, SNIPPET_CHARS) });
+  });
+
+  it("a head that starts with punctuation (>> prompt) keeps the head", () => {
+    const body = ">> print(x) prints the value. " + NEUTRAL.repeat(20);
+    expect(snippetWindow(body, NOTHING)).toEqual({ start: 0, text: body.slice(0, SNIPPET_CHARS) });
+  });
+
+  it("a form feed before a capital keeps the head", () => {
+    const body = "\fChapter two opens here. " + NEUTRAL.repeat(20);
+    expect(snippetWindow(body, NOTHING)).toEqual({ start: 0, text: body.slice(0, SNIPPET_CHARS) });
+  });
+
+  it("code and decimals (a.b(), 3.14) are not sentence ends: no start within 160 keeps the head", () => {
+    const code = "obj.call(a.b(), 3.14) && x.y.z(); "; // 34 chars, no ". " or newline
+    const body = code.repeat(6) + "Then it ends. " + NEUTRAL.repeat(10); // first break at 204+14
+    expect(snippetWindow(body, NOTHING)).toEqual({ start: 0, text: body.slice(0, SNIPPET_CHARS) });
+  });
+
+  it("an abbreviation followed by a space counts as a sentence end (the anchored-window rule)", () => {
+    const body = "see e.g. the log. " + NEUTRAL.repeat(20); // "e.g. " ends at 9
+    expect(snippetWindow(body, NOTHING)).toEqual({ start: 9, text: "…" + body.slice(9, 9 + SNIPPET_CHARS) });
+  });
+
+  it("a sentence start exactly at 160 moves the head; one at 161 keeps it", () => {
+    const at160 = "x".repeat(158) + ". " + NEUTRAL.repeat(15);
+    expect(snippetWindow(at160, NOTHING)).toEqual({
+      start: 160,
+      text: "…" + at160.slice(160, 160 + SNIPPET_CHARS),
+    });
+    const at161 = "x".repeat(159) + ". " + NEUTRAL.repeat(15);
+    expect(snippetWindow(at161, NOTHING)).toEqual({ start: 0, text: at161.slice(0, SNIPPET_CHARS) });
+  });
+
+  it("a lowercase body that fits in one snippet is returned whole from 0", () => {
+    const body = EN_MID + NEUTRAL.repeat(8); // 37 + 264 = 301 chars
+    expect(snippetWindow(body, NOTHING)).toEqual({ start: 0, text: body });
+  });
+
+  it("keeps the head when the new start leaves less than two thirds of the width", () => {
+    // 2/3 of 320 = 213.3: a start at 150 with 214 chars after it moves, with 213 it stays at 0
+    const lead = "x".repeat(148) + ". "; // sentence start at 150
+    const enough = lead + "Y".repeat(214);
+    expect(snippetWindow(enough, NOTHING)).toEqual({ start: 150, text: "…" + enough.slice(150) });
+    const tooFew = lead + "Y".repeat(213);
+    expect(snippetWindow(tooFew, NOTHING)).toEqual({ start: 0, text: tooFew.slice(0, SNIPPET_CHARS) });
+  });
+
+  it("a moved head whose cut lands inside a surrogate pair ends one unit early", () => {
+    const ASTRAL = "𝔸"; // two UTF-16 units
+    const body = "changes it. x" + ASTRAL.repeat(300); // start 12; unit 12 + 319 = 331 is a high half
+    const w = snippetWindow(body, NOTHING);
+    expect(w).toEqual({ start: 12, text: "…" + body.slice(12, 12 + SNIPPET_CHARS - 1) });
+    expect(w.text.isWellFormed()).toBe(true);
   });
 });
