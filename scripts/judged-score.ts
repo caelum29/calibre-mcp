@@ -1,12 +1,15 @@
 // Blind judged eval, step 3: unblind the judges' grades and score them per category and mode.
-// Reads <runDir>/raw-hits.jsonl, blind-key.json and judgements/*.json (judged-blind.workflow.js);
-// writes <runDir>/blind-report.md. Final grade = the judges' shared grade (and coverage), else the
-// adjudicator's. -1 (can't judge) is never a hit and stays out of κ; coverage E/S/L is reported
-// beside the topical metrics, never inside them.
-// Run: pnpm eval:judged:score <runDir> [--inline results.jsonl]   (--inline compares to an
-// earlier single-judge pass, per-query hit@5 agreement) — #602
+// Reads <runDir>/raw-hits.jsonl, blind-key.json, blind/*.json and judgements/*.json
+// (judged-blind.workflow.js); writes <runDir>/blind-report.md. Final grade = the judges' shared grade
+// (and coverage), else the adjudicator's. -1 (can't judge) is never a hit and stays out of κ; coverage
+// E/S/L is reported beside the topical metrics, never inside them.
+// With --store, the run's new final grades are appended to the judgment store and every hit is graded
+// from it; a hit no stored grade covers is unjudged (null): never relevant, counted in Hole@5 (#361).
+// Run: pnpm eval:judged:score <runDir> [--store <file>] [--strict-text] [--inline results.jsonl]
+//      pnpm eval:judged:score --import <runDir> --store <file>   (seed the store from a judged run)
+// --inline compares to an earlier single-judge pass, per-query hit@5 agreement — #602
 
-import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   blindTextLengths,
@@ -17,69 +20,114 @@ import {
   medianAndMax,
   metrics,
   qidOf,
-  resolveGrades,
   rubricViolations,
-  type BlindKey,
   type CategoryMetrics,
   type CoverageCounts,
-  type Grade,
+  type FinalGrade,
   type RawRecord,
 } from "./judged-lib.js";
+import {
+  appendJudgments,
+  gradeFromStore,
+  holeAt,
+  idealGrades,
+  importRun,
+  judgmentsFromRun,
+  loadRunDir,
+  ndcgAt5,
+  newJudgments,
+  readStore,
+  resolveRun,
+  storePathError,
+} from "./judged-store.js";
 
-const [runDir, ...rest] = process.argv.slice(2);
-if (!runDir) {
-  process.stderr.write("usage: pnpm eval:judged:score <runDir> [--inline results.jsonl]\n");
+const argv = process.argv.slice(2);
+const flag = (name: string) => {
+  const i = argv.indexOf(name);
+  return i >= 0 ? argv[i + 1] : undefined;
+};
+const importDir = flag("--import");
+const storeFile = flag("--store");
+const inlinePath = flag("--inline");
+const opts = { strictText: argv.includes("--strict-text") };
+const runDir = importDir ?? argv[0];
+if (!runDir || runDir.startsWith("--") || (importDir && !storeFile)) {
+  process.stderr.write(
+    "usage: pnpm eval:judged:score <runDir> [--store <file>] [--strict-text] [--inline results.jsonl]\n" +
+      "       pnpm eval:judged:score --import <runDir> --store <file> [--strict-text]\n",
+  );
   process.exit(2);
 }
-const inlineFlag = rest.indexOf("--inline");
-const inlinePath = inlineFlag >= 0 ? rest[inlineFlag + 1] : undefined;
 
-const raws = readFileSync(join(runDir, "raw-hits.jsonl"), "utf8")
-  .split("\n")
-  .filter(Boolean)
-  .map((l) => JSON.parse(l) as RawRecord);
-const key = JSON.parse(readFileSync(join(runDir, "blind-key.json"), "utf8")) as BlindKey;
-
-// judgements/<judge>-batch-NN.json and adjudicated-batch-NN.json
-const jdir = join(runDir, "judgements");
-const byJudge = new Map<string, Map<string, Grade>>();
-for (const f of readdirSync(jdir).filter((n) => n.endsWith(".json"))) {
-  const judge = f.replace(/-batch-\d+\.json$/, "");
-  const grades = JSON.parse(readFileSync(join(jdir, f), "utf8")) as Grade[];
-  const m = byJudge.get(judge) ?? new Map<string, Grade>();
-  for (const g of grades) m.set(g.hid, g);
-  byJudge.set(judge, m);
+const run = loadRunDir(runDir);
+const pathError = storeFile && storePathError(storeFile, run.queriesJson);
+if (pathError) {
+  process.stderr.write(`${pathError}\n`);
+  process.exit(2);
 }
-const adjudicated = byJudge.get("adjudicated") ?? new Map<string, Grade>();
-const judgeNames = [...byJudge.keys()].filter((n) => n !== "adjudicated").sort();
-if (judgeNames.length !== 2) throw new Error(`expected 2 judges in ${jdir}, found: ${judgeNames.join(", ") || "none"}`);
-const [ja, jb] = judgeNames.map((n) => byJudge.get(n)!) as [Map<string, Grade>, Map<string, Grade>];
 
+// --import seeds the store from an already judged run (the #602 baseline) and writes nothing into the run dir
+if (importDir) {
+  const before = readStore(storeFile!).length;
+  const added = importRun(importDir, storeFile!, opts);
+  process.stderr.write(
+    `import ${run.name}: ${added.length} record(s) appended to ${storeFile} (${before} before, ${before + added.length} now)\n`,
+  );
+  process.exit(0);
+}
+
+const { raws, key } = run;
+// a store run whose dump found nothing new has no blind batches and no judges to resolve
+const resolution = storeFile && run.judges.size === 0 && run.blindText.size === 0 ? undefined : resolveRun(run);
+const judgeNames = [...run.judges.keys()];
+const adjudicated = run.adjudicated;
 const hids = Object.keys(key);
-const { final, kappaPairs, gradedPairs, agreedPairs, unresolved } = resolveGrades(hids, ja, jb, adjudicated);
-const violations = [...byJudge.entries()].flatMap(([name, m]) =>
+
+// the run's new final grades go into the store (never over an existing record); the run is scored from it
+const before = storeFile ? readStore(storeFile) : [];
+const added = newJudgments(before, judgmentsFromRun(run, resolution?.final ?? new Map<string, FinalGrade>()), opts);
+if (storeFile) appendJudgments(storeFile, added);
+const store = [...before, ...added];
+const final = gradeFromStore(raws, store, opts);
+const violations = [...run.judges.entries(), ["adjudicated", adjudicated] as const].flatMap(([name, m]) =>
   rubricViolations([...m.values()]).map((v) => ({ judge: name, ...v })),
 );
 
 const pct = (x: number) => `${Math.round(100 * x)}%`;
-const row = (name: string, m: CategoryMetrics, kw?: string) =>
-  `| ${name} | ${m.n} | ${pct(m.hit1)} | ${pct(m.hit3)} | ${pct(m.hit5)} | ${pct(1 - m.hit5)} | ${pct(m.totalMiss)} | ${m.mrr.toFixed(2)} | ${m.p5.toFixed(2)} | ${kw ?? "-"} |`;
+const row = (name: string, m: CategoryMetrics, ndcg: number, hole: number, kw?: string) =>
+  `| ${name} | ${m.n} | ${pct(m.hit1)} | ${pct(m.hit3)} | ${pct(m.hit5)} | ${pct(1 - m.hit5)} | ${pct(m.totalMiss)} | ${m.mrr.toFixed(2)} | ${m.p5.toFixed(2)} | ${ndcg.toFixed(2)} | ${pct(hole)} | ${kw ?? "-"} |`;
 
 const positives = raws.filter((r) => r.query.category !== "neg" && !r.runs.hybrid?.isError);
 const cats = [...new Set(positives.map((r) => r.query.category))];
+const judgesLine = resolution
+  ? `Judges: ${judgeNames.join(" + ")}; **Cohen's κ = ${cohenKappa(resolution.kappaPairs).toFixed(2)}** on ${resolution.kappaPairs.length} pairs both graded 0–2 ` +
+    `(${resolution.gradedPairs - resolution.kappaPairs.length} pairs with a -1 left out), ` +
+    `raw agreement ${pct(resolution.agreedPairs / (resolution.gradedPairs || 1))} on ${resolution.gradedPairs} pairs, ` +
+    `${adjudicated.size} adjudicated, ${resolution.unresolved} unresolved (counted as unjudged).`
+  : "Judges: none this run (every hit was already in the store).";
 const lines: string[] = [
   "# Blind judged pass — scores",
   "",
-  `Judges: ${judgeNames.join(" + ")}; **Cohen's κ = ${cohenKappa(kappaPairs).toFixed(2)}** on ${kappaPairs.length} pairs both graded 0–2 ` +
-    `(${gradedPairs - kappaPairs.length} pairs with a -1 left out), ` +
-    `raw agreement ${pct(agreedPairs / (gradedPairs || 1))} on ${gradedPairs} pairs, ` +
-    `${adjudicated.size} adjudicated, ${unresolved} unresolved (counted as missing).`,
+  judgesLine,
+  ...(storeFile
+    ? [
+        `Store: ${storeFile} — ${before.length} record(s) before this run, ${added.length} appended${opts.strictText ? " (strict text)" : ""}.`,
+      ]
+    : []),
   `Rubric violations: ${violations.length}` + (violations.length ? " (listed at the end)." : "."),
   "",
-  "| cat | n | hit@1 | hit@3 | hit@5 | miss | total miss | MRR | P@5 | hybrid@3 vs kw@3 |",
-  "|---|---|---|---|---|---|---|---|---|---|",
+  "Unjudged hits (no stored grade) count as not relevant; Hole@5 = their share of the top-5 hits.",
+  "",
+  "| cat | n | hit@1 | hit@3 | hit@5 | miss | total miss | MRR | P@5 | NDCG@5 | Hole@5 | hybrid@3 vs kw@3 |",
+  "|---|---|---|---|---|---|---|---|---|---|---|---|",
 ];
 const hybridOf = (r: RawRecord) => gradesFor(r.query.id, "hybrid", key, final);
+// NDCG@5's ideal ranking: the best stored grades of the query at the index generation this run hit
+const ndcgOf = (r: RawRecord) => {
+  const v = r.runs.hybrid?.indexVersion;
+  return v === undefined ? 0 : ndcgAt5(hybridOf(r), idealGrades(store, r.query.id, v, opts));
+};
+const meanOf = (xs: number[]) => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : 0);
 const withCats = [...cats, "ALL"];
 const inCat = (c: string) => (c === "ALL" ? positives : positives.filter((r) => r.query.category === c));
 for (const c of withCats) {
@@ -88,24 +136,33 @@ for (const c of withCats) {
   const kw = withKw.length
     ? `${pct(metrics(withKw.map(hybridOf)).hit3)} vs ${pct(metrics(withKw.map((r) => gradesFor(r.query.id, "keyword", key, final))).hit3)}`
     : undefined;
-  lines.push(row(c, metrics(rs.map(hybridOf)), kw));
+  lines.push(row(c, metrics(rs.map(hybridOf)), meanOf(rs.map(ndcgOf)), holeAt(rs.map(hybridOf), 5), kw));
+}
+const kwRuns = raws.filter((r) => r.runs.keyword && !r.runs.keyword.isError);
+if (kwRuns.length) {
+  const kwHole = holeAt(
+    kwRuns.map((r) => gradesFor(r.query.id, "keyword", key, final)),
+    5,
+  );
+  lines.push("", `**Hole@5 (keyword runs):** ${pct(kwHole)} over ${kwRuns.length} queries.`);
 }
 
 // -1 per category and per judge: items in every pooled list of the category's queries
 const catOfQid = new Map(raws.map((r) => [r.query.id, r.query.category]));
 const hidsIn = (c: string) => hids.filter((h) => c === "ALL" || catOfQid.get(qidOf(h)) === c);
 const allCats = [...new Set(raws.map((r) => r.query.category)), "ALL"];
-const minusOne = (m: ReadonlyMap<string, { grade: number }>, hs: string[]) =>
-  hs.filter((h) => m.get(h)?.grade === -1).length;
+const minusOne = (m: ReadonlyMap<string, { grade: number }> | undefined, hs: string[]) =>
+  m ? String(hs.filter((h) => m.get(h)?.grade === -1).length) : "-";
+const [nameA = "judge A", nameB = "judge B"] = judgeNames;
 lines.push(
   "",
-  "**Can't judge (-1)** — items per category; final = after adjudication, never a hit.",
+  "**Can't judge (-1)** — items per category; final = after adjudication (or from the store), never a hit.",
   "",
-  `| cat | items | ${judgeNames[0]} | ${judgeNames[1]} | final |`,
+  `| cat | items | ${nameA} | ${nameB} | final |`,
   "|---|---|---|---|---|",
   ...allCats.map((c) => {
     const hs = hidsIn(c);
-    return `| ${c} | ${hs.length} | ${minusOne(ja, hs)} | ${minusOne(jb, hs)} | ${minusOne(final, hs)} |`;
+    return `| ${c} | ${hs.length} | ${minusOne(run.judges.get(nameA), hs)} | ${minusOne(run.judges.get(nameB), hs)} | ${minusOne(final, hs)} |`;
   }),
 );
 
@@ -188,7 +245,7 @@ lines.push(
   "|---|---|---|---|---|---|",
   ...hids.map((h) => {
     const f = final.get(h);
-    return `| ${h} | ${f?.grade ?? "unresolved"} | ${f?.coverage ?? "-"} | ${lengths.get(h) ?? "-"} | ${key[h]?.hybrid ?? "-"} | ${key[h]?.keyword ?? "-"} |`;
+    return `| ${h} | ${f?.grade ?? "unjudged"} | ${f?.coverage ?? "-"} | ${lengths.get(h) ?? "-"} | ${key[h]?.hybrid ?? "-"} | ${key[h]?.keyword ?? "-"} |`;
   }),
 );
 
