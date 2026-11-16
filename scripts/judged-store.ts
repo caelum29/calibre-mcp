@@ -364,3 +364,13 @@ export function importRun(dir: string, storeFile: string, opts: MatchOptions = {
   appendJudgments(storeFile, added);
   return added;
 }
+
+/** Stub (#666 review). */
+export function newJudgmentsFromRun(
+  _run: JudgedRunDir,
+  _final: ReadonlyMap<string, FinalGrade>,
+  _existing: readonly StoredJudgment[],
+  _opts: MatchOptions = {},
+): StoredJudgment[] {
+  throw new Error("not implemented (#361)");
+}
