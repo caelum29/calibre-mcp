@@ -318,11 +318,12 @@ export function loadRunDir(dir: string): JudgedRunDir {
   for (const f of jsonFiles(join(dir, "blind")))
     for (const q of JSON.parse(readFileSync(join(dir, "blind", f), "utf8")) as BlindQuery[])
       for (const item of q.items) blindText.set(item.hid, item.text);
-  // judgements/<judge>-batch-NN.json and adjudicated-batch-NN.json
+  // judgements/<judge>-batch-NN.json and adjudicated-batch-NN.json; other files there (human.json
+  // calibration labels, #659) are not judge output
   const jdir = join(dir, "judgements");
   const byJudge = new Map<string, Map<string, Grade>>();
   let judgedMs = 0;
-  for (const f of jsonFiles(jdir)) {
+  for (const f of jsonFiles(jdir).filter((n) => /-batch-\d+\.json$/.test(n))) {
     const name = f.replace(/-batch-\d+\.json$/, "");
     const m = byJudge.get(name) ?? new Map<string, Grade>();
     for (const g of JSON.parse(readFileSync(join(jdir, f), "utf8")) as Grade[]) m.set(g.hid, g);
