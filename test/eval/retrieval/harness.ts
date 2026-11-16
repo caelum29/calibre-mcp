@@ -45,7 +45,16 @@ export type QueryKind =
   | "negative"
   // Phase B figure kinds (#85/#86): caption semantic search (target=figures) + its negatives.
   | "figure-caption"
-  | "figure-negative";
+  | "figure-negative"
+  // #359 hard kinds (capability, not regression — thresholds.capabilityKinds):
+  // a near-topic book that shares vocabulary but doesn't answer must not win rank 1
+  | "confuser-pair"
+  // meaning without shared words: no content stem of the query occurs in the target book
+  | "no-overlap-paraphrase"
+  // on-domain question the corpus can't answer; scored like a negative (flagged)
+  | "adjacent-negative"
+  // book whose title is a raw filename and authors "Unknown"
+  | "raw-title";
 
 /** A labeled relevant passage for a scope=book query (char offsets into the fixture text). */
 export interface SpanLabel {
