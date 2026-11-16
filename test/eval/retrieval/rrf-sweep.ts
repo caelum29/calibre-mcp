@@ -2,7 +2,8 @@
 // PASS/FAIL per weight against thresholds.json `rrfWeightSweep` (gates declared BEFORE the sweep,
 // D-012 protocol), plus the selected weight. Every gate check also carries the paired stats of
 // its query group from stats.ts (#358): a declared delta can pass while the paired test says the
-// fixture is too small to tell it from noise. Pure scoring is exported for the unit test.
+// fixture is too small to tell it from noise. Held-out queries (#632) are skipped. Pure scoring
+// is exported for the unit test.
 //
 // Usage: node --import tsx test/eval/retrieval/rrf-sweep.ts [--reports <dir>]
 
@@ -10,7 +11,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { evaluateGate, type Thresholds } from "./gate.js";
-import type { EvalReport, Mode } from "./harness.js";
+import { heldOutIds, withoutHeldOut, type EvalReport, type Mode } from "./harness.js";
 import { compareReports, formatPaired, pairingWarnings, type CompareRow } from "./stats.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -74,17 +75,25 @@ function brokenHit1(base: EvalReport, cur: EvalReport, kinds: string[]): string[
 }
 
 /**
- * Score one weight against the baseline weight's reports. `zeroBroken` is the existing
+ * Score one weight against the baseline weight's reports. Held-out queries (#632) are dropped
+ * from every report and the aggregates recomputed before any check. `zeroBroken` is the existing
  * nonRegression gate result for this weight's fixtureOn report (computed by the caller, which
- * owns the file IO for the frozen gate baseline).
+ * owns the file IO for the frozen gate baseline); it stays on the full set, because it is the
+ * merge gate every change must pass, not a selection objective.
  */
 export function scoreWeight(
   weight: number,
-  base: WeightReports,
-  cur: WeightReports,
+  baseAll: WeightReports,
+  curAll: WeightReports,
   t: SweepThresholds,
   zeroBroken: { pass: boolean; detail: string },
 ): WeightVerdict {
+  // a value selected on the held-out queries would be reported on them too
+  const heldOut = heldOutIds();
+  const strip = (r: WeightReports) =>
+    Object.fromEntries(MEASUREMENTS.map((m) => [m, withoutHeldOut(r[m], heldOut)])) as WeightReports;
+  const base = strip(baseAll);
+  const cur = strip(curAll);
   const checks: SweepCheck[] = [];
   const numbers = {} as WeightVerdict["numbers"];
   const stats = {} as WeightVerdict["stats"];

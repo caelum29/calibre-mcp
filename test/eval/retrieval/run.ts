@@ -59,6 +59,7 @@ import {
 import { currentGoldenSetHash, evaluateGoldenSet } from "./golden-set.js";
 import { ALL_MODES, renderMarkdown, runRetrievalEval, type EvalReport, type Mode } from "./harness.js";
 import { ablationMatrix, computeAxes, renderAxes } from "./axes.js";
+import { heldOutLines } from "./held-out.js";
 import { saturationLines } from "./saturation.js";
 import { compareReports, pairingWarnings, renderCompare } from "./stats.js";
 
@@ -276,14 +277,20 @@ export async function runPass(
   writeFileSync(jsonPath, JSON.stringify(report, null, 2) + "\n");
   // #363: report-only axes, skipped on --live like saturation (unverified labels)
   const axes = axesCfg && !args.live ? renderAxes(computeAxes(report), axesCfg) : [];
+  // #632: the frozen held-out queries, reported apart (fixture runs only)
+  const held = heldOutLines(report);
+  const fence = (ls: string[]) => `\`\`\`text\n${ls.join("\n")}\n\`\`\``;
   writeFileSync(
     mdPath,
-    renderMarkdown(report, base) + (axes.length ? `\n\n\`\`\`text\n${axes.join("\n")}\n\`\`\`` : "") + "\n",
+    renderMarkdown(report, base) +
+      (held.length ? `\n\n## Held-out (#632)\n\n${fence(held)}` : "") +
+      (axes.length ? `\n\n${fence(axes)}` : "") +
+      "\n",
   );
 
   log(`${rerankOff ? "rerank-off " : ""}pass done in ${((Date.now() - started) / 1000).toFixed(1)}s`);
   // CLI summary on stdout (this is a script, not the stdio MCP server).
-  process.stdout.write(passSummary(report, axes, { md: mdPath, json: jsonPath }));
+  process.stdout.write(passSummary(report, [...held, ...axes], { md: mdPath, json: jsonPath }));
   return { report, mdPath, jsonPath };
 }
 
@@ -297,7 +304,7 @@ export function degradedWarning(report: EvalReport, rerankerWired: boolean): str
     : undefined;
 }
 
-/** A pass's stdout summary: headline, saturation lines, #363 axes, report paths (#389 test seam). */
+/** A pass's stdout summary: headline, saturation lines, #632 held-out + #363 axes lines, report paths (#389 test seam). */
 export function passSummary(report: EvalReport, axes: string[], paths: { md: string; json: string }): string {
   return (
     `${headline(report)}\n${saturationLines(report).join("\n")}\n` +
