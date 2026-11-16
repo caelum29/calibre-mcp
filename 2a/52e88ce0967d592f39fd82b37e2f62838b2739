@@ -1,0 +1,23 @@
+test/semantic/store.test.ts
+  s_3984fb6fe79908::t_474d97df7c2633 601-603,647-658
+  s_3984fb6fe79908::t_fb34c26d86c8ba 589-600,604-613,615-626,628-646,659-663,665-667
+  s_3984fb6fe79908::t_73ed227c5c0305 614,627,664
+test/semantic/fts-match.test.ts
+  s_3984fb6fe79908::t_3b2d0858e9b737 1-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2a52e88ce0967d592f39fd82b37e2f62838b2739",
+  "prompts": {},
+  "sessions": {
+    "s_3984fb6fe79908": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "078da911-5304-4a92-a921-bcee287a4f13",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
