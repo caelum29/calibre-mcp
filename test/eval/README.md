@@ -265,14 +265,15 @@ Append-only: one entry per re-freeze, newest last. Every number names its corpus
 - Reports are committed. Baseline first, then one report per tuning change, so every
   fusion/reranker/model decision cites numbers, not vibes.
 - **Held-out set (#632).** 20 fixture queries carry `"heldOut": true` in `queries.json`.
-  They were drawn once, from the 68 queries of the set at the time, with `folds.ts` `stratifiedSample` (seed `0x358`,
-  stratified by kind, largest-remainder allocation over the 66 non-diagnostic queries; the two
-  `fig-xl` diagnostics stay out): semantic-paraphrase 5, exact-identifier 4, figure-caption 2,
-  cross-lingual 2, ru-monolingual 2, front-matter-trap 2, negative 2, figure-negative 1. The
-  ids are frozen (`held-out.test.ts` pins them): never re-drawn, never edited to move a number.
-  Queries added later are held out only where their own issue says so. Every earlier tuning
-  decision (model bake-off, ADR-0021 RRF weights, ADR-0022 `RERANK_FLOOR`) was made on all 68,
-  so those numbers stay optimistic; the held-out set guards the fits from here on.
+  They were drawn once, from the 68 queries of the set at the time, with `folds.ts`
+  `stratifiedSample` (seed `0x358`, stratified by kind, largest-remainder allocation over the
+  66 non-diagnostic queries; the two `fig-xl` diagnostics stay out): semantic-paraphrase 5,
+  exact-identifier 4, figure-caption 2, cross-lingual 2, ru-monolingual 2, front-matter-trap 2,
+  negative 2, figure-negative 1. The ids are frozen (`held-out.test.ts` pins them): never
+  re-drawn, never edited to move a number. Queries added later (#634's `id-11`/`id-12`, #359's
+  kinds) are held out only where their own issue says so. Every earlier tuning decision (model
+  bake-off, ADR-0021 RRF weights, ADR-0022 `RERANK_FLOOR`) was made on all queries, so those
+  numbers stay optimistic; the held-out set guards the fits from here on.
 - **Tuning scorers skip it.** `rrf-sweep.ts` (`scoreWeight`) and `rerank-floor.ts`
   (`scoreFloors`) drop held-out ids from every report they score (fixture and live: live
   reports reuse the fixture ids) and recompute the aggregates from the remaining rows,
