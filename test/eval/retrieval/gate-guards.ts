@@ -143,9 +143,29 @@ export function checkAllowEntries(
  */
 export function gateRuleFor(platform: string, t: Thresholds): GateRule {
   const linux = t.linux;
-  if (linux) checkPlatformDrift(linux.platformDrift);
+  if (linux) checkLinuxBlock(linux);
   if (platform !== "linux" || !linux) return { name: "exact", listDiffBlocking: true, platformDrift: [] };
   return { name: "linux", listDiffBlocking: false, platformDrift: linux.platformDrift };
+}
+
+const LINUX_KEYS = ["$comment", "listDiff", "platformDrift"];
+
+/**
+ * Shape-check the whole `thresholds.linux` block: a misspelled key would otherwise drop every
+ * drift entry, and a misspelled listDiff mode would still read as report-only.
+ */
+function checkLinuxBlock(linux: NonNullable<Thresholds["linux"]>): void {
+  const unknown = Object.keys(linux).filter((k) => !LINUX_KEYS.includes(k));
+  if (unknown.length) {
+    throw new Error(`thresholds.linux has unknown key ${unknown.join(", ")} (allowed: ${LINUX_KEYS.join(", ")})`);
+  }
+  const mode: unknown = linux.listDiff;
+  if (mode !== "report") {
+    throw new Error(
+      `thresholds.linux.listDiff must be "report" (got ${mode === undefined ? "undefined" : JSON.stringify(mode)})`,
+    );
+  }
+  checkPlatformDrift(linux.platformDrift);
 }
 
 /** Shape-check `thresholds.linux.platformDrift`; throws naming the first bad entry. */
