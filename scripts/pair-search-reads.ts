@@ -152,10 +152,17 @@ function defaultLogDir(): string {
   return path.join(base, "calibre-mcp", "index", "logs");
 }
 
-function main(argv: string[]): void {
+/** CLI args: `[logDir] [--window <seconds>]` in any order; dir undefined = the default log dir. */
+export function parseArgs(argv: readonly string[]): { dir?: string; windowSec: number } {
   const wi = argv.indexOf("--window");
   const windowSec = wi >= 0 ? Number(argv[wi + 1]) : DEFAULT_WINDOW_S;
-  const dir = argv.filter((a, i) => !a.startsWith("--") && i !== wi + 1)[0] ?? defaultLogDir();
+  // skip the window's value only when the flag is present (wi = -1 would drop index 0)
+  const dir = argv.find((a, i) => !a.startsWith("--") && (wi < 0 || i !== wi + 1));
+  return { dir, windowSec };
+}
+
+function main(argv: string[]): void {
+  const { dir = defaultLogDir(), windowSec } = parseArgs(argv);
   const lines = readdirSync(dir)
     .filter((f) => f.endsWith(".jsonl"))
     .sort()

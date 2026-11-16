@@ -7,7 +7,7 @@ import { isServerFault } from "./domain/error-codes.js";
 import { capArray, capString, type Logger } from "./logging.js";
 
 const ARG_STRING_MAX = 120;
-// A top-level `query` is the agent's own search text, bounded by every tool's schema (#627).
+// A top-level `query` is the agent's own search text, bounded by most tools' schemas at 512; a longer one logs as its length (#627).
 const QUERY_ARG_MAX = 512;
 const HITS_MAX = 10;
 const ARG_ARRAY_MAX = 10;
@@ -81,7 +81,13 @@ export function summarizeResult(tool: string, result: ResultLike | undefined): R
   );
   const sc = result.structuredContent;
   const out: Record<string, unknown> = { textChars };
-  if (sc !== undefined && sc !== null) out.structuredChars = JSON.stringify(sc)?.length;
+  if (sc !== undefined && sc !== null) {
+    try {
+      out.structuredChars = JSON.stringify(sc)?.length;
+    } catch {
+      // BigInt or a cycle: logging must never change the call's result — omit the size
+    }
+  }
   if (tool === SEMANTIC_SEARCH && result.isError !== true && sc !== null && typeof sc === "object") {
     const env = sc as Record<string, unknown>;
     out.hits = capArray(hitsOf(env), HITS_MAX, (h) => h);

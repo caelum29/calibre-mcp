@@ -409,3 +409,17 @@ describe("withCallLog result summary (#627)", () => {
     expect(meta.args).toEqual({ query: q, comments: "[text, 400 chars]" });
   });
 });
+
+describe("withCallLog result safety (#627)", () => {
+  it("should_return_the_original_result_and_omit_structuredChars_when_it_cannot_be_serialized", async () => {
+    const { logger, records, now } = setup();
+    const result = { content: [{ type: "text", text: "abc" }], structuredContent: { n: 10n } };
+    const got = await withCallLog(logger, { tool: "calibre_get_book", args: {}, now }, async () => result);
+    const meta = records()[0]!.meta as Record<string, unknown>;
+    expect({ same: got === result, textChars: meta.textChars, has: "structuredChars" in meta }).toEqual({
+      same: true,
+      textChars: 3,
+      has: false,
+    });
+  });
+});

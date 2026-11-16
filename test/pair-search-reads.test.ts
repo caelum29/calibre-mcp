@@ -86,3 +86,20 @@ describe("pairSearchReads", () => {
     expect(r.followedByRead).toEqual({ withOffset: 0, withoutOffset: 0 });
   });
 });
+
+describe("parseArgs", () => {
+  it("should_read_dir_and_window_in_any_order", async () => {
+    const { parseArgs } = await import("../scripts/pair-search-reads.js");
+    expect([
+      parseArgs(["/logs"]),
+      parseArgs(["/logs", "--window", "5"]),
+      parseArgs(["--window", "5", "/logs"]),
+      parseArgs([]),
+    ]).toEqual([
+      { dir: "/logs", windowSec: 180 },
+      { dir: "/logs", windowSec: 5 },
+      { dir: "/logs", windowSec: 5 },
+      { dir: undefined, windowSec: 180 },
+    ]);
+  });
+});

@@ -82,7 +82,7 @@ export const RECENT_ERRORS_MAX = 20;
 // Per-call timing/correlation fields: two otherwise identical errors always differ in these,
 // so they are left out of the repeat key. Book ids, messages and args stay in it.
 const VOLATILE_META = new Set(["durationMs", "rpcId", "traceId", "parentSpanId"]);
-// 512 = the schema cap of a `query`, so a maximum-length one reaches the file whole (#627)
+// 512 = the schema cap of a `query` in most tools, so a maximum-length one reaches the file whole (#627)
 const STRING_MAX = 512;
 const ARRAY_MAX = 20;
 const DEPTH_MAX = 4;
@@ -201,7 +201,7 @@ scope=library, {rank, bookId, charStart} for scope=book, {rank, bookId, figIndex
 when nothing matched), plus lowConfidence? and maxRerank? when the result carried them. Never snippet or passage text.
 errorCode is one of: ${ERROR_CODES.join(", ")}.
 args is a summary: numbers/booleans as-is, short strings verbatim, long free text as its length only, objects as key names;
-except the top-level query, kept verbatim up to 512 chars.
+except the top-level query, kept verbatim up to 512 chars (longer: its length only).
 isError results log at warn (the model fixes them by changing its call) — except server faults, which log at error:
 errorCode ${SERVER_FAULT_CODES.join(", ")}. Every error-level line (those faults, \`tool threw\`,
 inner failures such as \`calibredb failed\`) is what calibre_ping.recentErrors shows, so one fault may appear twice there
