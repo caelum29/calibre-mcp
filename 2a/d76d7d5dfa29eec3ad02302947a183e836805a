@@ -1,0 +1,26 @@
+scripts/judged-lengths.ts
+  s_1213dfa361df4a::t_ffe590ce037623 1-4,6-10,33-37,39-58,60-61,63-66,68-117,119-130
+  s_1213dfa361df4a::t_61c95ef66220a0 131,133-151
+scripts/judged-dump.ts
+  s_1213dfa361df4a::t_21554d2ff20a58 15,17,50-51,91-96
+  s_1213dfa361df4a::t_7329ad7320b448 97
+scripts/judged-score.ts
+  s_1213dfa361df4a::t_21554d2ff20a58 29,222-226
+  s_1213dfa361df4a::t_10be851cbb6f23 227-228
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2ad76d7d5dfa29eec3ad02302947a183e836805a",
+  "prompts": {},
+  "sessions": {
+    "s_1213dfa361df4a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b75eeccc-59bf-408d-a50b-bb10c6f3aca8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
