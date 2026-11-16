@@ -1,0 +1,66 @@
+[
+  {
+    "id": "para-01",
+    "category": "para",
+    "library": "Programming_Books",
+    "scope": "library",
+    "bookId": null,
+    "target": "text",
+    "query": "keeping two copies of data in agreement after a network split",
+    "mustCover": "Trade-off between consistency and availability when a network partition separates replicas (CAP / partition tolerance).",
+    "expectedBooks": [
+      {
+        "id": 138,
+        "title": "Designing Data-Intensive Applications (1st ed.)"
+      },
+      {
+        "id": 1068,
+        "title": "Designing Data-Intensive Applications (2nd ed.)"
+      },
+      {
+        "id": 1338,
+        "title": "Database Internals"
+      },
+      {
+        "id": 695,
+        "title": "Think Distributed Systems"
+      },
+      {
+        "id": 412,
+        "title": "Foundations of Scalable Systems"
+      }
+    ]
+  },
+  {
+    "id": "book-01",
+    "category": "book",
+    "library": "Programming_Books",
+    "scope": "book",
+    "bookId": 138,
+    "target": "text",
+    "query": "where does this book show that reading from a majority of replicas can still return stale data",
+    "mustCover": "Linearizability vs quorum reads; non-linearizable execution despite a strict quorum. (phrase seen in book: \"strict quorum reads and writes ... nonlinearizable execution\")",
+    "expectedBooks": [
+      {
+        "id": 138,
+        "title": "Designing Data-Intensive Applications (1st ed.)"
+      }
+    ]
+  },
+  {
+    "id": "fig-01",
+    "category": "fig",
+    "library": "Programming_Books",
+    "scope": "library",
+    "bookId": null,
+    "target": "figures",
+    "query": "sequence diagram of a client and server exchanging packets before any data can flow over a new connection",
+    "mustCover": "Figure \"Three-way handshake\" (High Performance Browser Networking, Fig 2-1).",
+    "expectedBooks": [
+      {
+        "id": 1227,
+        "title": "High Performance Browser Networking"
+      }
+    ]
+  }
+]

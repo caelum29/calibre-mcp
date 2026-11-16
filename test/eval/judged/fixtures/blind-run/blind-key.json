@@ -1,0 +1,20 @@
+{
+  "para-01#1": { "hybrid": 4 },
+  "para-01#2": { "keyword": 1 },
+  "para-01#3": { "hybrid": 2 },
+  "para-01#4": { "hybrid": 3 },
+  "para-01#5": { "keyword": 3 },
+  "para-01#6": { "hybrid": 1 },
+  "para-01#7": { "hybrid": 5 },
+  "para-01#8": { "keyword": 2 },
+  "book-01#1": { "hybrid": 1 },
+  "book-01#2": { "hybrid": 2 },
+  "book-01#3": { "hybrid": 5 },
+  "book-01#4": { "hybrid": 3 },
+  "book-01#5": { "hybrid": 4 },
+  "fig-01#1": { "hybrid": 1 },
+  "fig-01#2": { "hybrid": 5 },
+  "fig-01#3": { "hybrid": 4 },
+  "fig-01#4": { "hybrid": 2 },
+  "fig-01#5": { "hybrid": 3 }
+}

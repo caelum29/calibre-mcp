@@ -1,0 +1,117 @@
+[
+  {
+    "qid": "para-01",
+    "hid": "para-01#1",
+    "grade": 0,
+    "reason": "Shard chunk balancing, not partition consistency"
+  },
+  {
+    "qid": "para-01",
+    "hid": "para-01#2",
+    "grade": 0,
+    "reason": "Bitcoin SPV headers, unrelated"
+  },
+  {
+    "qid": "para-01",
+    "hid": "para-01#3",
+    "grade": 0,
+    "reason": "Backup copy rules, not partition trade-off"
+  },
+  {
+    "qid": "para-01",
+    "hid": "para-01#4",
+    "grade": 0,
+    "reason": "ML train/test split, word match only"
+  },
+  {
+    "qid": "para-01",
+    "hid": "para-01#5",
+    "grade": 0,
+    "reason": "Bitcoin SPV, unrelated"
+  },
+  {
+    "qid": "para-01",
+    "hid": "para-01#6",
+    "grade": 0,
+    "reason": "Mirrored disk block recovery, not network partition"
+  },
+  {
+    "qid": "para-01",
+    "hid": "para-01#7",
+    "grade": 0,
+    "reason": "Blockchain hard fork, unrelated"
+  },
+  {
+    "qid": "para-01",
+    "hid": "para-01#8",
+    "grade": 0,
+    "reason": "Blockchain ledger generalities"
+  },
+  {
+    "qid": "book-01",
+    "hid": "book-01#1",
+    "grade": 1,
+    "coverage": "L",
+    "reason": "Quorum basics; claims reads are up to date"
+  },
+  {
+    "qid": "book-01",
+    "hid": "book-01#2",
+    "grade": 2,
+    "coverage": "S",
+    "reason": "Stale values despite w+r>n edge cases"
+  },
+  {
+    "qid": "book-01",
+    "hid": "book-01#3",
+    "grade": 1,
+    "coverage": "L",
+    "reason": "Linearizability example, no quorum link"
+  },
+  {
+    "qid": "book-01",
+    "hid": "book-01#4",
+    "grade": 1,
+    "coverage": "L",
+    "reason": "Read repair after outage, not quorum staleness"
+  },
+  {
+    "qid": "book-01",
+    "hid": "book-01#5",
+    "grade": 1,
+    "coverage": "S",
+    "reason": "Limitations of quorum intro, mostly overlap guarantee"
+  },
+  {
+    "qid": "fig-01",
+    "hid": "fig-01#1",
+    "grade": 0,
+    "reason": "Client-side rendering sequence diagram"
+  },
+  {
+    "qid": "fig-01",
+    "hid": "fig-01#2",
+    "grade": 2,
+    "coverage": "E",
+    "reason": "TCP three-way handshake figure"
+  },
+  {
+    "qid": "fig-01",
+    "hid": "fig-01#3",
+    "grade": 0,
+    "reason": "API serialization figure"
+  },
+  {
+    "qid": "fig-01",
+    "hid": "fig-01#4",
+    "grade": 0,
+    "reason": "Server-side rendering sequence diagram"
+  },
+  {
+    "qid": "fig-01",
+    "hid": "fig-01#5",
+    "grade": 1,
+    "coverage": "L",
+    "reason": "TCP socket call sequence, not handshake packets"
+  }
+]
