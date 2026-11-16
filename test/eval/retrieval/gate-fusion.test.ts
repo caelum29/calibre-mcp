@@ -2,7 +2,7 @@
 // No baseline Hit@1=1 query may break in any mode; cross-lingual drops are report-only.
 
 import { describe, expect, it } from "vitest";
-import { evaluateFusionOnlyGate, type Thresholds } from "./gate.js";
+import { evaluateFusionOnlyGate, type PlatformDriftEntry, type Thresholds } from "./gate.js";
 import type { EvalReport, Mode, PerQueryRow, QueryKind } from "./harness.js";
 
 const cfg: NonNullable<Thresholds["fusionOnly"]> = {
@@ -140,5 +140,52 @@ describe("evaluateFusionOnlyGate", () => {
       pass: false,
       detail: "rerank onnx-community/bge-reranker-v2-m3-ONNX q8, 118 reranked rows",
     });
+  });
+});
+
+describe("evaluateFusionOnlyGate platform-drift entries (#364 Linux rule)", () => {
+  const drift = (over: Partial<PlatformDriftEntry> = {}): PlatformDriftEntry => ({
+    tier: "fusionOnly",
+    mode: "hybrid",
+    id: "sp-01",
+    reason: "ORT kernel drift between runner CPUs",
+    seen: "3 of 10 nightlies",
+    ...over,
+  });
+  const broken = report(withRow(row("sp-01", "hybrid", "semantic-paraphrase", 0, ["book-103"])));
+
+  it("skips the declared fusionOnly query and prints it as info", () => {
+    const res = evaluateFusionOnlyGate(broken, report(baselineRows()), cfg, [drift()]);
+    expect(res.pass).toBe(true);
+    expect(checkNamed(res, "fusion-only hybrid: broken Hit@1 queries")?.detail).toBe("0 broken (allowed 0)");
+    expect(checkNamed(res, "fusion-only hybrid: platform drift (skipped)")).toEqual({
+      name: "fusion-only hybrid: platform drift (skipped)",
+      active: false,
+      pass: true,
+      detail: "1 broken: sp-01",
+    });
+    expect(checkNamed(res, "platform-drift entries (fusionOnly)")).toEqual({
+      name: "platform-drift entries (fusionOnly)",
+      active: true,
+      pass: true,
+      detail: "1 entries, all solved by the baseline",
+    });
+    expect(res.drops).toEqual([
+      "hybrid/sp-01 (semantic-paraphrase) [platform drift]: baseline Hit@1=1 → now Hit@1=0 top3=[book-103]",
+    ]);
+  });
+
+  it("an entry for the ON tier does not exempt the fusion-only pass", () => {
+    const res = evaluateFusionOnlyGate(broken, report(baselineRows()), cfg, [drift({ tier: "on" })]);
+    expect(res.pass).toBe(false);
+    expect(checkNamed(res, "fusion-only hybrid: broken Hit@1 queries")?.detail).toBe("1 broken (allowed 0): sp-01");
+  });
+
+  it("an entry the OFF baseline does not solve is stale and fails", () => {
+    const res = evaluateFusionOnlyGate(report(baselineRows()), report(baselineRows()), cfg, [drift({ id: "id-01" })]);
+    expect(res.pass).toBe(false);
+    expect(checkNamed(res, "platform-drift entries (fusionOnly)")?.detail).toBe(
+      "1 entries, 1 stale (the baseline does not solve them at Hit@1 — delete them): hybrid/id-01",
+    );
   });
 });

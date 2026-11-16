@@ -218,3 +218,46 @@ describe("hash tier list diff vs hash-baseline.json", () => {
     thresholds.hashGate!.maxDurationMs,
   );
 });
+
+describe("evaluateListDiff report-only mode (#364 Linux rule)", () => {
+  const changed = report([
+    row("sp-01", "hybrid", SHIFTED),
+    row("sp-02", "hybrid", ["101", "102"]),
+    row("sp-01", "vector", TOP),
+  ]);
+  const lines = (res: ReturnType<typeof evaluateListDiff>) =>
+    res.checks.map((c) => `${c.active ? (c.pass ? "PASS" : "FAIL") : "info"} ${c.name} — ${c.detail}`);
+
+  it("a changed list is an info line under the Linux rule", () => {
+    const res = evaluateListDiff(changed, baseline, { ...opts(), blocking: false });
+    expect(res.pass).toBe(true);
+    expect(lines(res)[0]).toBe(
+      "info top-10 list diff (on, report-only) — 1 changed, 0 allowed (of 3 rows): hybrid/sp-01",
+    );
+    expect(res.drops).toEqual(["hybrid/sp-01 (semantic-paraphrase): top-10 changed at rank 2: 101 → 102"]);
+  });
+
+  it("the same input still fails under the exact (macOS) rule", () => {
+    const res = evaluateListDiff(changed, baseline, { ...opts(), blocking: true });
+    expect(res.pass).toBe(false);
+    expect(lines(res)[0]).toBe("FAIL top-10 list diff (on) — 1 changed, 0 allowed (of 3 rows): hybrid/sp-01");
+  });
+
+  it("an allow entry the platform does not reproduce is not stale under the Linux rule", () => {
+    const allow: AllowEntry[] = [
+      { tier: "on", mode: "hybrid", id: "sp-02", retrieved: ["102", "101"], reason: "macOS move" },
+    ];
+    const res = evaluateListDiff(changed, baseline, { ...opts(allow), blocking: false });
+    expect(res.pass).toBe(true);
+    expect(lines(res)[1]).toBe(
+      "info allow-file entries (on, report-only) — 1 entries, 1 stale (allow no current change — delete them): hybrid/sp-02",
+    );
+  });
+
+  it("an entry without a reason still fails under the Linux rule", () => {
+    const allow: AllowEntry[] = [{ tier: "on", mode: "hybrid", id: "sp-01", retrieved: SHIFTED, reason: "" }];
+    const res = evaluateListDiff(changed, baseline, { ...opts(allow), blocking: false });
+    expect(res.pass).toBe(false);
+    expect(lines(res)[1]).toBe("FAIL allow-file entries (on) — 1 entries, 1 without a reason: hybrid/sp-01");
+  });
+});

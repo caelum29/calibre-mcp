@@ -2,7 +2,7 @@
 // semantics — non-regression vs baseline, figure-caption floors, inactive figure-negative.
 
 import { describe, expect, it } from "vitest";
-import { evaluateGate, type Thresholds } from "./gate.js";
+import { evaluateGate, type PlatformDriftEntry, type Thresholds } from "./gate.js";
 import type { EvalReport, Mode, PerQueryRow, QueryKind } from "./harness.js";
 
 const thresholds: Thresholds = {
@@ -240,5 +240,76 @@ describe("evaluateGate score drift (#325)", () => {
   it("adds no drift checks when thresholds declare none", () => {
     const res = evaluateGate(withFigures(scored(0.9)), base, thresholds);
     expect(res.checks.filter((c) => c.name.startsWith("score drift"))).toEqual([]);
+  });
+});
+
+describe("evaluateGate platform-drift entries (#364 Linux rule)", () => {
+  const broke = (keys: string[]) =>
+    healthyRows().map((r) =>
+      keys.includes(`${r.mode}/${r.id}`) ? { ...r, metrics: { hit1: 0, recall5: 0, rr: 0, ndcg10: 0 } } : r,
+    );
+  const entry = (over: Partial<PlatformDriftEntry> = {}): PlatformDriftEntry => ({
+    tier: "on",
+    mode: "hybrid",
+    id: "sp-01",
+    reason: "ORT kernel drift between runner CPUs",
+    seen: "7 of 10 nightlies",
+    ...over,
+  });
+  const lines = (res: ReturnType<typeof evaluateGate>) =>
+    res.checks.map((c) => `${c.active ? (c.pass ? "PASS" : "FAIL") : "info"} ${c.name} — ${c.detail}`);
+
+  it("skips exactly the declared tier, mode and query, and prints the skip as info", () => {
+    const res = evaluateGate(report(broke(["hybrid/sp-01"])), baseline, thresholds, [entry()]);
+    expect(res.pass).toBe(true);
+    expect(lines(res)).toContain("PASS non-regression hybrid: broken Hit@1 queries — 0 broken (allowed 0)");
+    expect(lines(res)).toContain("info non-regression hybrid: platform drift (skipped) — 1 broken: sp-01");
+    expect(lines(res)).toContain("PASS platform-drift entries (on) — 1 entries, all solved by the baseline");
+    expect(res.drops).toEqual([
+      "hybrid/sp-01 (semantic-paraphrase) [platform drift]: baseline Hit@1=1 → now Hit@1=0 top3=[book-1]",
+    ]);
+  });
+
+  it("the same break in another mode still fails", () => {
+    const res = evaluateGate(report(broke(["vector/sp-01"])), baseline, thresholds, [entry()]);
+    expect(res.pass).toBe(false);
+    expect(lines(res)).toContain("FAIL non-regression vector: broken Hit@1 queries — 1 broken (allowed 0): sp-01");
+  });
+
+  it("a break of any other query still fails", () => {
+    const res = evaluateGate(report(broke(["hybrid/id-01"])), baseline, thresholds, [entry()]);
+    expect(res.pass).toBe(false);
+    expect(lines(res)).toContain("FAIL non-regression hybrid: broken Hit@1 queries — 1 broken (allowed 0): id-01");
+  });
+
+  it("an entry for the fusionOnly tier does not exempt the ON pass", () => {
+    const res = evaluateGate(report(broke(["hybrid/sp-01"])), baseline, thresholds, [entry({ tier: "fusionOnly" })]);
+    expect(res.pass).toBe(false);
+    expect(lines(res)).toContain("FAIL non-regression hybrid: broken Hit@1 queries — 1 broken (allowed 0): sp-01");
+  });
+
+  it("an unused entry passes (the drift shows on some runs only)", () => {
+    const res = evaluateGate(report(healthyRows()), baseline, thresholds, [entry()]);
+    expect(res.pass).toBe(true);
+    expect(lines(res)).toContain("info non-regression hybrid: platform drift (skipped) — 0 broken");
+  });
+
+  it("an entry whose query the baseline does not solve at Hit@1 is stale and fails, naming it", () => {
+    const unsolved = report(broke(["vector/id-01"]).filter((r) => !r.kind.startsWith("figure")));
+    const res = evaluateGate(report(healthyRows()), unsolved, thresholds, [
+      entry(),
+      entry({ mode: "vector", id: "id-01" }),
+      entry({ mode: "vector", id: "no-such-query" }),
+    ]);
+    expect(res.pass).toBe(false);
+    expect(lines(res)).toContain(
+      "FAIL platform-drift entries (on) — 3 entries, 2 stale (the baseline does not solve them at Hit@1 — delete them): vector/id-01, vector/no-such-query",
+    );
+  });
+
+  it("without entries the gate is unchanged (no platform-drift checks)", () => {
+    const res = evaluateGate(report(broke(["hybrid/sp-01"])), baseline, thresholds);
+    expect(res.pass).toBe(false);
+    expect(res.checks.some((c) => c.name.includes("platform"))).toBe(false);
   });
 });

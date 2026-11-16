@@ -7,6 +7,7 @@ import type { Thresholds } from "./gate.js";
 import {
   baselinePaths,
   checkGateArgs,
+  gateRuleFor,
   loadAllowEntries,
   loadGateBaselines,
   refuseBaselineOverwrite,
@@ -124,5 +125,63 @@ describe("loadAllowEntries (#358)", () => {
         throw new Error("ENOENT");
       }),
     ).toThrow('thresholds.listDiff.allowFile "list-diff-allow.json" is unreadable: ENOENT');
+  });
+});
+
+describe("gateRuleFor (#364 platform seam)", () => {
+  const entry = {
+    tier: "on",
+    mode: "hybrid",
+    id: "id-09",
+    reason: "ORT kernel drift between runner CPUs",
+    seen: "10 of 10 nightlies",
+  };
+  const withLinux = (platformDrift: unknown[]) =>
+    ({ ...t, linux: { listDiff: "report", platformDrift } }) as unknown as Thresholds;
+
+  it("linux picks the declared block: report-only list diff plus its drift entries", () => {
+    expect(gateRuleFor("linux", withLinux([entry]))).toEqual({
+      name: "linux",
+      listDiffBlocking: false,
+      platformDrift: [entry],
+    });
+  });
+
+  it("any other platform keeps the exact rule", () => {
+    for (const platform of ["darwin", "win32"]) {
+      expect(gateRuleFor(platform, withLinux([entry]))).toEqual({
+        name: "exact",
+        listDiffBlocking: true,
+        platformDrift: [],
+      });
+    }
+  });
+
+  it("linux without a declared block keeps the exact rule", () => {
+    expect(gateRuleFor("linux", t)).toEqual({ name: "exact", listDiffBlocking: true, platformDrift: [] });
+  });
+
+  it("fails up front on a malformed entry, naming it", () => {
+    expect(() => gateRuleFor("linux", withLinux([{ ...entry, tier: "hash" }]))).toThrow(
+      "thresholds.linux.platformDrift #0: tier must be one of on, fusionOnly",
+    );
+    expect(() => gateRuleFor("linux", withLinux([{ ...entry, mode: "fuzzy" }]))).toThrow(
+      "thresholds.linux.platformDrift #0: mode must be one of",
+    );
+    expect(() => gateRuleFor("linux", withLinux([{ ...entry, reason: " " }]))).toThrow(
+      "thresholds.linux.platformDrift #0: reason must be a non-empty string",
+    );
+    expect(() => gateRuleFor("linux", withLinux([{ ...entry, seen: "" }]))).toThrow(
+      "thresholds.linux.platformDrift #0: seen must be a non-empty string",
+    );
+    expect(() => gateRuleFor("linux", withLinux([entry, entry]))).toThrow(
+      "thresholds.linux.platformDrift #1: duplicate entry for on/hybrid/id-09",
+    );
+  });
+
+  it("a malformed block fails on every platform, so a macOS run catches it before the nightly", () => {
+    expect(() => gateRuleFor("darwin", withLinux([{ ...entry, tier: "hash" }]))).toThrow(
+      "thresholds.linux.platformDrift #0: tier must be one of on, fusionOnly",
+    );
   });
 });
