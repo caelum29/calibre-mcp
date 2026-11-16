@@ -147,9 +147,27 @@ function hash(s: string): number {
   return h;
 }
 
+// Score label a book-scope PASSAGE fence carries: `rerank 0.486 (keyword match)`, `rerank 0.05 (cosine 0.87)`,
+// `cosine 0.81` or `keyword match`. It names the mode and the score, so the judge must not see it.
+const NUM = String.raw`-?\d+(?:\.\d+)?`;
+const SCORE_LABEL = new RegExp(
+  String.raw` (?:rerank ${NUM} \((?:cosine ${NUM}|keyword match)\)|cosine ${NUM}|keyword match)`,
+);
+
+/** Strip the score label from the fence lines of a book-scope passage; the body is left as is. */
+function stripScoreLabel(text: string): string {
+  const lines = text.split("\n");
+  if (lines.length < 3 || !lines[0]!.startsWith("--- BEGIN UNTRUSTED PASSAGE ")) return text;
+  const last = lines.length - 1;
+  lines[0] = lines[0]!.replace(SCORE_LABEL, "");
+  if (lines[last]!.startsWith("--- END PASSAGE ")) lines[last] = lines[last]!.replace(SCORE_LABEL, "");
+  return lines.join("\n");
+}
+
 /**
  * Pool every mode's hits for one query, dedupe by (book, location), shuffle by a seeded hash,
  * and assign opaque ids. Returns the judge-facing query and the unblinding key entries.
+ * Book-scope passages lose their fenced score label, so no item tells the judge its mode or score.
  */
 export function blindRecord(rec: RawRecord): { blind: BlindQuery; key: BlindKey } {
   const pooled = new Map<string, { hit: RawHit; seen: Partial<Record<"hybrid" | "keyword", number>> }>();
@@ -167,7 +185,7 @@ export function blindRecord(rec: RawRecord): { blind: BlindQuery; key: BlindKey 
   const items = ordered.map(([, { hit, seen }], i): BlindItem => {
     const hid = `${qid}#${i + 1}`;
     key[hid] = seen;
-    return { hid, title: hit.title, text: hit.text };
+    return { hid, title: hit.title, text: stripScoreLabel(hit.text) };
   });
   return { blind: { qid, query: rec.query.query, mustCover: rec.query.mustCover, items }, key };
 }
