@@ -29,6 +29,7 @@ import { resolveNumericId } from "../app/resolve-id.js";
 import { INSTALL_TRANSFORMERS } from "./remediation.js";
 import { embedderUsable } from "../semantic/status.js";
 import { fence, toolError, toolOk, toolErrorFrom } from "./result.js";
+import { TimingRecorder, timingsLine } from "./search-timings.js";
 
 // the message's own step doubles as the hint, so the error text states it once (#437)
 const SHORT_QUERY_NOTE =
@@ -67,6 +68,8 @@ export const semanticSearchTool = defineTool({
     lowConfidence: z.boolean().optional(),
     reranked: z.boolean().optional(),
     maxRerank: z.number().optional(),
+    // per-stage wall times, only at CALIBRE_MCP_LOG_LEVEL=debug
+    timings: z.record(z.string(), z.number()).optional(),
     // Degradation surfacing (issue #41): false when the index has no vectors, so semantic
     // (vector/hybrid) ranking can't run for this library — with the reason spelled out.
     semanticAvailable: z
@@ -140,117 +143,123 @@ export const semanticSearchTool = defineTool({
       .optional(),
   },
   annotations: { readOnlyHint: true, openWorldHint: false },
-  handler: async (args, deps: SemanticDeps) => {
+  handler: async (args, rawDeps: SemanticDeps) => {
     // the schema keeps a plain string (#590): an empty query gets the error contract, not the SDK's text
     if (args.query.trim() === "") {
       return toolError("invalid_input", "query is empty.", { hint: "pass a non-empty query: a word or phrase" });
     }
-    try {
-      const libraryId = await deps.content.resolveLibraryId(args.library);
+    // debug mode times every port call so latency shows up on the result itself
+    const rec = rawDeps.config.logLevel === "debug" ? new TimingRecorder() : undefined;
+    const deps = rec ? rec.wrap(rawDeps) : rawDeps;
+    const run = async (): Promise<ToolResult> => {
+      try {
+        const libraryId = await deps.content.resolveLibraryId(args.library);
 
-      if (!deps.index.hasIndex(libraryId)) {
-        return toolError(
-          "index_missing",
-          `No semantic index for this library yet. ${BUILD_LIBRARY_INDEX} (add keywordOnly=true to build a model-free keyword index).`,
-          { hint: BUILD_LIBRARY_INDEX },
-        );
-      }
-
-      // Provenance for every location below (#136); read from the index's own meta.
-      const indexVersion = deps.index.indexMeta(libraryId)?.indexVersion;
-
-      // A keyword-only index (built without the embedding model) has no vectors: vector mode
-      // can't run, and hybrid degrades to keyword (degrading beats erroring for the default).
-      // Every success carries semanticAvailable (+ reason when false) so an automatic
-      // downgrade never reads as an unqualified success (issue #41).
-      const sem: SemStatus = deps.index.hasVectors(libraryId)
-        ? { semanticAvailable: true }
-        : {
-            semanticAvailable: false,
-            semanticReason:
-              "Index is keyword-only (no embeddings) — vector & hybrid semantic ranking unavailable until an embedding rebuild.",
-          };
-      let mode = args.mode;
-      let note: string | undefined;
-      if ((mode === "vector" || mode === "hybrid") && !sem.semanticAvailable) {
-        // install steps only when the model is really missing; with it present a rebuild is the fix (#559)
-        const modelReady = embedderUsable(deps.embedder);
-        if (mode === "vector") {
-          return toolError(
-            "dependency_missing",
-            modelReady
-              ? 'This index was built keyword-only (no embeddings), so vector search is unavailable. The embedding model is available: rebuild with calibre_build_index { force: true } (without keywordOnly), or use mode:"keyword" now.'
-              : `This index was built keyword-only (no embeddings), so vector search is unavailable. ${INSTALL_TRANSFORMERS} Then rebuild with calibre_build_index { force: true }, or use mode:"keyword" now (no model needed).`,
-          );
-        }
-        mode = "keyword";
-        note = modelReady
-          ? "Index is keyword-only (no embeddings) — showing keyword (FTS) matches. For semantic ranking, rebuild with calibre_build_index force=true (the embedding model is available)."
-          : `Index is keyword-only (no embeddings) — showing keyword (FTS) matches. For semantic ranking: ${INSTALL_TRANSFORMERS} Then rebuild with calibre_build_index force=true.`;
-      }
-      // 1–2 characters (Go, AI) are real queries, but carry little meaning for the embedder (#590)
-      if (mode !== "keyword" && args.query.trim().length < 3) note = joinNotes(note, SHORT_QUERY_NOTE);
-      const effArgs: Args = { ...args, mode };
-
-      if (effArgs.scope === "book") {
-        // Bundles scope LIBRARY discovery; a named book is already the narrowest scope.
-        if (effArgs.filter !== undefined) {
-          return toolError(
-            "invalid_input",
-            "filter (bundle) applies to scope=library only — scope=book already names one book.",
-          );
-        }
-        if (effArgs.bookId === undefined) {
-          return toolError("invalid_input", "scope=book requires bookId (the book to search within).");
-        }
-        const numericId = await resolveNumericId(deps, effArgs.bookId, effArgs.library);
-        if (numericId === undefined) return toolError("not_found", `No book with id/uuid ${effArgs.bookId}`);
-        // a numeric id is not looked up anywhere else: a book removed in the GUI may still have
-        // rows, or have lost them to an earlier search's prune (#579)
-        if (typeof effArgs.bookId === "number" && (await findGoneBookIds(deps, libraryId, [numericId])).size > 0) {
-          return toolError(
-            "not_found",
-            `No book with id ${numericId} in this library: it was removed or merged since it was indexed. Find it again with calibre_search or a library-scope search.`,
-          );
-        }
-        if (!deps.index.isBookIndexed(libraryId, numericId)) {
+        if (!deps.index.hasIndex(libraryId)) {
           return toolError(
             "index_missing",
-            `Book ${numericId} is not indexed. Run calibre_build_index { bookId: ${numericId} } first.`,
-            { hint: `Run calibre_build_index { bookId: ${numericId} } first` },
+            `No semantic index for this library yet. ${BUILD_LIBRARY_INDEX} (add keywordOnly=true to build a model-free keyword index).`,
+            { hint: BUILD_LIBRARY_INDEX },
           );
         }
-        if (effArgs.target === "figures") {
-          return withIndexVersion(await figuresTarget(effArgs, deps, libraryId, numericId, sem, note), indexVersion);
+
+        // Provenance for every location below (#136); read from the index's own meta.
+        const indexVersion = deps.index.indexMeta(libraryId)?.indexVersion;
+
+        // A keyword-only index (built without the embedding model) has no vectors: vector mode
+        // can't run, and hybrid degrades to keyword (degrading beats erroring for the default).
+        // Every success carries semanticAvailable (+ reason when false) so an automatic
+        // downgrade never reads as an unqualified success (issue #41).
+        const sem: SemStatus = deps.index.hasVectors(libraryId)
+          ? { semanticAvailable: true }
+          : {
+              semanticAvailable: false,
+              semanticReason:
+                "Index is keyword-only (no embeddings) — vector & hybrid semantic ranking unavailable until an embedding rebuild.",
+            };
+        let mode = args.mode;
+        let note: string | undefined;
+        if ((mode === "vector" || mode === "hybrid") && !sem.semanticAvailable) {
+          // install steps only when the model is really missing; with it present a rebuild is the fix (#559)
+          const modelReady = embedderUsable(deps.embedder);
+          if (mode === "vector") {
+            return toolError(
+              "dependency_missing",
+              modelReady
+                ? 'This index was built keyword-only (no embeddings), so vector search is unavailable. The embedding model is available: rebuild with calibre_build_index { force: true } (without keywordOnly), or use mode:"keyword" now.'
+                : `This index was built keyword-only (no embeddings), so vector search is unavailable. ${INSTALL_TRANSFORMERS} Then rebuild with calibre_build_index { force: true }, or use mode:"keyword" now (no model needed).`,
+            );
+          }
+          mode = "keyword";
+          note = modelReady
+            ? "Index is keyword-only (no embeddings) — showing keyword (FTS) matches. For semantic ranking, rebuild with calibre_build_index force=true (the embedding model is available)."
+            : `Index is keyword-only (no embeddings) — showing keyword (FTS) matches. For semantic ranking: ${INSTALL_TRANSFORMERS} Then rebuild with calibre_build_index force=true.`;
         }
-        return withIndexVersion(await bookScope(effArgs, deps, libraryId, numericId, sem, note), indexVersion);
-      }
+        // 1–2 characters (Go, AI) are real queries, but carry little meaning for the embedder (#590)
+        if (mode !== "keyword" && args.query.trim().length < 3) note = joinNotes(note, SHORT_QUERY_NOTE);
+        const effArgs: Args = { ...args, mode };
 
-      // Library scope = discovery: resolve the bundle filter + auto exclusion markers (#93).
-      // Restriction is query-time only — an allowed-book-id set intersected with the index
-      // candidates before exact ranking; the index itself never bakes bundles in (D-019).
-      const fr = await resolveFilter(deps, {
-        filter: effArgs.filter,
-        includeExcluded: effArgs.include_excluded,
-        autoExclude: true,
-        library: effArgs.library,
-      });
-      if (!fr.ok) return toolErrorFrom(fr.cause, filterErrorText(fr, deps.config.writeEnabled));
-      const allow = await restrictSet(deps, fr.res, effArgs.library);
-      const scope: FilterCtx = { fRes: fr.res, ...(allow ? { allow } : {}) };
-      const indexed = allow ? [...allow].filter((id) => deps.index.isBookIndexed(libraryId, id)).length : undefined;
-      note = joinNotes(note, ...honestyLines(fr.res, allow?.size, indexed));
+        if (effArgs.scope === "book") {
+          // Bundles scope LIBRARY discovery; a named book is already the narrowest scope.
+          if (effArgs.filter !== undefined) {
+            return toolError(
+              "invalid_input",
+              "filter (bundle) applies to scope=library only — scope=book already names one book.",
+            );
+          }
+          if (effArgs.bookId === undefined) {
+            return toolError("invalid_input", "scope=book requires bookId (the book to search within).");
+          }
+          const numericId = await resolveNumericId(deps, effArgs.bookId, effArgs.library);
+          if (numericId === undefined) return toolError("not_found", `No book with id/uuid ${effArgs.bookId}`);
+          // a numeric id is not looked up anywhere else: a book removed in the GUI may still have
+          // rows, or have lost them to an earlier search's prune (#579)
+          if (typeof effArgs.bookId === "number" && (await findGoneBookIds(deps, libraryId, [numericId])).size > 0) {
+            return toolError(
+              "not_found",
+              `No book with id ${numericId} in this library: it was removed or merged since it was indexed. Find it again with calibre_search or a library-scope search.`,
+            );
+          }
+          if (!deps.index.isBookIndexed(libraryId, numericId)) {
+            return toolError(
+              "index_missing",
+              `Book ${numericId} is not indexed. Run calibre_build_index { bookId: ${numericId} } first.`,
+              { hint: `Run calibre_build_index { bookId: ${numericId} } first` },
+            );
+          }
+          if (effArgs.target === "figures") {
+            return withIndexVersion(await figuresTarget(effArgs, deps, libraryId, numericId, sem, note), indexVersion);
+          }
+          return withIndexVersion(await bookScope(effArgs, deps, libraryId, numericId, sem, note), indexVersion);
+        }
 
-      if (effArgs.target === "figures") {
-        return withIndexVersion(
-          await figuresTarget(effArgs, deps, libraryId, undefined, sem, note, scope),
-          indexVersion,
-        );
+        // Library scope = discovery: resolve the bundle filter + auto exclusion markers (#93).
+        // Restriction is query-time only — an allowed-book-id set intersected with the index
+        // candidates before exact ranking; the index itself never bakes bundles in (D-019).
+        const fr = await resolveFilter(deps, {
+          filter: effArgs.filter,
+          includeExcluded: effArgs.include_excluded,
+          autoExclude: true,
+          library: effArgs.library,
+        });
+        if (!fr.ok) return toolErrorFrom(fr.cause, filterErrorText(fr, deps.config.writeEnabled));
+        const allow = await restrictSet(deps, fr.res, effArgs.library);
+        const scope: FilterCtx = { fRes: fr.res, ...(allow ? { allow } : {}) };
+        const indexed = allow ? [...allow].filter((id) => deps.index.isBookIndexed(libraryId, id)).length : undefined;
+        note = joinNotes(note, ...honestyLines(fr.res, allow?.size, indexed));
+
+        if (effArgs.target === "figures") {
+          return withIndexVersion(
+            await figuresTarget(effArgs, deps, libraryId, undefined, sem, note, scope),
+            indexVersion,
+          );
+        }
+        return withIndexVersion(await libraryScope(effArgs, deps, libraryId, sem, note, scope), indexVersion);
+      } catch (err) {
+        return mapError(err);
       }
-      return withIndexVersion(await libraryScope(effArgs, deps, libraryId, sem, note, scope), indexVersion);
-    } catch (err) {
-      return mapError(err);
-    }
+    };
+    return withTimings(await run(), rec);
   },
 });
 
@@ -642,6 +651,19 @@ function withIndexVersion(res: ToolResult, indexVersion: number | undefined): To
       ? [{ ...first, text: `${first.text}\n${line}` }, ...rest]
       : [{ type: "text", text: line }, ...res.content];
   return { ...res, content, structuredContent: { ...res.structuredContent, indexVersion } };
+}
+
+/** Debug mode: append the stage breakdown to the header text + structuredContent (successes only). */
+function withTimings(res: ToolResult, rec: TimingRecorder | undefined): ToolResult {
+  if (!rec || res.isError) return res;
+  const timings = rec.snapshot();
+  const [first, ...rest] = res.content;
+  const line = timingsLine(timings);
+  const content: ContentBlock[] =
+    first?.type === "text"
+      ? [{ ...first, text: `${first.text}\n${line}` }, ...rest]
+      : [{ type: "text", text: line }, ...res.content];
+  return { ...res, content, structuredContent: { ...res.structuredContent, timings } };
 }
 
 /** Prepend a degrade/advisory note to a header block (kept in the text so all clients see it). */

@@ -13,6 +13,7 @@ import type { SemanticDeps } from "../../src/tools/calibre_semantic_search.js";
 import { asLibId } from "../../src/calibre/lib-id.js";
 import { fakeCalibre, fakeContent, fakeExtractor, fakeFigures } from "./fake-ports.js";
 import { withLiveHitCheck } from "./fake-live-ids.js";
+import type { ToolResult } from "../../src/tools/types.js";
 
 const LIB = "Programming_Books";
 
@@ -832,5 +833,61 @@ describe("calibre_semantic_search indexed count on a filter (#556)", () => {
     const text = await noteFor([1, 2]);
     expect(text).toContain("filter: b (2 books)");
     expect(text).not.toContain("calibre_build_index");
+  });
+});
+
+describe("calibre_semantic_search debug timings", () => {
+  // the bundle tests above leave a cached exclusion marker behind
+  beforeEach(() => invalidateBundleCache());
+
+  const DEBUG = { CALIBRE_MCP_LOG_LEVEL: "debug" };
+  const headText = (r: ToolResult): string => {
+    const first = r.content[0];
+    return first?.type === "text" ? first.text : "";
+  };
+
+  it("should_report_per_stage_timings_in_structured_content_when_log_level_is_debug", async () => {
+    const r = await semanticSearchTool.handler(args(), deps(preloaded(), queryEmbedder, scoreByBody({}), DEBUG));
+    expect(r.structuredContent?.timings).toEqual({
+      embedMs: expect.any(Number),
+      vectorMs: expect.any(Number),
+      keywordMs: expect.any(Number),
+      rerankMs: expect.any(Number),
+      calibreMs: expect.any(Number),
+      totalMs: expect.any(Number),
+    });
+  });
+
+  it("should_mirror_timings_into_the_header_text_when_log_level_is_debug", async () => {
+    const r = await semanticSearchTool.handler(args(), deps(preloaded(), queryEmbedder, scoreByBody({}), DEBUG));
+    expect(headText(r)).toMatch(
+      /Timings \(debug\): embed \d+ ms · vector \d+ ms · keyword \d+ ms · rerank \d+ ms · calibre \d+ ms · total \d+ ms/,
+    );
+  });
+
+  it("should_omit_model_stages_in_keyword_mode", async () => {
+    const r = await semanticSearchTool.handler(
+      args({ mode: "keyword" }),
+      deps(preloaded(), throwingEmbedder, undefined, DEBUG),
+    );
+    expect(Object.keys(r.structuredContent?.timings as object).sort()).toEqual(["calibreMs", "keywordMs", "totalMs"]);
+  });
+
+  it("should_report_timings_for_book_scope", async () => {
+    const r = await semanticSearchTool.handler(
+      args({ scope: "book", bookId: 1 }),
+      deps(preloaded(), queryEmbedder, undefined, DEBUG),
+    );
+    expect(r.structuredContent?.timings).toMatchObject({ embedMs: expect.any(Number), totalMs: expect.any(Number) });
+  });
+
+  it("should_not_report_timings_at_the_default_log_level", async () => {
+    const r = await semanticSearchTool.handler(args(), deps(preloaded(), queryEmbedder, scoreByBody({})));
+    expect(r.structuredContent).not.toHaveProperty("timings");
+  });
+
+  it("should_not_mention_timings_in_text_at_the_default_log_level", async () => {
+    const r = await semanticSearchTool.handler(args(), deps(preloaded(), queryEmbedder, scoreByBody({})));
+    expect(headText(r)).not.toContain("Timings");
   });
 });
