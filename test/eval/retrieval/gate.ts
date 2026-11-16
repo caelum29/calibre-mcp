@@ -131,6 +131,47 @@ export interface GateResult {
 
 const MODES: Mode[] = ["hybrid", "vector", "keyword"];
 
+/** The only kinds `capabilityKinds` may list (#359): a regression kind there would stop being gated. */
+const CAPABILITY_KINDS: readonly QueryKind[] = [
+  "confuser-pair",
+  "no-overlap-paraphrase",
+  "adjacent-negative",
+  "raw-title",
+];
+const CAPABILITY_KEYS = ["$comment", "kinds", "headroom"];
+
+/** Throw unless every entry is a distinct capability kind; `at` names the source in the message. */
+function checkCapabilityList(kinds: unknown, at: string): QueryKind[] {
+  if (!Array.isArray(kinds)) throw new Error(`${at} must be an array`);
+  const seen = new Set<unknown>();
+  for (const k of kinds) {
+    if (!CAPABILITY_KINDS.includes(k as QueryKind)) {
+      throw new Error(`${at}: ${JSON.stringify(k)} is not a capability kind (allowed: ${CAPABILITY_KINDS.join(", ")})`);
+    }
+    if (seen.has(k)) throw new Error(`${at}: duplicate ${JSON.stringify(k)}`);
+    seen.add(k);
+  }
+  return kinds as QueryKind[];
+}
+
+/**
+ * The validated `thresholds.capabilityKinds.kinds` ([] when the block is absent). Throws on an
+ * unknown key, a non-capability kind or a duplicate, on every platform: a typo would otherwise be
+ * a silent no-op and a listed regression kind would silently stop being gated (#359 review).
+ */
+export function capabilityKindsOf(t: Thresholds): QueryKind[] {
+  const block = t.capabilityKinds as unknown;
+  if (block === undefined) return [];
+  if (typeof block !== "object" || block === null) throw new Error("thresholds.capabilityKinds must be an object");
+  const unknown = Object.keys(block).filter((k) => !CAPABILITY_KEYS.includes(k));
+  if (unknown.length) {
+    throw new Error(
+      `thresholds.capabilityKinds has unknown key ${unknown.join(", ")} (allowed: ${CAPABILITY_KEYS.join(", ")})`,
+    );
+  }
+  return checkCapabilityList((block as { kinds?: unknown }).kinds, "thresholds.capabilityKinds.kinds");
+}
+
 function rowsOf(report: EvalReport, mode: Mode): PerQueryRow[] {
   return report.perQuery.filter((r) => r.mode === mode);
 }
@@ -231,7 +272,7 @@ export function evaluateGate(
   const checks: GateCheck[] = [];
   const drops: string[] = [];
   const drift = platformDrift.filter((e) => e.tier === "on");
-  const capability = new Set<string>(t.capabilityKinds?.kinds ?? []);
+  const capability = new Set<string>(capabilityKindsOf(t));
 
   // 1. Non-regression vs baseline: per-query Hit@1, text kinds only (figure kinds have no
   //    baseline rows). A query missing from the current run counts as broken — a silently
@@ -309,7 +350,7 @@ export function evaluateFusionOnlyGate(
   platformDrift: PlatformDriftEntry[] = [],
   capabilityKinds: QueryKind[] = [],
 ): GateResult {
-  const capability = new Set<string>(capabilityKinds);
+  const capability = new Set<string>(checkCapabilityList(capabilityKinds, "thresholds.capabilityKinds.kinds"));
   const checks: GateCheck[] = [];
   const drops: string[] = [];
   const drift = platformDrift.filter((e) => e.tier === "fusionOnly");

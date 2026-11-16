@@ -4,6 +4,7 @@
 
 import { STOPWORDS } from "../../../src/semantic/snippet.js";
 import { stemmedTokens } from "../../../src/semantic/stem.js";
+import { ftsMatch } from "../../../src/semantic/store/shared.js";
 
 const MIN_TERM_CHARS = 3;
 
@@ -29,14 +30,31 @@ export function leakedStems(query: string, text: string): string[] {
   return contentStems(query).filter((s) => inText.has(s));
 }
 
+// A raw token as the index tokenizer sees it (store/shared.ts RAW_TOKEN): the identifier tokens
+// ftsMatch ORs in (#634) match the raw column, so the text side is compared raw too.
+const RAW_TOKEN = /[\p{L}\p{N}\p{M}_+#.-]+/gu;
+
+/** The tokens ftsMatch ORs for `query`: its stems plus identifier-like raw tokens (and their "t." form). */
+function ftsTokens(query: string): string[] {
+  const expr = ftsMatch(query);
+  if (!expr) return [];
+  return [...expr.matchAll(/"((?:[^"]|"")*)"/g)].map((m) => m[1]!.replace(/""/g, '"'));
+}
+
 /**
- * Every token of `query` (stemmed exactly as the keyword half does, stop words and short stems
- * included) that also occurs in `text`. The keyword half ORs all of them (ftsMatch), so only
- * an empty result keeps keyword search from returning `text` for this query at all.
+ * Every token the keyword half ORs for `query` (ftsMatch: stems, stop words and short stems
+ * included, plus identifier tokens such as `three-way` or `node.js`) that also occurs in
+ * `text`, as a stem or as a raw token. Only an empty result keeps keyword search from returning
+ * `text` for this query at all. A sentence-final `t.` collapses into `t`.
  */
 export function ftsOverlap(query: string, text: string): string[] {
-  const inText = new Set([...stemmedTokens(text)].map((t) => t.stem));
+  const stems = new Set([...stemmedTokens(text)].map((t) => t.stem));
+  const raw = new Set([...text.matchAll(RAW_TOKEN)].map((m) => m[0].toLowerCase()));
   const out: string[] = [];
-  for (const t of stemmedTokens(query)) if (inText.has(t.stem) && !out.includes(t.stem)) out.push(t.stem);
+  for (const tok of ftsTokens(query)) {
+    if (!stems.has(tok) && !raw.has(tok)) continue;
+    const key = tok.replace(/\.+$/, "");
+    if (key && !out.includes(key)) out.push(key);
+  }
   return out;
 }
