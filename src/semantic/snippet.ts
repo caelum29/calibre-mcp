@@ -24,7 +24,7 @@ const ANCHOR_WEIGHT_SHARE = 0.5;
 // Function words that carry no topic: a natural-language query is mostly these, and without
 // the list "how does the raft consensus work" would pick the head (how/does/the/work) over Raft.
 // Matched on the lowercased raw token (ё→е), before stemming.
-const STOPWORDS = new Set(
+export const STOPWORDS = new Set(
   (
     "a an the and or but nor not no so if then than as at by for from in into of off on onto out " +
     "over to up with about after before under between through during without within is am are was " +
