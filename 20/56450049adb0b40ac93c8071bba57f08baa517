@@ -1,0 +1,22 @@
+scripts/judged-lengths.ts
+  s_1213dfa361df4a::t_b2263c3a398fcd 1-48
+test/eval/judged/judged-lengths.test.ts
+  s_1213dfa361df4a::t_74abc4658919cb 1-124
+  s_1213dfa361df4a::t_ae979898eb538a 125-130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2056450049adb0b40ac93c8071bba57f08baa517",
+  "prompts": {},
+  "sessions": {
+    "s_1213dfa361df4a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b75eeccc-59bf-408d-a50b-bb10c6f3aca8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
