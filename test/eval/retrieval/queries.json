@@ -26,6 +26,8 @@
   { "id": "id-08", "kind": "exact-identifier", "scope": "library", "query": "Восток-1", "ru": true, "relevant": [111] },
   { "id": "id-09", "kind": "exact-identifier", "scope": "library", "query": "overlayfs", "relevant": [105] },
   { "id": "id-10", "kind": "exact-identifier", "scope": "library", "query": "parsePrimary", "relevant": [110] },
+  { "id": "id-11", "kind": "exact-identifier", "scope": "library", "query": "C++", "relevant": [109] },
+  { "id": "id-12", "kind": "exact-identifier", "scope": "library", "query": "Node.js", "relevant": [102] },
   { "id": "idb-01", "kind": "exact-identifier", "scope": "book", "bookId": 107, "query": "ETag", "relevant": [{ "bookId": 107, "charStart": 1420, "charEnd": 1867, "marker": "5d8c72a5edda8" }] },
   { "id": "idb-02", "kind": "exact-identifier", "scope": "book", "bookId": 109, "query": "medianOfThree", "relevant": [{ "bookId": 109, "charStart": 1450, "charEnd": 2044, "marker": "Median-of-three" }] },
 

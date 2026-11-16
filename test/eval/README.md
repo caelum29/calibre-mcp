@@ -21,7 +21,7 @@ Two eval axes live (or will live) here — they measure different things:
 ## Retrieval eval (`retrieval/`) — the measurement gate for tuning
 
 Every tuning decision downstream (reranker on/off, fusion weights, embedding-model swap,
-chunk sizes) is guesswork without labels. This harness runs 68 labeled golden queries over
+chunk sizes) is guesswork without labels. This harness runs 70 labeled golden queries over
 a committed fixture corpus through the REAL pipeline — `calibre_build_index`'s
 chunk→embed→store path, then the real `calibre_semantic_search` handler per mode
 (hybrid / vector / keyword) — and scores Hit@1, Recall@5, MRR, nDCG@10 per kind and overall.
@@ -107,11 +107,11 @@ records (`HarnessOptions.timing`), so
 
 ### Layout
 
-- `queries.json` — 68 golden queries `{ id, kind, scope, query, ru?, relevant }`. Kinds
-  (count): `semantic-paraphrase` (16), `exact-identifier` (12), `figure-caption` (9),
+- `queries.json` — 70 golden queries `{ id, kind, scope, query, ru?, relevant }`. Kinds
+  (count): `semantic-paraphrase` (16), `exact-identifier` (14), `figure-caption` (9),
   `cross-lingual` RU↔EN (8), `ru-monolingual` (8), `front-matter-trap` (6), `negative` (6)
   and `figure-negative` (3) — the two negative kinds have no right answer and measure the
-  low-confidence signal, leaving 59 positives. 24/68 are RU-involved (`ru: true`): RU is the known weak axis (memory: "RU=0 chapters=RU-gap")
+  low-confidence signal, leaving 61 positives. 24/70 are RU-involved (`ru: true`): RU is the known weak axis (memory: "RU=0 chapters=RU-gap")
   and is first-class here, not an afterthought. `scope: "book"` queries label relevant
   passages as char spans + a `marker` substring (the harness fails loudly if a fixture
   edit invalidates a span).
