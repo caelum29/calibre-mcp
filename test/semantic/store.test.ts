@@ -586,3 +586,82 @@ describe("SqliteIndexStore — atomic per-book writes + vector freshness (#197)"
     }
   });
 });
+
+// #634: the keyword half reaches identifier tokens (c++, c#, node.js) kept whole in the raw
+// body column, mid-sentence and sentence-final ("… in C++."), and still stems plain words.
+describe("identifier-like query tokens reach the raw body column (#634)", () => {
+  const FILLER = ["gardening and soil", "baking bread at home", "a short history of sailing"];
+
+  /** Books 1–3: mid-sentence identifier, sentence-final identifier, look-alike only; 4–6 filler. */
+  function seed(mid: string, final: string, lookalike: string): SqliteIndexStore {
+    const s = store();
+    s.replaceBook(LIB, { bookId: 1, title: "One", authors: [] }, [chunk(mid, 0)]);
+    s.replaceBook(LIB, { bookId: 2, title: "Two", authors: [] }, [chunk(final, 1)]);
+    s.replaceBook(LIB, { bookId: 3, title: "Three", authors: [] }, [chunk(lookalike, 2)]);
+    FILLER.forEach((text, i) =>
+      s.replaceBook(LIB, { bookId: 4 + i, title: "Filler", authors: [] }, [chunk(text, 3 + i)]),
+    );
+    return s;
+  }
+
+  it.each([
+    ["c++", "templates in C++ are compiled eagerly", "the engine is written in C++.", "the letter c"],
+    ["c#", "async methods in C# return tasks", "the service is written in C#.", "the letter c"],
+    ["node.js", "streams in Node.js are event emitters", "the server runs on Node.js.", "a node in js"],
+  ])("ranks both %s chunks above the look-alike chunk", (query, mid, final, lookalike) => {
+    const s = seed(mid, final, lookalike);
+    const ids = s.searchLibraryFts(LIB, query, 10).map((h) => h.bookId);
+    expect([ids.slice(0, 2).sort(), ids[2]]).toEqual([[1, 2], 3]);
+    s.close();
+  });
+
+  it("book scope ranks the identifier passages above the look-alike passage", () => {
+    const s = store();
+    s.replaceBook(LIB, { bookId: 1, title: "One", authors: [] }, [
+      chunk("the letter c", 0, 0),
+      chunk("templates in C++ are compiled eagerly", 1, 100),
+      chunk("the engine is written in C++.", 2, 200),
+      ...FILLER.map((text, i) => chunk(text, 3 + i, 300 + i * 100)),
+    ]);
+    const starts = s.searchBookFts(LIB, 1, "c++", 10).map((h) => h.charStart);
+    expect([starts.slice(0, 2).sort(), starts[2]]).toEqual([[100, 200], 0]);
+    s.close();
+  });
+
+  it("still matches a plain word by its stem (templates → template)", () => {
+    const s = seed("one template here", "nothing relevant", "nothing at all");
+    expect(s.searchLibraryFts(LIB, "templates", 10).map((h) => h.bookId)).toEqual([1]);
+    s.close();
+  });
+
+  it("figure captions: c++ ranks both identifier captions above the look-alike caption", () => {
+    const s = store();
+    const caption = (figIndex: number, text: string) => ({
+      figIndex,
+      page: 1,
+      caption: text,
+      charOffset: 0,
+      format: "pdf",
+      source: "page-render" as const,
+    });
+    s.replaceBook(
+      LIB,
+      { bookId: 1, title: "One", authors: [] },
+      [chunk("body", 0)],
+      [caption(0, "Templates in C++ code")],
+    );
+    s.replaceBook(
+      LIB,
+      { bookId: 2, title: "Two", authors: [] },
+      [chunk("body", 1)],
+      [caption(0, "A parser written in C++.")],
+    );
+    s.replaceBook(LIB, { bookId: 3, title: "Three", authors: [] }, [chunk("body", 2)], [caption(0, "The letter c")]);
+    FILLER.forEach((text, i) =>
+      s.replaceBook(LIB, { bookId: 4 + i, title: "Filler", authors: [] }, [chunk("body", 3 + i)], [caption(0, text)]),
+    );
+    const ids = s.searchFiguresFts(LIB, "c++", 10).map((h) => h.bookId);
+    expect([ids.slice(0, 2).sort(), ids[2]]).toEqual([[1, 2], 3]);
+    s.close();
+  });
+});
