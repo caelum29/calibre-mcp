@@ -15,7 +15,8 @@
 //   with --rerank off vs thresholds.fusionOnly + its own frozen baseline (#356). Each pass also
 //   runs the top-10 list diff vs its baseline + list-diff-allow.json (#358); both passes
 //   print, exit 1 if either fails. Fixture-only (the live diff is a triage artifact, not a
-//   gate — thresholds.liveEval); rejects --rerank (the gate sets it per pass).
+//   gate — thresholds.liveEval); rejects --rerank (the gate sets it per pass). On Linux the
+//   rule is thresholds.linux (#364): list diff report-only, declared platform-drift skips.
 //
 // Every run prints the headroom share and, when rerank-ON hybrid Hit@1 >= 0.95, a saturation
 //   warning (#365, saturation.ts); both are skipped on --live (unverified labels).
@@ -40,6 +41,7 @@ import { RERANKER_MODEL_ID, TransformersReranker, type Reranker } from "../../..
 import {
   baselinePaths,
   checkGateArgs,
+  gateRuleFor,
   loadAllowEntries,
   type GateBaselines,
   loadGateBaselines,
@@ -339,8 +341,11 @@ function compareFiles([a, b]: [string, string]): void {
   process.stdout.write(`${[renderCompare(compareReports(ra, rb), la, lb), ...warnings].join("\n")}\n`);
 }
 
-/** The eval CLI body; invoked only by run-cli.ts, so importing this module starts nothing. */
-export async function main(): Promise<void> {
+/**
+ * The eval CLI body; invoked only by run-cli.ts, so importing this module starts nothing.
+ * `platform` is the seam that picks the gate rule (#364): `linux` → thresholds.linux, else exact.
+ */
+export async function main(platform: string = process.platform): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   if (args.compare) {
     if (args.gate || args.live)
@@ -359,24 +364,44 @@ export async function main(): Promise<void> {
       ? { ...thresholds.listDiff, allow: loadAllowEntries(thresholds.listDiff, read) }
       : undefined;
   const goldenTiers: ListDiffTier[] = thresholds.goldenSet?.tiers ?? [];
+  // validates thresholds.linux on every platform, before the ~8 min ON pass
+  const rule = args.gate ? gateRuleFor(platform, thresholds) : undefined;
   if (baselines) failFastOnGoldenSet(baselines, goldenTiers);
   mkdirSync(args.workDir, { recursive: true });
   ensureModelCache(args.workDir);
 
   const axesCfg = thresholds.reportOnlyAxes;
   const on = await runPass(args, { rerankOff: args.rerank === "off", tag: args.tag, protectedPaths, axesCfg });
-  if (!baselines) return;
+  if (!baselines || !rule) return;
 
   // #358 list diff + #392 golden-set hash run beside each tier's own gate, vs the same baseline
   const withList = (r: GateResult, cur: EvalReport, base: EvalReport, tier: "on" | "fusionOnly") => {
     let out = goldenTiers.includes(tier) ? mergeGates(r, evaluateGoldenSet(cur, base, tier)) : r;
     if (listDiff)
-      out = mergeGates(out, evaluateListDiff(cur, base, { tier, topK: listDiff.topK, allow: listDiff.allow }));
+      out = mergeGates(
+        out,
+        evaluateListDiff(cur, base, {
+          tier,
+          topK: listDiff.topK,
+          allow: listDiff.allow,
+          blocking: rule.listDiffBlocking,
+        }),
+      );
     return out;
   };
 
-  const onResult = withList(evaluateGate(on.report, baselines.on, thresholds), on.report, baselines.on, "on");
-  const sections = [`== ON pass (rerank on) vs ${thresholds.baselineReport} ==\n${renderGate(onResult)}`];
+  const onResult = withList(
+    evaluateGate(on.report, baselines.on, thresholds, rule.platformDrift),
+    on.report,
+    baselines.on,
+    "on",
+  );
+  // the Linux rule is tolerant, so every gate printout says which rule produced it
+  const ruleLine =
+    rule.name === "linux"
+      ? `gate rule: linux (#364) — top-${listDiff?.topK ?? 10} list diff report-only, ${rule.platformDrift.length} platform-drift entries`
+      : "gate rule: exact";
+  const sections = [ruleLine, `== ON pass (rerank on) vs ${thresholds.baselineReport} ==\n${renderGate(onResult)}`];
   let pass = onResult.pass;
 
   // #356: the reranker re-sorts the whole fixture, so fusion is gated on its own OFF pass
@@ -388,7 +413,7 @@ export async function main(): Promise<void> {
     // #363 ablation axis (report-only): needs both passes, so it prints here
     process.stdout.write(`\n${ablationMatrix(on.report, off.report).join("\n")}\n`);
     const offResult = withList(
-      evaluateFusionOnlyGate(off.report, baselines.off, fusion),
+      evaluateFusionOnlyGate(off.report, baselines.off, fusion, rule.platformDrift),
       off.report,
       baselines.off,
       "fusionOnly",
