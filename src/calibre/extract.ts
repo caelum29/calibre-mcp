@@ -171,32 +171,25 @@ export class Extractor implements TextExtractor {
   async getText(args: GetTextArgs): Promise<ExtractedText> {
     const report = await this.detectBackends();
     const fmt = args.format.toLowerCase();
-    const cacheFile = path.join(CACHE_DIR, `${hashKey(args.cacheKey)}.v${TEXT_CACHE_VERSION}.json`);
+    const cacheFile = textCacheFile(args.cacheKey);
 
-    // Path-boundary guard: the resolved cache file must stay inside CACHE_DIR (DESIGN §5).
-    if (!path.resolve(cacheFile).startsWith(path.resolve(CACHE_DIR) + path.sep)) {
-      throw new Error("cache path escaped the cache directory");
+    const hit = await peekTextCache(args.cacheKey);
+    if (hit) {
+      const now = new Date();
+      await utimes(cacheFile, now, now).catch(() => {}); // LRU touch
+      // Pre-diagnostics cache entries lack the count — 0 keeps the field honest-optimistic.
+      return {
+        text: hit.text,
+        backend: "cache",
+        chars: hit.text.length,
+        cached: true,
+        markers: hit.markers,
+        unplaced: hit.unplaced ?? 0,
+        outline: hit.outline ?? [],
+        epubToc: hit.epubToc ?? null,
+      };
     }
-
-    if (existsSync(cacheFile)) {
-      const hit = parseTextCacheEnvelope(await readFile(cacheFile, "utf8").catch(() => ""));
-      if (hit) {
-        const now = new Date();
-        await utimes(cacheFile, now, now).catch(() => {}); // LRU touch
-        // Pre-diagnostics cache entries lack the count — 0 keeps the field honest-optimistic.
-        return {
-          text: hit.text,
-          backend: "cache",
-          chars: hit.text.length,
-          cached: true,
-          markers: hit.markers,
-          unplaced: hit.unplaced ?? 0,
-          outline: hit.outline ?? [],
-          epubToc: hit.epubToc ?? null,
-        };
-      }
-      // unreadable/corrupt envelope: fall through and re-extract
-    }
+    // missing or unreadable/corrupt envelope: (re-)extract
 
     await mkdir(CACHE_DIR, { recursive: true });
     const tmpSrc = path.join(CACHE_DIR, `dl-${randomUUID()}.${fmt}`);
@@ -373,7 +366,7 @@ function pymupdfScriptPath(): string {
   return fileURLToPath(new URL("../../scripts/pymupdf_extract.py", import.meta.url));
 }
 
-interface TextCacheEnvelope {
+export interface TextCacheEnvelope {
   v: number;
   backend: string;
   text: string;
@@ -384,6 +377,26 @@ interface TextCacheEnvelope {
   outline?: OutlineEntry[];
   /** EPUB TOC + spine anchors (v8, #135); absent for non-EPUBs or no usable TOC — read as null. */
   epubToc?: EpubToc;
+}
+
+/** The text-cache file for a cache key; throws if it would resolve outside the cache dir. */
+function textCacheFile(cacheKey: string): string {
+  const cacheFile = path.join(CACHE_DIR, `${hashKey(cacheKey)}.v${TEXT_CACHE_VERSION}.json`);
+  // Path-boundary guard: the resolved cache file must stay inside CACHE_DIR (DESIGN §5).
+  if (!path.resolve(cacheFile).startsWith(path.resolve(CACHE_DIR) + path.sep)) {
+    throw new Error("cache path escaped the cache directory");
+  }
+  return cacheFile;
+}
+
+/**
+ * Read a cached text envelope without touching it (no LRU mtime bump, no write): null when
+ * absent, corrupt or from another cache version. Dev scripts read the cache through this.
+ */
+export async function peekTextCache(cacheKey: string): Promise<TextCacheEnvelope | null> {
+  const cacheFile = textCacheFile(cacheKey);
+  if (!existsSync(cacheFile)) return null;
+  return parseTextCacheEnvelope(await readFile(cacheFile, "utf8").catch(() => ""));
 }
 
 /** Parse + validate a text-cache envelope; null on corruption or version mismatch. */

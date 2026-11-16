@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import {
-  isFrontMatterTitle,
   outlineChapters,
   type OutlineEntry,
   parsePdfOutlineXml,
@@ -8,6 +7,7 @@ import {
 } from "../../../src/domain/structure/pdf-outline.js";
 import { detectChapters } from "../../../src/domain/structure/chapters.js";
 import { frontMatterEnd } from "../../../src/domain/structure/front-matter.js";
+import { isFrontMatterTitle } from "../../../src/domain/structure/front-matter-titles.js";
 
 // Shapes below mirror real `pdftohtml -q -i -xml -stdout -f 1 -l 1` output (poppler 26.07).
 const xmlDoc = (outline: string) =>

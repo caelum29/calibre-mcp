@@ -4,6 +4,7 @@
 // detector sees a "chapter" at char 0 — the leading-heading rules below cover those (#102).
 
 import { chapterNumber, detectChapters, type DetectOptions } from "./chapters.js";
+import { isFrontMatterTitle } from "./front-matter-titles.js";
 
 /** Where the leading front matter ends, and which rule decided it. */
 export interface LeadingFrontMatter {
@@ -29,113 +30,6 @@ export const FM_FIRST_HEADING_MAX_CHARS = 1_500;
 // The leading run never spans more sections than this (a TOC rendered as headings can be
 // long, but past this we are inside the body).
 export const FM_MAX_RUN_SECTIONS = 40;
-
-// Heading titles that are front matter by name, EN + RU/UK. Whole-title match after
-// decoration stripping, so "Preface" matches but "Prefaces in Kotlin" does not.
-const FRONT_MATTER_TITLES = [
-  // EN: title/legal/praise/TOC
-  "praise",
-  "praise for .*",
-  "advance praise.*",
-  "what (?:people|readers|others) are saying.*",
-  "copyright",
-  "copyright page",
-  "dedication",
-  "epigraph",
-  "title page",
-  "half title",
-  "inside front cover",
-  "front matter",
-  "also by .*",
-  "other books .*",
-  "books by .*",
-  "contents",
-  "table of contents",
-  "brief contents",
-  "contents in detail",
-  "brief table of contents.*",
-  "revision history.*",
-  "colophon",
-  // EN: foreword/preface and the publisher-boilerplate preface sections
-  "foreword(?: (?:to|by) .*)?",
-  "preface(?: to .*)?",
-  "author['’]?s note",
-  "a note .*",
-  "welcome",
-  "acknowledg(?:e)?ments?",
-  "about the authors?",
-  "about the (?:technical )?reviewers?",
-  "about the contributors?",
-  "contributors",
-  "about this book",
-  "about the cover.*",
-  "who (?:this book is for|should read this book).*",
-  "what you will learn",
-  "how to (?:read|use) this book",
-  "how this book is organized.*",
-  "conventions(?: used)?(?: in this book)?",
-  "using code examples",
-  "o['’]reilly (?:online learning|safari)",
-  "safari.*",
-  "how to contact us",
-  "errata",
-  "submitting errata",
-  "get in touch",
-  "download the example code files?",
-  "why i wrote this book",
-  "liveBook discussion forum",
-  "author online",
-  "early praise.*",
-  "who is this book for\\??",
-  "what['’]s in (?:this|the) book\\??",
-  "a note about the code",
-  "online resources",
-  // EN: Packt/BPB preface boilerplate
-  "why subscribe\\??",
-  "packt\\.com",
-  "(?:www\\.)?packtpub\\.com",
-  "packt is searching for authors like you",
-  "credits",
-  "customer feedback",
-  "customer support",
-  "reader feedback",
-  "what you need for this book",
-  "what this book covers",
-  "(?:to get|getting) the most out of this book",
-  "downloading the code",
-  "download(?:ing)? the (?:example code(?: files)?|colou?r images)",
-  "code bundle.*",
-  "colou?red images",
-  "piracy",
-  "questions",
-  "reviews",
-  "share your thoughts",
-  "acknowledgement",
-  // RU/UK
-  "предисловие(?: .*)?",
-  "от автора",
-  "от издательства",
-  "об автор(?:е|ах)",
-  "о книге",
-  "об этой книге",
-  "оглавление",
-  "содержание",
-  "краткое содержание",
-  "благодарности",
-  "посвящение",
-  "отзывы.*",
-  "для кого эта книга",
-  "условные обозначения",
-  "о научном редакторе",
-  "о рецензент(?:е|ах)",
-  "передмова",
-  "зміст",
-  "подяки",
-  "про автора",
-  "про авторів",
-  "про книгу",
-];
-const FRONT_MATTER_TITLE = new RegExp(`^(?:${FRONT_MATTER_TITLES.join("|")})$`, "iu");
 
 const ATX = /^(#{1,6})\s+(.+?)\s*#*$/;
 
@@ -194,11 +88,6 @@ export function anchorNumber(title: string): number | null {
   if (!m) return null;
   // A numeric title must look like a heading, not a list item or a page number line.
   return title.length <= 80 ? Number(m[1]) : null;
-}
-
-/** Front-matter-by-name test on a cleaned heading title. */
-export function isFrontMatterTitle(title: string): boolean {
-  return FRONT_MATTER_TITLE.test(title.replace(/[.:]+$/, "").trim());
 }
 
 /**
@@ -263,7 +152,7 @@ export function leadingFrontMatter(text: string): LeadingFrontMatter {
 
 /**
  * Char offset where the book's body starts: everything before it (TOC, praise pages,
- * foreword, preface) is front matter. Takes the later of the first detected chapter
+ * preface) is front matter. Takes the later of the first detected chapter
  * (PDF outline / numeric / structural) and the heading-structured boundary
  * (`leadingFrontMatter`, #102). Returns 0 — "no front matter claimed" — when neither
  * finds a plausible boundary (both are capped at min(FM_MAX_FRACTION, FM_MAX_CHARS)).

@@ -5,6 +5,7 @@
 
 import { scanPageStarts } from "../page-offsets.js";
 import type { ChapterSpan } from "./chapters.js";
+import { isFrontMatterTitle, normalizeTitle as norm } from "./front-matter-titles.js";
 
 /** One outline (bookmark) entry. */
 export interface OutlineEntry {
@@ -55,85 +56,6 @@ export function parsePdfOutlineXml(xml: string): OutlineEntry[] {
   return out;
 }
 
-// Leading front-matter bookmarks (EN + RU/UK). Matched as a whole normalized title, or as a
-// prefix for the "About the …" family. Only a LEADING run is dropped — the same rule the text
-// detector follows (text before the first chapter is front matter, not a span) — so a
-// mid-book "Preface to Part II" stays.
-const FRONT_MATTER = new RegExp(
-  "^(?:" +
-    [
-      "cover",
-      "front cover",
-      "title",
-      "title page",
-      "half title",
-      "copyright",
-      "copyright page",
-      "copyright and credits",
-      "credits",
-      "dedication",
-      "epigraph",
-      "contents",
-      "table of contents",
-      "brief contents",
-      "contents at a glance",
-      "toc",
-      "praise",
-      "praise for.*",
-      "endorsements",
-      "forewords?(?: .*)?",
-      "preface(?: .*)?",
-      "acknowledgments?",
-      "acknowledgements?",
-      "contributors",
-      "about the authors?.*",
-      "about the (?:technical )?reviewers?.*",
-      "about this book",
-      "about the cover.*",
-      "who this book is for",
-      "list of (?:figures|tables)",
-      "packt.*",
-      "обложка",
-      "титул",
-      "титульный лист",
-      "оглавление",
-      "содержание",
-      "зміст",
-      "предисловие.*",
-      "передмова.*",
-      "благодарности",
-      "подяки",
-      "об автор.*",
-      "про автор.*",
-      "об этой книге",
-      "о книге",
-      "про книгу",
-      "отзывы.*",
-      "відгуки.*",
-      "о научн\\S* редактор.*",
-      "о рецензент.*",
-      "от издательства",
-      "від видавництва",
-      "посвящение",
-      "присвята",
-    ].join("|") +
-    ")$",
-  "u",
-);
-
-function norm(s: string): string {
-  return s
-    .normalize("NFKC")
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}]+/gu, " ")
-    .trim();
-}
-
-/** True when an outline title names a front-matter section (cover, copyright, preface…). */
-export function isFrontMatterTitle(title: string): boolean {
-  return FRONT_MATTER.test(norm(title));
-}
-
 // A chapter list denser than this is not a chapter list: flat outlines that bookmark every
 // section (#134 measured 447 and 238 top-level entries) or one entry per page (a scanner's
 // "000, 002, 003…" page bookmarks).
@@ -172,8 +94,26 @@ function buildTree<T extends LeveledTitle>(entries: T[]): OutlineNode<T>[] {
   return roots;
 }
 
+// A leading entry that reads like a chapter, never a book title: a number ("1 Introduction",
+// "1.", "IV."), a "Chapter/Глава/Розділ/Раздел N" label, or a name books open their body with.
+const CHAPTER_NUMBER = /^\s*(?:\d+(?:[.:)]|\s|$)|[ivxlc]+[.:)](?:\s|$))/i;
+const CHAPTER_LABEL = /^\s*(?:chapter|глава|розділ|раздел)\s*(?:\d+|[ivxlc]+)(?:\P{L}|$)/iu;
+const CHAPTER_NAME = /^(?:introduction|intro|prologue|overview|getting started|вступ|введение|пролог)(?: |$)/u;
+
+/** True when a title could be a body chapter, so it is never dropped as a book-title entry. */
+function isChapterLike(title: string): boolean {
+  return CHAPTER_NUMBER.test(title) || CHAPTER_LABEL.test(title) || CHAPTER_NAME.test(norm(title));
+}
+
+// Only a LEADING run of front matter is dropped — the same rule the text detector follows
+// (text before the first chapter is front matter, not a span) — so a mid-book "Preface to
+// Part II" stays. One leading entry that is neither front matter, a part nor chapter-like
+// joins the run when the next entry is front matter: a book-title bookmark ahead of the
+// contents (#625) would otherwise stop the drop and keep the whole run as chapters.
 function dropLeadingFrontMatter<T>(items: T[], title: (t: T) => string): T[] {
-  let i = 0;
+  const lead = items.length > 1 ? title(items[0]!) : "";
+  const tolerated = lead !== "" && !isFrontMatterTitle(lead) && !PART_TITLE.test(lead) && !isChapterLike(lead);
+  let i = tolerated && isFrontMatterTitle(title(items[1]!)) ? 1 : 0;
   while (i < items.length && isFrontMatterTitle(title(items[i]!))) i++;
   return items.slice(i);
 }
@@ -213,7 +153,8 @@ export function pickChapterLevel<T extends LeveledTitle>(
  * Pick the outline entries that are the book's chapters, or null when no plausible list exists.
  *
  * Rule (documented in docs/SEMANTIC-SEARCH.md):
- * 1. Start from the top level; drop its leading front matter (cover, copyright, preface…).
+ * 1. Start from the top level; drop its leading front matter (cover, copyright, preface…),
+ *    with one book-title entry right before it (#625).
  * 2. Expand "Part N" / "Часть N" entries into their children, so a top level mixing parts
  *    and chapters ("Chapter 1, Part I, Part II") yields chapters throughout.
  * 3. While fewer than 4 body entries remain (a single book-title root, or 2–3 unlabeled
