@@ -77,12 +77,12 @@ describe("retrieval eval harness (model-free smoke)", () => {
 
   it("runs the full golden set end-to-end and produces a complete report", async () => {
     const report = await runRetrievalEval({ ...base, modes: ["keyword"] });
-    expect(report.meta.queryCount).toBe(68);
+    expect(report.meta.queryCount).toBe(70);
     expect(report.meta.corpus.books).toBe(17);
-    expect(report.overall.keyword?.n).toBe(59); // 68 minus 6 negatives minus 3 figure-negatives
+    expect(report.overall.keyword?.n).toBe(61); // 70 minus 6 negatives minus 3 figure-negatives
     expect(report.negatives.keyword?.n).toBe(6);
     expect(report.figureNegatives.keyword?.n).toBe(3);
-    expect(report.perQuery).toHaveLength(68);
+    expect(report.perQuery).toHaveLength(70);
     // figure-caption rows really ran through target=figures and retrieved figure keys
     const fig = report.perQuery.find((r) => r.id === "fig-01");
     expect(fig?.target).toBe("figures");

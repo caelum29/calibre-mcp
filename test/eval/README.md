@@ -21,7 +21,7 @@ Two eval axes live (or will live) here — they measure different things:
 ## Retrieval eval (`retrieval/`) — the measurement gate for tuning
 
 Every tuning decision downstream (reranker on/off, fusion weights, embedding-model swap,
-chunk sizes) is guesswork without labels. This harness runs 68 labeled golden queries over
+chunk sizes) is guesswork without labels. This harness runs 70 labeled golden queries over
 a committed fixture corpus through the REAL pipeline — `calibre_build_index`'s
 chunk→embed→store path, then the real `calibre_semantic_search` handler per mode
 (hybrid / vector / keyword) — and scores Hit@1, Recall@5, MRR, nDCG@10 per kind and overall.
@@ -107,11 +107,11 @@ records (`HarnessOptions.timing`), so
 
 ### Layout
 
-- `queries.json` — 68 golden queries `{ id, kind, scope, query, ru?, relevant }`. Kinds
-  (count): `semantic-paraphrase` (16), `exact-identifier` (12), `figure-caption` (9),
+- `queries.json` — 70 golden queries `{ id, kind, scope, query, ru?, relevant }`. Kinds
+  (count): `semantic-paraphrase` (16), `exact-identifier` (14), `figure-caption` (9),
   `cross-lingual` RU↔EN (8), `ru-monolingual` (8), `front-matter-trap` (6), `negative` (6)
   and `figure-negative` (3) — the two negative kinds have no right answer and measure the
-  low-confidence signal, leaving 59 positives. 24/68 are RU-involved (`ru: true`): RU is the known weak axis (memory: "RU=0 chapters=RU-gap")
+  low-confidence signal, leaving 61 positives. 24/70 are RU-involved (`ru: true`): RU is the known weak axis (memory: "RU=0 chapters=RU-gap")
   and is first-class here, not an afterthought. `scope: "book"` queries label relevant
   passages as char spans + a `marker` substring (the harness fails loudly if a fixture
   edit invalidates a span).
@@ -221,6 +221,26 @@ Failure semantics:
 - After re-freezing the rerank-on or fusion-only baseline, re-check the `linux` platform-drift
   entries against the next nightly logs: drop entries the new baseline no longer solves, add a
   query that now breaks on Linux only with its reason and how often it was seen.
+
+### Baseline re-freeze log
+
+Append-only: one entry per re-freeze, newest last. Every number names its corpus.
+
+- **2026-11-16, #634 (identifier tokens reach the raw `body` column).** Rule commit first: two
+  `exact-identifier` guards, `id-11` `C++` → 109 and `id-12` `Node.js` → 102 (the only fixture
+  books holding these tokens; the fixture has no `c#`). Then `pnpm eval:hash-freeze` (210 rows),
+  `pnpm eval --tag 634` → `reports/2026-11-16-5c8ed2df-634.json` (on) and
+  `pnpm eval --rerank off --tag 634-rerankoff` → `reports/2026-11-16-44dcf56e-634-rerankoff.json`
+  (fusionOnly). The on report was measured before the branch was rebased onto #667/#669 (harness
+  rule and snippet start, no ranking change); the final `--gate` on the pushed head reproduces it.
+  Changed top-10 lists on the 68 earlier queries [17-book fixture]: only `sp-13` ("three-way
+  merge"), whose raw token `three-way` now also matches book 109 ("three-way" partitioning):
+  keyword (on and fusionOnly) rank 4–5 swap 105 ↔ 109, fusionOnly hybrid rank 5 105 → 103, 109
+  enters at rank 6. Its relevant book 106 stays at rank 1 everywhere; no Hit@1 changes; cosine
+  maxScore |Δ| 0.0000. New rows: keyword Hit@1 = 1 for both guards in both passes; rerank-on
+  hybrid/vector rank `Node.js` second behind 103 (the cross-encoder's order). The `linux`
+  platform-drift entries (on id-09/xl-05, fusionOnly hybrid id-05) are all still solved at Hit@1
+  by the new baselines.
 
 ### Rules
 

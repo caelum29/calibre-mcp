@@ -8,7 +8,6 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadConfig } from "../../src/config.js";
 import { EMBED_DIM } from "../../src/semantic/model.js";
-import { stemText } from "../../src/semantic/stem.js";
 import {
   type BookMeta,
   type IndexedChunk,
@@ -80,10 +79,8 @@ describe("SqliteIndexStore on a temp file, two connections (#322)", () => {
     const q = axis(0);
     expect(b.searchLibrary(LIB, q, 10).map((h) => h.bookId)).toEqual([1, 2, 3, 4]);
     expect(b.searchLibrary(LIB, q, 10, allow).map((h) => h.bookId)).toEqual([2, 4]);
-    const kw = b.searchLibraryFts(LIB, stemText("kernel"), 10).map((h) => h.bookId);
-    expect(b.searchLibraryFts(LIB, stemText("kernel"), 10, allow).map((h) => h.bookId)).toEqual(
-      kw.filter((id) => allow.has(id)),
-    );
+    const kw = b.searchLibraryFts(LIB, "kernel", 10).map((h) => h.bookId);
+    expect(b.searchLibraryFts(LIB, "kernel", 10, allow).map((h) => h.bookId)).toEqual(kw.filter((id) => allow.has(id)));
     expect(b.searchFigures(LIB, q, 10, undefined, allow).map((h) => h.bookId)).toEqual([2, 4]);
     expect(b.searchFigures(LIB, q, 10, undefined, new Set()).map((h) => h.bookId)).toEqual([]);
   });
@@ -100,10 +97,10 @@ describe("SqliteIndexStore on a temp file, two connections (#322)", () => {
       },
     );
     expect(ok).toBe(true);
-    expect(b.searchLibraryFts(LIB, stemText("zanzibar"), 10).map((h) => h.bookId)).toEqual([3]);
-    expect(b.searchLibraryFts(LIB, stemText("zanzibar"), 10)[0]?.title).toBe("Zanzibar Handbook");
+    expect(b.searchLibraryFts(LIB, "zanzibar", 10).map((h) => h.bookId)).toEqual([3]);
+    expect(b.searchLibraryFts(LIB, "zanzibar", 10)[0]?.title).toBe("Zanzibar Handbook");
     // figure captions carry the book identity too: the new title must reach figure_fts
-    expect(b.searchFiguresFts(LIB, stemText("zanzibar"), 10).map((h) => [h.bookId, h.figIndex])).toEqual([[3, 0]]);
+    expect(b.searchFiguresFts(LIB, "zanzibar", 10).map((h) => [h.bookId, h.figIndex])).toEqual([[3, 0]]);
     expect(b.isBookIndexed(LIB, 3, "v2")).toBe(true);
     expect(b.vectorCount(LIB)).toBe(vectorsBefore);
     expect(b.chunkAt(LIB, 3, 0)?.frontMatter).toBe(true);
@@ -118,7 +115,7 @@ describe("SqliteIndexStore on a temp file, two connections (#322)", () => {
       expect(c.stats(LIB)).toEqual({ books: 2, chunks: 4, figures: 2 });
       expect(
         c
-          .searchLibraryFts(LIB, stemText("kernel"), 10)
+          .searchLibraryFts(LIB, "kernel", 10)
           .map((h) => h.bookId)
           .sort(),
       ).toEqual([1, 3]);
@@ -136,7 +133,7 @@ describe("SqliteIndexStore on a temp file, two connections (#322)", () => {
     expect(out).toBe("preserved");
     expect(a.bookVectorCount(LIB, 1)).toBe(2);
     expect(a.isBookIndexed(LIB, 1, "v1")).toBe(true);
-    expect(a.searchLibraryFts(LIB, stemText("downgraded"), 10)).toEqual([]);
+    expect(a.searchLibraryFts(LIB, "downgraded", 10)).toEqual([]);
     // A book with no embeddings yet is written by the same keyword-only call.
     expect(b.replaceBook(LIB, meta(5), chunks("plain words"), [], { preserveEmbedded: true })).toBe("written");
     expect(a.indexedBookIds(LIB).sort()).toEqual([1, 2, 3, 4, 5]);
@@ -171,7 +168,7 @@ describe("candidate caches across two connections (#337)", () => {
     a.deleteBooks(LIB, [1]);
     expect(b.searchLibrary(LIB, axis(0), 10).map((h) => h.bookId)).toEqual([2]);
     expect(b.searchBook(LIB, 1, axis(0), 10)).toEqual([]); // book scope reads the same cache
-    expect(b.searchLibraryFts(LIB, stemText("y"), 10).map((h) => h.bookId)).toEqual([2]); // keyword was already fresh
+    expect(b.searchLibraryFts(LIB, "y", 10).map((h) => h.bookId)).toEqual([2]); // keyword was already fresh
   });
 
   it("figure search on B sees A's later commits (new figure in, deleted book's figure out)", () => {

@@ -7,7 +7,6 @@ import type { LogSink } from "../logging.js";
 import type { Embedder } from "./embedder.js";
 import { RRF_K, rrfFuse } from "./fusion.js";
 import { RERANK_FLOOR, RERANK_POOL, type Reranker } from "./reranker.js";
-import { stemText } from "./stem.js";
 import { snippetWindow } from "./snippet.js";
 import type { BookHit, ChunkIndex, FigureHit, FigureIndex, LibraryHit } from "./store/index.js";
 
@@ -262,7 +261,7 @@ async function rankBooks(
 ): Promise<Ranked<LibraryHit>[]> {
   const { libraryId, allow } = req;
   if (req.mode === "keyword") {
-    return deps.index.searchLibraryFts(libraryId, stemText(req.query), req.topK, allow).map((hit) => ({ hit }));
+    return deps.index.searchLibraryFts(libraryId, req.query, req.topK, allow).map((hit) => ({ hit }));
   }
   const k = poolK(req, deps);
   const q = await deps.embedder.embedQuery(req.query);
@@ -271,7 +270,7 @@ async function rankBooks(
   }
   // hybrid: fuse book rankings from both halves by bookId (vector first — weights order).
   const vec = deps.index.searchLibrary(libraryId, q, POOL, allow);
-  const kw = deps.index.searchLibraryFts(libraryId, stemText(req.query), POOL, allow);
+  const kw = deps.index.searchLibraryFts(libraryId, req.query, POOL, allow);
   return fuse({ vec, kw, idOf: (h) => h.bookId, tieOf: (h) => [h.bookId, h.bookId] }, k, w);
 }
 
@@ -279,7 +278,7 @@ async function rankBooks(
 async function rankPassages(req: BookRequest, deps: RetrievalDeps, w: readonly number[]): Promise<Ranked<BookHit>[]> {
   const { libraryId, bookId } = req;
   if (req.mode === "keyword") {
-    return deps.index.searchBookFts(libraryId, bookId, stemText(req.query), req.topK).map((hit) => ({ hit }));
+    return deps.index.searchBookFts(libraryId, bookId, req.query, req.topK).map((hit) => ({ hit }));
   }
   const k = poolK(req, deps);
   const q = await deps.embedder.embedQuery(req.query);
@@ -287,7 +286,7 @@ async function rankPassages(req: BookRequest, deps: RetrievalDeps, w: readonly n
     return deps.index.searchBook(libraryId, bookId, q, k).map((hit) => ({ hit, cosine: hit.score }));
   }
   const vec = deps.index.searchBook(libraryId, bookId, q, POOL);
-  const kw = deps.index.searchBookFts(libraryId, bookId, stemText(req.query), POOL);
+  const kw = deps.index.searchBookFts(libraryId, bookId, req.query, POOL);
   return fuse({ vec, kw, idOf: (h) => h.chunkId, tieOf: (h) => [0, h.chunkId] }, k, w);
 }
 
@@ -299,7 +298,7 @@ async function rankFigures(
 ): Promise<Ranked<FigureHit>[]> {
   const { libraryId, bookId, allow } = req;
   if (req.mode === "keyword") {
-    return deps.index.searchFiguresFts(libraryId, stemText(req.query), req.topK, bookId, allow).map((hit) => ({ hit }));
+    return deps.index.searchFiguresFts(libraryId, req.query, req.topK, bookId, allow).map((hit) => ({ hit }));
   }
   const k = poolK(req, deps);
   const q = await deps.embedder.embedQuery(req.query);
@@ -307,7 +306,7 @@ async function rankFigures(
     return deps.index.searchFigures(libraryId, q, k, bookId, allow).map((hit) => ({ hit, cosine: hit.score }));
   }
   const vec = deps.index.searchFigures(libraryId, q, POOL, bookId, allow);
-  const kw = deps.index.searchFiguresFts(libraryId, stemText(req.query), POOL, bookId, allow);
+  const kw = deps.index.searchFiguresFts(libraryId, req.query, POOL, bookId, allow);
   return fuse({ vec, kw, idOf: (h) => h.figureId, tieOf: (h) => [h.bookId, h.figureId] }, k, w);
 }
 

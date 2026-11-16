@@ -3,6 +3,7 @@
 // quiet rollback, and the per-library candidate-cache shape the chunk and figure halves share.
 
 import type { DatabaseSync } from "node:sqlite";
+import { stemText } from "../stem.js";
 import type { Candidate } from "../vector.js";
 
 /** A raw node:sqlite result row. */
@@ -141,15 +142,39 @@ export function rollbackQuietly(db: DatabaseSync): void {
   }
 }
 
+// A raw token as the index's tokenizer sees it: letters, digits, marks and the tokenchars
+// `_ + # . -` of chunk_fts/figure_fts (schema.ts). Identifier-like = it also holds `+ # . -`.
+const RAW_TOKEN = /[\p{L}\p{N}\p{M}_+#.-]+/gu;
+const ID_CHAR = /[+#.-]/;
+const WORD_CHAR = /[\p{L}\p{N}]/u;
+
+/** Distinct identifier-like raw tokens of a query (c++, c#, node.js), case-folded, trailing periods stripped. */
+function identifierTokens(query: string): string[] {
+  const out = new Set<string>();
+  for (const m of query.matchAll(RAW_TOKEN)) {
+    const tok = m[0].replace(/\.+$/, "").toLowerCase();
+    if (ID_CHAR.test(tok) && WORD_CHAR.test(tok)) out.add(tok);
+  }
+  return [...out];
+}
+
+const phrase = (t: string): string => `"${t.replace(/"/g, '""')}"`;
+
 /**
- * Build an FTS5 MATCH expression from an already-stemmed query. Tokens are OR-ed (recall-first;
- * RRF and the vector half restore precision) and phrase-quoted so punctuation/operators in a
- * token can't be parsed as FTS syntax. Returns null when the query has no searchable tokens.
+ * Build an FTS5 MATCH expression from the query as typed (#634). Its stems are OR-ed
+ * (recall-first; RRF and the vector half restore precision), then each identifier-like raw token
+ * joins as "t" and "t." — FTS5 runs a quoted string through the table's own tokenizer, so `c++`
+ * stays whole and can only match the raw column, and `t.` reaches the sentence-final form the
+ * tokenizer stores with its period. A query without such a token gets exactly the stems-only
+ * MATCH. Phrase-quoting keeps operators in a token from being parsed as FTS syntax. Returns null
+ * when the query has no searchable tokens.
  */
-export function ftsMatch(stemmed: string): string | null {
-  const toks = stemmed.split(/\s+/).filter(Boolean);
+export function ftsMatch(query: string): string | null {
+  const stems = stemText(query).split(/\s+/).filter(Boolean);
+  const ids = identifierTokens(query).flatMap((t) => [t, `${t}.`]);
+  const toks = [...stems, ...ids];
   if (toks.length === 0) return null;
-  return toks.map((t) => `"${t.replace(/"/g, '""')}"`).join(" OR ");
+  return toks.map(phrase).join(" OR ");
 }
 
 /** authors are stored as a JSON array string; tolerate legacy/garbled values. */

@@ -12,7 +12,6 @@ import { rrfFuse } from "../../src/semantic/fusion.js";
 import { EMBED_DIM } from "../../src/semantic/model.js";
 import type { Reranker } from "../../src/semantic/reranker.js";
 import { retrieve, type RetrievalDeps } from "../../src/semantic/retrieve.js";
-import { stemText } from "../../src/semantic/stem.js";
 import {
   SqliteIndexStore,
   type BookHit,
@@ -89,27 +88,25 @@ describe("FTS (SQLite) tie order", () => {
   });
 
   it("library keyword search: equal bm25 → ascending book id", () => {
-    expect(s.searchLibraryFts(LIB, stemText("alpha"), 10).map((h) => h.bookId)).toEqual([1, 2, 3]);
+    expect(s.searchLibraryFts(LIB, "alpha", 10).map((h) => h.bookId)).toEqual([1, 2, 3]);
   });
 
   it("library keyword search restricted to a bundle: same order", () => {
-    expect(s.searchLibraryFts(LIB, stemText("alpha"), 10, new Set([1, 2, 3])).map((h) => h.bookId)).toEqual([1, 2, 3]);
+    expect(s.searchLibraryFts(LIB, "alpha", 10, new Set([1, 2, 3])).map((h) => h.bookId)).toEqual([1, 2, 3]);
   });
 
   it("book keyword search: equal bm25 → ascending chunk id", () => {
-    const ids = s.searchBookFts(LIB, 9, stemText("omega"), 10).map((h) => h.chunkId);
+    const ids = s.searchBookFts(LIB, 9, "omega", 10).map((h) => h.chunkId);
     expect(ids).toEqual([...ids].sort((a, b) => a - b));
     expect(ids).toHaveLength(3);
   });
 
   it("figure keyword search: equal bm25 → ascending book id", () => {
-    expect(s.searchFiguresFts(LIB, stemText("gamma"), 10).map((h) => h.bookId)).toEqual([1, 2, 3]);
+    expect(s.searchFiguresFts(LIB, "gamma", 10).map((h) => h.bookId)).toEqual([1, 2, 3]);
   });
 
   it("figure keyword search restricted to a bundle: same order", () => {
-    expect(s.searchFiguresFts(LIB, stemText("gamma"), 10, undefined, new Set([1, 2, 3])).map((h) => h.bookId)).toEqual([
-      1, 2, 3,
-    ]);
+    expect(s.searchFiguresFts(LIB, "gamma", 10, undefined, new Set([1, 2, 3])).map((h) => h.bookId)).toEqual([1, 2, 3]);
   });
 });
 
@@ -215,7 +212,7 @@ describe("ids compare as numbers, not strings (9 before 10)", () => {
           { body: "kappa lambda", charStart: 0, charEnd: 12 },
         ]);
       }
-      expect(s.searchLibraryFts("Num_Lib", stemText("kappa"), 10).map((h) => h.bookId)).toEqual([9, 10]);
+      expect(s.searchLibraryFts("Num_Lib", "kappa", 10).map((h) => h.bookId)).toEqual([9, 10]);
     } finally {
       s.close();
       rmSync(dir, { recursive: true, force: true });

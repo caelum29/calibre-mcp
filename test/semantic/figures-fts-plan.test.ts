@@ -8,12 +8,13 @@ import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { loadConfig } from "../../src/config.js";
-import { stemText } from "../../src/semantic/stem.js";
 import { type IndexedFigure, SqliteIndexStore } from "../../src/semantic/store/index.js";
+import { ftsMatch } from "../../src/semantic/store/shared.js";
 
 const LIB = "Fig_Plan_Lib";
 
-// Pre-rewrite SQL, kept verbatim (weights 1.0/1.0/0.5 as in store/shared.ts).
+// Pre-rewrite SQL, kept verbatim (weights 1.0/1.0/0.5 as in store/shared.ts). Both sides get
+// their MATCH from the store's own ftsMatch (#634), so they compare like with like.
 const LEGACY_BOOK = `SELECT f.id AS fig_id, bm25(figure_fts, 1.0, 1.0, 0.5) AS score
   FROM figure_fts JOIN figures f ON f.id = figure_fts.rowid
   WHERE figure_fts MATCH ? AND f.book_id = ? ORDER BY score LIMIT ?`;
@@ -21,14 +22,6 @@ const LEGACY_ALLOW = `SELECT f.id AS fig_id, bm25(figure_fts, 1.0, 1.0, 0.5) AS 
   FROM figure_fts JOIN figures f ON f.id = figure_fts.rowid
   WHERE figure_fts MATCH ? AND f.book_id IN (SELECT value FROM json_each(?))
   ORDER BY score LIMIT ?`;
-
-// Same quoting as store/shared.ts ftsMatch: quoted tokens OR-ed together.
-const ftsMatch = (stemmed: string) =>
-  stemmed
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((t) => `"${t.replace(/"/g, '""')}"`)
-    .join(" OR ");
 
 const VOCAB = ["tree", "node", "pointer", "diagram", "граф", "вершина", "схема", "и"];
 
@@ -78,10 +71,9 @@ describe("figure FTS-first rewrite ≡ legacy JOIN SQL (#347)", () => {
   for (const q of queries) {
     for (const k of [3, 50]) {
       it(`book scope: identical ranking for "${q}" k=${k}`, () => {
-        const stemmed = stemText(q);
         for (let book = 1; book <= 5; book++) {
-          const legacy = rowsOf(raw.prepare(LEGACY_BOOK).all(ftsMatch(stemmed), book, k));
-          const got = s.searchFiguresFts(LIB, stemmed, k, book).map((h) => ({ id: h.figureId, score: h.score }));
+          const legacy = rowsOf(raw.prepare(LEGACY_BOOK).all(ftsMatch(q), book, k));
+          const got = s.searchFiguresFts(LIB, q, k, book).map((h) => ({ id: h.figureId, score: h.score }));
           expect(got.map((r) => r.score)).toEqual(legacy.map((r) => r.score));
           expect(canon(got)).toEqual(canon(legacy));
         }
@@ -89,10 +81,9 @@ describe("figure FTS-first rewrite ≡ legacy JOIN SQL (#347)", () => {
 
       for (const allow of [[1], [2, 4], [1, 3, 5]]) {
         it(`allow set: identical ranking for "${q}" k=${k} allow=${allow}`, () => {
-          const stemmed = stemText(q);
-          const legacy = rowsOf(raw.prepare(LEGACY_ALLOW).all(ftsMatch(stemmed), JSON.stringify(allow), k));
+          const legacy = rowsOf(raw.prepare(LEGACY_ALLOW).all(ftsMatch(q), JSON.stringify(allow), k));
           const got = s
-            .searchFiguresFts(LIB, stemmed, k, undefined, new Set(allow))
+            .searchFiguresFts(LIB, q, k, undefined, new Set(allow))
             .map((h) => ({ id: h.figureId, score: h.score }));
           expect(got.map((r) => r.score)).toEqual(legacy.map((r) => r.score));
           expect(canon(got)).toEqual(canon(legacy));
@@ -102,7 +93,7 @@ describe("figure FTS-first rewrite ≡ legacy JOIN SQL (#347)", () => {
   }
 
   it("fixture actually exercises ranking (multi-hit books, distinct scores)", () => {
-    const hits = s.searchFiguresFts(LIB, stemText("tree node"), 50, 1);
+    const hits = s.searchFiguresFts(LIB, "tree node", 50, 1);
     expect(hits.length).toBeGreaterThan(4);
     expect(new Set(hits.map((h) => h.score)).size).toBeGreaterThan(2);
   });

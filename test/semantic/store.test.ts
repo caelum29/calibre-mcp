@@ -5,7 +5,6 @@ import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it, vi } from "vitest";
 import { loadConfig } from "../../src/config.js";
 import { EMBED_DIM } from "../../src/semantic/model.js";
-import { stemText } from "../../src/semantic/stem.js";
 import { type IndexedChunk, type IndexedFigure, SqliteIndexStore } from "../../src/semantic/store/index.js";
 import { l2normalize } from "../../src/semantic/vector.js";
 
@@ -137,7 +136,7 @@ describe("SqliteIndexStore", () => {
         chunk("nodes exchange votes until a quorum agrees", 0),
       ]);
       // "consensus" never occurs in the body — only the title carries it.
-      const hits = s.searchLibraryFts(LIB, stemText("consensus"), 5);
+      const hits = s.searchLibraryFts(LIB, "consensus", 5);
       expect(hits.map((h) => h.bookId)).toEqual([1]);
       s.close();
     });
@@ -147,7 +146,7 @@ describe("SqliteIndexStore", () => {
       s.replaceBook(LIB, { bookId: 1, title: "Distributed Consensus", authors: [] }, [
         chunk("nodes exchange votes until a quorum agrees", 0),
       ]);
-      const hits = s.searchBookFts(LIB, 1, stemText("consensus"), 5);
+      const hits = s.searchBookFts(LIB, 1, "consensus", 5);
       expect(hits[0]!.body).toContain("quorum");
       s.close();
     });
@@ -157,7 +156,7 @@ describe("SqliteIndexStore", () => {
       s.replaceBook(LIB, { bookId: 1, title: "Refactoring", authors: ["Martin Fowler"] }, [
         chunk("extract method and rename variable", 0),
       ]);
-      expect(s.searchLibraryFts(LIB, stemText("fowler"), 5).map((h) => h.bookId)).toEqual([1]);
+      expect(s.searchLibraryFts(LIB, "fowler", 5).map((h) => h.bookId)).toEqual([1]);
       s.close();
     });
 
@@ -167,7 +166,7 @@ describe("SqliteIndexStore", () => {
         chunk("вводная глава без повторения заголовка", 0),
       ]);
       // Query "книга" and title "Книги" both stem to "книг".
-      expect(s.searchLibraryFts(LIB, stemText("книга"), 5).map((h) => h.bookId)).toEqual([1]);
+      expect(s.searchLibraryFts(LIB, "книга", 5).map((h) => h.bookId)).toEqual([1]);
       s.close();
     });
 
@@ -175,7 +174,7 @@ describe("SqliteIndexStore", () => {
       const s = store();
       s.replaceBook(LIB, { bookId: 1, title: "Rust Book", authors: [] }, [chunk("ownership and borrowing rules", 0)]);
       s.replaceBook(LIB, { bookId: 2, title: "Ownership Guide", authors: [] }, [chunk("unrelated cooking recipes", 1)]);
-      const hits = s.searchLibraryFts(LIB, stemText("ownership"), 5);
+      const hits = s.searchLibraryFts(LIB, "ownership", 5);
       expect(hits.map((h) => h.bookId)).toEqual([1, 2]); // body match first, meta-only second
       s.close();
     });
@@ -183,10 +182,10 @@ describe("SqliteIndexStore", () => {
     it("re-indexing under a new title drops the old title from the FTS index", () => {
       const s = store();
       s.replaceBook(LIB, { bookId: 1, title: "Old Title Alpha", authors: [] }, [chunk("some text", 0)]);
-      expect(s.searchLibraryFts(LIB, stemText("alpha"), 5)).toHaveLength(1);
+      expect(s.searchLibraryFts(LIB, "alpha", 5)).toHaveLength(1);
       s.replaceBook(LIB, { bookId: 1, title: "New Title Beta", authors: [] }, [chunk("some text", 0)]);
-      expect(s.searchLibraryFts(LIB, stemText("alpha"), 5)).toHaveLength(0);
-      expect(s.searchLibraryFts(LIB, stemText("beta"), 5)).toHaveLength(1);
+      expect(s.searchLibraryFts(LIB, "alpha", 5)).toHaveLength(0);
+      expect(s.searchLibraryFts(LIB, "beta", 5)).toHaveLength(1);
       s.close();
     });
   });
@@ -408,10 +407,10 @@ describe("figures (D-018 Phase B / #86)", () => {
       [chunk("body", 1)],
       [fig(0, "Frames hanging inside the hive", 1, 0)],
     );
-    const hits = s.searchFiguresFts(LIB, stemText("child pointers"), 5);
+    const hits = s.searchFiguresFts(LIB, "child pointers", 5);
     expect(hits).toHaveLength(1);
     expect(hits[0]!.bookId).toBe(1);
-    expect(s.searchFiguresFts(LIB, stemText("child pointers"), 5, 2)).toHaveLength(0);
+    expect(s.searchFiguresFts(LIB, "child pointers", 5, 2)).toHaveLength(0);
     s.close();
   });
 
@@ -465,7 +464,7 @@ describe("figures (D-018 Phase B / #86)", () => {
     expect(s.figureCount(LIB, 1)).toBe(1);
     expect(s.figureCount(LIB, 2)).toBe(0);
     expect(s.searchFigures(LIB, axis(0), 5)).toHaveLength(0); // no vectors to rank
-    expect(s.searchFiguresFts(LIB, stemText("keyword caption"), 5)).toHaveLength(1);
+    expect(s.searchFiguresFts(LIB, "keyword caption", 5)).toHaveLength(1);
     s.close();
   });
 });
@@ -584,5 +583,84 @@ describe("SqliteIndexStore — atomic per-book writes + vector freshness (#197)"
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+// #634: the keyword half reaches identifier tokens (c++, c#, node.js) kept whole in the raw
+// body column, mid-sentence and sentence-final ("… in C++."), and still stems plain words.
+describe("identifier-like query tokens reach the raw body column (#634)", () => {
+  const FILLER = ["gardening and soil", "baking bread at home", "a short history of sailing"];
+
+  /** Books 1–3: mid-sentence identifier, sentence-final identifier, look-alike only; 4–6 filler. */
+  function seed(mid: string, final: string, lookalike: string): SqliteIndexStore {
+    const s = store();
+    s.replaceBook(LIB, { bookId: 1, title: "One", authors: [] }, [chunk(mid, 0)]);
+    s.replaceBook(LIB, { bookId: 2, title: "Two", authors: [] }, [chunk(final, 1)]);
+    s.replaceBook(LIB, { bookId: 3, title: "Three", authors: [] }, [chunk(lookalike, 2)]);
+    FILLER.forEach((text, i) =>
+      s.replaceBook(LIB, { bookId: 4 + i, title: "Filler", authors: [] }, [chunk(text, 3 + i)]),
+    );
+    return s;
+  }
+
+  it.each([
+    ["c++", "templates in C++ are compiled eagerly", "the engine is written in C++.", "the letter c"],
+    ["c#", "async methods in C# return tasks", "the service is written in C#.", "the letter c"],
+    ["node.js", "streams in Node.js are event emitters", "the server runs on Node.js.", "a node in js"],
+  ])("ranks both %s chunks above the look-alike chunk", (query, mid, final, lookalike) => {
+    const s = seed(mid, final, lookalike);
+    const ids = s.searchLibraryFts(LIB, query, 10).map((h) => h.bookId);
+    expect([ids.slice(0, 2).sort(), ids[2]]).toEqual([[1, 2], 3]);
+    s.close();
+  });
+
+  it("book scope ranks the identifier passages above the look-alike passage", () => {
+    const s = store();
+    s.replaceBook(LIB, { bookId: 1, title: "One", authors: [] }, [
+      chunk("the letter c", 0, 0),
+      chunk("templates in C++ are compiled eagerly", 1, 100),
+      chunk("the engine is written in C++.", 2, 200),
+      ...FILLER.map((text, i) => chunk(text, 3 + i, 300 + i * 100)),
+    ]);
+    const starts = s.searchBookFts(LIB, 1, "c++", 10).map((h) => h.charStart);
+    expect([starts.slice(0, 2).sort(), starts[2]]).toEqual([[100, 200], 0]);
+    s.close();
+  });
+
+  it("still matches a plain word by its stem (templates → template)", () => {
+    const s = seed("one template here", "nothing relevant", "nothing at all");
+    expect(s.searchLibraryFts(LIB, "templates", 10).map((h) => h.bookId)).toEqual([1]);
+    s.close();
+  });
+
+  it("figure captions: c++ ranks both identifier captions above the look-alike caption", () => {
+    const s = store();
+    const caption = (figIndex: number, text: string) => ({
+      figIndex,
+      page: 1,
+      caption: text,
+      charOffset: 0,
+      format: "pdf",
+      source: "page-render" as const,
+    });
+    s.replaceBook(
+      LIB,
+      { bookId: 1, title: "One", authors: [] },
+      [chunk("body", 0)],
+      [caption(0, "Templates in C++ code")],
+    );
+    s.replaceBook(
+      LIB,
+      { bookId: 2, title: "Two", authors: [] },
+      [chunk("body", 1)],
+      [caption(0, "A parser written in C++.")],
+    );
+    s.replaceBook(LIB, { bookId: 3, title: "Three", authors: [] }, [chunk("body", 2)], [caption(0, "The letter c")]);
+    FILLER.forEach((text, i) =>
+      s.replaceBook(LIB, { bookId: 4 + i, title: "Filler", authors: [] }, [chunk("body", 3 + i)], [caption(0, text)]),
+    );
+    const ids = s.searchFiguresFts(LIB, "c++", 10).map((h) => h.bookId);
+    expect([ids.slice(0, 2).sort(), ids[2]]).toEqual([[1, 2], 3]);
+    s.close();
   });
 });

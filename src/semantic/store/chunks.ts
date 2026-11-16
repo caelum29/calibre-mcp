@@ -93,9 +93,9 @@ export class SqliteChunkIndex implements ChunkIndex {
     });
   }
 
-  searchLibraryFts(libraryId: string, stemmedQuery: string, k: number, allow?: ReadonlySet<number>): LibraryHit[] {
+  searchLibraryFts(libraryId: string, query: string, k: number, allow?: ReadonlySet<number>): LibraryHit[] {
     const db = this.conn.db(libraryId);
-    const match = ftsMatch(stemmedQuery);
+    const match = ftsMatch(query);
     if (!match) return [];
     // Pull a generous pool of chunk hits, then keep the best (first, since bm25-ranked) per book.
     // Equal bm25 orders by book id, then chunk id (#392): SQLite's scan order is no contract.
@@ -149,9 +149,9 @@ export class SqliteChunkIndex implements ChunkIndex {
     return out;
   }
 
-  searchBookFts(libraryId: string, bookId: number, stemmedQuery: string, k: number): BookHit[] {
+  searchBookFts(libraryId: string, bookId: number, query: string, k: number): BookHit[] {
     const db = this.conn.db(libraryId);
-    const match = ftsMatch(stemmedQuery);
+    const match = ftsMatch(query);
     if (!match) return [];
     // FTS-first: with a plain JOIN the planner drives from idx_chunks_book and re-runs the
     // OR-ed MATCH per chunk (1.7–250 s on a 313k-chunk index); a MATERIALIZED CTE evaluates

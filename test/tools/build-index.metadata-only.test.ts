@@ -12,7 +12,6 @@ import type { ExtractedText } from "../../src/calibre/extract.js";
 import type { FigureMarker } from "../../src/domain/figures/markers.js";
 import type { Embedder } from "../../src/semantic/embedder.js";
 import { EMBED_DIM } from "../../src/semantic/model.js";
-import { stemText } from "../../src/semantic/stem.js";
 import { SqliteIndexStore } from "../../src/semantic/store/index.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
 import { asLibId } from "../../src/calibre/lib-id.js";
@@ -106,8 +105,7 @@ const args = (over: Record<string, unknown> = {}) => ({
 const original: Edition = { title: "Quokka Handbook", authors: ["Ann Old"], lastModified: "2026-01-01" };
 const retitled: Edition = { title: "Zanzibar Handbook", authors: ["Bob New"], lastModified: "2026-02-01" };
 
-const ftsBooks = (store: SqliteIndexStore, word: string) =>
-  store.searchLibraryFts(LIB, stemText(word), 10).map((h) => h.bookId);
+const ftsBooks = (store: SqliteIndexStore, word: string) => store.searchLibraryFts(LIB, word, 10).map((h) => h.bookId);
 
 function freshStore(): SqliteIndexStore {
   return new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
@@ -155,8 +153,8 @@ describe("calibre_build_index metadata-only edits (#244)", () => {
 
     expect(second.passages).toBe(0);
     expect(store.figureCount(LIB, 1)).toBe(1);
-    expect(store.searchFiguresFts(LIB, stemText("Zanzibar"), 10).map((h) => h.bookId)).toEqual([1]);
-    expect(store.searchFiguresFts(LIB, stemText("Quokka"), 10)).toEqual([]);
+    expect(store.searchFiguresFts(LIB, "Zanzibar", 10).map((h) => h.bookId)).toEqual([1]);
+    expect(store.searchFiguresFts(LIB, "Quokka", 10)).toEqual([]);
   });
 
   it("re-embeds when the text changed along with last_modified", async () => {

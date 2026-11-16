@@ -1,14 +1,14 @@
 {
   "$comment": "Frozen tier-0 hash-embedder ranks (#357) — see thresholds.json hashGate. Regenerate only via `pnpm eval:hash-freeze`, after committing any rule change (D-012).",
   "embedder": "hash-fnv1a (test/eval/retrieval/hash-embedder.ts)",
-  "gitSha": "e9abff2",
-  "queryCount": 68,
+  "gitSha": "0ba0c3a2",
+  "queryCount": 70,
   "modes": [
     "hybrid",
     "vector",
     "keyword"
   ],
-  "goldenSetHash": "sha256:d77d10680a0c26532365dc055087f557c7e7823f5052e51d323d22ba40364253",
+  "goldenSetHash": "sha256:540b0931297ac00e283c9616d551bea5851377e96d22661b71a494dc6004c8be",
   "perQuery": [
     {
       "id": "sp-01",
@@ -237,10 +237,10 @@
         "116",
         "102",
         "103",
+        "109",
         "105",
         "108",
         "104",
-        "109",
         "107"
       ]
     },
@@ -458,6 +458,42 @@
         "106",
         "104",
         "117"
+      ]
+    },
+    {
+      "id": "id-11",
+      "kind": "exact-identifier",
+      "mode": "hybrid",
+      "rank": 1,
+      "retrieved": [
+        "109",
+        "117",
+        "114",
+        "116",
+        "111",
+        "103",
+        "112",
+        "105",
+        "104",
+        "102"
+      ]
+    },
+    {
+      "id": "id-12",
+      "kind": "exact-identifier",
+      "mode": "hybrid",
+      "rank": 1,
+      "retrieved": [
+        "102",
+        "103",
+        "107",
+        "110",
+        "117",
+        "106",
+        "104",
+        "109",
+        "112",
+        "105"
       ]
     },
     {
@@ -1574,6 +1610,42 @@
       ]
     },
     {
+      "id": "id-11",
+      "kind": "exact-identifier",
+      "mode": "vector",
+      "rank": null,
+      "retrieved": [
+        "117",
+        "114",
+        "116",
+        "111",
+        "103",
+        "112",
+        "105",
+        "104",
+        "102",
+        "107"
+      ]
+    },
+    {
+      "id": "id-12",
+      "kind": "exact-identifier",
+      "mode": "vector",
+      "rank": 1,
+      "retrieved": [
+        "102",
+        "117",
+        "103",
+        "107",
+        "106",
+        "104",
+        "110",
+        "109",
+        "112",
+        "105"
+      ]
+    },
+    {
       "id": "idb-01",
       "kind": "exact-identifier",
       "mode": "vector",
@@ -2461,8 +2533,8 @@
         "106",
         "117",
         "116",
-        "104",
         "109",
+        "104",
         "105",
         "108",
         "103",
@@ -2618,6 +2690,27 @@
       "rank": 1,
       "retrieved": [
         "110"
+      ]
+    },
+    {
+      "id": "id-11",
+      "kind": "exact-identifier",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "109"
+      ]
+    },
+    {
+      "id": "id-12",
+      "kind": "exact-identifier",
+      "mode": "keyword",
+      "rank": 1,
+      "retrieved": [
+        "102",
+        "103",
+        "110",
+        "107"
       ]
     },
     {

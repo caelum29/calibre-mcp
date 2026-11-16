@@ -48,13 +48,13 @@ export class SqliteFigureIndex implements FigureIndex {
 
   searchFiguresFts(
     libraryId: string,
-    stemmedQuery: string,
+    query: string,
     k: number,
     bookId?: number,
     allow?: ReadonlySet<number>,
   ): FigureHit[] {
     const db = this.conn.db(libraryId);
-    const match = ftsMatch(stemmedQuery);
+    const match = ftsMatch(query);
     if (!match) return [];
     let rows: Row[];
     // Equal bm25 orders by book id, then figure id (#392), on every branch.
