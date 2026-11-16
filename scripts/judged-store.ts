@@ -65,6 +65,8 @@ export interface PooledHit {
   hid: string;
   /** Judge-facing text, as blindRecord shows it now. */
   text: string;
+  /** Best list position: hybrid rank, else 1000 + keyword rank (who gets a shared record first). */
+  rank: number;
   location?: HitLocation;
 }
 
@@ -135,21 +137,58 @@ export function matchJudgment(
   store: readonly StoredJudgment[],
   opts: MatchOptions = {},
 ): StoredJudgment | undefined {
+  return candidates(hit, store, opts).sort(preferred)[0]?.rec;
+}
+
+/** A stored record that matches a hit, with what ranks it among the hit's other matches. */
+interface Candidate {
+  rec: StoredJudgment;
+  /** Position in the store file (a later record wins a full tie). */
+  index: number;
+  overlap: number;
+  drift: number;
+}
+
+function candidates(hit: HitLocation, store: readonly StoredJudgment[], opts: MatchOptions): Candidate[] {
   const rubric = opts.rubric ?? JUDGE_RUBRIC_VERSION;
-  let best: { rec: StoredJudgment; overlap: number; drift: number } | undefined;
-  for (const rec of store) {
-    if (rec.qid !== hit.qid || rec.bookId !== hit.bookId || rec.indexVersion !== hit.indexVersion) continue;
-    if (rec.rubric !== rubric || (opts.strictText && rec.textSha256 !== hit.textSha256)) continue;
+  const out: Candidate[] = [];
+  store.forEach((rec, index) => {
+    if (rec.qid !== hit.qid || rec.bookId !== hit.bookId || rec.indexVersion !== hit.indexVersion) return;
+    if (rec.rubric !== rubric || (opts.strictText && rec.textSha256 !== hit.textSha256)) return;
     const overlap = sharedChars(rec, hit);
-    if (overlap === undefined) continue;
+    if (overlap === undefined) return;
     const drift = Math.abs(rec.charStart - hit.charStart) + Math.abs(rec.charEnd - hit.charEnd);
-    const better =
-      !best ||
-      overlap > best.overlap ||
-      (overlap === best.overlap && (rec.date > best.rec.date || (rec.date === best.rec.date && drift <= best.drift)));
-    if (better) best = { rec, overlap, drift };
+    out.push({ rec, index, overlap, drift });
+  });
+  return out;
+}
+
+/** Larger overlap, then newer date, then closer span, then later record. */
+const preferred = (x: Candidate, y: Candidate) =>
+  y.overlap - x.overlap ||
+  (x.rec.date === y.rec.date ? 0 : x.rec.date > y.rec.date ? -1 : 1) ||
+  x.drift - y.drift ||
+  y.index - x.index;
+
+/**
+ * Which stored record grades which pooled hit of one query. One record grades at most ONE hit: a wide
+ * stored range must not mark every hit inside it relevant (inflating P@5 / hit@5, NDCG@5 above 1).
+ * Greedy over all (hit, record) matches in the matching preference order, the better-ranked hit first
+ * on a full tie; a hit whose matches are all taken stays unjudged, so pooling sends it to the judges.
+ */
+function assign(rec: RawRecord, store: readonly StoredJudgment[], opts: MatchOptions): Map<string, StoredJudgment> {
+  const pairs = pooledHits(rec).flatMap((p) =>
+    p.location ? candidates(p.location, store, opts).map((c) => ({ ...c, hid: p.hid, rank: p.rank })) : [],
+  );
+  pairs.sort((x, y) => preferred(x, y) || x.rank - y.rank);
+  const out = new Map<string, StoredJudgment>();
+  const taken = new Set<number>();
+  for (const p of pairs) {
+    if (out.has(p.hid) || taken.has(p.index)) continue;
+    out.set(p.hid, p.rec);
+    taken.add(p.index);
   }
-  return best?.rec;
+  return out;
 }
 
 /** Every pooled blind item of one query, located by the mode run it first appeared in. */
@@ -172,14 +211,19 @@ export function pooledHits(rec: RawRecord): PooledHit[] {
             indexVersion: run.indexVersion,
             textSha256: sha256(item.text),
           };
-    return { hid: item.hid, text: item.text, ...(location ? { location } : {}) };
+    const rank = seen.hybrid ?? 1000 + seen.keyword!;
+    return { hid: item.hid, text: item.text, rank, ...(location ? { location } : {}) };
   });
 }
 
 /** Store records for a run's final grades (one per graded, located blind item), hashing the text the judges read. */
 export function judgmentsFromRun(run: JudgedRunDir, final: ReadonlyMap<string, FinalGrade>): StoredJudgment[] {
+  return [...judgmentsByHid(run, final).values()];
+}
+
+function judgmentsByHid(run: JudgedRunDir, final: ReadonlyMap<string, FinalGrade>): Map<string, StoredJudgment> {
   const judgeNames = [...run.judges.keys()];
-  const out: StoredJudgment[] = [];
+  const out = new Map<string, StoredJudgment>();
   for (const rec of run.raws) {
     for (const p of pooledHits(rec)) {
       const f = final.get(p.hid);
@@ -188,7 +232,7 @@ export function judgmentsFromRun(run: JudgedRunDir, final: ReadonlyMap<string, F
       const judges = Object.fromEntries(judgeNames.flatMap((n, i) => (raw[i] ? [[n, raw[i].grade]] : [])));
       const [a, b] = raw;
       const read = run.blindText.get(p.hid);
-      out.push({
+      out.set(p.hid, {
         ...p.location,
         ...(read !== undefined ? { textSha256: sha256(read) } : {}),
         rubric: JUDGE_RUBRIC_VERSION,
@@ -205,7 +249,11 @@ export function judgmentsFromRun(run: JudgedRunDir, final: ReadonlyMap<string, F
   return out;
 }
 
-/** Candidates the existing store does not already cover (checked against the store before this run only). */
+/**
+ * Record-level check: candidates no existing record matches. It ignores the one-record-one-hit rule
+ * (a candidate inside a record another hit holds counts as covered), so runs go through
+ * {@link newJudgmentsFromRun}; this stays for comparing two record lists.
+ */
 export function newJudgments(
   existing: readonly StoredJudgment[],
   candidates: readonly StoredJudgment[],
@@ -221,12 +269,9 @@ export function gradeFromStore(
   opts: MatchOptions = {},
 ): Map<string, FinalGrade> {
   const out = new Map<string, FinalGrade>();
-  for (const rec of raws) {
-    for (const p of pooledHits(rec)) {
-      const m = p.location && matchJudgment(p.location, store, opts);
-      if (m) out.set(p.hid, m.coverage ? { grade: m.grade, coverage: m.coverage } : { grade: m.grade });
-    }
-  }
+  for (const rec of raws)
+    for (const [hid, m] of assign(rec, store, opts))
+      out.set(hid, m.coverage ? { grade: m.grade, coverage: m.coverage } : { grade: m.grade });
   return out;
 }
 
@@ -244,11 +289,7 @@ export function uncoveredBlind(
   for (const rec of raws) {
     const b = blindRecord(rec);
     Object.assign(key, b.key);
-    const covered = new Set(
-      pooledHits(rec)
-        .filter((p) => p.location && matchJudgment(p.location, store, opts))
-        .map((p) => p.hid),
-    );
+    const covered = assign(rec, store, opts);
     const items = b.blind.items.filter((i) => !covered.has(i.hid));
     if (items.length) blinds.push({ ...b.blind, items });
   }
@@ -282,8 +323,10 @@ const dcg5 = (grades: ReadonlyArray<number | null>) =>
 /** NDCG@5: gain 2^grade − 1 (unjudged / −1 / 0 → 0), discount log2(rank + 1), over the ideal grades. */
 export function ndcgAt5(grades: ReadonlyArray<number | null>, ideal: readonly number[]): number {
   const best = dcg5([...ideal].sort((a, b) => b - a));
-  // one stored passage can grade two overlapping hits of a list; never report above a perfect ranking
-  return best === 0 ? 0 : Math.min(1, dcg5(grades) / best);
+  const ndcg = best === 0 ? 0 : dcg5(grades) / best;
+  // grades come from distinct stored records (assign), so this only trips on a wrong ideal: fail loudly
+  if (ndcg > 1 + 1e-9) throw new Error(`NDCG@5 above 1 (${ndcg}): the ideal ranking is missing grades the list has`);
+  return ndcg;
 }
 
 /** Records of a store file (empty when it does not exist yet). */
@@ -360,17 +403,22 @@ export function resolveRun(run: JudgedRunDir) {
 /** --import: seed the store from an already judged run; returns the records appended (none already covered). */
 export function importRun(dir: string, storeFile: string, opts: MatchOptions = {}): StoredJudgment[] {
   const run = loadRunDir(dir);
-  const added = newJudgments(readStore(storeFile), judgmentsFromRun(run, resolveRun(run).final), opts);
+  const added = newJudgmentsFromRun(run, resolveRun(run).final, readStore(storeFile), opts);
   appendJudgments(storeFile, added);
   return added;
 }
 
-/** Stub (#666 review). */
+/**
+ * A run's final grades the existing store does not already hold: the hits the store's records are NOT
+ * assigned to (the same one-record-one-hit assignment pooling used to pick what the judges saw), so a
+ * hit that shared a record with a neighbour gets its own record once judged.
+ */
 export function newJudgmentsFromRun(
-  _run: JudgedRunDir,
-  _final: ReadonlyMap<string, FinalGrade>,
-  _existing: readonly StoredJudgment[],
-  _opts: MatchOptions = {},
+  run: JudgedRunDir,
+  final: ReadonlyMap<string, FinalGrade>,
+  existing: readonly StoredJudgment[],
+  opts: MatchOptions = {},
 ): StoredJudgment[] {
-  throw new Error("not implemented (#361)");
+  const covered = new Set(run.raws.flatMap((rec) => [...assign(rec, existing, opts).keys()]));
+  return [...judgmentsByHid(run, final)].filter(([hid]) => !covered.has(hid)).map(([, r]) => r);
 }

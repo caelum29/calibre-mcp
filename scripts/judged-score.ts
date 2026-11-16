@@ -33,10 +33,9 @@ import {
   holeAt,
   idealGrades,
   importRun,
-  judgmentsFromRun,
   loadRunDir,
   ndcgAt5,
-  newJudgments,
+  newJudgmentsFromRun,
   readStore,
   resolveRun,
   storePathError,
@@ -86,7 +85,7 @@ const hids = Object.keys(key);
 
 // the run's new final grades go into the store (never over an existing record); the run is scored from it
 const before = storeFile ? readStore(storeFile) : [];
-const added = newJudgments(before, judgmentsFromRun(run, resolution?.final ?? new Map<string, FinalGrade>()), opts);
+const added = newJudgmentsFromRun(run, resolution?.final ?? new Map<string, FinalGrade>(), before, opts);
 if (storeFile) appendJudgments(storeFile, added);
 const store = [...before, ...added];
 const final = gradeFromStore(raws, store, opts);
