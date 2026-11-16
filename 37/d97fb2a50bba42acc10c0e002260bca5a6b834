@@ -3,11 +3,13 @@ docs/tool-catalog.json
 src/tools/calibre_semantic_search.ts
   s_cd8c50f2d2b85b::t_99e4768343e575 155-156,158,160-162,166-196,200-233,235-247,250,252-255,257-259
   s_cd8c50f2d2b85b::t_abfc3fb35afc61 32,71-72,146,151-154,261-262,656-668
+  s_acefbb564cb02d::t_290d03698047fd 198-199,248-249
 test/tools/semantic-search.handler.test.ts
   s_cd8c50f2d2b85b::t_99e4768343e575 863-865,869-872,877-880
   s_cd8c50f2d2b85b::t_ed45989a826f90 786,839,843,848-862,866-868,873-876,881-893
   s_cd8c50f2d2b85b::t_a7f75e39ef085b 16,844-847
   s_cd8c50f2d2b85b::t_1126f6831a193e 840-842
+  s_acefbb564cb02d::t_05157b7329f182 838
 src/tools/search-timings.ts
   s_cd8c50f2d2b85b::t_58c020993f3880 1-94
 docs/TROUBLESHOOTING.md
@@ -19,6 +21,14 @@ docs/TROUBLESHOOTING.md
   "base_commit_sha": "37d97fb2a50bba42acc10c0e002260bca5a6b834",
   "prompts": {},
   "sessions": {
+    "s_acefbb564cb02d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c7f8ed24-36a5-43a6-8c8a-b51a2bfd5997",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    },
     "s_cd8c50f2d2b85b": {
       "agent_id": {
         "tool": "claude",
