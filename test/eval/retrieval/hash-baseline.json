@@ -1,14 +1,14 @@
 {
   "$comment": "Frozen tier-0 hash-embedder ranks (#357) — see thresholds.json hashGate. Regenerate only via `pnpm eval:hash-freeze`, after committing any rule change (D-012).",
   "embedder": "hash-fnv1a (test/eval/retrieval/hash-embedder.ts)",
-  "gitSha": "0ba0c3a2",
+  "gitSha": "62396165",
   "queryCount": 70,
   "modes": [
     "hybrid",
     "vector",
     "keyword"
   ],
-  "goldenSetHash": "sha256:540b0931297ac00e283c9616d551bea5851377e96d22661b71a494dc6004c8be",
+  "goldenSetHash": "sha256:3543a3de10fececac78341863def8a80b35822e0ad6e1e699e42ba9db63098e3",
   "perQuery": [
     {
       "id": "sp-01",
