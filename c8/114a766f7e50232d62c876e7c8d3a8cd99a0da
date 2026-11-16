@@ -1,0 +1,19 @@
+test/eval/retrieval/gate-guards-linux.test.ts
+  s_0424857dbed483::t_94ebdc1dcfd081 1-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c8114a766f7e50232d62c876e7c8d3a8cd99a0da",
+  "prompts": {},
+  "sessions": {
+    "s_0424857dbed483": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "58641194-5b10-4ebd-bb7c-55af19b98a57",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
