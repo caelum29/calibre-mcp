@@ -2,9 +2,10 @@
 // tokenizer does ZERO stemming (Russian книга/книги/книгу never match each other) and its
 // built-in `porter` stemmer is English-only — so we stem in JS before INSERT and apply the
 // IDENTICAL transform to queries (SEMANTIC-SEARCH.md §4). Per-token script detection routes
-// Cyrillic → Snowball russian, Latin → english; code/identifiers (digits, underscores,
-// camelCase) pass through raw so exact identifier search still works. The FTS table also keeps
-// a raw `body` column, so even a mis-stemmed token stays exact-searchable there.
+// Cyrillic → Snowball russian, Latin → english; tokens with digits, underscores or camelCase
+// pass through unstemmed. stemText() splits tokens at `+ # . -` (`c++` → `c`, `node.js` →
+// `node js`); exact identifier matching against the raw `body` column happens in the store's
+// MATCH builder (store/shared.ts ftsMatch, #634), which adds such tokens in their raw form.
 
 import snowball from "snowball-stemmers";
 

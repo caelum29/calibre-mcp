@@ -102,6 +102,11 @@ your query
  └─ return ranked books (library scope) or located passages (book scope)
 ```
 
+The keyword half matches query words by their stems, so `templates` finds `template`. Code
+identifiers that hold `+`, `#`, `.` or `-` (`C++`, `C#`, `Node.js`, `utf-8`) also match in
+their exact form, including at the end of a sentence (`… written in C++.`); without that, `C++`
+would only be searched as the letter `c`.
+
 Two refinements worth knowing about:
 
 - **Reranking.** If the optional reranker model is present (`bge-reranker-v2-m3`,

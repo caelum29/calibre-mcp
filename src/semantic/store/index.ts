@@ -149,12 +149,12 @@ export class SqliteIndexStore implements IndexStore {
     return this.#chunks.searchBook(libraryId, bookId, query, k);
   }
 
-  searchLibraryFts(libraryId: string, stemmedQuery: string, k: number, allow?: ReadonlySet<number>): LibraryHit[] {
-    return this.#chunks.searchLibraryFts(libraryId, stemmedQuery, k, allow);
+  searchLibraryFts(libraryId: string, query: string, k: number, allow?: ReadonlySet<number>): LibraryHit[] {
+    return this.#chunks.searchLibraryFts(libraryId, query, k, allow);
   }
 
-  searchBookFts(libraryId: string, bookId: number, stemmedQuery: string, k: number): BookHit[] {
-    return this.#chunks.searchBookFts(libraryId, bookId, stemmedQuery, k);
+  searchBookFts(libraryId: string, bookId: number, query: string, k: number): BookHit[] {
+    return this.#chunks.searchBookFts(libraryId, bookId, query, k);
   }
 
   chunkAt(libraryId: string, bookId: number, charOffset: number): ChunkRef | undefined {
@@ -173,12 +173,12 @@ export class SqliteIndexStore implements IndexStore {
 
   searchFiguresFts(
     libraryId: string,
-    stemmedQuery: string,
+    query: string,
     k: number,
     bookId?: number,
     allow?: ReadonlySet<number>,
   ): FigureHit[] {
-    return this.#figures.searchFiguresFts(libraryId, stemmedQuery, k, bookId, allow);
+    return this.#figures.searchFiguresFts(libraryId, query, k, bookId, allow);
   }
 
   figureCount(libraryId: string, bookId?: number): number {

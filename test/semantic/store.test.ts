@@ -5,7 +5,6 @@ import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it, vi } from "vitest";
 import { loadConfig } from "../../src/config.js";
 import { EMBED_DIM } from "../../src/semantic/model.js";
-import { stemText } from "../../src/semantic/stem.js";
 import { type IndexedChunk, type IndexedFigure, SqliteIndexStore } from "../../src/semantic/store/index.js";
 import { l2normalize } from "../../src/semantic/vector.js";
 
@@ -137,7 +136,7 @@ describe("SqliteIndexStore", () => {
         chunk("nodes exchange votes until a quorum agrees", 0),
       ]);
       // "consensus" never occurs in the body — only the title carries it.
-      const hits = s.searchLibraryFts(LIB, stemText("consensus"), 5);
+      const hits = s.searchLibraryFts(LIB, "consensus", 5);
       expect(hits.map((h) => h.bookId)).toEqual([1]);
       s.close();
     });
@@ -147,7 +146,7 @@ describe("SqliteIndexStore", () => {
       s.replaceBook(LIB, { bookId: 1, title: "Distributed Consensus", authors: [] }, [
         chunk("nodes exchange votes until a quorum agrees", 0),
       ]);
-      const hits = s.searchBookFts(LIB, 1, stemText("consensus"), 5);
+      const hits = s.searchBookFts(LIB, 1, "consensus", 5);
       expect(hits[0]!.body).toContain("quorum");
       s.close();
     });
@@ -157,7 +156,7 @@ describe("SqliteIndexStore", () => {
       s.replaceBook(LIB, { bookId: 1, title: "Refactoring", authors: ["Martin Fowler"] }, [
         chunk("extract method and rename variable", 0),
       ]);
-      expect(s.searchLibraryFts(LIB, stemText("fowler"), 5).map((h) => h.bookId)).toEqual([1]);
+      expect(s.searchLibraryFts(LIB, "fowler", 5).map((h) => h.bookId)).toEqual([1]);
       s.close();
     });
 
@@ -167,7 +166,7 @@ describe("SqliteIndexStore", () => {
         chunk("вводная глава без повторения заголовка", 0),
       ]);
       // Query "книга" and title "Книги" both stem to "книг".
-      expect(s.searchLibraryFts(LIB, stemText("книга"), 5).map((h) => h.bookId)).toEqual([1]);
+      expect(s.searchLibraryFts(LIB, "книга", 5).map((h) => h.bookId)).toEqual([1]);
       s.close();
     });
 
@@ -175,7 +174,7 @@ describe("SqliteIndexStore", () => {
       const s = store();
       s.replaceBook(LIB, { bookId: 1, title: "Rust Book", authors: [] }, [chunk("ownership and borrowing rules", 0)]);
       s.replaceBook(LIB, { bookId: 2, title: "Ownership Guide", authors: [] }, [chunk("unrelated cooking recipes", 1)]);
-      const hits = s.searchLibraryFts(LIB, stemText("ownership"), 5);
+      const hits = s.searchLibraryFts(LIB, "ownership", 5);
       expect(hits.map((h) => h.bookId)).toEqual([1, 2]); // body match first, meta-only second
       s.close();
     });
@@ -183,10 +182,10 @@ describe("SqliteIndexStore", () => {
     it("re-indexing under a new title drops the old title from the FTS index", () => {
       const s = store();
       s.replaceBook(LIB, { bookId: 1, title: "Old Title Alpha", authors: [] }, [chunk("some text", 0)]);
-      expect(s.searchLibraryFts(LIB, stemText("alpha"), 5)).toHaveLength(1);
+      expect(s.searchLibraryFts(LIB, "alpha", 5)).toHaveLength(1);
       s.replaceBook(LIB, { bookId: 1, title: "New Title Beta", authors: [] }, [chunk("some text", 0)]);
-      expect(s.searchLibraryFts(LIB, stemText("alpha"), 5)).toHaveLength(0);
-      expect(s.searchLibraryFts(LIB, stemText("beta"), 5)).toHaveLength(1);
+      expect(s.searchLibraryFts(LIB, "alpha", 5)).toHaveLength(0);
+      expect(s.searchLibraryFts(LIB, "beta", 5)).toHaveLength(1);
       s.close();
     });
   });
@@ -408,10 +407,10 @@ describe("figures (D-018 Phase B / #86)", () => {
       [chunk("body", 1)],
       [fig(0, "Frames hanging inside the hive", 1, 0)],
     );
-    const hits = s.searchFiguresFts(LIB, stemText("child pointers"), 5);
+    const hits = s.searchFiguresFts(LIB, "child pointers", 5);
     expect(hits).toHaveLength(1);
     expect(hits[0]!.bookId).toBe(1);
-    expect(s.searchFiguresFts(LIB, stemText("child pointers"), 5, 2)).toHaveLength(0);
+    expect(s.searchFiguresFts(LIB, "child pointers", 5, 2)).toHaveLength(0);
     s.close();
   });
 
@@ -465,7 +464,7 @@ describe("figures (D-018 Phase B / #86)", () => {
     expect(s.figureCount(LIB, 1)).toBe(1);
     expect(s.figureCount(LIB, 2)).toBe(0);
     expect(s.searchFigures(LIB, axis(0), 5)).toHaveLength(0); // no vectors to rank
-    expect(s.searchFiguresFts(LIB, stemText("keyword caption"), 5)).toHaveLength(1);
+    expect(s.searchFiguresFts(LIB, "keyword caption", 5)).toHaveLength(1);
     s.close();
   });
 });

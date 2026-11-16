@@ -13,7 +13,6 @@ import { CalibreCliTimeoutError, CalibreHttpError } from "../../src/domain/error
 import { EMBED_DIM, INDEX_VERSION, MODEL_ID } from "../../src/semantic/model.js";
 import { SqliteIndexStore, type IndexedChunk } from "../../src/semantic/store/index.js";
 import { l2normalize } from "../../src/semantic/vector.js";
-import { stemText } from "../../src/semantic/stem.js";
 import { libraryIndexReport, type LibraryIndexDeps } from "../../src/app/library-index.js";
 import { removeBookTool } from "../../src/tools/calibre_remove_book.js";
 import { mergeBooksTool } from "../../src/tools/calibre_merge_books.js";
@@ -111,7 +110,7 @@ function fakeDeps(o: FakeOpts) {
 }
 
 const text = (r: ToolResult) => (r.content[0] as { text: string }).text;
-const hitIds = (s: SqliteIndexStore) => s.searchLibraryFts(LIB, stemText("ownership"), 10).map((h) => h.bookId);
+const hitIds = (s: SqliteIndexStore) => s.searchLibraryFts(LIB, "ownership", 10).map((h) => h.bookId);
 
 describe("calibre_remove_book prunes the semantic index (#496)", () => {
   it("should_drop_removed_ids_from_the_index_after_a_confirmed_remove", async () => {

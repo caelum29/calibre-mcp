@@ -222,10 +222,13 @@ export interface ChunkIndex {
   searchLibrary(libraryId: string, query: Float32Array, k: number, allow?: ReadonlySet<number>): LibraryHit[];
   /** Rank passages within one book, vector cosine. */
   searchBook(libraryId: string, bookId: number, query: Float32Array, k: number): BookHit[];
-  /** Keyword half: rank books by best weighted-bm25 FTS5 match (score is negative, lower is better). */
-  searchLibraryFts(libraryId: string, stemmedQuery: string, k: number, allow?: ReadonlySet<number>): LibraryHit[];
-  /** Keyword half: rank passages within one book by weighted-bm25 FTS5 match. */
-  searchBookFts(libraryId: string, bookId: number, stemmedQuery: string, k: number): BookHit[];
+  /**
+   * Keyword half: rank books by best weighted-bm25 FTS5 match (score is negative, lower is better).
+   * `query` is the query as typed; the store derives stems and identifier tokens (shared.ts ftsMatch).
+   */
+  searchLibraryFts(libraryId: string, query: string, k: number, allow?: ReadonlySet<number>): LibraryHit[];
+  /** Keyword half: rank passages within one book by weighted-bm25 FTS5 match; `query` as typed. */
+  searchBookFts(libraryId: string, bookId: number, query: string, k: number): BookHit[];
   /** The chunk containing a figure marker offset (figure → context direction). */
   chunkAt(libraryId: string, bookId: number, charOffset: number): ChunkRef | undefined;
 }
@@ -240,10 +243,10 @@ export interface FigureIndex {
     bookId?: number,
     allow?: ReadonlySet<number>,
   ): FigureHit[];
-  /** Keyword half over figure captions (weighted-bm25 FTS5). */
+  /** Keyword half over figure captions (weighted-bm25 FTS5); `query` as typed. */
   searchFiguresFts(
     libraryId: string,
-    stemmedQuery: string,
+    query: string,
     k: number,
     bookId?: number,
     allow?: ReadonlySet<number>,

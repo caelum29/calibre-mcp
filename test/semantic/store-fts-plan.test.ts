@@ -9,13 +9,14 @@ import { DatabaseSync } from "node:sqlite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { loadConfig } from "../../src/config.js";
 import { EMBED_DIM } from "../../src/semantic/model.js";
-import { stemText } from "../../src/semantic/stem.js";
+import { ftsMatch } from "../../src/semantic/store/shared.js";
 import { type IndexedChunk, SqliteIndexStore } from "../../src/semantic/store/index.js";
 import { l2normalize } from "../../src/semantic/vector.js";
 
 const LIB = "Plan_Lib";
 
-// Pre-rewrite SQL, kept verbatim (weights 1.0/1.0/0.5 as in store/shared.ts).
+// Pre-rewrite SQL, kept verbatim (weights 1.0/1.0/0.5 as in store/shared.ts). Both sides get
+// their MATCH from the store's own ftsMatch (#634), so they compare like with like.
 const LEGACY_BOOK_FTS = `SELECT c.id AS chunk_id, bm25(chunk_fts, 1.0, 1.0, 0.5) AS score
   FROM chunk_fts JOIN chunks c ON c.id = chunk_fts.rowid
   WHERE chunk_fts MATCH ? AND c.book_id = ? ORDER BY score LIMIT ?`;
@@ -29,15 +30,6 @@ function vec(i: number): Float32Array {
   const v = new Float32Array(EMBED_DIM);
   v[i % EMBED_DIM] = 1;
   return l2normalize(v);
-}
-
-// Same quoting as store/shared.ts ftsMatch: quoted tokens OR-ed together.
-function ftsMatch(stemmed: string): string {
-  return stemmed
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((t) => `"${t.replace(/"/g, '""')}"`)
-    .join(" OR ");
 }
 
 const VOCAB_EN = ["transaction", "lock", "isolation", "index", "query", "planner", "commit", "rollback"];
@@ -97,12 +89,11 @@ describe("FTS-first rewrite ≡ legacy JOIN SQL", () => {
   for (const q of queries) {
     for (const k of [3, 10, 50]) {
       it(`identical ranking for "${q}" k=${k}`, () => {
-        const stemmed = stemText(q);
         for (let book = 1; book <= 6; book++) {
-          const legacy = (
-            raw.prepare(LEGACY_BOOK_FTS).all(ftsMatch(stemmed), book, k) as Record<string, unknown>[]
-          ).map((r) => ({ id: Number(r.chunk_id), score: Number(r.score) }));
-          const got = s.searchBookFts(LIB, book, stemmed, k).map((h) => ({ id: h.chunkId, score: h.score }));
+          const legacy = (raw.prepare(LEGACY_BOOK_FTS).all(ftsMatch(q), book, k) as Record<string, unknown>[]).map(
+            (r) => ({ id: Number(r.chunk_id), score: Number(r.score) }),
+          );
+          const got = s.searchBookFts(LIB, book, q, k).map((h) => ({ id: h.chunkId, score: h.score }));
           expect(got.map((r) => r.score)).toEqual(legacy.map((r) => r.score)); // rank order of scores
           expect(canon(got)).toEqual(canon(legacy)); // same chunks per score
         }
@@ -113,10 +104,9 @@ describe("FTS-first rewrite ≡ legacy JOIN SQL", () => {
   for (const q of queries) {
     for (const allow of [[1], [2, 5], [1, 3, 4, 6]]) {
       it(`searchLibraryFts restricted: identical book ranking for "${q}" allow=${allow}`, () => {
-        const stemmed = stemText(q);
         const k = 10;
         const pool = Math.max(k * 20, 200); // mirrors searchLibraryFts
-        const rows = raw.prepare(LEGACY_ALLOW_FTS).all(ftsMatch(stemmed), JSON.stringify(allow), pool) as Record<
+        const rows = raw.prepare(LEGACY_ALLOW_FTS).all(ftsMatch(q), JSON.stringify(allow), pool) as Record<
           string,
           unknown
         >[];
@@ -129,16 +119,14 @@ describe("FTS-first rewrite ≡ legacy JOIN SQL", () => {
           seen.add(bookId);
           legacy.push({ bookId, score: Number(r.score) });
         }
-        const got = s
-          .searchLibraryFts(LIB, stemmed, k, new Set(allow))
-          .map((h) => ({ bookId: h.bookId, score: h.score }));
+        const got = s.searchLibraryFts(LIB, q, k, new Set(allow)).map((h) => ({ bookId: h.bookId, score: h.score }));
         expect(got).toEqual(legacy.slice(0, k));
       });
     }
   }
 
   it("fixture actually exercises ranking (multi-hit books, distinct scores)", () => {
-    const hits = s.searchBookFts(LIB, 1, stemText("transaction isolation lock"), 50);
+    const hits = s.searchBookFts(LIB, 1, "transaction isolation lock", 50);
     expect(hits.length).toBeGreaterThan(5);
     expect(new Set(hits.map((h) => h.score)).size).toBeGreaterThan(3);
   });

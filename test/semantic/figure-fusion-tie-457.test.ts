@@ -9,7 +9,6 @@ import { loadConfig } from "../../src/config.js";
 import { log } from "../../src/logging.js";
 import { EMBED_DIM } from "../../src/semantic/model.js";
 import { retrieve, type RetrievalDeps } from "../../src/semantic/retrieve.js";
-import { stemText } from "../../src/semantic/stem.js";
 import { SqliteIndexStore, type ChunkIndex, type FigureHit, type FigureIndex } from "../../src/semantic/store/index.js";
 
 const figure = (figureId: number, bookId: number, score: number): FigureHit => ({
@@ -104,6 +103,6 @@ describe("figure keyword search tie at the pool cutoff (#457)", () => {
 
   it("should_keep_the_lowest_book_ids_when_the_limit_cuts_through_a_tie", () => {
     // book 3's figure has the LOWEST row id; a figureId-only cut would keep it
-    expect(s.searchFiguresFts(LIB, stemText("gamma"), 2).map((h) => h.bookId)).toEqual([1, 2]);
+    expect(s.searchFiguresFts(LIB, "gamma", 2).map((h) => h.bookId)).toEqual([1, 2]);
   });
 });
