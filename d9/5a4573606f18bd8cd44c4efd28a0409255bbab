@@ -1,0 +1,19 @@
+scripts/judged-store.ts
+  s_1213dfa361df4a::t_a8d24674056c49 321-322,326
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d95a4573606f18bd8cd44c4efd28a0409255bbab",
+  "prompts": {},
+  "sessions": {
+    "s_1213dfa361df4a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b75eeccc-59bf-408d-a50b-bb10c6f3aca8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
