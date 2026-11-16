@@ -12,6 +12,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { evaluateGate, type Thresholds } from "./gate.js";
 import { heldOutIds, type EvalReport, type Mode, type PerQueryRow } from "./harness.js";
+import { crossValidate, kFold } from "./folds.js";
 import { signTest } from "./stats.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -58,7 +59,18 @@ export interface FloorResult {
   best?: number;
   /** thresholds.nonRegression on the fixture report — floor-independent (rankings are fixed). */
   zeroBrokenPass: boolean;
+  /** #632: k-fold estimate of the declared selection; absent when there are fewer queries than folds. */
+  foldEstimate?: FoldEstimate;
 }
+
+/** The selection re-run per fold: the floor chosen without the fold and its false-flag rate on it. */
+export interface FoldEstimate {
+  perFold: Array<{ fitted: number; score: number; n: number }>;
+  mean: number;
+  sd: number;
+}
+
+const FOLDS = 5;
 
 const isNegative = (kind: string, t: FloorThresholds) => t.negativeSeparation.kinds.includes(kind);
 
@@ -119,6 +131,41 @@ export function scoreFloors(
   const heldOut = heldOutIds();
   const fx = population(fixture, t.population.fixture.modes, heldOut);
   const lv = live ? population(live, t.population.live.modes, heldOut) : undefined;
+  const res = scoreRows(t, fx, lv, zeroBrokenPass);
+  const foldEstimate = estimateByFolds(t, fx, zeroBrokenPass);
+  return foldEstimate ? { ...res, foldEstimate } : res;
+}
+
+/**
+ * #632: re-run the declared selection on k − 1 folds of the fixture queries (held-out ones
+ * already dropped) and measure the chosen floor's false-flag rate on the k-th. The unit is the
+ * query, so all its modes share a fold. Report-only: the selection itself is the full-set one.
+ */
+function estimateByFolds(t: FloorThresholds, fx: PerQueryRow[], zeroBrokenPass: boolean): FoldEstimate | undefined {
+  const kinds = new Map(fx.map((r) => [r.id, r.kind]));
+  if (kinds.size < FOLDS) return undefined;
+  const { folds } = kFold(
+    [...kinds].map(([id, kind]) => ({ id, stratum: kind })),
+    FOLDS,
+  );
+  const rowsOf = (ids: string[]) => {
+    const set = new Set(ids);
+    return fx.filter((r) => set.has(r.id));
+  };
+  return crossValidate(
+    folds,
+    (train) => scoreRows(t, rowsOf(train), undefined, zeroBrokenPass).selected,
+    (floor, test) => falseFlags(rowsOf(test), floor, t).falseFlagRate,
+  );
+}
+
+/** The declared scoring and selection over already-filtered population rows. */
+function scoreRows(
+  t: FloorThresholds,
+  fx: PerQueryRow[],
+  lv: PerQueryRow[] | undefined,
+  zeroBrokenPass: boolean,
+): FloorResult {
   const negs = fx.filter((r) => isNegative(r.kind, t)).map((r) => r.maxRerank!);
   const hit1 = fx.filter((r) => !isNegative(r.kind, t) && r.metrics?.hit1 === 1).map((r) => r.maxRerank!);
   const maxNegative = negs.length ? Math.max(...negs) : 0;
@@ -183,6 +230,15 @@ export function renderFloors(res: FloorResult): string {
     `best by selection rule: ${res.best ?? "none"}; zeroBroken (nonRegression gate on the fixture report): ${res.zeroBrokenPass ? "PASS" : "FAIL"}`,
     `selected: ${res.selected} (${res.adopted ? "ADOPT" : "current floor stays"})`,
   ];
+  const est = res.foldEstimate;
+  if (est) {
+    lines.push(
+      "",
+      `${FOLDS}-fold estimate (#632; declared selection fit on ${FOLDS - 1} folds of the non-held-out fixture queries, false-flag rate on the ${FOLDS}th):`,
+      ...est.perFold.map((f, i) => `  fold ${i + 1}: n ${f.n}, floor ${f.fitted}, false-flag rate ${pct(f.score)}`),
+      `  mean ± SD: ${pct(est.mean)} ± ${pct(est.sd)}`,
+    );
+  }
   return lines.join("\n");
 }
 
