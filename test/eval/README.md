@@ -255,6 +255,16 @@ Append-only: one entry per re-freeze, newest last. Every number names its corpus
   the on baseline only: `pnpm eval --tag 604` → `reports/2026-11-16-08ca3695-604.json`
   (identical to step 1's on pass). fusionOnly and hash baselines unchanged; the `linux`
   platform-drift entries are all still solved at Hit@1.
+- **2026-11-16, #632 (held-out flag).** Rule commit first: `"heldOut": true` on the 20 frozen
+  queries (no query, kind or label changed), which moves the canonical golden-set hash. Then
+  `pnpm eval:hash-freeze` (210 rows, every rank identical), `pnpm eval --tag heldout` →
+  `reports/2026-11-16-db98db10-heldout.json` (on) and `pnpm eval --rerank off --tag
+  heldout-rerankoff` → `reports/2026-11-16-db98db10-heldout-rerankoff.json` (fusionOnly). No
+  separate step-1 `--gate` run: with the flag in place it fails fast on the hash, so the new
+  reports were diffed against the previous baselines instead [17-book fixture]: 0 of 210 top-10
+  lists changed on either tier, no Hit@1 change, cosine maxScore |Δ| 0.0000. The `linux`
+  platform-drift entries (on id-09/xl-05, fusionOnly hybrid id-05) are all still solved at
+  Hit@1, and none of them is held out.
 
 ### Rules
 
