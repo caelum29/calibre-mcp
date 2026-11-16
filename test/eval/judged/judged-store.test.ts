@@ -1,6 +1,6 @@
 // Unit tests for the judged-eval judgment store (#361): when a stored grade counts as the same hit,
 // how a #602 run dir seeds the store, which hits a later run still sends to the judges, NDCG@5, Hole@k.
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
+import { copyFileSync, cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -357,5 +357,21 @@ describe("store seeded from a #602-shaped run dir", () => {
     for (const f of ["queries.json", "raw-hits.jsonl", "blind-key.json"]) copyFileSync(join(FIXTURE, f), join(bare, f));
     const r = loadRunDir(bare);
     expect([r.blindText.size, r.judges.size, r.adjudicated.size, r.judgedAt]).toEqual([0, 0, 0, undefined]);
+  });
+});
+
+describe("run dir judgements beside the judge batches", () => {
+  it("ignores files that are not <judge>-batch-NN.json (e.g. the human calibration labels, #659)", () => {
+    const dir = mkdtempSync(join(tmpdir(), "judged-human-"));
+    try {
+      cpSync(FIXTURE, dir, { recursive: true });
+      const human = [{ qid: "para-01", hid: "para-01#6", grade: 2, coverage: "E" }];
+      writeFileSync(join(dir, "judgements", "human.json"), JSON.stringify(human));
+      const r = loadRunDir(dir);
+      expect([...r.judges.keys()]).toEqual(["A", "B"]);
+      expect(importRun(dir, join(dir, "store.jsonl"))).toHaveLength(18);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
