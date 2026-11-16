@@ -1,7 +1,8 @@
 # Nightly retrieval-eval model gate (#364): `pnpm eval --gate` = rerank ON pass + fusion-only pass
 # against their frozen baselines, with the embedding + reranker models cached between runs.
-# REPORT-ONLY for now: the baselines were frozen on macOS and no Linux baseline exists yet, so a
-# red gate here is a signal to read, not a verdict (see test/eval/README.md "Nightly CI").
+# On Linux the gate applies thresholds.linux (list diff report-only, declared platform-drift
+# skips). REPORT-ONLY until 7 consecutive nightlies pass under that rule, then a follow-up PR
+# drops continue-on-error (#364; see test/eval/README.md "Nightly CI").
 # Not a required check; no secrets; read-only token.
 name: Eval nightly
 
@@ -63,8 +64,17 @@ jobs:
       # cold run without it the e5 model would download into the discarded dir and never be cached.
       - run: mkdir -p test/eval/retrieval/.work/models
 
-      # Report-only: a failing gate must not turn the run red until a Linux baseline exists. The
-      # outcome goes to the log, an annotation and the job summary instead.
+      # Outcomes A/B in #364 may map to runner CPUs with different ONNX Runtime kernels; log the
+      # CPU so a later reader can check that against the gate outcome.
+      - name: Log the runner CPU
+        run: |
+          model=$(lscpu | sed -n 's/^Model name:[[:space:]]*//p' | head -1)
+          cpus=$(lscpu | sed -n 's/^CPU(s):[[:space:]]*//p' | head -1)
+          echo "runner CPU: $model ($cpus CPUs)"
+          echo "runner CPU: \`$model\` (\`$cpus\` CPUs)" >> "$GITHUB_STEP_SUMMARY"
+
+      # Report-only: a failing gate must not turn the run red until 7 consecutive nightlies pass
+      # under the Linux rule (#364). The outcome goes to the log, an annotation and the job summary.
       - name: Run the model gate
         id: gate
         continue-on-error: true
@@ -77,7 +87,7 @@ jobs:
           else
             echo "::warning::eval gate outcome: ${{ steps.gate.outcome }} (report-only, not blocking)"
           fi
-          echo "eval gate outcome: \`${{ steps.gate.outcome }}\` (report-only until a Linux baseline exists)" >> "$GITHUB_STEP_SUMMARY"
+          echo "eval gate outcome: \`${{ steps.gate.outcome }}\` (report-only until 7 consecutive passing nightlies, #364)" >> "$GITHUB_STEP_SUMMARY"
 
       # Both models must be fully there before the cache is saved: a crashed or partial download
       # would otherwise be stored under the same key and stick (an exact-key hit never re-saves).
