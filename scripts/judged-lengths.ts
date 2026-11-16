@@ -1,6 +1,13 @@
-// Book-length quartiles for the blind judged eval (#361, needed by #633) — STUB.
+// Book-length quartiles for the blind judged eval: where hybrid top-5 slots, grade-2 hits, grade-0
+// hits and negatives' slots fall by book length (chunks), cuts over all indexed books of a library.
+// A long-book bias shows up as Q4 holding more slots than relevant hits. Replaces the one-off
+// lenbias.py of the 2026-11-13 run (#361, needed by #633).
 
-import type { BlindKey, FinalGrade, RawRecord } from "./judged-lib.js";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
+import { indexFileName } from "../src/semantic/store/schema.js";
+import { gradesFor, type BlindKey, type FinalGrade, type RawRecord } from "./judged-lib.js";
 
 /** library id → book id → chunk count (book-lengths.json). */
 export type BookLengths = Record<string, Record<string, number>>;
@@ -23,26 +30,123 @@ export interface LengthBreakdown {
   rows: QuartileRow[];
 }
 
-const todo = (): never => {
-  throw new Error("not implemented (#361)");
-};
-export function quartileCuts(_counts: readonly number[]): [number, number, number] {
-  return todo();
+/** Quartile cuts: the sorted chunk counts at positions ⌊N·i/4⌋ for i = 1, 2, 3 (lenbias.py's rule). */
+export function quartileCuts(counts: readonly number[]): [number, number, number] {
+  const s = [...counts].sort((a, b) => a - b);
+  const at = (i: number) => s[Math.floor((s.length * i) / 4)]!;
+  return [at(1), at(2), at(3)];
 }
-export function quartileOf(_chunks: number, _cuts: readonly [number, number, number]): 0 | 1 | 2 | 3 {
-  return todo();
+
+/** 0-based quartile of a book: how many cuts its chunk count reaches. */
+export function quartileOf(chunks: number, cuts: readonly [number, number, number]): 0 | 1 | 2 | 3 {
+  return cuts.filter((c) => chunks >= c).length as 0 | 1 | 2 | 3;
 }
+
+/** Library-scope text queries: book scope ranks one book's passages and figures rank figures, not books. */
+const isLibraryText = (r: RawRecord) => r.query.scope === "library" && (r.query.target ?? "text") === "text";
+
+function row(label: string, books: number[], lengths: Record<string, number>, cuts: [number, number, number]) {
+  const counts = [0, 0, 0, 0];
+  let unindexed = 0;
+  for (const b of books) {
+    const c = lengths[String(b)];
+    if (c === undefined) unindexed += 1;
+    else counts[quartileOf(c, cuts)]! += 1;
+  }
+  const n = counts.reduce((s, x) => s + x, 0);
+  const shares = counts.map((x) => (n ? x / n : 0)) as [number, number, number, number];
+  return { label, shares, n, unindexed };
+}
+
+/** Per library with a length file: shares of hybrid top-5 slots, grade-2 and grade-0 hits, negatives' slots. */
 export function lengthBreakdown(
-  _raws: readonly RawRecord[],
-  _key: BlindKey,
-  _final: ReadonlyMap<string, FinalGrade>,
-  _lengths: BookLengths,
+  raws: readonly RawRecord[],
+  key: BlindKey,
+  final: ReadonlyMap<string, FinalGrade>,
+  lengths: BookLengths,
 ): LengthBreakdown[] {
-  return todo();
+  const out: LengthBreakdown[] = [];
+  const libraries = [...new Set(raws.filter(isLibraryText).map((r) => r.query.library))];
+  for (const library of libraries) {
+    const lens = lengths[library];
+    if (!lens) continue;
+    const cuts = quartileCuts(Object.values(lens));
+    const inLib = raws.filter(
+      (r) => isLibraryText(r) && r.query.library === library && r.runs.hybrid && !r.runs.hybrid.isError,
+    );
+    // top-5 hybrid hits with their grade (null = unjudged: a slot, never a grade-2 or grade-0 hit)
+    const slots = (rs: RawRecord[]) =>
+      rs.flatMap((r) => {
+        const grades = gradesFor(r.query.id, "hybrid", key, final);
+        return r.runs.hybrid!.hits.slice(0, 5).map((h, i) => ({ book: h.bookId, grade: grades[i] ?? null }));
+      });
+    const pos = slots(inLib.filter((r) => r.query.category !== "neg"));
+    const neg = slots(inLib.filter((r) => r.query.category === "neg"));
+    out.push({
+      library,
+      books: Object.keys(lens).length,
+      cuts,
+      rows: [
+        row(
+          "hybrid top-5 slots",
+          pos.map((s) => s.book),
+          lens,
+          cuts,
+        ),
+        row(
+          "grade 2",
+          pos.filter((s) => s.grade === 2).map((s) => s.book),
+          lens,
+          cuts,
+        ),
+        row(
+          "grade 0",
+          pos.filter((s) => s.grade === 0).map((s) => s.book),
+          lens,
+          cuts,
+        ),
+        row(
+          "negatives' top-5 slots",
+          neg.map((s) => s.book),
+          lens,
+          cuts,
+        ),
+      ],
+    });
+  }
+  return out;
 }
-export function renderLengthBreakdown(_b: readonly LengthBreakdown[]): string[] {
-  return todo();
+
+const pct = (x: number) => `${Math.round(100 * x)}%`;
+
+/** Report lines (one table per library). */
+export function renderLengthBreakdown(breakdowns: readonly LengthBreakdown[]): string[] {
+  return breakdowns.flatMap((b) => [
+    "",
+    `**Book-length quartiles — ${b.library}** (library-scope text queries; ${b.books} indexed books, chunk cuts ${b.cuts.join(" / ")})`,
+    "",
+    "| set | Q1 short | Q2 | Q3 | Q4 long | n | unindexed |",
+    "|---|---|---|---|---|---|---|",
+    ...b.rows.map((r) => `| ${r.label} | ${r.shares.map(pct).join(" | ")} | ${r.n} | ${r.unindexed} |`),
+  ]);
 }
-export function readBookLengths(_indexDir: string, _libraries: readonly string[]): BookLengths {
-  return todo();
+
+/** Chunks per book of each library's index (books.chunk_count), opened read-only; libraries without an index are left out. */
+export function readBookLengths(indexDir: string, libraries: readonly string[]): BookLengths {
+  const out: BookLengths = {};
+  for (const lib of libraries) {
+    const file = join(indexDir, indexFileName(lib));
+    if (!existsSync(file)) continue;
+    const db = new DatabaseSync(file, { readOnly: true });
+    try {
+      const rows = db.prepare("SELECT book_id, chunk_count FROM books").all() as Array<{
+        book_id: number;
+        chunk_count: number;
+      }>;
+      out[lib] = Object.fromEntries(rows.map((r) => [String(r.book_id), Number(r.chunk_count)]));
+    } finally {
+      db.close();
+    }
+  }
+  return out;
 }

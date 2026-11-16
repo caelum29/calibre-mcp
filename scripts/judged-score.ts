@@ -26,6 +26,7 @@ import {
   type FinalGrade,
   type RawRecord,
 } from "./judged-lib.js";
+import { lengthBreakdown, renderLengthBreakdown, type BookLengths } from "./judged-lengths.js";
 import {
   appendJudgments,
   gradeFromStore,
@@ -216,6 +217,13 @@ if (inlinePath && existsSync(inlinePath)) {
       (diff.length ? `; differ: ${diff.join(", ")}` : "") +
       ". Rankings can differ between runs, so read differences against raw-hits.jsonl.",
   );
+}
+
+// where slots and grades fall by book length (judged-dump writes book-lengths.json; older runs have none)
+const lengthsFile = join(runDir, "book-lengths.json");
+if (existsSync(lengthsFile)) {
+  const bookLengths = JSON.parse(readFileSync(lengthsFile, "utf8")) as BookLengths;
+  lines.push(...renderLengthBreakdown(lengthBreakdown(raws, key, final, bookLengths)));
 }
 
 // judged-text length beside each final grade: a long-text bias shows up as longer 2s than 0s

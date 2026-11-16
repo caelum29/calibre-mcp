@@ -12,7 +12,9 @@ import { join } from "node:path";
 import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
 import { buildServer } from "../src/server.js";
 import { KEYWORD_CATEGORIES, toRawRun, type JudgedQuery, type RawRecord } from "./judged-lib.js";
+import { readBookLengths } from "./judged-lengths.js";
 import { readStore, storePathError, uncoveredBlind } from "./judged-store.js";
+import { loadRuntimeConfig } from "../src/runtime-config.js";
 
 const [runDir, ...rest] = process.argv.slice(2);
 if (!runDir) {
@@ -45,9 +47,8 @@ const readRaw = (): RawRecord[] =>
 const done = new Set(readRaw().map((r) => r.query.id));
 
 // debug log level turns on the per-stage timings in every result
-const server = buildServer({
-  env: { CALIBRE_MCP_SERVER_URL: "http://localhost:8080", ...process.env, CALIBRE_MCP_LOG_LEVEL: "debug" },
-});
+const env = { CALIBRE_MCP_SERVER_URL: "http://localhost:8080", ...process.env, CALIBRE_MCP_LOG_LEVEL: "debug" };
+const server = buildServer({ env });
 const client = new Client({ name: "judged-dump", version: "0" });
 const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
 await server.connect(serverSide);
@@ -86,6 +87,13 @@ try {
 } finally {
   await Promise.allSettled([client.close(), server.close()]);
 }
+
+// Chunks per book of every queried library (read-only from the index): the score report's length quartiles
+const libraries = [...new Set(queries.map((q) => q.library))];
+writeFileSync(
+  join(runDir, "book-lengths.json"),
+  JSON.stringify(readBookLengths(loadRuntimeConfig(env).indexDir, libraries)),
+);
 
 // Blind batches: judges get only query + mustCover + pooled, shuffled, score-free hits — with a store,
 // only the hits it does not cover yet. Old batch files go first, so judges never re-grade a stale one.
