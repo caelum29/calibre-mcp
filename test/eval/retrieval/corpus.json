@@ -19,7 +19,7 @@
     { "bookId": 115, "file": "115-ru-cryptography.txt", "title": "Криптография: симметричные шифры, открытый ключ, подпись", "authors": ["Eval Fixture"], "language": "ru" },
     { "bookId": 116, "file": "116-ddd-front-matter.txt", "title": "Strategic Software Design: Bounded Contexts and the Ubiquitous Language", "authors": ["Eval Fixture"], "language": "en" },
     { "bookId": 117, "file": "117-observability-epub.txt", "title": "Observability in Practice: Events, Traces, and SLOs", "authors": ["Eval Fixture"], "language": "en", "headingStructured": true },
-    { "bookId": 118, "file": "118-rust-traits-dispatch.txt", "title": "Rust Traits and Generics: Static and Dynamic Dispatch", "authors": ["Eval Fixture"], "language": "en" },
+    { "bookId": 118, "file": "118-rust-traits-dispatch.txt", "title": "Traits and Generics: Static and Dynamic Dispatch", "authors": ["Eval Fixture"], "language": "en" },
     { "bookId": 119, "file": "119-lsm-tree-storage.txt", "title": "Log-Structured Merge Trees: Memtables, SSTables, Compaction", "authors": ["Eval Fixture"], "language": "en" },
     { "bookId": 120, "file": "120-git-history-rewriting.txt", "title": "Shaping a Commit Series: Interactive Rebase, Fixups, Force Pushes", "authors": ["Eval Fixture"], "language": "en" },
     { "bookId": 121, "file": "121-ru-service-worker-cache.txt", "title": "Service Worker и Cache Storage: кэш на стороне клиента", "authors": ["Eval Fixture"], "language": "ru" },

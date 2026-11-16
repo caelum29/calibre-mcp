@@ -38,8 +38,7 @@ An unbounded memo table grows with every distinct argument and never shrinks, wh
 long-running server turns a shortcut into a leak with a polite name. A bounded cache evicts
 entries: least recently used (LRU) eviction drops the entry untouched for the longest,
 which fits most access patterns; time-to-live eviction expires entries after a fixed age.
-In JavaScript a `WeakMap` keyed by objects lets an entry vanish as soon as its key object is
-unreachable from the rest of the program.
+A size cap of a few thousand entries is usually enough for a hot function.
 
 Measure before memoizing. A cache probe costs hashing the arguments and a table probe;
 for a function that is already cheap, the bookkeeping can cost more than the call it
