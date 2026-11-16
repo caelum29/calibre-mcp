@@ -1,0 +1,19 @@
+scripts/judged-dump.ts
+  s_1213dfa361df4a::t_c7ae08ae3fe76f 4-6,10,14-15,19,22-28,30-36,90-91,94-95,102-107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "92ad3d55c5d44c6ce433a85eb2969c7d6189948e",
+  "prompts": {},
+  "sessions": {
+    "s_1213dfa361df4a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b75eeccc-59bf-408d-a50b-bb10c6f3aca8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
