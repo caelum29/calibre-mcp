@@ -139,4 +139,16 @@ describe("library snippet window (#243)", () => {
     expect(top.snippetStart).toBe(BOOK38_START);
     expect(top.snippet).toBe(fence("MATCH book 38 @352024-354052 snippet@352024", BOOK38_BODY.slice(0, 320)));
   });
+
+  // #657: a chunk cut mid-sentence (lowercase head) falls back to its first sentence start
+  it("a vector-only hit on a mid-sentence chunk opens at its first sentence (#657)", async () => {
+    const body = BOOK38_BODY.slice("Migrating to microservices ".length); // "changes how teams own …"
+    const store = storeWith(38, "An Elegant Puzzle", BOOK38_START, body);
+    const { text, top } = await search(store, "консенсус", "vector");
+    const label = `MATCH book 38 @352024-${352024 + body.length} snippet@352061`;
+    const snippet = fence(label, "…" + body.slice(37, 37 + 320));
+    expect(top.snippetStart).toBe(BOOK38_START + 37);
+    expect(top.snippet).toBe(snippet);
+    expect(text).toContain(snippet);
+  });
 });
