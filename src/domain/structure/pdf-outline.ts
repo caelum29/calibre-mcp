@@ -94,14 +94,25 @@ function buildTree<T extends LeveledTitle>(entries: T[]): OutlineNode<T>[] {
   return roots;
 }
 
+// A leading entry that reads like a chapter, never a book title: a number ("1 Introduction",
+// "1.", "IV."), a "Chapter/Глава/Розділ/Раздел N" label, or a name books open their body with.
+const CHAPTER_NUMBER = /^\s*(?:\d+(?:[.:)]|\s|$)|[ivxlc]+[.:)](?:\s|$))/i;
+const CHAPTER_LABEL = /^\s*(?:chapter|глава|розділ|раздел)\s*(?:\d+|[ivxlc]+)(?:\P{L}|$)/iu;
+const CHAPTER_NAME = /^(?:introduction|intro|prologue|overview|getting started|вступ|введение|пролог)(?: |$)/u;
+
+/** True when a title could be a body chapter, so it is never dropped as a book-title entry. */
+function isChapterLike(title: string): boolean {
+  return CHAPTER_NUMBER.test(title) || CHAPTER_LABEL.test(title) || CHAPTER_NAME.test(norm(title));
+}
+
 // Only a LEADING run of front matter is dropped — the same rule the text detector follows
 // (text before the first chapter is front matter, not a span) — so a mid-book "Preface to
-// Part II" stays. One leading entry that is neither front matter nor a part joins the run when
-// the next entry is front matter: a book-title bookmark ahead of the contents and foreword
-// (#625) would otherwise stop the drop and keep the whole run as chapters.
+// Part II" stays. One leading entry that is neither front matter, a part nor chapter-like
+// joins the run when the next entry is front matter: a book-title bookmark ahead of the
+// contents (#625) would otherwise stop the drop and keep the whole run as chapters.
 function dropLeadingFrontMatter<T>(items: T[], title: (t: T) => string): T[] {
   const lead = items.length > 1 ? title(items[0]!) : "";
-  const tolerated = lead !== "" && !isFrontMatterTitle(lead) && !PART_TITLE.test(lead);
+  const tolerated = lead !== "" && !isFrontMatterTitle(lead) && !PART_TITLE.test(lead) && !isChapterLike(lead);
   let i = tolerated && isFrontMatterTitle(title(items[1]!)) ? 1 : 0;
   while (i < items.length && isFrontMatterTitle(title(items[i]!))) i++;
   return items.slice(i);

@@ -152,7 +152,7 @@ export function leadingFrontMatter(text: string): LeadingFrontMatter {
 
 /**
  * Char offset where the book's body starts: everything before it (TOC, praise pages,
- * foreword, preface) is front matter. Takes the later of the first detected chapter
+ * preface) is front matter. Takes the later of the first detected chapter
  * (PDF outline / numeric / structural) and the heading-structured boundary
  * (`leadingFrontMatter`, #102). Returns 0 — "no front matter claimed" — when neither
  * finds a plausible boundary (both are capped at min(FM_MAX_FRACTION, FM_MAX_CHARS)).
