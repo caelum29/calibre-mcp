@@ -204,3 +204,48 @@ Failure semantics:
 - No held-out set yet: every query has been used for tuning (model bake-off, RRF sweep,
   floor calibration), so fixture numbers are optimistic. Tagging a held-out subset that
   tuning scripts skip is an open call for Artem (#365).
+
+## Blind judged pass: judgment store and run comparison (#361)
+
+The blind two-judge pass over the live library (`scripts/judged-*`, #602) keeps its grades in a
+**judgment store**: one append-only JSONL per query set, named `<first 12 hex of the query set's
+sha256>.jsonl` (the hash is over the canonical JSON of `queries.json`, so re-indenting the file
+keeps the store, while any query edit, case or whitespace included, starts a new one; the canonical
+JSON keeps key order, so reordering the keys of a query also starts a new store). It lives
+under the gitignored `docs/dev/evals/judgments/` with the run dirs, because both describe a private
+library; it is never committed and never runs in CI. Each record holds query id, book id,
+`charStart`/`charEnd` (figures: the figure offset as both), `indexVersion`, the rubric version, the
+sha256 of the text the judges read, the final grade and coverage, each judge's raw grade, whether it
+was adjudicated, the run and when it was judged.
+
+**Matching.** A hit reuses a stored grade when query id, book id, `indexVersion` and rubric version
+are equal and the two ranges overlap by at least half of the shorter range (a figure matches only the
+equal offset; touching passages never match). Several matches: the larger overlap, then the newer
+record, then the closer span. One record grades at most one hit of a query: the (hit, record)
+matches are assigned greedily in that order (the better-ranked hit first on a full tie), and a hit
+whose matches are all taken stays unjudged, so the next dump sends it to the judges. `--strict-text` also requires the judged-text hash to be equal (for
+snippet-window A/Bs, where the location stays and the shown text changes). A hit no record covers
+is **unjudged** (`null`): never relevant, and counted in Hole@5.
+
+```bash
+pnpm eval:judged:score --import <judgedRunDir> --store <store>   # seed from an already judged run
+pnpm eval:judged:dump <runDir> --store <store>                    # blind batches = only uncovered hits
+pnpm eval:judged:score <runDir> --store <store>                   # append new grades, score from the store
+pnpm eval:judged:compare <runA> <runB> --store <store>            # paired NDCG@5 / hit@5, B − A
+```
+
+- `score` appends only grades the store does not already cover (an existing record is never
+  rewritten) and adds NDCG@5 (gain 2^grade − 1, discount log2(rank + 1), ideal = the best five stored
+  grades of the query at that `indexVersion`) and Hole@5 to the report, plus a book-length quartile
+  table per library when the run has `book-lengths.json` (written by `dump`, chunks per book read
+  from the index).
+- `compare` refuses runs of different query sets, a store named for another query set, and any
+  unjudged hit in a compared top 5 (the message names the dump command that fills it). Per mode both
+  runs have, overall and per category, it prints each run's mean NDCG@5 and hit@5 with a bootstrap
+  95% interval and the paired B − A difference with bootstrap CI, permutation p, hit@5 flips with a
+  sign test, MDE and `UNDERPOWERED` (the `stats.ts` primitives, fixed seed: the same store snapshot
+  prints the same numbers). The header records both run names, the query-set sha256 and the store
+  file's sha256.
+- The 2026-11 blind baseline's book-scope items were graded with the score label visible (stripped
+  from later blind batches by #664). `--import` stores them as they were; under `--strict-text` those
+  items differ from a newer run's text and go back to the judges.

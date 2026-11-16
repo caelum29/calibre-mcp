@@ -1,0 +1,117 @@
+[
+  {
+    "qid": "para-01",
+    "hid": "para-01#1",
+    "grade": 0,
+    "reason": "synthetic reason para-01#1"
+  },
+  {
+    "qid": "para-01",
+    "hid": "para-01#2",
+    "grade": 0,
+    "reason": "synthetic reason para-01#2"
+  },
+  {
+    "qid": "para-01",
+    "hid": "para-01#3",
+    "grade": 0,
+    "reason": "synthetic reason para-01#3"
+  },
+  {
+    "qid": "para-01",
+    "hid": "para-01#4",
+    "grade": 0,
+    "reason": "synthetic reason para-01#4"
+  },
+  {
+    "qid": "para-01",
+    "hid": "para-01#5",
+    "grade": 0,
+    "reason": "synthetic reason para-01#5"
+  },
+  {
+    "qid": "para-01",
+    "hid": "para-01#6",
+    "grade": 0,
+    "reason": "synthetic reason para-01#6"
+  },
+  {
+    "qid": "para-01",
+    "hid": "para-01#7",
+    "grade": 0,
+    "reason": "synthetic reason para-01#7"
+  },
+  {
+    "qid": "para-01",
+    "hid": "para-01#8",
+    "grade": 0,
+    "reason": "synthetic reason para-01#8"
+  },
+  {
+    "qid": "book-01",
+    "hid": "book-01#1",
+    "grade": 1,
+    "reason": "synthetic reason book-01#1",
+    "coverage": "L"
+  },
+  {
+    "qid": "book-01",
+    "hid": "book-01#2",
+    "grade": 2,
+    "reason": "synthetic reason book-01#2",
+    "coverage": "E"
+  },
+  {
+    "qid": "book-01",
+    "hid": "book-01#3",
+    "grade": 1,
+    "reason": "synthetic reason book-01#3",
+    "coverage": "L"
+  },
+  {
+    "qid": "book-01",
+    "hid": "book-01#4",
+    "grade": 1,
+    "reason": "synthetic reason book-01#4",
+    "coverage": "L"
+  },
+  {
+    "qid": "book-01",
+    "hid": "book-01#5",
+    "grade": 2,
+    "reason": "synthetic reason book-01#5",
+    "coverage": "S"
+  },
+  {
+    "qid": "fig-01",
+    "hid": "fig-01#1",
+    "grade": 0,
+    "reason": "synthetic reason fig-01#1"
+  },
+  {
+    "qid": "fig-01",
+    "hid": "fig-01#2",
+    "grade": 2,
+    "reason": "synthetic reason fig-01#2",
+    "coverage": "E"
+  },
+  {
+    "qid": "fig-01",
+    "hid": "fig-01#3",
+    "grade": 0,
+    "reason": "synthetic reason fig-01#3"
+  },
+  {
+    "qid": "fig-01",
+    "hid": "fig-01#4",
+    "grade": 0,
+    "reason": "synthetic reason fig-01#4"
+  },
+  {
+    "qid": "fig-01",
+    "hid": "fig-01#5",
+    "grade": 1,
+    "reason": "synthetic reason fig-01#5",
+    "coverage": "L"
+  }
+]

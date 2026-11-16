@@ -52,6 +52,7 @@
     "eval:hash-freeze": "node --import tsx test/eval/retrieval/hash-freeze.ts",
     "eval:judged:dump": "node --import tsx scripts/judged-dump.ts",
     "eval:judged:score": "node --import tsx scripts/judged-score.ts",
+    "eval:judged:compare": "node --import tsx scripts/judged-compare.ts",
     "reindex": "node --import tsx scripts/reindex.ts",
     "versions:check": "node scripts/check-versions.mjs",
     "catalog": "pnpm build && node scripts/gen-tool-catalog.mjs",

@@ -1,0 +1,66 @@
+[
+  {
+    "id": "para-01",
+    "category": "para",
+    "library": "Programming_Books",
+    "scope": "library",
+    "bookId": null,
+    "target": "text",
+    "query": "synthetic query for para-01",
+    "mustCover": "synthetic mustCover for para-01",
+    "expectedBooks": [
+      {
+        "id": 138,
+        "title": "Book 138"
+      },
+      {
+        "id": 1068,
+        "title": "Book 1068"
+      },
+      {
+        "id": 1338,
+        "title": "Book 1338"
+      },
+      {
+        "id": 695,
+        "title": "Book 695"
+      },
+      {
+        "id": 412,
+        "title": "Book 412"
+      }
+    ]
+  },
+  {
+    "id": "book-01",
+    "category": "book",
+    "library": "Programming_Books",
+    "scope": "book",
+    "bookId": 138,
+    "target": "text",
+    "query": "synthetic query for book-01",
+    "mustCover": "synthetic mustCover for book-01",
+    "expectedBooks": [
+      {
+        "id": 138,
+        "title": "Book 138"
+      }
+    ]
+  },
+  {
+    "id": "fig-01",
+    "category": "fig",
+    "library": "Programming_Books",
+    "scope": "library",
+    "bookId": null,
+    "target": "figures",
+    "query": "synthetic query for fig-01",
+    "mustCover": "synthetic mustCover for fig-01",
+    "expectedBooks": [
+      {
+        "id": 1227,
+        "title": "Book 1227"
+      }
+    ]
+  }
+]

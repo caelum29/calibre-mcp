@@ -1,33 +1,41 @@
 // Blind judged eval, step 1: run every pre-registered query through the real
 // calibre_semantic_search (in-process server, same wiring as debug-call.ts) and save the raw
 // hits + debug timings, then write blind batch files for separate judge agents.
-// Run: pnpm eval:judged:dump <runDir> [--batch 40]   (runDir holds a frozen queries.json) — #602
+// Run: pnpm eval:judged:dump <runDir> [--batch 40] [--store <file>] [--strict-text]
+// (runDir holds a frozen queries.json) — #602. With --store, the blind batches hold only the hits no
+// stored judgment covers (incremental pooling, #361); the key still maps every pooled item.
 // Read-only on the library; resumable (queries already in raw-hits.jsonl are skipped).
 // Queries run one at a time: parallel semantic calls compete for the same CPU and skip the rerank.
 
-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
 import { buildServer } from "../src/server.js";
-import {
-  blindRecord,
-  KEYWORD_CATEGORIES,
-  toRawRun,
-  type BlindKey,
-  type BlindQuery,
-  type JudgedQuery,
-  type RawRecord,
-} from "./judged-lib.js";
+import { KEYWORD_CATEGORIES, toRawRun, type JudgedQuery, type RawRecord } from "./judged-lib.js";
+import { readBookLengths } from "./judged-lengths.js";
+import { readStore, storePathError, uncoveredBlind } from "./judged-store.js";
+import { loadRuntimeConfig } from "../src/runtime-config.js";
 
 const [runDir, ...rest] = process.argv.slice(2);
 if (!runDir) {
-  process.stderr.write("usage: pnpm eval:judged:dump <runDir> [--batch 40]\n");
+  process.stderr.write("usage: pnpm eval:judged:dump <runDir> [--batch 40] [--store <file>] [--strict-text]\n");
   process.exit(2);
 }
-const batchFlag = rest.indexOf("--batch");
-const batchSize = batchFlag >= 0 ? Number(rest[batchFlag + 1]) : 40;
+const flag = (name: string) => {
+  const i = rest.indexOf(name);
+  return i >= 0 ? rest[i + 1] : undefined;
+};
+const batchSize = Number(flag("--batch") ?? 40);
+const storeFile = flag("--store");
+const strictText = rest.includes("--strict-text");
 
-const queries = JSON.parse(readFileSync(join(runDir, "queries.json"), "utf8")) as JudgedQuery[];
+const queriesJson = readFileSync(join(runDir, "queries.json"), "utf8");
+const pathError = storeFile && storePathError(storeFile, queriesJson);
+if (pathError) {
+  process.stderr.write(`${pathError}\n`);
+  process.exit(2);
+}
+const queries = JSON.parse(queriesJson) as JudgedQuery[];
 const rawPath = join(runDir, "raw-hits.jsonl");
 const readRaw = (): RawRecord[] =>
   existsSync(rawPath)
@@ -39,9 +47,8 @@ const readRaw = (): RawRecord[] =>
 const done = new Set(readRaw().map((r) => r.query.id));
 
 // debug log level turns on the per-stage timings in every result
-const server = buildServer({
-  env: { CALIBRE_MCP_SERVER_URL: "http://localhost:8080", ...process.env, CALIBRE_MCP_LOG_LEVEL: "debug" },
-});
+const env = { CALIBRE_MCP_SERVER_URL: "http://localhost:8080", ...process.env, CALIBRE_MCP_LOG_LEVEL: "debug" };
+const server = buildServer({ env });
 const client = new Client({ name: "judged-dump", version: "0" });
 const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
 await server.connect(serverSide);
@@ -81,20 +88,28 @@ try {
   await Promise.allSettled([client.close(), server.close()]);
 }
 
-// Blind batches: judges get only query + mustCover + pooled, shuffled, score-free hits.
+// Chunks per book of every queried library (read-only from the index): the score report's length quartiles
+const libraries = [...new Set(queries.map((q) => q.library))];
+writeFileSync(
+  join(runDir, "book-lengths.json"),
+  JSON.stringify(readBookLengths(loadRuntimeConfig(env).indexDir, libraries)),
+);
+
+// Blind batches: judges get only query + mustCover + pooled, shuffled, score-free hits — with a store,
+// only the hits it does not cover yet. Old batch files go first, so judges never re-grade a stale one.
 const blindDir = join(runDir, "blind");
 mkdirSync(blindDir, { recursive: true });
-const key: BlindKey = {};
-const blinds: BlindQuery[] = [];
-for (const rec of readRaw()) {
-  const b = blindRecord(rec);
-  Object.assign(key, b.key);
-  blinds.push(b.blind);
-}
+for (const f of readdirSync(blindDir).filter((n) => /^batch-\d+\.json$/.test(n))) rmSync(join(blindDir, f));
+const { blinds, key } = uncoveredBlind(readRaw(), storeFile ? readStore(storeFile) : [], { strictText });
 const batches = Math.ceil(blinds.length / batchSize);
 for (let b = 0; b < batches; b++) {
   const name = `batch-${String(b + 1).padStart(2, "0")}.json`;
   writeFileSync(join(blindDir, name), JSON.stringify(blinds.slice(b * batchSize, (b + 1) * batchSize), null, 1));
 }
 writeFileSync(join(runDir, "blind-key.json"), JSON.stringify(key));
-process.stderr.write(`blind: ${blinds.length} queries in ${batches} batch file(s) under ${blindDir}\n`);
+const items = blinds.reduce((n, b) => n + b.items.length, 0);
+process.stderr.write(
+  `blind: ${items} item(s) of ${blinds.length} queries in ${batches} batch file(s) under ${blindDir}` +
+    (storeFile ? ` (${Object.keys(key).length - items} pooled item(s) already in the store)` : "") +
+    "\n",
+);

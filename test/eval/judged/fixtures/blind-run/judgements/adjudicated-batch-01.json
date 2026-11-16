@@ -1,0 +1,16 @@
+[
+  {
+    "qid": "book-01",
+    "hid": "book-01#2",
+    "grade": 2,
+    "coverage": "E",
+    "reason": "synthetic reason book-01#2"
+  },
+  {
+    "qid": "book-01",
+    "hid": "book-01#5",
+    "grade": 1,
+    "coverage": "S",
+    "reason": "synthetic reason book-01#5"
+  }
+]

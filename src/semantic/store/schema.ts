@@ -326,6 +326,21 @@ export function readIndexOwner(file: string): string | undefined {
 }
 
 /**
+ * Chunks per book (`books.chunk_count`) of an index file, read through a short-lived read-only handle
+ * that never creates, migrates or writes it. For dev tooling (the judged eval's length quartiles, #361);
+ * a lock past the default wait or a file without a books table throws to the caller.
+ */
+export function readBookChunkCounts(file: string): Map<number, number> {
+  const db = new DatabaseSync(file, { readOnly: true });
+  try {
+    const rows = db.prepare("SELECT book_id, chunk_count FROM books").all() as Row[];
+    return new Map(rows.map((r) => [Number(r.book_id), Number(r.chunk_count)]));
+  } finally {
+    db.close();
+  }
+}
+
+/**
  * The owner recorded in a writable index db, recording `libraryId` first when there is none (#414).
  * Atomic across processes: a second server claiming the same file at once is ignored by the
  * insert and reads back whoever won, instead of hitting the key's UNIQUE constraint.

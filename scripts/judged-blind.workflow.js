@@ -48,6 +48,7 @@ const GRADES = {
 
 // Frozen before the first blind baseline (#602, grilling 2026-11-16): changing it later means
 // re-grading every query, so further proposals go to #658, not here.
+// Any change here must bump JUDGE_RUBRIC_VERSION in judged-store.ts, so stored grades stop matching (#361).
 const RUBRIC = `Grade every item against its query's mustCover:
 - 2 = the text answers the query: it is about exactly this.
 - 1 = related or partial: right area, wrong angle, or too generic.
