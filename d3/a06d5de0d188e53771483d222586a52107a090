@@ -1,0 +1,30 @@
+test/eval/judged/fixtures/blind-run/raw-hits.jsonl
+  s_1213dfa361df4a::t_2a15c044ff0986 2
+  s_1213dfa361df4a::t_f7e4d34ae215de 1,3
+test/eval/judged/fixtures/blind-run/queries.json
+  s_1213dfa361df4a::t_f7e4d34ae215de 9-10,14,18,22,26,30,41-42,46,57-58,62
+test/eval/judged/fixtures/blind-run/blind/batch-01.json
+  s_1213dfa361df4a::t_f7e4d34ae215de 4-5,9,14,19,24,29,34,39,44,51-52,83-84,88,93,98,103,108
+test/eval/judged/fixtures/blind-run/judgements/B-batch-01.json
+  s_1213dfa361df4a::t_f7e4d34ae215de 6,12,18,24,30,36,42,48,54,61,68,75,82,89,95,102,108,114
+test/eval/judged/fixtures/blind-run/judgements/adjudicated-batch-01.json
+  s_1213dfa361df4a::t_f7e4d34ae215de 7,14
+test/eval/judged/fixtures/blind-run/judgements/A-batch-01.json
+  s_1213dfa361df4a::t_f7e4d34ae215de 6,12,18,24,30,36,42,48,55,62,69,76,83,89,96,102,108,115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d3a06d5de0d188e53771483d222586a52107a090",
+  "prompts": {},
+  "sessions": {
+    "s_1213dfa361df4a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b75eeccc-59bf-408d-a50b-bb10c6f3aca8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
