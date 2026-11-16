@@ -5,14 +5,14 @@
 import type { EvalReport, Mode, PerQueryRow } from "./harness.js";
 
 /** Fixed default seed — any constant works; it only has to never change between runs. */
-const SEED = 0x358;
+export const SEED = 0x358;
 const ITERATIONS = 10_000;
 /** z for two-sided α = 0.05 and for 80% power. */
 const Z_ALPHA = 1.959964;
 const Z_POWER = 0.841621;
 
-/** mulberry32: tiny deterministic PRNG in [0, 1). */
-function mulberry32(seed: number): () => number {
+/** mulberry32: tiny deterministic PRNG in [0, 1). Shared with the fold helper (folds.ts, #632). */
+export function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
   return () => {
     a = (a + 0x6d2b79f5) >>> 0;
