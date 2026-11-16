@@ -1,0 +1,23 @@
+test/eval/retrieval/harness.test.ts
+  s_3984fb6fe79908::t_f969a853d6ce8e 80,82,85
+test/eval/README.md
+  s_3984fb6fe79908::t_f969a853d6ce8e 24,109-110,113
+test/eval/retrieval/queries.json
+  s_3984fb6fe79908::t_303397e7215df6 29-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0ba0c3a22e79996db43fd2757603c85071832eee",
+  "prompts": {},
+  "sessions": {
+    "s_3984fb6fe79908": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "078da911-5304-4a92-a921-bcee287a4f13",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}
