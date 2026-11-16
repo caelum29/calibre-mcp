@@ -1,4 +1,4 @@
-// #389 §Observability: two errors whose meta strings differ only past the 500-char log cap
+// #389 §Observability: two errors whose meta strings differ only past the 512-char log cap
 // collapse into one recentErrors entry; calibre_ping must show that collapse in both channels.
 // Own file: ping reads the process-wide logger, whose ring starts empty per test file.
 
@@ -49,7 +49,7 @@ function pingDeps(): ToolDeps {
 
 describe("calibre_ping shows a capped-meta collapse in both channels (#389)", () => {
   it("should_report_one_entry_with_2_occurrences_in_text_and_structuredContent", async () => {
-    const long = (tail: string) => "x".repeat(500) + tail;
+    const long = (tail: string) => "x".repeat(512) + tail;
     log.error("extract failed", { detail: long("AAAA") });
     vi.advanceTimersByTime(1000);
     log.error("extract failed", { detail: long("BBBB") }); // same length: the cap hides the difference
@@ -64,7 +64,7 @@ describe("calibre_ping shows a capped-meta collapse in both channels (#389)", ()
       count: 2,
       firstTs: at(0),
       ts: at(1),
-      meta: { detail: `${"x".repeat(500)}…(+4 chars)` },
+      meta: { detail: `${"x".repeat(512)}…(+4 chars)` },
     });
     const text = r.content.map((b) => (b.type === "text" ? b.text : "")).join("\n");
     expect(text.split("\n")).toContain("recent errors: 1 (2 occurrences)");

@@ -82,7 +82,8 @@ export const RECENT_ERRORS_MAX = 20;
 // Per-call timing/correlation fields: two otherwise identical errors always differ in these,
 // so they are left out of the repeat key. Book ids, messages and args stay in it.
 const VOLATILE_META = new Set(["durationMs", "rpcId", "traceId", "parentSpanId"]);
-const STRING_MAX = 500;
+// 512 = the schema cap of a `query`, so a maximum-length one reaches the file whole (#627)
+const STRING_MAX = 512;
 const ARRAY_MAX = 20;
 const DEPTH_MAX = 4;
 const STACK_FRAMES = 6;
@@ -193,9 +194,14 @@ Truncation is always marked: strings \`…(+N chars)\` (cap ${STRING_MAX}), arra
 
 One \`msg:"tool call"\` line closes every tool call: meta = {durationMs, rpcId (JSON-RPC id — joins the client's MCP log),
 traceId? + parentSpanId? (from the client's W3C traceparent in _meta), isError, errorCode?, hint? (generic next step),
-error? (the steer text the model got), threw?, args}.
+error? (the steer text the model got), threw?, textChars (length of the result's text blocks — what Claude Desktop shows
+the model), structuredChars? (JSON length of structuredContent — what Claude Code shows on success), args}.
+A successful calibre_semantic_search adds hits (ranked, max 10, numbers only: {rank, bookId, charStart, snippetStart?} for
+scope=library, {rank, bookId, charStart} for scope=book, {rank, bookId, figIndex, charOffset} for target=figures; hits:[]
+when nothing matched), plus lowConfidence? and maxRerank? when the result carried them. Never snippet or passage text.
 errorCode is one of: ${ERROR_CODES.join(", ")}.
-args is a summary: numbers/booleans as-is, short strings verbatim, long free text as its length only, objects as key names.
+args is a summary: numbers/booleans as-is, short strings verbatim, long free text as its length only, objects as key names;
+except the top-level query, kept verbatim up to 512 chars.
 isError results log at warn (the model fixes them by changing its call) — except server faults, which log at error:
 errorCode ${SERVER_FAULT_CODES.join(", ")}. Every error-level line (those faults, \`tool threw\`,
 inner failures such as \`calibredb failed\`) is what calibre_ping.recentErrors shows, so one fault may appear twice there
@@ -211,6 +217,8 @@ Recipes:
 - one call's full story:   jq -c 'select(.call=="<id>")' ${FILE_PREFIX}*.jsonl
 - slow or failed calls:    jq -c 'select(.msg=="tool call" and (.meta.isError or .meta.durationMs>10000))' ${FILE_PREFIX}*.jsonl
 - failures by code:        jq -r 'select(.msg=="tool call" and .meta.isError) | .meta.errorCode' ${FILE_PREFIX}*.jsonl | sort | uniq -c
+- search hits and sizes:   jq -c 'select(.msg=="tool call" and .tool=="calibre_semantic_search") | {q:.meta.args.query, hits:.meta.hits, n:.meta.textChars}' ${FILE_PREFIX}*.jsonl
+- which hit got opened:    node --import tsx scripts/pair-search-reads.ts <logDir> [--window <seconds>]  (repo checkout; reads strictly less than N s after the search)
 - per-tool error counts:   jq -r 'select(.lvl=="error") | .tool // "-"' ${FILE_PREFIX}*.jsonl | sort | uniq -c
 
 The last ${RECENT_ERRORS_MAX} errors of the running process are in calibre_ping (recentErrors) without file access.

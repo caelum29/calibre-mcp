@@ -294,7 +294,10 @@ can open them for you: *"check the calibre-mcp logs for errors today"*):
   and ready `jq` recipes.
 - **Every tool call** ends with a `"msg":"tool call"` line: duration, `isError`, the error
   text the model saw, and a short args summary (long free text such as a description edit is
-  logged as its length only). Every line logged during that call carries
+  logged as its length only; a search `query` is kept verbatim up to 512 characters). It also
+  records how big the result was (`textChars`, `structuredChars`) and, for a successful
+  `calibre_semantic_search`, the ranked `hits` (book id and character offsets only, never
+  text). Every line logged during that call carries
   the same `call` id, so `jq -c 'select(.call=="<id>")'` replays one call end to end.
 - **Failed calls** carry an `errorCode` from a closed set (`not_found`, `invalid_input`,
   `calibre_unreachable`, `calibre_busy`, `timeout`, `index_missing`, … — the full list is in the

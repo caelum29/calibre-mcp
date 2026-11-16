@@ -1,6 +1,6 @@
 // #389 §Observability: the recentErrors ring after eviction. A repeat of the oldest, already
 // evicted error re-enters as a fresh entry (count 1, history lost), and errors whose meta
-// strings differ only past the 500-char log cap collapse only when the capped marker matches.
+// strings differ only past the 512-char log cap collapse only when the capped marker matches.
 // Checked at the logger and in both calibre_ping channels.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -113,17 +113,17 @@ describe("calibre_ping after an evicted error returns (#389)", () => {
   });
 });
 
-describe("recentErrors: meta strings past the 500-char cap (#389)", () => {
-  const long = (tail: string) => "x".repeat(500) + tail;
+describe("recentErrors: meta strings past the 512-char cap (#389)", () => {
+  const long = (tail: string) => "x".repeat(512) + tail;
 
-  it("should_collapse_two_errors_whose_strings_have_the_same_length_and_differ_only_after_char_500", () => {
+  it("should_collapse_two_errors_whose_strings_have_the_same_length_and_differ_only_after_char_512", () => {
     const logger = quiet();
     err(logger, "extract failed", { detail: long("AAAA") });
     err(logger, "extract failed", { detail: long("BBBB") });
     const [only, ...rest] = logger.recentErrors();
     expect(rest).toEqual([]);
     expect(only!.count).toBe(2);
-    expect(only!.meta).toEqual({ detail: `${"x".repeat(500)}…(+4 chars)` }); // the cap hides the difference
+    expect(only!.meta).toEqual({ detail: `${"x".repeat(512)}…(+4 chars)` }); // the cap hides the difference
   });
 
   it("should_keep_them_apart_when_the_cut_tails_differ_in_length", () => {
@@ -131,12 +131,12 @@ describe("recentErrors: meta strings past the 500-char cap (#389)", () => {
     err(logger, "extract failed", { detail: long("AAAA") });
     err(logger, "extract failed", { detail: long("BBBBB") });
     expect(logger.recentErrors().map((r) => [r.count, r.meta])).toEqual([
-      [1, { detail: `${"x".repeat(500)}…(+4 chars)` }],
-      [1, { detail: `${"x".repeat(500)}…(+5 chars)` }],
+      [1, { detail: `${"x".repeat(512)}…(+4 chars)` }],
+      [1, { detail: `${"x".repeat(512)}…(+5 chars)` }],
     ]);
   });
 
-  it("should_keep_them_apart_when_the_difference_is_within_the_first_500_chars", () => {
+  it("should_keep_them_apart_when_the_difference_is_within_the_first_512_chars", () => {
     const logger = quiet();
     err(logger, "extract failed", { detail: "a" + "x".repeat(600) });
     err(logger, "extract failed", { detail: "b" + "x".repeat(600) });
