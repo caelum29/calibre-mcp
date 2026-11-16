@@ -107,7 +107,7 @@ records (`HarnessOptions.timing`), so
 
 ### Layout
 
-- `queries.json` — 70 golden queries `{ id, kind, scope, query, ru?, relevant }`. Kinds
+- `queries.json` — 70 golden queries `{ id, kind, scope, query, ru?, heldOut?, relevant }`. Kinds
   (count): `semantic-paraphrase` (16), `exact-identifier` (14), `figure-caption` (9),
   `cross-lingual` RU↔EN (8), `ru-monolingual` (8), `front-matter-trap` (6), `negative` (6)
   and `figure-negative` (3) — the two negative kinds have no right answer and measure the
@@ -149,6 +149,10 @@ records (`HarnessOptions.timing`), so
 - `platform-replay.test.ts` — replays the committed Linux nightly reports through both gate
   rules (#364).
 - `stats.ts` — paired permutation test, bootstrap CI, sign test, MDE; `--compare`.
+- `folds.ts` — seeded stratified k-fold / leave-one-out splits, `crossValidate`, and the
+  `stratifiedSample` the held-out set was drawn with (#632).
+- `held-out.ts` + `held-out.test.ts` + `held-out-report.test.ts` — the held-out section of
+  every fixture run, the frozen id list, and the guard that tuning scorers skip it (#632).
 - `list-diff-allow.json` — intended top-10 list changes (empty while the baselines hold).
 - `golden-set.ts` + `golden-set.test.ts` — the golden-set hash and its per-tier check (#392).
 - `saturation.ts` — headroom share + saturation warning printed by every run (#365).
@@ -158,7 +162,7 @@ records (`HarnessOptions.timing`), so
   print paired stats from `stats.ts` next to each gate check (#358): `rrf-sweep.ts` the same
   per-group Δ / CI / p / MDE / `UNDERPOWERED` line `--compare` computes, `rerank-floor.ts` an
   exact sign test of each floor vs the current one over the same rows. Information only: the
-  declared gates and selection rules decide.
+  declared gates and selection rules decide. Both skip the held-out queries (#632, Rules).
 - `hash-embedder.ts` + `harness.test.ts` — model-free smoke tests that run in the normal
   `pnpm test` suite (seconds): plumbing, query-set contract, determinism, and the
   "deliberately broken ranking degrades the metrics" proof that the harness measures.
@@ -260,9 +264,37 @@ Append-only: one entry per re-freeze, newest last. Every number names its corpus
   the first model download, identical JSON on re-run apart from `durationMs`.
 - Reports are committed. Baseline first, then one report per tuning change, so every
   fusion/reranker/model decision cites numbers, not vibes.
-- No held-out set yet: every query has been used for tuning (model bake-off, RRF sweep,
-  floor calibration), so fixture numbers are optimistic. Tagging a held-out subset that
-  tuning scripts skip is an open call for Artem (#365).
+- **Held-out set (#632).** 20 fixture queries carry `"heldOut": true` in `queries.json`.
+  They were drawn once, from the 68 queries of the set at the time, with `folds.ts` `stratifiedSample` (seed `0x358`,
+  stratified by kind, largest-remainder allocation over the 66 non-diagnostic queries; the two
+  `fig-xl` diagnostics stay out): semantic-paraphrase 5, exact-identifier 4, figure-caption 2,
+  cross-lingual 2, ru-monolingual 2, front-matter-trap 2, negative 2, figure-negative 1. The
+  ids are frozen (`held-out.test.ts` pins them): never re-drawn, never edited to move a number.
+  Queries added later are held out only where their own issue says so. Every earlier tuning
+  decision (model bake-off, ADR-0021 RRF weights, ADR-0022 `RERANK_FLOOR`) was made on all 68,
+  so those numbers stay optimistic; the held-out set guards the fits from here on.
+- **Tuning scorers skip it.** `rrf-sweep.ts` (`scoreWeight`) and `rerank-floor.ts`
+  (`scoreFloors`) drop held-out ids from every report they score (fixture and live: live
+  reports reuse the fixture ids) and recompute the aggregates from the remaining rows,
+  so a value is never selected on the queries it is reported on. One exception: their
+  `zeroBroken` check is the merge gate (`nonRegression` via `evaluateGate`) and stays on the
+  full set, because every change must pass it anyway; it is not a selection objective. A new
+  tuning scorer must add its case to `held-out.test.ts`: a held-out row that would decide its
+  outcome must give exactly the result of the same reports with that row deleted.
+- **Held-out numbers are reported apart.** Every fixture `pnpm eval` run prints, and its md
+  report adds under "Held-out (#632)", per mode: n, Hit@1 and nDCG@10, each with a 95%
+  percentile bootstrap interval (`stats.ts`, seed `0x358`), plus the held-out negatives
+  flagged. A set of 20 is noisy, so the interval is part of the number. Report-only: no gate,
+  baseline or list diff reads it, and the report JSON shape is unchanged.
+- **Fitted values are reported as fold estimates.** Any value chosen by maximising a metric
+  (a threshold, weight or floor) reports its k-fold estimate through `folds.ts`
+  (`kFold`, default k = 5, or `leaveOneOut` for small judged categories, plus
+  `crossValidate`): fit on k − 1 folds, score on the k-th, mean ± SD. Folds are stratified
+  (kind on the fixture, category on the judged set) and seeded; the unit is the query, so all
+  modes of one query share a fold. `rerank-floor.ts` prints its 5-fold estimate this way.
+- **Number of looks.** A sweep that compares several candidates against a baseline either
+  declares one primary comparison in its `thresholds.json` block before measuring, or
+  reports Holm-adjusted p values (step-down Bonferroni over the m comparisons).
 
 ## Blind judged pass: judgment store and run comparison (#361)
 

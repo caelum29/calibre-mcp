@@ -2,7 +2,8 @@
 // PASS/FAIL per weight against thresholds.json `rrfWeightSweep` (gates declared BEFORE the sweep,
 // D-012 protocol), plus the selected weight. Every gate check also carries the paired stats of
 // its query group from stats.ts (#358): a declared delta can pass while the paired test says the
-// fixture is too small to tell it from noise. Pure scoring is exported for the unit test.
+// fixture is too small to tell it from noise. Held-out queries (#632) are skipped. Pure scoring
+// is exported for the unit test.
 //
 // Usage: node --import tsx test/eval/retrieval/rrf-sweep.ts [--reports <dir>]
 

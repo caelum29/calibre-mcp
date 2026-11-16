@@ -2,7 +2,8 @@
 // maxRerank/maxScore of one fixture report (+ optional live report) for every candidate floor,
 // and prints mechanical PASS/FAIL against thresholds.json `rerankFloor` (declared BEFORE the
 // measurement, D-012 protocol). Each candidate is also compared with the current floor through
-// stats.ts's exact sign test (#358), paired per query: a query's modes count once. Pure scoring
+// stats.ts's exact sign test (#358), paired per query: a query's modes count once. Held-out
+// queries (#632) are skipped, and a 5-fold estimate of the selection is printed. Pure scoring
 // is exported for the unit test.
 //
 // Usage: node --import tsx test/eval/retrieval/rerank-floor.ts --fixture <report.json> [--live <report.json>]
