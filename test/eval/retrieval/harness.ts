@@ -78,6 +78,8 @@ export interface GoldenQuery {
   ru?: boolean;
   /** Excluded from every gate (#85: cross-lingual caption queries are ungated diagnostics). */
   diagnostic?: boolean;
+  /** Frozen held-out query (#632): tuning scorers skip it; `pnpm eval` reports it apart. */
+  heldOut?: true;
   /** Library scope: relevant bookIds. Book scope: spans. Figures: figure labels. Empty for negatives. */
   relevant: Array<number | SpanLabel | FigureLabel>;
 }
@@ -153,6 +155,15 @@ export function loadCorpus(): LoadedCorpus {
     }
   }
   return { corpus: { libraryId: raw.libraryId, books: raw.books }, texts, markers, inventories };
+}
+
+/**
+ * Ids of the frozen held-out queries (#632), read from queries.json. Live reports reuse the
+ * fixture query ids, so the same set filters them too.
+ */
+export function heldOutIds(): Set<string> {
+  const queries = JSON.parse(readFileSync(path.join(HERE, "queries.json"), "utf8")) as GoldenQuery[];
+  return new Set(queries.filter((q) => q.heldOut === true).map((q) => q.id));
 }
 
 /** Load the golden queries and fail loudly if any span/figure label drifted from its fixture. */
