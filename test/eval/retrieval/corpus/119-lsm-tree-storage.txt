@@ -43,5 +43,5 @@ merge. Cassandra, ScyllaDB, RocksDB and the storage engines behind many key-valu
 all pick their own point on that triangle.
 
 Range scans are the weak spot. A scan has to open an iterator over the memtable and over
-every overlapping SSTable and merge them on the fly, so a design that is excellent for
+every overlapping SSTable and merge them as it reads, so a design that is excellent for
 appends and point reads can still lose to an in-place structure on long ordered reads.

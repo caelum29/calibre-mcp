@@ -26,7 +26,7 @@ refuse unhashable arguments for exactly this reason.
 
 A memoized function must be deterministic: the same arguments must always yield the same
 result, and calling it must have no side effects that the program relies on. If the
-function reads `Date.now()`, a global variable, a file or a database, the stored result
+function reads `Date.now()`, a global variable, a file or a registry, the stored result
 is only a snapshot of one moment, and every later call returns that old snapshot as if
 nothing had happened since. A memoized function that writes a log line or sends a
 request does so only on the first call, and all the later calls are silently dropped.
