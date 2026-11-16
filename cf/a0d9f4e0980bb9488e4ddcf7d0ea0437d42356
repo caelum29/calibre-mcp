@@ -1,0 +1,19 @@
+scripts/judged-store.ts
+  s_1213dfa361df4a::t_e6950529be09be 1-4,6-20,22,29,34,38,41,43,66,87-90,92-97,99-102,104-110,112-132,134-136,138-152,154-176,178-205,207-208,210-212,214,216-217,219-221,223-230,232-261,263-264,266-269,271-276,278-286,288-295,297-300,302-345,347-356,358-364
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cfa0d9f4e0980bb9488e4ddcf7d0ea0437d42356",
+  "prompts": {},
+  "sessions": {
+    "s_1213dfa361df4a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b75eeccc-59bf-408d-a50b-bb10c6f3aca8",
+        "model": "unknown"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
