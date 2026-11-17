@@ -7,10 +7,11 @@
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { DatabaseSync } from "node:sqlite";
+import type { DatabaseSync } from "node:sqlite";
 import { type KeywordPlan, type KeywordToken, planKeywordQuery } from "../src/domain/search/keyword-plan.js";
 import { stemmedTokens } from "../src/semantic/stem.js";
 import { WEIGHTED_BM25, ftsMatch } from "../src/semantic/store/shared.js";
+import { indexFileName, openReadOnlyIndex } from "../src/semantic/store/schema.js";
 import { fts5TermStats, type Fts5TermStats } from "../src/semantic/store/term-stats.js";
 
 interface Query {
@@ -45,7 +46,7 @@ const dbs = new Map<string, { db: DatabaseSync; stats: Fts5TermStats }>();
 const open = (lib: string) => {
   let e = dbs.get(lib);
   if (!e) {
-    const db = new DatabaseSync(join(indexDir, `${lib}.sqlite`), { readOnly: true });
+    const db = openReadOnlyIndex(join(indexDir, indexFileName(lib)));
     e = { db, stats: fts5TermStats(db) };
     dbs.set(lib, e);
   }
