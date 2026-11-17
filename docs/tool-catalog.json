@@ -2540,6 +2540,15 @@
                 "frontMatter": {
                   "type": "boolean"
                 },
+                "matterKind": {
+                  "enum": [
+                    "front",
+                    "back_index",
+                    "back_biblio",
+                    "back_other"
+                  ],
+                  "type": "string"
+                },
                 "provenance": {
                   "additionalProperties": false,
                   "description": "Only at CALIBRE_MCP_LOG_LEVEL=debug: 1-based vector/keyword half ranks, fused rank (hybrid), whether the cross-encoder scored the hit, and for library books which half's chunk is shown.",
@@ -2610,6 +2619,15 @@
                 },
                 "cosine": {
                   "type": "number"
+                },
+                "matterKind": {
+                  "enum": [
+                    "front",
+                    "back_index",
+                    "back_biblio",
+                    "back_other"
+                  ],
+                  "type": "string"
                 },
                 "provenance": {
                   "additionalProperties": false,
