@@ -80,6 +80,12 @@ export interface Thresholds {
     /** Pre-freeze headroom criterion: per kind, this failing share in at least one configuration. */
     headroom?: { minFailingShare: number; configurations: number };
   };
+  /**
+   * #644 rerank latency A/B, pre-registered before any arm is dumped: acceptance rule, arms (each
+   * a RetrievalOptions rerank override), protocol and quality baseline. Read by the judged dump's
+   * `--arm` and shape-checked by `rerankLatencyArms` (gate-guards.ts); no fixture gate reads it.
+   */
+  rerankLatency?: unknown;
   /** #363 report-only axes: each states a trend; `gate: false` — printed, never read by a gate. */
   reportOnlyAxes?: Record<string, { gate: false; trend: string; measured?: boolean }>;
   /** Tier-0 hash-embedder gate inside `pnpm test` (#357): per-query rank baseline, Hit@1 rule. */

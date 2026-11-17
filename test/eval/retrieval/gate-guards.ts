@@ -12,7 +12,7 @@ import {
   type PlatformDriftEntry,
   type Thresholds,
 } from "./gate.js";
-import { ALL_MODES, type EvalReport, type Mode } from "./harness.js";
+import { ALL_MODES, type EvalReport, type Mode, type RerankOptions } from "./harness.js";
 
 /** Flag combinations the gate refuses, checked before any pass runs. */
 export function checkGateArgs(args: { gate: boolean; live: boolean; rerank?: string }): void {
@@ -188,4 +188,85 @@ function checkPlatformDrift(entries: unknown): asserts entries is PlatformDriftE
     if (seen.has(k)) throw bad(`duplicate entry for ${k}`);
     seen.add(k);
   });
+}
+
+/** One pre-registered #644 arm: its role in the A/B and the rerank override it runs with. */
+export interface RerankLatencyArm {
+  role: "baseline" | "candidate" | "combination" | "reference";
+  options: RerankOptions;
+  /** Combination rows: measured only when every named arm passed the rule. */
+  onlyIf?: string[];
+}
+
+const RERANK_LATENCY_KEYS = ["$comment", "rule", "arms", "protocol", "qualityBaseline"];
+const RERANK_RULE_NUMBERS = ["minLatencyDrop", "maxHit3DropOverallPoints", "maxHit3DropPerCategoryPoints"] as const;
+const RERANK_ARM_KEYS = ["$comment", "role", "options", "onlyIf"];
+const RERANK_ARM_ROLES: RerankLatencyArm["role"][] = ["baseline", "candidate", "combination", "reference"];
+const RERANK_OPTION_KEYS = ["rerankPool", "rerankMaxTokens", "adaptivePool"];
+
+/**
+ * Shape-check `thresholds.rerankLatency` (#644) and return its arms by name (empty when the block
+ * is absent). A misspelled option key would otherwise run an arm as the baseline, unnoticed.
+ */
+export function rerankLatencyArms(t: Thresholds): Map<string, RerankLatencyArm> {
+  const at = "thresholds.rerankLatency";
+  const block = t.rerankLatency;
+  if (block === undefined) return new Map();
+  const obj = (v: unknown, where: string): Record<string, unknown> => {
+    if (typeof v !== "object" || v === null || Array.isArray(v)) throw new Error(`${where} must be an object`);
+    return v as Record<string, unknown>;
+  };
+  const onlyKeys = (o: Record<string, unknown>, allowed: string[], where: string) => {
+    const unknown = Object.keys(o).filter((k) => !allowed.includes(k));
+    if (unknown.length)
+      throw new Error(`${where} has unknown key ${unknown.join(", ")} (allowed: ${allowed.join(", ")})`);
+  };
+  const b = obj(block, at);
+  onlyKeys(b, RERANK_LATENCY_KEYS, at);
+  const rule = obj(b.rule, `${at}.rule`);
+  const drop = rule.minLatencyDrop;
+  if (typeof drop !== "number" || !(drop > 0 && drop < 1)) {
+    throw new Error(`${at}.rule.minLatencyDrop must be a number in (0, 1)`);
+  }
+  for (const key of RERANK_RULE_NUMBERS) {
+    const v = rule[key];
+    if (typeof v !== "number" || !(v >= 0)) throw new Error(`${at}.rule.${key} must be a non-negative number`);
+  }
+  const arms = obj(b.arms, `${at}.arms`);
+  const out = new Map<string, RerankLatencyArm>();
+  for (const [name, raw] of Object.entries(arms)) {
+    const where = `${at}.arms.${name}`;
+    const a = obj(raw, where);
+    onlyKeys(a, RERANK_ARM_KEYS, where);
+    if (!RERANK_ARM_ROLES.includes(a.role as RerankLatencyArm["role"])) {
+      throw new Error(`${where}.role must be one of ${RERANK_ARM_ROLES.join(", ")}`);
+    }
+    const o = obj(a.options, `${where}.options`);
+    onlyKeys(o, RERANK_OPTION_KEYS, `${where}.options`);
+    for (const key of ["rerankPool", "rerankMaxTokens"] as const) {
+      const v = o[key];
+      if (v !== undefined && !(Number.isSafeInteger(v) && (v as number) > 0)) {
+        throw new Error(`${where}.options.${key} must be a positive integer`);
+      }
+    }
+    if (o.adaptivePool !== undefined && o.adaptivePool !== true) {
+      throw new Error(`${where}.options.adaptivePool must be true when set`);
+    }
+    const onlyIf = a.onlyIf;
+    if (onlyIf !== undefined && !(Array.isArray(onlyIf) && onlyIf.every((n) => typeof n === "string"))) {
+      throw new Error(`${where}.onlyIf must be an array of arm names`);
+    }
+    out.set(name, {
+      role: a.role as RerankLatencyArm["role"],
+      options: o as RerankOptions,
+      ...(onlyIf ? { onlyIf: onlyIf as string[] } : {}),
+    });
+  }
+  const baselines = [...out.values()].filter((a) => a.role === "baseline").length;
+  if (baselines !== 1) throw new Error(`${at}.arms needs exactly one baseline arm (found ${baselines})`);
+  for (const [name, a] of out) {
+    const missing = (a.onlyIf ?? []).find((n) => !out.has(n));
+    if (missing !== undefined) throw new Error(`${at}.arms.${name}.onlyIf names an undeclared arm "${missing}"`);
+  }
+  return out;
 }

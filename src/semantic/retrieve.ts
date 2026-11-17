@@ -6,7 +6,7 @@ import type { Config } from "../config.js";
 import type { LogSink } from "../logging.js";
 import type { Embedder } from "./embedder.js";
 import { RRF_K, rrfFuse } from "./fusion.js";
-import { RERANK_FLOOR, RERANK_POOL, type Reranker } from "./reranker.js";
+import { ADAPTIVE_AGREE_TOP, ADAPTIVE_RERANK_POOL, RERANK_FLOOR, RERANK_POOL, type Reranker } from "./reranker.js";
 import { snippetWindow } from "./snippet.js";
 import type { BookHit, ChunkIndex, FigureHit, FigureIndex, LibraryHit } from "./store/index.js";
 
@@ -101,10 +101,32 @@ export interface FiguresRequest extends BaseRequest {
 
 export type RetrievalRequest = LibraryRequest | BookRequest | FiguresRequest;
 
-/** Tuning knobs for eval sweeps; production calls pass none. */
+/**
+ * Tuning knobs for eval sweeps and the #644 rerank latency A/B; production calls pass none. Only
+ * in-process scripts set them (BuildServerOptions.retrievalOptions) — never an env var or tool param.
+ */
 export interface RetrievalOptions {
   /** Weighted-RRF weights, vector first then keyword (default 1.0 / 1.0). */
   rrfWeights?: readonly number[];
+  /** Cross-encoded pair cap and rerank candidate count (default RERANK_POOL). */
+  rerankPool?: number;
+  /** Pair truncation length passed to the reranker (default: the reranker's own, 512). */
+  rerankMaxTokens?: number;
+  /** Hybrid only: halves agreeing on their top ADAPTIVE_AGREE_TOP ids cut the rerank to ADAPTIVE_RERANK_POOL pairs. */
+  adaptivePool?: boolean;
+}
+
+/** One call's resolved rerank knobs (#644): pair cap, truncation length, adaptive rule on/off. */
+interface RerankKnobs {
+  pool: number;
+  maxTokens?: number;
+  adaptive: boolean;
+}
+
+/** Fused candidates plus the pair cap the rerank stage applies to them (smaller under the adaptive rule). */
+interface Candidates<H> {
+  items: Pooled<H>[];
+  cut: number;
 }
 
 /**
@@ -178,9 +200,14 @@ export async function retrieve(
   opts: RetrievalOptions = {},
 ): Promise<RankedHits<LibraryHit> | RankedHits<BookHit> | RankedHits<FigureHit>> {
   const weights = opts.rrfWeights ?? RRF_WEIGHTS;
+  const knobs: RerankKnobs = {
+    pool: opts.rerankPool ?? RERANK_POOL,
+    ...(opts.rerankMaxTokens !== undefined ? { maxTokens: opts.rerankMaxTokens } : {}),
+    adaptive: opts.adaptivePool === true,
+  };
   if (req.scope === "library") {
     const rr = await dropGone(
-      await applyRerank(await rankBooks(req, deps, weights), req, deps, {
+      await applyRerank(await rankBooks(req, deps, weights, knobs), req, deps, knobs, {
         body: (h) => h.body,
         tie: (h) => [h.bookId, h.bookId],
       }),
@@ -191,7 +218,7 @@ export async function retrieve(
     return outcome(rr, hits, confidence(hits, deps.config.semanticFloor, rr), rr.note);
   }
   if (req.scope === "book") {
-    const rr = await applyRerank(await rankPassages(req, deps, weights), req, deps, {
+    const rr = await applyRerank(await rankPassages(req, deps, weights, knobs), req, deps, knobs, {
       body: (h) => h.body,
       tie: (h) => [0, h.chunkId], // one book: passages tie-break on chunk id alone
     });
@@ -209,7 +236,7 @@ export async function retrieve(
     return outcome(rr, hits, confidence(hits, deps.config.semanticFloor, rr), rr.note, demotedNote);
   }
   const rr = await dropGone(
-    await applyRerank(await rankFigures(req, deps, weights), req, deps, {
+    await applyRerank(await rankFigures(req, deps, weights, knobs), req, deps, knobs, {
       body: (h) => h.caption,
       tie: (h) => [h.bookId, h.figureId],
     }),
@@ -244,8 +271,22 @@ function outcome<H>(
 }
 
 /** Candidates to materialize: a rerank-sized pool when the reranker can reorder, else topK. */
-function poolK(req: BaseRequest, deps: RetrievalDeps): number {
-  return rerankActive(req, deps) ? Math.max(req.topK, RERANK_POOL) : req.topK;
+function poolK(req: BaseRequest, deps: RetrievalDeps, pool: number): number {
+  return rerankActive(req, deps) ? Math.max(req.topK, pool) : req.topK;
+}
+
+/**
+ * The pair cap for a hybrid ranking (#644): the knob's pool, or ADAPTIVE_RERANK_POOL when the
+ * adaptive rule is on and both halves hold the same top ADAPTIVE_AGREE_TOP ids in any order. A
+ * keyword half with fewer ids than that counts as no agreement.
+ */
+function hybridCut<H>(knobs: RerankKnobs, vec: H[], kw: H[], idOf: (h: H) => number): number {
+  if (!knobs.adaptive) return knobs.pool;
+  const top = (list: H[]) => [...new Set(list.map(idOf))].slice(0, ADAPTIVE_AGREE_TOP);
+  const v = top(vec);
+  const k = new Set(top(kw));
+  const agree = k.size === ADAPTIVE_AGREE_TOP && v.length === ADAPTIVE_AGREE_TOP && v.every((id) => k.has(id));
+  return agree ? Math.min(ADAPTIVE_RERANK_POOL, knobs.pool) : knobs.pool;
 }
 
 /** True when the rerank stage will run: a reranker is wired, not env-disabled, mode has a semantic claim. */
@@ -314,21 +355,26 @@ async function rankBooks(
   req: LibraryRequest,
   deps: RetrievalDeps,
   w: readonly number[],
-): Promise<Pooled<LibraryHit>[]> {
+  knobs: RerankKnobs,
+): Promise<Candidates<LibraryHit>> {
   const { libraryId, allow } = req;
+  const cut = knobs.pool;
   if (req.mode === "keyword") {
-    return single(deps.index.searchLibraryFts(libraryId, req.query, req.topK, allow), "keyword");
+    return { items: single(deps.index.searchLibraryFts(libraryId, req.query, req.topK, allow), "keyword"), cut };
   }
-  const k = poolK(req, deps);
+  const k = poolK(req, deps, knobs.pool);
   const q = await deps.embedder.embedQuery(req.query);
   if (req.mode === "vector") {
-    return single(deps.index.searchLibrary(libraryId, q, k, allow), "vector");
+    return { items: single(deps.index.searchLibrary(libraryId, q, k, allow), "vector"), cut };
   }
   // hybrid: fuse book rankings from both halves by bookId (vector first — weights order).
   const vec = deps.index.searchLibrary(libraryId, q, POOL, allow);
   const kw = deps.index.searchLibraryFts(libraryId, req.query, POOL, allow);
   const fused = withChunkSource(fuse({ vec, kw, idOf: (h) => h.bookId, tieOf: (h) => [h.bookId, h.bookId] }, k, w), kw);
-  return rerankActive(req, deps) ? withKeywordCandidates(fused, kw) : fused;
+  return {
+    items: rerankActive(req, deps) ? withKeywordCandidates(fused, kw) : fused,
+    cut: hybridCut(knobs, vec, kw, (h) => h.bookId),
+  };
 }
 
 /** Record which half's best chunk a fused book shows (#650): vector, keyword, or the same chunk in both. */
@@ -358,19 +404,26 @@ function withKeywordCandidates(fused: Ranked<LibraryHit>[], kw: LibraryHit[]): P
 }
 
 /** Rank passages within one book per mode, mirroring rankBooks but fusing on chunkId. */
-async function rankPassages(req: BookRequest, deps: RetrievalDeps, w: readonly number[]): Promise<Ranked<BookHit>[]> {
+async function rankPassages(
+  req: BookRequest,
+  deps: RetrievalDeps,
+  w: readonly number[],
+  knobs: RerankKnobs,
+): Promise<Candidates<BookHit>> {
   const { libraryId, bookId } = req;
+  const cut = knobs.pool;
   if (req.mode === "keyword") {
-    return single(deps.index.searchBookFts(libraryId, bookId, req.query, req.topK), "keyword");
+    return { items: single(deps.index.searchBookFts(libraryId, bookId, req.query, req.topK), "keyword"), cut };
   }
-  const k = poolK(req, deps);
+  const k = poolK(req, deps, knobs.pool);
   const q = await deps.embedder.embedQuery(req.query);
   if (req.mode === "vector") {
-    return single(deps.index.searchBook(libraryId, bookId, q, k), "vector");
+    return { items: single(deps.index.searchBook(libraryId, bookId, q, k), "vector"), cut };
   }
   const vec = deps.index.searchBook(libraryId, bookId, q, POOL);
   const kw = deps.index.searchBookFts(libraryId, bookId, req.query, POOL);
-  return fuse({ vec, kw, idOf: (h) => h.chunkId, tieOf: (h) => [0, h.chunkId] }, k, w);
+  const idOf = (h: BookHit) => h.chunkId;
+  return { items: fuse({ vec, kw, idOf, tieOf: (h) => [0, h.chunkId] }, k, w), cut: hybridCut(knobs, vec, kw, idOf) };
 }
 
 /** Rank figure captions per mode — the rankBooks/rankPassages mirror, fused on figureId, ties by (bookId, figureId). */
@@ -378,19 +431,28 @@ async function rankFigures(
   req: FiguresRequest,
   deps: RetrievalDeps,
   w: readonly number[],
-): Promise<Ranked<FigureHit>[]> {
+  knobs: RerankKnobs,
+): Promise<Candidates<FigureHit>> {
   const { libraryId, bookId, allow } = req;
+  const cut = knobs.pool;
   if (req.mode === "keyword") {
-    return single(deps.index.searchFiguresFts(libraryId, req.query, req.topK, bookId, allow), "keyword");
+    return {
+      items: single(deps.index.searchFiguresFts(libraryId, req.query, req.topK, bookId, allow), "keyword"),
+      cut,
+    };
   }
-  const k = poolK(req, deps);
+  const k = poolK(req, deps, knobs.pool);
   const q = await deps.embedder.embedQuery(req.query);
   if (req.mode === "vector") {
-    return single(deps.index.searchFigures(libraryId, q, k, bookId, allow), "vector");
+    return { items: single(deps.index.searchFigures(libraryId, q, k, bookId, allow), "vector"), cut };
   }
   const vec = deps.index.searchFigures(libraryId, q, POOL, bookId, allow);
   const kw = deps.index.searchFiguresFts(libraryId, req.query, POOL, bookId, allow);
-  return fuse({ vec, kw, idOf: (h) => h.figureId, tieOf: (h) => [h.bookId, h.figureId] }, k, w);
+  const idOf = (h: FigureHit) => h.figureId;
+  return {
+    items: fuse({ vec, kw, idOf, tieOf: (h) => [h.bookId, h.figureId] }, k, w),
+    cut: hybridCut(knobs, vec, kw, idOf),
+  };
 }
 
 /** A fused item on its way into the rerank stage: `more` holds its extra candidates (library, #604). */
@@ -408,16 +470,18 @@ interface RerankOutcome<T> {
  * Cross-encoder rerank (D-011): score (query, candidate body) pairs for a prefix of the fused
  * order and emit those items by their best candidate's score; items past the prefix keep their
  * fused order after the reranked head (no rerank score claimed — the latency guard at high topK).
- * The prefix admits items in fused order while their candidates fit in RERANK_POOL pairs; the first
+ * The prefix admits items in fused order while their candidates fit in the pair cap (RERANK_POOL
+ * unless a #644 knob changed it); the first
  * item that does not fit ends it, so the scored items are always a prefix of the fused order. An
  * item with several candidates (library, #604) keeps the best-scoring one, the first on a tie.
  * Always-on for hybrid/vector when a reranker is wired (CALIBRE_MCP_RERANK=off opts out);
  * keyword mode skips it. Degrades (never fails): errors fall back to the fused order + a note.
  */
 async function applyRerank<H>(
-  pool: Pooled<H>[],
+  { items: pool, cut }: Candidates<H>,
   req: BaseRequest,
   deps: RetrievalDeps,
+  knobs: RerankKnobs,
   // body: the text the cross-encoder scores; tie: (book id, unit id), the ascending order for
   // equal rerank scores (#392) instead of the fused order
   keys: { body: (h: H) => string; tie: (h: H) => readonly [number, number] },
@@ -432,11 +496,15 @@ async function applyRerank<H>(
     return { hits: fused(), reranked: false, note: RERANK_DISABLED_NOTE };
   }
   try {
-    const head = admit(pool);
+    const head = admit(pool, cut);
     const passages = head.flatMap((r) => candidatesOf(r).map(keys.body));
     const t0 = performance.now();
-    const scores = await deps.reranker.rerank(req.query, passages);
-    deps.log.debug("rerank stage", { pairs: passages.length, ms: Math.round(performance.now() - t0) });
+    // the third argument only for a #644 truncation arm, so shipped calls stay byte-identical
+    const scores =
+      knobs.maxTokens === undefined
+        ? await deps.reranker.rerank(req.query, passages)
+        : await deps.reranker.rerank(req.query, passages, { maxTokens: knobs.maxTokens });
+    deps.log.debug("rerank stage", { pairs: passages.length, cut, ms: Math.round(performance.now() - t0) });
     let at = 0;
     const scored = head.map((r) => {
       const cands = candidatesOf(r);
@@ -473,13 +541,13 @@ function candidatesOf<H>(r: Pooled<H>): H[] {
   return [r.hit, ...(r.more ?? [])];
 }
 
-/** The longest prefix of the fused order whose candidates fit in RERANK_POOL pairs (ADR-0011 latency cap). */
-function admit<H>(pool: Pooled<H>[]): Pooled<H>[] {
+/** The longest prefix of the fused order whose candidates fit in `cut` pairs (ADR-0011 latency cap). */
+function admit<H>(pool: Pooled<H>[], cut: number): Pooled<H>[] {
   const head: Pooled<H>[] = [];
   let pairs = 0;
   for (const r of pool) {
     const n = candidatesOf(r).length;
-    if (pairs + n > RERANK_POOL) break; // no skipping ahead: the scored items stay a prefix
+    if (pairs + n > cut) break; // no skipping ahead: the scored items stay a prefix
     head.push(r);
     pairs += n;
   }

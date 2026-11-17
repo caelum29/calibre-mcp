@@ -33,6 +33,7 @@ pnpm eval --modes hybrid       # subset of modes
 pnpm eval --live               # UNVERIFIED spot check against the real library index (skip in CI)
 pnpm eval --rerank off         # disable the shipped D-011 rerank stage (on by default)
 pnpm eval --rrf-weights 1.5,1.0  # weighted-RRF (vector,keyword) override for this run only (#142 sweep seam)
+pnpm eval --rerank-pool 20 --rerank-max-tokens 256 --adaptive-pool  # #644 rerank knobs for this run only; --gate honours them
 pnpm eval --gate              # two passes (rerank ON, then OFF) vs their frozen baselines; exit 1 if either fails (~8 min standalone)
 pnpm eval --compare a.json b.json  # paired stats of two existing reports (no eval run, seconds)
 ```
@@ -373,7 +374,15 @@ pnpm eval:judged:score --import <judgedRunDir> --store <store>   # seed from an 
 pnpm eval:judged:dump <runDir> --store <store>                    # blind batches = only uncovered hits
 pnpm eval:judged:score <runDir> --store <store>                   # append new grades, score from the store
 pnpm eval:judged:compare <runA> <runB> --store <store>            # paired NDCG@5 / hit@5, B − A
+pnpm eval:judged:dump <runDir> --store <store> --arm pool20       # one #644 rerank latency arm (fresh runDir per arm)
 ```
+
+`--arm <name>` (#644) runs one arm pre-registered in `thresholds.rerankLatency.arms`: its rerank
+options reach `retrieve()` through `BuildServerOptions.retrievalOptions` (never an env var or tool
+param), `arm.json` in the run dir records them with the git sha and Node version, and three warm-up
+queries outside the judged set run first and are discarded. A run dir keeps its arm: resuming it with
+another `--arm` (or none) is refused. The arms, the acceptance rule and the protocol live in that
+block, committed before any arm was dumped.
 
 - `score` appends only grades the store does not already cover (an existing record is never
   rewritten) and adds NDCG@5 (gain 2^grade − 1, discount log2(rank + 1), ideal = the best five stored

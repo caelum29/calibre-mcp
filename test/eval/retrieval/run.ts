@@ -5,7 +5,7 @@
 // Usage:
 //   pnpm eval [--modes hybrid,vector,keyword] [--topk 10] [--tag baseline]
 //             [--rerank off] [--rrf-weights 1.5,1.0] [--work-dir <dir>] [--out-dir <dir>]
-//             [--live] [--gate]
+//             [--rerank-pool N] [--rerank-max-tokens N] [--adaptive-pool] [--live] [--gate]
 //   pnpm eval --compare a.json b.json
 //
 // --compare: paired per-mode/per-kind stats of two existing reports (Δ nDCG@10, bootstrap CI,
@@ -30,6 +30,9 @@
 //   <work-dir>/models; a degraded run (model unreachable) reports 0 reranked rows.
 // --rrf-weights v,k: weighted-RRF weights (vector, keyword) for this run only — the #142 sweep
 //   seam via retrieve()'s opts.rrfWeights (#259); the shipped weights stay in retrieve.ts.
+// --rerank-pool N / --rerank-max-tokens N / --adaptive-pool: the #644 rerank latency A/B knobs
+//   (pair cap, pair truncation, adaptive pool rule; thresholds.rerankLatency) for this run only,
+//   via retrieve()'s RetrievalOptions; honoured by --gate like --rrf-weights.
 
 import { execSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
@@ -42,6 +45,7 @@ import {
   baselinePaths,
   checkGateArgs,
   gateRuleFor,
+  rerankLatencyArms,
   loadAllowEntries,
   type GateBaselines,
   loadGateBaselines,
@@ -58,7 +62,14 @@ import {
   type Thresholds,
 } from "./gate.js";
 import { currentGoldenSetHash, evaluateGoldenSet } from "./golden-set.js";
-import { ALL_MODES, renderMarkdown, runRetrievalEval, type EvalReport, type Mode } from "./harness.js";
+import {
+  ALL_MODES,
+  renderMarkdown,
+  runRetrievalEval,
+  type EvalReport,
+  type Mode,
+  type RerankOptions,
+} from "./harness.js";
 import { ablationMatrix, computeAxes, renderAxes } from "./axes.js";
 import { heldOutLines } from "./held-out.js";
 import { saturationLines } from "./saturation.js";
@@ -78,6 +89,10 @@ export interface CliArgs {
   /** "off" disables the rerank stage; anything else is kept as the report label. */
   rerank?: string;
   rrfWeights?: number[];
+  /** #644 rerank knobs for this run only; absent = shipped values. */
+  rerankPool?: number;
+  rerankMaxTokens?: number;
+  adaptivePool: boolean;
   workDir: string;
   outDir: string;
 }
@@ -87,6 +102,7 @@ export function parseArgs(argv: string[]): CliArgs {
   const args: CliArgs = {
     live: false,
     gate: false,
+    adaptivePool: false,
     modes: ALL_MODES,
     topK: 10,
     workDir: process.env.CALIBRE_MCP_EVAL_WORK_DIR ?? path.join(HERE, ".work"),
@@ -107,6 +123,9 @@ export function parseArgs(argv: string[]): CliArgs {
     else if (a === "--tag") args.tag = next();
     else if (a === "--rerank") args.rerank = next();
     else if (a === "--rrf-weights") args.rrfWeights = parseWeights(next());
+    else if (a === "--rerank-pool") args.rerankPool = positiveInt(a, next());
+    else if (a === "--rerank-max-tokens") args.rerankMaxTokens = positiveInt(a, next());
+    else if (a === "--adaptive-pool") args.adaptivePool = true;
     else if (a === "--work-dir") args.workDir = next();
     else if (a === "--out-dir") args.outDir = next();
     else if (a === "--help" || a === "-h") {
@@ -118,6 +137,25 @@ export function parseArgs(argv: string[]): CliArgs {
     if (!ALL_MODES.includes(m)) throw new Error(`unknown mode "${m}"`);
   }
   return args;
+}
+
+/** A flag value that must be a positive integer (the #644 pool / token counts). */
+function positiveInt(flag: string, v: string): number {
+  const n = Number(v);
+  if (!/^\d+$/.test(v) || !Number.isSafeInteger(n) || n < 1) {
+    throw new Error(`${flag} needs a positive integer, got "${v}"`);
+  }
+  return n;
+}
+
+/** The #644 rerank knobs a run set, or undefined when it set none (the shipped rerank). */
+function rerankOptionsOf(args: CliArgs): RerankOptions | undefined {
+  const o: RerankOptions = {
+    ...(args.rerankPool !== undefined ? { rerankPool: args.rerankPool } : {}),
+    ...(args.rerankMaxTokens !== undefined ? { rerankMaxTokens: args.rerankMaxTokens } : {}),
+    ...(args.adaptivePool ? { adaptivePool: true } : {}),
+  };
+  return Object.keys(o).length ? o : undefined;
 }
 
 /** `"1.5,1.0"` → [1.5, 1.0]: exactly two finite non-negative weights (vector, keyword). */
@@ -253,6 +291,7 @@ export async function runPass(
     : (deps.reranker ??
       new TransformersReranker(loadConfig({ CALIBRE_MCP_INDEX_DIR: args.workDir } as NodeJS.ProcessEnv)));
   const rerankLabel = rerankOff ? "off" : (args.rerank ?? `${RERANKER_MODEL_ID} q8`);
+  const rerankOptions = rerankOptionsOf(args);
 
   const report = await runRetrievalEval({
     indexDir,
@@ -265,6 +304,7 @@ export async function runPass(
     // #363 latency axis; the CLI is the only caller that records wall-clock timings
     timing: true,
     ...(args.rrfWeights ? { rrfWeights: args.rrfWeights } : {}),
+    ...(rerankOptions ? { rerankOptions } : {}),
     ...(live ? { live } : {}),
     onProgress: log,
   }).finally(() => {
@@ -363,6 +403,7 @@ export async function main(platform: string = process.platform): Promise<void> {
   }
   checkGateArgs(args);
   const thresholds = JSON.parse(readFileSync(path.join(HERE, "thresholds.json"), "utf8")) as Thresholds;
+  rerankLatencyArms(thresholds); // #644: a malformed pre-registered block fails every run, in seconds
   const protectedPaths = baselinePaths(thresholds, HERE);
   const read = (rel: string) => readFileSync(path.join(HERE, rel), "utf8");
   // load baselines + allow-file before the ~8 min ON pass, so a missing one fails in seconds
