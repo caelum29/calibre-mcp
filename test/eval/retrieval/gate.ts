@@ -24,6 +24,14 @@ export interface Thresholds {
     flaggedRate: number;
     positivesZeroedByFloor: number;
   };
+  /**
+   * #605 back-matter trap queries (fixtures 128–131): in each listed mode every query's relevant
+   * passage is in the top k and no front/back-matter passage ranks above it. A missing row fails.
+   */
+  backMatterTrap?: {
+    queryIds: string[];
+    modes: Mode[];
+  };
   /** #102 heading front-matter trap queries (fixture 117): per-mode min Hit@1 count. */
   headingFrontMatter?: {
     queryIds: string[];
@@ -337,10 +345,30 @@ export function evaluateGate(
     }
   }
 
+  if (t.backMatterTrap) checks.push(...backMatterTrapChecks(current, t.backMatterTrap));
+
   if (t.scoreDrift) checks.push(...scoreDriftChecks(current, baseline, t.scoreDrift));
   checks.push(...driftEntriesCheck("on", drift, baseline));
 
   return gateResult(checks, drops);
+}
+
+/**
+ * #605: per mode, every back-matter-trap query retrieves its relevant passage with no
+ * front/back-matter passage above it. New queries the baseline may predate, so the
+ * non-regression diff can't see them; a missing row or field counts as a failure.
+ */
+function backMatterTrapChecks(current: EvalReport, cfg: NonNullable<Thresholds["backMatterTrap"]>): GateCheck[] {
+  return cfg.modes.map((mode) => {
+    const byId = new Map(rowsOf(current, mode).map((r) => [r.id, r]));
+    const failed = cfg.queryIds.filter((id) => byId.get(id)?.nonBodyAbove !== 0);
+    return {
+      name: `back-matter trap ${mode}: no front/back matter above the relevant passage`,
+      active: true,
+      pass: failed.length === 0,
+      detail: `${cfg.queryIds.length - failed.length}/${cfg.queryIds.length}${failed.length ? `; failed: ${failed.join(", ")}` : ""}`,
+    };
+  });
 }
 
 /**

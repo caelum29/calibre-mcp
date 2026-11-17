@@ -27,6 +27,11 @@
     "unfilteredSuite": { "reusesGate": "nonRegression" },
     "propertyTests": { "required": true, "location": "test/semantic/store-restrict.test.ts" }
   },
+  "backMatterTrap": {
+    "$comment": "#605 back-matter-trap queries, declared BEFORE the freezing run (D-012). Fixture books 128-131: an index page (128), a bibliography under a References heading (129), an ads + copyright page (130), each starting past 85% of its book, and a citation-dense body chapter mid-book (131, the negative, which must stay body). Each query's words are dense in that back matter while its relevant span is body text. Rule: in every mode, each listed query's relevant passage is in the top 10 and no front/back-matter passage ranks above it (row field nonBodyAbove === 0); a missing row or a missing relevant passage fails. nonRegression cannot see these queries until a baseline holds them, hence this block. Checked on the on tier and the hash tier (both run evaluateGate).",
+    "queryIds": ["bmt-01", "bmt-02", "bmt-03", "bmt-04", "bmt-05", "bmt-06"],
+    "modes": ["hybrid", "vector", "keyword"]
+  },
   "headingFrontMatter": {
     "$comment": "#102 heading-structured front-matter rule (leadingFrontMatter), declared BEFORE the rule-on fixture run (D-012; Artem chose a dedicated block, 2026-10-23). Fixture 117 is EPUB->Markdown-shaped (keyword-dense '# Preface / What's in This Book' before '# **Chapter 1. **'); D-016's chapter detector claims 0 on it, so only the #102 rule demotes its front matter. nonRegression cannot see these queries (absent from baselineReport), hence this block. Counts are queries with Hit@1=1 out of queryIds; a missing query counts as a miss. The rule-off run is a committed comparison artifact, not a gate.",
     "queryIds": ["fmt-04", "fmt-05", "fmt-06"],
