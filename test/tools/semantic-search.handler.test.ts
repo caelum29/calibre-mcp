@@ -496,7 +496,7 @@ describe("calibre_semantic_search front-matter demotion (issue #18)", () => {
       deps(frontMatterStore()),
     );
     const texts = r.content.filter((b): b is { type: "text"; text: string } => b.type === "text").map((b) => b.text);
-    expect(texts[0]).toContain("front-matter passage(s) (TOC/praise/foreword) demoted");
+    expect(texts[0]).toContain("1 front/back-matter passage(s) placed after body matches.");
     expect(texts.find((t) => t.includes("praise page"))).toContain("[front matter]");
     expect(texts.find((t) => t.includes("real body"))).not.toContain("[front matter]");
   });

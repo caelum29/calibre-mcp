@@ -8,7 +8,15 @@ import { EMBED_DIM } from "../model.js";
 import { SNIPPET_CHARS } from "../snippet.js";
 import { toMatterKind } from "../../domain/structure/matter-kind.js";
 import { decodeVector } from "../vector.js";
-import { bookTop, type ChunkMatrix, libraryTop, MatrixWriter, matrixRows, mergeMatrix } from "./chunk-matrix.js";
+import {
+  bookTop,
+  type ChunkMatrix,
+  libraryTop,
+  matterCode,
+  MatrixWriter,
+  matrixRows,
+  mergeMatrix,
+} from "./chunk-matrix.js";
 import type { IndexConnections } from "./schema.js";
 import {
   type CacheVersion,
@@ -129,29 +137,43 @@ export class SqliteChunkIndex implements ChunkIndex {
             .all(match, JSON.stringify([...allow]), pool)
     ) as Row[];
 
-    const seen = new Set<number>();
-    const out: LibraryHit[] = [];
+    // A book's representative is its first (best) body row in the pool; only a book with no body
+    // row there falls back to its first non-body row (#605). Rows arrive in (score, book, chunk)
+    // order, so sorting the representatives the same way equals today's first-row-per-book walk
+    // when every row is body.
+    const body = new Map<number, Row>();
+    const other = new Map<number, Row>();
     for (const r of rows) {
       const bookId = Number(r.book_id);
-      if (seen.has(bookId)) continue;
-      seen.add(bookId);
+      if (toMatterKind(r.matter_kind) === "body") {
+        if (!body.has(bookId)) body.set(bookId, r);
+      } else if (!other.has(bookId)) other.set(bookId, r);
+    }
+    const reps = [...body.values(), ...[...other].filter(([id]) => !body.has(id)).map(([, r]) => r)];
+    reps.sort(
+      (x, y) =>
+        Number(x.score) - Number(y.score) ||
+        Number(x.book_id) - Number(y.book_id) ||
+        Number(x.chunk_id) - Number(y.chunk_id),
+    );
+    // k < 1 still yields one book, as the first-row walk did (it checked the count after adding)
+    return reps.slice(0, Math.max(1, k)).map((r) => {
+      const bookId = Number(r.book_id);
       const book = db.prepare("SELECT title, authors FROM books WHERE book_id = ?").get(bookId) as Row;
-      const body = String(r.body ?? "");
-      out.push({
+      const text = String(r.body ?? "");
+      return {
         bookId,
         chunkId: Number(r.chunk_id),
         title: String(book?.title ?? `book ${bookId}`),
         authors: parseAuthors(book?.authors),
         score: Number(r.score), // bm25: negative, lower (more negative) is a better match
-        snippet: body.slice(0, SNIPPET_CHARS),
-        body,
+        snippet: text.slice(0, SNIPPET_CHARS),
+        body: text,
         charStart: Number(r.char_start),
         charEnd: Number(r.char_end),
         matterKind: toMatterKind(r.matter_kind),
-      });
-      if (out.length >= k) break;
-    }
-    return out;
+      };
+    });
   }
 
   searchBookFts(libraryId: string, bookId: number, query: string, k: number): BookHit[] {
@@ -251,11 +273,20 @@ export function loadChunkMatrix(db: DatabaseSync, bookIds?: readonly number[]): 
       .all(...params) as Row[]) {
       counts.set(Number(r.book_id), Number(r.n));
     }
+    // Non-body rows are the few (#605): read their kinds once instead of joining every row.
+    const kinds = new Map<number, number>();
+    const kindFilter = bookIds === undefined ? "" : "AND book_id IN (SELECT value FROM json_each(?))";
+    for (const r of db
+      .prepare(`SELECT id, matter_kind FROM chunks WHERE matter_kind != 'body' ${kindFilter}`)
+      .all(...params) as Row[]) {
+      kinds.set(Number(r.id), matterCode(toMatterKind(r.matter_kind)));
+    }
     const w = new MatrixWriter(counts);
     for (const r of db
       .prepare(`SELECT chunk_id, book_id, vector FROM embeddings ${filter} ORDER BY chunk_id`)
       .iterate(...params) as Iterable<Row>) {
-      w.place(Number(r.book_id), Number(r.chunk_id), decodeVector(r.vector as Uint8Array));
+      const chunkId = Number(r.chunk_id);
+      w.place(Number(r.book_id), chunkId, decodeVector(r.vector as Uint8Array), kinds.get(chunkId) ?? 0);
     }
     const m = w.finish();
     if (own) db.exec("COMMIT");

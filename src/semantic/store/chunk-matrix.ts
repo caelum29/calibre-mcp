@@ -1,7 +1,9 @@
 // Packed chunk-vector cache of one library (#618): every chunk vector in one flat Float32Array,
 // rows grouped by book (ascending book id, then chunk id). Library scope is one pass keeping the
 // best row per book, and a refresh copies unchanged books' rows instead of re-decoding BLOBs.
+// Each row also carries its matter kind (#605): a book is represented by its best body row.
 
+import { MATTER_KINDS, type MatterKind } from "../../domain/structure/matter-kind.js";
 import { EMBED_DIM } from "../model.js";
 import { type Candidate, dotAt, type ScoredHit, topK } from "../vector.js";
 
@@ -11,6 +13,8 @@ export interface ChunkMatrix {
   vectors: Float32Array;
   /** Chunk id of each row, parallel to `vectors`. */
   chunkIds: Int32Array;
+  /** Matter-kind code of each row (#605): 0 = body, otherwise a non-body kind (see `matterCode`). */
+  kinds: Uint8Array;
   /** Book ids in ascending order, one per row range. */
   bookIds: Int32Array;
   /** Book i owns rows [bookStart[i], bookStart[i + 1]); length bookIds.length + 1. */
@@ -20,6 +24,11 @@ export interface ChunkMatrix {
 }
 
 const INT32_MAX = 2 ** 31 - 1;
+
+/** The row code of a matter kind: its index in MATTER_KINDS, so body is 0. */
+export function matterCode(kind: MatterKind): number {
+  return MATTER_KINDS.indexOf(kind);
+}
 
 /** Empty row arrays and book table for `counts` (book id → row count), books ascending. */
 function layout(counts: ReadonlyMap<number, number>): ChunkMatrix {
@@ -32,7 +41,14 @@ function layout(counts: ReadonlyMap<number, number>): ChunkMatrix {
     bookStart[i + 1] = bookStart[i]! + counts.get(id)!;
   });
   const rows = bookStart[ids.length]!;
-  return { vectors: new Float32Array(rows * EMBED_DIM), chunkIds: new Int32Array(rows), bookIds, bookStart, bookIndex };
+  return {
+    vectors: new Float32Array(rows * EMBED_DIM),
+    chunkIds: new Int32Array(rows),
+    kinds: new Uint8Array(rows),
+    bookIds,
+    bookStart,
+    bookIndex,
+  };
 }
 
 /**
@@ -50,8 +66,8 @@ export class MatrixWriter {
     this.#next = this.#m.bookStart.slice(0, -1);
   }
 
-  /** Copy `vector` into the next row of `bookId`. */
-  place(bookId: number, chunkId: number, vector: Float32Array): void {
+  /** Copy `vector` into the next row of `bookId`, with the row's matter-kind code (0 = body). */
+  place(bookId: number, chunkId: number, vector: Float32Array, kind = 0): void {
     const m = this.#m;
     const b = m.bookIndex.get(bookId);
     if (b === undefined) throw new Error(`chunk matrix: no rows reserved for book ${bookId}`);
@@ -64,6 +80,7 @@ export class MatrixWriter {
     if (chunkId > INT32_MAX) throw new Error(`chunk matrix: chunk id ${chunkId} exceeds int32`);
     m.vectors.set(vector, row * EMBED_DIM);
     m.chunkIds[row] = chunkId;
+    m.kinds[row] = kind;
     this.#next[b] = row + 1;
   }
 
@@ -85,10 +102,12 @@ export function matrixRows(m: ChunkMatrix): number {
 }
 
 /**
- * Library scope: the best row of every book (allowed by `allow`), books by score desc then book id,
- * first `k`. Equal to today's full topK sort + first chunk per book: within a book a strict ">" over
- * ascending chunk ids keeps the lowest chunk among equal scores. A book outside `allow` is skipped
- * before any of its rows is scored, so a restricted ranking is the unfiltered one ∩ allow (#93).
+ * Library scope: one representative row per book (allowed by `allow`), books by its score desc
+ * then book id, first `k`. The representative is the book's best body row; only a book without
+ * body rows falls back to its best non-body row (#605). Over body rows this equals today's full
+ * topK sort + first chunk per book (#618): a strict ">" over ascending chunk ids keeps the lowest
+ * chunk among equal scores. A book outside `allow` is skipped before any of its rows is scored,
+ * so a restricted ranking is the unfiltered one ∩ allow (#93).
  */
 export function libraryTop(m: ChunkMatrix, query: Float32Array, k: number, allow?: ReadonlySet<number>): ScoredHit[] {
   const books = m.bookIds.length;
@@ -98,19 +117,24 @@ export function libraryTop(m: ChunkMatrix, query: Float32Array, k: number, allow
   const scored: number[] = [];
   for (let b = 0; b < books; b++) {
     if (allow !== undefined && !allow.has(m.bookIds[b]!)) continue;
-    const end = m.bookStart[b + 1]!;
-    let row = m.bookStart[b]!;
-    let top = dotAt(query, m.vectors, row * EMBED_DIM);
-    let topRow = row;
-    for (row++; row < end; row++) {
+    let bodyRow = -1;
+    let bodyTop = 0;
+    let otherRow = -1;
+    let otherTop = 0;
+    for (let row = m.bookStart[b]!; row < m.bookStart[b + 1]!; row++) {
       const s = dotAt(query, m.vectors, row * EMBED_DIM);
-      if (s > top) {
-        top = s;
-        topRow = row;
+      if (m.kinds[row] === 0) {
+        if (bodyRow < 0 || s > bodyTop) {
+          bodyTop = s;
+          bodyRow = row;
+        }
+      } else if (otherRow < 0 || s > otherTop) {
+        otherTop = s;
+        otherRow = row;
       }
     }
-    best[b] = top;
-    bestChunk[b] = m.chunkIds[topRow]!;
+    best[b] = bodyRow >= 0 ? bodyTop : otherTop;
+    bestChunk[b] = m.chunkIds[bodyRow >= 0 ? bodyRow : otherRow]!;
     scored.push(b);
   }
   scored.sort((x, y) => best[y]! - best[x]! || m.bookIds[x]! - m.bookIds[y]!);
@@ -155,6 +179,7 @@ export function mergeMatrix(old: ChunkMatrix, stale: ReadonlySet<number>, fresh:
     const at = out.bookStart[out.bookIndex.get(src.bookIds[b]!)!]!;
     out.vectors.set(src.vectors.subarray(from * EMBED_DIM, to * EMBED_DIM), at * EMBED_DIM);
     out.chunkIds.set(src.chunkIds.subarray(from, to), at);
+    out.kinds.set(src.kinds.subarray(from, to), at);
   };
   old.bookIds.forEach((id, b) => {
     if (keep(id)) copy(old, b);
