@@ -19,7 +19,7 @@ import type { OutlineEntry } from "../src/domain/structure/pdf-outline.js";
 import { frontMatterEnd } from "../src/domain/structure/front-matter.js";
 import { loadRuntimeConfig } from "../src/runtime-config.js";
 import { structureOf } from "../src/semantic/book-encoder.js";
-import { isFrontMatterSpan } from "../src/semantic/front-matter-flag.js";
+import { isFrontMatterSpan } from "../src/domain/structure/matter-kind.js";
 import { log } from "../src/logging.js";
 import { IndexFileOwners } from "../src/semantic/store/library-owner.js";
 import { IndexConnections } from "../src/semantic/store/schema.js";

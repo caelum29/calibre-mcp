@@ -4,7 +4,7 @@
 
 import type { DatabaseSync } from "node:sqlite";
 import type { ChunkSpan } from "../content-match.js";
-import { isFrontMatterSpan } from "../front-matter-flag.js";
+import { isFrontMatterSpan } from "../../domain/structure/matter-kind.js";
 import { stemText } from "../stem.js";
 import { encodeVector } from "../vector.js";
 import { chunkSpans, vectorCoverage } from "./freshness.js";

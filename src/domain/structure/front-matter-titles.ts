@@ -135,3 +135,20 @@ export function normalizeTitle(s: string): string {
 export function isFrontMatterTitle(title: string): boolean {
   return FRONT_MATTER_TITLE.test(normalizeTitle(title));
 }
+
+// Back-matter heading words (#605), EN + RU/UK in normalised form, whole-title match like the
+// front-matter list. Here until #603's language packs exist.
+const INDEX_TITLE =
+  /^(?:index|subject index|указатель|предметный указатель|алфавитный указатель|покажчик|предметний покажчик)$/u;
+const BIBLIOGRAPHY_TITLE =
+  /^(?:bibliography|references|литература|список литературы|література|список літератури|список використаних джерел)$/u;
+
+/** True when a heading or chapter title names a back-of-book index ("Index", "Указатель"). */
+export function isIndexTitle(title: string): boolean {
+  return INDEX_TITLE.test(normalizeTitle(title));
+}
+
+/** True when a heading or chapter title names a bibliography ("References", "Список літератури"). */
+export function isBibliographyTitle(title: string): boolean {
+  return BIBLIOGRAPHY_TITLE.test(normalizeTitle(title));
+}

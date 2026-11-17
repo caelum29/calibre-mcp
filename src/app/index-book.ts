@@ -9,7 +9,7 @@ import type { ExtractedText } from "../calibre/extract.js";
 import { frontMatterEnd } from "../domain/structure/front-matter.js";
 import { inThreadEncoder, structureOf, type BookEncoder } from "../semantic/book-encoder.js";
 import { textMatchesChunks, type ChunkSpan } from "../semantic/content-match.js";
-import { isFrontMatterSpan } from "../semantic/front-matter-flag.js";
+import { isFrontMatterSpan } from "../domain/structure/matter-kind.js";
 import type { BookMeta, IndexedChunk, IndexedFigure, IndexFreshness, IndexWriter } from "../semantic/store/index.js";
 import type { BaseDeps, DepsWithIndex } from "../tools/deps.js";
 import type { LogSink } from "../logging.js";
