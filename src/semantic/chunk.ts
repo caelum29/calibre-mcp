@@ -28,6 +28,11 @@ export interface ChunkForEmbeddingOptions {
    * interpolation-guided budget probe (see `budgetEnd`) relies on that assumption.
    */
   lengthFn?: (s: string) => number;
+  /**
+   * #620 spike: the budget for a chunk starting at `start` (overrides `budget`), so a
+   * per-section embedding prefix leaves each chunk the window its own prefix allows.
+   */
+  budgetAt?: (start: number) => number;
 }
 
 const DEFAULT_BUDGET = 900;
@@ -147,8 +152,8 @@ export async function chunkForEmbeddingAsync(text: string, opts: ChunkForEmbeddi
 
 /** The chunking loop, one chunk per step — shared by the sync and yielding entry points. */
 function* chunkSteps(text: string, opts: ChunkForEmbeddingOptions): Generator<EmbedChunk> {
-  const budget = Math.max(1, Math.trunc(opts.budget ?? DEFAULT_BUDGET));
-  const overlap = Math.max(0, Math.min(Math.trunc(opts.overlap ?? DEFAULT_OVERLAP), budget - 1));
+  const baseBudget = Math.max(1, Math.trunc(opts.budget ?? DEFAULT_BUDGET));
+  const overlap = Math.max(0, Math.min(Math.trunc(opts.overlap ?? DEFAULT_OVERLAP), baseBudget - 1));
   const len = opts.lengthFn ?? ((s: string) => s.length);
   const total = text.length;
   if (total === 0) return;
@@ -158,6 +163,7 @@ function* chunkSteps(text: string, opts: ChunkForEmbeddingOptions): Generator<Em
   let charsPerUnit = 1;
 
   while (start < total) {
+    const budget = opts.budgetAt ? Math.max(1, Math.trunc(opts.budgetAt(start))) : baseBudget;
     // Char ceiling for the probe — generous for token lengthFns (clean EN prose runs
     // ~4-6 chars/token, so budget*8 chars comfortably brackets the budget edge).
     const ceil = Math.min(total, start + budget * 8);

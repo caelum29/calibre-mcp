@@ -40,6 +40,8 @@ export interface BookDetail {
   frontMatterChunks: number;
   figures: number;
   unplaced: number;
+  /** #620 spike: summed embedding-prefix tokens over the chunks (arms 1–3). */
+  prefixTokens?: number;
 }
 
 /** A book ready to write — everything replaceBook needs, computed off the writer's turn. */
@@ -175,6 +177,8 @@ export async function prepareBook(deps: IndexBookDeps, bookId: number, opts: Pre
     {
       text: extracted.text,
       ctx,
+      title: book.title,
+      format: fmt,
       ...structureOf(extracted),
       captions: figures.map((f) => f.caption),
       keywordOnly,
@@ -218,6 +222,7 @@ export async function prepareBook(deps: IndexBookDeps, bookId: number, opts: Pre
       frontMatterChunks: indexed.filter((c) => c.frontMatter).length,
       figures: figures.length,
       unplaced: extracted.unplaced,
+      ...(encoded.prefixTokens !== undefined ? { prefixTokens: encoded.prefixTokens } : {}),
     },
   };
 }
