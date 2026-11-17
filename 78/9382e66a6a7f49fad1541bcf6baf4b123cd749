@@ -1,0 +1,20 @@
+test/semantic/fts-bm25-repeat.test.ts
+  s_b1368ba85e1d03::t_405f2c8750ef4f 1-50,52-63
+  s_b1368ba85e1d03::t_e4acf098b761f0 51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "789382e66a6a7f49fad1541bcf6baf4b123cd749",
+  "prompts": {},
+  "sessions": {
+    "s_b1368ba85e1d03": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc2e16b4-07e6-492f-976c-727970ca5eaf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}

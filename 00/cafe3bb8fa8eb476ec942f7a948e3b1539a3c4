@@ -1,0 +1,19 @@
+test/domain/search/keyword-plan.test.ts
+  s_b1368ba85e1d03::t_bb50cf53392850 32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "00cafe3bb8fa8eb476ec942f7a948e3b1539a3c4",
+  "prompts": {},
+  "sessions": {
+    "s_b1368ba85e1d03": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc2e16b4-07e6-492f-976c-727970ca5eaf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
