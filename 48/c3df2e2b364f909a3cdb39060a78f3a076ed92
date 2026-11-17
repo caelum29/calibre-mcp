@@ -1,0 +1,29 @@
+src/app/index-book.ts
+  s_ad4914405c6153::t_aa78f6acdcfeb9 12
+src/semantic/store/writer.ts
+  s_ad4914405c6153::t_aa78f6acdcfeb9 7
+src/domain/structure/matter-kind.ts
+  s_ad4914405c6153::t_d48ade4b13b2a0 106
+  s_ad4914405c6153::t_38c6ddff6beed6 1-105,107-143
+scripts/chapter-map-dump.ts
+  s_ad4914405c6153::t_23912bae26a269 22
+src/domain/structure/front-matter-titles.ts
+  s_ad4914405c6153::t_aa78f6acdcfeb9 141-142
+  s_ad4914405c6153::t_38c6ddff6beed6 138-140,143-154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "48c3df2e2b364f909a3cdb39060a78f3a076ed92",
+  "prompts": {},
+  "sessions": {
+    "s_ad4914405c6153": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6aad58dc-30b5-4f8a-a5e9-4eeaf352f814",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
