@@ -1,0 +1,19 @@
+docs/standards/results-and-errors.md
+  s_3b03b1e4ce93dc::t_3c3d78c1685181 60-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7222bf429bb3c3a54af312c7b05f344f81286975",
+  "prompts": {},
+  "sessions": {
+    "s_3b03b1e4ce93dc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9d61e03-9392-42f2-b263-2fef0d3fc3fe",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
