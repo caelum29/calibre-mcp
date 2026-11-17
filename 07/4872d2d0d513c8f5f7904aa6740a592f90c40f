@@ -1,0 +1,20 @@
+scripts/spike620-landing.ts
+  s_fe0ac45d6c7d89::t_1dd22e5f116c7d 12,41-45,47,59-65
+  s_fe0ac45d6c7d89::t_f85fc24641261d 1-11,13-40,46,48-58,66-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "074872d2d0d513c8f5f7904aa6740a592f90c40f",
+  "prompts": {},
+  "sessions": {
+    "s_fe0ac45d6c7d89": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e9d3f82f-f3e6-4bd3-a63a-dfd584eed76c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
