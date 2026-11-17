@@ -1,0 +1,22 @@
+test/eval/README.md
+  s_825be0c8b72caa::t_ba529f1594abf6 24,69,82-83,89-90
+  s_825be0c8b72caa::t_b431ecf4e35bc5 315-317
+test/eval/retrieval/readme-counts.test.ts
+  s_825be0c8b72caa::t_b431ecf4e35bc5 1-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "08c1e5df72f50fe282e472f72d61330a7c8c7bc3",
+  "prompts": {},
+  "sessions": {
+    "s_825be0c8b72caa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6b5b506-0df2-4890-b084-288f3384944f",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
