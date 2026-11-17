@@ -1,0 +1,19 @@
+test/semantic/store-open-read-only.test.ts
+  s_b1368ba85e1d03::t_616330e20839b8 1-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7aa8f05c0b54c99207009d1dc22c5a79748bfd48",
+  "prompts": {},
+  "sessions": {
+    "s_b1368ba85e1d03": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc2e16b4-07e6-492f-976c-727970ca5eaf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
