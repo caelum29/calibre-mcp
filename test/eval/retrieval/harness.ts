@@ -15,7 +15,7 @@ import { type FigureMarker, injectFigureMarkers } from "../../../src/domain/figu
 import { TransformersEmbedder, type Embedder } from "../../../src/semantic/embedder.js";
 import type { Reranker } from "../../../src/semantic/reranker.js";
 import { INDEX_VERSION, MODEL_ID } from "../../../src/semantic/model.js";
-import { retrieve, type RankedHits } from "../../../src/semantic/retrieve.js";
+import { retrieve, type RankedHits, type RetrievalOptions } from "../../../src/semantic/retrieve.js";
 import { snippetWindow } from "../../../src/semantic/snippet.js";
 import { SqliteIndexStore } from "../../../src/semantic/store/index.js";
 import { buildIndexTool } from "../../../src/tools/calibre_build_index.js";
@@ -248,6 +248,12 @@ export interface HarnessOptions {
    * the shipped weights. Recorded in report meta when set.
    */
   rrfWeights?: number[];
+  /**
+   * Rerank knobs for the #644 latency A/B (pool, pair truncation, adaptive rule); absent = the
+   * shipped rerank. Reach both retrieve() and the handler check (ToolDeps.retrievalOptions);
+   * recorded in report meta when set.
+   */
+  rerankOptions?: RerankOptions;
   /** Recorded in report meta so tuning runs are distinguishable (e.g. "off", "bge-v2-m3"). */
   rerank?: string;
   gitSha?: string;
@@ -322,6 +328,8 @@ export interface EvalReport {
     rerankedRows: number;
     /** Set only on sweep runs that override the shipped weighted-RRF weights (#142, #259). */
     rrfWeights?: number[];
+    /** Set only on runs that override the shipped rerank knobs (#644). */
+    rerankOptions?: RerankOptions;
     gitSha: string;
     /** sha256 of the queries.json this fixture run scored against (#392); absent on live runs. */
     goldenSetHash?: string;
@@ -438,19 +446,23 @@ export interface QueryOutcome {
   snippetHasMarker?: boolean;
 }
 
+/** The rerank knobs of RetrievalOptions (#644 A/B arms). */
+export type RerankOptions = Pick<RetrievalOptions, "rerankPool" | "rerankMaxTokens" | "adaptivePool">;
+
 /** Per-run query context shared by runQuery and the handler check. */
 interface QueryCtx {
   deps: ToolDeps;
   libraryId: string;
   topK: number;
   rrfWeights?: number[];
+  rerankOptions?: RerankOptions;
 }
 
 /** One query in one mode → retrieve() (the ranking service the tool renders) → scored outcome. */
 async function runQuery(q: GoldenQuery, mode: Mode, ctx: QueryCtx): Promise<QueryOutcome> {
-  const { deps, libraryId, topK, rrfWeights } = ctx;
+  const { deps, libraryId, topK, rrfWeights, rerankOptions } = ctx;
   const base = { libraryId, query: q.query, mode, topK };
-  const opts = rrfWeights ? { rrfWeights } : {};
+  const opts: RetrievalOptions = { ...(rrfWeights ? { rrfWeights } : {}), ...rerankOptions };
   // Mirror the handler's envelope: confidence fields only on non-empty results; rerank fields
   // only where reranking applies (hybrid/vector).
   const display = (r: RankedHits<unknown>) => ({
@@ -681,12 +693,20 @@ export async function runRetrievalEval(opts: HarnessOptions): Promise<EvalReport
   }
 
   if (opts.patchDeps) deps = opts.patchDeps(deps);
+  // the handler takes rerank knobs from its deps (#644), so the handler check still runs on those arms
+  if (opts.rerankOptions) deps = { ...deps, retrievalOptions: opts.rerankOptions };
   const stats = deps.index.stats(libraryId);
 
   const perQuery: PerQueryRow[] = [];
   // Shipped weights only: a sweep runs retrieve() with weights the handler can't take.
   const handlerChecks = new Set<string>();
-  const ctx: QueryCtx = { deps, libraryId, topK, ...(opts.rrfWeights ? { rrfWeights: opts.rrfWeights } : {}) };
+  const ctx: QueryCtx = {
+    deps,
+    libraryId,
+    topK,
+    ...(opts.rrfWeights ? { rrfWeights: opts.rrfWeights } : {}),
+    ...(opts.rerankOptions ? { rerankOptions: opts.rerankOptions } : {}),
+  };
   for (const mode of modes) {
     progress(`running ${queries.length} queries in mode=${mode}…`);
     for (const q of queries) {
@@ -718,6 +738,7 @@ export async function runRetrievalEval(opts: HarnessOptions): Promise<EvalReport
     // live runs swap in live-relevance labels, so the fixture golden set doesn't describe them
     ...(opts.live ? {} : { goldenSetHash: currentGoldenSetHash() }),
     ...(opts.rrfWeights ? { rrfWeights: opts.rrfWeights } : {}),
+    ...(opts.rerankOptions ? { rerankOptions: opts.rerankOptions } : {}),
   });
 }
 

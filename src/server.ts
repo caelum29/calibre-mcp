@@ -17,6 +17,7 @@ import { Extractor } from "./calibre/extract.js";
 import { FigureInventoryService } from "./calibre/figure-inventory.js";
 import { TransformersEmbedder } from "./semantic/embedder.js";
 import { TransformersReranker } from "./semantic/reranker.js";
+import type { RetrievalOptions } from "./semantic/retrieve.js";
 import { SqliteIndexStore } from "./semantic/store/index.js";
 import { computeSemanticStatus } from "./semantic/status.js";
 import { parseBookResourceId, readBookResource } from "./resources/book.js";
@@ -74,6 +75,12 @@ export interface BuildServerOptions {
   probes?: boolean;
   /** Pre-loaded config (run-stdio loads it once for the log sink); overrides `env`. */
   config?: Config;
+  /**
+   * Ranking knobs for calibre_semantic_search's retrieve() — in-process eval scripts only (the
+   * #644 rerank latency A/B via the judged dump); run-stdio never sets them, so no env var, no tool
+   * param and no catalog entry exist for them (ADR-0011).
+   */
+  retrievalOptions?: RetrievalOptions;
 }
 
 /** Build the MCP server: load config, wire deps, register every tool/resource, and disable write tools when the write gate is off. */
@@ -98,6 +105,7 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
     index: new SqliteIndexStore(config, log),
     boardCache: new BoardCache(), // cover-board widget re-pull cache (issue #22)
     log,
+    ...(options.retrievalOptions ? { retrievalOptions: options.retrievalOptions } : {}),
   };
 
   if (options.probes !== false) startBootProbes(deps, extractor);

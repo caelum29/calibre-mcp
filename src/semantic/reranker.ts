@@ -28,6 +28,14 @@ export const RERANKER_REVISION = "6f5ff65298512715a1e669753bc754d2bc8f367b";
  */
 export const RERANK_POOL = 30;
 /**
+ * Adaptive-pool rule (#644 A/B arm, off unless RetrievalOptions.adaptivePool): when the vector and
+ * keyword halves of a hybrid search share their top ADAPTIVE_AGREE_TOP ids, only the first
+ * ADAPTIVE_RERANK_POOL fused candidates are cross-encoded — the halves already agree on the head.
+ */
+export const ADAPTIVE_AGREE_TOP = 3;
+/** Pairs the adaptive rule cross-encodes when the halves agree (shrunk, never skipped). */
+export const ADAPTIVE_RERANK_POOL = 10;
+/**
  * Sigmoid scores below this are weak matches — the reranker's own confidence signal. Re-checked
  * 2026-10-23 (D-022): on the real library 0.3 flags ~3% of correct answers and every negative;
  * lower floors only look better on the short synthetic fixture and leak real negatives.
@@ -42,14 +50,21 @@ export const RERANK_MAX_WAITING = 2;
 /** Pair truncation length. Chunks are budgeted to the e5 window, so nothing real is lost. */
 const MAX_TOKENS = 512;
 
+/** Per-call rerank knobs for eval arms (#644); production calls pass none. */
+export interface RerankCallOptions {
+  /** Pair truncation length for this call, instead of the shipped 512. */
+  maxTokens?: number;
+}
+
 export interface Reranker {
   /**
    * Score each (query, passage) pair with the cross-encoder; returns one sigmoid-normalized
    * relevance score in [0,1] per passage, in input order. Throws RERANKER_UNAVAILABLE when
    * the optional model dependency is missing, and RERANKER_BUSY when too many rerank calls
-   * are already queued (the caller degrades to its fused order).
+   * are already queued (the caller degrades to its fused order). `opts.maxTokens` overrides the
+   * pair truncation length (the #644 A/B seam).
    */
-  rerank(query: string, passages: string[]): Promise<number[]>;
+  rerank(query: string, passages: string[], opts?: RerankCallOptions): Promise<number[]>;
   /**
    * Force the model to load — calibre_build_index pre-warms best-effort so the one-time
    * ~576 MB download lands inside the build (already slow), not on the first search.
@@ -82,19 +97,26 @@ export class TransformersReranker implements Reranker {
     await this.#components();
   }
 
-  async rerank(query: string, passages: string[]): Promise<number[]> {
+  async rerank(query: string, passages: string[], opts?: RerankCallOptions): Promise<number[]> {
     if (passages.length === 0) return [];
     const { tokenizer, model } = await this.#components();
+    const maxTokens = opts?.maxTokens ?? MAX_TOKENS;
     try {
       // The whole call is one queue task, so a request's pairs never interleave with another's.
-      return await this.#queue.run(() => this.#score(tokenizer, model, query, passages));
+      return await this.#queue.run(() => this.#score(tokenizer, model, query, passages, maxTokens));
     } catch (err) {
       if (err instanceof Error && err.message === QUEUE_BUSY) throw new Error("RERANKER_BUSY");
       throw err;
     }
   }
 
-  async #score(tokenizer: PairTokenizer, model: SeqClassifier, query: string, passages: string[]): Promise<number[]> {
+  async #score(
+    tokenizer: PairTokenizer,
+    model: SeqClassifier,
+    query: string,
+    passages: string[],
+    maxTokens: number,
+  ): Promise<number[]> {
     const scores: number[] = [];
     // Solo scoring (D-011 amendment, #98): one pair per forward. Batched padding made a
     // pair's q8 logit depend on which passages shared its batch (0.1–0.6 logit shifts →
@@ -105,7 +127,7 @@ export class TransformersReranker implements Reranker {
         text_pair: [passage],
         padding: true,
         truncation: true,
-        max_length: MAX_TOKENS,
+        max_length: maxTokens,
       });
       const { logits } = await model(inputs);
       // [1, 1] logits → sigmoid → one score for the pair.
