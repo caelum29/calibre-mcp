@@ -7,7 +7,6 @@
 // Run: node --import tsx scripts/spike620-counts.ts --index <Programming_Books.sqlite> --subset <subset.json> --out <counts.json>
 
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { DatabaseSync } from "node:sqlite";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { parseArgs } from "node:util";
@@ -21,6 +20,9 @@ import type { EpubToc } from "../src/domain/structure/epub-toc.js";
 import type { OutlineEntry } from "../src/domain/structure/pdf-outline.js";
 import { bookSections, sectionPathAt, sectionStarts } from "../src/domain/structure/sections.js";
 import { loadRuntimeConfig } from "../src/runtime-config.js";
+import { log } from "../src/logging.js";
+import { IndexFileOwners } from "../src/semantic/store/library-owner.js";
+import { IndexConnections } from "../src/semantic/store/schema.js";
 
 const LIB = "Programming_Books";
 const { values: opt } = parseArgs({
@@ -31,7 +33,9 @@ if (!opt.index || !opt.subset || !opt.out) throw new Error("--index, --subset an
 const config = loadRuntimeConfig(process.env);
 const content = new ContentServerClient(config);
 const ids = (JSON.parse(readFileSync(opt.subset, "utf8")) as { ids: number[] }).ids;
-const db = new DatabaseSync(opt.index, { readOnly: true });
+// Read-only handle per call through the one connection owner (#272); never creates or migrates.
+const indexDir = path.dirname(path.resolve(opt.index));
+const conn = new IndexConnections({ ...config, indexDir }, log, new IndexFileOwners(indexDir));
 const scratch = path.join(tmpdir(), `spike620c-${process.pid}`);
 mkdirSync(scratch, { recursive: true });
 
@@ -101,9 +105,14 @@ const books: BookCount[] = [];
 for (const id of ids) {
   const b = await content.getBook(id, LIB);
   const fmt = chooseExtractFormat(b.formats) ?? "none";
-  const rows = db
-    .prepare("SELECT char_start, char_end, body, front_matter FROM chunks WHERE book_id = ? ORDER BY char_start")
-    .all(id) as unknown as Row[];
+  const rows = conn.read(
+    LIB,
+    (db) =>
+      db
+        .prepare("SELECT char_start, char_end, body, front_matter FROM chunks WHERE book_id = ? ORDER BY char_start")
+        .all(id) as unknown as Row[],
+    [] as Row[],
+  );
   const text = rebuild(rows);
   const st = await structureFor(id, fmt, b.lastModified ?? "", text);
   const { source, sections } = bookSections(text, { ...st, markdown: fmt === "epub" });
@@ -149,7 +158,6 @@ for (const id of ids) {
     `${id} ${fmt} ${row.source} sections=${row.bodySections}/${row.sections} chunks=${row.chunks} deeper=${deeper} straddling=${straddling}\n`,
   );
 }
-db.close();
 rmSync(scratch, { recursive: true, force: true });
 
 const sum = (rows: BookCount[]) => {

@@ -5,7 +5,6 @@
 // Run: node --import tsx scripts/spike620-select.ts --queries <queries.json> --index <Programming_Books.sqlite> --out <subset.json>
 
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { DatabaseSync } from "node:sqlite";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { parseArgs } from "node:util";
@@ -20,6 +19,9 @@ import { isFrontMatterTitle } from "../src/domain/structure/front-matter-titles.
 import type { OutlineEntry } from "../src/domain/structure/pdf-outline.js";
 import { loadRuntimeConfig } from "../src/runtime-config.js";
 import type { JudgedQuery } from "./judged-lib.js";
+import { log } from "../src/logging.js";
+import { IndexFileOwners } from "../src/semantic/store/library-owner.js";
+import { IndexConnections } from "../src/semantic/store/schema.js";
 
 const LIB = "Programming_Books";
 const SIZE = 30;
@@ -34,13 +36,19 @@ if (!opt.queries || !opt.index || !opt.out) throw new Error("--queries, --index 
 const config = loadRuntimeConfig(process.env);
 const content = new ContentServerClient(config);
 const queries = (JSON.parse(readFileSync(opt.queries, "utf8")) as JudgedQuery[]).filter((q) => q.library === LIB);
-const db = new DatabaseSync(opt.index, { readOnly: true });
+// Read-only handle per call through the one connection owner (#272); never creates or migrates.
+const indexDir = path.dirname(path.resolve(opt.index));
+const conn = new IndexConnections({ ...config, indexDir }, log, new IndexFileOwners(indexDir));
 const indexed = new Set(
-  (db.prepare("SELECT book_id FROM books WHERE embedded_chunks > 0").all() as { book_id: number }[]).map((r) =>
-    Number(r.book_id),
+  conn.read(
+    LIB,
+    (db) =>
+      (db.prepare("SELECT book_id FROM books WHERE embedded_chunks > 0").all() as { book_id: number }[]).map((r) =>
+        Number(r.book_id),
+      ),
+    [] as number[],
   ),
 );
-db.close();
 const scratch = path.join(tmpdir(), `spike620-${process.pid}`);
 mkdirSync(scratch, { recursive: true });
 
