@@ -52,7 +52,6 @@ const CONTENTS_MIN_ENTRIES = 4;
 const CONTENTS_MIN_TITLES = 3;
 const TITLE_MAX_CHARS = 60;
 const SENTENCE_END = /[.!?;:,]$/u;
-const NUMBERED = /^\s*(?:\d{1,3}(?:\.\d{1,3})*\.?|[IVXLC]{1,6}\.)\s+\p{L}/u;
 const CONTENTS_TITLE = /^(?:contents|table of contents|brief contents|оглавление|содержание|зміст)$/u;
 
 /** True when a line ends in a page number or range (index locators, table-of-contents entries). */
@@ -88,9 +87,12 @@ function titleLike(line: string): boolean {
   return line.length <= TITLE_MAX_CHARS && LETTER.test(line) && !SENTENCE_END.test(line) && !/^["“«—–-]/u.test(line);
 }
 
-/** A contents entry: ends in a page number, or a title-like line led by a chapter keyword or a number. */
+/**
+ * A contents entry: ends in a page number, or a title-like line led by a chapter keyword. A bare
+ * numbered line is not one: numbered steps in a preface look the same (#605 review round 2).
+ */
 function contentsEntry(line: string): boolean {
-  return endsInPage(line) || (titleLike(line) && (CHAPTER_KEYWORD.test(line) || NUMBERED.test(line)));
+  return endsInPage(line) || (titleLike(line) && CHAPTER_KEYWORD.test(line));
 }
 
 /** True when `pred` holds for `n` consecutive lines starting at `from`. */
@@ -99,7 +101,7 @@ const runOf = (lines: string[], from: number, n: number, pred: (l: string) => bo
 
 /**
  * A contents block anywhere in the chunk: ≥ 4 consecutive entry lines (page-numbered, or led by
- * a chapter keyword or a number), or a "Contents" / "Table of Contents" heading line followed by
+ * a chapter keyword), or a "Contents" / "Table of Contents" heading line followed by
  * ≥ 3 title-like lines (an EPUB contents list carries no page numbers).
  */
 function hasContentsBlock(chunk: string): boolean {
