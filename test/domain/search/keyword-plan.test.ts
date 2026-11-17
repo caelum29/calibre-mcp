@@ -29,7 +29,7 @@ const DF = { the: 900, of: 900, how: 400, split: 30, brain: 12, token: 50, bucke
 const toks = (...words: string[]): KeywordToken[] =>
   words.map((w) => {
     const m = /^\[(\d+)\](.*)$/.exec(w);
-    const [stem, raw] = (m ? m[2] : w).split("/");
+    const [stem = "", raw] = (m ? (m[2] ?? "") : w).split("/");
     return m ? { stem, raw: raw ?? stem, span: Number(m[1]) } : { stem, raw: raw ?? stem };
   });
 
