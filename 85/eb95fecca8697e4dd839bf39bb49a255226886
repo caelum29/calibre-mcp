@@ -1,0 +1,21 @@
+test/eval/retrieval/thresholds.json
+  s_ad4914405c6153::t_6a65477fdf4016 31-32
+test/eval/retrieval/platform-replay.test.ts
+  s_ad4914405c6153::t_93ca68196a2633 24-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "85eb95fecca8697e4dd839bf39bb49a255226886",
+  "prompts": {},
+  "sessions": {
+    "s_ad4914405c6153": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6aad58dc-30b5-4f8a-a5e9-4eeaf352f814",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
