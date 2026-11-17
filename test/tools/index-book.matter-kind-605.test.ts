@@ -16,7 +16,7 @@ import type { ToolDeps } from "../../src/tools/deps.js";
 const LIB = "Programming_Books";
 
 // PDF pages split by \f: a contents page, four outline chapters, then an index and a copyright page.
-const page = (s: string) => s.repeat(40);
+const page = (s: string) => s.repeat(80);
 // Long enough that the first chunk lies mostly before chapter 1, as a real contents page does.
 const CONTENTS = [
   "Contents",
@@ -28,10 +28,16 @@ const chapter = (t: string) => [
 ];
 const INDEX = [
   "Index",
-  ...Array.from({ length: 40 }, (_, i) => `term number ${i}, ${10 + i}, ${40 + i}`),
+  ...Array.from({ length: 160 }, (_, i) => `term number ${i}, ${10 + i}, ${40 + i}`),
   "deploying things 289-292",
 ].join("\n");
-const COPYRIGHT = "Copyright © 2026 Example Press. All rights reserved.\nISBN 978-1-234-56789-0\nPrinted in Romania.";
+// A full copyright page, longer than one chunk, so the last chunk holds copyright text only.
+const COPYRIGHT = [
+  "Copyright © 2026 Example Press. All rights reserved.",
+  "ISBN 978-1-234-56789-0",
+  "Printed in Romania.",
+  "No part of this book may be reproduced without permission; all rights reserved. ".repeat(30),
+].join("\n");
 const TEXT = [
   CONTENTS,
   ...chapter("Getting Started"),
@@ -111,14 +117,13 @@ const kinds = (s: SqliteIndexStore) =>
   s.bookChunkSpans(LIB, 1).map((sp) => s.chunkAt(LIB, 1, sp.charStart)?.matterKind);
 
 describe("matter kinds from a full index and from the flags-only refresh (#605)", () => {
-  it("a full index labels the contents page front and the index page back matter", async () => {
+  it("a full index labels the contents page front and the index and copyright pages back matter", async () => {
     const s = fresh();
     const p = await prepareBook(deps(s), 1, opts());
     if (p.kind !== "ready") throw new Error("setup");
     commitBook(deps(s), LIB, p);
     const k = kinds(s);
-    // the short copyright page shares the last chunk with the index tail: index wins (first match)
-    expect([k[0], k.includes("back_index"), k.includes("body")]).toEqual(["front", true, true]);
+    expect([k[0], k.includes("back_index"), k.at(-1), k.includes("body")]).toEqual(["front", true, "back_other", true]);
   });
 
   it("the flags-only refresh writes exactly the kinds a full index writes for the same text", async () => {
