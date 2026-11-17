@@ -1,0 +1,29 @@
+test/eval/retrieval/gate.ts
+  s_ad4914405c6153::t_c2b4dcab00a198 27-34,348-349,356-371
+  s_ad4914405c6153::t_c52362ca99547d 372-373
+test/eval/retrieval/thresholds.json
+  s_ad4914405c6153::t_3ffb68a780d281 30-34
+test/eval/README.md
+  s_ad4914405c6153::t_74f3ab7c3dc849 44-46
+test/eval/retrieval/harness.ts
+  s_ad4914405c6153::t_c2b4dcab00a198 45-47,309-313,455-456,521-527,530-531,644-645
+test/eval/retrieval/back-matter-trap-605.test.ts
+  s_ad4914405c6153::t_5d4315c73da0b4 55-59,85-88
+  s_ad4914405c6153::t_2f13b358932155 1-54,60-84,89-90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3c0f502c0cabea057501542f6433d4e66338f633",
+  "prompts": {},
+  "sessions": {
+    "s_ad4914405c6153": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6aad58dc-30b5-4f8a-a5e9-4eeaf352f814",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
