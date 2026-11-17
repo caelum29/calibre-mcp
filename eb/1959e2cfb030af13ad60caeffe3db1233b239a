@@ -1,0 +1,27 @@
+test/eval/retrieval/reports/2026-11-17-605-rebaseline.md
+  s_ad4914405c6153::t_6fe3992673be39 1-609
+test/eval/README.md
+  s_ad4914405c6153::t_b484dfb0f18a50 309-324
+test/eval/retrieval/thresholds.json
+  s_ad4914405c6153::t_37691e7ee53671 3-4,92-93
+test/eval/retrieval/reports/2026-11-17-1f7f8258-605-rerankoff.json
+  s_ad4914405c6153::t_013d9c60a4c540 1-8661
+test/eval/retrieval/reports/2026-11-17-1f7f8258-605-rerankoff.md
+  s_ad4914405c6153::t_e5afbf8b5756ef 1-502
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eb1959e2cfb030af13ad60caeffe3db1233b239a",
+  "prompts": {},
+  "sessions": {
+    "s_ad4914405c6153": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6aad58dc-30b5-4f8a-a5e9-4eeaf352f814",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
