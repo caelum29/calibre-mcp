@@ -39,8 +39,31 @@ import type { ContentBlock, ToolResult } from "./types.js";
 import type { BaseDeps, DepsWithIndex } from "./deps.js";
 import { errorCodeFor } from "../domain/error-codes.js";
 import { figureLocation, figureLocationLabel } from "../domain/figures/location.js";
+import type { MatterKind } from "../domain/structure/matter-kind.js";
 
 // Debug-level ranking provenance per hit (#650), the same shape for every scope.
+// Front/back matter of a hit (#605); the closed set of stored kinds minus body, which is never sent.
+const MatterKindSchema = z.enum(["front", "back_index", "back_biblio", "back_other"]);
+
+// The text label for a non-body hit, in the match/passage line (#605); "" for body.
+const MATTER_LABEL: Record<MatterKind, string> = {
+  body: "",
+  front: " [front matter]",
+  back_index: " [back matter: index]",
+  back_biblio: " [back matter: bibliography]",
+  back_other: " [back matter: copyright/ads]",
+};
+
+/** The label for a hit's matter kind (absent = body). */
+function matterLabel(kind: MatterKind | undefined): string {
+  return MATTER_LABEL[kind ?? "body"];
+}
+
+/** The structuredContent field for a hit's matter kind: absent for body (#605). */
+function matterField(kind: MatterKind | undefined): { matterKind?: Exclude<MatterKind, "body"> } {
+  return kind === undefined || kind === "body" ? {} : { matterKind: kind };
+}
+
 const ProvenanceSchema = z
   .object({
     vectorRank: z.number().optional(),
@@ -119,6 +142,8 @@ export const semanticSearchTool = defineTool({
           // Book offset the snippet starts at (#243) — calibre_get_content offset= jumps there.
           snippetStart: z.number().optional(),
           snippet: z.string(),
+          // #605: front/back matter of the shown chunk; absent for body text
+          matterKind: MatterKindSchema.optional(),
           provenance: ProvenanceSchema,
         }),
       )
@@ -130,7 +155,9 @@ export const semanticSearchTool = defineTool({
           charEnd: z.number(),
           cosine: z.number().optional(),
           rerankScore: z.number().optional(),
+          // kept beside matterKind for one release (#605)
           frontMatter: z.boolean().optional(),
+          matterKind: MatterKindSchema.optional(),
           body: z.string(),
           provenance: ProvenanceSchema,
         }),
@@ -422,7 +449,10 @@ async function libraryScope(
     link.description = [scoreLabel(r), r.hit.authors.join(", ")].filter(Boolean).join(" — ");
     blocks.push(link);
     const at = r.hit.snippetStart !== undefined ? ` snippet@${r.hit.snippetStart}` : "";
-    const fenced = fence(`MATCH book ${r.hit.bookId} @${r.hit.charStart}-${r.hit.charEnd}${at}`, r.hit.snippet);
+    const fenced = fence(
+      `MATCH book ${r.hit.bookId} @${r.hit.charStart}-${r.hit.charEnd}${at}${matterLabel(r.hit.matterKind)}`,
+      r.hit.snippet,
+    );
     blocks.push({ type: "text", text: withProvenanceLine(fenced, r, debug) });
     results.push({
       bookId: r.hit.bookId,
@@ -434,6 +464,7 @@ async function libraryScope(
       charEnd: r.hit.charEnd,
       ...(r.hit.snippetStart !== undefined ? { snippetStart: r.hit.snippetStart } : {}),
       snippet: fenced,
+      ...matterField(r.hit.matterKind),
       ...provenanceField(r, debug),
     });
   }
@@ -466,7 +497,7 @@ async function bookScope(
   sem: SemStatus,
   degradeNote?: string,
 ) {
-  // retrieve() also applies the front-matter demotion (#18) and reports it in notes.
+  // retrieve() also places front/back matter after body passages (#18, #605) and reports it in notes.
   const rr = await retrieve(
     deps,
     {
@@ -506,15 +537,19 @@ async function bookScope(
   const passages: Record<string, unknown>[] = [];
   const debug = deps.config.logLevel === "debug";
   for (const r of ranked) {
-    const fm = r.hit.frontMatter ? " [front matter]" : "";
-    const fenced = fence(`PASSAGE @${r.hit.charStart}-${r.hit.charEnd}${fm} ${scoreLabel(r)}`, r.hit.body);
+    const kind = r.hit.matterKind ?? (r.hit.frontMatter ? "front" : "body");
+    const fenced = fence(
+      `PASSAGE @${r.hit.charStart}-${r.hit.charEnd}${matterLabel(kind)} ${scoreLabel(r)}`,
+      r.hit.body,
+    );
     blocks.push({ type: "text", text: withProvenanceLine(fenced, r, debug) });
     passages.push({
       charStart: r.hit.charStart,
       charEnd: r.hit.charEnd,
       ...(r.cosine !== undefined ? { cosine: r.cosine } : {}),
       ...(r.rerankScore !== undefined ? { rerankScore: r.rerankScore } : {}),
-      ...(r.hit.frontMatter ? { frontMatter: true } : {}),
+      ...(kind === "front" ? { frontMatter: true } : {}),
+      ...matterField(kind),
       body: fenced,
       ...provenanceField(r, debug),
     });
