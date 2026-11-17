@@ -1,0 +1,25 @@
+src/semantic/store/chunk-matrix.ts
+  s_ad4914405c6153::t_aed94f9761d8a0 106
+  s_ad4914405c6153::t_548427a700c76b 117,137,144-164
+src/semantic/retrieve.ts
+  s_ad4914405c6153::t_aed94f9761d8a0 217,222,235-237,267-283,538-540,549-553,591-592,638
+  s_ad4914405c6153::t_e1a198d4753e2e 632
+src/semantic/store/chunks.ts
+  s_ad4914405c6153::t_548427a700c76b 19,160-162
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "299afc5e4e113874a9968f10f29a2d0e26378005",
+  "prompts": {},
+  "sessions": {
+    "s_ad4914405c6153": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6aad58dc-30b5-4f8a-a5e9-4eeaf352f814",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
