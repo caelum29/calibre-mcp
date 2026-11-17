@@ -55,6 +55,13 @@
   { "id": "fmt-04", "kind": "front-matter-trap", "scope": "book", "bookId": 117, "query": "what is observability", "relevant": [{ "bookId": 117, "charStart": 3083, "charEnd": 3658, "marker": "arbitrary questions of its external outputs" }] },
   { "id": "fmt-05", "kind": "front-matter-trap", "scope": "book", "bookId": 117, "query": "what is a span in distributed tracing", "relevant": [{ "bookId": 117, "charStart": 7995, "charEnd": 8527, "marker": "one timed unit of work within a request" }] },
   { "id": "fmt-06", "kind": "front-matter-trap", "heldOut": true, "scope": "book", "bookId": 117, "query": "what is an error budget", "relevant": [{ "bookId": 117, "charStart": 10865, "charEnd": 11478, "marker": "amount of unreliability the service level objective permits" }] },
+  { "id": "bmt-01", "kind": "back-matter-trap", "scope": "book", "bookId": 128, "query": "where does the wren build its nest and what is its song like", "relevant": [{ "bookId": 128, "charStart": 288, "charEnd": 721, "marker": "domed ball" }] },
+  { "id": "bmt-02", "kind": "back-matter-trap", "scope": "book", "bookId": 129, "query": "medieval world map with Jerusalem at the centre", "relevant": [{ "bookId": 129, "charStart": 1751, "charEnd": 2211, "marker": "Jerusalem" }] },
+  { "id": "bmt-03", "kind": "back-matter-trap", "scope": "book", "bookId": 129, "query": "portolan charts used by Mediterranean sailors", "relevant": [{ "bookId": 129, "charStart": 2728, "charEnd": 3251, "marker": "bearing" }] },
+  { "id": "bmt-04", "kind": "back-matter-trap", "scope": "book", "bookId": 130, "query": "kombucha basics brewing tea with a scoby", "relevant": [{ "bookId": 130, "charStart": 1290, "charEnd": 1766, "marker": "rubbery" }] },
+  { "id": "bmt-05", "kind": "back-matter-trap", "scope": "book", "bookId": 131, "query": "earlier studies of seasonal bird counts in wetlands", "relevant": [{ "bookId": 131, "charStart": 1080, "charEnd": 2153, "marker": "hard frosts" }] },
+  { "id": "bmt-06", "kind": "back-matter-trap", "scope": "book", "bookId": 132, "query": "как часто поливать фикус", "ru": true, "relevant": [{ "bookId": 132, "charStart": 237, "charEnd": 599, "marker": "верхний слой" }] },
+  { "id": "bmt-07", "kind": "back-matter-trap", "scope": "book", "bookId": 132, "query": "размножение традесканции черенками", "ru": true, "relevant": [{ "bookId": 132, "charStart": 1619, "charEnd": 1966, "marker": "за неделю" }] },
 
   { "id": "neg-01", "kind": "negative", "scope": "library", "query": "medieval castle siege engines and trebuchet design", "relevant": [] },
   { "id": "neg-02", "kind": "negative", "scope": "library", "query": "training a golden retriever puppy not to bite", "relevant": [] },

@@ -1,0 +1,64 @@
+Field Statistics for Ecologists
+
+Planning a count
+
+Ecologists count things: birds on a transect, beetles in a pitfall trap,
+seedlings in a quadrat. A count is never the whole population; it is a
+sample, and every sample carries error. This first chapter sets out how to
+plan a survey so that the error is small and, above all, measurable.
+
+Decide first what the unit of study is. A survey of wetland birds might
+treat each pond as one unit and count every bird on it, or it might treat
+each visit as a unit. The choice decides how many independent observations
+you really have, and it is the most common place for a study to go wrong.
+
+Next, fix the method before the first visit: the route, the time of day, the
+length of each count, the weather in which you will not count. Changing the
+method halfway through a season makes the early and late counts impossible
+to compare.
+
+Finally, write down how you will analyse the counts before you collect them.
+A plan written in advance protects you from the temptation to try test after
+test until one of them gives a pleasing answer.
+
+Earlier studies of seasonal bird counts in wetlands
+
+Hartley (1998) counted waders on twelve estuaries every month for five years.
+Moss and Reed (2003) showed that winter counts in wetlands double after hard frosts inland.
+Ainsworth (2007) compared dawn and midday counts and found dawn counts higher by a third.
+Okafor (2011) used repeated visits to estimate how many birds an observer misses.
+Lindqvist (2014) tracked spring arrival dates of warblers across forty reed beds.
+Chen and Patel (2016) modelled seasonal counts with a smooth curve per site, pp. 41-58.
+Duarte (2018) warned that volunteer effort rises in spring and inflates the counts.
+Novak (2019) found that counts of ducks track water depth more than the calendar.
+Ferreira (2020) repeated Hartley's estuary counts and found the autumn peak a month earlier.
+Ibrahim (2021) pooled thirty wetland surveys, doi:10.0000/fixture.2021.7, and confirmed it.
+Together these studies show that a seasonal pattern in wetland counts is real but easily
+confused with changes in effort, weather and the observer's skill.
+
+Models for counts
+
+Counts are rarely normally distributed. Most ponds hold a few birds and a
+handful hold many, so the distribution has a long right tail. A Poisson or
+negative binomial model fits such counts far better than a straight line
+through the raw numbers.
+
+When counts are repeated on the same sites, the visits are not independent.
+A mixed model with a random effect for site lets each pond have its own
+baseline while the season effect is shared.
+
+Zero counts deserve thought. A pond may hold no birds because it is
+unsuitable or because the birds happened to be elsewhere that morning.
+Occupancy models separate the two by using repeated visits.
+
+Reporting the results
+
+Report every count, including the zeros and the visits cut short by rain.
+Give the model you fitted, the software, and the estimates with their
+intervals, not only the p values.
+
+A figure of counts against date, one faint line per site and a bold line for
+the fitted curve, tells the reader more than a table of coefficients.
+
+Archive the raw data with the paper, so the next survey can be compared with
+yours.

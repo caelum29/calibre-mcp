@@ -21,7 +21,7 @@ Two eval axes live (or will live) here — they measure different things:
 ## Retrieval eval (`retrieval/`) — the measurement gate for tuning
 
 Every tuning decision downstream (reranker on/off, fusion weights, embedding-model swap,
-chunk sizes) is guesswork without labels. This harness runs 98 labeled golden queries over
+chunk sizes) is guesswork without labels. This harness runs 105 labeled golden queries over
 a committed fixture corpus through the REAL pipeline — `calibre_build_index`'s
 chunk→embed→store path, then the real `calibre_semantic_search` handler per mode
 (hybrid / vector / keyword) — and scores Hit@1, Recall@5, MRR, nDCG@10 per kind and overall.
@@ -110,13 +110,13 @@ records (`HarnessOptions.timing`), so
 
 ### Layout
 
-- `queries.json` — 98 golden queries `{ id, kind, scope, query, ru?, heldOut?, confusers?,
+- `queries.json` — 105 golden queries `{ id, kind, scope, query, ru?, heldOut?, confusers?,
   relevant, why? }`. Kinds (count): `semantic-paraphrase` (16), `exact-identifier` (14),
   `figure-caption` (9), `cross-lingual` RU↔EN (8), `ru-monolingual` (8), `front-matter-trap`
-  (6), `negative` (6), `figure-negative` (3), and the #359 hard kinds `confuser-pair` (8),
+  (6), `back-matter-trap` (7, #605), `negative` (6), `figure-negative` (3), and the #359 hard kinds `confuser-pair` (8),
   `no-overlap-paraphrase` (8), `adjacent-negative` (6), `raw-title` (6). The three negative
-  kinds have no right answer and measure the low-confidence signal, leaving 83 positives.
-  33/98 are RU-involved (`ru: true`): RU is the known weak axis and is first-class here, not
+  kinds have no right answer and measure the low-confidence signal, leaving 90 positives.
+  35/105 are RU-involved (`ru: true`): RU is the known weak axis and is first-class here, not
   an afterthought. `scope: "book"` queries label relevant passages as char spans + a
   `marker` substring (the harness fails loudly if a fixture edit invalidates a span). The
   hard kinds are capability kinds (`thresholds.capabilityKinds`): their drops are listed,
