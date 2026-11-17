@@ -306,6 +306,22 @@ Append-only: one entry per re-freeze, newest last. Every number names its corpus
   Keyword Hit@1 on no-overlap is 0/8 in both reports. The `linux` platform-drift entry
   on/vector `id-09` was dropped, because the new baseline no longer solves it; the other four
   entries are still solved.
+- **2026-11-17, #605 (matter kinds; back-matter fixture).**
+  - **Rule commits first.** 3c0f502c declares the `back-matter-trap` kind and its gate (`thresholds.backMatterTrap`: no front/back-matter passage above the relevant passage, every mode). 85eb95fe extends it to the RU index book.
+  - **Fixture.** 0d48d2b8 adds 5 self-authored books (128–132: index, references, ads, a mid-book citation-dense negative, an RU index) and 7 queries `bmt-01`..`bmt-07` [32-book fixture, 105 queries, 35 RU-involved].
+  - **First hash freeze and the sp-03 reword.** The first freeze (e9e88040) broke hash `sp-03`. Book 128 was reworded (3ee2d942: `high-speed` → `rapid-fire`) and the hash tier re-frozen at ae0fde19 (315 rows), with `sp-03` back at rank 1.
+  - **fmt-02 stop.** The first model freeze run (0a84f460) broke `front-matter-trap` `fmt-02` (on/hybrid and on/vector). A weak praise+contents+foreword chunk won on rerank. The run stopped and was reported on #605.
+  - **Contents-block rule.** Artem decided that front matter holding a contents block is strong (0e3adf14). The hash tier does not move, since it never reranks.
+  - **Model freeze.** At 1f7f8258: `pnpm eval --tag 605` → `reports/2026-11-17-1f7f8258-605.json` (on), and `pnpm eval --rerank off --tag 605-rerankoff` → `reports/2026-11-17-1f7f8258-605-rerankoff.json` (fusionOnly).
+  - **Existing lists changed:** 201 (hash), 144 (on) and 168 (fusionOnly) of 294.
+  - **Accepted Hit@1 breaks**, with causes in `reports/2026-11-17-605-rebaseline.md`. Every one is caused by a new book:
+    - hash keyword `sp-13`: bm25 N/avgdl shift from a book sharing no token with the query;
+    - on hybrid+vector `xl-01` and hybrid `xl-06`: below `RERANK_FLOOR`, `lowConfidence` true before and after.
+  - **Report-only drops:**
+    - hash `cp-01`, `rt-05`;
+    - on `rt-01`;
+    - fusionOnly `xl-07`, `nop-08`, `rt-02`.
+  - **Unchanged:** every `fmt-*` Hit@1. `bmt-*` `nonBodyAbove` is 0 everywhere. The four `linux` platform-drift entries are still solved at Hit@1.
 
 ### Rules
 
