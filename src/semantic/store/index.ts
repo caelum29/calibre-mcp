@@ -4,8 +4,8 @@
 import type { Config } from "../../config.js";
 import { log as defaultLog, type LogSink } from "../../logging.js";
 import type { ChunkSpan } from "../content-match.js";
-import type { Candidate } from "../vector.js";
-import { loadChunkCandidates, SqliteChunkIndex } from "./chunks.js";
+import type { ChunkMatrix } from "./chunk-matrix.js";
+import { loadChunkMatrix, SqliteChunkIndex } from "./chunks.js";
 import { SqliteFigureIndex } from "./figures.js";
 import { SqliteFreshness } from "./freshness.js";
 import { IndexConnections } from "./schema.js";
@@ -199,7 +199,7 @@ export class SqliteIndexStore implements IndexStore {
    * Read + decode ALL embedding BLOBs of a library — the path the candidate cache avoids.
    * @internal public only as a spy seam for the cache tests; not part of `IndexStore`.
    */
-  loadCandidates(libraryId: string): Candidate[] {
-    return loadChunkCandidates(this.#conn.db(libraryId));
+  loadCandidates(libraryId: string): ChunkMatrix {
+    return loadChunkMatrix(this.#conn.db(libraryId));
   }
 }
