@@ -1,0 +1,19 @@
+test/eval/retrieval/hash-baseline.json
+  s_ad4914405c6153::t_ea8542632674a1 4,53,57,1294,1296,3488,4543
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ae0fde19b9a3cf831f42159208b455b1227724d4",
+  "prompts": {},
+  "sessions": {
+    "s_ad4914405c6153": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6aad58dc-30b5-4f8a-a5e9-4eeaf352f814",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
