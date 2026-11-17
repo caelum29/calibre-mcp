@@ -1,0 +1,257 @@
+{
+  "library": "Programming_Books",
+  "ids": [
+    15, 62, 138, 154, 167, 183, 187, 293, 357, 395, 403, 412, 473, 560, 561, 608, 644, 656, 695, 699, 755, 816, 830,
+    885, 1068, 1075, 1081, 1235, 1300, 1338
+  ],
+  "summary": {
+    "books": 30,
+    "pdf": 22,
+    "epub": 8,
+    "russian": 4,
+    "frontMatterOutlinePdfs": [183, 357, 1075],
+    "uncoveredLongProblem": []
+  },
+  "books": [
+    {
+      "id": 412,
+      "title": "Foundations of Scalable Systems: Designing Distributed Architectures",
+      "format": "epub",
+      "language": "eng",
+      "step": 1,
+      "reason": "set cover: problem-01, problem-02, long-04"
+    },
+    {
+      "id": 62,
+      "title": "Kubernetes Patterns",
+      "format": "pdf",
+      "language": "eng",
+      "step": 1,
+      "reason": "set cover: problem-06, long-05"
+    },
+    {
+      "id": 138,
+      "title": "Designing Data-Intensive Applications: The Big Ideas Behind Reliable, Scalable, and Maintainable Systems",
+      "format": "pdf",
+      "language": "eng",
+      "step": 1,
+      "reason": "set cover: problem-05, problem-15"
+    },
+    {
+      "id": 167,
+      "title": "Software Architecture: The Hard Parts: Modern Trade-Off Analyses for Distributed Architectures",
+      "format": "pdf",
+      "language": "eng",
+      "step": 1,
+      "reason": "set cover: long-01, long-02"
+    },
+    {
+      "id": 885,
+      "title": "The MCP Standard: A Developer's Guide to Building Universal AI Tools With the Model Context Protocol",
+      "format": "pdf",
+      "language": "eng",
+      "step": 1,
+      "reason": "set cover: problem-13, long-03"
+    },
+    {
+      "id": 183,
+      "title": "Serverless Architectures on AWS, Second Edition",
+      "format": "pdf",
+      "language": "eng",
+      "step": 1,
+      "reason": "set cover: problem-11"
+    },
+    {
+      "id": 293,
+      "title": "Effective Rust: 35 Specific Ways to Improve Your Rust Code",
+      "format": "pdf",
+      "language": "eng",
+      "step": 1,
+      "reason": "set cover: problem-07"
+    },
+    {
+      "id": 357,
+      "title": "gRPC Microservices in Go",
+      "format": "pdf",
+      "language": "eng",
+      "step": 1,
+      "reason": "set cover: problem-10"
+    },
+    {
+      "id": 473,
+      "title": "Оптимизация запросов в PostgreSQL",
+      "format": "pdf",
+      "language": "rus",
+      "step": 1,
+      "reason": "set cover: problem-04"
+    },
+    {
+      "id": 561,
+      "title": "Systems Performance: Enterprise and the Cloud",
+      "format": "pdf",
+      "language": "eng",
+      "step": 1,
+      "reason": "set cover: problem-03"
+    },
+    {
+      "id": 699,
+      "title": "Hands-On Machine Learning With Scikit-Learn and Pytorch: Concepts, Tools, and Techniques to Build Intelligent Systems",
+      "format": "epub",
+      "language": "eng",
+      "step": 1,
+      "reason": "set cover: problem-08"
+    },
+    {
+      "id": 816,
+      "title": "Web Performance Engineering in the Age of AI: Mastering Speed and Quality for Ai-Generated Applications",
+      "format": "pdf",
+      "language": "eng",
+      "step": 1,
+      "reason": "set cover: problem-14"
+    },
+    {
+      "id": 1081,
+      "title": "security driven software development learn to analyze and mitigate",
+      "format": "pdf",
+      "language": "",
+      "step": 1,
+      "reason": "set cover: problem-09"
+    },
+    {
+      "id": 1300,
+      "title": "XUnit Test Patterns: Refactoring Test Code",
+      "format": "pdf",
+      "language": "eng",
+      "step": 1,
+      "reason": "set cover: problem-12"
+    },
+    {
+      "id": 1075,
+      "title": "AI-Powered Search",
+      "format": "pdf",
+      "language": "",
+      "step": 2,
+      "reason": "PDF outline: title-page entry then named front matter (#625)"
+    },
+    {
+      "id": 656,
+      "title": "Rust Атомарности и блокировки",
+      "format": "pdf",
+      "language": "rus",
+      "step": 3,
+      "reason": "Russian; expected book of an xling query"
+    },
+    {
+      "id": 15,
+      "title": "Базы данных Инжиниринг надежности",
+      "format": "pdf",
+      "language": "rus",
+      "step": 3,
+      "reason": "Russian; expected book of an xling query"
+    },
+    {
+      "id": 187,
+      "title": "Apache Kafka. Потоковая обработка и анализ данных: 2-е издание",
+      "format": "pdf",
+      "language": "rus",
+      "step": 3,
+      "reason": "Russian; expected book of an xling query"
+    },
+    {
+      "id": 395,
+      "title": "High Performance Python",
+      "format": "epub",
+      "language": "eng",
+      "step": 4,
+      "reason": "EPUB quota; para/concept expected book"
+    },
+    {
+      "id": 608,
+      "title": "Learning API Styles: Understanding the Trade-Offs of Common APIs and Choosing the Correct Solutions",
+      "format": "epub",
+      "language": "eng",
+      "step": 4,
+      "reason": "EPUB quota; para/concept expected book"
+    },
+    {
+      "id": 644,
+      "title": "Building Event-Driven Microservices (for True Epub)",
+      "format": "epub",
+      "language": "eng",
+      "step": 4,
+      "reason": "EPUB quota; para/concept expected book"
+    },
+    {
+      "id": 755,
+      "title": "Learning Domain-Driven Design",
+      "format": "epub",
+      "language": "eng",
+      "step": 4,
+      "reason": "EPUB quota; para/concept expected book"
+    },
+    {
+      "id": 154,
+      "title": "Mastering Bitcoin",
+      "format": "epub",
+      "language": "eng",
+      "step": 4,
+      "reason": "EPUB quota; para/concept expected book"
+    },
+    {
+      "id": 560,
+      "title": "System Design Interview – An Insider's Guide: Volume 2",
+      "format": "epub",
+      "language": "eng",
+      "step": 4,
+      "reason": "EPUB quota; para/concept expected book"
+    },
+    {
+      "id": 1068,
+      "title": "Designing Data-Intensive Applications",
+      "format": "pdf",
+      "language": "eng",
+      "step": 5,
+      "reason": "fill; para/concept expected book"
+    },
+    {
+      "id": 1338,
+      "title": "Database Internals: A Deep Dive Into How Distributed Data Systems Work",
+      "format": "pdf",
+      "language": "eng",
+      "step": 5,
+      "reason": "fill; para/concept expected book"
+    },
+    {
+      "id": 695,
+      "title": "Think Distributed Systems",
+      "format": "pdf",
+      "language": "eng",
+      "step": 5,
+      "reason": "fill; para/concept expected book"
+    },
+    {
+      "id": 1235,
+      "title": "Dependency Injection: Principles, Practices, Patterns",
+      "format": "pdf",
+      "language": "eng",
+      "step": 5,
+      "reason": "fill; para/concept expected book"
+    },
+    {
+      "id": 403,
+      "title": "Acing the System Design Interview",
+      "format": "pdf",
+      "language": "eng",
+      "step": 5,
+      "reason": "fill; para/concept expected book"
+    },
+    {
+      "id": 830,
+      "title": "Clean Architecture With Python: Implement Scalable and Maintainable Applications Using Proven Architectural Principles",
+      "format": "pdf",
+      "language": "eng",
+      "step": 5,
+      "reason": "fill; para/concept expected book"
+    }
+  ]
+}
