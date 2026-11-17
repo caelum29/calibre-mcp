@@ -21,7 +21,8 @@ import type { EvalReport } from "./harness.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const read = <T>(rel: string): T => JSON.parse(readFileSync(path.join(HERE, rel), "utf8")) as T;
-const thresholds = read<Thresholds>("thresholds.json");
+// the replayed nightlies predate #605's back-matter-trap queries, so its block can't apply to them
+const { backMatterTrap: _predates, ...thresholds } = read<Thresholds>("thresholds.json");
 
 // the baselines these nightlies ran against; pinned, so a later re-freeze doesn't rewrite the evidence
 const ON_BASE = read<EvalReport>("reports/2026-10-24-f8bb617-v4-t431-fixture.json");
