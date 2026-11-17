@@ -21,7 +21,7 @@ Two eval axes live (or will live) here — they measure different things:
 ## Retrieval eval (`retrieval/`) — the measurement gate for tuning
 
 Every tuning decision downstream (reranker on/off, fusion weights, embedding-model swap,
-chunk sizes) is guesswork without labels. This harness runs 70 labeled golden queries over
+chunk sizes) is guesswork without labels. This harness runs 98 labeled golden queries over
 a committed fixture corpus through the REAL pipeline — `calibre_build_index`'s
 chunk→embed→store path, then the real `calibre_semantic_search` handler per mode
 (hybrid / vector / keyword) — and scores Hit@1, Recall@5, MRR, nDCG@10 per kind and overall.
@@ -66,7 +66,7 @@ It then runs a second, **fusion-only pass** with the reranker off (`thresholds.f
 #356). With rerank ON, `RERANK_POOL` (30) covers the whole fixture, so the cross-encoder
 re-sorts every candidate and a fusion regression can't show (ON hybrid = vector on every
 positive). The OFF pass compares per-query Hit@1 to its own frozen baseline
-(`reports/2026-11-04-b1c8ce2-rerankoff.json`): no query solved there may break, in any mode.
+(`reports/2026-11-16-5abdc650-hardkinds-rerankoff.json`): no query solved there may break, in any mode.
 Cross-lingual drops are listed as report-only (OFF hybrid solves 0/8 today). Both passes
 print, then `OVERALL GATE`. The OFF pass skips the reranker, so it adds only seconds.
 `--gate` rejects `--rerank` (it sets rerank per pass) but honours `--rrf-weights`, which is
@@ -79,15 +79,15 @@ report `thresholds.json` names as a baseline (same date + sha + tag); use `--out
 per kind. It prints Δ nDCG@10 (b − a), a percentile bootstrap 95% CI, a sign-flip permutation
 p (exact for small n, fixed-seed Monte Carlo otherwise), Hit@1 flips with an exact sign test,
 the MDE at 80% power, headroom, and `UNDERPOWERED` when p ≥ 0.05 and |Δ| < MDE. The same
-two files always print the same numbers. At n = 59 the MDE is ~0.09–0.12 nDCG, so most
-single-kind tuning deltas come out underpowered; cite this table, not a bare Δ.
+two files always print the same numbers. The MDE depends on n and on the paired differences: at n = 83 (every positive of the 27-book fixture; the `--compare` of the 2026-11-16 rerank-off vs rerank-on baselines) it is 0.066–0.099 nDCG (measured 2026-11-16; the earlier 0.09–0.12 was at n = 59 in 2026-11), so most
+single-kind tuning deltas still come out underpowered; cite this table, not a bare Δ.
 
 Every run also prints, after the per-mode headline:
 
 - **headroom** — how many positive queries every mode in the run solves at Hit@1
   (`saturation.ts`). Those queries can't tell configs apart, so a high share means the suite
-  has little room to show a tuning win (baseline f8bb617: 45/59 = 76.3% across
-  hybrid/vector/keyword).
+  has little room to show a tuning win (27-book fixture, baseline `5abdc650`, 2026-11-16: 55/83 = 66.3% across
+  hybrid/vector/keyword with rerank ON, 53/83 = 63.9% rerank OFF; at f8bb617 on the then 59 positives it was 45/59 = 76.3%).
 - **saturation warning** — when rerank-ON hybrid Hit@1 ≥ 0.95. Anthropic's eval guidance: a
   baseline near 95% means optimise cost/latency, or add harder queries, rather than chase
   quality. Fusion-only runs never warn: `--rerank off`, or an ON run where the reranker
@@ -312,8 +312,9 @@ Append-only: one entry per re-freeze, newest last. Every number names its corpus
   the first model download, identical JSON on re-run apart from `durationMs`.
 - Reports are committed. Baseline first, then one report per tuning change, so every
   fusion/reranker/model decision cites numbers, not vibes.
-- **Held-out set (#632).** 20 fixture queries carry `"heldOut": true` in `queries.json`.
-  They were drawn once, from the 68 queries of the set at the time, with `folds.ts`
+- **Held-out set (#632).** 28 fixture queries carry `"heldOut": true` in `queries.json`: 20 from
+  #632 and 8 from #359 (2 per hard kind).
+  #632's 20 were drawn once, from the 68 queries of the set at the time, with `folds.ts`
   `stratifiedSample` (seed `0x358`, stratified by kind, largest-remainder allocation over the
   66 non-diagnostic queries; the two `fig-xl` diagnostics stay out): semantic-paraphrase 5,
   exact-identifier 4, figure-caption 2, cross-lingual 2, ru-monolingual 2, front-matter-trap 2,
