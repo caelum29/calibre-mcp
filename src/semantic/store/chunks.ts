@@ -6,6 +6,7 @@ import type { DatabaseSync } from "node:sqlite";
 import type { LogSink } from "../../logging.js";
 import { EMBED_DIM } from "../model.js";
 import { SNIPPET_CHARS } from "../snippet.js";
+import { toMatterKind } from "../../domain/structure/matter-kind.js";
 import { decodeVector } from "../vector.js";
 import { bookTop, type ChunkMatrix, libraryTop, MatrixWriter, matrixRows, mergeMatrix } from "./chunk-matrix.js";
 import type { IndexConnections } from "./schema.js";
@@ -56,7 +57,9 @@ export class SqliteChunkIndex implements ChunkIndex {
     const out: LibraryHit[] = [];
     for (const { bookId, ...best } of libraryTop(this.#matrix(libraryId), query, k, allow)) {
       const book = db.prepare("SELECT title, authors FROM books WHERE book_id = ?").get(bookId) as Row;
-      const chunk = db.prepare("SELECT char_start, char_end, body FROM chunks WHERE id = ?").get(best.chunkId) as Row;
+      const chunk = db
+        .prepare("SELECT char_start, char_end, body, matter_kind FROM chunks WHERE id = ?")
+        .get(best.chunkId) as Row;
       const body = String(chunk?.body ?? "");
       out.push({
         bookId,
@@ -68,6 +71,7 @@ export class SqliteChunkIndex implements ChunkIndex {
         body,
         charStart: Number(chunk?.char_start ?? 0),
         charEnd: Number(chunk?.char_end ?? 0),
+        matterKind: toMatterKind(chunk?.matter_kind),
       });
     }
     return out; // already ordered: libraryTop ranks books best-first
@@ -78,7 +82,7 @@ export class SqliteChunkIndex implements ChunkIndex {
     const hits = bookTop(this.#matrix(libraryId), bookId, query, k);
     return hits.map((h) => {
       const chunk = db
-        .prepare("SELECT char_start, char_end, body, front_matter FROM chunks WHERE id = ?")
+        .prepare("SELECT char_start, char_end, body, front_matter, matter_kind FROM chunks WHERE id = ?")
         .get(h.chunkId) as Row;
       return {
         chunkId: h.chunkId,
@@ -87,6 +91,7 @@ export class SqliteChunkIndex implements ChunkIndex {
         body: String(chunk?.body ?? ""),
         score: h.score,
         frontMatter: Number(chunk?.front_matter ?? 0) === 1,
+        matterKind: toMatterKind(chunk?.matter_kind),
       };
     });
   }
@@ -106,7 +111,7 @@ export class SqliteChunkIndex implements ChunkIndex {
       allow === undefined
         ? db
             .prepare(
-              `SELECT c.id AS chunk_id, c.book_id, c.char_start, c.char_end, c.body, ${WEIGHTED_BM25} AS score
+              `SELECT c.id AS chunk_id, c.book_id, c.char_start, c.char_end, c.body, c.matter_kind, ${WEIGHTED_BM25} AS score
                FROM chunk_fts JOIN chunks c ON c.id = chunk_fts.rowid
                WHERE chunk_fts MATCH ? ORDER BY score, c.book_id, c.id LIMIT ?`,
             )
@@ -116,7 +121,7 @@ export class SqliteChunkIndex implements ChunkIndex {
               `WITH m AS MATERIALIZED (
                  SELECT rowid AS id, ${WEIGHTED_BM25} AS s FROM chunk_fts WHERE chunk_fts MATCH ?
                )
-               SELECT c.id AS chunk_id, c.book_id, c.char_start, c.char_end, c.body, m.s AS score
+               SELECT c.id AS chunk_id, c.book_id, c.char_start, c.char_end, c.body, c.matter_kind, m.s AS score
                FROM m JOIN chunks c ON c.id = m.id
                WHERE c.book_id IN (SELECT value FROM json_each(?))
                ORDER BY m.s, c.book_id, c.id LIMIT ?`,
@@ -142,6 +147,7 @@ export class SqliteChunkIndex implements ChunkIndex {
         body,
         charStart: Number(r.char_start),
         charEnd: Number(r.char_end),
+        matterKind: toMatterKind(r.matter_kind),
       });
       if (out.length >= k) break;
     }
@@ -160,7 +166,7 @@ export class SqliteChunkIndex implements ChunkIndex {
         `WITH m AS MATERIALIZED (
            SELECT rowid AS id, ${WEIGHTED_BM25} AS s FROM chunk_fts WHERE chunk_fts MATCH ?
          )
-         SELECT c.id AS chunk_id, c.char_start, c.char_end, c.body, c.front_matter, m.s AS score
+         SELECT c.id AS chunk_id, c.char_start, c.char_end, c.body, c.front_matter, c.matter_kind, m.s AS score
          FROM m JOIN chunks c ON c.id = m.id
          WHERE c.book_id = ? ORDER BY m.s, c.id LIMIT ?`,
       )
@@ -172,6 +178,7 @@ export class SqliteChunkIndex implements ChunkIndex {
       body: String(r.body ?? ""),
       score: Number(r.score),
       frontMatter: Number(r.front_matter ?? 0) === 1,
+      matterKind: toMatterKind(r.matter_kind),
     }));
   }
 
@@ -182,7 +189,7 @@ export class SqliteChunkIndex implements ChunkIndex {
     // begins at the boundary, so the LATER chunk (start == offset) is the one containing it.
     const row = db
       .prepare(
-        `SELECT id, char_start, char_end, body, front_matter FROM chunks
+        `SELECT id, char_start, char_end, body, front_matter, matter_kind FROM chunks
          WHERE book_id = ? AND char_start <= ? AND char_end > ? LIMIT 1`,
       )
       .get(bookId, charOffset, charOffset) as Row | undefined;
@@ -193,6 +200,7 @@ export class SqliteChunkIndex implements ChunkIndex {
       charEnd: Number(row.char_end),
       body: String(row.body ?? ""),
       frontMatter: Number(row.front_matter ?? 0) === 1,
+      matterKind: toMatterKind(row.matter_kind),
     };
   }
 

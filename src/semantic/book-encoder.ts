@@ -1,9 +1,9 @@
-// The CPU-bound half of indexing one book: token-budgeted chunking, front-matter detection
+// The CPU-bound half of indexing one book: token-budgeted chunking, matter-kind detection
 // and passage/caption embedding. Behind an interface so it can run on the calling thread
 // (the tool) or in a worker thread (bulk re-index, #99) — chunking + tokenizing are sync JS,
 // so book-level concurrency on ONE thread can't speed them up.
 
-import { frontMatterEnd } from "../domain/structure/front-matter.js";
+import { type MatterKind, matterKinds } from "../domain/structure/matter-kind.js";
 import type { EpubToc } from "../domain/structure/epub-toc.js";
 import type { OutlineEntry } from "../domain/structure/pdf-outline.js";
 import { chunkForEmbeddingAsync, type EmbedChunk } from "./chunk.js";
@@ -36,8 +36,8 @@ export interface EncodeJob {
 
 export interface EncodeResult {
   chunks: EmbedChunk[];
-  /** End of front matter in `text` (0 = none detected). */
-  fmEnd: number;
+  /** Front/body/back matter of each chunk (#605), one per chunk. */
+  kinds: MatterKind[];
   /** One per chunk; absent on keyword-only builds. */
   vectors?: Float32Array[];
   /** One per caption; absent on keyword-only builds. */
@@ -73,10 +73,11 @@ export function inThreadEncoder(embedder: Embedder): BookEncoder {
         // the conservative char-based default applies.
         chunks = await chunkForEmbeddingAsync(job.text);
       }
-      const fmEnd = chunks.length > 0 ? frontMatterEnd(job.text, structureOf(job)) : 0;
+      // The same classifier the flags-only refresh runs on the stored spans (#605).
+      const kinds = matterKinds(job.text, chunks, structureOf(job));
       const t1 = Date.now();
       if (job.keywordOnly || chunks.length === 0) {
-        return { chunks, fmEnd, phaseMs: { chunk: t1 - t0, embed: 0 } };
+        return { chunks, kinds, phaseMs: { chunk: t1 - t0, embed: 0 } };
       }
       const vectors = await embedSliced(
         embedder,
@@ -85,7 +86,7 @@ export function inThreadEncoder(embedder: Embedder): BookEncoder {
       );
       const captionVectors =
         job.captions.length > 0 ? await embedder.embedPassages(job.captions.map((c) => job.ctx + c)) : [];
-      return { chunks, fmEnd, vectors, captionVectors, phaseMs: { chunk: t1 - t0, embed: Date.now() - t1 } };
+      return { chunks, kinds, vectors, captionVectors, phaseMs: { chunk: t1 - t0, embed: Date.now() - t1 } };
     },
   };
 }

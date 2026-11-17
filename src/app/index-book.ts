@@ -6,10 +6,9 @@ import { chooseExtractFormat, noTextReason } from "../domain/extract-format.js";
 import type { FigureEntry } from "../domain/figures/inventory.js";
 import { indexedFigureCaption, type FigureMarker } from "../domain/figures/markers.js";
 import type { ExtractedText } from "../calibre/extract.js";
-import { frontMatterEnd } from "../domain/structure/front-matter.js";
 import { inThreadEncoder, structureOf, type BookEncoder } from "../semantic/book-encoder.js";
 import { textMatchesChunks, type ChunkSpan } from "../semantic/content-match.js";
-import { isFrontMatterSpan } from "../domain/structure/matter-kind.js";
+import { type MatterKind, matterKinds } from "../domain/structure/matter-kind.js";
 import type { BookMeta, IndexedChunk, IndexedFigure, IndexFreshness, IndexWriter } from "../semantic/store/index.js";
 import type { BaseDeps, DepsWithIndex } from "../tools/deps.js";
 import type { LogSink } from "../logging.js";
@@ -67,10 +66,10 @@ export type PrepareResult = PreparedBook | { kind: "skipped" } | { kind: "preser
 export interface RefreshedBook {
   kind: "refreshed";
   meta: BookMeta;
-  /** Front-matter boundary in the (unchanged) text — 0 = none. */
-  frontMatterEnd: number;
   /** The stored chunk spans the text was verified against — re-checked at commit. */
   spans: ChunkSpan[];
+  /** Matter kind of each of `spans` (#605), from the classifier a full index runs. */
+  kinds: MatterKind[];
 }
 
 export interface PrepareOptions {
@@ -184,16 +183,16 @@ export async function prepareBook(deps: IndexBookDeps, bookId: number, opts: Pre
   );
   if (encoded.chunks.length === 0) throw new Error("produced no chunks");
 
-  // Chunks that are MOSTLY before the first detected chapter are front matter (TOC/praise/
-  // foreword) — search demotes them below body matches (issue #18).
-  const { fmEnd, vectors, captionVectors } = encoded;
+  // Front matter (#18) and back matter (#605) per chunk — search ranks body passages first.
+  const { kinds, vectors, captionVectors } = encoded;
 
   // keywordOnly: no vectors — chunks are stored raw + pre-stemmed (in the store) for FTS search.
   const indexed: IndexedChunk[] = encoded.chunks.map((c, i) => ({
     charStart: c.charStart,
     charEnd: c.charEnd,
     body: c.body,
-    frontMatter: isFrontMatterSpan(c, fmEnd),
+    matterKind: kinds[i] ?? "body",
+    frontMatter: kinds[i] === "front", // dual-written for one release (#605)
     ...(vectors ? { vector: vectors[i]! } : {}),
   }));
   if (captionVectors && figures.length > 0) {
@@ -215,7 +214,7 @@ export async function prepareBook(deps: IndexBookDeps, bookId: number, opts: Pre
       cached: extracted.cached,
       chars: extracted.chars,
       chunks: indexed.length,
-      frontMatterChunks: indexed.filter((c) => c.frontMatter).length,
+      frontMatterChunks: indexed.filter((c) => c.matterKind === "front").length,
       figures: figures.length,
       unplaced: extracted.unplaced,
     },
@@ -267,8 +266,8 @@ function refreshOutcome(
   const refreshed = (): RefreshedBook => ({
     kind: "refreshed",
     meta,
-    frontMatterEnd: frontMatterEnd(extracted.text, structureOf(extracted)),
     spans,
+    kinds: matterKinds(extracted.text, spans, structureOf(extracted)),
   });
   if (opts.flagsOnly) {
     if (!deps.index.isBookIndexed(libraryId, meta.bookId)) {
@@ -288,12 +287,12 @@ const TEXT_CHANGED = "text changed since indexing — needs a full re-index, not
 export function commitRefresh(deps: RefreshDeps, libraryId: string, book: RefreshedBook): void {
   // Another writer re-chunked the book between prepare and commit: the boundary no longer
   // applies to its rows. Nothing was written — report it like a changed-text book.
-  if (!deps.index.refreshBookMeta(libraryId, book.meta, { frontMatterEnd: book.frontMatterEnd, spans: book.spans })) {
+  if (!deps.index.refreshBookMeta(libraryId, book.meta, { spans: book.spans, kinds: book.kinds })) {
     throw new Error(`book re-indexed during the refresh — ${TEXT_CHANGED}`);
   }
   deps.log.info("refreshed book in place — text unchanged, no re-embed", {
     bookId: book.meta.bookId,
-    frontMatterEnd: book.frontMatterEnd,
+    frontMatterChunks: book.kinds.filter((k) => k === "front").length,
   });
 }
 

@@ -4,6 +4,7 @@
 
 import type { ChunkSpan } from "../content-match.js";
 import type { LibraryIdCollisionError } from "../../domain/library-id-collision.js";
+import type { MatterKind } from "../../domain/structure/matter-kind.js";
 
 /** A chunk ready to index: its span in the source text plus its embedding. */
 export interface IndexedChunk {
@@ -12,6 +13,8 @@ export interface IndexedChunk {
   body: string;
   /** True when the chunk lies before the first detected chapter (TOC/praise/foreword). */
   frontMatter?: boolean;
+  /** Front/body/back matter (#605); absent = `front` when `frontMatter`, else `body`. */
+  matterKind?: MatterKind;
   /** The chunk's embedding, or undefined for a keyword-only build (FTS-searchable, no vector). */
   vector?: Float32Array;
 }
@@ -62,6 +65,8 @@ export interface ChunkRef {
   charEnd: number;
   body: string;
   frontMatter: boolean;
+  /** Front/body/back matter of the chunk (#605). */
+  matterKind?: MatterKind;
 }
 
 /** A figure linked from a text span (the text-hit → figures direction). */
@@ -97,6 +102,8 @@ export interface LibraryHit {
   charEnd: number;
   /** Book char offset `snippet` starts at — set by retrieve() from the query terms (#243). */
   snippetStart?: number;
+  /** Front/body/back matter of the shown chunk (#605); absent reads as body. */
+  matterKind?: MatterKind;
 }
 
 /** A book-scope hit: one passage within the book. */
@@ -106,8 +113,10 @@ export interface BookHit {
   charEnd: number;
   body: string;
   score: number;
-  /** True for front-matter chunks (TOC/praise/foreword) — demoted below body in search. */
+  /** True for front-matter chunks (TOC/praise/foreword); kept for one release beside matterKind. */
   frontMatter: boolean;
+  /** Front/body/back matter of the passage (#605); absent reads as body. */
+  matterKind?: MatterKind;
 }
 
 /** What a prune actually removed — reported by the build tool, never a silent cleanup (#100). */
@@ -129,10 +138,11 @@ export interface IndexMeta {
   createdAt?: string;
 }
 
-/** What an in-place refresh was verified against, and the front-matter boundary to apply. */
+/** What an in-place refresh was verified against, and the matter kind of each of those spans (#605). */
 export interface RefreshCheck {
-  frontMatterEnd: number;
   spans: readonly ChunkSpan[];
+  /** One per span, in span order: the same classifier output a full index stores. */
+  kinds: readonly MatterKind[];
 }
 
 /** What replaceBook did: wrote the rows, or kept an embedded book's rows untouched. */
@@ -201,8 +211,8 @@ export interface IndexWriter {
   ): ReplaceOutcome;
   /**
    * In-place refresh of an unchanged-text book (#244/#269): title/authors/last_modified, the
-   * per-chunk/per-figure book_meta (FTS follows via the update triggers) and the front-matter
-   * flags re-derived from `frontMatterEnd` — one transaction, chunks and vectors kept. Returns
+   * per-chunk/per-figure book_meta (FTS follows via the update triggers) and each chunk's
+   * matter kind (+ the dual-written front-matter flag) from `kinds` — one transaction, chunks and vectors kept. Returns
    * false and writes NOTHING when the book's stored spans are no longer `spans` (another
    * writer re-chunked it after the caller verified the text).
    */

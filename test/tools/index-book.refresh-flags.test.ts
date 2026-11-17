@@ -8,6 +8,7 @@ import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
 import type { ExtractedText } from "../../src/calibre/extract.js";
 import type { EpubToc } from "../../src/domain/structure/epub-toc.js";
+import { isFrontMatterSpan, type MatterKind } from "../../src/domain/structure/matter-kind.js";
 import type { OutlineEntry } from "../../src/domain/structure/pdf-outline.js";
 import type { Embedder } from "../../src/semantic/embedder.js";
 import { EMBED_DIM } from "../../src/semantic/model.js";
@@ -201,12 +202,14 @@ describe("in-place refresh of front-matter flags (#269 review)", () => {
     const spans = store.bookChunkSpans(LIB, 1);
     const stale = spans.slice(1);
     const meta = { bookId: 1, title: "Zanzibar", authors: ["X"], lastModified: "2026-05-05" };
+    const kindsOf = (ss: typeof spans): MatterKind[] =>
+      ss.map((sp) => (isFrontMatterSpan(sp, PREFACE.length) ? "front" : "body"));
 
-    expect(store.refreshBookMeta(LIB, meta, { frontMatterEnd: PREFACE.length, spans: stale })).toBe(false);
+    expect(store.refreshBookMeta(LIB, meta, { spans: stale, kinds: kindsOf(stale) })).toBe(false);
     expect(title(store)).toBe("other");
     expect(flagAt(store, 100)).toBe(false);
 
-    expect(store.refreshBookMeta(LIB, meta, { frontMatterEnd: PREFACE.length, spans })).toBe(true);
+    expect(store.refreshBookMeta(LIB, meta, { spans, kinds: kindsOf(spans) })).toBe(true);
     expect(title(store)).toBe("zanzibar");
     expect(flagAt(store, 100)).toBe(true);
   });

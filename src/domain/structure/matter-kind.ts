@@ -12,6 +12,11 @@ export type MatterKind = "front" | "body" | "back_index" | "back_biblio" | "back
 /** Every kind, in a fixed order (store codes and validation read it). */
 export const MATTER_KINDS: readonly MatterKind[] = ["body", "front", "back_index", "back_biblio", "back_other"];
 
+/** A stored kind string as a MatterKind; anything unknown reads as body. */
+export function toMatterKind(raw: unknown): MatterKind {
+  return MATTER_KINDS.find((k) => k === raw) ?? "body";
+}
+
 /** Where one chunk sits, for `classifyChunk`. */
 export interface ChunkPlace {
   /** Chunk start ÷ text length, 0–1. */
