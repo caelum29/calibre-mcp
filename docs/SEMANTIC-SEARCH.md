@@ -121,10 +121,21 @@ Two refinements worth knowing about:
   at a time in arrival order; when more than two are already
   waiting, a new search skips the rerank (fused order + a "reranker busy" note) rather
   than waiting past the client's request timeout.
-- **Front-matter demotion.** In book scope, chunks from front matter (table of
-  contents, praise quotes, forewords) are keyword-dense but rarely what you want, so
-  they are demoted below body-text matches and labeled `[front matter]` — never
-  dropped.
+- **Front and back matter.** At index time every chunk is labelled front matter (before the
+  first chapter), body text, or back matter: an index page, a bibliography or a
+  copyright/advertisement page (back matter is recognised from the last 15% of the book, a
+  copyright page also from the first 10%). Index pages, copyright/ads pages and front matter
+  without prose (a table of contents, praise quotes) are *strong*: they never use one of the
+  reranker's 30 passages and come after the reranked hits. A bibliography and front matter with
+  prose (a preface) are *weak*: they are reranked like body text. In library scope a book is
+  shown through its best body passage; a book that matches only in front or back matter still
+  appears, after every book with a body match. In book scope a weak passage keeps its rerank
+  position, so a preface that answers the question can come first; strong passages follow the
+  body passages. Without a rerank (keyword mode, rerank off or unavailable), every front/back
+  matter hit follows the body hits. Nothing is dropped: such hits are labelled `[front matter]`,
+  `[back matter: index]`, `[back matter: bibliography]` or `[back matter: copyright/ads]`, and
+  the header notes how many were placed after body matches. Books indexed before this change
+  keep only their front-matter labels until they are re-indexed or backfilled.
 
 ## Figure search
 
