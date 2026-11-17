@@ -103,7 +103,7 @@ export function matrixRows(m: ChunkMatrix): number {
 
 /**
  * Library scope: one representative row per book (allowed by `allow`), books by its score desc
- * then book id, first `k`. The representative is the book's best body row; only a book without
+ * then book id, cut after `k` body-represented books (`withBodyQuota`). The representative is the book's best body row; only a book without
  * body rows falls back to its best non-body row (#605). Over body rows this equals today's full
  * topK sort + first chunk per book (#618): a strict ">" over ascending chunk ids keeps the lowest
  * chunk among equal scores. A book outside `allow` is skipped before any of its rows is scored,
@@ -114,6 +114,7 @@ export function libraryTop(m: ChunkMatrix, query: Float32Array, k: number, allow
   // Float64, not Float32: dot() returns a double, and rounding would change scores and merge near-ties.
   const best = new Float64Array(books);
   const bestChunk = new Int32Array(books);
+  const hasBody = new Uint8Array(books);
   const scored: number[] = [];
   for (let b = 0; b < books; b++) {
     if (allow !== undefined && !allow.has(m.bookIds[b]!)) continue;
@@ -133,15 +134,34 @@ export function libraryTop(m: ChunkMatrix, query: Float32Array, k: number, allow
         otherRow = row;
       }
     }
+    hasBody[b] = bodyRow >= 0 ? 1 : 0;
     best[b] = bodyRow >= 0 ? bodyTop : otherTop;
     bestChunk[b] = m.chunkIds[bodyRow >= 0 ? bodyRow : otherRow]!;
     scored.push(b);
   }
   scored.sort((x, y) => best[y]! - best[x]! || m.bookIds[x]! - m.bookIds[y]!);
   // k < 1 still yields one book, as the pre-#618 loop did (it checked the count after adding).
-  return scored
-    .slice(0, Math.max(1, k))
-    .map((b) => ({ chunkId: bestChunk[b]!, bookId: m.bookIds[b]!, score: best[b]! }));
+  return withBodyQuota(scored, (b) => hasBody[b] === 1, Math.max(1, k)).map((b) => ({
+    chunkId: bestChunk[b]!,
+    bookId: m.bookIds[b]!,
+    score: best[b]!,
+  }));
+}
+
+/**
+ * The prefix of `ranked` that holds `k` body-represented items (or all of them): fallback items
+ * ranked among those stay in, in place, so the list can exceed `k`. Search places fallback books
+ * after every body book (#605); cutting at `k` first would let them push body books out.
+ */
+export function withBodyQuota<T>(ranked: readonly T[], isBody: (t: T) => boolean, k: number): T[] {
+  const out: T[] = [];
+  let body = 0;
+  for (const t of ranked) {
+    if (body >= k) break;
+    out.push(t);
+    if (isBody(t)) body++;
+  }
+  return out;
 }
 
 /** Book scope: that book's rows through `topK` (score desc, book id, chunk id), first `k`. */

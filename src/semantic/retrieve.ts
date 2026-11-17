@@ -214,11 +214,12 @@ export async function retrieve(
         weakAfterBody: true,
       }),
       req.gone,
+      isBodyHit,
     );
     // Display only (#243): re-cut each snippet around the query terms after ranking is final.
     const hits = rr.hits.map((r) => ({ ...r, hit: withSnippet(r.hit, req.query) }));
     // Library scope places every non-body book after the body books, reranked or not (#605).
-    const placed = hits.filter((r) => tierOf(r.hit) !== "body").length;
+    const placed = hits.some((r) => isBodyHit(r.hit)) ? hits.filter((r) => !isBodyHit(r.hit)).length : 0;
     return outcome(rr, hits, confidence(hits, deps.config.semanticFloor, rr), rr.note, placedNote(placed));
   }
   if (req.scope === "book") {
@@ -231,8 +232,9 @@ export async function retrieve(
       tier: tierOf,
       weakAfterBody: false,
     });
-    const placed = rr.hits.filter((r) => tierOf(r.hit) === "strong" || (!rr.reranked && tierOf(r.hit) === "weak"));
-    return outcome(rr, rr.hits, confidence(rr.hits, deps.config.semanticFloor, rr), rr.note, placedNote(placed.length));
+    const moved = (h: BookHit) => tierOf(h) === "strong" || (!rr.reranked && tierOf(h) === "weak");
+    const placed = rr.hits.some((r) => isBodyHit(r.hit)) ? rr.hits.filter((r) => moved(r.hit)).length : 0;
+    return outcome(rr, rr.hits, confidence(rr.hits, deps.config.semanticFloor, rr), rr.note, placedNote(placed));
   }
   const rr = await dropGone(
     await applyRerank(await rankFigures(req, deps, weights, knobs), req, deps, knobs, {
@@ -260,6 +262,23 @@ function tierOf(h: { matterKind?: MatterKind; body: string }): Tier {
   const kind = h.matterKind ?? "body";
   if (kind === "body") return "body";
   return isStrongMatter(kind, h.body) ? "strong" : "weak";
+}
+
+/** True for a body chunk hit (absent kind = body). */
+function isBodyHit(h: { matterKind?: MatterKind; body: string }): boolean {
+  return tierOf(h) === "body";
+}
+
+/**
+ * The confidence rerank score (#605): the best one among the body hits, the tier shown first;
+ * among all reranked hits only when no body hit was reranked. Book scope passes no `isBody`:
+ * weak passages keep their rerank position there, so the best reranked hit is the one shown.
+ */
+function maxRerankOf<H>(hits: Array<{ hit: H; rerankScore?: number }>, isBody?: (h: H) => boolean) {
+  const scored = hits.filter((r) => r.rerankScore !== undefined);
+  const body = isBody ? scored.filter((r) => isBody(r.hit)) : scored;
+  const pick = body.length > 0 ? body : scored;
+  return pick.length > 0 ? Math.max(...pick.map((r) => r.rerankScore!)) : undefined;
 }
 
 /** The note for hits the matter rules placed after body matches; none when nothing moved. */
@@ -516,8 +535,9 @@ async function applyRerank<H>(
     weakAfterBody: boolean;
   },
 ): Promise<RerankOutcome<Ranked<H>>> {
-  // Without a rerank every non-body hit follows the body hits, fused order kept within each (#18).
-  const fused = () => bodyFirst(pool.slice(0, req.topK).map(plain), (h) => keys.tier(h) === "body");
+  // Without a rerank every non-body hit follows the body hits, fused order kept within each (#18);
+  // partition before the cut, so a fallback never takes a body hit's place in topK (#605).
+  const fused = () => bodyFirst(pool.map(plain), (h) => keys.tier(h) === "body").slice(0, req.topK);
   // Absent reranker = not wired in this deployment/test — silently keep the fused order.
   if (req.mode === "keyword" || pool.length === 0 || !deps.reranker) {
     return { hits: fused(), reranked: false };
@@ -526,10 +546,11 @@ async function applyRerank<H>(
   if (!deps.config.rerankEnabled) {
     return { hits: fused(), reranked: false, note: RERANK_DISABLED_NOTE };
   }
-  // Strong kinds take no pair from the cap (#605); the scored items are a prefix of the rest.
-  const rest = pool.filter((r) => keys.tier(r.hit) !== "strong");
-  const strong = pool.filter((r) => keys.tier(r.hit) === "strong").map(plain);
-  if (rest.length === 0) return { hits: fused(), reranked: false };
+  // Strong kinds take no pair from the cap (#605); the scored items are a prefix of the rest. A
+  // pool of only strong items is reranked as usual, so lowConfidence still sees a weak match.
+  const notStrong = pool.filter((r) => keys.tier(r.hit) !== "strong");
+  const rest = notStrong.length > 0 ? notStrong : pool;
+  const strong = notStrong.length > 0 ? pool.filter((r) => keys.tier(r.hit) === "strong").map(plain) : [];
   try {
     const head = admit(rest, cut);
     const passages = head.flatMap((r) => candidatesOf(r).map(keys.body));
@@ -567,7 +588,8 @@ async function applyRerank<H>(
       ? bodyFirst([...scored, ...tail], (h) => keys.tier(h) === "body")
       : [...scored, ...tail];
     const hits = [...ordered, ...strong].slice(0, req.topK);
-    return { hits, reranked: true, maxRerank: scored[0]?.rerankScore };
+    const isBody = keys.weakAfterBody ? (h: H) => keys.tier(h) === "body" : undefined;
+    return { hits, reranked: true, maxRerank: maxRerankOf(hits, isBody) };
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
     deps.log.warn("rerank skipped", { reason });
@@ -607,13 +629,13 @@ function plain<H>({ keywordAlt: _alt, ...r }: Pooled<H>): Ranked<H> {
 async function dropGone<T extends { hit: { bookId: number }; rerankScore?: number }>(
   rr: RerankOutcome<T>,
   gone: GoneBooks | undefined,
+  isBody?: (h: T["hit"]) => boolean,
 ): Promise<RerankOutcome<T>> {
   if (!gone || rr.hits.length === 0) return rr;
   const goneIds = await gone(rr.hits.map((r) => r.hit.bookId));
   if (goneIds.size === 0) return rr;
   const hits = rr.hits.filter((r) => !goneIds.has(r.hit.bookId));
-  const scores = hits.map((r) => r.rerankScore).filter((s): s is number => s !== undefined);
-  const maxRerank = rr.reranked && scores.length ? Math.max(...scores) : undefined;
+  const maxRerank = rr.reranked ? maxRerankOf(hits, isBody) : undefined;
   return {
     hits,
     reranked: rr.reranked,

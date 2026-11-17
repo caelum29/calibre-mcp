@@ -16,6 +16,7 @@ import {
   MatrixWriter,
   matrixRows,
   mergeMatrix,
+  withBodyQuota,
 } from "./chunk-matrix.js";
 import type { IndexConnections } from "./schema.js";
 import {
@@ -156,8 +157,9 @@ export class SqliteChunkIndex implements ChunkIndex {
         Number(x.book_id) - Number(y.book_id) ||
         Number(x.chunk_id) - Number(y.chunk_id),
     );
-    // k < 1 still yields one book, as the first-row walk did (it checked the count after adding)
-    return reps.slice(0, Math.max(1, k)).map((r) => {
+    // k body books, fallbacks ranked among them kept (#605); k < 1 still yields one book, as the
+    // first-row walk did (it checked the count after adding)
+    return withBodyQuota(reps, (r) => body.has(Number(r.book_id)), Math.max(1, k)).map((r) => {
       const bookId = Number(r.book_id);
       const book = db.prepare("SELECT title, authors FROM books WHERE book_id = ?").get(bookId) as Row;
       const text = String(r.body ?? "");
