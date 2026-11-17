@@ -1,0 +1,29 @@
+src/semantic/store/shared.ts
+  s_ad4914405c6153::t_aed8738be02bfe 34-35,37,46-56,88-114,122-123,132-135,139-141,149-155,161-165
+src/semantic/vector.ts
+  s_ad4914405c6153::t_7cdb038d9e66a5 49-59
+src/semantic/store/index.ts
+  s_ad4914405c6153::t_28aa52753b36db 7-8,202-203
+src/semantic/store/chunks.ts
+  s_ad4914405c6153::t_28aa52753b36db 1-2,9-10,13-14,18,24-29,31-34,40,55,57,73,78,199-200,202-215,218,222,227-231,233-258
+src/semantic/store/chunk-matrix.ts
+  s_ad4914405c6153::t_065b4a5ce42316 1-117,121-141,144,146-156,158-161
+  s_ad4914405c6153::t_ed99facd54e876 142-143,145,157
+  s_ad4914405c6153::t_2c43e44660d58a 118-120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a71198c5863f87d00bc606e0e8504c5c35a9ec71",
+  "prompts": {},
+  "sessions": {
+    "s_ad4914405c6153": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6aad58dc-30b5-4f8a-a5e9-4eeaf352f814",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
