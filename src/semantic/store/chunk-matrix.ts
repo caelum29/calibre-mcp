@@ -135,8 +135,11 @@ export function bookTop(m: ChunkMatrix, bookId: number, query: Float32Array, k: 
  * The refreshed matrix: `old` without every `stale` book, plus every book of `fresh` (re-read from
  * SQLite; a stale book missing from it was deleted or lost its vectors). Unchanged books' rows are
  * typed-array copies, so the result equals a cold pack of the same rows without decoding them.
+ * When nothing changes, `old` itself is returned.
  */
 export function mergeMatrix(old: ChunkMatrix, stale: ReadonlySet<number>, fresh: ChunkMatrix): ChunkMatrix {
+  // A neighbour's checkpoint refreshes with nothing to change: keep the matrix, copy nothing.
+  if (fresh.bookIds.length === 0 && ![...stale].some((id) => old.bookIndex.has(id))) return old;
   const counts = new Map<number, number>();
   const rowsOf = (m: ChunkMatrix, b: number) => m.bookStart[b + 1]! - m.bookStart[b]!;
   // A fresh book always wins over its old rows, even if the caller forgot to mark it stale.
