@@ -372,16 +372,20 @@ async function libraryScope(
   degradeNote?: string,
   scope: FilterCtx = UNSCOPED,
 ) {
-  const rr = await retrieve(deps, {
-    scope: "library",
-    libraryId,
-    query: args.query,
-    mode: args.mode,
-    topK: args.topK,
-    ...(scope.allow ? { allow: scope.allow } : {}),
-    // books removed or merged in the GUI since the last pruning build drop out here (#579)
-    gone: (ids) => findGoneBookIds(deps, libraryId, ids),
-  });
+  const rr = await retrieve(
+    deps,
+    {
+      scope: "library",
+      libraryId,
+      query: args.query,
+      mode: args.mode,
+      topK: args.topK,
+      ...(scope.allow ? { allow: scope.allow } : {}),
+      // books removed or merged in the GUI since the last pruning build drop out here (#579)
+      gone: (ids) => findGoneBookIds(deps, libraryId, ids),
+    },
+    deps.retrievalOptions,
+  );
   const ranked = rr.hits;
   const note = joinNotes(degradeNote, ...rr.notes);
   if (ranked.length === 0) {
@@ -463,14 +467,18 @@ async function bookScope(
   degradeNote?: string,
 ) {
   // retrieve() also applies the front-matter demotion (#18) and reports it in notes.
-  const rr = await retrieve(deps, {
-    scope: "book",
-    libraryId,
-    bookId,
-    query: args.query,
-    mode: args.mode,
-    topK: args.topK,
-  });
+  const rr = await retrieve(
+    deps,
+    {
+      scope: "book",
+      libraryId,
+      bookId,
+      query: args.query,
+      mode: args.mode,
+      topK: args.topK,
+    },
+    deps.retrievalOptions,
+  );
   const ranked = rr.hits;
   const note = joinNotes(degradeNote, ...rr.notes);
   if (ranked.length === 0) {
@@ -568,17 +576,21 @@ async function figuresTarget(
     );
   }
 
-  const rr = await retrieve(deps, {
-    scope: "figures",
-    libraryId,
-    query: args.query,
-    mode: args.mode,
-    topK: args.topK,
-    ...(bookId !== undefined ? { bookId } : {}),
-    ...(scope.allow ? { allow: scope.allow } : {}),
-    // scope=book was checked before ranking; library-wide hits drop gone books here (#579)
-    ...(bookId === undefined ? { gone: (ids: readonly number[]) => findGoneBookIds(deps, libraryId, ids) } : {}),
-  });
+  const rr = await retrieve(
+    deps,
+    {
+      scope: "figures",
+      libraryId,
+      query: args.query,
+      mode: args.mode,
+      topK: args.topK,
+      ...(bookId !== undefined ? { bookId } : {}),
+      ...(scope.allow ? { allow: scope.allow } : {}),
+      // scope=book was checked before ranking; library-wide hits drop gone books here (#579)
+      ...(bookId === undefined ? { gone: (ids: readonly number[]) => findGoneBookIds(deps, libraryId, ids) } : {}),
+    },
+    deps.retrievalOptions,
+  );
   const ranked = rr.hits;
   const note = joinNotes(degradeNote, ...rr.notes);
   if (ranked.length === 0) {

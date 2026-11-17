@@ -341,6 +341,15 @@ export function readBookChunkCounts(file: string): Map<number, number> {
 }
 
 /**
+ * A read-only handle on an index file for dev tooling (the keyword planner's measurement script,
+ * #651): never creates, migrates or writes the file, so it is safe on a snapshot or next to a
+ * running server. The caller closes it.
+ */
+export function openReadOnlyIndex(file: string): DatabaseSync {
+  return new DatabaseSync(file, { readOnly: true });
+}
+
+/**
  * The owner recorded in a writable index db, recording `libraryId` first when there is none (#414).
  * Atomic across processes: a second server claiming the same file at once is ignored by the
  * insert and reads back whoever won, instead of hitting the key's UNIQUE constraint.

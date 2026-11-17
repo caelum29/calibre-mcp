@@ -11,6 +11,7 @@ import type { FigureSource } from "../calibre/figure-inventory.js";
 import type { FtsPort } from "../calibre/fts.js";
 import type { Embedder } from "../semantic/embedder.js";
 import type { Reranker } from "../semantic/reranker.js";
+import type { RetrievalOptions } from "../semantic/retrieve.js";
 import type { IndexBuilds } from "../semantic/index-builds.js";
 import type { IndexStore } from "../semantic/store/index.js";
 import type { Provider } from "../enrich/provider.js";
@@ -53,6 +54,11 @@ export interface ToolDeps {
   fts?: FtsPort;
   /** Libraries currently flagged busy after a timeout (calibre_ping reports them). */
   libraryBusy?: BusyStatusPort;
+  /**
+   * Ranking knobs calibre_semantic_search hands to retrieve() — set only by in-process eval
+   * scripts through BuildServerOptions.retrievalOptions (#644 rerank A/B); absent in production.
+   */
+  retrievalOptions?: RetrievalOptions;
   /** Pause between transient-write retries (#233). Defaulted to setTimeout; injectable for tests. */
   sleep?: (ms: number) => Promise<void>;
   log: LogSink;
