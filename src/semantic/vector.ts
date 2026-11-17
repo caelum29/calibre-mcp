@@ -46,6 +46,17 @@ export function dot(a: Float32Array, b: Float32Array): number {
   return s;
 }
 
+/**
+ * `dot(query, row)` for the row starting at `offset` of a flat matrix, without a subarray per row
+ * (#618). Same single accumulator in the same element order as `dot`, so the double it returns is
+ * bit-identical: a split accumulator would change the last bits and could flip a tie.
+ */
+export function dotAt(query: Float32Array, matrix: Float32Array, offset: number): number {
+  let s = 0;
+  for (let i = 0; i < query.length; i++) s += query[i]! * matrix[offset + i]!;
+  return s;
+}
+
 /** A candidate vector plus the ids needed to resolve it back to a chunk/book. */
 export interface Candidate {
   chunkId: number;

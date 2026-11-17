@@ -1,37 +1,43 @@
-// Chunk retrieval (#272): the vector half (brute-force cosine over a per-library in-memory
-// candidate cache, decoded once, refreshed per changed book on any write) and the keyword half
+// Chunk retrieval (#272): the vector half (brute-force cosine over a per-library packed vector
+// matrix, decoded once, refreshed per changed book on any write — #370, #618) and the keyword half
 // (weighted bm25 over chunk_fts), plus figure → context lookup. Snippet windows: ../snippet.ts.
 
 import type { DatabaseSync } from "node:sqlite";
 import type { LogSink } from "../../logging.js";
 import { EMBED_DIM } from "../model.js";
 import { SNIPPET_CHARS } from "../snippet.js";
-import { type Candidate, decodeVector, topK } from "../vector.js";
+import { decodeVector } from "../vector.js";
+import { bookTop, type ChunkMatrix, libraryTop, MatrixWriter, matrixRows, mergeMatrix } from "./chunk-matrix.js";
 import type { IndexConnections } from "./schema.js";
 import {
-  type CandidateCache,
+  type CacheVersion,
+  cacheFreshness,
   ftsMatch,
   markDirty,
   parseAuthors,
-  refreshedCache,
-  restrict,
+  rollbackQuietly,
   type Row,
   WEIGHTED_BM25,
 } from "./shared.js";
 import type { BookHit, ChunkIndex, ChunkRef, LibraryHit } from "./types.js";
 
-/** ChunkIndex over the shared connections with its own per-library candidate cache. */
+/** One library's packed chunk vectors plus the version it was read under. */
+interface ChunkCache extends CacheVersion {
+  matrix: ChunkMatrix;
+}
+
+/** ChunkIndex over the shared connections with its own per-library vector matrix. */
 export class SqliteChunkIndex implements ChunkIndex {
-  // Per-library candidate cache; an own write or another connection's commit (data_version)
-  // reloads only the books whose `books` row changed (#370).
-  // DEFERRED: int8-quantize this in-memory copy (~99.8% recall at 4x smaller) once full-library indexing lands.
-  #caches = new Map<string, CandidateCache>();
+  // Per-library packed matrix; an own write or another connection's commit (data_version)
+  // reloads only the books whose `books` row changed (#370), copying the rest (#618).
+  // DEFERRED: quantising this in-memory copy is #653.
+  #caches = new Map<string, ChunkCache>();
 
   constructor(
     private readonly conn: IndexConnections,
     private readonly log: LogSink,
     /** Reads + decodes a library's embedding BLOBs; injectable so the store keeps its spy seam. */
-    private readonly load: (libraryId: string) => Candidate[] = (l) => loadChunkCandidates(conn.db(l)),
+    private readonly load: (libraryId: string) => ChunkMatrix = (l) => loadChunkMatrix(conn.db(l)),
   ) {}
 
   /** Mark books this connection just wrote; the next read reloads exactly them. */
@@ -46,18 +52,9 @@ export class SqliteChunkIndex implements ChunkIndex {
 
   searchLibrary(libraryId: string, query: Float32Array, k: number, allow?: ReadonlySet<number>): LibraryHit[] {
     const db = this.conn.db(libraryId);
-    const cands = restrict(this.#candidates(libraryId), allow);
-    const hits = topK(query, cands, Number.MAX_SAFE_INTEGER);
-
-    // Keep the best chunk per book (hits are already sorted desc), up to k books.
-    const bestPerBook = new Map<number, { chunkId: number; score: number }>();
-    for (const h of hits) {
-      if (!bestPerBook.has(h.bookId)) bestPerBook.set(h.bookId, { chunkId: h.chunkId, score: h.score });
-      if (bestPerBook.size >= k) break;
-    }
-
+    // One pass keeping the best chunk per book, books ranked by it, up to k (#618).
     const out: LibraryHit[] = [];
-    for (const [bookId, best] of bestPerBook) {
+    for (const { bookId, ...best } of libraryTop(this.#matrix(libraryId), query, k, allow)) {
       const book = db.prepare("SELECT title, authors FROM books WHERE book_id = ?").get(bookId) as Row;
       const chunk = db.prepare("SELECT char_start, char_end, body FROM chunks WHERE id = ?").get(best.chunkId) as Row;
       const body = String(chunk?.body ?? "");
@@ -73,12 +70,12 @@ export class SqliteChunkIndex implements ChunkIndex {
         charEnd: Number(chunk?.char_end ?? 0),
       });
     }
-    return out; // already ordered: Map preserved best-first insertion
+    return out; // already ordered: libraryTop ranks books best-first
   }
 
   searchBook(libraryId: string, bookId: number, query: Float32Array, k: number): BookHit[] {
     const db = this.conn.db(libraryId);
-    const hits = topK(query, this.#candidates(libraryId, bookId), k);
+    const hits = bookTop(this.#matrix(libraryId), bookId, query, k);
     return hits.map((h) => {
       const chunk = db
         .prepare("SELECT char_start, char_end, body, front_matter FROM chunks WHERE id = ?")
@@ -199,43 +196,64 @@ export class SqliteChunkIndex implements ChunkIndex {
     };
   }
 
-  /** Candidate vectors — all of a library, or one book (the doc's book-scope subarray). */
-  #candidates(libraryId: string, bookId?: number): Candidate[] {
+  /** The library's packed vectors, current as of this call: cold load, hit, or per-book refresh. */
+  #matrix(libraryId: string): ChunkMatrix {
     const db = this.conn.db(libraryId);
-    const { cache, built } = refreshedCache(db, this.#caches, libraryId, {
-      all: () => this.load(libraryId),
-      books: (ids) => loadChunkCandidates(db, ids),
-    });
-    if (built) {
-      // Memory honesty: vectors dominate (EMBED_DIM float32 each); ids/objects are noise.
-      const mib = (cache.all.length * EMBED_DIM * 4) / (1024 * 1024);
+    const old = this.#caches.get(libraryId);
+    const fresh = cacheFreshness(db, old);
+    if (fresh.kind === "hit") return old!.matrix;
+    // Refresh copies unchanged books' rows from the old matrix and decodes only the stale ones;
+    // for that moment both matrices are resident.
+    const matrix =
+      fresh.kind === "cold"
+        ? this.load(libraryId)
+        : mergeMatrix(old!.matrix, fresh.stale, loadChunkMatrix(db, fresh.reload));
+    this.#caches.set(libraryId, { matrix, dataVersion: fresh.dataVersion, stamps: fresh.stamps, dirty: new Set() });
+    if (fresh.kind === "cold") {
+      // Memory honesty: vectors dominate (EMBED_DIM float32 each); ids and the book table are noise.
+      const rows = matrixRows(matrix);
+      const mib = (rows * EMBED_DIM * 4) / (1024 * 1024);
       this.log.info("semantic candidate cache built", {
         library: libraryId,
-        chunks: cache.all.length,
+        chunks: rows,
         approxMiB: Number(mib.toFixed(1)),
       });
     }
-    return bookId === undefined ? cache.all : (cache.byBook.get(bookId) ?? []);
+    return matrix;
   }
 }
 
 /**
- * Read + decode the embedding BLOBs of a library (or of `bookIds` only) from SQLite — the
- * expensive path the candidate cache exists to avoid. `decodeVector` copies each BLOB into a
- * fresh Float32Array, so cached vectors never alias sqlite's pooled buffers.
+ * Read + decode the embedding BLOBs of a library (or of `bookIds` only) from SQLite into a packed
+ * matrix — the expensive path the cache exists to avoid. Per-book counts come first, so the
+ * matrix is allocated once at its exact size; then one scan in chunk-id order (the table's own
+ * order, no sort) places each row in its book's range. Both reads share one read transaction, so
+ * another process's commit can't slip in between. `decodeVector` runs once per BLOB.
  */
-export function loadChunkCandidates(db: DatabaseSync, bookIds?: readonly number[]): Candidate[] {
-  if (bookIds?.length === 0) return [];
-  const rows = (
-    bookIds === undefined
-      ? db.prepare("SELECT chunk_id, book_id, vector FROM embeddings").all()
-      : db
-          .prepare("SELECT chunk_id, book_id, vector FROM embeddings WHERE book_id IN (SELECT value FROM json_each(?))")
-          .all(JSON.stringify(bookIds))
-  ) as Row[];
-  return rows.map((r) => ({
-    chunkId: Number(r.chunk_id),
-    bookId: Number(r.book_id),
-    vector: decodeVector(r.vector as Uint8Array),
-  }));
+export function loadChunkMatrix(db: DatabaseSync, bookIds?: readonly number[]): ChunkMatrix {
+  const filter = bookIds === undefined ? "" : "WHERE book_id IN (SELECT value FROM json_each(?))";
+  const params = bookIds === undefined ? [] : [JSON.stringify(bookIds)];
+  if (bookIds?.length === 0) return new MatrixWriter(new Map()).finish();
+  const own = !db.isTransaction; // a caller's transaction already pins the snapshot
+  if (own) db.exec("BEGIN");
+  try {
+    const counts = new Map<number, number>();
+    for (const r of db
+      .prepare(`SELECT book_id, COUNT(*) AS n FROM embeddings ${filter} GROUP BY book_id`)
+      .all(...params) as Row[]) {
+      counts.set(Number(r.book_id), Number(r.n));
+    }
+    const w = new MatrixWriter(counts);
+    for (const r of db
+      .prepare(`SELECT chunk_id, book_id, vector FROM embeddings ${filter} ORDER BY chunk_id`)
+      .iterate(...params) as Iterable<Row>) {
+      w.place(Number(r.book_id), Number(r.chunk_id), decodeVector(r.vector as Uint8Array));
+    }
+    const m = w.finish();
+    if (own) db.exec("COMMIT");
+    return m;
+  } catch (err) {
+    if (own) rollbackQuietly(db);
+    throw err;
+  }
 }

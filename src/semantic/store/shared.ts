@@ -31,19 +31,27 @@ export function restrict(cands: Candidate[], allow?: ReadonlySet<number>): Candi
 }
 
 /**
- * Decoded candidate vectors for one library, held in memory so vector queries don't
- * re-read/decode every embeddings BLOB from SQLite (seconds of I/O at full-library scale).
- * `byBook` holds references into the same Candidate objects as `all` — an index, not a copy.
+ * What any per-library vector cache records to decide its own freshness (#337, #370): the chunk
+ * matrix (chunk-matrix.ts) and the figure candidate cache share one refresh decision.
  */
-export interface CandidateCache {
-  all: Candidate[];
-  byBook: Map<number, Candidate[]>;
+export interface CacheVersion {
   /** `PRAGMA data_version` when the cache was read: another connection's commit changes it (#337). */
   dataVersion: number;
   /** Per-book stamp of the `books` row the vectors were read under (#370): diffed to reload only changed books. */
   stamps: Map<number, string>;
   /** Books this connection wrote since the read — its own commits never move data_version. */
   dirty: Set<number>;
+}
+
+/**
+ * Decoded candidate vectors for one library, held in memory so vector queries don't
+ * re-read/decode every embeddings BLOB from SQLite (seconds of I/O at full-library scale).
+ * `byBook` holds references into the same Candidate objects as `all` — an index, not a copy.
+ * The figure cache keeps this shape; chunks moved to the packed matrix (#618).
+ */
+export interface CandidateCache extends CacheVersion {
+  all: Candidate[];
+  byBook: Map<number, Candidate[]>;
 }
 
 /** Group decoded candidates by book — `byBook` references the same objects as `all`. */
@@ -77,6 +85,33 @@ export function bookStamps(db: DatabaseSync): Map<number, string> {
   return new Map(rows.map((r) => [Number(r.book_id), `${r.indexed_at}|${r.chunk_count}|${r.embedded_chunks}`]));
 }
 
+/**
+ * The refresh decision for a cached library: `hit` when nothing committed since the read (and
+ * no own write); `cold` with no cache yet; otherwise `stale` with the books to drop — `stamps`
+ * changed, own-written, or gone — and, of those, the ones still present to re-read. A
+ * neighbour's close() checkpoint moves data_version but no stamp, so it costs one stamp read
+ * and an empty `stale`, never a re-decode (#370).
+ */
+export type Freshness =
+  | { kind: "hit" }
+  | { kind: "cold"; dataVersion: number; stamps: Map<number, string> }
+  | { kind: "stale"; dataVersion: number; stamps: Map<number, string>; stale: Set<number>; reload: number[] };
+
+/** Decide how the cache `old` must refresh on `db` (see `Freshness`). */
+export function cacheFreshness(db: DatabaseSync, old: CacheVersion | undefined): Freshness {
+  // Stamp BEFORE reading vectors: a commit landing in between only costs one needless reload,
+  // whereas stamping after could pin pre-commit vectors to the post-commit version.
+  const version = dataVersion(db);
+  if (old && old.dataVersion === version && old.dirty.size === 0) return { kind: "hit" };
+  const stamps = bookStamps(db);
+  if (!old) return { kind: "cold", dataVersion: version, stamps };
+  const stale = new Set(old.dirty);
+  for (const [id, stamp] of stamps) if (old.stamps.get(id) !== stamp) stale.add(id);
+  for (const id of old.stamps.keys()) if (!stamps.has(id)) stale.add(id);
+  const reload = [...stale].filter((id) => stamps.has(id));
+  return { kind: "stale", dataVersion: version, stamps, stale, reload };
+}
+
 /** Loaders for one cache: the whole library (cold) and a set of books (refresh). */
 export interface CandidateLoaders {
   all: () => Candidate[];
@@ -84,10 +119,8 @@ export interface CandidateLoaders {
 }
 
 /**
- * The library's cache, current as of this call: hit when nothing committed since the read;
- * otherwise only books whose `books` stamp changed (or that this connection wrote) are re-read,
- * deleted books dropped — a neighbour's close() checkpoint moves data_version but no stamp, so
- * it costs one stamp read, not a re-decode (#370). `built` is set on a cold (full) load.
+ * The figure cache of a library, current as of this call (decision: `cacheFreshness`): only
+ * stale books are re-read, deleted books dropped. `built` is set on a cold (full) load.
  */
 export function refreshedCache(
   db: DatabaseSync,
@@ -95,23 +128,17 @@ export function refreshedCache(
   libraryId: string,
   load: CandidateLoaders,
 ): { cache: CandidateCache; built: boolean } {
-  // Stamp BEFORE reading vectors: a commit landing in between only costs one needless reload,
-  // whereas stamping after could pin pre-commit vectors to the post-commit version.
-  const version = dataVersion(db);
   const old = caches.get(libraryId);
-  if (old && old.dataVersion === version && old.dirty.size === 0) return { cache: old, built: false };
-  const stamps = bookStamps(db);
-  if (!old) {
-    const cache = cacheOf(load.all(), version, stamps);
+  const fresh = cacheFreshness(db, old);
+  if (fresh.kind === "hit") return { cache: old!, built: false };
+  if (fresh.kind === "cold") {
+    const cache = cacheOf(load.all(), fresh.dataVersion, fresh.stamps);
     caches.set(libraryId, cache);
     return { cache, built: true };
   }
-  const byBook = new Map(old.byBook);
-  const stale = new Set(old.dirty);
-  for (const [id, stamp] of stamps) if (old.stamps.get(id) !== stamp) stale.add(id);
-  for (const id of old.stamps.keys()) if (!stamps.has(id)) stale.add(id);
-  for (const id of stale) byBook.delete(id);
-  for (const c of load.books([...stale].filter((id) => stamps.has(id)))) {
+  const byBook = new Map(old!.byBook);
+  for (const id of fresh.stale) byBook.delete(id);
+  for (const c of load.books(fresh.reload)) {
     const list = byBook.get(c.bookId);
     if (list) list.push(c);
     else byBook.set(c.bookId, [c]);
@@ -119,13 +146,23 @@ export function refreshedCache(
   // Rowid order, as a cold load scans it: topK's tie-break is total since #392, so this no longer
   // decides any ranking; it keeps a refreshed cache identical to a fresh one (cheap, predictable).
   const all = [...byBook.values()].flat().sort((x, y) => x.chunkId - y.chunkId);
-  const cache: CandidateCache = { all, byBook, dataVersion: version, stamps, dirty: new Set() };
+  const cache: CandidateCache = {
+    all,
+    byBook,
+    dataVersion: fresh.dataVersion,
+    stamps: fresh.stamps,
+    dirty: new Set(),
+  };
   caches.set(libraryId, cache);
   return { cache, built: false };
 }
 
 /** Mark books this connection wrote, so the next read reloads exactly them (own commits leave data_version alone). */
-export function markDirty(caches: Map<string, CandidateCache>, libraryId: string, bookIds: readonly number[]): void {
+export function markDirty<C extends CacheVersion>(
+  caches: Map<string, C>,
+  libraryId: string,
+  bookIds: readonly number[],
+): void {
   const cache = caches.get(libraryId);
   if (cache) for (const id of bookIds) cache.dirty.add(id);
 }
