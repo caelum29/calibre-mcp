@@ -28,6 +28,11 @@
     { "bookId": 124, "file": "124-content-security-policy.txt", "title": "Content Security Policy: Restricting Script Sources", "authors": ["Eval Fixture"], "language": "en" },
     { "bookId": 125, "file": "125-sourdough-baking.txt", "title": "B07XQ4K2LM.pdf", "authors": ["Unknown"], "language": "en", "realTitle": "Sourdough at Home: Starter, Levain and the Bake" },
     { "bookId": 126, "file": "126-espresso-brewing.txt", "title": "main.dvi", "authors": ["Unknown"], "language": "en", "realTitle": "Espresso at Home: Dialing In, Puck Prep, Milk" },
-    { "bookId": 127, "file": "127-ru-amateur-telescope.txt", "title": "614289377", "authors": ["Unknown"], "language": "ru", "realTitle": "Любительский телескоп: выбор и первые наблюдения" }
+    { "bookId": 127, "file": "127-ru-amateur-telescope.txt", "title": "614289377", "authors": ["Unknown"], "language": "ru", "realTitle": "Любительский телескоп: выбор и первые наблюдения" },
+    { "bookId": 128, "file": "128-garden-birds-index.txt", "title": "A Field Guide to Garden Birds", "authors": ["Eval Fixture"], "language": "en" },
+    { "bookId": 129, "file": "129-cartography-references.txt", "title": "Maps Before Satellites: A Short History of Cartography", "authors": ["Eval Fixture"], "language": "en" },
+    { "bookId": 130, "file": "130-fermenting-ads.txt", "title": "Fermenting at Home", "authors": ["Eval Fixture"], "language": "en" },
+    { "bookId": 131, "file": "131-field-statistics.txt", "title": "Field Statistics for Ecologists", "authors": ["Eval Fixture"], "language": "en" },
+    { "bookId": 132, "file": "132-ru-houseplants-index.txt", "title": "Комнатные растения: уход и размножение", "authors": ["Eval Fixture"], "language": "ru" }
   ]
 }

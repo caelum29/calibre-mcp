@@ -42,6 +42,9 @@ export type QueryKind =
   // Definitional query whose terms are keyword-dense in the fixture's TOC/praise/foreword —
   // relevant spans are body definitions only, so front-matter hits sink the rank metrics.
   | "front-matter-trap"
+  // #605: a query whose words are dense in the book's back matter (index, bibliography, ads) while
+  // the relevant span is body text; no front/back-matter passage may rank above it
+  | "back-matter-trap"
   | "negative"
   // Phase B figure kinds (#85/#86): caption semantic search (target=figures) + its negatives.
   | "figure-caption"
@@ -304,6 +307,11 @@ export interface PerQueryRow {
   /** Book scope, set when spanHit is: does that passage's snippet window show the marker? */
   snippetHasMarker?: boolean;
   /**
+   * back-matter-trap rows (#605): front/back-matter passages ranked above the first relevant one;
+   * absent when no relevant passage is in the top k.
+   */
+  nonBodyAbove?: number;
+  /**
    * Wall-clock ms of the whole per-query step (retrieve() + scoring/localisation), first-call
    * model warm-up included — only with HarnessOptions.timing (non-deterministic).
    */
@@ -444,6 +452,8 @@ export interface QueryOutcome {
   top2Rerank?: number;
   spanHit?: number | null;
   snippetHasMarker?: boolean;
+  /** Book scope: front/back-matter hits above the first relevant one (absent: none relevant). */
+  nonBodyAbove?: number;
 }
 
 /** The rerank knobs of RetrievalOptions (#644 A/B arms). */
@@ -508,16 +518,17 @@ async function runQuery(q: GoldenQuery, mode: Mode, ctx: QueryCtx): Promise<Quer
   const spans = r.hits.map((h) => ({ start: h.hit.charStart, end: h.hit.charEnd }));
   const labels = q.relevant.filter((x): x is SpanLabel => typeof x !== "number");
   const loc = q.kind === "negative" ? {} : localise(r.hits, labels, q.query);
+  const matches = spans.map((s) =>
+    labels
+      .filter((l) => overlap(s, l) >= SPAN_OVERLAP_MIN * (l.charEnd - l.charStart))
+      .map((l) => `span-${l.bookId}@${l.charStart}-${l.charEnd}`),
+  );
+  const first = matches.findIndex((m) => m.length > 0);
+  const nonBody = r.hits.slice(0, first).filter((h) => (h.hit.matterKind ?? "body") !== "body").length;
   return {
     ...loc,
-    rel: {
-      matches: spans.map((s) =>
-        labels
-          .filter((l) => overlap(s, l) >= SPAN_OVERLAP_MIN * (l.charEnd - l.charStart))
-          .map((l) => `span-${l.bookId}@${l.charStart}-${l.charEnd}`),
-      ),
-      relevantCount: labels.length,
-    },
+    ...(first >= 0 ? { nonBodyAbove: nonBody } : {}),
+    rel: { matches, relevantCount: labels.length },
     retrieved: spans.map((s) => `@${s.start}-${s.end}`),
     ...display(r),
   };
@@ -630,6 +641,8 @@ export function toRow(q: GoldenQuery, mode: Mode, out: QueryOutcome): PerQueryRo
   if (out.top2Rerank !== undefined) row.top2Rerank = Number(out.top2Rerank.toPrecision(4));
   if (out.spanHit !== undefined) row.spanHit = out.spanHit;
   if (out.snippetHasMarker !== undefined) row.snippetHasMarker = out.snippetHasMarker;
+  // only the kind that gates on it carries the field, so every other row's JSON is unchanged
+  if (q.kind === "back-matter-trap" && out.nonBodyAbove !== undefined) row.nonBodyAbove = out.nonBodyAbove;
   if (q.confusers) row.confusers = q.confusers;
   if (isNegativeKind(q.kind)) {
     row.flagged = out.count === 0 || out.lowConfidence === true;

@@ -3,6 +3,7 @@
 // harness calls it directly.
 
 import type { Config } from "../config.js";
+import { isStrongMatter, type MatterKind } from "../domain/structure/matter-kind.js";
 import type { LogSink } from "../logging.js";
 import type { Embedder } from "./embedder.js";
 import { RRF_K, rrfFuse } from "./fusion.js";
@@ -25,7 +26,6 @@ const RRF_WEIGHTS: readonly number[] = [VECTOR_RRF_WEIGHT, KEYWORD_RRF_WEIGHT];
 // show the cross-encoder its vector chunk. Its keyword chunk joins as a second candidate, but only
 // for the keyword half's top books: a second candidate for every book would, under the 30-pair
 // cap, halve the books the reranker sees (Artem, grilling 2026-11-16).
-const CANDIDATES_PER_BOOK = 2;
 const KEYWORD_CANDIDATE_BOOKS = 5;
 
 // Figures cosine floor (D-018/#83): the chunk-calibrated config.semanticFloor (0.78) does NOT
@@ -169,7 +169,7 @@ export interface RankedHits<H> {
   /** Max cosine across the hits (absent when no hit has one). */
   maxScore?: number;
   lowConfidence: boolean;
-  /** Advisory notes in display order (rerank degrade, front-matter demotion, figures floor). */
+  /** Advisory notes in display order (rerank degrade, front/back-matter placement, figures floor). */
   notes: string[];
 }
 
@@ -210,41 +210,80 @@ export async function retrieve(
       await applyRerank(await rankBooks(req, deps, weights, knobs), req, deps, knobs, {
         body: (h) => h.body,
         tie: (h) => [h.bookId, h.bookId],
+        tier: tierOf,
+        weakAfterBody: true,
       }),
       req.gone,
+      isBodyHit,
     );
     // Display only (#243): re-cut each snippet around the query terms after ranking is final.
     const hits = rr.hits.map((r) => ({ ...r, hit: withSnippet(r.hit, req.query) }));
-    return outcome(rr, hits, confidence(hits, deps.config.semanticFloor, rr), rr.note);
+    // Library scope places every non-body book after the body books, reranked or not (#605).
+    const placed = hits.some((r) => isBodyHit(r.hit)) ? hits.filter((r) => !isBodyHit(r.hit)).length : 0;
+    return outcome(rr, hits, confidence(hits, deps.config.semanticFloor, rr), rr.note, placedNote(placed));
   }
   if (req.scope === "book") {
+    // Front/back matter (#18, #605): contents, index and copyright pages are keyword-dense but
+    // semantically empty, so they stay out of the rerank and follow the body passages; a preface
+    // is real content and keeps its rerank position. Nothing is dropped.
     const rr = await applyRerank(await rankPassages(req, deps, weights, knobs), req, deps, knobs, {
       body: (h) => h.body,
       tie: (h) => [0, h.chunkId], // one book: passages tie-break on chunk id alone
+      tier: tierOf,
+      weakAfterBody: false,
     });
-    // Front-matter demotion (issue #18): TOC/praise/foreword chunks are keyword-dense but
-    // semantically empty, so they win exactly the definitional queries where body content is
-    // wanted. Stable-partition AFTER the rerank — body passages first, front matter after,
-    // internal order preserved; nothing is dropped ("what does the foreword say" still works).
-    const demoted = rr.hits.filter((r) => r.hit.frontMatter).length;
-    const hits =
-      demoted > 0
-        ? [...rr.hits.filter((r) => !r.hit.frontMatter), ...rr.hits.filter((r) => r.hit.frontMatter)]
-        : rr.hits;
-    const demotedNote =
-      demoted > 0 ? `${demoted} front-matter passage(s) (TOC/praise/foreword) demoted below body matches.` : undefined;
-    return outcome(rr, hits, confidence(hits, deps.config.semanticFloor, rr), rr.note, demotedNote);
+    const moved = (h: BookHit) => tierOf(h) === "strong" || (!rr.reranked && tierOf(h) === "weak");
+    const placed = rr.hits.some((r) => isBodyHit(r.hit)) ? rr.hits.filter((r) => moved(r.hit)).length : 0;
+    return outcome(rr, rr.hits, confidence(rr.hits, deps.config.semanticFloor, rr), rr.note, placedNote(placed));
   }
   const rr = await dropGone(
     await applyRerank(await rankFigures(req, deps, weights, knobs), req, deps, knobs, {
       body: (h) => h.caption,
       tie: (h) => [h.bookId, h.figureId],
+      tier: () => "body", // figures scope is unchanged by the matter rules
+      weakAfterBody: false,
     }),
     req.gone,
   );
   const floorNote =
     req.mode !== "keyword" && rr.hits.length > 0 && FIGURES_SEMANTIC_FLOOR === null ? FIGURES_FLOOR_NOTE : undefined;
   return outcome(rr, rr.hits, confidence(rr.hits, FIGURES_SEMANTIC_FLOOR, rr), rr.note, floorNote);
+}
+
+/**
+ * How the matter rules place a hit (#605): body; weak (a bibliography, prose front matter) is
+ * reranked but may follow body hits; strong (index, copyright/ads, prose-less front) takes no
+ * rerank pair and follows the reranked hits.
+ */
+type Tier = "body" | "weak" | "strong";
+
+/** The tier of a chunk hit from its matter kind and text (absent kind = body). */
+function tierOf(h: { matterKind?: MatterKind; body: string }): Tier {
+  const kind = h.matterKind ?? "body";
+  if (kind === "body") return "body";
+  return isStrongMatter(kind, h.body) ? "strong" : "weak";
+}
+
+/** True for a body chunk hit (absent kind = body). */
+function isBodyHit(h: { matterKind?: MatterKind; body: string }): boolean {
+  return tierOf(h) === "body";
+}
+
+/**
+ * The confidence rerank score (#605): the best one among the body hits, the tier shown first;
+ * among all reranked hits only when no body hit was reranked. Book scope passes no `isBody`:
+ * weak passages keep their rerank position there, so the best reranked hit is the one shown.
+ */
+function maxRerankOf<H>(hits: Array<{ hit: H; rerankScore?: number }>, isBody?: (h: H) => boolean) {
+  const scored = hits.filter((r) => r.rerankScore !== undefined);
+  const body = isBody ? scored.filter((r) => isBody(r.hit)) : scored;
+  const pick = body.length > 0 ? body : scored;
+  return pick.length > 0 ? Math.max(...pick.map((r) => r.rerankScore!)) : undefined;
+}
+
+/** The note for hits the matter rules placed after body matches; none when nothing moved. */
+function placedNote(n: number): string | undefined {
+  return n > 0 ? `${n} front/back-matter passage(s) placed after body matches.` : undefined;
 }
 
 /** A library hit whose snippet is the query-term window of its chunk, with its book offset. */
@@ -390,8 +429,9 @@ function withChunkSource(fused: Ranked<LibraryHit>[], kw: LibraryHit[]): Ranked<
 
 /**
  * Give a fused book its keyword-half chunk as a second rerank candidate (#604) when the book is
- * in both halves, the two halves picked different chunks, and the book is in the keyword half's
- * top KEYWORD_CANDIDATE_BOOKS. The vector chunk stays first, so it keeps the book on equal scores.
+ * in both halves, the two halves picked different chunks, both are body chunks (#605), and the
+ * book is in the keyword half's top KEYWORD_CANDIDATE_BOOKS. The vector chunk stays the main
+ * candidate, so it keeps the book on equal scores.
  */
 function withKeywordCandidates(fused: Ranked<LibraryHit>[], kw: LibraryHit[]): Pooled<LibraryHit>[] {
   const kwTop = new Map(kw.slice(0, KEYWORD_CANDIDATE_BOOKS).map((h) => [h.bookId, h]));
@@ -399,7 +439,8 @@ function withKeywordCandidates(fused: Ranked<LibraryHit>[], kw: LibraryHit[]): P
     const k = kwTop.get(r.hit.bookId);
     // a cosine marks the vector half's hit; a keyword-only book already shows its keyword chunk
     if (r.cosine === undefined || !k || k.chunkId === r.hit.chunkId) return r;
-    return { ...r, more: [k].slice(0, CANDIDATES_PER_BOOK - 1) };
+    if (tierOf(r.hit) !== "body" || tierOf(k) !== "body") return r;
+    return { ...r, keywordAlt: k };
   });
 }
 
@@ -455,8 +496,11 @@ async function rankFigures(
   };
 }
 
-/** A fused item on its way into the rerank stage: `more` holds its extra candidates (library, #604). */
-type Pooled<H> = Ranked<H> & { more?: H[] };
+/**
+ * A fused item on its way into the rerank stage. `keywordAlt` is the keyword half's chunk of the
+ * same library book (#604), scored as a second candidate; the source is the field, not a position.
+ */
+type Pooled<H> = Ranked<H> & { keywordAlt?: H };
 
 /** The rerank stage's outcome: topK results (reordered when it ran) + honesty fields. */
 interface RerankOutcome<T> {
@@ -483,10 +527,17 @@ async function applyRerank<H>(
   deps: RetrievalDeps,
   knobs: RerankKnobs,
   // body: the text the cross-encoder scores; tie: (book id, unit id), the ascending order for
-  // equal rerank scores (#392) instead of the fused order
-  keys: { body: (h: H) => string; tie: (h: H) => readonly [number, number] },
+  // equal rerank scores (#392) instead of the fused order; tier + weakAfterBody: the matter rules
+  keys: {
+    body: (h: H) => string;
+    tie: (h: H) => readonly [number, number];
+    tier: (h: H) => Tier;
+    weakAfterBody: boolean;
+  },
 ): Promise<RerankOutcome<Ranked<H>>> {
-  const fused = () => pool.slice(0, req.topK).map(plain);
+  // Without a rerank every non-body hit follows the body hits, fused order kept within each (#18);
+  // partition before the cut, so a fallback never takes a body hit's place in topK (#605).
+  const fused = () => bodyFirst(pool.map(plain), (h) => keys.tier(h) === "body").slice(0, req.topK);
   // Absent reranker = not wired in this deployment/test — silently keep the fused order.
   if (req.mode === "keyword" || pool.length === 0 || !deps.reranker) {
     return { hits: fused(), reranked: false };
@@ -495,8 +546,13 @@ async function applyRerank<H>(
   if (!deps.config.rerankEnabled) {
     return { hits: fused(), reranked: false, note: RERANK_DISABLED_NOTE };
   }
+  // Strong kinds take no pair from the cap (#605); the scored items are a prefix of the rest. A
+  // pool of only strong items is reranked as usual, so lowConfidence still sees a weak match.
+  const notStrong = pool.filter((r) => keys.tier(r.hit) !== "strong");
+  const rest = notStrong.length > 0 ? notStrong : pool;
+  const strong = notStrong.length > 0 ? pool.filter((r) => keys.tier(r.hit) === "strong").map(plain) : [];
   try {
-    const head = admit(pool, cut);
+    const head = admit(rest, cut);
     const passages = head.flatMap((r) => candidatesOf(r).map(keys.body));
     const t0 = performance.now();
     // the third argument only for a #644 truncation arm, so shipped calls stay byte-identical
@@ -507,28 +563,33 @@ async function applyRerank<H>(
     deps.log.debug("rerank stage", { pairs: passages.length, cut, ms: Math.round(performance.now() - t0) });
     let at = 0;
     const scored = head.map((r) => {
-      const cands = candidatesOf(r);
-      let best = 0;
-      for (let i = 1; i < cands.length; i++) if ((scores[at + i] ?? 0) > (scores[at + best] ?? 0)) best = i;
-      const rerankScore = scores[at + best] ?? 0;
-      const other = cands.length > 1 ? (scores[at + (best === 0 ? 1 : 0)] ?? 0) : undefined;
-      at += cands.length;
-      // extra candidates are the keyword half's chunk (#604), so keeping one means the keyword half supplied it
+      const main = scores[at] ?? 0;
+      const alt = r.keywordAlt ? (scores[at + 1] ?? 0) : undefined;
+      at += r.keywordAlt ? 2 : 1;
+      // the keyword chunk wins only on a strictly higher score: the vector chunk keeps ties
+      const useAlt = alt !== undefined && alt > main;
       const provenance: HitProvenance = {
         ...r.provenance!,
         rerankPool: true,
-        ...(best > 0 ? { chunkFrom: "keyword" as const } : {}),
-        ...(other !== undefined ? { otherRerankScore: other } : {}),
+        ...(useAlt ? { chunkFrom: "keyword" as const } : {}),
+        ...(alt !== undefined ? { otherRerankScore: useAlt ? main : alt } : {}),
       };
-      return { ...plain(r), hit: cands[best]!, rerankScore, provenance };
+      return { ...plain(r), hit: useAlt ? r.keywordAlt! : r.hit, rerankScore: useAlt ? alt : main, provenance };
     });
     scored.sort((a, b) => {
       const [ab, au] = keys.tie(a.hit);
       const [bb, bu] = keys.tie(b.hit);
       return b.rerankScore - a.rerankScore || ab - bb || au - bu;
     });
-    const hits = [...scored, ...pool.slice(head.length).map(plain)].slice(0, req.topK);
-    return { hits, reranked: true, maxRerank: scored[0]?.rerankScore };
+    const tail = rest.slice(head.length).map(plain);
+    // Library: weak books follow every body book (reranked or past the cap); book scope keeps them
+    // in place. Strong items follow in fused order either way (#605).
+    const ordered = keys.weakAfterBody
+      ? bodyFirst([...scored, ...tail], (h) => keys.tier(h) === "body")
+      : [...scored, ...tail];
+    const hits = [...ordered, ...strong].slice(0, req.topK);
+    const isBody = keys.weakAfterBody ? (h: H) => keys.tier(h) === "body" : undefined;
+    return { hits, reranked: true, maxRerank: maxRerankOf(hits, isBody) };
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
     deps.log.warn("rerank skipped", { reason });
@@ -536,9 +597,14 @@ async function applyRerank<H>(
   }
 }
 
-/** An item's rerank candidates: its hit first, then any extra candidates. */
+/** An item's rerank candidates: its hit, then the keyword half's chunk when it has one. */
 function candidatesOf<H>(r: Pooled<H>): H[] {
-  return [r.hit, ...(r.more ?? [])];
+  return r.keywordAlt ? [r.hit, r.keywordAlt] : [r.hit];
+}
+
+/** Stable partition: items whose hit passes `isBody` first, then the rest, order kept in each. */
+function bodyFirst<H>(items: Ranked<H>[], isBody: (h: H) => boolean): Ranked<H>[] {
+  return [...items.filter((r) => isBody(r.hit)), ...items.filter((r) => !isBody(r.hit))];
 }
 
 /** The longest prefix of the fused order whose candidates fit in `cut` pairs (ADR-0011 latency cap). */
@@ -554,8 +620,8 @@ function admit<H>(pool: Pooled<H>[], cut: number): Pooled<H>[] {
   return head;
 }
 
-/** The item without its extra candidates, so they never reach the hits retrieve() returns. */
-function plain<H>({ more: _more, ...r }: Pooled<H>): Ranked<H> {
+/** The item without its extra candidate, so it never reaches the hits retrieve() returns. */
+function plain<H>({ keywordAlt: _alt, ...r }: Pooled<H>): Ranked<H> {
   return r;
 }
 
@@ -563,13 +629,13 @@ function plain<H>({ more: _more, ...r }: Pooled<H>): Ranked<H> {
 async function dropGone<T extends { hit: { bookId: number }; rerankScore?: number }>(
   rr: RerankOutcome<T>,
   gone: GoneBooks | undefined,
+  isBody?: (h: T["hit"]) => boolean,
 ): Promise<RerankOutcome<T>> {
   if (!gone || rr.hits.length === 0) return rr;
   const goneIds = await gone(rr.hits.map((r) => r.hit.bookId));
   if (goneIds.size === 0) return rr;
   const hits = rr.hits.filter((r) => !goneIds.has(r.hit.bookId));
-  const scores = hits.map((r) => r.rerankScore).filter((s): s is number => s !== undefined);
-  const maxRerank = rr.reranked && scores.length ? Math.max(...scores) : undefined;
+  const maxRerank = rr.reranked ? maxRerankOf(hits, isBody) : undefined;
   return {
     hits,
     reranked: rr.reranked,

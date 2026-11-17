@@ -193,7 +193,7 @@ describe("candidate cache decode counts on own writes and ':memory:' (#370 §Vec
       { charStart: 0, charEnd: 10, body: "first half" },
       { charStart: 10, charEnd: 21, body: "second half" },
     ];
-    expect(s.refreshBookMeta(LIB, { ...meta(2), title: "Renamed" }, { spans, frontMatterEnd: 0 })).toBe(true);
+    expect(s.refreshBookMeta(LIB, { ...meta(2), title: "Renamed" }, { spans, kinds: ["body", "body"] })).toBe(true);
     expect(decoded(() => s.searchLibrary(LIB, axis(1), 10))).toBe(2); // indexed_at moves, so the book reloads once;
     expect(s.searchLibrary(LIB, axis(1), 10).map((h) => h.bookId)).toEqual([1, 2, 3, 4]);
   });

@@ -6,8 +6,18 @@ import type { DatabaseSync } from "node:sqlite";
 import type { LogSink } from "../../logging.js";
 import { EMBED_DIM } from "../model.js";
 import { SNIPPET_CHARS } from "../snippet.js";
+import { toMatterKind } from "../../domain/structure/matter-kind.js";
 import { decodeVector } from "../vector.js";
-import { bookTop, type ChunkMatrix, libraryTop, MatrixWriter, matrixRows, mergeMatrix } from "./chunk-matrix.js";
+import {
+  bookTop,
+  type ChunkMatrix,
+  libraryTop,
+  matterCode,
+  MatrixWriter,
+  matrixRows,
+  mergeMatrix,
+  withBodyQuota,
+} from "./chunk-matrix.js";
 import type { IndexConnections } from "./schema.js";
 import {
   type CacheVersion,
@@ -56,7 +66,9 @@ export class SqliteChunkIndex implements ChunkIndex {
     const out: LibraryHit[] = [];
     for (const { bookId, ...best } of libraryTop(this.#matrix(libraryId), query, k, allow)) {
       const book = db.prepare("SELECT title, authors FROM books WHERE book_id = ?").get(bookId) as Row;
-      const chunk = db.prepare("SELECT char_start, char_end, body FROM chunks WHERE id = ?").get(best.chunkId) as Row;
+      const chunk = db
+        .prepare("SELECT char_start, char_end, body, matter_kind FROM chunks WHERE id = ?")
+        .get(best.chunkId) as Row;
       const body = String(chunk?.body ?? "");
       out.push({
         bookId,
@@ -68,6 +80,7 @@ export class SqliteChunkIndex implements ChunkIndex {
         body,
         charStart: Number(chunk?.char_start ?? 0),
         charEnd: Number(chunk?.char_end ?? 0),
+        matterKind: toMatterKind(chunk?.matter_kind),
       });
     }
     return out; // already ordered: libraryTop ranks books best-first
@@ -78,7 +91,7 @@ export class SqliteChunkIndex implements ChunkIndex {
     const hits = bookTop(this.#matrix(libraryId), bookId, query, k);
     return hits.map((h) => {
       const chunk = db
-        .prepare("SELECT char_start, char_end, body, front_matter FROM chunks WHERE id = ?")
+        .prepare("SELECT char_start, char_end, body, front_matter, matter_kind FROM chunks WHERE id = ?")
         .get(h.chunkId) as Row;
       return {
         chunkId: h.chunkId,
@@ -87,6 +100,7 @@ export class SqliteChunkIndex implements ChunkIndex {
         body: String(chunk?.body ?? ""),
         score: h.score,
         frontMatter: Number(chunk?.front_matter ?? 0) === 1,
+        matterKind: toMatterKind(chunk?.matter_kind),
       };
     });
   }
@@ -106,7 +120,7 @@ export class SqliteChunkIndex implements ChunkIndex {
       allow === undefined
         ? db
             .prepare(
-              `SELECT c.id AS chunk_id, c.book_id, c.char_start, c.char_end, c.body, ${WEIGHTED_BM25} AS score
+              `SELECT c.id AS chunk_id, c.book_id, c.char_start, c.char_end, c.body, c.matter_kind, ${WEIGHTED_BM25} AS score
                FROM chunk_fts JOIN chunks c ON c.id = chunk_fts.rowid
                WHERE chunk_fts MATCH ? ORDER BY score, c.book_id, c.id LIMIT ?`,
             )
@@ -116,7 +130,7 @@ export class SqliteChunkIndex implements ChunkIndex {
               `WITH m AS MATERIALIZED (
                  SELECT rowid AS id, ${WEIGHTED_BM25} AS s FROM chunk_fts WHERE chunk_fts MATCH ?
                )
-               SELECT c.id AS chunk_id, c.book_id, c.char_start, c.char_end, c.body, m.s AS score
+               SELECT c.id AS chunk_id, c.book_id, c.char_start, c.char_end, c.body, c.matter_kind, m.s AS score
                FROM m JOIN chunks c ON c.id = m.id
                WHERE c.book_id IN (SELECT value FROM json_each(?))
                ORDER BY m.s, c.book_id, c.id LIMIT ?`,
@@ -124,28 +138,44 @@ export class SqliteChunkIndex implements ChunkIndex {
             .all(match, JSON.stringify([...allow]), pool)
     ) as Row[];
 
-    const seen = new Set<number>();
-    const out: LibraryHit[] = [];
+    // A book's representative is its first (best) body row in the pool; only a book with no body
+    // row there falls back to its first non-body row (#605). Rows arrive in (score, book, chunk)
+    // order, so sorting the representatives the same way equals today's first-row-per-book walk
+    // when every row is body.
+    const body = new Map<number, Row>();
+    const other = new Map<number, Row>();
     for (const r of rows) {
       const bookId = Number(r.book_id);
-      if (seen.has(bookId)) continue;
-      seen.add(bookId);
+      if (toMatterKind(r.matter_kind) === "body") {
+        if (!body.has(bookId)) body.set(bookId, r);
+      } else if (!other.has(bookId)) other.set(bookId, r);
+    }
+    const reps = [...body.values(), ...[...other].filter(([id]) => !body.has(id)).map(([, r]) => r)];
+    reps.sort(
+      (x, y) =>
+        Number(x.score) - Number(y.score) ||
+        Number(x.book_id) - Number(y.book_id) ||
+        Number(x.chunk_id) - Number(y.chunk_id),
+    );
+    // k body books, fallbacks ranked among them kept (#605); k < 1 still yields one book, as the
+    // first-row walk did (it checked the count after adding)
+    return withBodyQuota(reps, (r) => body.has(Number(r.book_id)), Math.max(1, k)).map((r) => {
+      const bookId = Number(r.book_id);
       const book = db.prepare("SELECT title, authors FROM books WHERE book_id = ?").get(bookId) as Row;
-      const body = String(r.body ?? "");
-      out.push({
+      const text = String(r.body ?? "");
+      return {
         bookId,
         chunkId: Number(r.chunk_id),
         title: String(book?.title ?? `book ${bookId}`),
         authors: parseAuthors(book?.authors),
         score: Number(r.score), // bm25: negative, lower (more negative) is a better match
-        snippet: body.slice(0, SNIPPET_CHARS),
-        body,
+        snippet: text.slice(0, SNIPPET_CHARS),
+        body: text,
         charStart: Number(r.char_start),
         charEnd: Number(r.char_end),
-      });
-      if (out.length >= k) break;
-    }
-    return out;
+        matterKind: toMatterKind(r.matter_kind),
+      };
+    });
   }
 
   searchBookFts(libraryId: string, bookId: number, query: string, k: number): BookHit[] {
@@ -160,7 +190,7 @@ export class SqliteChunkIndex implements ChunkIndex {
         `WITH m AS MATERIALIZED (
            SELECT rowid AS id, ${WEIGHTED_BM25} AS s FROM chunk_fts WHERE chunk_fts MATCH ?
          )
-         SELECT c.id AS chunk_id, c.char_start, c.char_end, c.body, c.front_matter, m.s AS score
+         SELECT c.id AS chunk_id, c.char_start, c.char_end, c.body, c.front_matter, c.matter_kind, m.s AS score
          FROM m JOIN chunks c ON c.id = m.id
          WHERE c.book_id = ? ORDER BY m.s, c.id LIMIT ?`,
       )
@@ -172,6 +202,7 @@ export class SqliteChunkIndex implements ChunkIndex {
       body: String(r.body ?? ""),
       score: Number(r.score),
       frontMatter: Number(r.front_matter ?? 0) === 1,
+      matterKind: toMatterKind(r.matter_kind),
     }));
   }
 
@@ -182,7 +213,7 @@ export class SqliteChunkIndex implements ChunkIndex {
     // begins at the boundary, so the LATER chunk (start == offset) is the one containing it.
     const row = db
       .prepare(
-        `SELECT id, char_start, char_end, body, front_matter FROM chunks
+        `SELECT id, char_start, char_end, body, front_matter, matter_kind FROM chunks
          WHERE book_id = ? AND char_start <= ? AND char_end > ? LIMIT 1`,
       )
       .get(bookId, charOffset, charOffset) as Row | undefined;
@@ -193,6 +224,7 @@ export class SqliteChunkIndex implements ChunkIndex {
       charEnd: Number(row.char_end),
       body: String(row.body ?? ""),
       frontMatter: Number(row.front_matter ?? 0) === 1,
+      matterKind: toMatterKind(row.matter_kind),
     };
   }
 
@@ -243,11 +275,20 @@ export function loadChunkMatrix(db: DatabaseSync, bookIds?: readonly number[]): 
       .all(...params) as Row[]) {
       counts.set(Number(r.book_id), Number(r.n));
     }
+    // Non-body rows are the few (#605): read their kinds once instead of joining every row.
+    const kinds = new Map<number, number>();
+    const kindFilter = bookIds === undefined ? "" : "AND book_id IN (SELECT value FROM json_each(?))";
+    for (const r of db
+      .prepare(`SELECT id, matter_kind FROM chunks WHERE matter_kind != 'body' ${kindFilter}`)
+      .all(...params) as Row[]) {
+      kinds.set(Number(r.id), matterCode(toMatterKind(r.matter_kind)));
+    }
     const w = new MatrixWriter(counts);
     for (const r of db
       .prepare(`SELECT chunk_id, book_id, vector FROM embeddings ${filter} ORDER BY chunk_id`)
       .iterate(...params) as Iterable<Row>) {
-      w.place(Number(r.book_id), Number(r.chunk_id), decodeVector(r.vector as Uint8Array));
+      const chunkId = Number(r.chunk_id);
+      w.place(Number(r.book_id), chunkId, decodeVector(r.vector as Uint8Array), kinds.get(chunkId) ?? 0);
     }
     const m = w.finish();
     if (own) db.exec("COMMIT");

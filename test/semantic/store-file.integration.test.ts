@@ -92,8 +92,8 @@ describe("SqliteIndexStore on a temp file, two connections (#322)", () => {
       LIB,
       { ...meta(3, "Zanzibar Handbook"), lastModified: "v2" },
       {
-        frontMatterEnd: spans[0]!.charEnd, // first chunk becomes front matter
         spans,
+        kinds: spans.map((_, i) => (i === 0 ? "front" : "body")), // first chunk becomes front matter
       },
     );
     expect(ok).toBe(true);
