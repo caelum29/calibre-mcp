@@ -223,5 +223,101 @@
       "metric": "falseFlagRate"
     },
     "selection": "Among candidates passing negativeSeparation pick the min fixture falseFlagRate; ties -> the larger F (more conservative). Adopt only if it lowers falseFlagRate by >= 0.15 absolute vs currentFloor AND zeroBroken passes; otherwise '0.3 stays'. Live is triage only (unverified labels): report live negatives with maxRerank >= the chosen F and the live falseFlagRate, never block on them. Also report whether ANY floor separates cleanly (min Hit@1-positive maxRerank > max negative maxRerank)."
+  },
+  "rerankLatency": {
+    "$comment": "#644 rerank latency A/B, declared + committed BEFORE any arm is dumped (D-012; rule decided by Artem in the grilling of 2026-11-16). A measurement on the live library through a snapshot of its index, not a fixture gate: the fixture cannot show these arms' quality effect (RERANK_POOL 30 covers the whole fixture), so `pnpm eval --gate` on an adopted arm guards against breakage only. Arms run through RetrievalOptions (rerankPool, rerankMaxTokens, adaptivePool) set by the judged dump's `--arm <name>` via BuildServerOptions.retrievalOptions; never an env var or tool param. Shape-checked by rerankLatencyArms (gate-guards.ts) on every `pnpm eval` run.",
+    "rule": {
+      "$comment": "Accept an arm when the median warm hybrid latency (timings.totalMs of the hybrid calls, all scopes pooled) falls by at least minLatencyDrop vs the in-session baseline row, while blind hit@3 falls by at most maxHit3DropOverallPoints percentage points overall and by at most maxHit3DropPerCategoryPoints points in every category, cross-lingual included. With 5-20 queries per category one lost query moves that category's hit@3 by 5-20 points, so the category clause means no category loses a query net; overall (110 positives) at most one query net. Latency drop = 1 - median(arm) / median(baseline), where median(baseline) is the mean of the first and last baseline rows' medians. Cold-start numbers are reported, never read by the rule. Role 'reference' rows are never adopted; 'combination' rows are measured only when every arm in onlyIf passed.",
+      "latencyMetric": "median warm hybrid timings.totalMs, all scopes",
+      "minLatencyDrop": 0.3,
+      "maxHit3DropOverallPoints": 1,
+      "maxHit3DropPerCategoryPoints": 3,
+      "selection": "If several arms pass, adopt the one with the largest latency drop. If none passes, nothing ships: the numbers go to #644 and ADR-0011's 'stays LATER' line gets a 'measured' note."
+    },
+    "arms": {
+      "baseline": {
+        "$comment": "The shipped rerank (pool 30, 512-token pairs, no adaptive cut): no options at all, so it runs the production code path. Dumped first and last in the session.",
+        "role": "baseline",
+        "options": {}
+      },
+      "trunc256": {
+        "$comment": "Arm 1: pair truncation 256 tokens; same model, same pool. Risk: the answer sits in the second half of a chunk.",
+        "role": "candidate",
+        "options": {
+          "rerankMaxTokens": 256
+        }
+      },
+      "pool20": {
+        "$comment": "Arm 2a: pool 20, 512-token pairs. Risk: losing fused ranks 21-30 the rerank would lift (#604 kind; report the #604 cases separately).",
+        "role": "candidate",
+        "options": {
+          "rerankPool": 20
+        }
+      },
+      "pool15": {
+        "$comment": "Arm 2b: pool 15, 512-token pairs.",
+        "role": "candidate",
+        "options": {
+          "rerankPool": 15
+        }
+      },
+      "adaptive": {
+        "$comment": "Arm 3: hybrid only; when the vector and keyword halves share their top ADAPTIVE_AGREE_TOP (3) ids in any order (books in library scope, chunks in book scope), cross-encode only the first ADAPTIVE_RERANK_POOL (10) pairs, otherwise the normal 30. Fewer than 3 keyword hits = no agreement; vector mode keeps the normal pool. Shrunk, never skipped, so maxRerank and lowConfidence still exist.",
+        "role": "candidate",
+        "options": {
+          "adaptivePool": true
+        }
+      },
+      "trunc256-pool20": {
+        "$comment": "Arm 4 (combination): only if trunc256 and pool20 both pass, measured together under the same rule.",
+        "role": "combination",
+        "options": {
+          "rerankMaxTokens": 256,
+          "rerankPool": 20
+        },
+        "onlyIf": [
+          "trunc256",
+          "pool20"
+        ]
+      },
+      "trunc256-pool15": {
+        "$comment": "Arm 4 (combination): only if trunc256 and pool15 both pass. If both pool sizes pass with trunc256, the smaller pool's combination is measured first.",
+        "role": "combination",
+        "options": {
+          "rerankMaxTokens": 256,
+          "rerankPool": 15
+        },
+        "onlyIf": [
+          "trunc256",
+          "pool15"
+        ]
+      },
+      "pool50": {
+        "$comment": "Arm 5, reference only, never adopted here: pool 50 (AI-Powered Search ch. 13 over-request, ~5x). ADR-0011 rejected it on latency; it shows what fused ranks 31-50 are worth. Dropped first (with the combination rows) if a row takes more than 60 min.",
+        "role": "reference",
+        "options": {
+          "rerankPool": 50
+        }
+      }
+    },
+    "protocol": {
+      "$comment": "Followed exactly for every row; deviations are named in the report.",
+      "machine": "Same machine for every row, on AC power, Calibre GUI open as usual, no index build, eval or other search running (wave rule: one exclusive machine token for the whole session). Record CPU model, Node and transformers.js versions, the main sha the rows ran on and whether it contains #618.",
+      "index": "Reads go to the wave's snapshot of the live index (CALIBRE_MCP_INDEX_DIR=<wave>/index), never the production index dir.",
+      "warm": "Per arm: a fresh in-process server; 3 warm-up queries outside the judged set (discarded) so both models are loaded and the candidate cache is built; then the 120 pre-registered judged queries one at a time (parallel calls share the CPU and skip the rerank with RERANKER_BUSY). The rule reads warm numbers.",
+      "cold": "Per arm: 5 fresh processes, first call only, reported per stage; not read by the rule.",
+      "order": "baseline first, then the candidate arms, then any combination row, then the pool50 reference, then baseline again.",
+      "driftCheck": "If the two baseline rows' warm medians differ by more than 10%, the session is discarded and re-run.",
+      "judging": "Hits not yet in the shared judgment store are graded blind through #361's incremental pooling (`pnpm eval:judged:dump --arm <name> --store <store>`, then the judged-blind Workflow, judges A = opus, B = sonnet as in the baseline), scored with default store matching (not --strict-text); per-category comparison with paired intervals from #361.",
+      "report": "Per arm and per scope: median and p95 of each stage (embed, vector half, keyword half, rerank, Calibre round trips, total) from the per-stage debug timings; blind hit@1/3/5, MRR and total miss per category; lowConfidence rate on positives and negatives; a quality/latency chart with one point per row; the rule verdict per row."
+    },
+    "qualityBaseline": {
+      "$comment": "The rule compares each arm with the in-session baseline row (same sha, same snapshot), both scored against the shared store. The 2026-11-16 blind run seeded that store and is named here so its grades are traceable. Caveat: its book-scope rows were graded with the score label visible (fixed later by #664).",
+      "runId": "semantic-judged-blind-2026-11",
+      "dumpedAt": "b7ad7d4, 2026-11-16",
+      "judgedBy": "judged-blind Workflow wf_6ac2641c-e8c, judges A = opus, B = sonnet",
+      "queries": "120 pre-registered queries (queries.json sha256 efaa88b1...86e2), 110 positives",
+      "store": "docs/dev/evals/judgments/3f335e5122b8.jsonl (736 records at the 2026-11-17 wave start)"
+    }
   }
 }
