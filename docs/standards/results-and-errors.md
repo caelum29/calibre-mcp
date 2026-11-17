@@ -57,6 +57,11 @@ So on `isError` the text is the only channel both clients read: put the steer th
 
 ## Logs
 
-- Log meta carries ids, counts, durations and error codes — not raw queries, args or file paths
-  (#252). User-input errors log at `warn`, not `error`.
+- Log meta carries ids, counts, durations and error codes — not raw args or file paths
+  (#252). Free-text args longer than 120 characters log as their length (`[text, N chars]`).
+  User-input errors log at `warn`, not `error`.
+- **One exception: a tool call's top-level `query` arg is logged verbatim up to 512
+  characters** (a longer one logs as its length). The log is read for real agent query shapes
+  (#627, D-030). It is a local file (`<index dir>/logs`, 7 days kept) and nothing leaves the
+  machine. No other free-text arg gets this exemption; a new one needs its own decision.
 - Tests never write into real config, index or log dirs (#252's `shutdown.test.ts`).
