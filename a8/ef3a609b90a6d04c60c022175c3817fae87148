@@ -1,0 +1,22 @@
+test/eval/retrieval/rerank-latency-pins-694.test.ts
+  s_282fd73004b781::t_6bbb20e36c7c02 1-53
+test/semantic/rerank-adaptive-694.test.ts
+  s_282fd73004b781::t_258014ae92dabf 76-77
+  s_282fd73004b781::t_1221c358f38de6 1-75,78-128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a8ef3a609b90a6d04c60c022175c3817fae87148",
+  "prompts": {},
+  "sessions": {
+    "s_282fd73004b781": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84af6750-c62b-41e5-9956-889991dd8878",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
