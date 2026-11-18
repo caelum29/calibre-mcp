@@ -1,0 +1,23 @@
+src/semantic/store/shared.ts
+  s_bcad79cb1a9313::t_4b5b382e4e381b 228-230,264-269
+test/semantic/store-fts-plan.test.ts
+  s_bcad79cb1a9313::t_468fbcbba11b33 12,14,20-21,58,74-75,98,114
+test/semantic/keyword-match-651.test.ts
+  s_bcad79cb1a9313::t_b78ed91eb101f0 1-2,28,34,39,46,57,63,69,73-76,83,90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "100bd48ed6a3d091be769d1a71736f7750a0c0f2",
+  "prompts": {},
+  "sessions": {
+    "s_bcad79cb1a9313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b06e2ea7-f8a0-4c0a-8351-10b889685469",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
