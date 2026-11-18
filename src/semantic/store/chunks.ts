@@ -11,6 +11,7 @@ import type { KeywordDrop, TermStats } from "../../domain/search/keyword-plan.js
 import { toMatterKind } from "../../domain/structure/matter-kind.js";
 import { decodeVector } from "../vector.js";
 import {
+  BODY_CODE,
   bookTop,
   type ChunkMatrix,
   libraryTop,
@@ -323,7 +324,7 @@ export function loadChunkMatrix(db: DatabaseSync, bookIds?: readonly number[]): 
       .prepare(`SELECT chunk_id, book_id, vector FROM embeddings ${filter} ORDER BY chunk_id`)
       .iterate(...params) as Iterable<Row>) {
       const chunkId = Number(r.chunk_id);
-      w.place(Number(r.book_id), chunkId, decodeVector(r.vector as Uint8Array), kinds.get(chunkId) ?? 0);
+      w.place(Number(r.book_id), chunkId, decodeVector(r.vector as Uint8Array), kinds.get(chunkId) ?? BODY_CODE);
     }
     const m = w.finish();
     if (own) db.exec("COMMIT");
