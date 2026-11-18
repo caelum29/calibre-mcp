@@ -1,0 +1,48 @@
+src/app/index-book.ts
+  s_bcad79cb1a9313::t_5c65ebac185cbe 12,51-52,76-77,203-204,214,240,275-280,299-300
+test/semantic/store-sections-review-695.test.ts
+  s_bcad79cb1a9313::t_5c65ebac185cbe 1-92
+GLOSSARY.md
+  s_bcad79cb1a9313::t_5c65ebac185cbe 34-37
+src/semantic/store/sections.ts
+  s_bcad79cb1a9313::t_5c65ebac185cbe 1-66
+src/semantic/store/types.ts
+  s_bcad79cb1a9313::t_a173094ed19499 313
+  s_bcad79cb1a9313::t_5c65ebac185cbe 9,74-86,161-162,221,228,233-234,240,301-309
+  s_bcad79cb1a9313::t_259b00786a22af 310
+src/semantic/store/writer.ts
+  s_bcad79cb1a9313::t_5c65ebac185cbe 8,13,37,58-59,152-153,197,200
+src/domain/structure/sections.ts
+  s_bcad79cb1a9313::t_5c65ebac185cbe 1-219
+test/app/index-book-sections-695.test.ts
+  s_bcad79cb1a9313::t_5c65ebac185cbe 1-150
+test/domain/structure/sections-695.test.ts
+  s_bcad79cb1a9313::t_5c65ebac185cbe 1-243
+src/semantic/store/index.ts
+  s_bcad79cb1a9313::t_5c65ebac185cbe 2,11,16,31,58,74,137,202-203
+  s_bcad79cb1a9313::t_3cfce87aa4c6a6 204-205
+test/eval/retrieval/broken-store.ts
+  s_bcad79cb1a9313::t_5c65ebac185cbe 31
+src/semantic/store/schema.ts
+  s_bcad79cb1a9313::t_5c65ebac185cbe 109-126
+test/semantic/store-sections-695.test.ts
+  s_bcad79cb1a9313::t_5c65ebac185cbe 1-181
+test/domain/structure/sections-review-695.test.ts
+  s_bcad79cb1a9313::t_5c65ebac185cbe 1-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4b64e1ad43756d739120c593f390a957505d8e56",
+  "prompts": {},
+  "sessions": {
+    "s_bcad79cb1a9313": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b06e2ea7-f8a0-4c0a-8351-10b889685469",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
