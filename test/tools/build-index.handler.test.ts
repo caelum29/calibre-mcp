@@ -558,7 +558,8 @@ describe("front-matter flagging at build time (issue #18)", () => {
     const r = await buildIndexTool.handler(args({ bookId: 1 }), d);
     expect(r.isError).toBeUndefined();
 
-    const hits = store.searchBookFts("Programming_Books", 1, "praise widget gadget", 20);
+    // quoted, so the #651 prune keeps "widget"/"gadget" (in most of this 3-chunk book's chunks)
+    const hits = store.searchBookFts("Programming_Books", 1, '"praise" "widget" "gadget"', 20);
     const flagged = hits.filter((h) => h.frontMatter);
     const bodyHits = hits.filter((h) => !h.frontMatter);
     // The praise/TOC region is flagged even though its chunk crosses into chapter 1…

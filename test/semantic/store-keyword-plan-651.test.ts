@@ -48,6 +48,14 @@ describe("store keyword half with the #651 plan", () => {
     ]);
   });
 
+  // known limit of the declared guard ("never drop every term"): a query word absent from the
+  // index still counts as kept, so a negative query loses its stop-word noise, and a one-chunk
+  // library (every indexed word at share 1.0) matches nothing on such a query
+  it("should_match_nothing_when_every_indexed_query_word_is_too_common_and_the_rest_are_absent", () => {
+    const s = storeOf(["Teams compare Raft and Paxos"]);
+    expect(s.searchLibraryFts(LIB, "консенсус в системах Raft Paxos", 10)).toEqual([]);
+  });
+
   it("should_recompute_the_shares_after_its_own_write", () => {
     const s = storeOf(BODIES);
     expect(s.searchLibraryFts(LIB, "lock zeta", 10).map((h) => h.bookId)).toEqual([1, 4]);
