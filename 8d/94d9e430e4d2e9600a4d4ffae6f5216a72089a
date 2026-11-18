@@ -1,0 +1,25 @@
+test/domain/structure/sections-695.test.ts
+  s_f89b452886ca9c::t_f7706db95187d8 1-243
+test/app/index-book-sections-695.test.ts
+  s_f89b452886ca9c::t_195d5046acd069 1-145
+  s_f89b452886ca9c::t_ce0ab7f62fdde6 146-148
+test/semantic/store-sections-695.test.ts
+  s_f89b452886ca9c::t_40f01d4967d745 1-179
+  s_f89b452886ca9c::t_5d001e3ec83c42 180-181
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8d94d9e430e4d2e9600a4d4ffae6f5216a72089a",
+  "prompts": {},
+  "sessions": {
+    "s_f89b452886ca9c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "97dc71bf-537e-4f51-9479-317754e7b629",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
