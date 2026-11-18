@@ -13,7 +13,7 @@ export interface ChunkMatrix {
   vectors: Float32Array;
   /** Chunk id of each row, parallel to `vectors`. */
   chunkIds: Int32Array;
-  /** Matter-kind code of each row (#605): 0 = body, otherwise a non-body kind (see `matterCode`). */
+  /** Matter-kind code of each row (#605): BODY_CODE, otherwise a non-body kind (see `matterCode`). */
   kinds: Uint8Array;
   /** Book ids in ascending order, one per row range. */
   bookIds: Int32Array;
@@ -29,6 +29,9 @@ const INT32_MAX = 2 ** 31 - 1;
 export function matterCode(kind: MatterKind): number {
   return MATTER_KINDS.indexOf(kind);
 }
+
+/** The row code of a body chunk; 0, pinned by test (a fresh Uint8Array reads as body). */
+export const BODY_CODE = matterCode("body");
 
 /** Empty row arrays and book table for `counts` (book id → row count), books ascending. */
 function layout(counts: ReadonlyMap<number, number>): ChunkMatrix {
@@ -66,8 +69,8 @@ export class MatrixWriter {
     this.#next = this.#m.bookStart.slice(0, -1);
   }
 
-  /** Copy `vector` into the next row of `bookId`, with the row's matter-kind code (0 = body). */
-  place(bookId: number, chunkId: number, vector: Float32Array, kind = 0): void {
+  /** Copy `vector` into the next row of `bookId`, with the row's matter-kind code (default body). */
+  place(bookId: number, chunkId: number, vector: Float32Array, kind = BODY_CODE): void {
     const m = this.#m;
     const b = m.bookIndex.get(bookId);
     if (b === undefined) throw new Error(`chunk matrix: no rows reserved for book ${bookId}`);
@@ -124,7 +127,7 @@ export function libraryTop(m: ChunkMatrix, query: Float32Array, k: number, allow
     let otherTop = 0;
     for (let row = m.bookStart[b]!; row < m.bookStart[b + 1]!; row++) {
       const s = dotAt(query, m.vectors, row * EMBED_DIM);
-      if (m.kinds[row] === 0) {
+      if (m.kinds[row] === BODY_CODE) {
         if (bodyRow < 0 || s > bodyTop) {
           bodyTop = s;
           bodyRow = row;

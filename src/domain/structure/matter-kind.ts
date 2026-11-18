@@ -6,11 +6,14 @@ import { type ChapterSpan, detectChapters, type DetectOptions } from "./chapters
 import { frontMatterEnd } from "./front-matter.js";
 import { isBibliographyTitle, isIndexTitle, normalizeTitle } from "./front-matter-titles.js";
 
-/** Where a chunk sits in the book: before the body, in it, or one of three back-matter kinds. */
-export type MatterKind = "front" | "body" | "back_index" | "back_biblio" | "back_other";
+/** The non-body kinds: front matter and the three back-matter kinds; the tool's output enum (#691). */
+export const NON_BODY_KINDS = ["front", "back_index", "back_biblio", "back_other"] as const;
 
-/** Every kind, in a fixed order (store codes and validation read it). */
-export const MATTER_KINDS: readonly MatterKind[] = ["body", "front", "back_index", "back_biblio", "back_other"];
+/** Where a chunk sits in the book: before the body, in it, or one of three back-matter kinds. */
+export type MatterKind = "body" | (typeof NON_BODY_KINDS)[number];
+
+/** Every kind, in a fixed order with body first: the chunk matrix's row code is the index (#691). */
+export const MATTER_KINDS: readonly MatterKind[] = ["body", ...NON_BODY_KINDS];
 
 /** A stored kind string as a MatterKind; anything unknown reads as body. */
 export function toMatterKind(raw: unknown): MatterKind {
