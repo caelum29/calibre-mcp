@@ -26,6 +26,7 @@ const PAGES = [
   ...chapter("Getting Started"),
   ...chapter("Going Further"),
   ...chapter("Testing Things"),
+  ...chapter("Deploying Things"),
 ];
 const TEXT = PAGES.join("\f");
 const OUTLINE: OutlineEntry[] = [
@@ -33,6 +34,7 @@ const OUTLINE: OutlineEntry[] = [
   { title: "Getting Started", page: 2, level: 1 },
   { title: "Going Further", page: 4, level: 1 },
   { title: "Testing Things", page: 6, level: 1 },
+  { title: "Deploying Things", page: 8, level: 1 },
 ];
 
 function countingEmbedder(): Embedder & { passages: number } {
