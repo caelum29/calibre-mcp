@@ -1,0 +1,25 @@
+src/domain/structure/matter-kind.ts
+  s_282fd73004b781::t_a9c6b530920873 9-11,13,15-16
+test/semantic/matter-codes-691.test.ts
+  s_282fd73004b781::t_ac88d53ec68ded 1-31
+src/tools/calibre_semantic_search.ts
+  s_282fd73004b781::t_a9c6b530920873 42,46
+src/semantic/store/chunk-matrix.ts
+  s_282fd73004b781::t_a9c6b530920873 16,33-35,72-73,130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f8c35bae57f0acfc53a820b05cc79b35582e7b7b",
+  "prompts": {},
+  "sessions": {
+    "s_282fd73004b781": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84af6750-c62b-41e5-9956-889991dd8878",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
