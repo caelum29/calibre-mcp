@@ -123,8 +123,7 @@ Two refinements worth knowing about:
   than waiting past the client's request timeout.
 - **Front and back matter.** At index time every chunk is labelled front matter (before the
   first chapter), body text, or back matter: an index page, a bibliography or a
-  copyright/advertisement page (back matter is recognised from the last 15% of the book, a
-  copyright page also from the first 10%). Index pages, copyright/ads pages, front matter
+  copyright/advertisement page (an index page is recognised in the last 15% of the book; a bibliography there too, or at any position under a bibliography heading; a copyright/ads page also in the first 10%). Index pages, copyright/ads pages, front matter
   without prose, and front matter that holds a table of contents (even with praise quotes or a
   foreword around it) are *strong*: they never use one of the reranker's 30 passages and come
   after the reranked hits. A bibliography and front matter with prose but no contents list (a

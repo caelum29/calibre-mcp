@@ -81,7 +81,7 @@ on repeat, max 5 min) and fails calls fast instead of queueing more work behind 
 
 Expected: Calibre's in-book full-text hits are unranked, and front matter is keyword-dense.
 For a topic or definitional question inside a book, use `calibre_semantic_search` with
-`scope: book` — it ranks passages and demotes front matter.
+`scope: book` — it ranks passages; contents, index and copyright pages follow the body hits, while a preface or bibliography is reranked like body text and can rank first.
 
 ### Semantic search: "embedding model unavailable"
 
