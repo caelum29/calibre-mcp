@@ -1,0 +1,27 @@
+docs/TROUBLESHOOTING.md
+  s_5c624b053ab0be::t_def6b8e71a3eae 83-85
+docs/ARCHITECTURE.md
+  s_5c624b053ab0be::t_def6b8e71a3eae 217
+docs/TOOLS.md
+  s_5c624b053ab0be::t_def6b8e71a3eae 302-307,309-312
+skills/calibre-mcp/SKILL.md
+  s_5c624b053ab0be::t_def6b8e71a3eae 136-141
+docs/SEMANTIC-SEARCH.md
+  s_5c624b053ab0be::t_def6b8e71a3eae 124,126-128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3c6b816a94b43dcab73a3294ebac098e0439d4fb",
+  "prompts": {},
+  "sessions": {
+    "s_5c624b053ab0be": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c77a0adb-9759-403a-bc26-9a62ae2f8a76",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
