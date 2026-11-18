@@ -280,13 +280,14 @@ export function createLogger(io: LoggerIo = {}): Logger {
       pid: process.pid,
       ...(client ? { client } : {}),
       ...(c ? { tool: c.tool, call: c.call } : {}),
-      ...(meta === undefined ? {} : { meta: boundValue(meta) }),
+      // A bare string as meta breaks `jq .meta.<key>` over the whole file (#680): wrap it.
+      ...(meta === undefined ? {} : { meta: boundValue(typeof meta === "string" ? { value: meta } : meta) }),
     };
     let json: string;
     try {
       json = JSON.stringify(rec);
     } catch {
-      json = JSON.stringify({ ...rec, meta: "[unserializable]" });
+      json = JSON.stringify({ ...rec, meta: { value: "[unserializable]" } });
     }
     // Prefix keeps our lines greppable inside host logs (Desktop main.log mixes every server).
     writeStderr(`[calibre-mcp] ${json}\n`);
