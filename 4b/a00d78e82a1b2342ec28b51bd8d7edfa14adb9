@@ -1,0 +1,24 @@
+scripts/vector-cache-measure.ts
+  s_1cf53a526c1348::t_f297fd73ca3a31 544,547-555,557-561,564,567-571,619
+  s_1cf53a526c1348::t_80d730fb2c1bb4 12,59-60
+  s_1cf53a526c1348::t_22c8884dbb8ccd 482
+  s_1cf53a526c1348::t_6182cacc68d4df 1-11,13-58,61-481,483-537,545-546,556,562-563,572-618,620-624
+  s_1cf53a526c1348::t_15a5200dd49985 538-543,565-566
+  s_1cf53a526c1348::t_27cdc2f289c1b4 625-634
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4ba00d78e82a1b2342ec28b51bd8d7edfa14adb9",
+  "prompts": {},
+  "sessions": {
+    "s_1cf53a526c1348": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "733f92bd-d877-4311-8770-25c8a4813a86",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
