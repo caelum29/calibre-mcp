@@ -65,4 +65,31 @@ describe("test/eval/README.md golden-set counts", () => {
       `update test/eval/README.md: corpus.json holds ${n} books; the Layout section must say \`${n} self-authored fixture "books"\``,
     ).toBe(true);
   });
+
+  it("names every baselineReport anywhere in thresholds.json (#689)", () => {
+    for (const file of collectBaselinePaths(thresholds)) {
+      expect(
+        README.includes(file),
+        `update test/eval/README.md: thresholds.json names baseline "${file}" but the README does not`,
+      ).toBe(true);
+    }
+  });
+
+  it("collects baselineReport strings at any depth, so a new tier is not missed", () => {
+    const synthetic = {
+      baselineReport: "a.json",
+      tier: { baselineReport: "b.json", deeper: [{ baselineReport: "c.json" }, { other: "x" }] },
+      note: { baselineReport: 7 },
+    };
+    expect(collectBaselinePaths(synthetic)).toEqual(["a.json", "b.json", "c.json"]);
+  });
 });
+
+/** Every string-valued `baselineReport` in a JSON tree, at any depth, in document order. */
+function collectBaselinePaths(node: unknown): string[] {
+  if (Array.isArray(node)) return node.flatMap(collectBaselinePaths);
+  if (node === null || typeof node !== "object") return [];
+  return Object.entries(node).flatMap(([k, v]) =>
+    k === "baselineReport" && typeof v === "string" ? [v] : collectBaselinePaths(v),
+  );
+}
