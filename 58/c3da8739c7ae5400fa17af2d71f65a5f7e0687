@@ -1,0 +1,19 @@
+src/logging.ts
+  s_287283b2ad73cc::t_845f339dffa707 262-263,322
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "58c3da8739c7ae5400fa17af2d71f65a5f7e0687",
+  "prompts": {},
+  "sessions": {
+    "s_287283b2ad73cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ebdb56bd-73fc-4ded-8664-bbb9fb7ab583",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
