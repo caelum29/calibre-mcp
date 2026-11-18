@@ -1,0 +1,20 @@
+test/eval/retrieval/readme-counts.test.ts
+  s_5c624b053ab0be::t_0c73311933173a 2-3,15-22,35-66
+  s_5c624b053ab0be::t_c26230fcad5838 67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8b8abf19aab6fbd15d7d4b953faeb87422feb791",
+  "prompts": {},
+  "sessions": {
+    "s_5c624b053ab0be": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c77a0adb-9759-403a-bc26-9a62ae2f8a76",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
