@@ -158,6 +158,9 @@ export class SqliteWriter implements IndexWriter {
       throw err;
     } finally {
       // Same per-book invalidation as replaceBook (vectors are unchanged; one book's reload is cheap).
+      // Known limit (#703, wontfix): this also drops the library's keyword term statistics (#651)
+      // though chunk text, and so body_stem shares, is unchanged; the next search re-costs common
+      // terms (~0.5 s on a 400k-chunk index). Only in-process refreshes pay it.
       this.invalidate(libraryId, [meta.bookId]);
     }
   }
