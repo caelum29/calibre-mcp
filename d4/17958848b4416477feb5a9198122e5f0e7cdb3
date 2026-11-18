@@ -1,0 +1,19 @@
+test/logging-file-mode.test.ts
+  s_5c624b053ab0be::t_96e9da6cb22632 1-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d417958848b4416477feb5a9198122e5f0e7cdb3",
+  "prompts": {},
+  "sessions": {
+    "s_5c624b053ab0be": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c77a0adb-9759-403a-bc26-9a62ae2f8a76",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
