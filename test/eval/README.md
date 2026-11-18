@@ -41,9 +41,9 @@ pnpm eval --compare a.json b.json  # paired stats of two existing reports (no ev
 `--gate` checks, per `thresholds.json`: per-query Hit@1 non-regression per mode, negatives
 flagged (6/6 hybrid+vector), figure-caption query count + hybrid floors, figure-negative query
 count (its flagged rate stays informational until the figures floor is calibrated), the
-heading front-matter block, the back-matter-trap block (#605: in every mode each listed query's
-relevant passage is in the top 10 with no front/back-matter passage above it, row field
-`nonBodyAbove`), per-query maxScore drift (±0.01, a cross-platform allowance; the
+heading front-matter block, the back-matter-trap block (#605: in every mode of every tier, the
+fusion-only rerank-off pass included (#688), each listed query's relevant passage is in the top 10
+with no front/back-matter passage above it, row field `nonBodyAbove`), per-query maxScore drift (±0.01, a cross-platform allowance; the
 Linux nightly measured max |Δ| 0.0067 over 10 runs, #364), and the **top-10 list diff** (#358,
 `thresholds.listDiff`).
 

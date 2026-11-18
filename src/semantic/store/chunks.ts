@@ -142,6 +142,8 @@ export class SqliteChunkIndex implements ChunkIndex, KeywordPlanReport {
     if (!match) return [];
     // Pull a generous pool of chunk hits, then keep the best (first, since bm25-ranked) per book.
     // Equal bm25 orders by book id, then chunk id (#392): SQLite's scan order is no contract.
+    // Known limit (#694): the pool counts chunks, not books, and non-body chunks take slots too
+    // (#605). A query whose top `pool` rows are all index pages loses the body books beyond them.
     const pool = Math.max(k * 20, 200);
     // The allow filter lives in SQL (json_each keeps it to one variable) so a small bundle
     // can't be starved by the pool cap eating unfiltered hits first. It uses the same FTS-first
