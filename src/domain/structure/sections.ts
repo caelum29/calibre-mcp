@@ -187,6 +187,8 @@ function majorityKind(span: ChunkRange, chunks: readonly ChunkRange[], kinds: re
     const kind = kinds[i] ?? "body";
     if (overlap > 0) chars.set(kind, (chars.get(kind) ?? 0) + overlap);
   }
+  // No overlapping chunk (a span past a truncated or unchunked tail) means no evidence; body is
+  // the classifier's own default, so such a span is labelled like ordinary text.
   let best: MatterKind = "body";
   let bestChars = 0;
   for (const k of MATTER_KINDS) {
