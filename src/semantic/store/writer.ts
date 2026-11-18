@@ -5,10 +5,12 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { ChunkSpan } from "../content-match.js";
 import type { MatterKind } from "../../domain/structure/matter-kind.js";
+import type { BookSections } from "../../domain/structure/sections.js";
 import { stemText } from "../stem.js";
 import { encodeVector } from "../vector.js";
 import { chunkSpans, vectorCoverage } from "./freshness.js";
 import type { IndexConnections } from "./schema.js";
+import { writeSections } from "./sections.js";
 import { type Row, rollbackQuietly } from "./shared.js";
 import type {
   BookMeta,
@@ -32,7 +34,7 @@ export class SqliteWriter implements IndexWriter {
     meta: BookMeta,
     chunks: IndexedChunk[],
     figures: IndexedFigure[] = [],
-    opts: { preserveEmbedded?: boolean } = {},
+    opts: { preserveEmbedded?: boolean; sections?: BookSections } = {},
   ): ReplaceOutcome {
     const db = this.conn.db(libraryId);
     const embedded = chunks.reduce((n, c) => n + (c.vector ? 1 : 0), 0);
@@ -53,6 +55,8 @@ export class SqliteWriter implements IndexWriter {
       db.prepare("DELETE FROM chunks WHERE book_id = ?").run(meta.bookId);
       db.prepare("DELETE FROM figures WHERE book_id = ?").run(meta.bookId);
       db.prepare("DELETE FROM books WHERE book_id = ?").run(meta.bookId);
+      // Section rows go with the chunks (#695): rewritten here, cleared when the book has none.
+      writeSections(db, meta.bookId, opts.sections);
 
       db.prepare(
         "INSERT INTO books(book_id, title, authors, last_modified, chunk_count, indexed_at, embedded_chunks) VALUES(?,?,?,?,?,?,?)",
@@ -145,6 +149,8 @@ export class SqliteWriter implements IndexWriter {
       db.prepare("UPDATE chunks SET book_meta = ? WHERE book_id = ?").run(bookMeta, meta.bookId);
       db.prepare("UPDATE figures SET book_meta = ? WHERE book_id = ?").run(bookMeta, meta.bookId);
       this.#refreshMatter(db, meta.bookId, check);
+      // The flag-only backfill fills section rows too (#695), without touching chunks or vectors.
+      if (check.sections) writeSections(db, meta.bookId, check.sections);
       db.exec("COMMIT");
       return true;
     } catch (err) {
@@ -188,8 +194,10 @@ export class SqliteWriter implements IndexWriter {
       const delChunks = db.prepare("DELETE FROM chunks WHERE book_id = ?");
       const delFigures = db.prepare("DELETE FROM figures WHERE book_id = ?");
       const delBook = db.prepare("DELETE FROM books WHERE book_id = ?");
+      const delSections = db.prepare("DELETE FROM sections WHERE book_id = ?");
       for (const id of bookIds) {
         delEmb.run(id);
+        delSections.run(id);
         // The chunks/figures DELETE triggers keep the FTS shadow tables in sync.
         counts.chunks += Number(delChunks.run(id).changes);
         counts.figures += Number(delFigures.run(id).changes);

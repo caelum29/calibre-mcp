@@ -9,6 +9,7 @@ import type { ExtractedText } from "../calibre/extract.js";
 import { inThreadEncoder, structureOf, type BookEncoder } from "../semantic/book-encoder.js";
 import { textMatchesChunks, type ChunkSpan } from "../semantic/content-match.js";
 import { type MatterKind, matterKinds } from "../domain/structure/matter-kind.js";
+import { type BookSections, bookSections } from "../domain/structure/sections.js";
 import type { BookMeta, IndexedChunk, IndexedFigure, IndexFreshness, IndexWriter } from "../semantic/store/index.js";
 import type { BaseDeps, DepsWithIndex } from "../tools/deps.js";
 import type { LogSink } from "../logging.js";
@@ -47,6 +48,8 @@ export interface PreparedBook {
   meta: BookMeta;
   chunks: IndexedChunk[];
   figures: IndexedFigure[];
+  /** Section spans (#695) over the same text as `chunks`, written in the same transaction. */
+  sections: BookSections;
   detail: BookDetail;
   keywordOnly: boolean;
   /** Wall time per phase (ms) — tells extraction-bound from embed-bound books (#99). */
@@ -70,6 +73,8 @@ export interface RefreshedBook {
   spans: ChunkSpan[];
   /** Matter kind of each of `spans` (#605), from the classifier a full index runs. */
   kinds: MatterKind[];
+  /** Section spans (#695) from the same text and `kinds`; the refresh rewrites the stored rows. */
+  sections: BookSections;
 }
 
 export interface PrepareOptions {
@@ -195,6 +200,8 @@ export async function prepareBook(deps: IndexBookDeps, bookId: number, opts: Pre
     frontMatter: kinds[i] === "front", // dual-written for one release (#605)
     ...(vectors ? { vector: vectors[i]! } : {}),
   }));
+  // Section spans (#695): the text and structure the chunker saw, kinds from the same classifier.
+  const sections = bookSections(extracted.text, structureOf(extracted), encoded.chunks, kinds);
   if (captionVectors && figures.length > 0) {
     figures = figures.map((f, i) => ({ ...f, vector: captionVectors[i]! }));
   }
@@ -204,6 +211,7 @@ export async function prepareBook(deps: IndexBookDeps, bookId: number, opts: Pre
     meta,
     chunks: indexed,
     figures,
+    sections,
     keywordOnly,
     // Embed includes the figure inventory lookup (a cache hit after marker injection).
     phaseMs: { fetch: fetchMs, extract: extractMs, ...encoded.phaseMs },
@@ -229,6 +237,7 @@ export async function prepareBook(deps: IndexBookDeps, bookId: number, opts: Pre
 export function commitBook(deps: IndexBookDeps, libraryId: string, book: PreparedBook): BookDetail | undefined {
   const outcome = deps.index.replaceBook(libraryId, book.meta, book.chunks, book.figures, {
     preserveEmbedded: book.keywordOnly,
+    sections: book.sections,
   });
   if (outcome === "preserved") {
     deps.log.info("kept embedded book — keyword-only build does not downgrade", { bookId: book.meta.bookId });
@@ -263,12 +272,12 @@ function refreshOutcome(
   const { libraryId, keywordOnly } = opts;
   // The spans the text was verified against travel to the commit, which re-checks them (#269).
   const spans = deps.index.bookChunkSpans(libraryId, meta.bookId);
-  const refreshed = (): RefreshedBook => ({
-    kind: "refreshed",
-    meta,
-    spans,
-    kinds: matterKinds(extracted.text, spans, structureOf(extracted)),
-  });
+  const refreshed = (): RefreshedBook => {
+    const structure = structureOf(extracted);
+    const kinds = matterKinds(extracted.text, spans, structure);
+    // Spans over the verified text (#695): the flag-only pass doubles as the sections backfill.
+    return { kind: "refreshed", meta, spans, kinds, sections: bookSections(extracted.text, structure, spans, kinds) };
+  };
   if (opts.flagsOnly) {
     if (!deps.index.isBookIndexed(libraryId, meta.bookId)) {
       throw new Error("not indexed — a flag-only backfill only updates indexed books");
@@ -287,7 +296,8 @@ const TEXT_CHANGED = "text changed since indexing — needs a full re-index, not
 export function commitRefresh(deps: RefreshDeps, libraryId: string, book: RefreshedBook): void {
   // Another writer re-chunked the book between prepare and commit: the boundary no longer
   // applies to its rows. Nothing was written — report it like a changed-text book.
-  if (!deps.index.refreshBookMeta(libraryId, book.meta, { spans: book.spans, kinds: book.kinds })) {
+  const check = { spans: book.spans, kinds: book.kinds, sections: book.sections };
+  if (!deps.index.refreshBookMeta(libraryId, book.meta, check)) {
     throw new Error(`book re-indexed during the refresh — ${TEXT_CHANGED}`);
   }
   deps.log.info("refreshed book in place — text unchanged, no re-embed", {

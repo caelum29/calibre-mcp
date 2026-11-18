@@ -106,6 +106,24 @@ CREATE TRIGGER IF NOT EXISTS figures_au AFTER UPDATE ON figures BEGIN
   INSERT INTO figure_fts(figure_fts, rowid, caption_stem, caption, book_meta) VALUES('delete', old.id, old.caption_stem, old.caption, old.book_meta);
   INSERT INTO figure_fts(rowid, caption_stem, caption, book_meta) VALUES (new.id, new.caption_stem, new.caption, new.book_meta);
 END;
+
+-- Section spans (#695, #620): each book's outline / TOC / chapter sections, for labels and
+-- navigation; never embedded. Same char coordinates as chunks, so a hit's section is a range
+-- lookup by its offset (no chunks.section_id). parent_id is the parent's sections.id, NULL at
+-- the top level; rows go with their book's chunks. Additive like figures: CREATE IF NOT EXISTS
+-- on every open, no INDEX_VERSION bump (ADR-0025); books fill it when (re-)indexed or refreshed.
+CREATE TABLE IF NOT EXISTS sections (
+  id INTEGER PRIMARY KEY,
+  book_id INTEGER NOT NULL,
+  parent_id INTEGER,
+  level INTEGER NOT NULL,
+  title TEXT NOT NULL,
+  char_start INTEGER NOT NULL,
+  char_end INTEGER NOT NULL,
+  matter_kind TEXT NOT NULL DEFAULT 'body',
+  source TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_sections_book ON sections(book_id, char_start);
 `;
 
 /** Lazily opened per-library db handles: the single owner of every SQLite connection. */
