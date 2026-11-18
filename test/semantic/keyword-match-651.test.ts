@@ -1,4 +1,5 @@
-// The keyword half's MATCH rendered from the #651 plan: stems deduped, a stem in more than half of
+// The keyword half's MATCH rendered from the #651 plan: stems deduped and matched in the stemmed
+// columns only (option b), a stem in more than half of
 // the library's chunks (body_stem) pruned, a pruned stem's identifier forms gone with it, and
 // today's MATCH whenever term statistics are missing or fail. Fake TermStats, no index.
 
@@ -24,25 +25,25 @@ const failing: TermStats = {
 describe("keywordMatch (#651)", () => {
   it("should_prune_a_stem_in_more_than_half_of_the_chunks", () => {
     expect(keywordMatch("how does the raft consensus work", stats({ the: 780 }))).toEqual({
-      match: '"how" OR "doe" OR "raft" OR "consensus" OR "work"',
+      match: '{body_stem book_meta} : ("how" OR "doe" OR "raft" OR "consensus" OR "work")',
       dropped: [{ term: "the", reason: "too-common" }],
     });
   });
 
   it("should_keep_a_stem_at_exactly_half_of_the_chunks", () => {
-    expect(keywordMatch("the raft", stats({ the: 500 })).match).toBe('"the" OR "raft"');
+    expect(keywordMatch("the raft", stats({ the: 500 })).match).toBe('{body_stem book_meta} : ("the" OR "raft")');
   });
 
   it("should_send_a_repeated_stem_once", () => {
     expect(keywordMatch("C# and c# again", stats({}))).toEqual({
-      match: '"c" OR "and" OR "again" OR "c#" OR "c#."',
+      match: '{body_stem book_meta} : ("c" OR "and" OR "again") OR "c#" OR "c#."',
       dropped: [{ term: "c", reason: "duplicate" }],
     });
   });
 
   it("should_drop_an_identifier_whose_stems_are_all_pruned", () => {
     expect(keywordMatch("is-a relation", stats({ is: 900, a: 950 }))).toEqual({
-      match: '"relat"',
+      match: '{body_stem book_meta} : ("relat")',
       dropped: [
         { term: "is", reason: "too-common" },
         { term: "a", reason: "too-common" },
@@ -53,37 +54,40 @@ describe("keywordMatch (#651)", () => {
 
   it("should_keep_an_identifier_when_only_some_of_its_stems_are_pruned", () => {
     expect(keywordMatch("the node.js runtime", stats({ the: 900 })).match).toBe(
-      '"node" OR "js" OR "runtim" OR "node.js" OR "node.js."',
+      '{body_stem book_meta} : ("node" OR "js" OR "runtim") OR "node.js" OR "node.js."',
     );
   });
 
   it("should_keep_the_rarest_stem_when_every_stem_is_too_common", () => {
     expect(keywordMatch("the and", stats({ the: 900, and: 800 }))).toEqual({
-      match: '"and"',
+      match: '{body_stem book_meta} : ("and")',
       dropped: [{ term: "the", reason: "too-common" }],
     });
   });
 
   it("should_never_prune_a_one_word_query", () => {
-    expect(keywordMatch("the", stats({ the: 900 }))).toEqual({ match: '"the"', dropped: [] });
+    expect(keywordMatch("the", stats({ the: 900 }))).toEqual({ match: '{body_stem book_meta} : ("the")', dropped: [] });
   });
 
   it("should_never_prune_a_word_inside_a_quoted_span", () => {
-    expect(keywordMatch('"the" matrix', stats({ the: 900 }))).toEqual({ match: '"the" OR "matrix"', dropped: [] });
+    expect(keywordMatch('"the" matrix', stats({ the: 900 }))).toEqual({
+      match: '{body_stem book_meta} : ("the" OR "matrix")',
+      dropped: [],
+    });
   });
 
   // std::move: the index keeps no `:`, so the words are two terms; the `std move` phrase clause
   // waits for the phrase step (bigrams off). Inside Russian prose nothing is pruned at these shares.
   it("should_keep_std_and_move_as_terms_inside_cyrillic_prose", () => {
     expect(keywordMatch("как работает std::move в C++", stats({ в: 120, как: 110 }))).toEqual({
-      match: '"как" OR "работа" OR "std" OR "move" OR "в" OR "c" OR "c++" OR "c++."',
+      match: '{body_stem book_meta} : ("как" OR "работа" OR "std" OR "move" OR "в" OR "c") OR "c++" OR "c++."',
       dropped: [],
     });
   });
 
   it("should_keep_std_and_move_when_a_stop_word_beside_them_is_pruned", () => {
     expect(keywordMatch("use std::move for the buffer", stats({ use: 576, the: 780, for: 700 }))).toEqual({
-      match: '"std" OR "move" OR "buffer"',
+      match: '{body_stem book_meta} : ("std" OR "move" OR "buffer")',
       dropped: [
         { term: "use", reason: "too-common" },
         { term: "for", reason: "too-common" },

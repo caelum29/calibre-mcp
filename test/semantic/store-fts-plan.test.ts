@@ -9,14 +9,16 @@ import { DatabaseSync } from "node:sqlite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { loadConfig } from "../../src/config.js";
 import { EMBED_DIM } from "../../src/semantic/model.js";
-import { ftsMatch } from "../../src/semantic/store/shared.js";
+import { keywordMatch } from "../../src/semantic/store/shared.js";
 import { type IndexedChunk, SqliteIndexStore } from "../../src/semantic/store/index.js";
+import { fts5TermStats } from "../../src/semantic/store/term-stats.js";
 import { l2normalize } from "../../src/semantic/vector.js";
 
 const LIB = "Plan_Lib";
 
 // Pre-rewrite SQL, kept verbatim (weights 1.0/1.0/0.5 as in store/shared.ts). Both sides get
-// their MATCH from the store's own ftsMatch (#634), so they compare like with like.
+// their MATCH from the store's own keywordMatch over the file's term statistics (#634, #651), so
+// they compare like with like.
 const LEGACY_BOOK_FTS = `SELECT c.id AS chunk_id, bm25(chunk_fts, 1.0, 1.0, 0.5) AS score
   FROM chunk_fts JOIN chunks c ON c.id = chunk_fts.rowid
   WHERE chunk_fts MATCH ? AND c.book_id = ? ORDER BY score LIMIT ?`;
@@ -53,6 +55,7 @@ describe("FTS-first rewrite ≡ legacy JOIN SQL", () => {
   let dir: string;
   let s: SqliteIndexStore;
   let raw: DatabaseSync;
+  let match: (q: string) => string | null;
 
   beforeAll(() => {
     dir = mkdtempSync(path.join(tmpdir(), "calibre-mcp-fts-plan-"));
@@ -68,6 +71,8 @@ describe("FTS-first rewrite ≡ legacy JOIN SQL", () => {
       s.replaceBook(LIB, { bookId: book, title: `Book ${book} transaction`, authors: ["A"] }, chunks);
     }
     raw = new DatabaseSync(path.join(dir, `${LIB}.sqlite`), { readOnly: true });
+    const stats = fts5TermStats(raw);
+    match = (q) => keywordMatch(q, stats).match;
   });
 
   afterAll(() => {
@@ -90,7 +95,7 @@ describe("FTS-first rewrite ≡ legacy JOIN SQL", () => {
     for (const k of [3, 10, 50]) {
       it(`identical ranking for "${q}" k=${k}`, () => {
         for (let book = 1; book <= 6; book++) {
-          const legacy = (raw.prepare(LEGACY_BOOK_FTS).all(ftsMatch(q), book, k) as Record<string, unknown>[]).map(
+          const legacy = (raw.prepare(LEGACY_BOOK_FTS).all(match(q), book, k) as Record<string, unknown>[]).map(
             (r) => ({ id: Number(r.chunk_id), score: Number(r.score) }),
           );
           const got = s.searchBookFts(LIB, book, q, k).map((h) => ({ id: h.chunkId, score: h.score }));
@@ -106,7 +111,7 @@ describe("FTS-first rewrite ≡ legacy JOIN SQL", () => {
       it(`searchLibraryFts restricted: identical book ranking for "${q}" allow=${allow}`, () => {
         const k = 10;
         const pool = Math.max(k * 20, 200); // mirrors searchLibraryFts
-        const rows = raw.prepare(LEGACY_ALLOW_FTS).all(ftsMatch(q), JSON.stringify(allow), pool) as Record<
+        const rows = raw.prepare(LEGACY_ALLOW_FTS).all(match(q), JSON.stringify(allow), pool) as Record<
           string,
           unknown
         >[];
