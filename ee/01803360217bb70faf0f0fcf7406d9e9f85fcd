@@ -1,0 +1,21 @@
+docs/SEMANTIC-SEARCH.md
+  s_5c624b053ab0be::t_6bac8aa9f1a364 124
+skills/calibre-mcp/SKILL.md
+  s_5c624b053ab0be::t_05c20f90a5ec9b 136
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ee01803360217bb70faf0f0fcf7406d9e9f85fcd",
+  "prompts": {},
+  "sessions": {
+    "s_5c624b053ab0be": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c77a0adb-9759-403a-bc26-9a62ae2f8a76",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
