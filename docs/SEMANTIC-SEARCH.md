@@ -121,7 +121,7 @@ Two refinements worth knowing about:
   at a time in arrival order; when more than two are already
   waiting, a new search skips the rerank (fused order + a "reranker busy" note) rather
   than waiting past the client's request timeout.
-  - **Front and back matter.** At index time every chunk is labelled front matter (before the
+- **Front and back matter.** At index time every chunk is labelled front matter (before the
   first chapter), body text, or back matter: an index page, a bibliography or a
   copyright/advertisement page (an index page is recognised in the last 15% of the book; a
   bibliography there too, or at any position under a bibliography heading; a copyright/ads page
