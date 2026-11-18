@@ -1,0 +1,25 @@
+docs/SEMANTIC-SEARCH.md
+  s_5c624b053ab0be::t_e74fc9908c9de5 126
+skills/calibre-mcp/SKILL.md
+  s_5c624b053ab0be::t_e74fc9908c9de5 138
+docs/TOOLS.md
+  s_5c624b053ab0be::t_e74fc9908c9de5 302,306
+docs/TROUBLESHOOTING.md
+  s_5c624b053ab0be::t_e74fc9908c9de5 84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "713950c6405db051b5436879918d60a8f9b9b3e3",
+  "prompts": {},
+  "sessions": {
+    "s_5c624b053ab0be": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c77a0adb-9759-403a-bc26-9a62ae2f8a76",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
