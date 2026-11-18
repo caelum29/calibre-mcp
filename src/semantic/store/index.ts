@@ -1,5 +1,5 @@
 // SQLite-backed vector index for semantic search: one <indexDir>/<lib>.sqlite per Calibre library.
-// Composes the schema/freshness/writer/chunks/figures parts (#272) into the full IndexStore.
+// Composes the schema/freshness/writer/chunks/figures/sections parts (#272) into the full IndexStore.
 
 import type { Config } from "../../config.js";
 import { log as defaultLog, type LogSink } from "../../logging.js";
@@ -8,10 +8,12 @@ import type { ChunkMatrix } from "./chunk-matrix.js";
 import { loadChunkMatrix, SqliteChunkIndex } from "./chunks.js";
 import { SqliteFigureIndex } from "./figures.js";
 import { SqliteFreshness } from "./freshness.js";
+import { SqliteSectionIndex } from "./sections.js";
 import { IndexConnections } from "./schema.js";
 import { IndexFileOwners } from "./library-owner.js";
 import type { LibraryIdCollisionError } from "../../domain/library-id-collision.js";
 import type { KeywordDrop } from "../../domain/search/keyword-plan.js";
+import type { BookSections } from "../../domain/structure/sections.js";
 import type {
   BookHit,
   BookMeta,
@@ -26,6 +28,7 @@ import type {
   PruneCounts,
   RefreshCheck,
   ReplaceOutcome,
+  SectionRef,
 } from "./types.js";
 import { SqliteWriter } from "./writer.js";
 
@@ -52,6 +55,7 @@ export class SqliteIndexStore implements IndexStore {
   readonly #writer: SqliteWriter;
   readonly #chunks: SqliteChunkIndex;
   readonly #figures: SqliteFigureIndex;
+  readonly #sections: SqliteSectionIndex;
 
   constructor(
     cfg: Config,
@@ -67,6 +71,7 @@ export class SqliteIndexStore implements IndexStore {
     // Resolved per call, so a spy on this.loadCandidates sees the cache's SQL reads.
     this.#chunks = new SqliteChunkIndex(this.#conn, log, (l) => this.loadCandidates(l));
     this.#figures = new SqliteFigureIndex(this.#conn);
+    this.#sections = new SqliteSectionIndex(this.#conn);
     // Any write (even a rolled-back one — a needless reload is harmless) marks its books stale
     // in both candidate caches; the next vector query re-reads just those books (#370).
     this.#writer = new SqliteWriter(this.#conn, (l, ids) => {
@@ -129,7 +134,7 @@ export class SqliteIndexStore implements IndexStore {
     meta: BookMeta,
     chunks: IndexedChunk[],
     figures?: IndexedFigure[],
-    opts?: { preserveEmbedded?: boolean },
+    opts?: { preserveEmbedded?: boolean; sections?: BookSections },
   ): ReplaceOutcome {
     return this.#writer.replaceBook(libraryId, meta, chunks, figures, opts);
   }
@@ -192,6 +197,10 @@ export class SqliteIndexStore implements IndexStore {
 
   figuresInSpan(libraryId: string, bookId: number, charStart: number, charEnd: number): FigureRef[] {
     return this.#figures.figuresInSpan(libraryId, bookId, charStart, charEnd);
+  }
+
+  sectionPathAt(libraryId: string, bookId: number, charOffset: number): SectionRef[] {
+    return this.#sections.sectionPathAt(libraryId, bookId, charOffset);
   }
 
   close(): void {

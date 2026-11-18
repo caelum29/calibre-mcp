@@ -6,6 +6,7 @@ import type { ChunkSpan } from "../content-match.js";
 import type { LibraryIdCollisionError } from "../../domain/library-id-collision.js";
 import type { KeywordDrop } from "../../domain/search/keyword-plan.js";
 import type { MatterKind } from "../../domain/structure/matter-kind.js";
+import type { BookSections, SectionSource } from "../../domain/structure/sections.js";
 
 /** A chunk ready to index: its span in the source text plus its embedding. */
 export interface IndexedChunk {
@@ -68,6 +69,19 @@ export interface ChunkRef {
   frontMatter: boolean;
   /** Front/body/back matter of the chunk (#605). */
   matterKind?: MatterKind;
+}
+
+/** One stored section span (#695): a row of the `sections` table. */
+export interface SectionRef {
+  id: number;
+  /** The parent row's id; null at the top level. */
+  parentId: number | null;
+  level: number;
+  title: string;
+  charStart: number;
+  charEnd: number;
+  matterKind: MatterKind;
+  source: SectionSource;
 }
 
 /** A figure linked from a text span (the text-hit → figures direction). */
@@ -144,6 +158,8 @@ export interface RefreshCheck {
   spans: readonly ChunkSpan[];
   /** One per span, in span order: the same classifier output a full index stores. */
   kinds: readonly MatterKind[];
+  /** The book's section spans from the same text (#695); when given, they replace the stored rows. */
+  sections?: BookSections;
 }
 
 /** What replaceBook did: wrote the rows, or kept an embedded book's rows untouched. */
@@ -202,24 +218,26 @@ export interface IndexWriter {
    * a failure leaves the previous rows intact. Returns "preserved" (nothing written) when
    * `preserveEmbedded` is set, the new rows carry no vectors, and the stored book has
    * embeddings: a keyword-only writer never silently downgrades an embedded book (#197).
+   * `sections` (#695) replaces the book's section rows in the same transaction; absent = none.
    */
   replaceBook(
     libraryId: string,
     meta: BookMeta,
     chunks: IndexedChunk[],
     figures?: IndexedFigure[],
-    opts?: { preserveEmbedded?: boolean },
+    opts?: { preserveEmbedded?: boolean; sections?: BookSections },
   ): ReplaceOutcome;
   /**
    * In-place refresh of an unchanged-text book (#244/#269): title/authors/last_modified, the
    * per-chunk/per-figure book_meta (FTS follows via the update triggers) and each chunk's
-   * matter kind (+ the dual-written front-matter flag) from `kinds` — one transaction, chunks and vectors kept. Returns
+   * matter kind (+ the dual-written front-matter flag) from `kinds`, and the section rows when
+   * `sections` is given (#695) — one transaction, chunks and vectors kept. Returns
    * false and writes NOTHING when the book's stored spans are no longer `spans` (another
    * writer re-chunked it after the caller verified the text).
    */
   refreshBookMeta(libraryId: string, meta: BookMeta, check: RefreshCheck): boolean;
   /**
-   * Drop all rows for these books (books/chunks/embeddings/figures + FTS shadows). `noWait`
+   * Drop all rows for these books (books/chunks/embeddings/figures/sections + FTS shadows). `noWait`
    * (#496): fail at once with SQLITE_BUSY on another process's lock instead of waiting it out.
    */
   deleteBooks(libraryId: string, bookIds: number[], opts?: { noWait?: boolean }): PruneCounts;
@@ -280,8 +298,18 @@ export interface FigureIndex {
   figuresInSpan(libraryId: string, bookId: number, charStart: number, charEnd: number): FigureRef[];
 }
 
+/** Section-span reads (#695): which sections hold a text offset. */
+export interface SectionIndex {
+  /**
+   * The section path at `charOffset` in one book: every stored span with
+   * `charStart <= charOffset < charEnd`, top level first, ending at the deepest. [] when the
+   * book has no spans there, or there is no index (no db file is created).
+   */
+  sectionPathAt(libraryId: string, bookId: number, charOffset: number): SectionRef[];
+}
+
 /** The full store: every port plus lifecycle. Callers that need less depend on a port. */
 export interface IndexStore
-  extends LibraryIdCheck, IndexFreshness, IndexWriter, ChunkIndex, KeywordPlanReport, FigureIndex {
+  extends LibraryIdCheck, IndexFreshness, IndexWriter, ChunkIndex, KeywordPlanReport, FigureIndex, SectionIndex {
   close(): void;
 }

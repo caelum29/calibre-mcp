@@ -31,6 +31,10 @@ _Avoid_: tie (alone, when noise-band equality is meant)
 **Solo scoring**:
 Scoring each (query, passage) rerank pair in its own model forward (batch=1). Removes padding-neighbor dependence — the score is a pure function of the pair, so result order is deterministic under pool-composition changes. Costs ~6% latency vs batched-16 on CPU.
 
+**Section span**:
+One section of a book's extracted text (a part, chapter or sub-section, levels 1–4) with its title, nesting parent and character range, from the PDF outline, else the EPUB table of contents, else the chapter detector. Stored per book in the index's `sections` table for labels and navigation, never embedded. A hit's section is the deepest span that holds the hit's offset (#695).
+_Avoid_: section id (chunks carry none)
+
 ### Book images
 
 **Embedded image**:
