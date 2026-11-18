@@ -358,12 +358,16 @@ export function evaluateGate(
  * front/back-matter passage above it. New queries the baseline may predate, so the
  * non-regression diff can't see them; a missing row or field counts as a failure.
  */
-function backMatterTrapChecks(current: EvalReport, cfg: NonNullable<Thresholds["backMatterTrap"]>): GateCheck[] {
+function backMatterTrapChecks(
+  current: EvalReport,
+  cfg: NonNullable<Thresholds["backMatterTrap"]>,
+  prefix = "",
+): GateCheck[] {
   return cfg.modes.map((mode) => {
     const byId = new Map(rowsOf(current, mode).map((r) => [r.id, r]));
     const failed = cfg.queryIds.filter((id) => byId.get(id)?.nonBodyAbove !== 0);
     return {
-      name: `back-matter trap ${mode}: no front/back matter above the relevant passage`,
+      name: `${prefix}back-matter trap ${mode}: no front/back matter above the relevant passage`,
       active: true,
       pass: failed.length === 0,
       detail: `${cfg.queryIds.length - failed.length}/${cfg.queryIds.length}${failed.length ? `; failed: ${failed.join(", ")}` : ""}`,
@@ -376,6 +380,8 @@ function backMatterTrapChecks(current: EvalReport, cfg: NonNullable<Thresholds["
  * frozen OFF baseline. Report-only kinds (cross-lingual) are listed, never failed;
  * `platformDrift` entries of the `fusionOnly` tier are skipped (Linux rule, #364); drops of
  * `capabilityKinds` (#359, thresholds.capabilityKinds.kinds) are listed, never failed.
+ * `backMatterTrap` (#605) is checked here too (#688): with rerank off, the bodyFirst partition
+ * alone decides placement.
  */
 export function evaluateFusionOnlyGate(
   current: EvalReport,
@@ -383,6 +389,7 @@ export function evaluateFusionOnlyGate(
   cfg: NonNullable<Thresholds["fusionOnly"]>,
   platformDrift: PlatformDriftEntry[] = [],
   capabilityKinds: QueryKind[] = [],
+  backMatterTrap?: Thresholds["backMatterTrap"],
 ): GateResult {
   const capability = new Set<string>(checkCapabilityList(capabilityKinds, "thresholds.capabilityKinds.kinds"));
   const checks: GateCheck[] = [];
@@ -428,6 +435,7 @@ export function evaluateFusionOnlyGate(
       });
     }
   }
+  if (backMatterTrap) checks.push(...backMatterTrapChecks(current, backMatterTrap, "fusion-only "));
   checks.push(...driftEntriesCheck("fusionOnly", drift, baseline));
   return gateResult(checks, drops);
 }
