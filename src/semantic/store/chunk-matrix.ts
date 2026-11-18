@@ -79,7 +79,9 @@ export class MatrixWriter {
     if (row > m.bookStart[b]! && chunkId <= m.chunkIds[row - 1]!) {
       throw new Error(`chunk matrix: book ${bookId} rows must arrive in ascending chunk id`);
     }
-    // Int32Array would wrap a larger rowid silently into a wrong chunk.
+    // Int32Array would wrap a larger rowid silently into a wrong chunk. Known limit (#694): the
+    // throw leaves the cache dirty and unreplaced, so every later search throws again. Unreachable
+    // in practice (2^31 chunk rowids; Programming_Books holds ~417k).
     if (chunkId > INT32_MAX) throw new Error(`chunk matrix: chunk id ${chunkId} exceeds int32`);
     m.vectors.set(vector, row * EMBED_DIM);
     m.chunkIds[row] = chunkId;
