@@ -27,6 +27,7 @@ export function reversed(inner: IndexStore): IndexStore {
     figureCount: (l, b) => inner.figureCount(l, b),
     chunkAt: (l, b, o) => inner.chunkAt(l, b, o),
     figuresInSpan: (l, b, s, e) => inner.figuresInSpan(l, b, s, e),
+    sectionPathAt: (l, b, o) => inner.sectionPathAt(l, b, o),
     stats: (l) => inner.stats(l),
     vectorCount: (l) => inner.vectorCount(l),
     close: () => inner.close(),
