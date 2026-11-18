@@ -6,11 +6,14 @@ import { type ChapterSpan, detectChapters, type DetectOptions } from "./chapters
 import { frontMatterEnd } from "./front-matter.js";
 import { isBibliographyTitle, isIndexTitle, normalizeTitle } from "./front-matter-titles.js";
 
-/** Where a chunk sits in the book: before the body, in it, or one of three back-matter kinds. */
-export type MatterKind = "front" | "body" | "back_index" | "back_biblio" | "back_other";
+/** The non-body kinds: front matter and the three back-matter kinds; the tool's output enum (#691). */
+export const NON_BODY_KINDS = ["front", "back_index", "back_biblio", "back_other"] as const;
 
-/** Every kind, in a fixed order (store codes and validation read it). */
-export const MATTER_KINDS: readonly MatterKind[] = ["body", "front", "back_index", "back_biblio", "back_other"];
+/** Where a chunk sits in the book: before the body, in it, or one of three back-matter kinds. */
+export type MatterKind = "body" | (typeof NON_BODY_KINDS)[number];
+
+/** Every kind, in a fixed order with body first: the chunk matrix's row code is the index (#691). */
+export const MATTER_KINDS: readonly MatterKind[] = ["body", ...NON_BODY_KINDS];
 
 /** A stored kind string as a MatterKind; anything unknown reads as body. */
 export function toMatterKind(raw: unknown): MatterKind {
@@ -51,6 +54,11 @@ const LEGAL = /all rights reserved|\bISBN\b|printed in|library of congress|вс�
 const CONTENTS_MIN_ENTRIES = 4;
 const CONTENTS_MIN_TITLES = 3;
 const TITLE_MAX_CHARS = 60;
+// Prose guard thresholds. 60: RAGFlow's TOC-page guard (more than 2 boxes over 60 runes, see
+// docs/dev/research/ragflow-notes.md), the same cap as a title-like line, under a wrapped prose
+// line (~75). 20: ours, not measured; longer than a bare index term or short heading.
+const PROSE_LONG_CHARS = TITLE_MAX_CHARS;
+const PROSE_UNMARKED_CHARS = 20;
 const SENTENCE_END = /[.!?;:,]$/u;
 const CONTENTS_TITLE = /^(?:contents|table of contents|brief contents|оглавление|содержание|зміст)$/u;
 
@@ -76,8 +84,8 @@ export function carriesProse(chunk: string): boolean {
   let unmarked = 0;
   for (const line of nonEmptyLines(chunk)) {
     if (endsInPage(line)) continue;
-    if (line.length > 60) long++;
-    if (line.length > 20 && !CHAPTER_KEYWORD.test(line)) unmarked++;
+    if (line.length > PROSE_LONG_CHARS) long++;
+    if (line.length > PROSE_UNMARKED_CHARS && !CHAPTER_KEYWORD.test(line)) unmarked++;
   }
   return long > 2 || unmarked > 2;
 }

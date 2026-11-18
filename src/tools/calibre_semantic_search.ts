@@ -39,11 +39,11 @@ import type { ContentBlock, ToolResult } from "./types.js";
 import type { BaseDeps, DepsWithIndex } from "./deps.js";
 import { errorCodeFor } from "../domain/error-codes.js";
 import { figureLocation, figureLocationLabel } from "../domain/figures/location.js";
-import type { MatterKind } from "../domain/structure/matter-kind.js";
+import { type MatterKind, NON_BODY_KINDS } from "../domain/structure/matter-kind.js";
 
 // Debug-level ranking provenance per hit (#650), the same shape for every scope.
 // Front/back matter of a hit (#605); the closed set of stored kinds minus body, which is never sent.
-const MatterKindSchema = z.enum(["front", "back_index", "back_biblio", "back_other"]);
+const MatterKindSchema = z.enum(NON_BODY_KINDS);
 
 // The text label for a non-body hit, in the match/passage line (#605); "" for body.
 const MATTER_LABEL: Record<MatterKind, string> = {
