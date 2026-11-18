@@ -299,15 +299,17 @@ head, opened at the first sentence start if the passage begins mid-sentence. Eac
 `calibre_get_content` as `offset` to read on from the snippet; `charStart`/`charEnd` still span
 the whole passage.
 
-Front and back matter come after body text in both scopes: a library hit shows the book's best
-body passage, and a book that matches only in its table of contents, index, bibliography or
-copyright page follows every book with a body match. Such hits carry a label in their text line
-(`[front matter]`, `[back matter: index]`, `[back matter: bibliography]`,
-`[back matter: copyright/ads]`) and a `matterKind` field in `structuredContent`
+Front and back matter is placed after body text: in library scope a hit shows the book's best
+body passage, and a book that matches only in its table of contents, index, bibliography,
+preface or copyright page follows every book with a body match. In book scope only strong
+matter (contents, index, copyright/ads) is forced behind the body passages. Such hits carry a
+label in their text line (`[front matter]`, `[back matter: index]`, `[back matter:
+bibliography]`, `[back matter: copyright/ads]`) and a `matterKind` field in `structuredContent`
 (`front`, `back_index`, `back_biblio`, `back_other`; absent for body text). Book-scope passages
 keep `frontMatter: true` beside `matterKind: "front"` for one release. In book scope a preface
-that answers the question keeps its rerank position; contents, index and copyright pages follow
-the body passages. See [SEMANTIC-SEARCH.md](SEMANTIC-SEARCH.md) for the rules.
+or bibliography keeps its rerank position (it can rank first); contents, index and copyright
+pages follow the body passages. Without a rerank, every front/back-matter hit follows the body
+hits. See [SEMANTIC-SEARCH.md](SEMANTIC-SEARCH.md) for the rules.
 
 On a library refused for a [case-only id clash](#case-clashing-library-ids) it fails with error
 code `library_id_collision` instead of "no index yet".

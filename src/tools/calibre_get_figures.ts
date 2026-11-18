@@ -8,7 +8,6 @@ import type { FigureInventory } from "../domain/figures/inventory.js";
 import { figureLocation, figureLocationLabel } from "../domain/figures/location.js";
 import type { SkippedFigure } from "../calibre/figure-inventory.js";
 import { CalibreHttpError, FiguresError, type FiguresErrorCode } from "../domain/errors.js";
-import { log } from "../logging.js";
 import { BookId, CoercedBool, CoercedInt, jsonArray } from "./coerce.js";
 import { defineTool } from "./define.js";
 import { bookIdArg } from "./resolve-id.js";
@@ -242,9 +241,15 @@ async function fetchFigures(
     });
     blocks.push({ type: "image", data: f.image.data, mimeType: f.image.mimeType });
     returned.push({ index: f.index, mimeType: f.image.mimeType, bytes: f.image.bytes });
-    log.info(
-      `calibre_get_figures fetch book=${numericId} fmt=${fmt} index=${f.index} detail=${args.detail} mime=${f.image.mimeType} bytes=${f.image.bytes}`,
-    );
+    // stable msg, values in meta (#680): one greppable event instead of one msg per fetch
+    deps.log.info("figure fetched", {
+      bookId: numericId,
+      format: fmt,
+      index: f.index,
+      detail: args.detail,
+      mimeType: f.image.mimeType,
+      bytes: f.image.bytes,
+    });
   }
   for (const s of outcome.skipped) {
     blocks.push({ type: "text", text: `Figure index ${s.index} skipped: ${skipReason(s)}` });
