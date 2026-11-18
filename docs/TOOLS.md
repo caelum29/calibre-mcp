@@ -368,7 +368,8 @@ hit, a `provenance` object (vector and keyword half ranks, fused rank, whether t
 scored it, and for library books which half's passage is shown), mirrored as a `debug:` line
 before each hit's fenced text. When a keyword half ran over the book text, a `dropped` list names
 the query words its match left out (`duplicate`: a repeated word; `too-common`: a word in more
-than half of the library's passages), mirrored as a `Keyword plan (debug):` header line. Ranking
+than half of the library's passages; stems in query order, then any identifier such as `is-a`
+whose every stem was too common), mirrored as a `Keyword plan (debug):` header line. Ranking
 is the same at every log level
 ([Troubleshooting → Logs](TROUBLESHOOTING.md#logs)).
 

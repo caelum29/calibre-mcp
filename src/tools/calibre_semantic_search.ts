@@ -120,7 +120,7 @@ export const semanticSearchTool = defineTool({
       .array(z.object({ term: z.string(), reason: z.enum(["duplicate", "too-common"]) }))
       .optional()
       .describe(
-        "Only at CALIBRE_MCP_LOG_LEVEL=debug, when a text keyword half ran: query terms the keyword MATCH left out, in query order — repeated stems (duplicate) and words in more than half of the library's chunks (too-common). Absent when the library has no term statistics.",
+        "Only at CALIBRE_MCP_LOG_LEVEL=debug, when a text keyword half ran: query terms the keyword MATCH left out: stems in query order — repeated ones (duplicate) and those in more than half of the library's chunks (too-common) — then any identifier (e.g. `is-a`) whose every stem was too common. Absent when the library has no term statistics.",
       ),
     // Degradation surfacing (issue #41): false when the index has no vectors, so semantic
     // (vector/hybrid) ranking can't run for this library — with the reason spelled out.

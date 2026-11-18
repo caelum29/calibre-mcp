@@ -2384,7 +2384,7 @@
             "type": "number"
           },
           "dropped": {
-            "description": "Only at CALIBRE_MCP_LOG_LEVEL=debug, when a text keyword half ran: query terms the keyword MATCH left out, in query order — repeated stems (duplicate) and words in more than half of the library's chunks (too-common). Absent when the library has no term statistics.",
+            "description": "Only at CALIBRE_MCP_LOG_LEVEL=debug, when a text keyword half ran: query terms the keyword MATCH left out: stems in query order — repeated ones (duplicate) and those in more than half of the library's chunks (too-common) — then any identifier (e.g. `is-a`) whose every stem was too common. Absent when the library has no term statistics.",
             "items": {
               "additionalProperties": false,
               "properties": {
