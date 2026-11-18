@@ -1,0 +1,20 @@
+test/eval/retrieval/back-matter-trap-fusion-688.test.ts
+  s_282fd73004b781::t_108b5f1076adde 1-73
+  s_282fd73004b781::t_5e6edb834e9e27 74-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c9fbc2a5c0c1eacbbe8ed93e436c97f2d4b5642f",
+  "prompts": {},
+  "sessions": {
+    "s_282fd73004b781": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84af6750-c62b-41e5-9956-889991dd8878",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
