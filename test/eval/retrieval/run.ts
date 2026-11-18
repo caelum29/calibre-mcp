@@ -462,7 +462,14 @@ export async function main(platform: string = process.platform): Promise<void> {
     // #363 ablation axis (report-only): needs both passes, so it prints here
     process.stdout.write(`\n${ablationMatrix(on.report, off.report).join("\n")}\n`);
     const offResult = withList(
-      evaluateFusionOnlyGate(off.report, baselines.off, fusion, rule.platformDrift, capabilityKindsOf(thresholds)),
+      evaluateFusionOnlyGate(
+        off.report,
+        baselines.off,
+        fusion,
+        rule.platformDrift,
+        capabilityKindsOf(thresholds),
+        thresholds.backMatterTrap,
+      ),
       off.report,
       baselines.off,
       "fusionOnly",
