@@ -319,6 +319,8 @@ export function createLogger(io: LoggerIo = {}): Logger {
       if (!opts.dir) return;
       try {
         mkdirSync(opts.dir, { recursive: true });
+        // Known limit (#703, wontfix): `mode` applies only when the file is created, so a README
+        // written before #680 keeps 0644; it holds no queries, only the format description.
         writeFileSync(path.join(opts.dir, "README.md"), README, { mode: 0o600 }); // rewritten each start: tracks the running version
         dir = opts.dir;
       } catch (err) {
