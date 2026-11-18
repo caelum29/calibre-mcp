@@ -69,7 +69,7 @@ It then runs a second, **fusion-only pass** with the reranker off (`thresholds.f
 #356). With rerank ON, `RERANK_POOL` (30) covers the whole fixture, so the cross-encoder
 re-sorts every candidate and a fusion regression can't show (ON hybrid = vector on every
 positive). The OFF pass compares per-query Hit@1 to its own frozen baseline
-(`reports/2026-11-16-5abdc650-hardkinds-rerankoff.json`): no query solved there may break, in any mode.
+(`reports/2026-11-17-1f7f8258-605-rerankoff.json`): no query solved there may break, in any mode.
 Cross-lingual drops are listed as report-only (OFF hybrid solves 0/8 today). Both passes
 print, then `OVERALL GATE`. The OFF pass skips the reranker, so it adds only seconds.
 `--gate` rejects `--rerank` (it sets rerank per pass) but honours `--rrf-weights`, which is
@@ -82,14 +82,14 @@ report `thresholds.json` names as a baseline (same date + sha + tag); use `--out
 per kind. It prints Δ nDCG@10 (b − a), a percentile bootstrap 95% CI, a sign-flip permutation
 p (exact for small n, fixed-seed Monte Carlo otherwise), Hit@1 flips with an exact sign test,
 the MDE at 80% power, headroom, and `UNDERPOWERED` when p ≥ 0.05 and |Δ| < MDE. The same
-two files always print the same numbers. The MDE depends on n and on the paired differences: at n = 83 (every positive of the 27-book fixture; the `--compare` of the 2026-11-16 rerank-off vs rerank-on baselines) it is 0.066–0.099 nDCG (measured 2026-11-16; the earlier 0.09–0.12 was at n = 59 in 2026-11), so most
+two files always print the same numbers. The MDE depends on n and on the paired differences: at n = 83 (every positive of the 27-book fixture, before #605 grew it to 32 books and 105 queries; the `--compare` of the 2026-11-16 rerank-off vs rerank-on baselines) it is 0.066–0.099 nDCG (measured 2026-11-16; the earlier 0.09–0.12 was at n = 59 in 2026-11), so most
 single-kind tuning deltas still come out underpowered; cite this table, not a bare Δ.
 
 Every run also prints, after the per-mode headline:
 
 - **headroom** — how many positive queries every mode in the run solves at Hit@1
   (`saturation.ts`). Those queries can't tell configs apart, so a high share means the suite
-  has little room to show a tuning win (27-book fixture, baseline `5abdc650`, 2026-11-16: 55/83 = 66.3% across
+  has little room to show a tuning win (27-book fixture, baseline `5abdc650`, 2026-11-16, before #605: 55/83 = 66.3% across
   hybrid/vector/keyword with rerank ON, 53/83 = 63.9% rerank OFF; at f8bb617 on the then 59 positives it was 45/59 = 76.3%).
 - **saturation warning** — when rerank-ON hybrid Hit@1 ≥ 0.95. Anthropic's eval guidance: a
   baseline near 95% means optimise cost/latency, or add harder queries, rather than chase
@@ -126,11 +126,13 @@ records (`HarnessOptions.timing`), so
   (`leak-guard.test.ts`, `leak-guard-fts.test.ts`), so keyword Hit@1 = 0 by construction.
   `adjacent-negative` is scored like `negative` but stays out of `negativesFlagged` and
   `rerankFloor` (axis `adjacentNegative`). Every #359 query carries a one-line `why`.
-- `corpus/` + `corpus.json` — 27 self-authored fixture "books" (20 EN incl. 2 code-heavy,
-  7 RU), committed as text. Two are front-matter traps: 116 (plain-text praise/TOC,
+- `corpus/` + `corpus.json` — 32 self-authored fixture "books" (24 EN incl. 2 code-heavy,
+  8 RU), committed as text. Two are front-matter traps: 116 (plain-text praise/TOC,
   D-016's chapter detector) and 117 (`headingStructured`, EPUB→Markdown-shaped — only the
   #102 `leadingFrontMatter` rule finds its boundary; a smoke test pins that). 118–127 back
-  the #359 kinds. 125–127 have a raw filename as `title` and authors `Unknown`; their
+  the #359 kinds. 128–132 (#605) are the front/back-matter kinds: 128 bird guide with an
+  index, 129 cartography book with a references list, 130 a book with trailing ads, 131 a
+  mid-book citation-dense negative, 132 a RU houseplant book with an index. 125–127 have a raw filename as `title` and authors `Unknown`; their
   `realTitle` is for the #363 title-prefix ablation and is never read by the harness.
   `corpus/figures/` holds caption inventories for 6 books (the figure-caption kinds);
   **embeddings are built at eval time** (decision: committing a prebuilt index would rot on
