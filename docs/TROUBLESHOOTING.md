@@ -329,7 +329,9 @@ can open them for you: *"check the calibre-mcp logs for errors today"*):
   fenced text, e.g. `debug: vector #3 · keyword #12 · fused #7 · rerank pool · chunk from
   keyword (other chunk rerank 0.051)`. It gives the 1-based rank in the vector and keyword
   halves, the fused rank (hybrid), whether the reranker scored the hit, and for library
-  books which half's passage is shown and the reranker's score for the other one.
+  books which half's passage is shown and the reranker's score for the other one. A
+  `Keyword plan (debug):` header line and a `dropped` field list the query words the keyword
+  match left out, e.g. `dropped the (too-common), lock (duplicate)`.
 
 Logs contain book ids, titles and search queries — never book text; your home folder
 is written as `~`.

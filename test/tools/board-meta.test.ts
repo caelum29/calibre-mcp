@@ -88,6 +88,7 @@ function semanticDeps(cache: BoardCache): SemanticDeps {
       searchBook: () => [],
       searchBookFts: () => [],
       chunkAt: () => undefined,
+      keywordDropped: () => undefined,
       searchFigures: () => [],
       searchFiguresFts: () => [],
       figureCount: () => 0,

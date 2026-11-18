@@ -26,6 +26,7 @@ export function reversed(inner: IndexStore): IndexStore {
     searchFiguresFts: (l, q, k, b) => inner.searchFiguresFts(l, q, k, b).reverse(),
     figureCount: (l, b) => inner.figureCount(l, b),
     chunkAt: (l, b, o) => inner.chunkAt(l, b, o),
+    keywordDropped: (l, q) => inner.keywordDropped(l, q),
     figuresInSpan: (l, b, s, e) => inner.figuresInSpan(l, b, s, e),
     stats: (l) => inner.stats(l),
     vectorCount: (l) => inner.vectorCount(l),

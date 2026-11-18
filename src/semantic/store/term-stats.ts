@@ -3,7 +3,7 @@
 // written. Feeds the keyword planner's stop-word pruning; #623/#652 can reuse it.
 
 import type { DatabaseSync, StatementSync } from "node:sqlite";
-import type { KeywordColumn, TermStats } from "../../domain/search/keyword-plan.js";
+import { KEYWORD_COLUMNS, type KeywordColumn, type TermStats } from "../../domain/search/keyword-plan.js";
 import { dataVersion } from "./shared.js";
 
 /** TermStats plus a count of vocab queries actually run (cache misses), for diagnostics. */
@@ -11,14 +11,17 @@ export interface Fts5TermStats extends TermStats {
   readonly lookups: number;
 }
 
-const COLUMNS: readonly KeywordColumn[] = ["body_stem", "body", "book_meta"];
+// Basis: an entry is one stem and three counts. The 120-query judged set has 769 distinct stems
+// (1,718 token occurrences), so 4096 keeps several such working sets warm per library connection
+// at under 1 MB; the oldest entry goes first once a long session exceeds it.
+const DEFAULT_MAX_ENTRIES = 4096;
 
 /**
  * TermStats over `chunk_fts` of `db`. One vocab query per term fills all three columns; results
  * are cached (bounded, oldest evicted first) and dropped when the file's data version changes.
  */
 export function fts5TermStats(db: DatabaseSync, opts: { maxEntries?: number } = {}): Fts5TermStats {
-  const maxEntries = opts.maxEntries ?? 4096;
+  const maxEntries = opts.maxEntries ?? DEFAULT_MAX_ENTRIES;
   // temp schema: per-connection and never in the file; a vocab lookup on a frequent term
   // still decodes its whole posting list (~0.5 s for "the" on a 400k-chunk index), hence the cache
   db.exec("CREATE VIRTUAL TABLE IF NOT EXISTS temp.chunk_fts_vocab USING fts5vocab(main, 'chunk_fts', 'col')");
@@ -53,7 +56,7 @@ export function fts5TermStats(db: DatabaseSync, opts: { maxEntries?: number } = 
         lookups++;
         row = { body_stem: 0, body: 0, book_meta: 0 };
         for (const r of byTerm.all(term) as Array<{ col: string; doc: number }>) {
-          if ((COLUMNS as readonly string[]).includes(r.col)) row[r.col as KeywordColumn] = Number(r.doc);
+          if ((KEYWORD_COLUMNS as readonly string[]).includes(r.col)) row[r.col as KeywordColumn] = Number(r.doc);
         }
         if (cache.size >= maxEntries) cache.delete(cache.keys().next().value as string);
         cache.set(term, row);
