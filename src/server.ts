@@ -229,7 +229,7 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
         _meta: { ui: { visibility: ["app"] } },
       },
       async ({ line }) => {
-        log.info("widget-probe", line);
+        log.info("widget-probe", { line });
         return { content: [{ type: "text", text: "ok" }] };
       },
     );
