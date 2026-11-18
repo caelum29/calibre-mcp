@@ -9,6 +9,40 @@ inserts its generated section above the newest entry. Hand-written notes still g
 `[Unreleased]`; when merging a release PR, fold them into the generated section and leave
 `[Unreleased]` empty.
 
+## [0.14.0](https://github.com/caelum29/calibre-mcp/compare/v0.13.0...v0.14.0) (2026-11-18)
+
+
+### Added
+
+* **semantic:** every indexed chunk is classified as front matter, body or back matter (index, bibliography, other). Hits carry `matterKind` in text and `structuredContent` in both scopes, and front/back-matter hits are labelled. Already-indexed books get the kinds from `pnpm reindex --flags-only` (no re-embed) ([#605](https://github.com/caelum29/calibre-mcp/issues/605), [#625](https://github.com/caelum29/calibre-mcp/issues/625))
+* **index:** section spans (outline, TOC or chapter headings, levels 1–4) are stored per book in a new additive `sections` table. Nothing reads them yet; they fill on re-index or `pnpm reindex --flags-only`, with no index version bump ([#695](https://github.com/caelum29/calibre-mcp/issues/695))
+* **semantic:** at `CALIBRE_MCP_LOG_LEVEL=debug`, results carry per-stage timings, per-hit ranking provenance (which half found a hit, at what rank, whether it was reranked), and a `dropped` list of query words the keyword half left out. All three appear in text and `structuredContent` ([#602](https://github.com/caelum29/calibre-mcp/issues/602), [#650](https://github.com/caelum29/calibre-mcp/issues/650), [#651](https://github.com/caelum29/calibre-mcp/issues/651))
+* **logging:** the tool-call log records what a search returned (hits and result sizes) next to the query ([#627](https://github.com/caelum29/calibre-mcp/issues/627))
+* **recover-metadata:** falls back to a title query when the ISBN finds nothing ([#593](https://github.com/caelum29/calibre-mcp/issues/593))
+* **semantic_search:** the bundle filter note says how many of the bundle's books are indexed ([#556](https://github.com/caelum29/calibre-mcp/issues/556))
+
+
+### Changed
+
+* **semantic:** body passages rank first in both scopes. A book is shown through its best body passage, strong front/back matter (contents, index, bibliography) follows the body hits and takes no rerank pair, and confidence reads the body tier ([#605](https://github.com/caelum29/calibre-mcp/issues/605))
+* **semantic:** the keyword half drops repeated words and words that appear in more than half of a library's passages, and matches stems only in the stemmed columns. Ranking quality on the judged set is unchanged, and the library-scope keyword half is about twice as fast (median 1076 → 492 ms on a 1,100-book library). Libraries whose term statistics can't be read keep the previous matching ([#651](https://github.com/caelum29/calibre-mcp/issues/651))
+* **semantic:** library rerank also scores the keyword half's chunk of its top books; identifier tokens (`std::move`, `C++`) match the raw text ([#604](https://github.com/caelum29/calibre-mcp/issues/604), [#634](https://github.com/caelum29/calibre-mcp/issues/634))
+* **semantic:** the vector cache is a flat typed array with a one-pass best chunk per book; a refresh that changes nothing keeps the cached matrix ([#618](https://github.com/caelum29/calibre-mcp/issues/618))
+
+
+### Fixed
+
+* **semantic:** the library head snippet opens at a sentence start ([#657](https://github.com/caelum29/calibre-mcp/issues/657))
+* **structure:** a book-title outline entry is dropped together with the leading front matter, and a chapter-like first entry is never taken for the title. Bare numbered lines no longer make a contents block ([#605](https://github.com/caelum29/calibre-mcp/issues/605), [#625](https://github.com/caelum29/calibre-mcp/issues/625))
+* **input:** schema violations, blank filters and limit fallbacks follow the error contract; a lost validated-args object fails closed ([#590](https://github.com/caelum29/calibre-mcp/issues/590), [#591](https://github.com/caelum29/calibre-mcp/issues/591))
+* **remove-book:** a timed-out or dropped `calibredb` remove is settled by a re-read ([#584](https://github.com/caelum29/calibre-mcp/issues/584))
+* **get-content:** says when a format override fell back to another format ([#592](https://github.com/caelum29/calibre-mcp/issues/592))
+* **build-index:** no forced-rebuild hint when nothing was built keyword-only ([#594](https://github.com/caelum29/calibre-mcp/issues/594))
+* **figures:** a pass-through image is labelled by its magic bytes ([#486](https://github.com/caelum29/calibre-mcp/issues/486))
+* **logging:** a figure fetch logs a stable `figure fetched` event with its fields in `meta`; `meta` is always an object; new log files and the log `README.md` are created with mode 0600, since the log holds search queries ([#680](https://github.com/caelum29/calibre-mcp/issues/680))
+* **ui:** the coverflow action buttons have a bottom gap
+
+
 ## [0.13.0](https://github.com/caelum29/calibre-mcp/compare/v0.12.0...v0.13.0) (2026-11-12)
 
 
