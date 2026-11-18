@@ -558,7 +558,8 @@ describe("front-matter flagging at build time (issue #18)", () => {
     const r = await buildIndexTool.handler(args({ bookId: 1 }), d);
     expect(r.isError).toBeUndefined();
 
-    // quoted, so the #651 prune keeps "widget"/"gadget" (in most of this 3-chunk book's chunks)
+    // quotes keep the words past the #651 prune in this tiny 3-chunk library; the absent-term
+    // guard path is covered in test/semantic/store-keyword-plan-651.test.ts
     const hits = store.searchBookFts("Programming_Books", 1, '"praise" "widget" "gadget"', 20);
     const flagged = hits.filter((h) => h.frontMatter);
     const bodyHits = hits.filter((h) => !h.frontMatter);

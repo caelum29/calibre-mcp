@@ -56,6 +56,14 @@ describe("store keyword half with the #651 plan", () => {
     expect(s.searchLibraryFts(LIB, "консенсус в системах Raft Paxos", 10)).toEqual([]);
   });
 
+  it("should_recompute_the_shares_after_a_book_removal", () => {
+    const s = storeOf(BODIES);
+    expect(s.keywordDropped(LIB, "the zeta")).toEqual([{ term: "the", reason: "too-common" }]);
+    // "the" now in 1 of 2 chunks (0.5, not above it): the warm 3-of-4 share must not survive
+    s.deleteBooks(LIB, [2, 3]);
+    expect(s.keywordDropped(LIB, "the zeta")).toEqual([]);
+  });
+
   it("should_recompute_the_shares_after_its_own_write", () => {
     const s = storeOf(BODIES);
     expect(s.searchLibraryFts(LIB, "lock zeta", 10).map((h) => h.bookId)).toEqual([1, 4]);
