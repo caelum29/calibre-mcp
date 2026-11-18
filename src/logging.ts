@@ -259,7 +259,8 @@ export function createLogger(io: LoggerIo = {}): Logger {
         fileDay = day;
         pruneOldFiles(dir, at);
       }
-      appendFileSync(logFilePath(dir, at), line);
+      // 0600: the files hold search queries verbatim (#680); existing files keep their mode until pruned
+      appendFileSync(logFilePath(dir, at), line, { mode: 0o600 });
     } catch (err) {
       // Logging must never fail a tool call: drop the file sink, warn once on stderr.
       fileBroken = true;
@@ -318,7 +319,7 @@ export function createLogger(io: LoggerIo = {}): Logger {
       if (!opts.dir) return;
       try {
         mkdirSync(opts.dir, { recursive: true });
-        writeFileSync(path.join(opts.dir, "README.md"), README); // rewritten each start: tracks the running version
+        writeFileSync(path.join(opts.dir, "README.md"), README, { mode: 0o600 }); // rewritten each start: tracks the running version
         dir = opts.dir;
       } catch (err) {
         emit("warn", "log file sink unavailable", { dir: opts.dir, err });
