@@ -69,7 +69,7 @@ It then runs a second, **fusion-only pass** with the reranker off (`thresholds.f
 #356). With rerank ON, `RERANK_POOL` (30) covers the whole fixture, so the cross-encoder
 re-sorts every candidate and a fusion regression can't show (ON hybrid = vector on every
 positive). The OFF pass compares per-query Hit@1 to its own frozen baseline
-(`reports/2026-11-18-4b64e1ad-rerankoff.json`): no query solved there may break, in any mode.
+(`reports/2026-11-18-717e8f4e-rerankoff.json`): no query solved there may break, in any mode.
 Cross-lingual drops are listed as report-only (OFF hybrid solves 0/8 today). Both passes
 print, then `OVERALL GATE`. The OFF pass skips the reranker, so it adds only seconds.
 `--gate` rejects `--rerank` (it sets rerank per pass) but honours `--rrf-weights`, which is
@@ -331,6 +331,13 @@ Append-only: one entry per re-freeze, newest last. Every number names its corpus
   - **Model freeze.** From the step-1 `pnpm eval --gate` run at 4b64e1ad (deterministic on macOS; a tagged re-run differs only in `durationMs`): `reports/2026-11-18-4b64e1ad.json` (on) and `reports/2026-11-18-4b64e1ad-rerankoff.json` (fusionOnly).
   - **Existing lists changed:** 28 (hash), 17 (on) and 23 (fusionOnly) of 315. Every one is a query with a dropped or deduplicated term on the fixture index's own statistics; the PR body lists each with its terms.
   - **Hit@1:** no break and no fix in any tier. On tier: no per-query metric changed, maxScore |Δ| 0.0000. FusionOnly hybrid `xl-05` and `xl-06` gained a relevant book in the top 10 (rr 0 → 0.111 / 0.125).
+  - **Unchanged:** every `fmt-*` Hit@1; `bmt-*` `nonBodyAbove` is 0 everywhere; the four `linux` platform-drift entries are still solved at Hit@1.
+- **2026-11-18, #651 option (b) (no exact-form bonus; parks for Artem's b-vs-c decision).**
+  - **Rule first.** The judged acceptance rule a4eb9af8 also declares arm `b`; it passed (hit@3 80/110 both arms, no category CI below 0).
+  - **Change.** The keyword half's stems match only the stemmed columns (`{body_stem book_meta}`), so a stem equal to its surface form no longer also matches the raw `body` column. Identifier forms stay raw and unfiltered.
+  - **Freezes.** Hash: `pnpm eval:hash-freeze` at 0dc1b299 (315 rows). On and fusionOnly: from the step-1 `pnpm eval --gate` run at 717e8f4e, `reports/2026-11-18-717e8f4e.json` and `reports/2026-11-18-717e8f4e-rerankoff.json`.
+  - **Existing lists changed:** 81 (hash), 47 (on) and 81 (fusionOnly) of 315, each on a query with a kept stem equal to its surface form.
+  - **Hit@1:** hash hybrid `sp-03` breaks (1 → 2, accepted: RRF, book 117 rose from keyword rank 4 to 3 when 118 lost its bonus; keyword still ranks 103 first); hash keyword `sp-13` 2 → 1; on and fusionOnly keyword `cp-05` 0 → 1. No other per-query metric changed on the model tiers.
   - **Unchanged:** every `fmt-*` Hit@1; `bmt-*` `nonBodyAbove` is 0 everywhere; the four `linux` platform-drift entries are still solved at Hit@1.
 
 ### Rules

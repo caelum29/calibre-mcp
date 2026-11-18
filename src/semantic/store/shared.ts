@@ -225,6 +225,9 @@ export function ftsMatch(query: string): string | null {
 // term in more than half the rows, so pruning those is near ranking-neutral and saves their
 // long posting lists. Bigrams and quoted phrases wait for their own judged arm.
 const MAX_DOC_SHARE = 0.5;
+// FTS5 column filter of the stemmed columns (body_stem holds the stemmed text, book_meta the
+// stemmed title+authors); body is the raw column
+const STEM_COLUMNS = "{body_stem book_meta}";
 
 /** The keyword half's MATCH and, when it came from the #651 plan, what the plan left out. */
 export interface KeywordMatch {
@@ -238,8 +241,9 @@ export interface KeywordMatch {
  * The keyword half's MATCH rendered from the #651 plan over one library's `stats`: distinct
  * stems, minus those in more than half of the chunks (body_stem), plus the identifier extras
  * of ftsMatch except an identifier whose stems were all pruned ("a pruned token leaves both
- * groups"). The stems stay unfiltered over all columns, so the exact-form bonus is today's
- * (option c). Without statistics, or when they fail, the MATCH is exactly ftsMatch(query).
+ * groups"). The stems match only the stemmed columns (option b, no exact-form bonus); the
+ * identifier extras stay unfiltered. Without statistics, or when they fail, the MATCH is exactly
+ * ftsMatch(query).
  */
 export function keywordMatch(query: string, stats?: TermStats): KeywordMatch {
   if (stats === undefined) return { match: ftsMatch(query) };
@@ -258,8 +262,12 @@ export function keywordMatch(query: string, stats?: TermStats): KeywordMatch {
     if (stems.length > 0 && stems.every((s) => pruned.has(s))) dropped.push({ term: id, reason: "too-common" });
     else ids.push(id, `${id}.`);
   }
-  const toks = [...plan.terms, ...ids];
-  return { match: toks.length === 0 ? null : toks.map(phrase).join(" OR "), dropped };
+  // #651 option (b): stems only in the stemmed columns, so a stem equal to its surface form no
+  // longer also matches the raw body column (the accidental exact-form bonus); the identifier
+  // forms stay raw and unfiltered, as #634 placed them
+  const parts = plan.terms.length > 0 ? [`${STEM_COLUMNS} : (${plan.terms.map(phrase).join(" OR ")})`] : [];
+  parts.push(...ids.map(phrase));
+  return { match: parts.length === 0 ? null : parts.join(" OR "), dropped };
 }
 
 // a double-quoted span of the query, as typed; an unpaired quote opens none
