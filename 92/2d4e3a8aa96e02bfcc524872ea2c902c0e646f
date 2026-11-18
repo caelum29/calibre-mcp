@@ -1,0 +1,19 @@
+CHANGELOG.md
+  s_287283b2ad73cc::t_84aede6050be0f 17-22,25,27-30,33-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "922d4e3a8aa96e02bfcc524872ea2c902c0e646f",
+  "prompts": {},
+  "sessions": {
+    "s_287283b2ad73cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ebdb56bd-73fc-4ded-8664-bbb9fb7ab583",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
