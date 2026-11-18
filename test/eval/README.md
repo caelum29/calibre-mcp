@@ -69,7 +69,7 @@ It then runs a second, **fusion-only pass** with the reranker off (`thresholds.f
 #356). With rerank ON, `RERANK_POOL` (30) covers the whole fixture, so the cross-encoder
 re-sorts every candidate and a fusion regression can't show (ON hybrid = vector on every
 positive). The OFF pass compares per-query Hit@1 to its own frozen baseline
-(`reports/2026-11-17-1f7f8258-605-rerankoff.json`): no query solved there may break, in any mode.
+(`reports/2026-11-18-4b64e1ad-rerankoff.json`): no query solved there may break, in any mode.
 Cross-lingual drops are listed as report-only (OFF hybrid solves 0/8 today). Both passes
 print, then `OVERALL GATE`. The OFF pass skips the reranker, so it adds only seconds.
 `--gate` rejects `--rerank` (it sets rerank per pass) but honours `--rrf-weights`, which is
@@ -324,6 +324,14 @@ Append-only: one entry per re-freeze, newest last. Every number names its corpus
     - on `rt-01`;
     - fusionOnly `xl-07`, `nop-08`, `rt-02`.
   - **Unchanged:** every `fmt-*` Hit@1. `bmt-*` `nonBodyAbove` is 0 everywhere. The four `linux` platform-drift entries are still solved at Hit@1.
+- **2026-11-18, #651 step 1 (keyword plan: dedupe + prune).**
+  - **Rule commit first.** a4eb9af8 declares the judged acceptance rule (`keyword-plan-651.acceptance.json`) before any re-freeze or arm dump.
+  - **Change.** The keyword half's MATCH sends each stem once and drops a stem found in more than half of the library's chunks (`body_stem` document share > 0.5), with its identifier forms. One-word queries, quoted words and the rarest stem always stay.
+  - **Hash freeze.** `pnpm eval:hash-freeze` at 06a14fd6 (315 rows), still green after the main merge 4b64e1ad.
+  - **Model freeze.** From the step-1 `pnpm eval --gate` run at 4b64e1ad (deterministic on macOS; a tagged re-run differs only in `durationMs`): `reports/2026-11-18-4b64e1ad.json` (on) and `reports/2026-11-18-4b64e1ad-rerankoff.json` (fusionOnly).
+  - **Existing lists changed:** 28 (hash), 17 (on) and 23 (fusionOnly) of 315. Every one is a query with a dropped or deduplicated term on the fixture index's own statistics; the PR body lists each with its terms.
+  - **Hit@1:** no break and no fix in any tier. On tier: no per-query metric changed, maxScore |Δ| 0.0000. FusionOnly hybrid `xl-05` and `xl-06` gained a relevant book in the top 10 (rr 0 → 0.111 / 0.125).
+  - **Unchanged:** every `fmt-*` Hit@1; `bmt-*` `nonBodyAbove` is 0 everywhere; the four `linux` platform-drift entries are still solved at Hit@1.
 
 ### Rules
 

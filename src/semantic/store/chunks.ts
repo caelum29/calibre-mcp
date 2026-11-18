@@ -1,14 +1,17 @@
 // Chunk retrieval (#272): the vector half (brute-force cosine over a per-library packed vector
 // matrix, decoded once, refreshed per changed book on any write — #370, #618) and the keyword half
-// (weighted bm25 over chunk_fts), plus figure → context lookup. Snippet windows: ../snippet.ts.
+// (weighted bm25 over chunk_fts, its MATCH planned from the library's term statistics, #651), plus
+// figure → context lookup. Snippet windows: ../snippet.ts.
 
 import type { DatabaseSync } from "node:sqlite";
 import type { LogSink } from "../../logging.js";
 import { EMBED_DIM } from "../model.js";
 import { SNIPPET_CHARS } from "../snippet.js";
+import type { KeywordDrop, TermStats } from "../../domain/search/keyword-plan.js";
 import { toMatterKind } from "../../domain/structure/matter-kind.js";
 import { decodeVector } from "../vector.js";
 import {
+  BODY_CODE,
   bookTop,
   type ChunkMatrix,
   libraryTop,
@@ -22,14 +25,15 @@ import type { IndexConnections } from "./schema.js";
 import {
   type CacheVersion,
   cacheFreshness,
-  ftsMatch,
+  keywordMatch,
   markDirty,
   parseAuthors,
   rollbackQuietly,
   type Row,
   WEIGHTED_BM25,
 } from "./shared.js";
-import type { BookHit, ChunkIndex, ChunkRef, LibraryHit } from "./types.js";
+import { fts5TermStats } from "./term-stats.js";
+import type { BookHit, ChunkIndex, ChunkRef, KeywordPlanReport, LibraryHit } from "./types.js";
 
 /** One library's packed chunk vectors plus the version it was read under. */
 interface ChunkCache extends CacheVersion {
@@ -37,11 +41,14 @@ interface ChunkCache extends CacheVersion {
 }
 
 /** ChunkIndex over the shared connections with its own per-library vector matrix. */
-export class SqliteChunkIndex implements ChunkIndex {
+export class SqliteChunkIndex implements ChunkIndex, KeywordPlanReport {
   // Per-library packed matrix; an own write or another connection's commit (data_version)
   // reloads only the books whose `books` row changed (#370), copying the rest (#618).
   // DEFERRED: quantising this in-memory copy is #653.
   #caches = new Map<string, ChunkCache>();
+  // #651: per library, term statistics bound to the connection they were built on (null =
+  // unavailable there). Dropped with the candidate cache: own writes never move data_version.
+  #stats = new Map<string, { db: DatabaseSync; stats: TermStats | null }>();
 
   constructor(
     private readonly conn: IndexConnections,
@@ -53,11 +60,36 @@ export class SqliteChunkIndex implements ChunkIndex {
   /** Mark books this connection just wrote; the next read reloads exactly them. */
   invalidate(libraryId: string, bookIds: readonly number[]): void {
     markDirty(this.#caches, libraryId, bookIds);
+    this.#stats.delete(libraryId);
   }
 
   /** Drop every cache (store close). */
   clear(): void {
     this.#caches.clear();
+    this.#stats.clear();
+  }
+
+  keywordDropped(libraryId: string, query: string): KeywordDrop[] | undefined {
+    const db = this.conn.db(libraryId);
+    return keywordMatch(query, this.#termStats(libraryId, db)).dropped;
+  }
+
+  /** The library's term statistics on `db`, built once per connection; undefined when fts5vocab fails there. */
+  #termStats(libraryId: string, db: DatabaseSync): TermStats | undefined {
+    const held = this.#stats.get(libraryId);
+    if (held?.db === db) return held.stats ?? undefined;
+    let stats: TermStats | null = null;
+    try {
+      stats = fts5TermStats(db);
+    } catch (err) {
+      // the keyword half still answers with today's MATCH; only pruning and dedupe are lost
+      this.log.warn("keyword plan unavailable: no term statistics, MATCH built as before", {
+        libraryId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+    this.#stats.set(libraryId, { db, stats });
+    return stats ?? undefined;
   }
 
   searchLibrary(libraryId: string, query: Float32Array, k: number, allow?: ReadonlySet<number>): LibraryHit[] {
@@ -107,7 +139,7 @@ export class SqliteChunkIndex implements ChunkIndex {
 
   searchLibraryFts(libraryId: string, query: string, k: number, allow?: ReadonlySet<number>): LibraryHit[] {
     const db = this.conn.db(libraryId);
-    const match = ftsMatch(query);
+    const { match } = keywordMatch(query, this.#termStats(libraryId, db));
     if (!match) return [];
     // Pull a generous pool of chunk hits, then keep the best (first, since bm25-ranked) per book.
     // Equal bm25 orders by book id, then chunk id (#392): SQLite's scan order is no contract.
@@ -182,7 +214,9 @@ export class SqliteChunkIndex implements ChunkIndex {
 
   searchBookFts(libraryId: string, bookId: number, query: string, k: number): BookHit[] {
     const db = this.conn.db(libraryId);
-    const match = ftsMatch(query);
+    // the book's MATCH runs over the whole library's chunk_fts (FTS-first CTE), so the library's
+    // shares are the ones that price its posting lists
+    const { match } = keywordMatch(query, this.#termStats(libraryId, db));
     if (!match) return [];
     // FTS-first: with a plain JOIN the planner drives from idx_chunks_book and re-runs the
     // OR-ed MATCH per chunk (1.7–250 s on a 313k-chunk index); a MATERIALIZED CTE evaluates
@@ -290,7 +324,7 @@ export function loadChunkMatrix(db: DatabaseSync, bookIds?: readonly number[]): 
       .prepare(`SELECT chunk_id, book_id, vector FROM embeddings ${filter} ORDER BY chunk_id`)
       .iterate(...params) as Iterable<Row>) {
       const chunkId = Number(r.chunk_id);
-      w.place(Number(r.book_id), chunkId, decodeVector(r.vector as Uint8Array), kinds.get(chunkId) ?? 0);
+      w.place(Number(r.book_id), chunkId, decodeVector(r.vector as Uint8Array), kinds.get(chunkId) ?? BODY_CODE);
     }
     const m = w.finish();
     if (own) db.exec("COMMIT");

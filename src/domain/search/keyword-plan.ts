@@ -1,10 +1,13 @@
 // Keyword-query planner (#651): turns a query's tokens into the plan the keyword half's MATCH is
 // rendered from — distinct stems, minus words so common they cost a long posting list and add
 // almost no ranking signal, plus phrase clauses for adjacency. Pure: term statistics come in
-// through the TermStats port. Not wired into ranking yet; the threshold rule is Artem's (#651).
+// through the TermStats port. Wired into the keyword half's MATCH by store/shared.ts keywordMatch.
 
-/** A chunk_fts column (schema.ts): stemmed body, raw body, stemmed title + authors. */
-export type KeywordColumn = "body_stem" | "body" | "book_meta";
+/** The chunk_fts columns in table order (schema.ts): stemmed body, raw body, stemmed title + authors. */
+export const KEYWORD_COLUMNS = ["body_stem", "body", "book_meta"] as const;
+
+/** A chunk_fts column. */
+export type KeywordColumn = (typeof KEYWORD_COLUMNS)[number];
 
 /** Term-statistics port over the keyword index: document frequency per column. */
 export interface TermStats {

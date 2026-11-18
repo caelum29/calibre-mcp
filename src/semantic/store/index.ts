@@ -12,6 +12,7 @@ import { SqliteSectionIndex } from "./sections.js";
 import { IndexConnections } from "./schema.js";
 import { IndexFileOwners } from "./library-owner.js";
 import type { LibraryIdCollisionError } from "../../domain/library-id-collision.js";
+import type { KeywordDrop } from "../../domain/search/keyword-plan.js";
 import type { BookSections } from "../../domain/structure/sections.js";
 import type {
   BookHit,
@@ -160,6 +161,10 @@ export class SqliteIndexStore implements IndexStore {
 
   searchBookFts(libraryId: string, bookId: number, query: string, k: number): BookHit[] {
     return this.#chunks.searchBookFts(libraryId, bookId, query, k);
+  }
+
+  keywordDropped(libraryId: string, query: string): KeywordDrop[] | undefined {
+    return this.#chunks.keywordDropped(libraryId, query);
   }
 
   chunkAt(libraryId: string, bookId: number, charOffset: number): ChunkRef | undefined {

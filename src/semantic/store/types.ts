@@ -4,6 +4,7 @@
 
 import type { ChunkSpan } from "../content-match.js";
 import type { LibraryIdCollisionError } from "../../domain/library-id-collision.js";
+import type { KeywordDrop } from "../../domain/search/keyword-plan.js";
 import type { MatterKind } from "../../domain/structure/matter-kind.js";
 import type { BookSections, SectionSource } from "../../domain/structure/sections.js";
 
@@ -254,13 +255,23 @@ export interface ChunkIndex {
   searchBook(libraryId: string, bookId: number, query: Float32Array, k: number): BookHit[];
   /**
    * Keyword half: rank books by best weighted-bm25 FTS5 match (score is negative, lower is better).
-   * `query` is the query as typed; the store derives stems and identifier tokens (shared.ts ftsMatch).
+   * `query` is the query as typed; the store plans the MATCH from it (shared.ts keywordMatch, #651).
    */
   searchLibraryFts(libraryId: string, query: string, k: number, allow?: ReadonlySet<number>): LibraryHit[];
   /** Keyword half: rank passages within one book by weighted-bm25 FTS5 match; `query` as typed. */
   searchBookFts(libraryId: string, bookId: number, query: string, k: number): BookHit[];
   /** The chunk containing a figure marker offset (figure → context direction). */
   chunkAt(libraryId: string, bookId: number, charOffset: number): ChunkRef | undefined;
+}
+
+/** What the #651 keyword plan leaves out of a query's MATCH, for debug output (#650). */
+export interface KeywordPlanReport {
+  /**
+   * The terms the keyword half's plan drops for `query` in this library (duplicates, words in
+   * more than half of the chunks), in query order; undefined when the library has no term
+   * statistics and the MATCH is built as before.
+   */
+  keywordDropped(libraryId: string, query: string): KeywordDrop[] | undefined;
 }
 
 /** Figure-caption retrieval and the text-span → figures direction. */
@@ -298,6 +309,7 @@ export interface SectionIndex {
 }
 
 /** The full store: every port plus lifecycle. Callers that need less depend on a port. */
-export interface IndexStore extends LibraryIdCheck, IndexFreshness, IndexWriter, ChunkIndex, FigureIndex, SectionIndex {
+export interface IndexStore
+  extends LibraryIdCheck, IndexFreshness, IndexWriter, ChunkIndex, KeywordPlanReport, FigureIndex, SectionIndex {
   close(): void;
 }

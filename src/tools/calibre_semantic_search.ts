@@ -18,7 +18,14 @@ import { filterErrorText } from "./writes-remedy.js";
 import { z } from "zod";
 import { type HitProvenance, type RankedHits, type RetrievalMode, retrieve } from "../semantic/retrieve.js";
 import { SNIPPET_CHARS } from "../semantic/snippet.js";
-import type { ChunkIndex, FigureIndex, IndexFreshness, IndexWriter, LibraryHit } from "../semantic/store/index.js";
+import type {
+  ChunkIndex,
+  FigureIndex,
+  IndexFreshness,
+  IndexWriter,
+  KeywordPlanReport,
+  LibraryHit,
+} from "../semantic/store/index.js";
 import { findGoneBookIds } from "../app/live-hits.js";
 import { type FilterResolution, honestyLines, restrictSet, resolveFilter } from "../app/bundles.js";
 import { boardMeta } from "./board-meta.js";
@@ -108,6 +115,13 @@ export const semanticSearchTool = defineTool({
     maxRerank: z.number().optional(),
     // per-stage wall times, only at CALIBRE_MCP_LOG_LEVEL=debug
     timings: z.record(z.string(), z.number()).optional(),
+    // what the keyword half's plan left out of the MATCH (#651), only at debug level
+    dropped: z
+      .array(z.object({ term: z.string(), reason: z.enum(["duplicate", "too-common"]) }))
+      .optional()
+      .describe(
+        "Only at CALIBRE_MCP_LOG_LEVEL=debug, when a text keyword half ran: query terms the keyword MATCH left out: stems in query order — repeated ones (duplicate) and those in more than half of the library's chunks (too-common) — then any identifier (e.g. `is-a`) whose every stem was too common. Absent when the library has no term statistics.",
+      ),
     // Degradation surfacing (issue #41): false when the index has no vectors, so semantic
     // (vector/hybrid) ranking can't run for this library — with the reason spelled out.
     semanticAvailable: z
@@ -196,6 +210,8 @@ export const semanticSearchTool = defineTool({
     // debug mode times every port call so latency shows up on the result itself
     const rec = rawDeps.config.logLevel === "debug" ? new TimingRecorder() : undefined;
     const deps = rec ? rec.wrap(rawDeps) : rawDeps;
+    // the library whose text keyword half this call ran, for the debug keyword-plan line (#651)
+    let keywordLib: string | undefined;
     const run = async (): Promise<ToolResult> => {
       try {
         const libraryId = await deps.content.resolveLibraryId(args.library);
@@ -275,6 +291,7 @@ export const semanticSearchTool = defineTool({
           if (effArgs.target === "figures") {
             return withIndexVersion(await figuresTarget(effArgs, deps, libraryId, numericId, sem, note), indexVersion);
           }
+          if (mode !== "vector") keywordLib = libraryId;
           return withIndexVersion(await bookScope(effArgs, deps, libraryId, numericId, sem, note), indexVersion);
         }
 
@@ -299,12 +316,14 @@ export const semanticSearchTool = defineTool({
             indexVersion,
           );
         }
+        if (mode !== "vector") keywordLib = libraryId;
         return withIndexVersion(await libraryScope(effArgs, deps, libraryId, sem, note, scope), indexVersion);
       } catch (err) {
         return mapError(err);
       }
     };
-    return withTimings(await run(), rec);
+    const res = await run();
+    return withTimings(rec ? withDropped(res, rawDeps.index, keywordLib, args.query) : res, rec);
   },
 });
 
@@ -352,6 +371,8 @@ function filterFields(scope: FilterCtx): {
 export type SemanticIndex = Pick<IndexFreshness, "hasIndex" | "indexMeta" | "hasVectors" | "isBookIndexed"> &
   ChunkIndex &
   FigureIndex &
+  // debug output: what the keyword plan left out (#651)
+  KeywordPlanReport &
   // the one write: best-effort prune of hits whose book is gone (#579)
   Pick<IndexWriter, "deleteBooks">;
 /** calibre_semantic_search's deps: BaseDeps plus the SemanticIndex port. */
@@ -759,6 +780,32 @@ function withTimings(res: ToolResult, rec: TimingRecorder | undefined): ToolResu
       ? [{ ...first, text: `${first.text}\n${line}` }, ...rest]
       : [{ type: "text", text: line }, ...res.content];
   return { ...res, content, structuredContent: { ...res.structuredContent, timings } };
+}
+
+/**
+ * Debug mode (#651): the keyword plan's dropped terms after the header text and in
+ * structuredContent, for a call whose text keyword half ran in `libraryId` (successes only).
+ */
+function withDropped(
+  res: ToolResult,
+  index: KeywordPlanReport,
+  libraryId: string | undefined,
+  query: string,
+): ToolResult {
+  if (libraryId === undefined || res.isError) return res;
+  const dropped = index.keywordDropped(libraryId, query);
+  const line =
+    dropped === undefined
+      ? "Keyword plan (debug): no term statistics for this library, MATCH built from every query word"
+      : dropped.length === 0
+        ? "Keyword plan (debug): nothing dropped"
+        : `Keyword plan (debug): dropped ${dropped.map((d) => `${d.term} (${d.reason})`).join(", ")}`;
+  const [first, ...rest] = res.content;
+  const content: ContentBlock[] =
+    first?.type === "text"
+      ? [{ ...first, text: `${first.text}\n${line}` }, ...rest]
+      : [{ type: "text", text: line }, ...res.content];
+  return { ...res, content, ...(dropped ? { structuredContent: { ...res.structuredContent, dropped } } : {}) };
 }
 
 /** Prepend a degrade/advisory note to a header block (kept in the text so all clients see it). */

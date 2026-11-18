@@ -1,0 +1,24 @@
+{
+  "$comment": "#651 keyword-planner wiring: acceptance rule declared and committed BEFORE any arm is dumped (D-012; Artem-approved default 1, wave 2026-11-18). A measurement on the live library through the wave's index snapshot, not a fixture gate. Query set: the 120 queries of the blind judged baseline (docs/dev/evals/semantic-judged-blind-2026-11/queries.json); new hits judged blind through scripts/judged-blind.workflow.js (judges A = opus, B = sonnet, as in the baseline). No code reads this file; it is the record the arms are checked against.",
+  "issue": 651,
+  "rule": {
+    "$comment": "An arm passes when, against the baseline row dumped on the same main, (1) blind hit@3 falls by at most maxHit3DropOverallPoints percentage points overall, and (2) no category's paired 95% bootstrap interval for the NDCG@5 difference (arm - baseline, pnpm eval:judged:compare) lies entirely below 0, i.e. its upper bound is not below 0. This replaces #644's 'no category loses a query net' clause. long-* and problem-* are reported separately. Latency is measured and reported per stage, never read by the rule.",
+    "maxHit3DropOverallPoints": 1,
+    "categoryClause": "no category has a paired 95% CI for delta NDCG@5 with upper bound < 0",
+    "compareCommand": "pnpm eval:judged:compare <baselineRunDir> <armRunDir> --store <store>",
+    "reportSeparately": ["long-*", "problem-*"]
+  },
+  "baseline": {
+    "$comment": "Dumped on main as it stands when the dump starts (490c124d at wave start), from a detached worktree of origin/main; every judged row from before 490c124d predates #605 and #618 and is not comparable.",
+    "runDir": "docs/dev/evals/wave-2026-11-18/K3/base"
+  },
+  "arms": {
+    "prune": {
+      "$comment": "Step 1, the wiring PR head: ftsMatch renders planKeywordQuery(tokens, stats, { maxDocShare: 0.5, bigrams: false }) with per-library body_stem statistics; dedupe always on; a pruned stem also drops its identifier forms; exact-form behaviour (c) as today (stems unfiltered over all columns)."
+    },
+    "b": {
+      "$comment": "Step 2, only after the orchestrator's GO: stems restricted to the stemmed columns (body_stem, book_meta), drop the accidental exact-form bonus; prune rule unchanged; same rule, same baseline row."
+    }
+  },
+  "fixture": "pnpm eval --gate: an expected re-freeze per test/eval/README.md's rule-first procedure; every list diff is explained by a dropped or deduplicated term."
+}

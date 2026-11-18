@@ -366,7 +366,11 @@ only within that generation; store it with any citation you persist (see
 At `CALIBRE_MCP_LOG_LEVEL=debug` the response also carries per-stage `timings` and, on every
 hit, a `provenance` object (vector and keyword half ranks, fused rank, whether the reranker
 scored it, and for library books which half's passage is shown), mirrored as a `debug:` line
-before each hit's fenced text. Ranking is the same at every log level
+before each hit's fenced text. When a keyword half ran over the book text, a `dropped` list names
+the query words its match left out (`duplicate`: a repeated word; `too-common`: a word in more
+than half of the library's passages; stems in query order, then any identifier such as `is-a`
+whose every stem was too common), mirrored as a `Keyword plan (debug):` header line. Ranking
+is the same at every log level
 ([Troubleshooting → Logs](TROUBLESHOOTING.md#logs)).
 
 > Ask: *"which of my books explain consumer-group rebalancing?"* · *"find passages in book 187 about idempotent producers"* (`scope: book`) · *"find a diagram of the JWT signature flow"* (`target: figures`) · *"what do my databases books say about LSM trees?"* (`filter: databases`)

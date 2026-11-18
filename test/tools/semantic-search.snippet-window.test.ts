@@ -96,7 +96,9 @@ describe("library snippet window (#243)", () => {
     "book-38 repro [%s]: snippet starts at the Raft/Paxos sentence, chunk span unchanged",
     async (mode) => {
       const store = storeWith(38, "An Elegant Puzzle", BOOK38_START, BOOK38_BODY);
-      const { top } = await search(store, "консенсус в распределённых системах Raft Paxos", mode);
+      // quotes keep Raft/Paxos past the #651 prune in this one-chunk library (share 1.0); the
+      // absent-term guard path is covered in test/semantic/store-keyword-plan-651.test.ts
+      const { top } = await search(store, 'консенсус в распределённых системах "Raft" "Paxos"', mode);
       expect(top.bookId).toBe(38);
       expect(top.charStart).toBe(BOOK38_START);
       expect(top.charEnd).toBe(BOOK38_START + BOOK38_BODY.length);

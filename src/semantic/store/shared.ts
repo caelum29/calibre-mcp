@@ -1,9 +1,16 @@
 // Small SQL/candidate helpers shared by the store's concern modules (#272): the bm25 column
-// weights (also quoted in the schema's FTS comment), FTS MATCH building, author decoding,
+// weights (also quoted in the schema's FTS comment), FTS MATCH building (rendered from the #651
+// keyword plan when the library's term statistics are at hand), author decoding,
 // quiet rollback, and the per-library candidate-cache shape the chunk and figure halves share.
 
 import type { DatabaseSync } from "node:sqlite";
-import { stemText } from "../stem.js";
+import {
+  type KeywordDrop,
+  type KeywordToken,
+  planKeywordQuery,
+  type TermStats,
+} from "../../domain/search/keyword-plan.js";
+import { stemmedTokens, stemText } from "../stem.js";
 import type { Candidate } from "../vector.js";
 
 /** A raw node:sqlite result row. */
@@ -212,6 +219,59 @@ export function ftsMatch(query: string): string | null {
   const toks = [...stems, ...ids];
   if (toks.length === 0) return null;
   return toks.map(phrase).join(" OR ");
+}
+
+// #651 prune rule, declared 2026-11-17 before any judged run: FTS5 already floors the IDF of a
+// term in more than half the rows, so pruning those is near ranking-neutral and saves their
+// long posting lists. Bigrams and quoted phrases wait for their own judged arm.
+const MAX_DOC_SHARE = 0.5;
+
+/** The keyword half's MATCH and, when it came from the #651 plan, what the plan left out. */
+export interface KeywordMatch {
+  /** FTS5 MATCH expression; null when the query has no searchable tokens. */
+  match: string | null;
+  /** Terms left out (duplicate / too-common); absent when no plan ran (no statistics, or they failed). */
+  dropped?: KeywordDrop[];
+}
+
+/**
+ * The keyword half's MATCH rendered from the #651 plan over one library's `stats`: distinct
+ * stems, minus those in more than half of the chunks (body_stem), plus the identifier extras
+ * of ftsMatch except an identifier whose stems were all pruned ("a pruned token leaves both
+ * groups"). The stems stay unfiltered over all columns, so the exact-form bonus is today's
+ * (option c). Without statistics, or when they fail, the MATCH is exactly ftsMatch(query).
+ */
+export function keywordMatch(query: string, stats?: TermStats): KeywordMatch {
+  if (stats === undefined) return { match: ftsMatch(query) };
+  let plan;
+  try {
+    plan = planKeywordQuery(keywordTokens(query), stats, { maxDocShare: MAX_DOC_SHARE, bigrams: false });
+  } catch {
+    // a vocab lookup can fail mid-plan (busy file, missing module): today's MATCH still answers
+    return { match: ftsMatch(query) };
+  }
+  const pruned = new Set(plan.dropped.filter((d) => d.reason === "too-common").map((d) => d.term));
+  const dropped = [...plan.dropped];
+  const ids: string[] = [];
+  for (const id of identifierTokens(query)) {
+    const stems = stemText(id).split(/\s+/).filter(Boolean);
+    if (stems.length > 0 && stems.every((s) => pruned.has(s))) dropped.push({ term: id, reason: "too-common" });
+    else ids.push(id, `${id}.`);
+  }
+  const toks = [...plan.terms, ...ids];
+  return { match: toks.length === 0 ? null : toks.map(phrase).join(" OR "), dropped };
+}
+
+// a double-quoted span of the query, as typed; an unpaired quote opens none
+const QUOTED = /"([^"]*)"/g;
+
+/** The query's word tokens in order (stemText's tokenizer), each tagged with its quoted span. */
+function keywordTokens(query: string): KeywordToken[] {
+  const spans = [...query.matchAll(QUOTED)].map((m) => ({ from: m.index + 1, to: m.index + m[0].length - 1 }));
+  return [...stemmedTokens(query)].map((t) => {
+    const span = spans.findIndex((s) => t.index >= s.from && t.index + t.length <= s.to);
+    return { stem: t.stem, raw: query.slice(t.index, t.index + t.length), ...(span >= 0 ? { span } : {}) };
+  });
 }
 
 /** authors are stored as a JSON array string; tolerate legacy/garbled values. */

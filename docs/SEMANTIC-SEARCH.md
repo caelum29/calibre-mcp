@@ -107,6 +107,12 @@ identifiers that hold `+`, `#`, `.` or `-` (`C++`, `C#`, `Node.js`, `utf-8`) als
 their exact form, including at the end of a sentence (`… written in C++.`); without that, `C++`
 would only be searched as the letter `c`.
 
+A repeated word counts once, and a word that appears in more than half of a library's passages
+(`the`, `and`, `use`, …) is left out of the keyword match: it says almost nothing about which
+passage fits and costs the most time to look up. A one-word query, words in `"quotes"`, and the
+rarest word of a query made only of such words are always kept. Russian function words are
+rarer than that in a mostly English library, so they stay in.
+
 Two refinements worth knowing about:
 
 - **Reranking.** If the optional reranker model is present (`bge-reranker-v2-m3`,
