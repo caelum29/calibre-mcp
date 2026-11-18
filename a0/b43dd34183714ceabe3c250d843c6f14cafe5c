@@ -1,0 +1,20 @@
+test/eval/README.md
+  s_5c624b053ab0be::t_200c30893525ab 129-130
+  s_5c624b053ab0be::t_ae031da40d2741 72,85,92,133-135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a0b43dd34183714ceabe3c250d843c6f14cafe5c",
+  "prompts": {},
+  "sessions": {
+    "s_5c624b053ab0be": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c77a0adb-9759-403a-bc26-9a62ae2f8a76",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
