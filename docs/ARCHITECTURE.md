@@ -214,7 +214,7 @@ Ids cited in public code, tests and standards, one line each.
 | D-010 | Semantic stack: transformers.js, brute-force cosine on `node:sqlite` BLOBs, hybrid vector + FTS5 with RRF. |
 | D-011 | A cross-encoder reranker (`bge-reranker-v2-m3`) reorders hybrid and vector results.                         |
 | D-012 | `multilingual-e5-small` kept after a measured bake-off; set the rule that eval gates are declared before measuring. |
-| D-016 | Front-matter chunks are flagged at index time and ranked below body matches in book scope.                  |
+| D-016 | Front/back-matter chunks are labelled at index time; strong kinds follow body matches, weak ones keep rerank. |
 | D-017 | MCP Apps widgets (cover board, book card) attach to their tools and pull their data through a widget-only tool. |
 | D-018 | A figure is an image identified by an adjacent caption; served by `calibre_get_figures`.                    |
 | D-019 | Bundles and exclusion markers are backed by saved searches; no virtual-library writes.                      |

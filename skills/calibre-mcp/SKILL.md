@@ -133,9 +133,12 @@ identifiers:false   # no ISBN etc.
   (scoped to `ids`/`query` for speed, or full library). A keyword-only index with the model
   installed (build_index `semanticAvailable: true`) only needs a rebuild without `keywordOnly`;
   install steps only when the model is missing.
-- **Front/back matter in semantic hits**: hits labelled `[front matter]` or `[back matter: …]`
-  (`matterKind` in structured output) come from a table of contents, index, bibliography or
-  copyright page. Library scope places every such book after the books with a body match; book scope pushes only contents, index and copyright pages behind body passages. A book that only matches there is a weak lead; quote body passages. A `[front matter]` preface or a bibliography at rank 1 in book scope is reranked like body text, so it can be real content.
+  - **Front/back matter in semantic hits**: hits labelled `[front matter]` or `[back matter:
+  …]` (`matterKind` in structured output) come from a table of contents, index, bibliography or
+  copyright page. Library scope places every such book after the books with a body match; book
+  scope pushes only contents, index and copyright pages behind body passages. A book that only
+  matches there is a weak lead; quote body passages. A `[front matter]` preface or a
+  bibliography at rank 1 in book scope is reranked like body text, so it can be real content.
 
 ## Common Workflows
 
