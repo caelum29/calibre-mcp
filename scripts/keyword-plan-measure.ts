@@ -1,16 +1,18 @@
 // Keyword-planner measurement (#651), read-only on an index directory: the document-frequency share
 // of every token of a judged query set per chunk_fts column, what each candidate pruning threshold
 // would drop, and (with --timing) the library-scope keyword-half time before and after pruning.
-// The planner's only caller until the wiring step; it never changes production ranking.
+// --wired (wiring step, exclusive machine token): only the wired keyword half's time per stage,
+// today's MATCH vs the store's planned one (keywordMatch), in alternating rows; nothing else runs.
 // Run: CALIBRE_MCP_INDEX_DIR=<dir> node --import tsx scripts/keyword-plan-measure.ts <queries.json> <outDir>
-//      [--thresholds 0.05,0.1,0.2] [--timing] [--timed 0.5,0.2] [--limit N]
+//      [--thresholds 0.05,0.1,0.2] [--timing] [--timed 0.5,0.2] [--limit N] [--wired [--runs 3]]
 
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { loadavg } from "node:os";
 import { join } from "node:path";
 import type { DatabaseSync } from "node:sqlite";
 import { type KeywordPlan, type KeywordToken, planKeywordQuery } from "../src/domain/search/keyword-plan.js";
 import { stemmedTokens } from "../src/semantic/stem.js";
-import { WEIGHTED_BM25, ftsMatch } from "../src/semantic/store/shared.js";
+import { WEIGHTED_BM25, ftsMatch, keywordMatch } from "../src/semantic/store/shared.js";
 import { indexFileName, openReadOnlyIndex } from "../src/semantic/store/schema.js";
 import { fts5TermStats, type Fts5TermStats } from "../src/semantic/store/term-stats.js";
 
@@ -52,6 +54,94 @@ const open = (lib: string) => {
   }
   return e;
 };
+
+if (rest.includes("--wired")) {
+  wiredTiming(Number(flag("--runs") ?? 3));
+  for (const { db } of dbs.values()) db.close();
+  process.exit(0);
+}
+
+/**
+ * The wired keyword half, per stage: `plan` = keywordMatch over the library's term statistics
+ * (fresh statistics per row, so a row's first plan of a stem pays its vocab lookup = cold; a
+ * second plan right after = warm), `sql` = the unfiltered library branch of searchLibraryFts with
+ * its production columns (c.body included), pool 200. Rows alternate base/wired (ABBA); each row
+ * records the 1-minute load at start and end and is not started above load 8.
+ */
+function wiredTiming(runs: number): void {
+  const sql = `SELECT c.id AS chunk_id, c.book_id, c.char_start, c.char_end, c.body, c.matter_kind, ${WEIGHTED_BM25} AS score
+               FROM chunk_fts JOIN chunks c ON c.id = chunk_fts.rowid
+               WHERE chunk_fts MATCH ? ORDER BY score, c.book_id, c.id LIMIT 200`;
+  const lib = queries.filter((x) => x.scope === "library");
+  const rowsPath = join(outDir as string, "wired-timing.tsv");
+  const loadsPath = join(outDir as string, "wired-rows.tsv");
+  writeFileSync(rowsPath, "row\tarm\tquery\tplanColdMs\tplanWarmMs\tsqlMs\tterms\tmatch\n");
+  writeFileSync(loadsPath, "row\tarm\tstartUtc\tloadStart\tendUtc\tloadEnd\twallS\n");
+  const load1 = () => loadavg()[0] ?? 0;
+  const arms = [
+    "warmup",
+    ...Array.from({ length: runs }, (_, r) => (r % 2 === 0 ? ["base", "wired"] : ["wired", "base"])).flat(),
+  ];
+  for (const [row, arm] of arms.entries()) {
+    const l0 = load1();
+    if (l0 > 8) {
+      process.stderr.write(`row ${row} (${arm}) not started: load ${l0.toFixed(2)} > 8\n`);
+      process.exit(3);
+    }
+    const t0 = new Date();
+    // fresh statistics per wired row: its plan times include the vocab lookups a new session pays
+    const fresh = new Map<string, Fts5TermStats>();
+    for (const [i, x] of lib.entries()) {
+      const { db } = open(x.library);
+      let stats = fresh.get(x.library);
+      if (!stats) fresh.set(x.library, (stats = fts5TermStats(db)));
+      let planCold = 0;
+      let planWarm = 0;
+      let match: string;
+      if (arm === "wired") {
+        const a = performance.now();
+        match = keywordMatch(x.query, stats).match ?? "";
+        planCold = performance.now() - a;
+        const b = performance.now();
+        keywordMatch(x.query, stats);
+        planWarm = performance.now() - b;
+      } else {
+        match = ftsMatch(x.query) ?? "";
+      }
+      const c = performance.now();
+      db.prepare(sql).all(match);
+      const sqlMs = performance.now() - c;
+      appendFileSync(
+        rowsPath,
+        [
+          row,
+          arm,
+          x.id,
+          planCold.toFixed(1),
+          planWarm.toFixed(1),
+          sqlMs.toFixed(1),
+          match.split(" OR ").length,
+          match,
+        ].join("\t") + "\n",
+      );
+      process.stderr.write(`[row ${row} ${arm} ${i + 1}/${lib.length}] ${x.id} ${sqlMs.toFixed(0)} ms\n`);
+    }
+    const t1 = new Date();
+    appendFileSync(
+      loadsPath,
+      [
+        row,
+        arm,
+        t0.toISOString(),
+        l0.toFixed(2),
+        t1.toISOString(),
+        load1().toFixed(2),
+        ((+t1 - +t0) / 1000).toFixed(0),
+      ].join("\t") + "\n",
+    );
+  }
+  process.stderr.write(`wrote wired-timing.tsv + wired-rows.tsv to ${outDir}\n`);
+}
 
 // same word tokenizer as stemText, so stems equal what the index stores in body_stem
 const tokensOf = (q: string): KeywordToken[] =>
