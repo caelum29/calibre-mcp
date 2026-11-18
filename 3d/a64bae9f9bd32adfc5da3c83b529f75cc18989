@@ -1,0 +1,19 @@
+src/server.ts
+  s_5c624b053ab0be::t_c27e0fb0141fe8 232
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3da64bae9f9bd32adfc5da3c83b529f75cc18989",
+  "prompts": {},
+  "sessions": {
+    "s_5c624b053ab0be": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c77a0adb-9759-403a-bc26-9a62ae2f8a76",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
