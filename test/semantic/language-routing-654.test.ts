@@ -67,8 +67,11 @@ describe("query side: packs per token, decided for the whole query (ADR-0032 ite
     expect(queryIds("мова програмування", ["en", "ru"])).toEqual([["ru"], ["ru"]]);
   });
 
-  it("uses only Ukrainian when that is the library's only Cyrillic language", () => {
-    expect(queryIds("мова програмування", ["uk", "en"])).toEqual([["uk"], ["uk"]]);
+  it("en books keep the Cyrillic default ru as a candidate", () => {
+    expect(queryIds("мова програмування", ["uk", "en"])).toEqual([
+      ["ru", "uk"],
+      ["ru", "uk"],
+    ]);
   });
 
   it("falls back to the default pack when no Cyrillic pack has a book, or languages are unknown", () => {
