@@ -196,6 +196,8 @@ export async function prepareBook(deps: IndexBookDeps, bookId: number, opts: Pre
       captions: figures.map((f) => f.caption),
       keywordOnly,
       tokenBudgeted,
+      // Sentence breaks in the book's own language (ADR-0033 item 7); ids are BCP 47 tags.
+      ...(lang ? { locale: lang } : {}),
     },
     onPhase ? { onEmbedProgress: (done, total) => onPhase({ phase: "embed", done, total }) } : undefined,
   );
