@@ -26,8 +26,8 @@ describe("Ukrainian pack", () => {
   });
 
   it("stems a Ukrainian word with Ukrainian letters as Ukrainian inside a Russian book", () => {
-    // результатів has no і/ї/є/ґ, so it stays on the Russian stemmer
-    expect([stemToken("функції", "ru"), stemToken("результатів", "ru")]).toEqual(["функці", "результатів"]);
+    // результатов (Russian) has no і/ї/є/ґ, so it stays on the Russian stemmer
+    expect([stemToken("функції", "ru"), stemToken("результатов", "ru")]).toEqual(["функці", "результат"]);
   });
 
   it("detects a Ukrainian text as uk with the compiled-in packs", () => {
