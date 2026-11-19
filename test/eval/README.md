@@ -339,6 +339,12 @@ Append-only: one entry per re-freeze, newest last. Every number names its corpus
   - **Existing lists changed:** 81 (hash), 47 (on) and 81 (fusionOnly) of 315, each on a query with a kept stem equal to its surface form.
   - **Hit@1:** hash hybrid `sp-03` breaks (1 → 2, accepted: RRF, book 117 rose from keyword rank 4 to 3 when 118 lost its bonus; keyword still ranks 103 first); hash keyword `sp-13` 2 → 1; on and fusionOnly keyword `cp-05` 0 → 1. No other per-query metric changed on the model tiers.
   - **Unchanged:** every `fmt-*` Hit@1; `bmt-*` `nonBodyAbove` is 0 everywhere; the four `linux` platform-drift entries are still solved at Hit@1.
+- **2026-11-19, #654 L2 (Ukrainian language pack; Ukrainian fixture).**
+  - **Rule first (this entry, committed before any gate or freeze run).** The fixture gains books 133–134 (public-domain Ukrainian stories, see `corpus.json`) and 8 `uk-monolingual` library-scope queries `uk-01`..`uk-08` [34-book fixture, 113 queries]. The L2 head passes only if all three hold:
+    1. **EN and RU unchanged.** Against the post-N1 baselines on `main`, every existing query's top-10 list is unchanged in all three modes on the on, fusionOnly and hash tiers, except lists that a new book (133 or 134) enters. Each such list is named, with that book as its cause. No existing Hit@1 changes.
+    2. **The keyword half works on Ukrainian.** Across `uk-01`..`uk-08`, the keyword half alone ranks ≥ 2 distinct books at rank 1, on the on and fusionOnly tiers.
+    3. **Hybrid is not below vector.** On the 8 `uk-monolingual` queries, hybrid hit@5 ≥ vector hit@5, on the on and fusionOnly tiers.
+  - Then re-freeze hash, on and fusionOnly as in this log's earlier entries, with the README counts updated in the same PR.
 
 ### Rules
 
