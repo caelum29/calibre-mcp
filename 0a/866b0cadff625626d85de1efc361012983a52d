@@ -1,0 +1,31 @@
+docs/agents/skills.md
+  s_1092ed19e451f5::t_46236bf1bae69f 86-87
+  s_1092ed19e451f5::t_90e4839e2bf9ab 90-92
+  s_1092ed19e451f5::t_8a68dafc80101e 17-21,33-35,44,59-62,66-75,81-85,93-99,103-115,133-136,142-144,150-152,160,162-165,168-170,173-186
+  s_1092ed19e451f5::t_45c15b761244c9 63-65
+  s_1092ed19e451f5::t_261c0859de69ad 88-89
+  s_1092ed19e451f5::t_7272e0b2e4f6d1 130-132
+  s_1092ed19e451f5::t_b676b20e1908c1 159
+  s_1092ed19e451f5::t_bf7718f15f8be5 161
+  s_1092ed19e451f5::t_6be090837275bd 166-167
+  s_1092ed19e451f5::t_aac9d42bc7208a 171-172
+  s_1092ed19e451f5::t_c5beadf526a9f6 50-52
+AGENTS.md
+  s_1092ed19e451f5::t_b2d09d04dc8567 10-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0a866b0cadff625626d85de1efc361012983a52d",
+  "prompts": {},
+  "sessions": {
+    "s_1092ed19e451f5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "489bad62-4666-46a0-869c-d3ba1dfff126",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
