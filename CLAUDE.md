@@ -88,6 +88,11 @@ search spans both via a `scope: library|book` param, not extra tools.
 
 ## Agent skills
 
+### Skill flow
+
+Before running an engineering skill (`grill-with-docs`, `tdd`, `code-review`, `implement`, …), read
+`docs/agents/skills.md`: who can start which skill, planning depth, and where the skills write here.
+
 ### Issue tracker
 
 GitHub Issues on `caelum29/calibre-mcp`, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
