@@ -263,6 +263,8 @@ export function commitBook(deps: IndexBookDeps, libraryId: string, book: Prepare
     format: d.format,
     backend: d.backend,
     keywordOnly: book.keywordOnly,
+    // books.lang is not in any tool output (ADR-0032): the log is where it shows
+    lang: book.meta.lang ?? null,
   });
   return d;
 }
