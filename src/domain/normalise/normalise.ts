@@ -114,7 +114,7 @@ const hyphenJoin: TextRule = {
  * U+1D2C–U+1D6A, U+1D78, U+1D9B–U+1DBF; the Superscripts and Subscripts block U+2070–U+209F;
  * ⱼ ⱽ; Cyrillic ꚜ ꚝ; ꝰ ꟸ ꟹ; ꭜ–ꭟ ꭩ; Latin Extended-F U+10780–U+107BA; Cyrillic Extended-D
  * U+1E030–U+1E06D. Also the numero sign № (U+2116): NFKC makes it "No", an English stop word in
- * Russian/Ukrainian text, where readers type № in queries (orchestrator decision, Artem to confirm).
+ * Russian/Ukrainian text, where readers type № in queries (Artem confirmed, 2026-11-19).
  */
 export const KEPT_SCRIPTS =
   /[\u00AA\u00B2\u00B3\u00B9\u00BA\u02B0-\u02B8\u02E0-\u02E4\u1D2C-\u1D6A\u1D78\u1D9B-\u1DBF\u2070-\u209F\u2116\u2C7C\u2C7D\uA69C\uA69D\uA770\uA7F8\uA7F9\uAB5C-\uAB5F\uAB69\u{10780}-\u{107BA}\u{1E030}-\u{1E06D}]/u;
