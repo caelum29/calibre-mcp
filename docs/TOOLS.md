@@ -854,7 +854,7 @@ only the part named here is contract. The table is generated from the server's r
 | `calibre_ping` | `Semantic search` | `Semantic search: ready\|UNAVAILABLE\|index STALE …` (the state word is contract; the explanation and steering sentence are Prose) | `semantic.available` |
 | `calibre_ping` | `index` | on the Semantic search line: `; <libraryId> index v<N>: <B> books / <C> chunks / <F> figures, <V> vectors` or `; <libraryId> index busy — …` | `semantic.libraryId` |
 | `calibre_ping` | `Index` | `Index: <entry> · <entry>…[ · … +K more — …]` or `skipped — Calibre unreachable` / `skipped — library busy` / `libraries unavailable` / `(no libraries)` | `indexes` |
-| `calibre_ping` | `id` | each Index entry: `<Name> (id: <libraryId>)[ [default]]: <N>/<M\|?> indexed[ (<K> without embeddings)]\|none\|stale index (rebuild)\|busy — …\|not indexable — …\|index unreadable` (at most 20) | `indexes[].id` |
+| `calibre_ping` | `id` | each Index entry: `<Name> (id: <libraryId>)[ [default]]: <N>/<M\|?> indexed[ (<K> without embeddings)]\|none\|stale index — delete <index file> (and its -wal, -shm), then run calibre_build_index force=true to rebuild.\|busy — …\|not indexable — …\|index unreadable` (at most 20) | `indexes[].id` |
 | `calibre_ping` | `log file` | `log file: <path>\|off (stderr only)` | `logFile` |
 | `calibre_ping` | `recent errors` | `recent errors: <N>[ (<M> occurrences)]` | `recentErrors` |
 

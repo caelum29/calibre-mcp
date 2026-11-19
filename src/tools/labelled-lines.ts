@@ -268,7 +268,7 @@ export const LABELLED_LINES: Readonly<Record<string, ToolLabelledLines>> = {
         match: "segment",
         pattern: /(?:^Index: | · )[^·\n]+? \(id: (?<v>[^)]+)\)(?: \[default\])?: /,
         format:
-          "each Index entry: `<Name> (id: <libraryId>)[ [default]]: <N>/<M|?> indexed[ (<K> without embeddings)]|none|stale index (rebuild)|busy — …|not indexable — …|index unreadable` (at most 20)",
+          "each Index entry: `<Name> (id: <libraryId>)[ [default]]: <N>/<M|?> indexed[ (<K> without embeddings)]|none|stale index — delete <index file> (and its -wal, -shm), then run calibre_build_index force=true to rebuild.|busy — …|not indexable — …|index unreadable` (at most 20)",
         field: "indexes[].id",
         compare: "equal",
       },

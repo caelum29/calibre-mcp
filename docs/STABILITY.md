@@ -94,7 +94,7 @@ Adding the lines to it later would be a minor change.
 | `cancelled` | The client cancelled the call. | — |
 | `fts_unavailable` | Calibre's full-text index is not enabled for the library. | enable full-text indexing in Calibre, or use calibre_search mode=meta |
 | `index_missing` | No semantic index exists for the requested books. | run calibre_build_index first |
-| `index_incompatible` | The semantic index was built by an incompatible version. | rebuild with calibre_build_index { force: true } |
+| `index_incompatible` | The semantic index was built by an incompatible version. | delete the library's index file (<index dir>/<library id>.sqlite, with its -wal and -shm files), then run calibre_build_index { force: true } |
 | `index_build_failed` | Building the semantic index failed. | — |
 | `library_id_collision` | Two library folders have ids that differ only in case. | rename the folder of the refused library the error names (its id differs only in case from the library indexed first) |
 | `dependency_missing` | A required external tool or optional package is missing. | install the tool the error names, then retry |

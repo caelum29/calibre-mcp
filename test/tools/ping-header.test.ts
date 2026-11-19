@@ -125,7 +125,7 @@ describe("calibre_ping per-library index breakdown (#304)", () => {
         id === "Humanities" ? { modelId: MODEL_ID, dim: EMBED_DIM, indexVersion: INDEX_VERSION - 1 } : undefined,
     });
     expect(text(await ping.handler({}, d)).split("\n")).toContain(
-      "Index: Programming Books (id: Programming_Books) [default]: 1064/1092 indexed · Humanities (id: Humanities): stale index (rebuild) · Reaserch Books (id: Reaserch_Books): none",
+      "Index: Programming Books (id: Programming_Books) [default]: 1064/1092 indexed · Humanities (id: Humanities): stale index — delete the index file, then run calibre_build_index force=true to rebuild. · Reaserch Books (id: Reaserch_Books): none",
     );
   });
 

@@ -209,7 +209,7 @@ export class IndexConnections {
       db.exec(`PRAGMA busy_timeout = ${DIAGNOSTIC_BUSY_TIMEOUT_MS}`);
       const meta = readMeta(db);
       if (meta.size === 0) throw new Error("INDEX_UNREADABLE: the index file has no meta (not built by this server).");
-      assertCompatible(meta);
+      assertCompatible(meta, this.#file(libraryId));
       return fn(db);
     } finally {
       db.close();
@@ -261,7 +261,7 @@ export class IndexConnections {
     db.exec("PRAGMA journal_mode = WAL");
     db.exec(SCHEMA);
     this.#migrate(db);
-    this.#ensureMeta(db);
+    this.#ensureMeta(db, file);
     try {
       this.guard.claim(db, libraryId); // first build, or a legacy index with no owner yet (#414)
     } catch (err) {
@@ -300,7 +300,7 @@ export class IndexConnections {
   }
 
   /** Write index metadata on a fresh db; refuse to use one built by a different model/version. */
-  #ensureMeta(db: DatabaseSync): void {
+  #ensureMeta(db: DatabaseSync, file: string): void {
     const existing = readMeta(db);
     if (existing.size === 0) {
       const ins = db.prepare("INSERT INTO meta(key, value) VALUES(?, ?)");
@@ -308,7 +308,7 @@ export class IndexConnections {
       db.prepare("INSERT INTO meta(key, value) VALUES(?, ?)").run("created_at", new Date().toISOString());
       return;
     }
-    assertCompatible(existing);
+    assertCompatible(existing, file);
   }
 
   /**
@@ -405,13 +405,21 @@ function wantedMeta(): Record<string, string> {
   return { model_id: MODEL_ID, dim: String(EMBED_DIM), index_version: String(INDEX_VERSION) };
 }
 
+/**
+ * The way out of an incompatible index (#655 review): the guard refuses EVERY open, the build's
+ * included, so `force=true` alone cannot rebuild it; the file must go first.
+ */
+export function rebuildSteps(file: string): string {
+  const target = file === ":memory:" ? "the index file" : `${file} (and ${file}-wal, ${file}-shm if present)`;
+  return `Delete ${target}, then run calibre_build_index force=true to rebuild.`;
+}
+
 /** Refuse an index built by a different model/version — it can't be searched or extended. */
-function assertCompatible(existing: Map<string, string>): void {
+function assertCompatible(existing: Map<string, string>, file: string): void {
   for (const [k, v] of Object.entries(wantedMeta())) {
     if (existing.get(k) !== v) {
       throw new Error(
-        `INDEX_INCOMPATIBLE: index built with ${k}=${existing.get(k)} but this server uses ${v}. ` +
-          `Delete the index and rebuild (calibre_build_index force=true).`,
+        `INDEX_INCOMPATIBLE: index built with ${k}=${existing.get(k)} but this server uses ${v}. ${rebuildSteps(file)}`,
       );
     }
   }
