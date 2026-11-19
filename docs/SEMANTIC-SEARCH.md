@@ -132,10 +132,15 @@ language field is not used), and the book's words are stemmed in that language. 
 languages are built in: English, Russian and Ukrainian. Other Latin-script text is stemmed as
 English and other Cyrillic text as Russian. A word with letters only one language uses switches
 to that language's stemmer: a Russian quote with `ы` inside a Ukrainian book is stemmed as
-Russian. A query is decided as a whole: one word with `і`, `ї`, `є` or `ґ` makes all of its
-Cyrillic words Ukrainian, and one with `ы`, `э`, `ъ` or `ё` makes them Russian. A query with
-neither, such as `мова програмування`, is searched with both stems when the library has
-Ukrainian books, and with today's Russian stems when it has none.
+Russian. In a query, a word with such letters is always stemmed in its language. The other
+Cyrillic words follow the languages the library's books were stemmed in: Ukrainian when there
+are Ukrainian books, Russian when there are Russian books or books whose language is not
+Cyrillic or unknown (their Cyrillic words were stemmed as Russian). When both apply, a word is
+searched with both stems. One word with `і`, `ї`, `є` or `ґ` switches the whole query to
+Ukrainian when Ukrainian is among those languages, and one with `ы`, `э`, `ъ` or `ё` switches
+it to Russian when Russian is. So `мова програмування` gets both stems in a library of
+Ukrainian and English books, and `взаємного блокування потоків` keeps the Russian stem of
+`блокування` in a library without Ukrainian books.
 
 Two refinements worth knowing about:
 
