@@ -159,8 +159,9 @@ const squeeze: TextRule = {
   },
 };
 
-// 4. Trailing spaces and tabs on a line (Markdown hard breaks).
-const trailing = protectedRule("trailing-spaces", /[ \t]+(?=\n|$)/g, () => "", fences);
+// 4. Trailing spaces and tabs on a line (Markdown hard breaks). An empty ATX heading ("# ") keeps
+// its space: it stays a heading marker for the chunker and the chapter detectors.
+const trailing = protectedRule("trailing-spaces", /(?<!(?:^|\n)#{1,6})[ \t]+(?=\n|$)/g, () => "", fences);
 
 // 5. Three or more line breaks (blank-line runs) become one blank line; `\n\n` stays (the chunker
 // prefers it). Runs only over plain `\n`, so a `\f` page break is never merged away.
