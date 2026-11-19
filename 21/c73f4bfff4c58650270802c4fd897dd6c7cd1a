@@ -1,0 +1,113 @@
+src/app/index-book.ts
+  s_2ce479e58b73f4::t_50b50a2f74a134 14,55-56,175-176,228,246-250,260
+test/tools/ping-header.test.ts
+  s_2ce479e58b73f4::t_50b50a2f74a134 128
+skills/calibre-mcp-setup/SKILL.md
+  s_2ce479e58b73f4::t_50b50a2f74a134 181
+src/calibre/extract.ts
+  s_2ce479e58b73f4::t_50b50a2f74a134 18-27,66-70,105-106,109,207,223-226,239,252,279,281,296,305,403-404,433,442
+src/app/library-index.ts
+  s_2ce479e58b73f4::t_50b50a2f74a134 40-41
+skills/calibre-mcp/SKILL.md
+  s_2ce479e58b73f4::t_50b50a2f74a134 135-139,144-147
+src/domain/structure/matter-kind.ts
+  s_2ce479e58b73f4::t_50b50a2f74a134 12-14,16,19,23,157
+test/domain/normalise/numero-655.test.ts
+  s_2ce479e58b73f4::t_50b50a2f74a134 1-17
+test/eval/README.md
+  s_2ce479e58b73f4::t_50b50a2f74a134 72,342-348
+src/semantic/store/writer.ts
+  s_2ce479e58b73f4::t_50b50a2f74a134 38,61-62,208,212,229-236
+  s_2ce479e58b73f4::t_3bdcc32e0c795c 237-238
+docs/SEMANTIC-SEARCH.md
+  s_2ce479e58b73f4::t_50b50a2f74a134 40-44,46-47,119-123,195-204
+test/calibre/extract-normalise-655.test.ts
+  s_2ce479e58b73f4::t_50b50a2f74a134 1-95
+src/semantic/chunk.ts
+  s_2ce479e58b73f4::t_50b50a2f74a134 12,32-33,35-36,40-41,46-89,98-99,101-102,111-114,209,228
+  s_2ce479e58b73f4::t_2145edf81aeeb6 34,39
+test/eval/retrieval/harness.ts
+  s_2ce479e58b73f4::t_50b50a2f74a134 15,155-162
+src/semantic/model.ts
+  s_2ce479e58b73f4::t_50b50a2f74a134 188-192,194
+src/tools/calibre_get_content.ts
+  s_2ce479e58b73f4::t_50b50a2f74a134 97-101
+test/domain/normalise/normalise.test.ts
+  s_2ce479e58b73f4::t_50b50a2f74a134 1-140
+src/domain/error-codes.ts
+  s_2ce479e58b73f4::t_50b50a2f74a134 164-166
+src/semantic/store/types.ts
+  s_2ce479e58b73f4::t_50b50a2f74a134 237
+test/eval/retrieval/reports/2026-11-19-01a10ba8-rerankoff.json
+  s_2ce479e58b73f4::t_50b50a2f74a134 1-8631
+test/eval/retrieval/reports/2026-11-19-01a10ba8-rerankoff.md
+  s_2ce479e58b73f4::t_50b50a2f74a134 1-502
+test/calibre/extract.test.ts
+  s_2ce479e58b73f4::t_50b50a2f74a134 59,62-63,98,102-103,114-115,124-131
+test/domain/figures/caption-match-normalised-655.test.ts
+  s_2ce479e58b73f4::t_50b50a2f74a134 1-60
+src/domain/normalise/normalise.ts
+  s_2ce479e58b73f4::t_50b50a2f74a134 1-149
+test/eval/retrieval/reports/2026-11-19-01a10ba8.md
+  s_2ce479e58b73f4::t_50b50a2f74a134 1-502
+src/domain/structure/sections.ts
+  s_2ce479e58b73f4::t_50b50a2f74a134 8,162,187,192
+src/semantic/store/schema.ts
+  s_2ce479e58b73f4::t_50b50a2f74a134 130-139,222,274,324,334,434-442,444,448
+test/domain/figures/marker-caption-normalise-655.test.ts
+  s_2ce479e58b73f4::t_50b50a2f74a134 1-36
+test/eval/retrieval/reports/2026-11-19-01a10ba8.json
+  s_2ce479e58b73f4::t_50b50a2f74a134 1-9051
+test/eval/retrieval/text-normalisation-655.acceptance.json
+  s_2ce479e58b73f4::t_50b50a2f74a134 1-32
+docs/TROUBLESHOOTING.md
+  s_2ce479e58b73f4::t_50b50a2f74a134 113-124,223-224
+test/eval/retrieval/thresholds.json
+  s_2ce479e58b73f4::t_50b50a2f74a134 3-4,92-93
+docs/STABILITY.md
+  s_2ce479e58b73f4::t_50b50a2f74a134 97
+test/semantic/chunk-sentences-655.test.ts
+  s_2ce479e58b73f4::t_50b50a2f74a134 1-52
+test/semantic/index-version-5-655.test.ts
+  s_2ce479e58b73f4::t_50b50a2f74a134 1-81
+test/tools/content-cursor-v3-655.test.ts
+  s_2ce479e58b73f4::t_50b50a2f74a134 1-76
+src/tools/content-cursor.ts
+  s_2ce479e58b73f4::t_50b50a2f74a134 7-8,31
+test/tools/index-v4-rebuild-655.test.ts
+  s_2ce479e58b73f4::t_50b50a2f74a134 1-123
+src/semantic/store/index.ts
+  s_2ce479e58b73f4::t_50b50a2f74a134 83,88,93,98,103,113,118,123,133,138,143,148,154,159,164,169,174,179,184,189,194,199,210,221,226,231,236
+  s_2ce479e58b73f4::t_7d5d4162b968d2 128
+src/tools/calibre_ping.ts
+  s_2ce479e58b73f4::t_50b50a2f74a134 7,9,229-241,284
+test/domain/figures/markers.test.ts
+  s_2ce479e58b73f4::t_50b50a2f74a134 146
+test/eval/retrieval/hash-baseline.json
+  s_2ce479e58b73f4::t_50b50a2f74a134 4
+src/tools/labelled-lines.ts
+  s_2ce479e58b73f4::t_7d5d4162b968d2 271
+docs/TOOLS.md
+  s_2ce479e58b73f4::t_50b50a2f74a134 40-41,158-166
+  s_2ce479e58b73f4::t_28a3feb3a41aa5 42,858
+src/domain/normalise/offset-map.ts
+  s_2ce479e58b73f4::t_50b50a2f74a134 1-184
+src/domain/figures/markers.ts
+  s_2ce479e58b73f4::t_50b50a2f74a134 6,27-28,49,73,79,95,105,108,209-210,256-259,262-270,274-281
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "21c73f4bfff4c58650270802c4fd897dd6c7cd1a",
+  "prompts": {},
+  "sessions": {
+    "s_2ce479e58b73f4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "14b5a52e-e64d-4ec2-bc60-0d648563432a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
