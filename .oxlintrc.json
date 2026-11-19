@@ -112,6 +112,7 @@
     "coverage/**",
     "test/eval/retrieval/reports/**",
     "src/ui/generated/**",
-    "src/semantic/language/snowball/**"
+    "src/semantic/language/snowball/base-stemmer.ts",
+    "src/semantic/language/snowball/ukrainian-stemmer.ts"
   ]
 }
