@@ -45,7 +45,7 @@ _Avoid_: language plugin, analyzer
 The language pack a book's text is in, detected from the text at index time (dominant script, then distinctive letters, then stop-word share) and stored as `books.lang`. It picks the stemmer for the book's words; a word with another pack's distinctive letters stems with that pack. Not Calibre's `languages` field.
 
 **Stem version**:
-The language packs and their versions that an index's stemmed columns were written with (e.g. `en:1|ru:1|uk:1`), recorded as `meta.stem_version`. When it differs from the server's, search keeps working and `calibre_ping` warns that the stems are stale.
+The language packs and their versions that a book's stemmed columns were written with (e.g. `en:1|ru:1|uk:1`), recorded per book as `books.stem_version`; `meta.stem_version` records the set the index file was created with. A book whose stem version differs from the server's has stale stems: search keeps working, and `calibre_ping` counts those books.
 
 ### Book images
 
