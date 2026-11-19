@@ -1,0 +1,128 @@
+test/eval/retrieval/reports/2026-11-19-01a10ba8.json
+  s_5bd0844b030fd1::t_3d2d441e1a9661 1-9051
+src/calibre/extract.ts
+  s_5bd0844b030fd1::t_3d2d441e1a9661 18-27,66-70,105-106,109,207,223-226,239,252,279,281,296,305,403-404,433,442
+docs/TOOLS.md
+  s_5bd0844b030fd1::t_3d2d441e1a9661 40-42,158-166,858
+src/semantic/snippet.ts
+  s_5bd0844b030fd1::t_3d2d441e1a9661 4,27-28
+test/domain/figures/marker-caption-normalise-655.test.ts
+  s_5bd0844b030fd1::t_3d2d441e1a9661 1-36
+src/semantic/store/index.ts
+  s_5bd0844b030fd1::t_3d2d441e1a9661 84,89,94,99,104,114,119,124,129,134,139,144,155,160,165,170,175,180,185,190,195,206,217,222,227,232
+  s_5bd0844b030fd1::t_4eb249fdf8ec68 150
+test/tools/ping-header.test.ts
+  s_5bd0844b030fd1::t_3d2d441e1a9661 128
+src/tools/calibre_get_content.ts
+  s_5bd0844b030fd1::t_3d2d441e1a9661 97-101
+src/semantic/language/registry.ts
+  s_5bd0844b030fd1::t_3d2d441e1a9661 1-26
+src/domain/error-codes.ts
+  s_5bd0844b030fd1::t_3d2d441e1a9661 164-166
+docs/SEMANTIC-SEARCH.md
+  s_5bd0844b030fd1::t_3d2d441e1a9661 40-44,46-47,124-128,190-199
+src/semantic/store/types.ts
+  s_5bd0844b030fd1::t_4eb249fdf8ec68 242
+test/eval/retrieval/harness.ts
+  s_5bd0844b030fd1::t_3d2d441e1a9661 15,153-160
+test/eval/retrieval/reports/2026-11-19-01a10ba8-rerankoff.md
+  s_5bd0844b030fd1::t_3d2d441e1a9661 1-502
+docs/STABILITY.md
+  s_5bd0844b030fd1::t_3d2d441e1a9661 97
+skills/calibre-mcp/SKILL.md
+  s_5bd0844b030fd1::t_3d2d441e1a9661 135-143
+src/domain/figures/markers.ts
+  s_5bd0844b030fd1::t_3d2d441e1a9661 6,27-28,49,73,79,95,105,108,209-210,256-259,262-270,274-281
+src/tools/calibre_ping.ts
+  s_5bd0844b030fd1::t_3d2d441e1a9661 7,9,229-241,278
+test/eval/retrieval/reports/2026-11-19-01a10ba8.md
+  s_5bd0844b030fd1::t_3d2d441e1a9661 1-502
+test/eval/retrieval/thresholds.json
+  s_5bd0844b030fd1::t_3d2d441e1a9661 3-4,92-93
+skills/calibre-mcp-setup/SKILL.md
+  s_5bd0844b030fd1::t_3d2d441e1a9661 181
+src/semantic/language/en.ts
+  s_5bd0844b030fd1::t_3d2d441e1a9661 1-25
+src/semantic/model.ts
+  s_5bd0844b030fd1::t_3d2d441e1a9661 188-192,194
+src/domain/normalise/normalise.ts
+  s_5bd0844b030fd1::t_3d2d441e1a9661 1-149
+src/semantic/language/pack.ts
+  s_5bd0844b030fd1::t_3d2d441e1a9661 1-20
+src/semantic/stem.ts
+  s_5bd0844b030fd1::t_3d2d441e1a9661 4-9,11,23,27
+test/domain/normalise/normalise.test.ts
+  s_5bd0844b030fd1::t_3d2d441e1a9661 1-140
+test/semantic/chunk-sentences-655.test.ts
+  s_5bd0844b030fd1::t_3d2d441e1a9661 1-52
+test/semantic/index-version-5-655.test.ts
+  s_5bd0844b030fd1::t_3d2d441e1a9661 1-81
+test/semantic/language-registry-654.test.ts
+  s_5bd0844b030fd1::t_3d2d441e1a9661 1-95
+src/app/index-book.ts
+  s_5bd0844b030fd1::t_045dd74e865924 14
+  s_5bd0844b030fd1::t_3d2d441e1a9661 62-63,185-186,238,257-261,271
+test/eval/retrieval/reports/2026-11-19-01a10ba8-rerankoff.json
+  s_5bd0844b030fd1::t_3d2d441e1a9661 1-8631
+src/tools/content-cursor.ts
+  s_5bd0844b030fd1::t_3d2d441e1a9661 7-8,31
+test/domain/normalise/numero-655.test.ts
+  s_5bd0844b030fd1::t_3d2d441e1a9661 1-17
+src/semantic/language/ru.ts
+  s_5bd0844b030fd1::t_3d2d441e1a9661 1-30
+src/domain/structure/matter-kind.ts
+  s_5bd0844b030fd1::t_3d2d441e1a9661 12-14,16,19,23,157
+src/semantic/store/schema.ts
+  s_5bd0844b030fd1::t_4eb249fdf8ec68 128-137,142-143
+  s_5bd0844b030fd1::t_3d2d441e1a9661 242,294,333,341,438-446,448,452
+src/domain/normalise/offset-map.ts
+  s_5bd0844b030fd1::t_3d2d441e1a9661 1-184
+test/eval/retrieval/text-normalisation-655.acceptance.json
+  s_5bd0844b030fd1::t_3d2d441e1a9661 1-32
+docs/TROUBLESHOOTING.md
+  s_5bd0844b030fd1::t_3d2d441e1a9661 113-124,214-215
+test/domain/figures/caption-match-normalised-655.test.ts
+  s_5bd0844b030fd1::t_3d2d441e1a9661 1-60
+test/tools/index-v4-rebuild-655.test.ts
+  s_5bd0844b030fd1::t_3d2d441e1a9661 1-123
+test/calibre/extract.test.ts
+  s_5bd0844b030fd1::t_3d2d441e1a9661 59,62-63,98,102-103,114-115,124-131
+src/app/library-index.ts
+  s_5bd0844b030fd1::t_3d2d441e1a9661 35-36
+test/tools/content-cursor-v3-655.test.ts
+  s_5bd0844b030fd1::t_3d2d441e1a9661 1-76
+src/domain/structure/sections.ts
+  s_5bd0844b030fd1::t_3d2d441e1a9661 8,162,187,192
+src/tools/labelled-lines.ts
+  s_5bd0844b030fd1::t_3d2d441e1a9661 271
+test/calibre/extract-normalise-655.test.ts
+  s_5bd0844b030fd1::t_3d2d441e1a9661 1-95
+test/domain/figures/markers.test.ts
+  s_5bd0844b030fd1::t_3d2d441e1a9661 146
+test/eval/retrieval/hash-baseline.json
+  s_5bd0844b030fd1::t_3d2d441e1a9661 4
+src/semantic/chunk.ts
+  s_5bd0844b030fd1::t_3d2d441e1a9661 12,32-36,39-41,46-89,98-99,101-102,111-114,209,228
+src/semantic/store/writer.ts
+  s_5bd0844b030fd1::t_045dd74e865924 39-44
+  s_5bd0844b030fd1::t_3d2d441e1a9661 67-68,214,219,237-244
+  s_5bd0844b030fd1::t_991beedc443055 245-246
+test/eval/README.md
+  s_5bd0844b030fd1::t_3d2d441e1a9661 72,342-348
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "055677fba0a7bd6763e6135e14d6b65732f972eb",
+  "prompts": {},
+  "sessions": {
+    "s_5bd0844b030fd1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea68e5fc-9ea5-482c-961d-216cd19cdbc5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
