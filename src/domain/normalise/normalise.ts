@@ -101,7 +101,7 @@ const controlsAndSpaces: TextRule = {
 // A line-end hyphen (- ‐ ‑ or the soft hyphen) after a letter, joined only when the next line
 // (optionally after one blank line) starts lowercase: marker's rule, with \p{Ll} so Cyrillic joins
 // too. Never crosses \f (a page break between the halves keeps both). Any other soft hyphen goes.
-const HYPHEN_RE = /(?<=\p{L})[-‐‑­][ \t]*\n(?:[ \t]*\n)?[ \t]*(?=\p{Ll})|­/gu;
+const HYPHEN_RE = /(?<=\p{L})[-\u2010\u2011\u00AD][ \t]*\n(?:[ \t]*\n)?[ \t]*(?=\p{Ll})|\u00AD/gu;
 
 const hyphenJoin: TextRule = {
   name: "hyphen-join",
@@ -115,7 +115,8 @@ const hyphenJoin: TextRule = {
  * ⱼ ⱽ; Cyrillic ꚜ ꚝ; ꝰ ꟸ ꟹ; ꭜ–ꭟ ꭩ; Latin Extended-F U+10780–U+107BA; Cyrillic Extended-D
  * U+1E030–U+1E06D.
  */
-export const KEPT_SCRIPTS = /[ª²³¹ºʰ-ʸˠ-ˤᴬ-ᵪᵸᶛ-ᶿ⁰-₟ⱼⱽꚜꚝꝰꟸꟹꭜ-ꭟꭩ\u{10780}-\u{107BA}\u{1E030}-\u{1E06D}]/u;
+export const KEPT_SCRIPTS =
+  /[\u00AA\u00B2\u00B3\u00B9\u00BA\u02B0-\u02B8\u02E0-\u02E4\u1D2C-\u1D6A\u1D78\u1D9B-\u1DBF\u2070-\u209F\u2C7C\u2C7D\uA69C\uA69D\uA770\uA7F8\uA7F9\uAB5C-\uAB5F\uAB69\u{10780}-\u{107BA}\u{1E030}-\u{1E06D}]/u;
 
 // The unit NFKC is applied to: a non-ASCII starter with its combining marks, an ASCII base with
 // the marks that compose with it, or stray marks. Per unit, so each edit (and the offset map)

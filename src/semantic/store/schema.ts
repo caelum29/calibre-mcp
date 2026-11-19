@@ -124,6 +124,16 @@ CREATE TABLE IF NOT EXISTS sections (
   source TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_sections_book ON sections(book_id, char_start);
+
+-- Offset maps (#655, ADR-0033): per book, the normalisation stage's edits from the indexed
+-- (cleaned, marker-injected) text back to the converter's raw output, in encodeOffsetMap form;
+-- edits = how many. Rows go with their book's chunks. Used to remap offsets quoted in raw
+-- coordinates (eval labels), never read on the search path.
+CREATE TABLE IF NOT EXISTS text_maps (
+  book_id INTEGER PRIMARY KEY,
+  edits INTEGER NOT NULL,
+  map TEXT NOT NULL
+);
 `;
 
 /** Lazily opened per-library db handles: the single owner of every SQLite connection. */

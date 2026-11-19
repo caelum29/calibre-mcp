@@ -225,7 +225,7 @@ export interface IndexWriter {
     meta: BookMeta,
     chunks: IndexedChunk[],
     figures?: IndexedFigure[],
-    opts?: { preserveEmbedded?: boolean; sections?: BookSections },
+    opts?: { preserveEmbedded?: boolean; sections?: BookSections; offsetMap?: string },
   ): ReplaceOutcome;
   /**
    * In-place refresh of an unchanged-text book (#244/#269): title/authors/last_modified, the

@@ -23,6 +23,8 @@ export interface MarkedText {
   markers: FigureMarker[];
   /** Captioned figures no marker could be placed for (caption absent from this text). */
   unplaced: number;
+  /** Each marker line as an insertion into the input text (`at` in input coordinates), for offset maps. */
+  insertions: { at: number; length: number }[];
 }
 
 /** Keeps the marker line short — the caption is a pointer, not the payload. */
@@ -43,7 +45,7 @@ export function formatMarker(index: number, page: number, caption: string, forma
  */
 export function injectFigureMarkers(text: string, inventory: FigureInventory, format: string): MarkedText {
   const captioned = inventory.entries.filter((e) => e.captioned);
-  if (captioned.length === 0) return { text, markers: [], unplaced: 0 };
+  if (captioned.length === 0) return { text, markers: [], unplaced: 0, insertions: [] };
 
   // pdftotext output is plain text (a `*`/`_` there is literal); everything else came
   // through ebook-convert's markdown writer
@@ -89,6 +91,7 @@ export function injectFigureMarkers(text: string, inventory: FigureInventory, fo
     out = `${out.slice(0, p.at)}${marker}\n${out.slice(p.at)}`;
   }
   let shift = 0;
+  const insertions: { at: number; length: number }[] = [];
   const markers: FigureMarker[] = placements.map((p) => {
     const marker = formatMarker(p.entry.index, p.entry.page, p.caption, format);
     const m: FigureMarker = {
@@ -98,9 +101,10 @@ export function injectFigureMarkers(text: string, inventory: FigureInventory, fo
       caption: truncate(collapseWs(p.caption), MARKER_CAPTION_MAX),
     };
     shift += marker.length + 1; // +1 for the marker's own newline
+    insertions.push({ at: p.at, length: marker.length + 1 });
     return m;
   });
-  return { text: out, markers, unplaced };
+  return { text: out, markers, unplaced, insertions };
 }
 
 interface CaptionLine {

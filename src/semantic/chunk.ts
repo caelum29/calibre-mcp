@@ -47,6 +47,13 @@ const DEFAULT_OVERLAP = 0;
 // (in findBreak) sentence ends and whitespace. Splitting on these keeps chunks coherent.
 const SEPARATORS = ["\n## ", "\n### ", "\n\n", "\n"];
 
+/** A chunk's break window: the chunk starts at `start`; a break must land in `[floor, hardEnd]`. */
+interface BreakWindow {
+  start: number;
+  floor: number;
+  hardEnd: number;
+}
+
 /** Chars after the window the segmenter sees, so a boundary at the window's edge is a real one. */
 const SENTENCE_LOOKAHEAD = 64;
 
@@ -68,7 +75,8 @@ function sentenceSegmenter(locale: string): Intl.Segmenter {
  * (#655); it also breaks after "?" and "!". The segment keeps its trailing spaces, so the break
  * lands after them, as the separator's did.
  */
-function sentenceBreak(text: string, start: number, floor: number, hardEnd: number, locale: string): number {
+function sentenceBreak(text: string, w: BreakWindow, locale: string): number {
+  const { start, floor, hardEnd } = w;
   const windowEnd = Math.min(text.length, hardEnd + SENTENCE_LOOKAHEAD);
   let best = -1;
   for (const seg of sentenceSegmenter(locale).segment(text.slice(start, windowEnd))) {
@@ -90,7 +98,8 @@ function isHighSurrogate(code: number): boolean {
  * separator, then the latest sentence end, then the latest space. Returns `hardEnd` when none is
  * found (hard split). Never splits a surrogate pair.
  */
-function findBreak(text: string, start: number, floor: number, hardEnd: number, locale: string): number {
+function findBreak(text: string, w: BreakWindow, locale: string): number {
+  const { floor, hardEnd } = w;
   for (const sep of SEPARATORS) {
     // Last occurrence of this separator that still leaves a reasonably full chunk.
     const at = text.lastIndexOf(sep, hardEnd - 1);
@@ -99,7 +108,7 @@ function findBreak(text: string, start: number, floor: number, hardEnd: number, 
       if (end <= hardEnd) return end;
     }
   }
-  const sentence = sentenceBreak(text, start, floor, hardEnd, locale);
+  const sentence = sentenceBreak(text, w, locale);
   if (sentence > 0) return sentence;
   const space = text.lastIndexOf(" ", hardEnd - 1);
   if (space >= floor && space + 1 <= hardEnd) return space + 1;
@@ -216,7 +225,7 @@ function* chunkSteps(text: string, opts: ChunkForEmbeddingOptions): Generator<Em
     const reachesEnd = hardEnd >= total;
     // Floor keeps a chunk from collapsing to almost nothing when a separator sits early.
     const floor = start + Math.floor((hardEnd - start) * 0.5);
-    const end = reachesEnd ? total : findBreak(text, start, floor, hardEnd, locale);
+    const end = reachesEnd ? total : findBreak(text, { start, floor, hardEnd }, locale);
 
     const body = text.slice(start, end);
     if (body.trim().length > 0) yield { body, charStart: start, charEnd: end };

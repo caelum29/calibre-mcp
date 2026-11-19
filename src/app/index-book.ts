@@ -10,6 +10,7 @@ import { inThreadEncoder, structureOf, type BookEncoder } from "../semantic/book
 import { textMatchesChunks, type ChunkSpan } from "../semantic/content-match.js";
 import { type MatterKind, matterKinds } from "../domain/structure/matter-kind.js";
 import { type BookSections, bookSections } from "../domain/structure/sections.js";
+import { encodeOffsetMap } from "../domain/normalise/offset-map.js";
 import type { BookMeta, IndexedChunk, IndexedFigure, IndexFreshness, IndexWriter } from "../semantic/store/index.js";
 import type { BaseDeps, DepsWithIndex } from "../tools/deps.js";
 import type { LogSink } from "../logging.js";
@@ -50,6 +51,8 @@ export interface PreparedBook {
   figures: IndexedFigure[];
   /** Section spans (#695) over the same text as `chunks`, written in the same transaction. */
   sections: BookSections;
+  /** The text's cleaned → raw offset map (#655), encoded; absent when the extractor gave none. */
+  offsetMap?: string;
   detail: BookDetail;
   keywordOnly: boolean;
   /** Wall time per phase (ms) — tells extraction-bound from embed-bound books (#99). */
@@ -159,8 +162,8 @@ export async function prepareBook(deps: IndexBookDeps, bookId: number, opts: Pre
   if (refreshed) return refreshed;
 
   // Deterministic context prefix — captures most of contextual-retrieval's benefit at zero
-  // LLM cost. It goes into the EMBEDDED text only; the stored body stays the raw chunk so
-  // char offsets still line up with calibre_get_content.
+  // LLM cost. It goes into the EMBEDDED text only; the stored body stays the chunk's slice of
+  // the extracted (normalised, #655) text so char offsets still line up with calibre_get_content.
   const ctx = `[${book.title} › ${book.authors.join(", ")}]\n`;
 
   // Figure captions (D-018 Phase B / #86): every placed marker becomes a figures row —
@@ -212,6 +215,7 @@ export async function prepareBook(deps: IndexBookDeps, bookId: number, opts: Pre
     chunks: indexed,
     figures,
     sections,
+    ...encodedMap(extracted),
     keywordOnly,
     // Embed includes the figure inventory lookup (a cache hit after marker injection).
     phaseMs: { fetch: fetchMs, extract: extractMs, ...encoded.phaseMs },
@@ -229,6 +233,11 @@ export async function prepareBook(deps: IndexBookDeps, bookId: number, opts: Pre
   };
 }
 
+/** The extracted text's offset map in its stored form (#655); nothing when the extractor gave none. */
+function encodedMap(extracted: ExtractedText): { offsetMap?: string } {
+  return extracted.offsetMap ? { offsetMap: encodeOffsetMap(extracted.offsetMap) } : {};
+}
+
 /**
  * The single index write for a prepared book — one transaction, so a throw here means the
  * book's previous rows are intact. Callers must serialize it (single writer). Returns
@@ -238,6 +247,7 @@ export function commitBook(deps: IndexBookDeps, libraryId: string, book: Prepare
   const outcome = deps.index.replaceBook(libraryId, book.meta, book.chunks, book.figures, {
     preserveEmbedded: book.keywordOnly,
     sections: book.sections,
+    ...(book.offsetMap === undefined ? {} : { offsetMap: book.offsetMap }),
   });
   if (outcome === "preserved") {
     deps.log.info("kept embedded book — keyword-only build does not downgrade", { bookId: book.meta.bookId });

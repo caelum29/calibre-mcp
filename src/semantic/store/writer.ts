@@ -34,7 +34,7 @@ export class SqliteWriter implements IndexWriter {
     meta: BookMeta,
     chunks: IndexedChunk[],
     figures: IndexedFigure[] = [],
-    opts: { preserveEmbedded?: boolean; sections?: BookSections } = {},
+    opts: { preserveEmbedded?: boolean; sections?: BookSections; offsetMap?: string } = {},
   ): ReplaceOutcome {
     const db = this.conn.db(libraryId);
     const embedded = chunks.reduce((n, c) => n + (c.vector ? 1 : 0), 0);
@@ -57,6 +57,8 @@ export class SqliteWriter implements IndexWriter {
       db.prepare("DELETE FROM books WHERE book_id = ?").run(meta.bookId);
       // Section rows go with the chunks (#695): rewritten here, cleared when the book has none.
       writeSections(db, meta.bookId, opts.sections);
+      // The offset map goes with the chunks too (#655): rewritten, or cleared when none came.
+      writeOffsetMap(db, meta.bookId, opts.offsetMap);
 
       db.prepare(
         "INSERT INTO books(book_id, title, authors, last_modified, chunk_count, indexed_at, embedded_chunks) VALUES(?,?,?,?,?,?,?)",
@@ -198,9 +200,11 @@ export class SqliteWriter implements IndexWriter {
       const delFigures = db.prepare("DELETE FROM figures WHERE book_id = ?");
       const delBook = db.prepare("DELETE FROM books WHERE book_id = ?");
       const delSections = db.prepare("DELETE FROM sections WHERE book_id = ?");
+      const delMap = db.prepare("DELETE FROM text_maps WHERE book_id = ?");
       for (const id of bookIds) {
         delEmb.run(id);
         delSections.run(id);
+        delMap.run(id);
         // The chunks/figures DELETE triggers keep the FTS shadow tables in sync.
         counts.chunks += Number(delChunks.run(id).changes);
         counts.figures += Number(delFigures.run(id).changes);
@@ -215,6 +219,16 @@ export class SqliteWriter implements IndexWriter {
       this.invalidate(libraryId, bookIds);
     }
   }
+}
+
+/** Replace a book's offset map row (#655); `map` is encodeOffsetMap's `m1:` form, undefined = none. */
+function writeOffsetMap(db: DatabaseSync, bookId: number, map: string | undefined): void {
+  db.prepare("DELETE FROM text_maps WHERE book_id = ?").run(bookId);
+  if (map === undefined) return;
+  const body = map.slice(map.indexOf(":") + 1);
+  // one edit is three numbers (gap, raw length, clean length)
+  const edits = body === "" ? 0 : body.split(",").length / 3;
+  db.prepare("INSERT INTO text_maps(book_id, edits, map) VALUES(?,?,?)").run(bookId, edits, map);
 }
 
 /** Stemmed "title authors" repeated on every chunk/figure row, so FTS sees book identity. */
