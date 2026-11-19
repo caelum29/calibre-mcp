@@ -5,7 +5,7 @@
 import { scanPageStarts } from "../page-offsets.js";
 import { detectChapters, type DetectOptions } from "./chapters.js";
 import type { EpubToc } from "./epub-toc.js";
-import { MATTER_KINDS, type MatterKind } from "./matter-kind.js";
+import { BODY_KIND, MATTER_KINDS, type MatterKind } from "./matter-kind.js";
 import { findTitleLine, type OutlineEntry } from "./pdf-outline.js";
 
 /** Where a book's spans came from, by precedence. */
@@ -159,7 +159,7 @@ function nest(textLength: number, items: readonly Placed[]): SectionSpan[] {
       charStart: it.start,
       charEnd: textLength,
       parent: open.length > 0 ? open[open.length - 1]! : null,
-      matterKind: "body",
+      matterKind: BODY_KIND,
     });
     open.push(out.length - 1);
   }
@@ -184,12 +184,12 @@ function majorityKind(span: ChunkRange, chunks: readonly ChunkRange[], kinds: re
   for (let i = lo; i < chunks.length && chunks[i]!.charStart < span.charEnd; i++) {
     const c = chunks[i]!;
     const overlap = Math.min(c.charEnd, span.charEnd) - Math.max(c.charStart, span.charStart);
-    const kind = kinds[i] ?? "body";
+    const kind = kinds[i] ?? BODY_KIND;
     if (overlap > 0) chars.set(kind, (chars.get(kind) ?? 0) + overlap);
   }
   // No overlapping chunk (a span past a truncated or unchunked tail) means no evidence; body is
   // the classifier's own default, so such a span is labelled like ordinary text.
-  let best: MatterKind = "body";
+  let best: MatterKind = BODY_KIND;
   let bestChars = 0;
   for (const k of MATTER_KINDS) {
     const n = chars.get(k) ?? 0;
