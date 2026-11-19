@@ -1,6 +1,7 @@
 // Snippet window (#243): show the part of a chunk that matched the query, not its head. Pure
 // string logic, display only — ranking never reads it.
 
+import { PACKS } from "./language/registry.js";
 import { stemmedTokens } from "./stem.js";
 
 /** Length of a result snippet (chars) — the store's head snippet and this window share it. */
@@ -23,24 +24,8 @@ const ANCHOR_WEIGHT_SHARE = 0.5;
 
 // Function words that carry no topic: a natural-language query is mostly these, and without
 // the list "how does the raft consensus work" would pick the head (how/does/the/work) over Raft.
-// Matched on the lowercased raw token (ё→е), before stemming.
-export const STOPWORDS = new Set(
-  (
-    "a an the and or but nor not no so if then than as at by for from in into of off on onto out " +
-    "over to up with about after before under between through during without within is am are was " +
-    "were be been being do does did doing done have has had having can could will would shall should " +
-    "may might must how what when where which who whom whose why this that these those there here it " +
-    "its they them their we our you your he she his her i me my all any some each every both few more " +
-    "most other such only own same too very just also use used using via vs " +
-    "и в во на с со к ко у о об от до по за из изо для без над под при про через между а но или либо " +
-    "да нет не ни же ли бы то это этот эта эти тот та те так как что чтобы кто где когда зачем почему " +
-    "какой какая какие чем там тут здесь уже еще ещё был была были было быть есть будет он она оно они " +
-    "мы вы ты я его ее её их им ему ей нас вас все всё весь вся всех свой своя свои также тоже очень " +
-    "можно нужно надо"
-  )
-    .split(" ")
-    .map((w) => w.replace(/ё/g, "е")),
-);
+// Matched on the lowercased raw token (ё→е), before stemming. Each language pack owns its list.
+export const STOPWORDS: ReadonlySet<string> = new Set(PACKS.flatMap((p) => [...p.stopwords]));
 
 /** Where a snippet of `body` starts (chunk-relative) and its text, "…"-prefixed when cut. */
 export interface SnippetWindow {

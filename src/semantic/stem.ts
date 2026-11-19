@@ -1,22 +1,18 @@
 // Node-side pre-stemming for the FTS keyword half of hybrid search. FTS5's unicode61
 // tokenizer does ZERO stemming (Russian книга/книги/книгу never match each other) and its
 // built-in `porter` stemmer is English-only — so we stem in JS before INSERT and apply the
-// IDENTICAL transform to queries (SEMANTIC-SEARCH.md §4). Per-token script detection routes
-// Cyrillic → Snowball russian, Latin → english; tokens with digits, underscores or camelCase
-// pass through unstemmed. stemText() splits tokens at `+ # . -` (`c++` → `c`, `node.js` →
-// `node js`); exact identifier matching against the raw `body` column happens in the store's
-// MATCH builder (store/shared.ts ftsMatch, #634), which adds such tokens in their raw form.
+// IDENTICAL transform to queries (SEMANTIC-SEARCH.md §4). A thin wrapper over the language-pack
+// registry (src/semantic/language/, ADR-0032): each token goes to its pack's stemmer; tokens with
+// digits, underscores or camelCase pass through unstemmed. stemText() splits tokens at `+ # . -`
+// (`c++` → `c`, `node.js` → `node js`); exact identifier matching against the raw `body` column
+// happens in the store's MATCH builder (store/shared.ts ftsMatch, #634), which adds such tokens
+// in their raw form.
 
-import snowball from "snowball-stemmers";
-
-const ru = snowball.newStemmer("russian");
-const en = snowball.newStemmer("english");
+import { packForToken } from "./language/registry.js";
 
 // Word tokens = runs of letters/digits/underscore (matches FTS5 tokenchars). The `u` flag with
 // \p{L}\p{N} keeps Cyrillic and Latin together; everything else is a separator and dropped.
 const TOKEN = /[\p{L}\p{N}_]+/gu;
-const HAS_CYRILLIC = /\p{Script=Cyrillic}/u;
-const HAS_LATIN = /\p{Script=Latin}/u;
 
 /** Tokens we must NOT stem: they carry digits, underscores, or a camelCase hump → identifiers. */
 function isCode(tok: string): boolean {
@@ -24,13 +20,11 @@ function isCode(tok: string): boolean {
   return /\p{Ll}\p{Lu}/u.test(tok); // lowercase→uppercase transition = camelCase
 }
 
-/** Stem one token by its dominant script; normalize ё→е for Russian. */
+/** Stem one token with its language pack (Cyrillic → ru, which folds ё→е; Latin → en). */
 export function stemToken(tok: string): string {
   const lower = tok.toLowerCase();
   if (isCode(tok)) return lower;
-  if (HAS_CYRILLIC.test(tok)) return ru.stem(lower.replace(/ё/g, "е"));
-  if (HAS_LATIN.test(tok)) return en.stem(lower);
-  return lower; // digits-only or other scripts → unchanged
+  return packForToken(tok)?.stem(lower) ?? lower; // digits-only or other scripts → unchanged
 }
 
 /**
