@@ -1,0 +1,27 @@
+src/domain/normalise/normalise.ts
+  s_56e70df11311e3::t_744d6c68fef441 8,94,96-97
+  s_56e70df11311e3::t_7298047e07269d 9-10
+src/domain/normalise/epub-artefacts.ts
+  s_56e70df11311e3::t_496ddc4a9c966b 55,60,71,86-90
+  s_56e70df11311e3::t_7298047e07269d 8,53-54,56-59,61-70,72-83,85,97-108,125-127,142-143,147
+  s_56e70df11311e3::t_03ea4c0265e79f 111-116
+  s_56e70df11311e3::t_744d6c68fef441 1-7,9-52,84,91-96,109-110,117-124,128-141,144-146,148-173
+src/domain/normalise/rules.ts
+  s_56e70df11311e3::t_7298047e07269d 1-78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c87a420bf5bda3f72eb0eee4908c54a0561b1939",
+  "prompts": {},
+  "sessions": {
+    "s_56e70df11311e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2dc5b7bd-454c-4bf5-940e-c64a6f23a19e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
