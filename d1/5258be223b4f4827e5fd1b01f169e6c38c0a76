@@ -1,0 +1,34 @@
+test/semantic/language-registry-654.test.ts
+  s_2ce479e58b73f4::t_34c804ba85169e 9-10,94-100
+test/architecture.test.ts
+  s_2ce479e58b73f4::t_f20cddb9a53304 772-774
+.oxfmtrc.json
+  s_2ce479e58b73f4::t_277fed6673af1a 22
+src/semantic/language/snowball/base-stemmer.ts
+  s_2ce479e58b73f4::t_741ea98dfdbebc 1-3,6-467
+  s_2ce479e58b73f4::t_bf92f9ff5ee40a 4-5
+src/semantic/language/snowball/ukrainian-stemmer.ts
+  s_2ce479e58b73f4::t_741ea98dfdbebc 1-1881
+src/semantic/language/registry.ts
+  s_2ce479e58b73f4::t_8bc55aa798ccba 9,11-15
+.oxlintrc.json
+  s_2ce479e58b73f4::t_91594754db68a8 114-115
+src/semantic/language/uk.ts
+  s_2ce479e58b73f4::t_8bc55aa798ccba 1-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d15258be223b4f4827e5fd1b01f169e6c38c0a76",
+  "prompts": {},
+  "sessions": {
+    "s_2ce479e58b73f4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "14b5a52e-e64d-4ec2-bc60-0d648563432a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
