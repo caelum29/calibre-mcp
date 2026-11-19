@@ -1,0 +1,28 @@
+docs/SEMANTIC-SEARCH.md
+  s_56e70df11311e3::t_703ef5ebd0fa87 40-44,46-47,185-190
+  s_56e70df11311e3::t_f6ec16b6a6471b 191
+skills/calibre-mcp/SKILL.md
+  s_56e70df11311e3::t_703ef5ebd0fa87 135-141
+skills/calibre-mcp-setup/SKILL.md
+  s_56e70df11311e3::t_703ef5ebd0fa87 181
+docs/TROUBLESHOOTING.md
+  s_56e70df11311e3::t_703ef5ebd0fa87 113-122,212-213
+docs/TOOLS.md
+  s_56e70df11311e3::t_703ef5ebd0fa87 157-165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "09ce51d9b8c8b1d3081ce1f6e1d65de9caa94d03",
+  "prompts": {},
+  "sessions": {
+    "s_56e70df11311e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2dc5b7bd-454c-4bf5-940e-c64a6f23a19e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
