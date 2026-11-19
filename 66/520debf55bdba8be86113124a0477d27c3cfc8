@@ -1,0 +1,21 @@
+test/app/index-book-metadata-631-guards.test.ts
+  s_5bd0844b030fd1::t_d1d9a587684f9c 1-157
+src/domain/book-metadata-text.ts
+  s_5bd0844b030fd1::t_38d995ddd00264 6,20-21,27,29,33-39,41-65,68,70-71,93-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "66520debf55bdba8be86113124a0477d27c3cfc8",
+  "prompts": {},
+  "sessions": {
+    "s_5bd0844b030fd1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea68e5fc-9ea5-482c-961d-216cd19cdbc5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
