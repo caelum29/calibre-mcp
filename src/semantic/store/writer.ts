@@ -6,6 +6,7 @@ import type { DatabaseSync } from "node:sqlite";
 import type { ChunkSpan } from "../content-match.js";
 import type { MatterKind } from "../../domain/structure/matter-kind.js";
 import type { BookSections } from "../../domain/structure/sections.js";
+import { stemVersion } from "../language/registry.js";
 import { stemText } from "../stem.js";
 import { encodeVector } from "../vector.js";
 import { chunkSpans, vectorCoverage } from "./freshness.js";
@@ -59,7 +60,7 @@ export class SqliteWriter implements IndexWriter {
       writeSections(db, meta.bookId, opts.sections);
 
       db.prepare(
-        "INSERT INTO books(book_id, title, authors, last_modified, chunk_count, indexed_at, embedded_chunks, lang) VALUES(?,?,?,?,?,?,?,?)",
+        "INSERT INTO books(book_id, title, authors, last_modified, chunk_count, indexed_at, embedded_chunks, lang, stem_version) VALUES(?,?,?,?,?,?,?,?,?)",
       ).run(
         meta.bookId,
         meta.title,
@@ -69,6 +70,7 @@ export class SqliteWriter implements IndexWriter {
         new Date().toISOString(),
         embedded,
         meta.lang ?? null,
+        stemVersion(),
       );
 
       const insChunk = db.prepare(

@@ -25,7 +25,8 @@ CREATE TABLE IF NOT EXISTS books (
   chunk_count INTEGER NOT NULL DEFAULT 0,
   indexed_at TEXT NOT NULL,
   embedded_chunks INTEGER,
-  lang TEXT
+  lang TEXT,
+  stem_version TEXT
 );
 CREATE TABLE IF NOT EXISTS chunks (
   id INTEGER PRIMARY KEY,
@@ -300,6 +301,12 @@ export class IndexConnections {
     if (!bookCols.some((c) => c.name === "lang")) {
       db.exec("ALTER TABLE books ADD COLUMN lang TEXT");
       this.log.info("index migrated: books.lang added");
+    }
+    // #654 option (a): the stem version each book's stemmed columns were written with; NULL
+    // (stale) until the book is re-indexed, which is what clears calibre_ping's warning.
+    if (!bookCols.some((c) => c.name === "stem_version")) {
+      db.exec("ALTER TABLE books ADD COLUMN stem_version TEXT");
+      this.log.info("index migrated: books.stem_version added");
     }
   }
 
