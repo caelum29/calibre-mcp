@@ -3,6 +3,7 @@
 // figure it just walked past via calibre_get_figures indexes=[N]. Pure logic — the
 // extraction/caching seam lives in src/calibre/extract.ts.
 
+import { CHARACTER_RULES, normaliseText } from "../normalise/normalise.js";
 import { scanPageStarts } from "../page-offsets.js";
 import { matchBareLabel, matchCaptionElement, matchCaptionLine } from "./captions.js";
 import type { FigureEntry, FigureInventory } from "./inventory.js";
@@ -69,13 +70,13 @@ export function injectFigureMarkers(text: string, inventory: FigureInventory, fo
       cursor = hit.index + 1;
       // a layout-read caption isn't on the line's neighbour: show the label + inventory text
       const caption = hit.byPage ? `${line.own} ${entry.caption ?? ""}` : line.text;
-      placements.push({ entry, at: line.start, caption });
+      placements.push({ entry, at: line.start, caption: cleanCaption(caption) });
       continue;
     }
     const pageStart = pageStarts[entry.page - 1];
     if (pageStart !== undefined) {
       // page-boundary fallback: right after the page's form feed
-      placements.push({ entry, at: pageStart, caption: composeCaption(entry) });
+      placements.push({ entry, at: pageStart, caption: cleanCaption(composeCaption(entry)) });
       continue;
     }
     unplaced += 1;
@@ -263,6 +264,14 @@ function comparable(s: string): string {
 }
 
 /** Fallback caption when the line itself wasn't found (page-boundary placement). */
+/**
+ * A marker line is part of the indexed text (#655, ADR-0033): caption text taken from the figure
+ * inventory (layout-read or page-fallback) gets the same character rules the text already had.
+ */
+function cleanCaption(caption: string): string {
+  return normaliseText(caption, [CHARACTER_RULES]).text;
+}
+
 function composeCaption(entry: FigureEntry): string {
   const label = entry.label ?? "";
   const text = entry.caption ?? "";
