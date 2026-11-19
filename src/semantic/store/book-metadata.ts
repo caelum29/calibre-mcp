@@ -10,13 +10,14 @@ import type { IndexedBookMetadata } from "./types.js";
 /**
  * Replace one book's metadata row. Runs inside the caller's transaction, so the row changes
  * exactly when the book's other rows do; `undefined` clears it. The insert trigger keeps
- * book_metadata_fts in sync.
+ * book_metadata_fts in sync. `lang` is the book's language pack (#654), as for its chunks.
  */
 export function writeBookMetadata(
   db: DatabaseSync,
   bookId: number,
   lastModified: string | undefined,
   row: IndexedBookMetadata | undefined,
+  lang?: string,
 ): void {
   db.prepare("DELETE FROM book_metadata WHERE book_id = ?").run(bookId);
   if (!row) return;
@@ -26,7 +27,7 @@ export function writeBookMetadata(
     bookId,
     row.text,
     // Same stemmer as chunk bodies and queries, so a later keyword list matches the same way.
-    stemText(row.text),
+    stemText(row.text, lang),
     row.blurbChars,
     lastModified ?? null,
     row.vector ? encodeVector(row.vector) : null,

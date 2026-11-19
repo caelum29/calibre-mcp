@@ -68,7 +68,7 @@ export class SqliteWriter implements IndexWriter {
       // The offset map goes with the chunks too (#655): rewritten, or cleared when none came.
       writeOffsetMap(db, meta.bookId, opts.offsetMap);
       // The metadata row (#631) goes with them too: rewritten here, cleared when none is given.
-      writeBookMetadata(db, meta.bookId, meta.lastModified, opts.metadata);
+      writeBookMetadata(db, meta.bookId, meta.lastModified, opts.metadata, meta.lang);
 
       db.prepare(
         "INSERT INTO books(book_id, title, authors, last_modified, chunk_count, indexed_at, embedded_chunks, lang, stem_version) VALUES(?,?,?,?,?,?,?,?,?)",
@@ -151,7 +151,8 @@ export class SqliteWriter implements IndexWriter {
       }
       // the chunks keep their stems, so the new title/authors stem in the language they were written in
       const stored = db.prepare("SELECT lang FROM books WHERE book_id = ?").get(meta.bookId)?.lang;
-      const bookMeta = bookMetaStem(meta, typeof stored === "string" ? stored : undefined);
+      const lang = typeof stored === "string" ? stored : undefined;
+      const bookMeta = bookMetaStem(meta, lang);
       db.prepare("UPDATE books SET title = ?, authors = ?, last_modified = ?, indexed_at = ? WHERE book_id = ?").run(
         meta.title,
         JSON.stringify(meta.authors),
@@ -166,7 +167,7 @@ export class SqliteWriter implements IndexWriter {
       // The flag-only backfill fills section rows too (#695), without touching chunks or vectors.
       if (check.sections) writeSections(db, meta.bookId, check.sections);
       // A metadata edit re-embeds only the metadata row (#631); the flag-only pass leaves it be.
-      if (check.metadata) writeBookMetadata(db, meta.bookId, meta.lastModified, check.metadata);
+      if (check.metadata) writeBookMetadata(db, meta.bookId, meta.lastModified, check.metadata, lang);
       db.exec("COMMIT");
       return true;
     } catch (err) {
