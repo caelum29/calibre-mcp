@@ -138,7 +138,8 @@ identifiers:false   # no ISBN etc.
   (`<index dir>/<library id>.sqlite` plus `-wal`/`-shm`), then `calibre_build_index force=true`;
   `calibre_search` works meanwhile.
 - **Offsets**: `charStart`/`charEnd`, `calibre_get_content` `offset` and cursors are positions in
-  the normalised text (ligatures folded, hyphenation joined; `\f` page breaks and headings kept),
+  the normalised text (ligatures folded, hyphenation joined, EPUB Markdown escapes and emphasis
+  markers removed; `\f` page breaks and headings kept),
   the same text search indexed — feed a hit's `charStart` as `offset`. Offsets or cursors saved
   before an index-version change are stale: search again instead of reusing them.
 - **Front/back matter in semantic hits**: hits labelled `[front matter]` or `[back matter:
