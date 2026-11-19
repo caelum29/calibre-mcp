@@ -61,8 +61,8 @@ describe("test/eval/README.md golden-set counts", () => {
   it("states the fixture book count of corpus.json (#689)", () => {
     const n = corpus.books.length;
     expect(
-      README.includes(`${n} self-authored fixture "books"`),
-      `update test/eval/README.md: corpus.json holds ${n} books; the Layout section must say \`${n} self-authored fixture "books"\``,
+      README.includes(`${n} fixture "books"`),
+      `update test/eval/README.md: corpus.json holds ${n} books; the Layout section must say \`${n} fixture "books"\``,
     ).toBe(true);
   });
 
