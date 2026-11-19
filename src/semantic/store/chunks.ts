@@ -123,7 +123,7 @@ export class SqliteChunkIndex implements ChunkIndex, KeywordPlanReport {
     const hits = bookTop(this.#matrix(libraryId), bookId, query, k);
     return hits.map((h) => {
       const chunk = db
-        .prepare("SELECT char_start, char_end, body, front_matter, matter_kind FROM chunks WHERE id = ?")
+        .prepare("SELECT char_start, char_end, body, matter_kind FROM chunks WHERE id = ?")
         .get(h.chunkId) as Row;
       return {
         chunkId: h.chunkId,
@@ -131,7 +131,6 @@ export class SqliteChunkIndex implements ChunkIndex, KeywordPlanReport {
         charEnd: Number(chunk?.char_end ?? 0),
         body: String(chunk?.body ?? ""),
         score: h.score,
-        frontMatter: Number(chunk?.front_matter ?? 0) === 1,
         matterKind: toMatterKind(chunk?.matter_kind),
       };
     });
@@ -226,7 +225,7 @@ export class SqliteChunkIndex implements ChunkIndex, KeywordPlanReport {
         `WITH m AS MATERIALIZED (
            SELECT rowid AS id, ${WEIGHTED_BM25} AS s FROM chunk_fts WHERE chunk_fts MATCH ?
          )
-         SELECT c.id AS chunk_id, c.char_start, c.char_end, c.body, c.front_matter, c.matter_kind, m.s AS score
+         SELECT c.id AS chunk_id, c.char_start, c.char_end, c.body, c.matter_kind, m.s AS score
          FROM m JOIN chunks c ON c.id = m.id
          WHERE c.book_id = ? ORDER BY m.s, c.id LIMIT ?`,
       )
@@ -237,7 +236,6 @@ export class SqliteChunkIndex implements ChunkIndex, KeywordPlanReport {
       charEnd: Number(r.char_end),
       body: String(r.body ?? ""),
       score: Number(r.score),
-      frontMatter: Number(r.front_matter ?? 0) === 1,
       matterKind: toMatterKind(r.matter_kind),
     }));
   }
@@ -249,7 +247,7 @@ export class SqliteChunkIndex implements ChunkIndex, KeywordPlanReport {
     // begins at the boundary, so the LATER chunk (start == offset) is the one containing it.
     const row = db
       .prepare(
-        `SELECT id, char_start, char_end, body, front_matter, matter_kind FROM chunks
+        `SELECT id, char_start, char_end, body, matter_kind FROM chunks
          WHERE book_id = ? AND char_start <= ? AND char_end > ? LIMIT 1`,
       )
       .get(bookId, charOffset, charOffset) as Row | undefined;
@@ -259,7 +257,6 @@ export class SqliteChunkIndex implements ChunkIndex, KeywordPlanReport {
       charStart: Number(row.char_start),
       charEnd: Number(row.char_end),
       body: String(row.body ?? ""),
-      frontMatter: Number(row.front_matter ?? 0) === 1,
       matterKind: toMatterKind(row.matter_kind),
     };
   }

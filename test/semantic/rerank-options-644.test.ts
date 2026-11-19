@@ -22,7 +22,6 @@ const bh = (chunkId: number, score = 0.8): BookHit => ({
   charEnd: chunkId * 100 + 50,
   body: `c${chunkId}`,
   score,
-  frontMatter: false,
 });
 
 /** A library hit, one per book (the vector half returns books). */

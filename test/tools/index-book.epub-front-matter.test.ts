@@ -110,19 +110,19 @@ const opts = (over: Partial<PrepareOptions> = {}): PrepareOptions => ({
   ...over,
 });
 const buildArgs = { bookId: 1, force: false, enableFts: false, keywordOnly: false, prune: false };
-const flagAt = (store: SqliteIndexStore, offset: number) => store.chunkAt(LIB, 1, offset)?.frontMatter;
+const flagAt = (store: SqliteIndexStore, offset: number) => store.chunkAt(LIB, 1, offset)?.matterKind === "front";
 
 describe("EPUB TOC front-matter boundary in the index (#269)", () => {
   it("flags the preface chunks of an EPUB whose TOC places chapter 1 after it", async () => {
     const d = deps(freshStore(), countingEmbedder(), { epubToc: TOC });
     const p = await prepareBook(d, 1, opts());
     if (p.kind !== "ready") throw new Error(`expected ready, got ${p.kind}`);
-    const flagged = p.chunks.filter((c) => c.frontMatter);
+    const flagged = p.chunks.filter((c) => c.matterKind === "front");
     expect(flagged.length).toBeGreaterThan(0);
     // Majority-overlap rule against the TOC boundary: every flagged chunk sits mostly in the preface.
     for (const c of p.chunks) {
       const inPreface = Math.min(c.charEnd, PREFACE.length) - c.charStart >= 0.5 * (c.charEnd - c.charStart);
-      expect(c.frontMatter).toBe(inPreface);
+      expect(c.matterKind === "front").toBe(inPreface);
     }
     expect(p.detail.frontMatterChunks).toBe(flagged.length);
   });

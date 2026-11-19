@@ -103,8 +103,8 @@ describe("SqliteIndexStore on a temp file, two connections (#322)", () => {
     expect(b.searchFiguresFts(LIB, "zanzibar", 10).map((h) => [h.bookId, h.figIndex])).toEqual([[3, 0]]);
     expect(b.isBookIndexed(LIB, 3, "v2")).toBe(true);
     expect(b.vectorCount(LIB)).toBe(vectorsBefore);
-    expect(b.chunkAt(LIB, 3, 0)?.frontMatter).toBe(true);
-    expect(b.chunkAt(LIB, 3, spans[1]!.charStart)?.frontMatter).toBe(false);
+    expect(b.chunkAt(LIB, 3, 0)?.matterKind).toBe("front");
+    expect(b.chunkAt(LIB, 3, spans[1]!.charStart)?.matterKind).toBe("body");
   });
 
   it("deleteBooks: exact counts, and the rows are gone for a fresh connection too", () => {

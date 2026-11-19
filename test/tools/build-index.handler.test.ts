@@ -158,7 +158,7 @@ function seedOrphan(store: SqliteIndexStore, bookId: number): void {
   store.replaceBook(
     "Programming_Books",
     { bookId, title: "Deleted Book", authors: ["Ghost"], lastModified: "2026-01-01" },
-    [{ charStart: 0, charEnd: 20, body: "orphaned passage", frontMatter: false }],
+    [{ charStart: 0, charEnd: 20, body: "orphaned passage" }],
   );
 }
 
@@ -561,8 +561,8 @@ describe("front-matter flagging at build time (issue #18)", () => {
     // quotes keep the words past the #651 prune in this tiny 3-chunk library; the absent-term
     // guard path is covered in test/semantic/store-keyword-plan-651.test.ts
     const hits = store.searchBookFts("Programming_Books", 1, '"praise" "widget" "gadget"', 20);
-    const flagged = hits.filter((h) => h.frontMatter);
-    const bodyHits = hits.filter((h) => !h.frontMatter);
+    const flagged = hits.filter((h) => h.matterKind === "front");
+    const bodyHits = hits.filter((h) => h.matterKind !== "front");
     // The praise/TOC region is flagged even though its chunk crosses into chapter 1…
     expect(flagged.length).toBeGreaterThanOrEqual(1);
     expect(Math.min(...flagged.map((h) => h.charStart))).toBe(0);
@@ -578,7 +578,7 @@ describe("front-matter flagging at build time (issue #18)", () => {
     expect(r.isError).toBeUndefined();
     const hits = store.searchBookFts("Programming_Books", 1, "ownership", 20);
     expect(hits.length).toBeGreaterThan(0);
-    expect(hits.every((h) => !h.frontMatter)).toBe(true);
+    expect(hits.every((h) => h.matterKind !== "front")).toBe(true);
   });
 });
 

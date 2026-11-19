@@ -132,7 +132,7 @@ const opts = (over: Partial<PrepareOptions> = {}): PrepareOptions => ({
   ...over,
 });
 const buildArgs = { bookId: 1, force: false, enableFts: false, keywordOnly: false, prune: false };
-const flagAt = (store: SqliteIndexStore, offset: number) => store.chunkAt(LIB, 1, offset)?.frontMatter;
+const flagAt = (store: SqliteIndexStore, offset: number) => store.chunkAt(LIB, 1, offset)?.matterKind === "front";
 const title = (store: SqliteIndexStore) =>
   store.searchLibraryFts(LIB, "zanzibar", 10).length > 0 ? "zanzibar" : "other";
 
