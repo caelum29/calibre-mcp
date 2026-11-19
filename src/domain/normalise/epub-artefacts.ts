@@ -7,19 +7,27 @@
 import type { TextEdit } from "./offset-map.js";
 import { deleteSpans, replaceMatches, type RuleResult, type RuleSet, type TextRule } from "./rules.js";
 
-/** `[start, end)` ranges of fenced code blocks (``` or ~~~ fences, fence lines included). */
+/**
+ * `[start, end)` ranges of fenced code blocks (fence lines included). CommonMark matching: a fence
+ * closes only on a line of the same character (``` or ~~~), at least as long, with nothing after it,
+ * so a ``` line inside a ~~~ block or a ```` block is content, not a close.
+ */
 function fencedRanges(text: string): [number, number][] {
   const ranges: [number, number][] = [];
-  const fence = /^[ \t]*(```|~~~)[^\n]*$/gm;
-  let open: number | undefined;
+  const fence = /^[ \t]*(`{3,}|~{3,})([^\n]*)$/gm;
+  let open: { at: number; char: string; len: number } | undefined;
   for (let m = fence.exec(text); m !== null; m = fence.exec(text)) {
-    if (open === undefined) open = m.index;
-    else {
-      ranges.push([open, m.index + m[0].length]);
+    const run = m[1]!;
+    if (open === undefined) {
+      // a backtick fence's info string has no backtick (CommonMark), else it is inline code
+      if (run[0] === "`" && m[2]!.includes("`")) continue;
+      open = { at: m.index, char: run[0]!, len: run.length };
+    } else if (run[0] === open.char && run.length >= open.len && m[2]!.trim() === "") {
+      ranges.push([open.at, m.index + m[0].length]);
       open = undefined;
     }
   }
-  if (open !== undefined) ranges.push([open, text.length]); // an unclosed fence runs to the end
+  if (open !== undefined) ranges.push([open.at, text.length]); // an unclosed fence runs to the end
   return ranges;
 }
 
@@ -77,12 +85,15 @@ function markerRule(
   };
 }
 
-// 1. A backslash before ASCII punctuation is a CommonMark escape: delete the backslash. Literal in
-// fenced and inline code; an escaped backslash stays one backslash. `\#` opening a line stays
-// escaped, so it never becomes an ATX heading for the chunker or the chapter detectors.
+// 3. A backslash before ASCII punctuation is a CommonMark escape: delete the backslash. Literal in
+// fenced and inline code. The scan runs left to right and consumes a backslash pair as one escape,
+// so `\\\(` becomes `\(` and an escaped backslash stays one backslash. `\#` opening a line stays
+// escaped, so it never becomes an ATX heading for the chunker or the chapter detectors. Runs after
+// the emphasis rules (an escaped `\*` is a literal star, never a marker) and before the code-span
+// rule (which would remove the backticks that keep inline code literal).
 const unescape = markerRule(
   "markdown-unescape",
-  /(?<!\\)\\[!-/:-@[-`{-~]/g,
+  /\\[!-/:-@[-`{-~]/g,
   {
     open: 1,
     close: 0,
@@ -91,12 +102,14 @@ const unescape = markerRule(
   fencesAndCode,
 );
 
-// 2. Paired emphasis (`**x**`, `*x*`) with CommonMark flanking: the opener is followed and the
-// closer preceded by a non-space, and neither touches a letter or digit outside the pair, so
-// `a*b`, `2 * 3` and `a*b*c` stay. Underscore emphasis is left alone (identifiers like __init__).
+// 1-2. Paired emphasis (`**x**`, `*x*`) with CommonMark flanking: the opener is followed and the
+// closer preceded by a non-space, and neither touches a letter, digit or backslash outside the
+// pair, so `a*b`, `2 * 3`, `a*b*c` and an escaped `\*` stay. Underscore emphasis is left alone
+// (identifiers like __init__). A strong body never holds `**`, so an unclosed opener's scan stops
+// at the next `**` (linear on a long line of openers, #560 review).
 const strong = markerRule(
   "markdown-strong",
-  /(?<![\p{L}\p{N}*\\])\*\*(?=[^\s*])[^\n]*?[^\s*\\]\*\*(?![\p{L}\p{N}*])/gu,
+  /(?<![\p{L}\p{N}*\\])\*\*(?=[^\s*])(?:[^\n*]|\*(?!\*))*?[^\s*\\]\*\*(?![\p{L}\p{N}*])/gu,
   { open: 2, close: 2 },
   fencesAndCode,
 );
@@ -107,7 +120,7 @@ const em = markerRule(
   fencesAndCode,
 );
 
-// 2b. Inline-code backticks at word boundaries: the code stays, the backticks go.
+// 4. Inline-code backticks at word boundaries: the code stays, the backticks go.
 const backticks = markerRule(
   "markdown-code-span",
   /(?<![`\p{L}\p{N}])`[^`\n]+`(?![`\p{L}\p{N}])/gu,
@@ -115,7 +128,7 @@ const backticks = markerRule(
   fences,
 );
 
-// 3. Token-spaced code (book 715: `np    .    array    (    x`). A line qualifies when, after
+// 5. Token-spaced code (book 715: `np    .    array    (    x`). A line qualifies when, after
 // its indentation, at least three runs of 3+ spaces separate its tokens and at least one token is
 // bare punctuation; a space-aligned table has no bare punctuation token, so it stays. Each run
 // becomes one space, and none next to `.`, `(` or `[`.
@@ -159,16 +172,17 @@ const squeeze: TextRule = {
   },
 };
 
-// 4. Trailing spaces and tabs on a line (Markdown hard breaks). An empty ATX heading ("# ") keeps
-// its space: it stays a heading marker for the chunker and the chapter detectors.
-const trailing = protectedRule("trailing-spaces", /(?<!(?:^|\n)#{1,6})[ \t]+(?=\n|$)/g, () => "", fences);
+// 6. Trailing spaces and tabs on a line (Markdown hard breaks). An empty ATX heading ("# ") keeps
+// its space: it stays a heading marker for the chunker and the chapter detectors. A match starts
+// only at the first blank of a run, so a long interior run is tried once, not once per space.
+const trailing = protectedRule("trailing-spaces", /(?<![ \t])(?<!(?:^|\n)#{1,6})[ \t]+(?=\n|$)/g, () => "", fences);
 
-// 5. Three or more line breaks (blank-line runs) become one blank line; `\n\n` stays (the chunker
+// 7. Three or more line breaks (blank-line runs) become one blank line; `\n\n` stays (the chunker
 // prefers it). Runs only over plain `\n`, so a `\f` page break is never merged away.
 const blankRuns = protectedRule("blank-runs", /\n{3,}/g, () => "\n\n", fences);
 
 /** ADR-0033 item 5 (#560): ebook-convert Markdown artefacts, after the character rules. */
 export const EPUB_ARTEFACT_RULES: RuleSet = {
   name: "epub-artefacts",
-  rules: [unescape, strong, em, backticks, squeeze, trailing, blankRuns],
+  rules: [strong, em, unescape, backticks, squeeze, trailing, blankRuns],
 };

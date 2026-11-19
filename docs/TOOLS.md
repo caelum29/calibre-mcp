@@ -161,7 +161,7 @@ as `x²` and `H₂O` kept), control characters are dropped, no-break and other U
 plain spaces, soft hyphens are removed, and a word hyphenated across a line break is joined when
 the next line starts lowercase. Page breaks (`\f`) and Markdown headings are kept. EPUB text
 (Calibre's Markdown conversion) also loses its conversion artefacts: backslash escapes
-(`\(`, `\[`, `\{`), `*`/`**` emphasis markers and inline-code backticks around their text, runs
+(`\(`, `\[`, `\{`; an escaped `\*` stays a literal `*`), `*`/`**` emphasis markers and inline-code backticks around their text, runs
 of blank lines (one blank line stays), trailing spaces, and the extra spaces in token-spaced code
 (`np    .    array    (` becomes `np.array(`); nothing inside a fenced code block changes. Every offset,
 `charStart`/`charEnd` and cursor is a position in this text, so a search passage's `charStart`
