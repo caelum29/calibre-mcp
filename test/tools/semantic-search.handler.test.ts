@@ -473,7 +473,7 @@ describe("calibre_semantic_search front-matter demotion (issue #18)", () => {
   function frontMatterStore(): SqliteIndexStore {
     const s = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
     s.replaceBook(LIB, { bookId: 1, title: "Book One", authors: ["A"] }, [
-      { charStart: 0, charEnd: 40, body: "praise page mentioning ownership", frontMatter: true, vector: axis(0) },
+      { charStart: 0, charEnd: 40, body: "praise page mentioning ownership", matterKind: "front", vector: axis(0) },
       { charStart: 100, charEnd: 160, body: "the real body definition of ownership", vector: fading(1, 4) },
     ]);
     return s;
@@ -485,9 +485,9 @@ describe("calibre_semantic_search front-matter demotion (issue #18)", () => {
       deps(frontMatterStore()),
     );
     expect(r.isError).toBeUndefined();
-    const passages = (r.structuredContent as { passages: Array<{ body: string; frontMatter?: boolean }> }).passages;
+    const passages = (r.structuredContent as { passages: Array<{ body: string; matterKind?: string }> }).passages;
     expect(passages[0]!.body).toContain("real body definition"); // body first despite lower cosine
-    expect(passages[1]!.frontMatter).toBe(true);
+    expect(passages[1]!.matterKind).toBe("front");
   });
 
   it("labels demoted passages and notes the demotion in the header", async () => {
@@ -507,8 +507,8 @@ describe("calibre_semantic_search front-matter demotion (issue #18)", () => {
       deps(frontMatterStore(), throwingEmbedder),
     );
     expect(r.isError).toBeUndefined();
-    const passages = (r.structuredContent as { passages: Array<{ frontMatter?: boolean }> }).passages;
-    expect(passages[passages.length - 1]!.frontMatter).toBe(true);
+    const passages = (r.structuredContent as { passages: Array<{ matterKind?: string }> }).passages;
+    expect(passages[passages.length - 1]!.matterKind).toBe("front");
   });
 
   it("claims no demotion when nothing is front matter", async () => {

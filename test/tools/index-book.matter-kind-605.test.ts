@@ -1,5 +1,5 @@
 // #605: a full index and the flags-only refresh store the same matter kinds for the same text,
-// from one pure classifier; the refresh rewrites front_matter and matter_kind together.
+// from one pure classifier; the refresh rewrites matter_kind.
 
 import { describe, expect, it } from "vitest";
 import { loadConfig } from "../../src/config.js";
@@ -136,7 +136,7 @@ describe("matter kinds from a full index and from the flags-only refresh (#605)"
     const wiped = fresh();
     commitBook(deps(wiped), LIB, {
       ...p,
-      chunks: p.chunks.map((c) => ({ ...c, matterKind: "body" as const, frontMatter: false })),
+      chunks: p.chunks.map((c) => ({ ...c, matterKind: "body" as const })),
     });
     expect(kinds(wiped).every((k) => k === "body")).toBe(true);
     const r = await prepareBook(deps(wiped, "2026-02-01"), 1, opts({ flagsOnly: true }));
@@ -144,6 +144,6 @@ describe("matter kinds from a full index and from the flags-only refresh (#605)"
     commitRefresh(deps(wiped), LIB, r);
 
     expect(kinds(wiped)).toEqual(kinds(full));
-    expect(wiped.chunkAt(LIB, 1, 0)?.frontMatter).toBe(true); // front_matter follows the kind
+    expect(wiped.chunkAt(LIB, 1, 0)?.matterKind).toBe("front");
   });
 });

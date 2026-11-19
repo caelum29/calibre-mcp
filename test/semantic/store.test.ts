@@ -300,23 +300,23 @@ describe("SqliteIndexStore", () => {
   });
 });
 
-describe("front_matter flag (issue #18)", () => {
-  it("round-trips frontMatter through replaceBook → searchBook and searchBookFts", () => {
+describe("front matter kind (issue #18)", () => {
+  it("round-trips matterKind front through replaceBook → searchBook and searchBookFts", () => {
     const s = store();
     s.replaceBook(LIB, { bookId: 1, title: "T", authors: [] }, [
-      { ...chunk("praise for this book", 0), frontMatter: true },
+      { ...chunk("praise for this book", 0), matterKind: "front" },
       { ...chunk("real body definition", 1, 100) },
     ]);
     const vec = s.searchBook(LIB, 1, axis(0), 5);
-    expect(vec.find((h) => h.body.startsWith("praise"))!.frontMatter).toBe(true);
-    expect(vec.find((h) => h.body.startsWith("real"))!.frontMatter).toBe(false);
+    expect(vec.find((h) => h.body.startsWith("praise"))!.matterKind).toBe("front");
+    expect(vec.find((h) => h.body.startsWith("real"))!.matterKind).toBe("body");
     const kw = s.searchBookFts(LIB, 1, "praise body definition", 5);
-    expect(kw.find((h) => h.body.startsWith("praise"))!.frontMatter).toBe(true);
-    expect(kw.find((h) => h.body.startsWith("real"))!.frontMatter).toBe(false);
+    expect(kw.find((h) => h.body.startsWith("praise"))!.matterKind).toBe("front");
+    expect(kw.find((h) => h.body.startsWith("real"))!.matterKind).toBe("body");
     s.close();
   });
 
-  it("migrates a pre-flag on-disk index additively (old rows read frontMatter=false)", async () => {
+  it("migrates a pre-flag on-disk index additively (old rows read as body)", async () => {
     const { mkdtempSync, rmSync } = await import("node:fs");
     const { tmpdir } = await import("node:os");
     const path = await import("node:path");
@@ -330,14 +330,14 @@ describe("front_matter flag (issue #18)", () => {
 
       // Simulate an index created before the column existed.
       const raw = new DatabaseSync(path.join(dir, `${LIB}.sqlite`));
-      raw.exec("ALTER TABLE chunks DROP COLUMN front_matter");
+      raw.exec("ALTER TABLE chunks DROP COLUMN matter_kind");
       raw.close();
 
       // Reopening migrates in place — no INDEX_INCOMPATIBLE, old rows default to body.
       const b = new SqliteIndexStore(cfg);
       const hits = b.searchBook(LIB, 1, axis(0), 5);
       expect(hits[0]!.body).toBe("legacy chunk body");
-      expect(hits[0]!.frontMatter).toBe(false);
+      expect(hits[0]!.matterKind).toBe("body");
       b.close();
     } finally {
       rmSync(dir, { recursive: true, force: true });

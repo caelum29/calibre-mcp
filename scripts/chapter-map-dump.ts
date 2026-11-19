@@ -48,14 +48,14 @@ const conn = new IndexConnections({ ...config, indexDir }, log, new IndexFileOwn
 interface SpanRow {
   char_start: number;
   char_end: number;
-  front_matter: number;
+  matter_kind: string;
 }
 const spansOf = (bookId: number): SpanRow[] =>
   conn.read(
     libraryId,
     (db) =>
       db
-        .prepare("SELECT char_start, char_end, front_matter FROM chunks WHERE book_id = ? ORDER BY char_start")
+        .prepare("SELECT char_start, char_end, matter_kind FROM chunks WHERE book_id = ? ORDER BY char_start")
         .all(bookId) as unknown as SpanRow[],
     [],
   );
@@ -117,7 +117,7 @@ for (const [i, bookId] of ids.entries()) {
         frontMatterEnd: fmEnd,
         spans: spans.length,
         flagged,
-        storedFlagged: spans.filter((s) => Number(s.front_matter) === 1).length,
+        storedFlagged: spans.filter((s) => s.matter_kind === "front").length,
       }),
     );
     say(`${i + 1}/${ids.length} #${bookId} ${detector} fmEnd=${fmEnd} flagged=${flagged}/${spans.length}`);

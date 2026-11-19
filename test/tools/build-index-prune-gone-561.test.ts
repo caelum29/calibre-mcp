@@ -103,7 +103,7 @@ function deps(o: Opts, store: SqliteIndexStore): BuildIndexDeps {
 function storeWithGone(): SqliteIndexStore {
   const store = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
   store.replaceBook(LIB, { bookId: GONE, title: "Scratch", authors: ["Ghost"], lastModified: "2026-01-01" }, [
-    { charStart: 0, charEnd: 20, body: "scratch passage", frontMatter: false },
+    { charStart: 0, charEnd: 20, body: "scratch passage" },
   ]);
   return store;
 }

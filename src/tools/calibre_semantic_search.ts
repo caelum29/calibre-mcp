@@ -169,8 +169,6 @@ export const semanticSearchTool = defineTool({
           charEnd: z.number(),
           cosine: z.number().optional(),
           rerankScore: z.number().optional(),
-          // kept beside matterKind for one release (#605)
-          frontMatter: z.boolean().optional(),
           matterKind: MatterKindSchema.optional(),
           body: z.string(),
           provenance: ProvenanceSchema,
@@ -558,7 +556,7 @@ async function bookScope(
   const passages: Record<string, unknown>[] = [];
   const debug = deps.config.logLevel === "debug";
   for (const r of ranked) {
-    const kind = r.hit.matterKind ?? (r.hit.frontMatter ? "front" : "body");
+    const kind = r.hit.matterKind ?? "body";
     const fenced = fence(
       `PASSAGE @${r.hit.charStart}-${r.hit.charEnd}${matterLabel(kind)} ${scoreLabel(r)}`,
       r.hit.body,
@@ -569,7 +567,6 @@ async function bookScope(
       charEnd: r.hit.charEnd,
       ...(r.cosine !== undefined ? { cosine: r.cosine } : {}),
       ...(r.rerankScore !== undefined ? { rerankScore: r.rerankScore } : {}),
-      ...(kind === "front" ? { frontMatter: true } : {}),
       ...matterField(kind),
       body: fenced,
       ...provenanceField(r, debug),

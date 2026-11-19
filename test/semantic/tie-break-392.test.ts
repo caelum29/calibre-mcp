@@ -135,7 +135,6 @@ describe("rerank stage", () => {
     charEnd: chunkId + 1,
     body: "b",
     score,
-    frontMatter: false,
   });
   const figure = (figureId: number, bookId: number, score: number) =>
     ({
