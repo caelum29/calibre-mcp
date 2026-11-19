@@ -154,6 +154,15 @@ where the last excerpt ended. To jump to a known character position (for example
 `charStart` of a semantic-search passage), pass `offset` instead. `cursor` and `offset` are
 mutually exclusive — pass one or the other, not both.
 
+The text is the **normalised** extraction, the same text the semantic index is built from:
+ligatures and full-width forms are folded (Unicode NFKC, with superscripts and subscripts such
+as `x²` and `H₂O` kept), control characters are dropped, no-break and other Unicode spaces become
+plain spaces, soft hyphens are removed, and a word hyphenated across a line break is joined when
+the next line starts lowercase. Page breaks (`\f`) and Markdown headings are kept. Every offset,
+`charStart`/`charEnd` and cursor is a position in this text, so a search passage's `charStart`
+passed as `offset` lands on that passage. A cursor minted by a server older than this (offsets
+in the raw extraction) is refused with "Invalid cursor"; restart the read.
+
 Set `structure: true` to get a **chapter map** instead of text: a list of headings with
 character ranges, approximate token counts, and a per-chapter `cursor` you can feed back to
 start reading at that chapter. Works on English and Russian/Ukrainian books. Scanned/image PDFs
