@@ -124,6 +124,35 @@ CREATE TABLE IF NOT EXISTS sections (
   source TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_sections_book ON sections(book_id, char_start);
+
+-- Per-book metadata row (#631, index side): title, authors, series, tags and the comments blurb
+-- as one text, its stems, its passage vector and the book's last_modified when it was built.
+-- Its own table, never a chunks row: it has no char offsets, so book scope, cursors, chunk
+-- counts and term statistics never have to exclude it. Nothing ranks with it yet (wave 5).
+-- Additive like sections: no INDEX_VERSION bump; books fill it when (re-)indexed or refreshed.
+CREATE TABLE IF NOT EXISTS book_metadata (
+  book_id INTEGER PRIMARY KEY,
+  body TEXT NOT NULL,
+  body_stem TEXT NOT NULL DEFAULT '',
+  blurb_chars INTEGER NOT NULL DEFAULT 0,
+  last_modified TEXT,
+  vector BLOB
+);
+CREATE VIRTUAL TABLE IF NOT EXISTS book_metadata_fts USING fts5(
+  body_stem, body,
+  content='book_metadata', content_rowid='book_id',
+  tokenize='unicode61 remove_diacritics 2 tokenchars ''-_+#.'''
+);
+CREATE TRIGGER IF NOT EXISTS book_metadata_ai AFTER INSERT ON book_metadata BEGIN
+  INSERT INTO book_metadata_fts(rowid, body_stem, body) VALUES (new.book_id, new.body_stem, new.body);
+END;
+CREATE TRIGGER IF NOT EXISTS book_metadata_ad AFTER DELETE ON book_metadata BEGIN
+  INSERT INTO book_metadata_fts(book_metadata_fts, rowid, body_stem, body) VALUES('delete', old.book_id, old.body_stem, old.body);
+END;
+CREATE TRIGGER IF NOT EXISTS book_metadata_au AFTER UPDATE ON book_metadata BEGIN
+  INSERT INTO book_metadata_fts(book_metadata_fts, rowid, body_stem, body) VALUES('delete', old.book_id, old.body_stem, old.body);
+  INSERT INTO book_metadata_fts(rowid, body_stem, body) VALUES (new.book_id, new.body_stem, new.body);
+END;
 `;
 
 /** Lazily opened per-library db handles: the single owner of every SQLite connection. */

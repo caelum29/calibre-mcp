@@ -122,7 +122,8 @@ describe("calibre_build_index metadata-only edits (#244)", () => {
     const r = await buildIndexTool.handler(args(), deps(store, second, retitled));
 
     expect(r.isError).toBeFalsy();
-    expect(second.passages).toBe(0);
+    // Chunks keep their vectors; only the metadata row (#631) is re-embedded.
+    expect(second.passages).toBe(1);
     expect(r.structuredContent).toMatchObject({
       booksRequested: 1,
       booksIndexed: 0,
@@ -151,7 +152,8 @@ describe("calibre_build_index metadata-only edits (#244)", () => {
     const second = countingEmbedder();
     await buildIndexTool.handler(args(), deps(store, second, { ...retitled, markers }));
 
-    expect(second.passages).toBe(0);
+    // Chunks keep their vectors; only the metadata row (#631) is re-embedded.
+    expect(second.passages).toBe(1);
     expect(store.figureCount(LIB, 1)).toBe(1);
     expect(store.searchFiguresFts(LIB, "Zanzibar", 10).map((h) => h.bookId)).toEqual([1]);
     expect(store.searchFiguresFts(LIB, "Quokka", 10)).toEqual([]);

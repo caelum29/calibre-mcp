@@ -2,6 +2,7 @@
 // does every slow, write-free step (download, extract, chunk, embed) and may run on several
 // books at once; commitBook is the single SQLite write and must only run serialized.
 
+import { type BookMetadataText, bookMetadataText } from "../domain/book-metadata-text.js";
 import { chooseExtractFormat, noTextReason } from "../domain/extract-format.js";
 import type { FigureEntry } from "../domain/figures/inventory.js";
 import { indexedFigureCaption, type FigureMarker } from "../domain/figures/markers.js";
@@ -10,7 +11,14 @@ import { inThreadEncoder, structureOf, type BookEncoder } from "../semantic/book
 import { textMatchesChunks, type ChunkSpan } from "../semantic/content-match.js";
 import { type MatterKind, matterKinds } from "../domain/structure/matter-kind.js";
 import { type BookSections, bookSections } from "../domain/structure/sections.js";
-import type { BookMeta, IndexedChunk, IndexedFigure, IndexFreshness, IndexWriter } from "../semantic/store/index.js";
+import type {
+  BookMeta,
+  IndexedBookMetadata,
+  IndexedChunk,
+  IndexedFigure,
+  IndexFreshness,
+  IndexWriter,
+} from "../semantic/store/index.js";
 import type { BaseDeps, DepsWithIndex } from "../tools/deps.js";
 import type { LogSink } from "../logging.js";
 
@@ -50,6 +58,8 @@ export interface PreparedBook {
   figures: IndexedFigure[];
   /** Section spans (#695) over the same text as `chunks`, written in the same transaction. */
   sections: BookSections;
+  /** The book's metadata row (#631), written in the same transaction. */
+  metadata: IndexedBookMetadata;
   detail: BookDetail;
   keywordOnly: boolean;
   /** Wall time per phase (ms) — tells extraction-bound from embed-bound books (#99). */
@@ -75,6 +85,8 @@ export interface RefreshedBook {
   kinds: MatterKind[];
   /** Section spans (#695) from the same text and `kinds`; the refresh rewrites the stored rows. */
   sections: BookSections;
+  /** The re-embedded metadata row (#631) after a metadata edit; absent on the flag-only pass. */
+  metadata?: IndexedBookMetadata;
 }
 
 export interface PrepareOptions {
@@ -155,8 +167,16 @@ export async function prepareBook(deps: IndexBookDeps, bookId: number, opts: Pre
   }
 
   const meta: BookMeta = { bookId, title: book.title, authors: book.authors, lastModified: book.lastModified };
+  // Title, authors, series, tags and blurb as one text (#631): every indexed book gets the row.
+  const metadataText = bookMetadataText(book);
+  const encoder = opts.encoder ?? inThreadEncoder(deps.embedder);
   const refreshed = refreshOutcome(deps, opts, meta, extracted);
-  if (refreshed) return refreshed;
+  if (refreshed) {
+    // Calibre bumps last_modified on a metadata edit: re-embed only the metadata row. The
+    // flag-only backfill never embeds, so it leaves the row as it is.
+    if (opts.flagsOnly) return refreshed;
+    return { ...refreshed, metadata: await encodeMetadataOnly(encoder, metadataText, opts) };
+  }
 
   // Deterministic context prefix — captures most of contextual-retrieval's benefit at zero
   // LLM cost. It goes into the EMBEDDED text only; the stored body stays the raw chunk so
@@ -172,7 +192,6 @@ export async function prepareBook(deps: IndexBookDeps, bookId: number, opts: Pre
     extracted.markers.length > 0
       ? await figureRows(deps, { bookId, format: fmt, downloadUrl, cacheKey, signal: opts.signal }, extracted.markers)
       : [];
-  const encoder = opts.encoder ?? inThreadEncoder(deps.embedder);
   opts.onPhase?.({ phase: "chunk" });
   const onPhase = opts.onPhase;
   const encoded = await encoder.encode(
@@ -181,6 +200,7 @@ export async function prepareBook(deps: IndexBookDeps, bookId: number, opts: Pre
       ctx,
       ...structureOf(extracted),
       captions: figures.map((f) => f.caption),
+      metadataText: metadataText.text,
       keywordOnly,
       tokenBudgeted,
     },
@@ -212,6 +232,7 @@ export async function prepareBook(deps: IndexBookDeps, bookId: number, opts: Pre
     chunks: indexed,
     figures,
     sections,
+    metadata: metadataRow(metadataText, encoded.metadataVector),
     keywordOnly,
     // Embed includes the figure inventory lookup (a cache hit after marker injection).
     phaseMs: { fetch: fetchMs, extract: extractMs, ...encoded.phaseMs },
@@ -238,6 +259,7 @@ export function commitBook(deps: IndexBookDeps, libraryId: string, book: Prepare
   const outcome = deps.index.replaceBook(libraryId, book.meta, book.chunks, book.figures, {
     preserveEmbedded: book.keywordOnly,
     sections: book.sections,
+    metadata: book.metadata,
   });
   if (outcome === "preserved") {
     deps.log.info("kept embedded book — keyword-only build does not downgrade", { bookId: book.meta.bookId });
@@ -290,13 +312,40 @@ function refreshOutcome(
   return !opts.force && complete && textMatchesChunks(extracted.text, spans) ? refreshed() : undefined;
 }
 
+/** The metadata row alone through the book's encoder (#631): an empty text means no chunks to embed. */
+async function encodeMetadataOnly(
+  encoder: BookEncoder,
+  metadata: BookMetadataText,
+  opts: Pick<PrepareOptions, "keywordOnly" | "tokenBudgeted">,
+): Promise<IndexedBookMetadata> {
+  const encoded = await encoder.encode({
+    text: "",
+    ctx: "",
+    outline: [],
+    captions: [],
+    metadataText: metadata.text,
+    keywordOnly: opts.keywordOnly,
+    tokenBudgeted: opts.tokenBudgeted,
+  });
+  return metadataRow(metadata, encoded.metadataVector);
+}
+
+function metadataRow(metadata: BookMetadataText, vector: Float32Array | undefined): IndexedBookMetadata {
+  return { text: metadata.text, blurbChars: metadata.blurbChars, ...(vector ? { vector } : {}) };
+}
+
 const TEXT_CHANGED = "text changed since indexing — needs a full re-index, not a flag backfill";
 
 /** The write for an unchanged-text book (#244/#269): metadata + flags in place, vectors kept. */
 export function commitRefresh(deps: RefreshDeps, libraryId: string, book: RefreshedBook): void {
   // Another writer re-chunked the book between prepare and commit: the boundary no longer
   // applies to its rows. Nothing was written — report it like a changed-text book.
-  const check = { spans: book.spans, kinds: book.kinds, sections: book.sections };
+  const check = {
+    spans: book.spans,
+    kinds: book.kinds,
+    sections: book.sections,
+    ...(book.metadata ? { metadata: book.metadata } : {}),
+  };
   if (!deps.index.refreshBookMeta(libraryId, book.meta, check)) {
     throw new Error(`book re-indexed during the refresh — ${TEXT_CHANGED}`);
   }

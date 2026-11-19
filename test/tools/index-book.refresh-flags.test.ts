@@ -155,7 +155,8 @@ describe("in-place refresh of front-matter flags (#269 review)", () => {
       }),
     );
     expect(r.structuredContent).toMatchObject({ booksRefreshed: 1, booksIndexed: 0 });
-    expect(second.passages).toBe(0);
+    // Chunks keep their vectors; only the metadata row (#631) is re-embedded.
+    expect(second.passages).toBe(1);
     expect(flagAt(store, 100)).toBe(true);
     expect(flagAt(store, PDF_TEXT.length - 100)).toBe(false);
   });

@@ -45,6 +45,11 @@ Semantic search needs a local index, built once per book with `calibre_build_ind
    (~118 MB, downloaded once on first use, then cached offline). Vectors are stored
    in a local SQLite file alongside a keyword (FTS5) index with English **and**
    Russian stemming.
+4. **Describe** the book in one more row of its own: title, authors, series, tags and the
+   Calibre description (HTML stripped, cut to about 1,800 characters), embedded and
+   keyword-indexed apart from the chunks. Every indexed book gets one, even without a
+   description; a metadata edit in Calibre re-embeds only this row. Nothing ranks with it
+   yet — search results are unchanged until a later release adds it to library ranking.
 
 Select which books to index with `bookId`, `ids`, or a metadata `query`; re-run after
 adding books (unchanged books are skipped), and pass `force: true` to rebuild.

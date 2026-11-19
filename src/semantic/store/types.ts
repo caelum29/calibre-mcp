@@ -160,6 +160,19 @@ export interface RefreshCheck {
   kinds: readonly MatterKind[];
   /** The book's section spans from the same text (#695); when given, they replace the stored rows. */
   sections?: BookSections;
+  /** The book's metadata row (#631), re-embedded after a metadata edit; when given, it replaces the stored row. */
+  metadata?: IndexedBookMetadata;
+}
+
+/**
+ * One book's metadata row (#631): title, authors, series, tags and blurb as one text, stored
+ * next to the chunks, never as one. No vector on a keyword-only build.
+ */
+export interface IndexedBookMetadata {
+  text: string;
+  /** Blurb length inside `text` (0 = the book has no blurb). */
+  blurbChars: number;
+  vector?: Float32Array;
 }
 
 /** What replaceBook did: wrote the rows, or kept an embedded book's rows untouched. */
@@ -219,13 +232,14 @@ export interface IndexWriter {
    * `preserveEmbedded` is set, the new rows carry no vectors, and the stored book has
    * embeddings: a keyword-only writer never silently downgrades an embedded book (#197).
    * `sections` (#695) replaces the book's section rows in the same transaction; absent = none.
+   * `metadata` (#631) replaces the book's metadata row the same way; absent = none.
    */
   replaceBook(
     libraryId: string,
     meta: BookMeta,
     chunks: IndexedChunk[],
     figures?: IndexedFigure[],
-    opts?: { preserveEmbedded?: boolean; sections?: BookSections },
+    opts?: { preserveEmbedded?: boolean; sections?: BookSections; metadata?: IndexedBookMetadata },
   ): ReplaceOutcome;
   /**
    * In-place refresh of an unchanged-text book (#244/#269): title/authors/last_modified, the
@@ -237,7 +251,7 @@ export interface IndexWriter {
    */
   refreshBookMeta(libraryId: string, meta: BookMeta, check: RefreshCheck): boolean;
   /**
-   * Drop all rows for these books (books/chunks/embeddings/figures/sections + FTS shadows). `noWait`
+   * Drop all rows for these books (books/chunks/embeddings/figures/sections/metadata + FTS shadows). `noWait`
    * (#496): fail at once with SQLITE_BUSY on another process's lock instead of waiting it out.
    */
   deleteBooks(libraryId: string, bookIds: number[], opts?: { noWait?: boolean }): PruneCounts;
