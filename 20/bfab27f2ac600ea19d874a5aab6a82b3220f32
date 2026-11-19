@@ -1,0 +1,19 @@
+test/semantic/chunk-sentences-655.test.ts
+  s_56e70df11311e3::t_3568cc597770cf 1-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "20bfab27f2ac600ea19d874a5aab6a82b3220f32",
+  "prompts": {},
+  "sessions": {
+    "s_56e70df11311e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2dc5b7bd-454c-4bf5-940e-c64a6f23a19e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
