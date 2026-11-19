@@ -30,7 +30,6 @@ const bh = (chunkId: number, score = 0.8): BookHit => ({
   charEnd: chunkId * 100 + 50,
   body: `c${chunkId}`,
   score,
-  frontMatter: false,
 });
 const passages = (first: number, n: number) => Array.from({ length: n }, (_, i) => bh(first + i, 0.9 - i * 0.001));
 

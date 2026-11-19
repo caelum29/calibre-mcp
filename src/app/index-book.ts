@@ -212,7 +212,6 @@ export async function prepareBook(deps: IndexBookDeps, bookId: number, opts: Pre
     charEnd: c.charEnd,
     body: c.body,
     matterKind: kinds[i] ?? "body",
-    frontMatter: kinds[i] === "front", // dual-written for one release (#605)
     ...(vectors ? { vector: vectors[i]! } : {}),
   }));
   // Section spans (#695): the text and structure the chunker saw, kinds from the same classifier.

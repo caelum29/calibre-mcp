@@ -212,7 +212,6 @@ describe("library rerank candidates (#604)", () => {
       charEnd: chunkId + 1,
       body: `p${chunkId}`,
       score: 0.9 - chunkId / 100,
-      frontMatter: false,
     });
     const { reranker, calls } = bodyReranker({});
     const d = deps([], [], reranker, { book: [passage(1), passage(2), passage(3)] });

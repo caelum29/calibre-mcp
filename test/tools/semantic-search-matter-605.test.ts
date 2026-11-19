@@ -1,6 +1,6 @@
 // #605 output: every non-body hit is labelled in both channels and both scopes — a text label in
 // the match/passage line and a `matterKind` field in structuredContent (absent for body), with
-// `frontMatter: true` kept for front matter for one release.
+// no `frontMatter` field since #693.
 
 import { describe, expect, it } from "vitest";
 import { asLibId } from "../../src/calibre/lib-id.js";
@@ -118,7 +118,7 @@ describe("matter labels and matterKind (#605)", () => {
     expect(texts(r).find((t) => t.includes("MATCH book 1 "))).not.toContain("[");
   });
 
-  it("book scope: label in the PASSAGE line, matterKind in passages, frontMatter kept for front", async () => {
+  it("book scope: label in the PASSAGE line, matterKind in passages, no frontMatter field", async () => {
     const r = await semanticSearchTool.handler(
       { query: "ownership", scope: "book", bookId: 9, mode: "vector", topK: 10 },
       deps(store()),
@@ -130,7 +130,7 @@ describe("matter labels and matterKind (#605)", () => {
     expect(
       (["body", "front", "back_index", "back_biblio", "back_other"] as const).map((k) => of(k).matterKind),
     ).toEqual([undefined, "front", "back_index", "back_biblio", "back_other"]);
-    expect([of("front").frontMatter, of("back_index").frontMatter]).toEqual([true, undefined]);
+    expect([of("front").frontMatter, of("back_index").frontMatter]).toEqual([undefined, undefined]);
     for (const k of ["front", "back_index", "back_biblio", "back_other"] as const) {
       const block = texts(r).find((t) => t.includes(`ownership passage ${k}`))!;
       expect(block.split("\n").find((l) => l.includes("PASSAGE @"))).toContain(LABEL[k]);

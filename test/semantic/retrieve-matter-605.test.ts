@@ -39,7 +39,6 @@ const bh = (chunkId: number, body: string, score: number, matterKind: MatterKind
   charEnd: chunkId * 100 + 90,
   body,
   score,
-  frontMatter: matterKind === "front",
   matterKind,
 });
 

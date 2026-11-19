@@ -36,7 +36,6 @@ CREATE TABLE IF NOT EXISTS chunks (
   body TEXT NOT NULL,
   body_stem TEXT NOT NULL DEFAULT '',
   book_meta TEXT NOT NULL DEFAULT '',
-  front_matter INTEGER NOT NULL DEFAULT 0,
   matter_kind TEXT NOT NULL DEFAULT 'body'
 );
 CREATE INDEX IF NOT EXISTS idx_chunks_book ON chunks(book_id);
@@ -289,15 +288,10 @@ export class IndexConnections {
    */
   #migrate(db: DatabaseSync): void {
     const cols = db.prepare("PRAGMA table_info(chunks)").all() as Row[];
-    if (!cols.some((c) => c.name === "front_matter")) {
-      db.exec("ALTER TABLE chunks ADD COLUMN front_matter INTEGER NOT NULL DEFAULT 0");
-      this.log.info("index migrated: chunks.front_matter added");
-    }
-    // #605: front/body/back matter per chunk. Copying front_matter = 1 keeps today's front-matter
-    // demotion on an index whose books have not been re-classified yet (#656 backfills them).
+    // #605: front/body/back matter per chunk. The old front_matter flag is no longer read or
+    // written (#693); an older index that still has the column keeps it, unused (DEFAULT 0).
     if (!cols.some((c) => c.name === "matter_kind")) {
       db.exec("ALTER TABLE chunks ADD COLUMN matter_kind TEXT NOT NULL DEFAULT 'body'");
-      db.exec("UPDATE chunks SET matter_kind = 'front' WHERE front_matter = 1");
       this.log.info("index migrated: chunks.matter_kind added");
     }
     // #197: per-book embedded-chunk count, so freshness can tell keyword-only from embedded

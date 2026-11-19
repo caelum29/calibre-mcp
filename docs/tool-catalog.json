@@ -2561,9 +2561,6 @@
                 "cosine": {
                   "type": "number"
                 },
-                "frontMatter": {
-                  "type": "boolean"
-                },
                 "matterKind": {
                   "enum": [
                     "front",

@@ -1,6 +1,5 @@
-// #605 store: an additive `chunks.matter_kind` column. The migration copies front_matter = 1 to
-// 'front' so a not-yet-backfilled index keeps today's demotion, replaceBook dual-writes
-// front_matter (1 exactly for 'front') for one release, and every hit carries its kind.
+// #605 store: an additive `chunks.matter_kind` column, written by replaceBook, and every hit
+// carries its kind. The front_matter dual-write ended with #693.
 
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -37,9 +36,9 @@ describe("chunks.matter_kind (#605)", () => {
     const db = new DatabaseSync(file(), { readOnly: true });
     try {
       return db
-        .prepare("SELECT front_matter, matter_kind FROM chunks ORDER BY id")
+        .prepare("SELECT matter_kind FROM chunks ORDER BY id")
         .all()
-        .map((r) => [Number(r.front_matter), String(r.matter_kind)]);
+        .map((r) => String(r.matter_kind));
     } finally {
       db.close();
     }
@@ -51,9 +50,9 @@ describe("chunks.matter_kind (#605)", () => {
 
   afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
-  it("the migration adds matter_kind to a legacy index and copies front_matter = 1 to 'front'", () => {
+  it("the migration adds matter_kind to a legacy index, every row as body", () => {
     const s = open();
-    s.replaceBook(LIB, meta, [chunk(0, "contents page", { frontMatter: true }), chunk(1, "first chapter")]);
+    s.replaceBook(LIB, meta, [chunk(0, "contents page", { matterKind: "front" }), chunk(1, "first chapter")]);
     s.close();
     const legacy = new DatabaseSync(file());
     legacy.exec("ALTER TABLE chunks DROP COLUMN matter_kind"); // the shape before #605
@@ -61,13 +60,10 @@ describe("chunks.matter_kind (#605)", () => {
     const s2 = open();
     s2.chunkAt(LIB, 1, 0); // opening the library runs the migration
     s2.close();
-    expect(rows()).toEqual([
-      [1, "front"],
-      [0, "body"],
-    ]);
+    expect(rows()).toEqual(["body", "body"]);
   });
 
-  it("replaceBook writes each kind and dual-writes front_matter only for 'front'", () => {
+  it("replaceBook writes each kind", () => {
     const s = open();
     s.replaceBook(LIB, meta, [
       chunk(0, "contents", { matterKind: "front" }),
@@ -77,23 +73,14 @@ describe("chunks.matter_kind (#605)", () => {
       chunk(4, "copyright", { matterKind: "back_other" }),
     ]);
     s.close();
-    expect(rows()).toEqual([
-      [1, "front"],
-      [0, "body"],
-      [0, "back_index"],
-      [0, "back_biblio"],
-      [0, "back_other"],
-    ]);
+    expect(rows()).toEqual(["front", "body", "back_index", "back_biblio", "back_other"]);
   });
 
-  it("a chunk without matterKind keeps the frontMatter flag's meaning", () => {
+  it("a chunk without matterKind is stored as body", () => {
     const s = open();
-    s.replaceBook(LIB, meta, [chunk(0, "contents", { frontMatter: true }), chunk(1, "chapter")]);
+    s.replaceBook(LIB, meta, [chunk(0, "contents"), chunk(1, "chapter", { matterKind: "front" })]);
     s.close();
-    expect(rows()).toEqual([
-      [1, "front"],
-      [0, "body"],
-    ]);
+    expect(rows()).toEqual(["body", "front"]);
   });
 });
 
@@ -106,9 +93,7 @@ describe("hits carry their matter kind (#605)", () => {
   ]);
 
   it("book scope, both halves, and chunkAt", () => {
-    expect(s.searchBook(LIB, 1, axis(2), 1).map((h) => [h.charStart, h.matterKind, h.frontMatter])).toEqual([
-      [200, "back_index", false],
-    ]);
+    expect(s.searchBook(LIB, 1, axis(2), 1).map((h) => [h.charStart, h.matterKind])).toEqual([[200, "back_index"]]);
     expect(
       s
         .searchBookFts(LIB, 1, "zebra", 3)

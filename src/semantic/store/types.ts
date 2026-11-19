@@ -13,9 +13,7 @@ export interface IndexedChunk {
   charStart: number;
   charEnd: number;
   body: string;
-  /** True when the chunk lies before the first detected chapter (TOC/praise/foreword). */
-  frontMatter?: boolean;
-  /** Front/body/back matter (#605); absent = `front` when `frontMatter`, else `body`. */
+  /** Front/body/back matter (#605); absent = body. */
   matterKind?: MatterKind;
   /** The chunk's embedding, or undefined for a keyword-only build (FTS-searchable, no vector). */
   vector?: Float32Array;
@@ -66,7 +64,6 @@ export interface ChunkRef {
   charStart: number;
   charEnd: number;
   body: string;
-  frontMatter: boolean;
   /** Front/body/back matter of the chunk (#605). */
   matterKind?: MatterKind;
 }
@@ -130,8 +127,6 @@ export interface BookHit {
   charEnd: number;
   body: string;
   score: number;
-  /** True for front-matter chunks (TOC/praise/foreword); kept for one release beside matterKind. */
-  frontMatter: boolean;
   /** Front/body/back matter of the passage (#605); absent reads as body. */
   matterKind?: MatterKind;
 }
