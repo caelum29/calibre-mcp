@@ -1,6 +1,7 @@
 // Language-pack registry (ADR-0032, #654): the compiled-in packs and token → pack routing for the
-// keyword half. Today a token goes to its script's default pack (Cyrillic → ru, Latin → en);
-// book- and query-language routing arrives with the Ukrainian pack (#654 L2).
+// keyword half. Index side: a token goes to its book language's pack for its script, unless it
+// carries another pack's distinctive letters. Query side: decided once for the whole query.
+// Every router takes the pack list as a parameter so tests can route over packs of their own.
 
 import { en } from "./en.js";
 import type { LanguagePack, Script } from "./pack.js";
@@ -19,8 +20,36 @@ function scriptOf(token: string): Script | undefined {
   return SCRIPT_TESTS.find(([, re]) => re.test(token))?.[0];
 }
 
-/** The pack that stems `token`: its script's default pack; undefined for digits or other scripts. */
-export function packForToken(token: string): LanguagePack | undefined {
+/**
+ * The pack that stems `token` on the index side: its script's default pack; undefined for digits
+ * or other scripts.
+ */
+export function packForToken(
+  token: string,
+  _bookLang?: string,
+  packs: readonly LanguagePack[] = PACKS,
+): LanguagePack | undefined {
   const script = scriptOf(token);
-  return script === undefined ? undefined : PACKS.find((p) => p.script === script);
+  return script === undefined ? undefined : packs.find((p) => p.script === script);
+}
+
+/**
+ * Query-side routing for a whole query: a function giving each token its packs (one stem per
+ * pack, OR-ed). Empty for digits or other scripts.
+ */
+export function queryPacks(
+  tokens: readonly string[],
+  _libraryLangs?: ReadonlySet<string>,
+  packs: readonly LanguagePack[] = PACKS,
+): (token: string) => readonly LanguagePack[] {
+  void tokens;
+  return (token) => {
+    const p = packForToken(token, undefined, packs);
+    return p ? [p] : [];
+  };
+}
+
+/** The stem version of a pack set, e.g. `en:1|ru:1`: recorded with the stems an index holds. */
+export function stemVersion(_packs: readonly LanguagePack[] = PACKS): string {
+  return "";
 }

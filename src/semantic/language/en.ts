@@ -9,6 +9,7 @@ const stemmer = snowball.newStemmer("english");
 /** English: the default pack for Latin-script tokens. */
 export const en: LanguagePack = {
   id: "en",
+  version: 1,
   script: "Latin",
   distinctiveLetters: "",
   stopwords: new Set(
