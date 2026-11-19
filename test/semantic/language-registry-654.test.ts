@@ -2,12 +2,13 @@
 // the registry must stay byte-identical to the pre-refactor function on every word of the eval
 // fixture (books + queries), and the snippet stop words must be the same set.
 
-import { readdirSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import snowball from "snowball-stemmers";
 import { describe, expect, it } from "vitest";
 import { en } from "../../src/semantic/language/en.js";
 import { ru } from "../../src/semantic/language/ru.js";
+import { uk } from "../../src/semantic/language/uk.js";
 import { STOPWORDS } from "../../src/semantic/snippet.js";
 import { stemToken } from "../../src/semantic/stem.js";
 
@@ -44,14 +45,29 @@ const FROZEN_STOPWORDS = new Set(
     .map((w) => w.replace(/ё/g, "е")),
 );
 
+// The uk pack's snippet stop words (#654 L2), in pack order.
+const UK_STOPWORDS = (
+  "і й та або чи але а що щоб як коли де куди хто який яка яке які це цей ця ці той те ті там тут " +
+  "вже ще не ні так також теж дуже можна треба потрібно був була було були бути є буде він вона " +
+  "воно вони ми ви ти я його її їх їм йому їй нас вас все всі весь вся свій своя свої в у на з із " +
+  "зі до від по за для без над під при про через між"
+).split(" ");
+
 const FIXTURE = join(import.meta.dirname, "../eval/retrieval");
 
 /** Every distinct word token of the fixture's book texts and query strings. */
 function fixtureVocabulary(): string[] {
-  const texts = readdirSync(join(FIXTURE, "corpus"))
-    .filter((f) => f.endsWith(".txt"))
-    .map((f) => readFileSync(join(FIXTURE, "corpus", f), "utf8"));
-  const queries = JSON.parse(readFileSync(join(FIXTURE, "queries.json"), "utf8")) as { query: string }[];
+  // #654 L2 added Ukrainian books and queries, which stem differently on purpose; the claim is
+  // byte-identity for every English and Russian book and query of the fixture
+  const manifest = JSON.parse(readFileSync(join(FIXTURE, "corpus.json"), "utf8")) as {
+    books: { file: string; language: string }[];
+  };
+  const texts = manifest.books
+    .filter((b) => b.language === "en" || b.language === "ru")
+    .map((b) => readFileSync(join(FIXTURE, "corpus", b.file), "utf8"));
+  const queries = (
+    JSON.parse(readFileSync(join(FIXTURE, "queries.json"), "utf8")) as { query: string; kind: string }[]
+  ).filter((q) => q.kind !== "uk-monolingual");
   const words = new Set<string>();
   for (const t of [...texts, ...queries.map((q) => q.query)]) {
     for (const m of t.matchAll(/[\p{L}\p{N}_]+/gu)) words.add(m[0]);
@@ -91,12 +107,15 @@ describe("language-pack registry is byte-identical to the pre-#654 stemmer", () 
     expect(diffs).toEqual([]);
   });
 
-  // #654 L2 added the uk pack's stop words to STOPWORDS on purpose; the en and ru lists stay as they were
-  it("keeps the English and Russian snippet stop words unchanged, all still in STOPWORDS", () => {
-    const enRu = new Set([...en.stopwords, ...ru.stopwords]);
-    expect({ enRu: [...enRu].sort(), missing: [...FROZEN_STOPWORDS].filter((w) => !STOPWORDS.has(w)) }).toEqual({
-      enRu: [...FROZEN_STOPWORDS].sort(),
-      missing: [],
+  it("keeps the English and Russian snippet stop words exactly as before", () => {
+    expect([...new Set([...en.stopwords, ...ru.stopwords])].sort()).toEqual([...FROZEN_STOPWORDS].sort());
+  });
+
+  // #654 L2 adds the uk pack: its list is pinned word for word, and STOPWORDS is exactly the union
+  it("pins the Ukrainian stop words and makes STOPWORDS exactly en + ru + uk", () => {
+    expect({ uk: [...uk.stopwords], all: [...STOPWORDS].sort() }).toEqual({
+      uk: UK_STOPWORDS,
+      all: [...new Set([...FROZEN_STOPWORDS, ...UK_STOPWORDS])].sort(),
     });
   });
 });
