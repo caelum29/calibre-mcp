@@ -1,0 +1,20 @@
+test/tools/index-v4-rebuild-655.test.ts
+  s_56e70df11311e3::t_a6de8e99acda20 75
+  s_56e70df11311e3::t_6a446c664a384e 1-74,76-123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "21c3854746b25e2e7188e6c3ef7b3cfab58c9646",
+  "prompts": {},
+  "sessions": {
+    "s_56e70df11311e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2dc5b7bd-454c-4bf5-940e-c64a6f23a19e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
