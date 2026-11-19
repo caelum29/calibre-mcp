@@ -8,6 +8,7 @@ import type { IndexConnections } from "./schema.js";
 import {
   type CandidateCache,
   ftsMatch,
+  libraryLanguages,
   markDirty,
   parseAuthors,
   refreshedCache,
@@ -54,7 +55,7 @@ export class SqliteFigureIndex implements FigureIndex {
     allow?: ReadonlySet<number>,
   ): FigureHit[] {
     const db = this.conn.db(libraryId);
-    const match = ftsMatch(query);
+    const match = ftsMatch(query, libraryLanguages(db));
     if (!match) return [];
     let rows: Row[];
     // Equal bm25 orders by book id, then figure id (#392), on every branch.

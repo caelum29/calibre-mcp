@@ -10,7 +10,7 @@ import {
   planKeywordQuery,
   type TermStats,
 } from "../../domain/search/keyword-plan.js";
-import { stemmedTokens, stemText } from "../stem.js";
+import { queryStemmedTokens } from "../stem.js";
 import type { Candidate } from "../vector.js";
 
 /** A raw node:sqlite result row. */
@@ -211,10 +211,11 @@ const phrase = (t: string): string => `"${t.replace(/"/g, '""')}"`;
  * stays whole and can only match the raw column, and `t.` reaches the sentence-final form the
  * tokenizer stores with its period. A query without such a token gets exactly the stems-only
  * MATCH. Phrase-quoting keeps operators in a token from being parsed as FTS syntax. Returns null
- * when the query has no searchable tokens.
+ * when the query has no searchable tokens. `langs` are the book languages of the searched library
+ * (#654): an ambiguous token joins with one stem per candidate language pack.
  */
-export function ftsMatch(query: string): string | null {
-  const stems = stemText(query).split(/\s+/).filter(Boolean);
+export function ftsMatch(query: string, langs?: ReadonlySet<string>): string | null {
+  const stems = queryStems(query, langs);
   const ids = identifierTokens(query).flatMap((t) => [t, `${t}.`]);
   const toks = [...stems, ...ids];
   if (toks.length === 0) return null;
@@ -243,22 +244,23 @@ export interface KeywordMatch {
  * of ftsMatch except an identifier whose stems were all pruned ("a pruned token leaves both
  * groups"). The stems match only the stemmed columns (option b, no exact-form bonus); the
  * identifier extras stay unfiltered. Without statistics, or when they fail, the MATCH is exactly
- * ftsMatch(query).
+ * ftsMatch(query, langs). Stem variants of one word (#654) are separate plan tokens, so a variant
+ * equal to another stem is dropped as a duplicate and each is priced on its own before pruning.
  */
-export function keywordMatch(query: string, stats?: TermStats): KeywordMatch {
-  if (stats === undefined) return { match: ftsMatch(query) };
+export function keywordMatch(query: string, stats?: TermStats, langs?: ReadonlySet<string>): KeywordMatch {
+  if (stats === undefined) return { match: ftsMatch(query, langs) };
   let plan;
   try {
-    plan = planKeywordQuery(keywordTokens(query), stats, { maxDocShare: MAX_DOC_SHARE, bigrams: false });
+    plan = planKeywordQuery(keywordTokens(query, langs), stats, { maxDocShare: MAX_DOC_SHARE, bigrams: false });
   } catch {
     // a vocab lookup can fail mid-plan (busy file, missing module): today's MATCH still answers
-    return { match: ftsMatch(query) };
+    return { match: ftsMatch(query, langs) };
   }
   const pruned = new Set(plan.dropped.filter((d) => d.reason === "too-common").map((d) => d.term));
   const dropped = [...plan.dropped];
   const ids: string[] = [];
   for (const id of identifierTokens(query)) {
-    const stems = stemText(id).split(/\s+/).filter(Boolean);
+    const stems = queryStems(id, langs);
     if (stems.length > 0 && stems.every((s) => pruned.has(s))) dropped.push({ term: id, reason: "too-common" });
     else ids.push(id, `${id}.`);
   }
@@ -273,13 +275,29 @@ export function keywordMatch(query: string, stats?: TermStats): KeywordMatch {
 // a double-quoted span of the query, as typed; an unpaired quote opens none
 const QUOTED = /"([^"]*)"/g;
 
-/** The query's word tokens in order (stemText's tokenizer), each tagged with its quoted span. */
-function keywordTokens(query: string): KeywordToken[] {
+/** Every stem variant of the query's words, in query order (#654). */
+function queryStems(query: string, langs: ReadonlySet<string> | undefined): string[] {
+  return [...queryStemmedTokens(query, langs)].flatMap((t) => t.stems);
+}
+
+/**
+ * The query's word tokens in order (stemText's tokenizer), one per stem variant, each tagged with
+ * its quoted span. Only a word's first variant carries the span: the planner builds a quoted
+ * phrase from the span's raw words, which must not repeat.
+ */
+function keywordTokens(query: string, langs: ReadonlySet<string> | undefined): KeywordToken[] {
   const spans = [...query.matchAll(QUOTED)].map((m) => ({ from: m.index + 1, to: m.index + m[0].length - 1 }));
-  return [...stemmedTokens(query)].map((t) => {
+  return [...queryStemmedTokens(query, langs)].flatMap((t) => {
     const span = spans.findIndex((s) => t.index >= s.from && t.index + t.length <= s.to);
-    return { stem: t.stem, raw: query.slice(t.index, t.index + t.length), ...(span >= 0 ? { span } : {}) };
+    const raw = query.slice(t.index, t.index + t.length);
+    return t.stems.map((stem, i) => ({ stem, raw, ...(span >= 0 && i === 0 ? { span } : {}) }));
   });
+}
+
+/** The book languages (#654) of a library's indexed books: the query side's candidate packs. */
+export function libraryLanguages(db: DatabaseSync): Set<string> {
+  const rows = db.prepare("SELECT DISTINCT lang FROM books WHERE lang IS NOT NULL").all() as Row[];
+  return new Set(rows.map((r) => String(r.lang)));
 }
 
 /** authors are stored as a JSON array string; tolerate legacy/garbled values. */
