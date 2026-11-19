@@ -7,6 +7,7 @@ import { log } from "../../src/logging.js";
 import type { Book } from "../../src/domain/book.js";
 import type { ExtractedText } from "../../src/calibre/extract.js";
 import type { Embedder } from "../../src/semantic/embedder.js";
+import { inThreadEncoder, type EncodeJob } from "../../src/semantic/book-encoder.js";
 import { EMBED_DIM } from "../../src/semantic/model.js";
 import { SqliteIndexStore } from "../../src/semantic/store/index.js";
 import { prepareBook, type PrepareOptions } from "../../src/app/index-book.js";
@@ -85,5 +86,14 @@ async function detectedLang(text: string, languages: string[]): Promise<string |
 describe("book language in the index trip (#654)", () => {
   it("detects the language from the text, not from Calibre's languages field", async () => {
     expect([await detectedLang(RU, ["eng"]), await detectedLang(EN, ["rus"])]).toEqual(["ru", "en"]);
+  });
+
+  it("hands the detected language to the chunker as its sentence locale (ADR-0033 item 7)", async () => {
+    const jobs: EncodeJob[] = [];
+    const real = inThreadEncoder(embedder);
+    const encoder = { encode: (job: EncodeJob) => (jobs.push(job), real.encode(job)) };
+    await prepareBook(deps(RU, []), 1, { ...opts, encoder });
+    await prepareBook(deps(EN, []), 1, { ...opts, encoder });
+    expect(jobs.map((j) => j.locale)).toEqual(["ru", "en"]);
   });
 });
