@@ -1,0 +1,19 @@
+docs/agents/skills.md
+  s_1092ed19e451f5::t_1633c4af2814c9 124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6e802f471b4591d54c92475bceb266a9d40d6e2d",
+  "prompts": {},
+  "sessions": {
+    "s_1092ed19e451f5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "489bad62-4666-46a0-869c-d3ba1dfff126",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
