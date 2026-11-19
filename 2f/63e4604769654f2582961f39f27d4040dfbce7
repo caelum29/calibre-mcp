@@ -1,0 +1,23 @@
+CLAUDE.md
+  s_973e9a133336fd::t_f8015dc7ce8cba 91-95
+AGENTS.md
+  s_973e9a133336fd::t_327f7cc294f464 8-11
+docs/agents/skills.md
+  s_973e9a133336fd::t_dc13f91a7aacad 1-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2f63e4604769654f2582961f39f27d4040dfbce7",
+  "prompts": {},
+  "sessions": {
+    "s_973e9a133336fd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4f68a3f0-58e7-4050-9132-c32dbebdaff6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
