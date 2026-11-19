@@ -37,8 +37,14 @@ Semantic search needs a local index, built once per book with `calibre_build_ind
    text — there is no OCR. Markdown (`MD`/`MARKDOWN`), `TXT`/`TXTZ`, AZW3, MOBI,
    DOCX, ODT, HTMLZ, FB2 and RTF are extracted too; when a book has several formats the
    best-structured one wins (EPUB → Markdown → PDF → the rest).
+   The extracted text is then **normalised** once (ligatures and full-width forms folded,
+   superscripts and subscripts kept, control characters dropped, Unicode spaces made plain,
+   soft hyphens removed, line-end hyphenation joined when the next line starts lowercase;
+   page breaks and headings kept). Chunks, embeddings, keyword stems, snippets, chapter
+   maps and `calibre_get_content` all read this one text, so their offsets agree.
 2. **Chunk** the text into ~460-token passages, split along headings
-   where possible. Each chunk keeps its location (page / chapter position) and is
+   where possible, then blank lines, lines, sentence ends (Unicode sentence segmentation,
+   so `e.g.` or `Fig. 3` does not end a passage) and spaces. Each chunk keeps its location (page / chapter position) and is
    prefixed with the book title, author, and heading path so the embedding carries
    context.
 3. **Embed** each chunk with `multilingual-e5-small` — a compact multilingual model
@@ -176,8 +182,16 @@ chars 84210–85030"), store the `indexVersion` alongside them. When a later res
 reports a different `indexVersion`, treat old offsets as stale and re-locate the
 passage (e.g. search for it again). `calibre_ping` shows the current generation too,
 and flags an index **stale** when it was built by a different model or generation than
-the running server — search refuses such an index until `calibre_build_index force=true`
-rebuilds it. Cross-generation stable anchors are out of scope for now.
+the running server — search and builds refuse such an index until you delete its file (with
+`-wal`/`-shm`; the error names the path) and rebuild with `calibre_build_index force=true`. Cross-generation stable anchors are out of scope for now.
+
+**Index version 5** moved every offset into the normalised text (see *Building the index*):
+offsets saved from a version-4 index point into the raw extraction and no longer match. After
+upgrading, `calibre_ping` reports each version-4 index as `stale index — delete …`, semantic
+search answers `index_incompatible`, and nothing is served from it in the meantime. The old file
+is refused on every open, the build's included, so `force=true` alone cannot replace it: first
+delete the library's index file `<index dir>/<library id>.sqlite` together with its `-wal` and `-shm` files (ping and the error name the exact path), then run `calibre_build_index force=true`
+(a full re-index — hours for a library of about a thousand books). Metadata and Calibre full-text search (`calibre_search`) keep working meanwhile.
 
 ## Multilingual
 

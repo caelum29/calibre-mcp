@@ -9,6 +9,7 @@
 // Budgets are measured through the `lengthFn` seam: callers with a loaded model pass the
 // real tokenizer (see calibre_build_index) so the budget is model tokens, not the v1
 // conservative ~900-char guess; keyword-only builds keep the char default (no token window).
+// v5 (#655): the sentence tier uses Intl.Segmenter sentence ends instead of the bare ". ".
 
 /** One chunk with its character span in the original text. */
 export interface EmbedChunk {
@@ -28,15 +29,64 @@ export interface ChunkForEmbeddingOptions {
    * interpolation-guided budget probe (see `budgetEnd`) relies on that assumption.
    */
   lengthFn?: (s: string) => number;
+  /**
+   * BCP 47 locale of the book's text for sentence-end breaks (`Intl.Segmenter`, ADR-0033 item 7);
+   * default {@link DEFAULT_SENTENCE_LOCALE}. #654 wires it to the detected book language.
+   */
+  locale?: string;
 }
+
+/** Sentence-segmenter locale until the book's language is wired in (#654). */
+export const DEFAULT_SENTENCE_LOCALE = "en";
 
 const DEFAULT_BUDGET = 900;
 // 0 since v3 — overlap measured as pure cost (no retrieval gain, +13% chunks at 120/900).
 const DEFAULT_OVERLAP = 0;
 
-// Preferred break points, strongest first: markdown headings, blank lines, newlines,
-// sentence ends, then whitespace. Splitting on these keeps chunks semantically coherent.
-const SEPARATORS = ["\n## ", "\n### ", "\n\n", "\n", ". ", " "];
+// Preferred break points, strongest first: markdown headings, blank lines, newlines, then
+// (in findBreak) sentence ends and whitespace. Splitting on these keeps chunks coherent.
+const SEPARATORS = ["\n## ", "\n### ", "\n\n", "\n"];
+
+/** A chunk's break window: the chunk starts at `start`; a break must land in `[floor, hardEnd]`. */
+interface BreakWindow {
+  start: number;
+  floor: number;
+  hardEnd: number;
+}
+
+/** Chars after the window the segmenter sees, so a boundary at the window's edge is a real one. */
+const SENTENCE_LOOKAHEAD = 64;
+
+const segmenters = new Map<string, Intl.Segmenter>();
+
+/** One cached sentence segmenter per locale (construction is the expensive part). */
+function sentenceSegmenter(locale: string): Intl.Segmenter {
+  let s = segmenters.get(locale);
+  if (!s) {
+    s = new Intl.Segmenter(locale, { granularity: "sentence" });
+    segmenters.set(locale, s);
+  }
+  return s;
+}
+
+/**
+ * The last sentence end in `[floor, hardEnd]`, or -1. `Intl.Segmenter` (UAX #29) does not break
+ * after "e.g." or "Fig." before a lowercase word or a number, where the old `". "` separator did
+ * (#655); it also breaks after "?" and "!". The segment keeps its trailing spaces, so the break
+ * lands after them, as the separator's did.
+ */
+function sentenceBreak(text: string, w: BreakWindow, locale: string): number {
+  const { start, floor, hardEnd } = w;
+  const windowEnd = Math.min(text.length, hardEnd + SENTENCE_LOOKAHEAD);
+  let best = -1;
+  for (const seg of sentenceSegmenter(locale).segment(text.slice(start, windowEnd))) {
+    const end = start + seg.index + seg.segment.length;
+    if (end > hardEnd) break;
+    // the slice's own end is not a sentence end unless the text really ends there
+    if (end >= floor && (end < windowEnd || windowEnd === text.length)) best = end;
+  }
+  return best;
+}
 
 /** True for a UTF-16 high surrogate (first half of an astral code point). */
 function isHighSurrogate(code: number): boolean {
@@ -45,9 +95,11 @@ function isHighSurrogate(code: number): boolean {
 
 /**
  * Find a break offset within `[floor, hardEnd)` of `text`, preferring the latest strong
- * separator. Returns `hardEnd` when none is found (hard split). Never splits a surrogate pair.
+ * separator, then the latest sentence end, then the latest space. Returns `hardEnd` when none is
+ * found (hard split). Never splits a surrogate pair.
  */
-function findBreak(text: string, floor: number, hardEnd: number): number {
+function findBreak(text: string, w: BreakWindow, locale: string): number {
+  const { floor, hardEnd } = w;
   for (const sep of SEPARATORS) {
     // Last occurrence of this separator that still leaves a reasonably full chunk.
     const at = text.lastIndexOf(sep, hardEnd - 1);
@@ -56,6 +108,10 @@ function findBreak(text: string, floor: number, hardEnd: number): number {
       if (end <= hardEnd) return end;
     }
   }
+  const sentence = sentenceBreak(text, w, locale);
+  if (sentence > 0) return sentence;
+  const space = text.lastIndexOf(" ", hardEnd - 1);
+  if (space >= floor && space + 1 <= hardEnd) return space + 1;
   // No separator → hard split, but back off one char rather than bisect a surrogate pair.
   if (isHighSurrogate(text.charCodeAt(hardEnd - 1))) return hardEnd - 1;
   return hardEnd;
@@ -150,6 +206,7 @@ function* chunkSteps(text: string, opts: ChunkForEmbeddingOptions): Generator<Em
   const budget = Math.max(1, Math.trunc(opts.budget ?? DEFAULT_BUDGET));
   const overlap = Math.max(0, Math.min(Math.trunc(opts.overlap ?? DEFAULT_OVERLAP), budget - 1));
   const len = opts.lengthFn ?? ((s: string) => s.length);
+  const locale = opts.locale ?? DEFAULT_SENTENCE_LOCALE;
   const total = text.length;
   if (total === 0) return;
 
@@ -168,7 +225,7 @@ function* chunkSteps(text: string, opts: ChunkForEmbeddingOptions): Generator<Em
     const reachesEnd = hardEnd >= total;
     // Floor keeps a chunk from collapsing to almost nothing when a separator sits early.
     const floor = start + Math.floor((hardEnd - start) * 0.5);
-    const end = reachesEnd ? total : findBreak(text, floor, hardEnd);
+    const end = reachesEnd ? total : findBreak(text, { start, floor, hardEnd }, locale);
 
     const body = text.slice(start, end);
     if (body.trim().length > 0) yield { body, charStart: start, charEnd: end };

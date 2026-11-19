@@ -4,7 +4,9 @@
 // libraries the busy breaker is failing fast (calibre/busy.ts), index coverage (app/library-index.ts)
 // and whether Calibre itself accepts writes (#439: our gate alone can say ENABLED while Calibre refuses).
 
+import path from "node:path";
 import { defineTool } from "./define.js";
+import { indexFileName, rebuildSteps } from "../semantic/store/schema.js";
 import { toolError, toolText } from "./result.js";
 import { computeSemanticStatus, formatSemanticStatusLine, type StatusIndex } from "../semantic/status.js";
 import { libraryIndexReport, type LibraryIndex } from "../app/library-index.js";
@@ -224,8 +226,19 @@ function serverHeader(deps: BaseDeps, version: CalibreVersionInfo): string {
 async function indexSection(deps: PingDeps, skipped?: string): Promise<{ line: string; indexes?: LibraryIndex[] }> {
   const label = (value: string) => labelledLine(PING_LINE_LABELS.index, value);
   if (skipped !== undefined) return { line: label(`skipped — ${skipped}`) };
-  const indexes = await libraryIndexReport(deps);
-  if (!indexes) return { line: label("libraries unavailable") };
+  const report = await libraryIndexReport(deps);
+  if (!report) return { line: label("libraries unavailable") };
+  // a stale index is refused on every open, the build's too: name the file to delete (#655 review)
+  const indexes = report.map((i) =>
+    i.state === "stale"
+      ? {
+          ...i,
+          rebuild: rebuildSteps(
+            deps.config.indexDir === ":memory:" ? ":memory:" : path.join(deps.config.indexDir, indexFileName(i.id)),
+          ),
+        }
+      : i,
+  );
   if (indexes.length === 0) return { line: label("(no libraries)"), indexes };
   // the text stays bounded however many libraries there are; structuredContent keeps them all (#442)
   const shown = cappedWithDefault(indexes).map(indexEntry);
@@ -262,7 +275,7 @@ function indexEntry(i: LibraryIndex): string {
     case "none":
       return `${head}: none`;
     case "stale":
-      return `${head}: stale index (rebuild)`;
+      return `${head}: stale index — ${(i.rebuild ?? "rebuild").replace(/^D/, "d")}`;
     case "conflict":
       return `${head}: not indexable — id "${i.id}" differs only in case from "${i.conflictsWith}", which was indexed first; rename the "${i.id}" library folder`;
     case "busy":

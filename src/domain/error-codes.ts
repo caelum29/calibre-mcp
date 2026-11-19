@@ -161,7 +161,9 @@ const DEFAULT_HINTS: Partial<Record<ErrorCode, string>> = {
   write_unverified: "re-read the book with calibre_get_book before retrying",
   path_not_allowed: "add the folder to CALIBRE_MCP_ADD_ROOTS",
   index_missing: "run calibre_build_index first",
-  index_incompatible: "rebuild with calibre_build_index { force: true }",
+  // the index is refused on every open, so a rebuild needs the old file gone first (#655 review)
+  index_incompatible:
+    "delete the library's index file (<index dir>/<library id>.sqlite, with its -wal and -shm files), then run calibre_build_index { force: true }",
   library_id_collision:
     "rename the folder of the refused library the error names (its id differs only in case from the library indexed first)",
   dependency_missing: "install the tool the error names, then retry",

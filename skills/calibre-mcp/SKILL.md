@@ -132,7 +132,15 @@ identifiers:false   # no ISBN etc.
 - **Semantic search**: if it reports no/partial index, run `calibre_build_index` first
   (scoped to `ids`/`query` for speed, or full library). A keyword-only index with the model
   installed (build_index `semanticAvailable: true`) only needs a rebuild without `keywordOnly`;
-  install steps only when the model is missing.
+  install steps only when the model is missing. `index_incompatible` (or ping's `stale index —
+  delete …`) after an upgrade means the index format changed (index version 5 normalised the
+  text): the old file is refused on every open, so first delete the index file the message names
+  (`<index dir>/<library id>.sqlite` plus `-wal`/`-shm`), then `calibre_build_index force=true`;
+  `calibre_search` works meanwhile.
+- **Offsets**: `charStart`/`charEnd`, `calibre_get_content` `offset` and cursors are positions in
+  the normalised text (ligatures folded, hyphenation joined; `\f` page breaks and headings kept),
+  the same text search indexed — feed a hit's `charStart` as `offset`. Offsets or cursors saved
+  before an index-version change are stale: search again instead of reusing them.
 - **Front/back matter in semantic hits**: hits labelled `[front matter]` or `[back matter:
   …]` (`matterKind` in structured output) come from a table of contents, index, bibliography or
   copyright page. Library scope places every such book after the books with a body match; book

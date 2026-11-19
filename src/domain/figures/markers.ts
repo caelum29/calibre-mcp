@@ -3,6 +3,7 @@
 // figure it just walked past via calibre_get_figures indexes=[N]. Pure logic — the
 // extraction/caching seam lives in src/calibre/extract.ts.
 
+import { CHARACTER_RULES, normaliseText } from "../normalise/normalise.js";
 import { scanPageStarts } from "../page-offsets.js";
 import { matchBareLabel, matchCaptionElement, matchCaptionLine } from "./captions.js";
 import type { FigureEntry, FigureInventory } from "./inventory.js";
@@ -23,6 +24,8 @@ export interface MarkedText {
   markers: FigureMarker[];
   /** Captioned figures no marker could be placed for (caption absent from this text). */
   unplaced: number;
+  /** Each marker line as an insertion into the input text (`at` in input coordinates), for offset maps. */
+  insertions: { at: number; length: number }[];
 }
 
 /** Keeps the marker line short — the caption is a pointer, not the payload. */
@@ -43,7 +46,7 @@ export function formatMarker(index: number, page: number, caption: string, forma
  */
 export function injectFigureMarkers(text: string, inventory: FigureInventory, format: string): MarkedText {
   const captioned = inventory.entries.filter((e) => e.captioned);
-  if (captioned.length === 0) return { text, markers: [], unplaced: 0 };
+  if (captioned.length === 0) return { text, markers: [], unplaced: 0, insertions: [] };
 
   // pdftotext output is plain text (a `*`/`_` there is literal); everything else came
   // through ebook-convert's markdown writer
@@ -67,13 +70,13 @@ export function injectFigureMarkers(text: string, inventory: FigureInventory, fo
       cursor = hit.index + 1;
       // a layout-read caption isn't on the line's neighbour: show the label + inventory text
       const caption = hit.byPage ? `${line.own} ${entry.caption ?? ""}` : line.text;
-      placements.push({ entry, at: line.start, caption });
+      placements.push({ entry, at: line.start, caption: cleanCaption(caption) });
       continue;
     }
     const pageStart = pageStarts[entry.page - 1];
     if (pageStart !== undefined) {
       // page-boundary fallback: right after the page's form feed
-      placements.push({ entry, at: pageStart, caption: composeCaption(entry) });
+      placements.push({ entry, at: pageStart, caption: cleanCaption(composeCaption(entry)) });
       continue;
     }
     unplaced += 1;
@@ -89,6 +92,7 @@ export function injectFigureMarkers(text: string, inventory: FigureInventory, fo
     out = `${out.slice(0, p.at)}${marker}\n${out.slice(p.at)}`;
   }
   let shift = 0;
+  const insertions: { at: number; length: number }[] = [];
   const markers: FigureMarker[] = placements.map((p) => {
     const marker = formatMarker(p.entry.index, p.entry.page, p.caption, format);
     const m: FigureMarker = {
@@ -98,9 +102,10 @@ export function injectFigureMarkers(text: string, inventory: FigureInventory, fo
       caption: truncate(collapseWs(p.caption), MARKER_CAPTION_MAX),
     };
     shift += marker.length + 1; // +1 for the marker's own newline
+    insertions.push({ at: p.at, length: marker.length + 1 });
     return m;
   });
-  return { text: out, markers, unplaced };
+  return { text: out, markers, unplaced, insertions };
 }
 
 interface CaptionLine {
@@ -201,8 +206,8 @@ function findCaptionLine(
 ): { index: number; byPage: boolean } | null {
   const label = entry.label ?? "";
   const full = comparable(entry.caption ?? "");
-  // head = the first 30 chars of the ws-collapsed caption, compared ws-free
-  const head = comparable(collapseWs(entry.caption ?? "").slice(0, 30));
+  // head = the first 30 chars of the ws-collapsed (and normalised) caption, compared ws-free
+  const head = comparable(collapseWs(characterClean(entry.caption ?? "")).slice(0, 30));
   for (let i = from; i < lines.length; i++) {
     const line = lines[i]!;
     if (normalizeLabel(line.label) !== normalizeLabel(label)) continue;
@@ -248,17 +253,32 @@ function isCaptionPrefix(line: CaptionLine, fullComparable: string): boolean {
 }
 
 /**
- * Comparison form for caption-head containment: whitespace-free, lowercased, backslashes
- * stripped. ebook-convert's txt escapes markdown specials (`\(A\)`, `\+`) while the
- * inventory caption is clean HTML text — an escapable char inside the 30-char head made
- * the figure silently unplaceable (book 929: Figs 2-2, 7-6). Whitespace goes entirely, not
- * just collapsed: emphasis gaps land mid-caption (`class \`Book\`, a` → `class Book  , a`).
+ * Comparison form for caption-head containment: the character rules of the text stage (#655: the
+ * text is cleaned before markers, the inventory caption is not), then whitespace-free, lowercased,
+ * without backslashes and hyphens (a compound dash at a line end is joined away in the text,
+ * `client-\nserver` → `clientserver`, but kept in the inventory caption).
  */
 function comparable(s: string): string {
-  return s.replace(/\s+/g, "").replace(/\\/g, "").toLowerCase();
+  return characterClean(s)
+    .replace(/\s+/g, "")
+    .replace(/[\\\-\u2010\u2011]/g, "")
+    .toLowerCase();
+}
+
+/** The text stage's character rules; plain printable ASCII has nothing for them to do. */
+function characterClean(s: string): string {
+  return /[^\x20-\x7E]/.test(s) ? normaliseText(s, [CHARACTER_RULES]).text : s;
 }
 
 /** Fallback caption when the line itself wasn't found (page-boundary placement). */
+/**
+ * A marker line is part of the indexed text (#655, ADR-0033): caption text taken from the figure
+ * inventory (layout-read or page-fallback) gets the same character rules the text already had.
+ */
+function cleanCaption(caption: string): string {
+  return characterClean(caption);
+}
+
 function composeCaption(entry: FigureEntry): string {
   const label = entry.label ?? "";
   const text = entry.caption ?? "";

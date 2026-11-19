@@ -69,7 +69,7 @@ It then runs a second, **fusion-only pass** with the reranker off (`thresholds.f
 #356). With rerank ON, `RERANK_POOL` (30) covers the whole fixture, so the cross-encoder
 re-sorts every candidate and a fusion regression can't show (ON hybrid = vector on every
 positive). The OFF pass compares per-query Hit@1 to its own frozen baseline
-(`reports/2026-11-18-717e8f4e-rerankoff.json`): no query solved there may break, in any mode.
+(`reports/2026-11-19-01a10ba8-rerankoff.json`): no query solved there may break, in any mode.
 Cross-lingual drops are listed as report-only (OFF hybrid solves 0/8 today). Both passes
 print, then `OVERALL GATE`. The OFF pass skips the reranker, so it adds only seconds.
 `--gate` rejects `--rerank` (it sets rerank per pass) but honours `--rrf-weights`, which is
@@ -339,6 +339,13 @@ Append-only: one entry per re-freeze, newest last. Every number names its corpus
   - **Existing lists changed:** 81 (hash), 47 (on) and 81 (fusionOnly) of 315, each on a query with a kept stem equal to its surface form.
   - **Hit@1:** hash hybrid `sp-03` breaks (1 → 2, accepted: RRF, book 117 rose from keyword rank 4 to 3 when 118 lost its bonus; keyword still ranks 103 first); hash keyword `sp-13` 2 → 1; on and fusionOnly keyword `cp-05` 0 → 1. No other per-query metric changed on the model tiers.
   - **Unchanged:** every `fmt-*` Hit@1; `bmt-*` `nonBodyAbove` is 0 everywhere; the four `linux` platform-drift entries are still solved at Hit@1.
+- **2026-11-19, #655 (index version 5: text normalisation and `Intl.Segmenter` sentence breaks).**
+  - **Rule first.** e7446e0f (`text-normalisation-655.acceptance.json`) declares the judged rule and the expected fixture re-freeze before any version-5 run.
+  - **Change.** The extracted text is normalised before markers (NFKC with superscripts, subscripts and `№` kept; controls; Unicode spaces; soft hyphens and lowercase-guarded hyphen joins), and the chunker's sentence tier breaks at `Intl.Segmenter` sentence ends. The harness runs the same stage on every fixture text and refuses one the rules would change (its labelled spans are raw offsets).
+  - **Freezes.** On and fusionOnly: from the `pnpm eval --gate` run at 01a10ba8, `reports/2026-11-19-01a10ba8.json` and `reports/2026-11-19-01a10ba8-rerankoff.json`, the first recorded gate run on transformers.js 4.3.2 (onnxruntime-node 1.30.0; ADR-0025's open note). Hash: `pnpm eval:hash-freeze` (315 rows, ranks identical; only `gitSha` moves).
+  - **Existing lists changed:** 0 (hash), 0 (on) and 0 (fusionOnly) of 315. No fixture text changes under the character rules (0 of 32) and no fixture chunk boundary moves under the token budget (0 of 32 books), so the fixture cannot show this change; the subset measurement on the live library does (PR body).
+  - **Hit@1 and scores:** no per-query metric changed; maxScore |Δ| 0.0000 on 210 rows.
+  - **Unchanged:** corpus 32 books / 105 queries; every `fmt-*` Hit@1; `bmt-*` `nonBodyAbove` is 0 everywhere.
 
 ### Rules
 
