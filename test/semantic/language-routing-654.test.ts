@@ -67,6 +67,10 @@ describe("query side: packs per token, decided for the whole query (ADR-0032 ite
     expect(queryIds("мова програмування", ["en", "ru"])).toEqual([["ru"], ["ru"]]);
   });
 
+  it("uses only Ukrainian when every book is Ukrainian", () => {
+    expect(queryIds("мова програмування", ["uk"])).toEqual([["uk"], ["uk"]]);
+  });
+
   it("en books keep the Cyrillic default ru as a candidate", () => {
     expect(queryIds("мова програмування", ["uk", "en"])).toEqual([
       ["ru", "uk"],
