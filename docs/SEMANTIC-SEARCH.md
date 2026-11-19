@@ -110,8 +110,11 @@ would only be searched as the letter `c`.
 A repeated word counts once, and a word that appears in more than half of a library's passages
 (`the`, `and`, `use`, …) is left out of the keyword match: it says almost nothing about which
 passage fits and costs the most time to look up. A one-word query, words in `"quotes"`, and the
-rarest word of a query made only of such words are always kept. Russian function words are
-rarer than that in a mostly English library, so they stay in.
+rarest word of a query made only of such words are always kept. Whether a non-English function
+word is left out depends on the library's language mix: in one mostly English library of
+416,737 passages the most common Russian word, `в`, sits in 15.6% of them and stays in; in a
+library of 50,963 passages with much Russian text, `в` (62.1%), `на`, `не` and `и` (53–56%)
+are above half and are left out.
 
 Two refinements worth knowing about:
 
