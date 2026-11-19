@@ -10,10 +10,12 @@ import { stemText } from "../stem.js";
 import { encodeVector } from "../vector.js";
 import { chunkSpans, vectorCoverage } from "./freshness.js";
 import type { IndexConnections } from "./schema.js";
+import { writeBookMetadata } from "./book-metadata.js";
 import { writeSections } from "./sections.js";
 import { type Row, rollbackQuietly } from "./shared.js";
 import type {
   BookMeta,
+  IndexedBookMetadata,
   IndexedChunk,
   IndexedFigure,
   IndexWriter,
@@ -34,7 +36,12 @@ export class SqliteWriter implements IndexWriter {
     meta: BookMeta,
     chunks: IndexedChunk[],
     figures: IndexedFigure[] = [],
-    opts: { preserveEmbedded?: boolean; sections?: BookSections; offsetMap?: string } = {},
+    opts: {
+      preserveEmbedded?: boolean;
+      sections?: BookSections;
+      offsetMap?: string;
+      metadata?: IndexedBookMetadata;
+    } = {},
   ): ReplaceOutcome {
     const db = this.conn.db(libraryId);
     const embedded = chunks.reduce((n, c) => n + (c.vector ? 1 : 0), 0);
@@ -59,6 +66,8 @@ export class SqliteWriter implements IndexWriter {
       writeSections(db, meta.bookId, opts.sections);
       // The offset map goes with the chunks too (#655): rewritten, or cleared when none came.
       writeOffsetMap(db, meta.bookId, opts.offsetMap);
+      // The metadata row (#631) goes with them too: rewritten here, cleared when none is given.
+      writeBookMetadata(db, meta.bookId, meta.lastModified, opts.metadata);
 
       db.prepare(
         "INSERT INTO books(book_id, title, authors, last_modified, chunk_count, indexed_at, embedded_chunks) VALUES(?,?,?,?,?,?,?)",
@@ -151,6 +160,8 @@ export class SqliteWriter implements IndexWriter {
       this.#refreshMatter(db, meta.bookId, check);
       // The flag-only backfill fills section rows too (#695), without touching chunks or vectors.
       if (check.sections) writeSections(db, meta.bookId, check.sections);
+      // A metadata edit re-embeds only the metadata row (#631); the flag-only pass leaves it be.
+      if (check.metadata) writeBookMetadata(db, meta.bookId, meta.lastModified, check.metadata);
       db.exec("COMMIT");
       return true;
     } catch (err) {
@@ -197,10 +208,12 @@ export class SqliteWriter implements IndexWriter {
       const delBook = db.prepare("DELETE FROM books WHERE book_id = ?");
       const delSections = db.prepare("DELETE FROM sections WHERE book_id = ?");
       const delMap = db.prepare("DELETE FROM text_maps WHERE book_id = ?");
+      const delMetadata = db.prepare("DELETE FROM book_metadata WHERE book_id = ?");
       for (const id of bookIds) {
         delEmb.run(id);
         delSections.run(id);
         delMap.run(id);
+        delMetadata.run(id); // its DELETE trigger clears book_metadata_fts
         // The chunks/figures DELETE triggers keep the FTS shadow tables in sync.
         counts.chunks += Number(delChunks.run(id).changes);
         counts.figures += Number(delFigures.run(id).changes);

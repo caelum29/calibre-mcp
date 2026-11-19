@@ -23,9 +23,11 @@ port.on("message", (req: EncodeRequest) => {
       reply.ok && reply.result
         ? [
             ...new Set(
-              [...(reply.result.vectors ?? []), ...(reply.result.captionVectors ?? [])].map(
-                (v) => v.buffer as ArrayBuffer,
-              ),
+              [
+                ...(reply.result.vectors ?? []),
+                ...(reply.result.captionVectors ?? []),
+                ...(reply.result.metadataVector ? [reply.result.metadataVector] : []),
+              ].map((v) => v.buffer as ArrayBuffer),
             ),
           ]
         : [];

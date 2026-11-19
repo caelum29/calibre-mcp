@@ -159,7 +159,8 @@ describe("EPUB TOC front-matter boundary in the index (#269)", () => {
       deps(store, second, { epubToc: TOC, title: "Becoming Reliable, 2nd Ed.", lastModified: "2026-02-01" }),
     );
     expect(r.structuredContent).toMatchObject({ booksRefreshed: 1, booksIndexed: 0 });
-    expect(second.passages).toBe(0);
+    // Chunks keep their vectors; only the metadata row (#631) is re-embedded.
+    expect(second.passages).toBe(1);
     expect(flagAt(store, IN_PREFACE)).toBe(true);
     expect(flagAt(store, IN_BODY)).toBe(false);
   });
