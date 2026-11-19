@@ -1,0 +1,22 @@
+src/domain/structure/matter-kind.ts
+  s_b47041914aadf8::t_9da63205699d36 12-14,16,19,23,157
+src/domain/structure/sections.ts
+  s_b47041914aadf8::t_9da63205699d36 162,187,192
+  s_b47041914aadf8::t_b94c1427d8348a 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6e661fc3060ba456a2a789cfe010122ce780b69f",
+  "prompts": {},
+  "sessions": {
+    "s_b47041914aadf8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "42c4c809-0136-42c6-8b6c-a3c11a9ef83d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
