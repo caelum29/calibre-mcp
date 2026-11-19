@@ -15,6 +15,16 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Config } from "../config.js";
 import { type FigureMarker, injectFigureMarkers } from "../domain/figures/markers.js";
+import { normaliseText, ruleSetsFor } from "../domain/normalise/normalise.js";
+import {
+  composeEdits,
+  decodeOffsetMap,
+  encodeOffsetMap,
+  IDENTITY_MAP,
+  type Insertion,
+  insertionEdits,
+  type OffsetMap,
+} from "../domain/normalise/offset-map.js";
 import type { EpubToc } from "../domain/structure/epub-toc.js";
 import type { OutlineEntry } from "../domain/structure/pdf-outline.js";
 import { log } from "../logging.js";
@@ -53,6 +63,11 @@ export interface ExtractedText {
   outline: OutlineEntry[];
   /** EPUB TOC + spine anchors — a chapter-map source (#135); null for non-EPUBs or no usable TOC. */
   epubToc: EpubToc | null;
+  /**
+   * Map from positions in `text` (cleaned, marker-injected) back to the converter's raw output
+   * (#655, ADR-0033). The real extractor always sets it; test fakes may leave it out.
+   */
+  offsetMap?: OffsetMap;
 }
 
 /** Structural seam for the figure-inventory service — keeps the extractor testable. */
@@ -87,9 +102,11 @@ const CACHE_DIR = path.join(tmpdir(), "calibre-mcp-cache");
  * v7: label-only PDF captions read from page layout — cached markers carry no caption text.
  * v8: envelope carries the EPUB TOC + spine anchors (#135) — text bytes unchanged, but v7
  * EPUB entries would never gain a TOC chapter map until LRU-evicted.
+ * v9: the text is normalised before markers (#655, ADR-0033) — every offset is in cleaned
+ * coordinates, and the envelope carries the cleaned → raw offset map.
  * Rides in the cache filename AND the JSON envelope.
  */
-const TEXT_CACHE_VERSION = 8;
+const TEXT_CACHE_VERSION = 9;
 const MAX_CACHE_ENTRIES = 50;
 const MAX_CACHE_BYTES = 200 * 1024 * 1024;
 const CONVERT_TIMEOUT_MS = 120_000;
@@ -187,6 +204,7 @@ export class Extractor implements TextExtractor {
         unplaced: hit.unplaced ?? 0,
         outline: hit.outline ?? [],
         epubToc: hit.epubToc ?? null,
+        offsetMap: decodeOffsetMap(hit.offsetMap) ?? IDENTITY_MAP, // parseTextCacheEnvelope checked it decodes
       };
     }
     // missing or unreadable/corrupt envelope: (re-)extract
@@ -202,7 +220,10 @@ export class Extractor implements TextExtractor {
         signal: args.signal,
       });
       const converted = await this.#convert(fmt, tmpSrc, tmpOut, report, args.timeoutMs, args.signal);
-      const { text, markers, unplaced } = await this.#injectMarkers(converted.text, fmt, args);
+      // ADR-0033: clean first, so markers, spine anchors and every offset share cleaned coordinates
+      const cleaned = normaliseText(converted.text, ruleSetsFor(converted.backend));
+      const { text, markers, unplaced, insertions } = await this.#injectMarkers(cleaned.text, fmt, args);
+      const offsetMap: OffsetMap = { edits: composeEdits(cleaned.map.edits, insertionEdits(insertions)) };
       // Read while the downloaded PDF still exists; best-effort, [] on any failure.
       const outline = fmt === "pdf" && report.pdftohtmlPath ? await readPdfOutline(report.pdftohtmlPath, tmpSrc) : [];
       // Anchored against the final (marker-injected) text so TOC offsets share its coordinates.
@@ -215,6 +236,7 @@ export class Extractor implements TextExtractor {
         unplaced,
         outline,
         ...(epubToc ? { epubToc } : {}),
+        offsetMap: encodeOffsetMap(offsetMap),
       };
       await writeFile(cacheFile, JSON.stringify(envelope), "utf8");
       await evictCache().catch(() => {});
@@ -227,6 +249,7 @@ export class Extractor implements TextExtractor {
         unplaced,
         outline,
         epubToc,
+        offsetMap,
       };
     } finally {
       await unlink(tmpSrc).catch(() => {});
@@ -253,9 +276,9 @@ export class Extractor implements TextExtractor {
     text: string,
     fmt: string,
     args: GetTextArgs,
-  ): Promise<{ text: string; markers: FigureMarker[]; unplaced: number }> {
+  ): Promise<{ text: string; markers: FigureMarker[]; unplaced: number; insertions: Insertion[] }> {
     if (!this.inventories || (fmt !== "pdf" && fmt !== "epub") || text.trim().length === 0) {
-      return { text, markers: [], unplaced: 0 };
+      return { text, markers: [], unplaced: 0, insertions: [] };
     }
     try {
       const { inventory } = await this.inventories.getInventory({
@@ -270,7 +293,7 @@ export class Extractor implements TextExtractor {
       if (marked.unplaced > 0) {
         log.warn("figure markers unplaced", { bookId: args.bookId, format: fmt, unplaced: marked.unplaced });
       }
-      return { text: marked.text, markers: marked.markers, unplaced: marked.unplaced };
+      return { text: marked.text, markers: marked.markers, unplaced: marked.unplaced, insertions: marked.insertions };
     } catch (err) {
       // Cancellation is not a figure problem — propagate it instead of degrading to plain text.
       if (args.signal?.aborted) throw new OperationCancelledError();
@@ -279,7 +302,7 @@ export class Extractor implements TextExtractor {
         format: fmt,
         msg: err instanceof Error ? err.message.slice(0, 200) : String(err),
       });
-      return { text, markers: [], unplaced: 0 };
+      return { text, markers: [], unplaced: 0, insertions: [] };
     }
   }
 
@@ -377,6 +400,8 @@ export interface TextCacheEnvelope {
   outline?: OutlineEntry[];
   /** EPUB TOC + spine anchors (v8, #135); absent for non-EPUBs or no usable TOC — read as null. */
   epubToc?: EpubToc;
+  /** Final-text → raw offset map (v9, #655), `encodeOffsetMap` form; required, an entry without it is re-extracted. */
+  offsetMap: string;
 }
 
 /** The text-cache file for a cache key; throws if it would resolve outside the cache dir. */
@@ -405,6 +430,7 @@ export function parseTextCacheEnvelope(raw: string): TextCacheEnvelope | null {
     const parsed = JSON.parse(raw) as Partial<TextCacheEnvelope>;
     if (parsed.v !== TEXT_CACHE_VERSION) return null;
     if (typeof parsed.text !== "string" || !Array.isArray(parsed.markers)) return null;
+    if (typeof parsed.offsetMap !== "string" || !decodeOffsetMap(parsed.offsetMap)) return null;
     return {
       v: parsed.v,
       backend: typeof parsed.backend === "string" ? parsed.backend : "cache",
@@ -413,6 +439,7 @@ export function parseTextCacheEnvelope(raw: string): TextCacheEnvelope | null {
       ...(typeof parsed.unplaced === "number" ? { unplaced: parsed.unplaced } : {}),
       ...(Array.isArray(parsed.outline) ? { outline: parsed.outline } : {}),
       ...(isEpubToc(parsed.epubToc) ? { epubToc: parsed.epubToc } : {}),
+      offsetMap: parsed.offsetMap,
     };
   } catch {
     return null;

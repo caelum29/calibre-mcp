@@ -143,7 +143,7 @@ describe("injectFigureMarkers — placement", () => {
 
   it("returns text untouched for an inventory with no captioned figures", () => {
     const out = injectFigureMarkers("hello", inv([]), "pdf");
-    expect(out).toEqual({ text: "hello", markers: [], unplaced: 0 });
+    expect(out).toEqual({ text: "hello", markers: [], unplaced: 0, insertions: [] });
   });
 
   it("matches a RU caption line", () => {

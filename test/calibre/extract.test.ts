@@ -56,10 +56,11 @@ describe("noTextReason", () => {
   });
 });
 
-describe("text cache envelope (v8, #84/#133/#134/#101/#107/#135)", () => {
+describe("text cache envelope (v9, #84/#133/#134/#101/#107/#135/#655)", () => {
   it("round-trips a valid envelope", () => {
     const env = {
-      v: 8,
+      v: 9,
+      offsetMap: "m1:",
       backend: "pdftotext",
       text: "body [image #0]",
       markers: [{ index: 0, charOffset: 5, page: 1, caption: "c" }],
@@ -94,11 +95,12 @@ describe("text cache envelope (v8, #84/#133/#134/#101/#107/#135)", () => {
     ).toBeNull();
   });
   it("rejects an envelope missing markers", () => {
-    expect(parseTextCacheEnvelope(JSON.stringify({ v: 8, backend: "x", text: "t" }))).toBeNull();
+    expect(parseTextCacheEnvelope(JSON.stringify({ v: 9, backend: "x", text: "t", offsetMap: "m1:" }))).toBeNull();
   });
   it("round-trips the outline and the unplaced count", () => {
     const env = {
-      v: 8,
+      v: 9,
+      offsetMap: "m1:",
       backend: "pdftotext",
       text: "t",
       markers: [],
@@ -109,7 +111,8 @@ describe("text cache envelope (v8, #84/#133/#134/#101/#107/#135)", () => {
   });
   it("round-trips the EPUB TOC with its spine anchors (#135)", () => {
     const env = {
-      v: 8,
+      v: 9,
+      offsetMap: "m1:",
       backend: "ebook-convert",
       text: "t",
       markers: [],
@@ -118,7 +121,14 @@ describe("text cache envelope (v8, #84/#133/#134/#101/#107/#135)", () => {
     expect(parseTextCacheEnvelope(JSON.stringify(env))).toEqual(env);
   });
   it("drops a malformed EPUB TOC instead of serving it", () => {
-    const env = { v: 8, backend: "ebook-convert", text: "t", markers: [], epubToc: { entries: "junk" } };
+    const env = {
+      v: 9,
+      backend: "ebook-convert",
+      text: "t",
+      markers: [],
+      offsetMap: "m1:",
+      epubToc: { entries: "junk" },
+    };
     expect(parseTextCacheEnvelope(JSON.stringify(env))?.epubToc).toBeUndefined();
   });
 });

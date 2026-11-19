@@ -37,6 +37,8 @@ export interface LibraryIndex {
    * present only when non-zero. Keyword search still works; a force rebuild re-stems them.
    */
   staleStems?: number;
+  /** state "stale" (#655): the way out — delete the index file, then rebuild (force alone is refused). */
+  rebuild?: string;
 }
 
 /** The reads the report makes: library list + one count per library, and index coverage. */

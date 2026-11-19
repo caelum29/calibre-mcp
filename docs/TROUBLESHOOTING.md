@@ -110,6 +110,18 @@ Semantic search only sees books you've indexed. Run `calibre_build_index` with a
 `ids`, or a Calibre `query` selecting the books, then search again. Re-run it after adding
 books (unchanged books are skipped).
 
+### Semantic search: "index built with index_version=4" (`index_incompatible`)
+
+The server was upgraded past an index-format change. Index version 5 normalises the extracted
+text and moves every offset into it, so a version-4 index can't be searched or extended — it is
+refused rather than mixed with new offsets, and `calibre_ping` lists it as `stale index — delete
+…`. The refusal applies to every open, the build's included, so `force: true` alone cannot
+rebuild it. First delete the library's index file `<index dir>/<library id>.sqlite` together with its `-wal` and `-shm` files (the error message and ping name the exact path; the
+default index dir is in *Building the index* of `docs/SEMANTIC-SEARCH.md`), then run
+`calibre_build_index` with `force: true` (whole library, or a `query`/`ids` slice at a time). Books become searchable again as they are re-indexed; `calibre_search`
+(metadata and Calibre full-text) works throughout. Offsets you saved from the old index
+(`charStart`, `offset`, cursors) are stale too: search for the passage again.
+
 ### "can't be indexed: its id differs only in letter case" (`library_id_collision`)
 
 **Symptom:** building, searching or pinging one library fails with this message; `calibre_ping`
@@ -208,6 +220,8 @@ Content cursors are opaque continuation tokens bound to one book and format — 
 **verbatim**, and don't reuse a cursor across books, formats, or after switching parameters.
 On this error, just restart the read (plain call, or `structure: true` to grab a chapter map
 and jump from there). `cursor` and `offset` are mutually exclusive — pass one or the other.
+A cursor saved before a server upgrade that changed the text's offsets (index version 5
+normalises the text) is refused the same way; it is never resumed at a guessed position.
 
 Page cursors from `calibre_search`, `calibre_list_categories`, `calibre_quality_report` and
 `calibre_find_duplicates` are bound the same way: to one library, mode and query. Reusing one

@@ -185,5 +185,10 @@ export const PASSAGE_PREFIX = ACTIVE_MODEL.passagePrefix;
  *
  * v4 (#139): transformers.js 4.2.0 → 4.3.1 pins onnxruntime-node 1.30, which shifts e5
  * vectors (cos ~0.997) and reranker logits — v3 vectors must not mix with v4 query vectors.
+ *
+ * v5 (#655, ADR-0033): text normalisation rewrites the cached text (NFKC with super/subscripts
+ * kept, controls dropped, Unicode spaces, hyphen joins) and the chunker breaks at Intl.Segmenter
+ * sentence ends. Chunk text, boundaries and every offset move to cleaned coordinates, so a v4
+ * index (raw-text offsets) must be rebuilt, never mixed. #654's stems ride the same bump.
  */
-export const INDEX_VERSION = 4;
+export const INDEX_VERSION = 5;

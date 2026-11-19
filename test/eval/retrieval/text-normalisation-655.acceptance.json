@@ -1,0 +1,32 @@
+{
+  "$comment": "#655 text normalisation (index version 5, ADR-0033): acceptance rule declared and committed BEFORE the version-4 baseline dump and any version-5 dump (D-012; same rule as wave 3's #651, Artem-approved default, wave 2026-11-19). A measurement on a 30-book subset of the live library, through private index copies, not a fixture gate. No code reads this file; it is the record the version-5 row is checked against.",
+  "issue": 655,
+  "corpus": {
+    "$comment": "Subset: docs/dev/evals/wave-2026-11-19/subset.json key `ids` (30 Programming_Books books of the #620 spike: 22 PDF, 8 EPUB, 4 Russian). Both index copies hold exactly these 30 books, so both rows rank over the same corpus.",
+    "baselineIndex": "docs/dev/evals/wave-2026-11-19/N/index-v4 (snapshot copy of Programming_Books, every non-subset book deleted; version-4 code = main ac72aedd)",
+    "armIndex": "docs/dev/evals/wave-2026-11-19/N/index-v5 (the same 30 books re-indexed with the PR head through --index-dir, never --production)"
+  },
+  "querySet": {
+    "$comment": "The judged queries are those that land in the subset: a query of the 2026-11 blind baseline (docs/dev/evals/semantic-judged-blind-2026-11/queries.json) on library Programming_Books with at least one stored judgment of grade >= 1 on a subset book in the shared store 3f335e5122b8.jsonl (1433 records at wave start). Counted at rule time: n = 64 (para 15, concept 8, problem 9, xling 10, short 8, long 4, book 7, fig 3). The filtered queries.json gets its own store name (first 12 hex of its sha256), a private store under N/, seeded with the shared store's records for those 64 queries.",
+    "n": 64,
+    "source": "docs/dev/evals/semantic-judged-blind-2026-11/queries.json",
+    "landingRule": "library == Programming_Books AND exists store record with bookId in subset.ids AND grade >= 1"
+  },
+  "labelRemap": {
+    "$comment": "Stored judgments carry charStart/charEnd in version-4 coordinates (raw text + version-4 figure markers). Each subset record is mapped to version-5 coordinates: version-4 position -> raw position (subtract the version-4 figure-marker lines before it, from the version-4 copy's figures table and chunk bodies) -> cleaned position (the stored per-book offset map, inverted; it is monotone) -> version-5 final position (add the version-5 markers before it). The remapped copy keeps qid, bookId, rubric, grade, judges and run, gets indexVersion 5 and a remap note, and goes only to the private store. Proposed match threshold: unchanged store rule, overlap >= half of the shorter range (figures: equal offset after remap). The PR reports how many version-5 top-5 hits matched a remapped label and how many went to the judges.",
+    "matchThreshold": "overlap >= 0.5 * min(len(hit), len(record))"
+  },
+  "rule": {
+    "$comment": "Version 5 passes when, against the baseline row dumped on index-v4 with main's code, (1) blind hit@3 falls by at most maxHit3DropOverallPoints percentage points overall (at n = 64 one query is 1.56 points, so this means no net hit@3 loss), and (2) no category's paired 95% bootstrap interval for the NDCG@5 difference (v5 - v4, pnpm eval:judged:compare) lies entirely below 0, i.e. its upper bound is not below 0. long-* and problem-* are reported separately. Unjudged top-5 hits of either row are judged blind first (scripts/judged-blind.workflow.js, judges A = opus, B = sonnet, as in the baseline); the chain session never judges.",
+    "maxHit3DropOverallPoints": 1,
+    "categoryClause": "no category has a paired 95% CI for delta NDCG@5 with upper bound < 0",
+    "compareCommand": "pnpm eval:judged:compare <v4RunDir> <v5RunDir> --store <privateStore>",
+    "reportSeparately": ["long-*", "problem-*"]
+  },
+  "fixture": "pnpm eval --gate on the PR head (transformers.js 4.3.2, the gate run ADR-0025's open note asks for), then a re-freeze of every baseline tier by test/eval/README.md's rule-first procedure; every list diff is explained by a named cause (sentence boundary moved, character folded, hyphen joined, offsets shifted).",
+  "alsoReported": [
+    "head scan (docs/dev/research/snippets-2026-11-13/scan.mjs) per defect class on both copies",
+    "ligature tokens in fts5vocab of index-v5 (expected 0)",
+    "re-index seconds per book and per phase on the subset, projected to the four production libraries (1,062 + 147 + 144 + 10 indexed books)"
+  ]
+}
