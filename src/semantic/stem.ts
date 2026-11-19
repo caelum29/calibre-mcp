@@ -53,14 +53,15 @@ export function* stemmedTokens(
 }
 
 /**
- * Query-side word tokens with their stem variants (ADR-0032 item 4): the query's language is
- * decided as a whole, else an ambiguous token gets one stem per pack that has a book in the
- * library (`libraryLangs`), identical stems merged. Without library languages each token has the
- * one stem stemText gives it.
+ * Query-side word tokens with their stem variants (ADR-0032 item 4): a token with a pack's
+ * distinctive letters gets that pack; an ambiguous token gets the query's evidence pack when the
+ * library's books were stemmed with it, else one stem per candidate pack (`libraryLangs`,
+ * `undefined` for a book with no detected language), identical stems merged. Without library
+ * languages each token has the one stem stemText gives it.
  */
 export function* queryStemmedTokens(
   query: string,
-  libraryLangs?: ReadonlySet<string>,
+  libraryLangs?: ReadonlySet<string | undefined>,
   packs: readonly LanguagePack[] = PACKS,
 ): Generator<{ stems: string[]; index: number; length: number }> {
   const matches = [...query.matchAll(TOKEN)];

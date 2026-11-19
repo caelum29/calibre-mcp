@@ -214,7 +214,7 @@ const phrase = (t: string): string => `"${t.replace(/"/g, '""')}"`;
  * when the query has no searchable tokens. `langs` are the book languages of the searched library
  * (#654): an ambiguous token joins with one stem per candidate language pack.
  */
-export function ftsMatch(query: string, langs?: ReadonlySet<string>): string | null {
+export function ftsMatch(query: string, langs?: ReadonlySet<string | undefined>): string | null {
   const stems = queryStems(query, langs);
   const ids = identifierTokens(query).flatMap((t) => [t, `${t}.`]);
   const toks = [...stems, ...ids];
@@ -247,7 +247,7 @@ export interface KeywordMatch {
  * ftsMatch(query, langs). Stem variants of one word (#654) are separate plan tokens, so a variant
  * equal to another stem is dropped as a duplicate and each is priced on its own before pruning.
  */
-export function keywordMatch(query: string, stats?: TermStats, langs?: ReadonlySet<string>): KeywordMatch {
+export function keywordMatch(query: string, stats?: TermStats, langs?: ReadonlySet<string | undefined>): KeywordMatch {
   if (stats === undefined) return { match: ftsMatch(query, langs) };
   let plan;
   try {
@@ -276,7 +276,7 @@ export function keywordMatch(query: string, stats?: TermStats, langs?: ReadonlyS
 const QUOTED = /"([^"]*)"/g;
 
 /** Every stem variant of the query's words, in query order (#654). */
-function queryStems(query: string, langs: ReadonlySet<string> | undefined): string[] {
+function queryStems(query: string, langs: ReadonlySet<string | undefined> | undefined): string[] {
   return [...queryStemmedTokens(query, langs)].flatMap((t) => t.stems);
 }
 
@@ -285,7 +285,7 @@ function queryStems(query: string, langs: ReadonlySet<string> | undefined): stri
  * its quoted span. Only a word's first variant carries the span: the planner builds a quoted
  * phrase from the span's raw words, which must not repeat.
  */
-function keywordTokens(query: string, langs: ReadonlySet<string> | undefined): KeywordToken[] {
+function keywordTokens(query: string, langs: ReadonlySet<string | undefined> | undefined): KeywordToken[] {
   const spans = [...query.matchAll(QUOTED)].map((m) => ({ from: m.index + 1, to: m.index + m[0].length - 1 }));
   return [...queryStemmedTokens(query, langs)].flatMap((t) => {
     const span = spans.findIndex((s) => t.index >= s.from && t.index + t.length <= s.to);
@@ -295,9 +295,11 @@ function keywordTokens(query: string, langs: ReadonlySet<string> | undefined): K
 }
 
 /** The book languages (#654) of a library's indexed books: the query side's candidate packs. */
-export function libraryLanguages(db: DatabaseSync): Set<string> {
-  const rows = db.prepare("SELECT DISTINCT lang FROM books WHERE lang IS NOT NULL").all() as Row[];
-  return new Set(rows.map((r) => String(r.lang)));
+export function libraryLanguages(db: DatabaseSync): Set<string | undefined> {
+  // NULL (no detected language, or written before #654) stays in as undefined: those books stem
+  // with the script default, which must stay a query candidate (#716 review).
+  const rows = db.prepare("SELECT DISTINCT lang FROM books").all() as Row[];
+  return new Set(rows.map((r) => (typeof r.lang === "string" ? r.lang : undefined)));
 }
 
 /** authors are stored as a JSON array string; tolerate legacy/garbled values. */

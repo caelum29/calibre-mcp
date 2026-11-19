@@ -1,6 +1,7 @@
 // Language-pack registry (ADR-0032, #654): the compiled-in packs and token → pack routing for the
 // keyword half. Index side: a token goes to its book language's pack for its script, unless it
-// carries another pack's distinctive letters. Query side: decided once for the whole query.
+// carries another pack's distinctive letters. Query side: decided for the whole query, over the
+// packs the library's books were stemmed with.
 // Every router takes the pack list as a parameter so tests can route over packs of their own.
 
 import { en } from "./en.js";
@@ -52,15 +53,32 @@ export function packForToken(
 }
 
 /**
+ * The packs a library's books may have stemmed `script`'s words with: the pack of every book
+ * language of that script, plus the script's default when a book has no detected language
+ * (`undefined`) or a language of another script — such a book stems this script's words with the
+ * default (a Russian book detected as `en` for its code). Without library languages, the default.
+ */
+function candidatePacks(
+  script: Script,
+  libraryLangs: ReadonlySet<string | undefined> | undefined,
+  packs: readonly LanguagePack[],
+): LanguagePack[] {
+  const all = packsOf(script, packs);
+  if (!libraryLangs || libraryLangs.size === 0) return all.slice(0, 1);
+  const needsDefault = [...libraryLangs].some((id) => !all.some((p) => p.id === id));
+  return all.filter((p, i) => libraryLangs.has(p.id) || (i === 0 && needsDefault));
+}
+
+/**
  * Query-side routing, decided for the whole query: a function giving each token its packs, one
- * stem per pack, OR-ed. Per script, the one pack whose distinctive letters some token holds takes
- * every token of that script; when two packs both have such evidence, each token goes by its own
- * letters. A token without evidence gets every pack of its script that has a book in the library
- * (`libraryLangs`, from `books.lang`), else the script's default. Empty for digits or other scripts.
+ * stem per pack, OR-ed. A token with a pack's distinctive letters always gets that pack, as the
+ * index stems it (item 3). Per script, when one pack has such evidence and is a candidate in the
+ * library, it takes every token of that script; otherwise a token without evidence gets every
+ * candidate pack (`candidatePacks`, from `books.lang`). Empty for digits or other scripts.
  */
 export function queryPacks(
   tokens: readonly string[],
-  libraryLangs?: ReadonlySet<string>,
+  libraryLangs?: ReadonlySet<string | undefined>,
   packs: readonly LanguagePack[] = PACKS,
 ): (token: string) => readonly LanguagePack[] {
   const route = new Map<Script, readonly LanguagePack[]>();
@@ -71,18 +89,16 @@ export function queryPacks(
     if (script && p) evidence.set(script, (evidence.get(script) ?? new Set()).add(p));
   }
   for (const [script] of SCRIPT_TESTS) {
-    const all = packsOf(script, packs);
-    const seen = evidence.get(script);
-    if (seen?.size === 1) route.set(script, [...seen]);
-    else {
-      const present = all.filter((p) => libraryLangs?.has(p.id));
-      route.set(script, present.length > 0 ? present : all.slice(0, 1));
-    }
+    const candidates = candidatePacks(script, libraryLangs, packs);
+    const seen = [...(evidence.get(script) ?? [])];
+    // The whole-query switch only to a pack the library's books were stemmed with (#716 review).
+    const only = seen.length === 1 && candidates.includes(seen[0]!) ? seen[0] : undefined;
+    route.set(script, only ? [only] : candidates);
   }
   return (token) => {
     const script = scriptOf(token);
     if (script === undefined) return [];
-    const own = evidence.get(script)?.size === 1 ? undefined : evidencePack(token, packsOf(script, packs));
+    const own = evidencePack(token, packsOf(script, packs));
     return own ? [own] : (route.get(script) ?? []);
   };
 }
