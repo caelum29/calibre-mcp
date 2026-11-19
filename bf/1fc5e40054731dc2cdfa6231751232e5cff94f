@@ -1,0 +1,19 @@
+test/domain/book-metadata-text-631-review.test.ts
+  s_5bd0844b030fd1::t_cab702206913e6 1-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bf1fc5e40054731dc2cdfa6231751232e5cff94f",
+  "prompts": {},
+  "sessions": {
+    "s_5bd0844b030fd1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea68e5fc-9ea5-482c-961d-216cd19cdbc5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
