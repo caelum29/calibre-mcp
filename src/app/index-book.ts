@@ -8,6 +8,7 @@ import { indexedFigureCaption, type FigureMarker } from "../domain/figures/marke
 import type { ExtractedText } from "../calibre/extract.js";
 import { inThreadEncoder, structureOf, type BookEncoder } from "../semantic/book-encoder.js";
 import { textMatchesChunks, type ChunkSpan } from "../semantic/content-match.js";
+import { detectBookLanguage } from "../semantic/language/detect.js";
 import { type MatterKind, matterKinds } from "../domain/structure/matter-kind.js";
 import { type BookSections, bookSections } from "../domain/structure/sections.js";
 import type { BookMeta, IndexedChunk, IndexedFigure, IndexFreshness, IndexWriter } from "../semantic/store/index.js";
@@ -154,7 +155,16 @@ export async function prepareBook(deps: IndexBookDeps, bookId: number, opts: Pre
     throw new Error(`no extractable text (${fmt}) — ${noTextReason(fmt)}`);
   }
 
-  const meta: BookMeta = { bookId, title: book.title, authors: book.authors, lastModified: book.lastModified };
+  // Book language from the text (#654, ADR-0032): Calibre's `languages` is often missing or wrong,
+  // and the text is what gets stemmed.
+  const lang = detectBookLanguage(extracted.text);
+  const meta: BookMeta = {
+    bookId,
+    title: book.title,
+    authors: book.authors,
+    lastModified: book.lastModified,
+    ...(lang ? { lang } : {}),
+  };
   const refreshed = refreshOutcome(deps, opts, meta, extracted);
   if (refreshed) return refreshed;
 
