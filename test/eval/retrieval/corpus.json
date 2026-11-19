@@ -34,7 +34,7 @@
     { "bookId": 130, "file": "130-fermenting-ads.txt", "title": "Fermenting at Home", "authors": ["Eval Fixture"], "language": "en" },
     { "bookId": 131, "file": "131-field-statistics.txt", "title": "Field Statistics for Ecologists", "authors": ["Eval Fixture"], "language": "en" },
     { "bookId": 132, "file": "132-ru-houseplants-index.txt", "title": "Комнатные растения: уход и размножение", "authors": ["Eval Fixture"], "language": "ru" },
-    { "bookId": 133, "file": "133-uk-intermezzo.txt", "title": "Intermezzo", "authors": ["Михайло Коцюбинський"], "language": "uk", "source": "https://uk.wikisource.org/wiki/Твори_(Коцюбинський,_1955)/2/Intermezzo", "edition": "Твори в 2 т., т. 2. Нью-Йорк: Книгоспілка, 1955 (spelling-modernised printing of the 1909 story)" },
-    { "bookId": 134, "file": "134-uk-v-putakh-shaitana.txt", "title": "В путах шайтана", "authors": ["Михайло Коцюбинський"], "language": "uk", "source": "https://uk.wikisource.org/wiki/Твори_(Коцюбинський,_1955)/1/В_путах_шайтана", "edition": "Твори в 2 т., т. 1. Нью-Йорк: Книгоспілка, 1955 (spelling-modernised printing of the 1899 sketch)" }
+    { "bookId": 133, "file": "133-uk-intermezzo.txt", "title": "Intermezzo", "authors": ["Михайло Коцюбинський"], "language": "uk", "source": "https://uk.wikisource.org/wiki/Твори_(Коцюбинський,_1955)/2/Intermezzo", "edition": "Твори в 2 т., т. 2. Нью-Йорк: Книгоспілка, 1955 (spelling-modernised printing of the 1909 story; each … written as ..., the form #655 normalisation indexes)" },
+    { "bookId": 134, "file": "134-uk-v-putakh-shaitana.txt", "title": "В путах шайтана", "authors": ["Михайло Коцюбинський"], "language": "uk", "source": "https://uk.wikisource.org/wiki/Твори_(Коцюбинський,_1955)/1/В_путах_шайтана", "edition": "Твори в 2 т., т. 1. Нью-Йорк: Книгоспілка, 1955 (spelling-modernised printing of the 1899 sketch; each … written as ..., the form #655 normalisation indexes)" }
   ]
 }
