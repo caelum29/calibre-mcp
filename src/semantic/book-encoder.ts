@@ -29,6 +29,8 @@ export interface EncodeJob {
   epubToc?: EpubToc;
   /** Figure captions to embed alongside the passages (empty when none were placed). */
   captions: string[];
+  /** The book's metadata text (#631), embedded as one more passage; `text: ""` embeds only it. */
+  metadataText?: string;
   keywordOnly: boolean;
   /** True only after a successful embedder warmup — token budgeting needs a loaded tokenizer. */
   tokenBudgeted: boolean;
@@ -44,6 +46,8 @@ export interface EncodeResult {
   vectors?: Float32Array[];
   /** One per caption; absent on keyword-only builds. */
   captionVectors?: Float32Array[];
+  /** The `metadataText` vector; absent on keyword-only builds or when none was given. */
+  metadataVector?: Float32Array;
   phaseMs: { chunk: number; embed: number };
 }
 
@@ -83,9 +87,13 @@ export function inThreadEncoder(embedder: Embedder): BookEncoder {
       // The same classifier the flags-only refresh runs on the stored spans (#605).
       const kinds = matterKinds(job.text, chunks, structureOf(job));
       const t1 = Date.now();
-      if (job.keywordOnly || chunks.length === 0) {
-        return { chunks, kinds, phaseMs: { chunk: t1 - t0, embed: 0 } };
-      }
+      if (job.keywordOnly) return { chunks, kinds, phaseMs: { chunk: t1 - t0, embed: 0 } };
+      // The metadata passage (#631) is the whole embed of a metadata-only refresh (no chunks).
+      // No context prefix: its text already starts with the title and authors.
+      const [metadataVector] = job.metadataText ? await embedder.embedPassages([job.metadataText]) : [];
+      const withMeta = metadataVector ? { metadataVector } : {};
+      if (chunks.length === 0)
+        return { chunks, kinds, ...withMeta, phaseMs: { chunk: t1 - t0, embed: Date.now() - t1 } };
       const vectors = await embedSliced(
         embedder,
         chunks.map((c) => job.ctx + c.body),
@@ -93,7 +101,14 @@ export function inThreadEncoder(embedder: Embedder): BookEncoder {
       );
       const captionVectors =
         job.captions.length > 0 ? await embedder.embedPassages(job.captions.map((c) => job.ctx + c)) : [];
-      return { chunks, kinds, vectors, captionVectors, phaseMs: { chunk: t1 - t0, embed: Date.now() - t1 } };
+      return {
+        chunks,
+        kinds,
+        vectors,
+        captionVectors,
+        ...withMeta,
+        phaseMs: { chunk: t1 - t0, embed: Date.now() - t1 },
+      };
     },
   };
 }

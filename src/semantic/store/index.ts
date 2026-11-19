@@ -20,6 +20,7 @@ import type {
   ChunkRef,
   FigureHit,
   FigureRef,
+  IndexedBookMetadata,
   IndexedChunk,
   IndexedFigure,
   IndexMeta,
@@ -151,7 +152,7 @@ export class SqliteIndexStore implements IndexStore {
     meta: BookMeta,
     chunks: IndexedChunk[],
     figures?: IndexedFigure[],
-    opts?: { preserveEmbedded?: boolean; sections?: BookSections; offsetMap?: string },
+    opts?: { preserveEmbedded?: boolean; sections?: BookSections; offsetMap?: string; metadata?: IndexedBookMetadata },
   ): ReplaceOutcome {
     return this.#writer.replaceBook(libraryId, meta, chunks, figures, opts);
   }
