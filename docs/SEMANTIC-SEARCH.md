@@ -182,15 +182,16 @@ chars 84210–85030"), store the `indexVersion` alongside them. When a later res
 reports a different `indexVersion`, treat old offsets as stale and re-locate the
 passage (e.g. search for it again). `calibre_ping` shows the current generation too,
 and flags an index **stale** when it was built by a different model or generation than
-the running server — search refuses such an index until `calibre_build_index force=true`
-rebuilds it. Cross-generation stable anchors are out of scope for now.
+the running server — search and builds refuse such an index until you delete its file (with
+`-wal`/`-shm`; the error names the path) and rebuild with `calibre_build_index force=true`. Cross-generation stable anchors are out of scope for now.
 
 **Index version 5** moved every offset into the normalised text (see *Building the index*):
 offsets saved from a version-4 index point into the raw extraction and no longer match. After
-upgrading, `calibre_ping` reports each version-4 index as `stale index (rebuild)`, semantic
-search answers `index_incompatible`, and nothing is served from it in the meantime; rebuild each
-library with `calibre_build_index force=true` (a full re-index — hours for a library of about a
-thousand books). Metadata and Calibre full-text search (`calibre_search`) keep working meanwhile.
+upgrading, `calibre_ping` reports each version-4 index as `stale index — delete …`, semantic
+search answers `index_incompatible`, and nothing is served from it in the meantime. The old file
+is refused on every open, the build's included, so `force=true` alone cannot replace it: first
+delete the library's index file `<index dir>/<library id>.sqlite` together with its `-wal` and `-shm` files (ping and the error name the exact path), then run `calibre_build_index force=true`
+(a full re-index — hours for a library of about a thousand books). Metadata and Calibre full-text search (`calibre_search`) keep working meanwhile.
 
 ## Multilingual
 

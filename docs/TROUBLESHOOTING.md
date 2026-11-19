@@ -114,9 +114,11 @@ books (unchanged books are skipped).
 
 The server was upgraded past an index-format change. Index version 5 normalises the extracted
 text and moves every offset into it, so a version-4 index can't be searched or extended — it is
-refused rather than mixed with new offsets, and `calibre_ping` lists it as `stale index
-(rebuild)`. Rebuild it: `calibre_build_index` with `force: true` (whole library, or a `query`/
-`ids` slice at a time). Books become searchable again as they are re-indexed; `calibre_search`
+refused rather than mixed with new offsets, and `calibre_ping` lists it as `stale index — delete
+…`. The refusal applies to every open, the build's included, so `force: true` alone cannot
+rebuild it. First delete the library's index file `<index dir>/<library id>.sqlite` together with its `-wal` and `-shm` files (the error message and ping name the exact path; the
+default index dir is in *Building the index* of `docs/SEMANTIC-SEARCH.md`), then run
+`calibre_build_index` with `force: true` (whole library, or a `query`/`ids` slice at a time). Books become searchable again as they are re-indexed; `calibre_search`
 (metadata and Calibre full-text) works throughout. Offsets you saved from the old index
 (`charStart`, `offset`, cursors) are stale too: search for the passage again.
 
