@@ -206,8 +206,8 @@ function findCaptionLine(
 ): { index: number; byPage: boolean } | null {
   const label = entry.label ?? "";
   const full = comparable(entry.caption ?? "");
-  // head = the first 30 chars of the ws-collapsed caption, compared ws-free
-  const head = comparable(collapseWs(entry.caption ?? "").slice(0, 30));
+  // head = the first 30 chars of the ws-collapsed (and normalised) caption, compared ws-free
+  const head = comparable(collapseWs(characterClean(entry.caption ?? "")).slice(0, 30));
   for (let i = from; i < lines.length; i++) {
     const line = lines[i]!;
     if (normalizeLabel(line.label) !== normalizeLabel(label)) continue;
@@ -253,14 +253,21 @@ function isCaptionPrefix(line: CaptionLine, fullComparable: string): boolean {
 }
 
 /**
- * Comparison form for caption-head containment: whitespace-free, lowercased, backslashes
- * stripped. ebook-convert's txt escapes markdown specials (`\(A\)`, `\+`) while the
- * inventory caption is clean HTML text — an escapable char inside the 30-char head made
- * the figure silently unplaceable (book 929: Figs 2-2, 7-6). Whitespace goes entirely, not
- * just collapsed: emphasis gaps land mid-caption (`class \`Book\`, a` → `class Book  , a`).
+ * Comparison form for caption-head containment: the character rules of the text stage (#655: the
+ * text is cleaned before markers, the inventory caption is not), then whitespace-free, lowercased,
+ * without backslashes and hyphens (a compound dash at a line end is joined away in the text,
+ * `client-\nserver` → `clientserver`, but kept in the inventory caption).
  */
 function comparable(s: string): string {
-  return s.replace(/\s+/g, "").replace(/\\/g, "").toLowerCase();
+  return characterClean(s)
+    .replace(/\s+/g, "")
+    .replace(/[\\\-\u2010\u2011]/g, "")
+    .toLowerCase();
+}
+
+/** The text stage's character rules; plain printable ASCII has nothing for them to do. */
+function characterClean(s: string): string {
+  return /[^\x20-\x7E]/.test(s) ? normaliseText(s, [CHARACTER_RULES]).text : s;
 }
 
 /** Fallback caption when the line itself wasn't found (page-boundary placement). */
@@ -269,7 +276,7 @@ function comparable(s: string): string {
  * inventory (layout-read or page-fallback) gets the same character rules the text already had.
  */
 function cleanCaption(caption: string): string {
-  return normaliseText(caption, [CHARACTER_RULES]).text;
+  return characterClean(caption);
 }
 
 function composeCaption(entry: FigureEntry): string {
