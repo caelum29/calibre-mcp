@@ -159,7 +159,11 @@ The text is the **normalised** extraction, the same text the semantic index is b
 ligatures and full-width forms are folded (Unicode NFKC, with superscripts and subscripts such
 as `x²` and `H₂O` kept), control characters are dropped, no-break and other Unicode spaces become
 plain spaces, soft hyphens are removed, and a word hyphenated across a line break is joined when
-the next line starts lowercase. Page breaks (`\f`) and Markdown headings are kept. Every offset,
+the next line starts lowercase. Page breaks (`\f`) and Markdown headings are kept. EPUB text
+(Calibre's Markdown conversion) also loses its conversion artefacts: backslash escapes
+(`\(`, `\[`, `\{`; an escaped `\*` stays a literal `*`), `*`/`**` emphasis markers and inline-code backticks around their text, runs
+of blank lines (one blank line stays), trailing spaces, and the extra spaces in token-spaced code
+(`np    .    array    (` becomes `np.array(`); nothing inside a fenced code block changes. Every offset,
 `charStart`/`charEnd` and cursor is a position in this text, so a search passage's `charStart`
 passed as `offset` lands on that passage. A cursor minted by a server older than this (offsets
 in the raw extraction) is refused with "Invalid cursor"; restart the read.
