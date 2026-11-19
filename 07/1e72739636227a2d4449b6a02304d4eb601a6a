@@ -1,0 +1,33 @@
+docs/TOOLS.md
+  s_56e70df11311e3::t_43fda1f478cb03 857
+src/app/library-index.ts
+  s_56e70df11311e3::t_a1ed3864365681 35-36
+src/semantic/store/schema.ts
+  s_56e70df11311e3::t_a1ed3864365681 212,264,303,311,408-416,418,422
+docs/STABILITY.md
+  s_56e70df11311e3::t_43fda1f478cb03 97
+src/tools/calibre_ping.ts
+  s_56e70df11311e3::t_2010e29bbf37dd 7,9,229-241,278
+src/tools/labelled-lines.ts
+  s_56e70df11311e3::t_43fda1f478cb03 271
+src/domain/error-codes.ts
+  s_56e70df11311e3::t_a1ed3864365681 164-166
+test/tools/ping-header.test.ts
+  s_56e70df11311e3::t_b50fca1681144e 128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "071e72739636227a2d4449b6a02304d4eb601a6a",
+  "prompts": {},
+  "sessions": {
+    "s_56e70df11311e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2dc5b7bd-454c-4bf5-940e-c64a6f23a19e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
