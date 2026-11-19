@@ -121,8 +121,7 @@ courses names its source; see [Sources](#sources).
 
 ## Where the skills write here
 
-- **Glossary:** `GLOSSARY.md` at the root. The repo-local `.claude/skills/grill-with-docs` predates
-  Pocock's v1.3 rename and still says `CONTEXT.md`; read every `CONTEXT.md` in a skill as `GLOSSARY.md`.
+- **Glossary:** `GLOSSARY.md` at the root.
 - **ADRs:** `docs/dev/adr/` with `D-NNN` numbers, gitignored and local-only. Layout and shape:
   [domain.md](domain.md).
 - **Tickets and triage:** GitHub issues via `gh` ([issue-tracker.md](issue-tracker.md)), labels in
