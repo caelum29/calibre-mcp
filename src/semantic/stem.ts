@@ -8,7 +8,8 @@
 // happens in the store's MATCH builder (store/shared.ts ftsMatch, #634), which adds such tokens
 // in their raw form.
 
-import { packForToken } from "./language/registry.js";
+import type { LanguagePack } from "./language/pack.js";
+import { packForToken, PACKS, queryPacks } from "./language/registry.js";
 
 // Word tokens = runs of letters/digits/underscore (matches FTS5 tokenchars). The `u` flag with
 // \p{L}\p{N} keeps Cyrillic and Latin together; everything else is a separator and dropped.
@@ -20,24 +21,58 @@ function isCode(tok: string): boolean {
   return /\p{Ll}\p{Lu}/u.test(tok); // lowercase→uppercase transition = camelCase
 }
 
-/** Stem one token with its language pack (Cyrillic → ru, which folds ё→е; Latin → en). */
-export function stemToken(tok: string): string {
+/**
+ * Stem one token with its language pack on the index side: the book language's pack for its
+ * script unless the token holds another pack's distinctive letters (ADR-0032 item 3). With no
+ * `lang` the script's default pack stems it (Cyrillic → ru, which folds ё→е; Latin → en).
+ */
+export function stemToken(tok: string, lang?: string, packs: readonly LanguagePack[] = PACKS): string {
   const lower = tok.toLowerCase();
   if (isCode(tok)) return lower;
-  return packForToken(tok)?.stem(lower) ?? lower; // digits-only or other scripts → unchanged
+  return packForToken(tok, lang, packs)?.stem(lower) ?? lower; // digits-only or other scripts → unchanged
 }
 
 /**
- * Transform text into a space-joined stream of stemmed tokens. Used for BOTH the stored
- * `body_stem` column and the query, so ingest and search stem identically.
+ * Transform text into a space-joined stream of stemmed tokens in the book's language `lang`.
+ * Used for the stored `body_stem` column; a query without library languages stems the same way.
  */
-export function stemText(text: string): string {
+export function stemText(text: string, lang?: string, packs: readonly LanguagePack[] = PACKS): string {
   const out: string[] = [];
-  for (const m of text.matchAll(TOKEN)) out.push(stemToken(m[0]));
+  for (const m of text.matchAll(TOKEN)) out.push(stemToken(m[0], lang, packs));
   return out.join(" ");
 }
 
 /** Word tokens of `text` with their stems and char positions — same tokenizer as stemText. */
-export function* stemmedTokens(text: string): Generator<{ stem: string; index: number; length: number }> {
-  for (const m of text.matchAll(TOKEN)) yield { stem: stemToken(m[0]), index: m.index, length: m[0].length };
+export function* stemmedTokens(
+  text: string,
+  lang?: string,
+  packs: readonly LanguagePack[] = PACKS,
+): Generator<{ stem: string; index: number; length: number }> {
+  for (const m of text.matchAll(TOKEN))
+    yield { stem: stemToken(m[0], lang, packs), index: m.index, length: m[0].length };
+}
+
+/**
+ * Query-side word tokens with their stem variants (ADR-0032 item 4): the query's language is
+ * decided as a whole, else an ambiguous token gets one stem per pack that has a book in the
+ * library (`libraryLangs`), identical stems merged. Without library languages each token has the
+ * one stem stemText gives it.
+ */
+export function* queryStemmedTokens(
+  query: string,
+  libraryLangs?: ReadonlySet<string>,
+  packs: readonly LanguagePack[] = PACKS,
+): Generator<{ stems: string[]; index: number; length: number }> {
+  const matches = [...query.matchAll(TOKEN)];
+  const packsFor = queryPacks(
+    matches.map((m) => m[0]).filter((t) => !isCode(t)),
+    libraryLangs,
+    packs,
+  );
+  for (const m of matches) {
+    const lower = m[0].toLowerCase();
+    const routed = isCode(m[0]) ? [] : packsFor(m[0]);
+    const stems = routed.length === 0 ? [lower] : [...new Set(routed.map((p) => p.stem(lower)))];
+    yield { stems, index: m.index, length: m[0].length };
+  }
 }
