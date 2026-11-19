@@ -7,8 +7,8 @@ files it imports (`docs/claude/*.md`; a line starting with `@` there means "read
 
 Engineering skills (Matt Pocock's set: `grill-with-docs`, `tdd`, `code-review`, `implement`, …): read
 [`docs/agents/skills.md`](docs/agents/skills.md) before running one. It covers who can start which
-skill, how much planning a change needs, how to drive a grill, prototype, review and retro, and where
-the skills write in this repo.
+skill, how much planning a change needs, how to drive a grill, prototype, tickets, an unattended run,
+review and retro, and where the skills write in this repo.
 
 Before handing work back, run: `pnpm format:check && pnpm lint && pnpm typecheck && pnpm test`
 (plus `pnpm build && pnpm catalog:check` when tools or their schemas change).
