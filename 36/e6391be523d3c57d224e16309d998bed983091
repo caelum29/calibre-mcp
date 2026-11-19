@@ -1,0 +1,47 @@
+src/semantic/encode-worker.ts
+  s_5bd0844b030fd1::t_d5afab43563460 30
+  s_5bd0844b030fd1::t_18a42e0e542a38 26-29
+src/semantic/store/schema.ts
+  s_5bd0844b030fd1::t_50ad273136b02a 127-155
+src/semantic/store/writer.ts
+  s_5bd0844b030fd1::t_db0f2dbd2c72d7 13,18,39,62-63,158-159,207,211
+src/semantic/store/types.ts
+  s_5bd0844b030fd1::t_d8f84cc5d08b91 163-175,235,242,254
+src/semantic/book-encoder.ts
+  s_5bd0844b030fd1::t_d5afab43563460 88-89,97-104
+  s_5bd0844b030fd1::t_18a42e0e542a38 32-33,47-48,83-87
+src/app/index-book.ts
+  s_5bd0844b030fd1::t_f57919a9c257c0 5,14-21,61-62,88-89,170-172,174-179,203,235,262,315-336,343-348
+test/tools/build-index.metadata-only.test.ts
+  s_5bd0844b030fd1::t_9c691ef39f60d5 125-126,155-156
+test/tools/index-book.epub-front-matter.test.ts
+  s_5bd0844b030fd1::t_9c691ef39f60d5 162-163
+test/tools/index-book.refresh-flags.test.ts
+  s_5bd0844b030fd1::t_9c691ef39f60d5 158-159
+docs/SEMANTIC-SEARCH.md
+  s_5bd0844b030fd1::t_b631be0153d028 48-52
+src/semantic/store/book-metadata.ts
+  s_5bd0844b030fd1::t_0a43ffb478028b 1-34
+src/domain/book-metadata-text.ts
+  s_5bd0844b030fd1::t_d5afab43563460 21-23
+  s_5bd0844b030fd1::t_472fb59b43c402 1-20,24-60
+src/semantic/store/index.ts
+  s_5bd0844b030fd1::t_beca28bfdab2d8 23
+  s_5bd0844b030fd1::t_db0f2dbd2c72d7 138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "36e6391be523d3c57d224e16309d998bed983091",
+  "prompts": {},
+  "sessions": {
+    "s_5bd0844b030fd1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea68e5fc-9ea5-482c-961d-216cd19cdbc5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
