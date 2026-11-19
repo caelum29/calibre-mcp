@@ -6,9 +6,13 @@
 import { en } from "./en.js";
 import type { LanguagePack, Script } from "./pack.js";
 import { ru } from "./ru.js";
+import { uk } from "./uk.js";
 
-/** Every compiled-in pack. The first pack of a script is that script's default. */
-export const PACKS: readonly LanguagePack[] = [en, ru];
+/**
+ * Every compiled-in pack. The first pack of a script is that script's default, so Cyrillic text of
+ * any other language keeps today's Russian stemming (ADR-0032 item 1).
+ */
+export const PACKS: readonly LanguagePack[] = [en, ru, uk];
 
 // Checked in this order: a mixed-script token with any Cyrillic letter counts as Cyrillic.
 const SCRIPT_TESTS: ReadonlyArray<readonly [Script, RegExp]> = [

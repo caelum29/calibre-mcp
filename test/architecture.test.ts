@@ -769,7 +769,9 @@ function findUndocumentedExports(files: SourceFile[]): string[] {
 
 describe("JSDoc on exported functions and classes", () => {
   it("every exported function, class and function-valued const has JSDoc", () => {
-    expect(findUndocumentedExports(readSources("src", /\.ts$/))).toEqual([]);
+    // vendored generated Snowball code (#654) stays byte-identical to upstream, so it carries no JSDoc
+    const own = readSources("src", /\.ts$/).filter((f) => !f.path.startsWith("src/semantic/language/snowball/"));
+    expect(findUndocumentedExports(own)).toEqual([]);
   });
 
   it("flags undocumented exports and accepts documented or private ones", () => {

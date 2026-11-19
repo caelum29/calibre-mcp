@@ -111,6 +111,7 @@
     "build/**",
     "coverage/**",
     "test/eval/retrieval/reports/**",
-    "src/ui/generated/**"
+    "src/ui/generated/**",
+    "src/semantic/language/snowball/**"
   ]
 }

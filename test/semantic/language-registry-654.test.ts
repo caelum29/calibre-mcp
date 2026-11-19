@@ -6,6 +6,8 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import snowball from "snowball-stemmers";
 import { describe, expect, it } from "vitest";
+import { en } from "../../src/semantic/language/en.js";
+import { ru } from "../../src/semantic/language/ru.js";
 import { STOPWORDS } from "../../src/semantic/snippet.js";
 import { stemToken } from "../../src/semantic/stem.js";
 
@@ -89,7 +91,12 @@ describe("language-pack registry is byte-identical to the pre-#654 stemmer", () 
     expect(diffs).toEqual([]);
   });
 
-  it("keeps the snippet stop-word set unchanged", () => {
-    expect([...STOPWORDS].sort()).toEqual([...FROZEN_STOPWORDS].sort());
+  // #654 L2 added the uk pack's stop words to STOPWORDS on purpose; the en and ru lists stay as they were
+  it("keeps the English and Russian snippet stop words unchanged, all still in STOPWORDS", () => {
+    const enRu = new Set([...en.stopwords, ...ru.stopwords]);
+    expect({ enRu: [...enRu].sort(), missing: [...FROZEN_STOPWORDS].filter((w) => !STOPWORDS.has(w)) }).toEqual({
+      enRu: [...FROZEN_STOPWORDS].sort(),
+      missing: [],
+    });
   });
 });
