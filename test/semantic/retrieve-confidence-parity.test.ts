@@ -32,8 +32,7 @@ function deps(cosines: number[], rerank: number | undefined | "throws"): Retriev
         body: "b",
       })),
     searchLibraryFts: () => [],
-    searchBook: () =>
-      cosines.map((score, i) => ({ chunkId: i + 1, charStart: 0, charEnd: 1, body: "b", score, frontMatter: false })),
+    searchBook: () => cosines.map((score, i) => ({ chunkId: i + 1, charStart: 0, charEnd: 1, body: "b", score })),
     searchBookFts: () => [],
     chunkAt: () => undefined,
     searchFigures: () =>

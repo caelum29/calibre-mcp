@@ -315,9 +315,9 @@ preface or copyright page follows every book with a body match. In book scope on
 matter (contents, index, copyright/ads) is forced behind the body passages. Such hits carry a
 label in their text line (`[front matter]`, `[back matter: index]`, `[back matter:
 bibliography]`, `[back matter: copyright/ads]`) and a `matterKind` field in `structuredContent`
-(`front`, `back_index`, `back_biblio`, `back_other`; absent for body text). Book-scope passages
-keep `frontMatter: true` beside `matterKind: "front"` for one release. In book scope a preface
-or bibliography keeps its rerank position (it can rank first); contents, index and copyright
+(`front`, `back_index`, `back_biblio`, `back_other`; absent for body text). The old
+`frontMatter` field was removed (#693): read `matterKind: "front"` instead. In book scope a
+preface or bibliography keeps its rerank position (it can rank first); contents, index and copyright
 pages follow the body passages. Without a rerank, every front/back-matter hit follows the body
 hits. See [SEMANTIC-SEARCH.md](SEMANTIC-SEARCH.md) for the rules.
 

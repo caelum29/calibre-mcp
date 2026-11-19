@@ -73,7 +73,7 @@ export class SqliteWriter implements IndexWriter {
       );
 
       const insChunk = db.prepare(
-        "INSERT INTO chunks(book_id, char_start, char_end, body, body_stem, book_meta, front_matter, matter_kind) VALUES(?,?,?,?,?,?,?,?)",
+        "INSERT INTO chunks(book_id, char_start, char_end, body, body_stem, book_meta, matter_kind) VALUES(?,?,?,?,?,?,?)",
       );
       const insEmb = db.prepare("INSERT INTO embeddings(chunk_id, book_id, vector) VALUES(?,?,?)");
       // Stemmed once per book (same transform as body_stem/queries) and repeated on every
@@ -81,7 +81,7 @@ export class SqliteWriter implements IndexWriter {
       // the embedded "[title › authors]" context prefix.
       const bookMeta = bookMetaStem(meta);
       for (const c of chunks) {
-        const kind: MatterKind = c.matterKind ?? (c.frontMatter ? "front" : "body");
+        const kind: MatterKind = c.matterKind ?? "body";
         // Pre-stem here so the FTS keyword half is populated by the insert trigger.
         const { lastInsertRowid } = insChunk.run(
           meta.bookId,
@@ -90,8 +90,6 @@ export class SqliteWriter implements IndexWriter {
           c.body,
           stemText(c.body),
           bookMeta,
-          // front_matter is dual-written for one release (#605): 1 exactly when the kind is front
-          kind === "front" ? 1 : 0,
           kind,
         );
         // A keyword-only build has no vector — the chunk is still FTS-searchable via the
@@ -168,18 +166,16 @@ export class SqliteWriter implements IndexWriter {
   }
 
   /**
-   * Flag-only backfill (#269, #605): rewrite just the chunks whose matter kind changes, with
-   * front_matter dual-written. Rows come in `chunkSpans` order, the order `check.kinds` follows.
+   * Flag-only backfill (#269, #605): rewrite just the chunks whose matter kind changes. Rows come in `chunkSpans` order, the order `check.kinds` follows.
    */
   #refreshMatter(db: DatabaseSync, bookId: number, check: RefreshCheck): void {
     const rows = db
-      .prepare("SELECT id, front_matter, matter_kind FROM chunks WHERE book_id = ? ORDER BY char_start, id")
+      .prepare("SELECT id, matter_kind FROM chunks WHERE book_id = ? ORDER BY char_start, id")
       .all(bookId) as Row[];
-    const set = db.prepare("UPDATE chunks SET front_matter = ?, matter_kind = ? WHERE id = ?");
+    const set = db.prepare("UPDATE chunks SET matter_kind = ? WHERE id = ?");
     rows.forEach((r, i) => {
       const kind = check.kinds[i] ?? "body";
-      const fm = kind === "front" ? 1 : 0;
-      if (r.matter_kind !== kind || Number(r.front_matter ?? 0) !== fm) set.run(fm, kind, Number(r.id));
+      if (r.matter_kind !== kind) set.run(kind, Number(r.id));
     });
   }
 
