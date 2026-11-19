@@ -91,7 +91,8 @@ search spans both via a `scope: library|book` param, not extra tools.
 ### Skill flow
 
 Before running an engineering skill (`grill-with-docs`, `tdd`, `code-review`, `implement`, …), read
-`docs/agents/skills.md`: who can start which skill, planning depth, and where the skills write here.
+`docs/agents/skills.md`: who can start which skill, planning depth, how to drive a run, and where the
+skills write here.
 
 ### Issue tracker
 
