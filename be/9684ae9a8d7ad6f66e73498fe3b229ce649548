@@ -1,0 +1,20 @@
+test/domain/figures/marker-caption-normalise-655.test.ts
+  s_56e70df11311e3::t_0e74f9f6186585 1-26
+  s_56e70df11311e3::t_337c4d087ca85c 27-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "be9684ae9a8d7ad6f66e73498fe3b229ce649548",
+  "prompts": {},
+  "sessions": {
+    "s_56e70df11311e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2dc5b7bd-454c-4bf5-940e-c64a6f23a19e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
