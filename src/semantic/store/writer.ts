@@ -59,7 +59,7 @@ export class SqliteWriter implements IndexWriter {
       writeSections(db, meta.bookId, opts.sections);
 
       db.prepare(
-        "INSERT INTO books(book_id, title, authors, last_modified, chunk_count, indexed_at, embedded_chunks) VALUES(?,?,?,?,?,?,?)",
+        "INSERT INTO books(book_id, title, authors, last_modified, chunk_count, indexed_at, embedded_chunks, lang) VALUES(?,?,?,?,?,?,?,?)",
       ).run(
         meta.bookId,
         meta.title,
@@ -68,6 +68,7 @@ export class SqliteWriter implements IndexWriter {
         chunks.length,
         new Date().toISOString(),
         embedded,
+        meta.lang ?? null,
       );
 
       const insChunk = db.prepare(
@@ -77,7 +78,7 @@ export class SqliteWriter implements IndexWriter {
       // Stemmed once per book (same transform as body_stem/queries) and repeated on every
       // chunk row, so the FTS half sees book identity — the vector half already gets it via
       // the embedded "[title › authors]" context prefix.
-      const bookMeta = bookMetaStem(meta);
+      const bookMeta = bookMetaStem(meta, meta.lang);
       for (const c of chunks) {
         const kind: MatterKind = c.matterKind ?? (c.frontMatter ? "front" : "body");
         // Pre-stem here so the FTS keyword half is populated by the insert trigger.
@@ -86,7 +87,7 @@ export class SqliteWriter implements IndexWriter {
           c.charStart,
           c.charEnd,
           c.body,
-          stemText(c.body),
+          stemText(c.body, meta.lang),
           bookMeta,
           // front_matter is dual-written for one release (#605): 1 exactly when the kind is front
           kind === "front" ? 1 : 0,
@@ -105,7 +106,7 @@ export class SqliteWriter implements IndexWriter {
           f.figIndex,
           f.page,
           f.caption,
-          stemText(f.caption),
+          stemText(f.caption, meta.lang),
           bookMeta,
           f.charOffset,
           f.format,
@@ -129,7 +130,6 @@ export class SqliteWriter implements IndexWriter {
 
   refreshBookMeta(libraryId: string, meta: BookMeta, check: RefreshCheck): boolean {
     const db = this.conn.db(libraryId);
-    const bookMeta = bookMetaStem(meta);
     // IMMEDIATE for the same reason as replaceBook (#196): wait on another writer's lock — and
     // the span re-check below then sees exactly the rows this transaction updates.
     db.exec("BEGIN IMMEDIATE");
@@ -138,6 +138,9 @@ export class SqliteWriter implements IndexWriter {
         db.exec("ROLLBACK");
         return false;
       }
+      // the chunks keep their stems, so the new title/authors stem in the language they were written in
+      const stored = db.prepare("SELECT lang FROM books WHERE book_id = ?").get(meta.bookId)?.lang;
+      const bookMeta = bookMetaStem(meta, typeof stored === "string" ? stored : undefined);
       db.prepare("UPDATE books SET title = ?, authors = ?, last_modified = ?, indexed_at = ? WHERE book_id = ?").run(
         meta.title,
         JSON.stringify(meta.authors),
@@ -218,8 +221,8 @@ export class SqliteWriter implements IndexWriter {
 }
 
 /** Stemmed "title authors" repeated on every chunk/figure row, so FTS sees book identity. */
-function bookMetaStem(meta: BookMeta): string {
-  return stemText(`${meta.title} ${meta.authors.join(" ")}`);
+function bookMetaStem(meta: BookMeta, lang: string | undefined): string {
+  return stemText(`${meta.title} ${meta.authors.join(" ")}`, lang);
 }
 
 /** Same chunk set: count, offsets and bodies, in order. */

@@ -100,6 +100,8 @@ export interface BookMeta {
   title: string;
   authors: string[];
   lastModified?: string;
+  /** Book language (#654): the language pack id detected from the book's text; absent = none found. */
+  lang?: string;
 }
 
 /** A library-scope hit: the best-matching chunk of a book. */
@@ -151,6 +153,8 @@ export interface IndexMeta {
   indexVersion: number;
   /** ISO timestamp the index db was first created; absent on hand-built/legacy metas. */
   createdAt?: string;
+  /** Stem version (#654) the index's stemmed columns were written with; absent = written before it was recorded. */
+  stemVersion?: string;
 }
 
 /** What an in-place refresh was verified against, and the matter kind of each of those spans (#605). */
