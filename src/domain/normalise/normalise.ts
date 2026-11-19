@@ -5,24 +5,9 @@
 // rule keeps: `\f` is never deleted (page labels, scanPageStarts) and heading markers survive.
 // Pure, SDK-free, no npm imports.
 
-import { composeEdits, IDENTITY_MAP, mergeTouching, type OffsetMap, type TextEdit } from "./offset-map.js";
-
-/** One pass of a rule set: input text → output text plus its edits (input → output). */
-export interface TextRule {
-  readonly name: string;
-  apply(text: string): RuleResult;
-}
-
-export interface RuleResult {
-  text: string;
-  edits: TextEdit[];
-}
-
-/** A named, ordered list of rules (one rule set = one ADR-0033 item). */
-export interface RuleSet {
-  readonly name: string;
-  readonly rules: readonly TextRule[];
-}
+import { EPUB_ARTEFACT_RULES } from "./epub-artefacts.js";
+import { composeEdits, IDENTITY_MAP, type OffsetMap, type TextEdit } from "./offset-map.js";
+import { replaceMatches, type RuleSet, type TextRule } from "./rules.js";
 
 /** Cleaned text plus the map from its positions back to the raw text. */
 export interface NormalisedText {
@@ -43,42 +28,6 @@ export function normaliseText(raw: string, sets: readonly RuleSet[]): Normalised
     }
   }
   return { text, map: edits.length === 0 ? IDENTITY_MAP : { edits } };
-}
-
-/**
- * Replace every match of `re` (global) by `replace(match)`; `undefined` or the match itself keeps
- * it. Returns the new text and the edits, for rules that are one regex.
- */
-export function replaceMatches(
-  text: string,
-  re: RegExp,
-  replace: (m: RegExpExecArray) => string | undefined,
-): RuleResult {
-  const edits: TextEdit[] = [];
-  const out: string[] = [];
-  let last = 0;
-  let shift = 0;
-  re.lastIndex = 0;
-  for (let m = re.exec(text); m !== null; m = re.exec(text)) {
-    if (m[0].length === 0) {
-      re.lastIndex += 1; // never loop on an empty match
-      continue;
-    }
-    const by = replace(m);
-    if (by === undefined || by === m[0]) continue;
-    out.push(text.slice(last, m.index), by);
-    edits.push({
-      inStart: m.index,
-      inEnd: m.index + m[0].length,
-      outStart: m.index + shift,
-      outEnd: m.index + shift + by.length,
-    });
-    shift += by.length - m[0].length;
-    last = m.index + m[0].length;
-  }
-  if (edits.length === 0) return { text, edits };
-  out.push(text.slice(last));
-  return { text: out.join(""), edits: mergeTouching(edits) };
 }
 
 // --- character rule set (ADR-0033 item 6) ---
@@ -142,8 +91,8 @@ export const CHARACTER_RULES: RuleSet = {
 
 /**
  * The rule sets for one extraction backend. Every text gets the character set; the EPUB artefact
- * set (#560) joins it for `ebook-convert` output only.
+ * set (#560) joins it for `ebook-convert` Markdown output only (its plain retry has no Markdown).
  */
-export function ruleSetsFor(_backend: string): readonly RuleSet[] {
-  return [CHARACTER_RULES];
+export function ruleSetsFor(backend: string): readonly RuleSet[] {
+  return backend === "ebook-convert" ? [CHARACTER_RULES, EPUB_ARTEFACT_RULES] : [CHARACTER_RULES];
 }

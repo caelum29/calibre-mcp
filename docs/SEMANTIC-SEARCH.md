@@ -40,7 +40,9 @@ Semantic search needs a local index, built once per book with `calibre_build_ind
    The extracted text is then **normalised** once (ligatures and full-width forms folded,
    superscripts and subscripts kept, control characters dropped, Unicode spaces made plain,
    soft hyphens removed, line-end hyphenation joined when the next line starts lowercase;
-   page breaks and headings kept). Chunks, embeddings, keyword stems, snippets, chapter
+   page breaks and headings kept). EPUBs, which Calibre converts to Markdown, also lose the
+   conversion's artefacts: backslash escapes, emphasis markers and inline-code backticks, runs
+   of blank lines, trailing spaces and token-spaced code (fenced code is left as it is). Chunks, embeddings, keyword stems, snippets, chapter
    maps and `calibre_get_content` all read this one text, so their offsets agree.
 2. **Chunk** the text into ~460-token passages, split along headings
    where possible, then blank lines, lines, sentence ends (Unicode sentence segmentation,
