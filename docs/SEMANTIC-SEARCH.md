@@ -43,8 +43,8 @@ Semantic search needs a local index, built once per book with `calibre_build_ind
    context.
 3. **Embed** each chunk with `multilingual-e5-small` — a compact multilingual model
    (~118 MB, downloaded once on first use, then cached offline). Vectors are stored
-   in a local SQLite file alongside a keyword (FTS5) index with English **and**
-   Russian stemming.
+   in a local SQLite file alongside a keyword (FTS5) index with English, Russian and
+   Ukrainian stemming.
 
 Select which books to index with `bookId`, `ids`, or a metadata `query`; re-run after
 adding books (unchanged books are skipped), and pass `force: true` to rebuild.
@@ -96,7 +96,7 @@ steps appear only when the model is really missing.
 ```
 your query
  ├─ semantic half: embed the query → cosine similarity against every chunk vector
- ├─ keyword half:  stemmed full-text match (BM25), English + Russian aware
+ ├─ keyword half:  stemmed full-text match (BM25), English, Russian and Ukrainian aware
  ├─ fuse both rankings (reciprocal-rank fusion — no fragile score mixing)
  ├─ rerank the top candidates with a cross-encoder (optional, see below)
  └─ return ranked books (library scope) or located passages (book scope)
@@ -112,6 +112,16 @@ A repeated word counts once, and a word that appears in more than half of a libr
 passage fits and costs the most time to look up. A one-word query, words in `"quotes"`, and the
 rarest word of a query made only of such words are always kept. Russian function words are
 rarer than that in a mostly English library, so they stay in.
+
+**Languages.** Each book's language is detected from its text when it is indexed (Calibre's
+language field is not used), and the book's words are stemmed in that language. Three
+languages are built in: English, Russian and Ukrainian. Other Latin-script text is stemmed as
+English and other Cyrillic text as Russian. A word with letters only one language uses switches
+to that language's stemmer: a Russian quote with `ы` inside a Ukrainian book is stemmed as
+Russian. A query is decided as a whole: one word with `і`, `ї`, `є` or `ґ` makes all of its
+Cyrillic words Ukrainian, and one with `ы`, `э`, `ъ` or `ё` makes them Russian. A query with
+neither, such as `мова програмування`, is searched with both stems when the library has
+Ukrainian books, and with today's Russian stems when it has none.
 
 Two refinements worth knowing about:
 
@@ -180,8 +190,12 @@ rebuilds it. Cross-generation stable anchors are out of scope for now.
 
 The model is multilingual by design: English and Russian retrieval are verified, and
 **cross-lingual queries work** — an English query finds relevant passages in a
-Russian book and vice versa. The keyword half stems both languages, so
-`книга/книги/книгу` match each other too.
+Russian book and vice versa. The keyword half stems English, Russian and Ukrainian, so
+`книга/книги/книгу` and `функція/функції` match each other too.
+
+An index built before Ukrainian stemming existed keeps working. `calibre_ping` then shows how
+many books still carry old keyword stems (see TROUBLESHOOTING.md); re-indexing them with
+`force=true` updates them.
 
 ## Limitations
 

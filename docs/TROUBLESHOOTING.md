@@ -160,6 +160,15 @@ the book was removed (or merged away) after it was indexed, and indexing never d
 own. Run `calibre_build_index` with `prune: true` (any selector — the prune runs on the whole
 index) to drop the stale entries; it reports how many books and chunks it removed.
 
+### `calibre_ping`: "books with stale keyword stems"
+
+The index has books whose keyword stems were written by an older set of stemmers, for example
+before Ukrainian stemming was added. Search keeps working, but the keyword half of those books
+still uses the old stems: Ukrainian word forms in them may not match each other. Re-index them
+with `calibre_build_index` with `force: true` and a query that matches every book. Each book that
+is re-indexed drops off the count, and the warning goes away once none is left. The vectors are
+rebuilt too, so this is a full rebuild, not a quick one.
+
 ### Semantic results flagged "low confidence"
 
 The best match scored below the confidence floor (`CALIBRE_MCP_SEMANTIC_FLOOR`,
