@@ -35,6 +35,18 @@ Scoring each (query, passage) rerank pair in its own model forward (batch=1). Re
 One section of a book's extracted text (a part, chapter or sub-section, levels 1–4) with its title, nesting parent and character range, from the PDF outline, else the EPUB table of contents, else the chapter detector. Stored per book in the index's `sections` table for labels and navigation, never embedded. A hit's section is the deepest span that holds the hit's offset (#695).
 _Avoid_: section id (chunks carry none)
 
+### Keyword search languages
+
+**Language pack**:
+One language's stemmer, stop words and detection hints (its script and the letters only it uses) for the keyword half of hybrid search, compiled into the server. Three ship: `en`, `ru`, `uk`. Other languages keep the script's default pack (Latin → `en`, Cyrillic → `ru`) (ADR-0032).
+_Avoid_: language plugin, analyzer
+
+**Book language**:
+The language pack a book's text is in, detected from the text at index time (dominant script, then distinctive letters, then stop-word share) and stored as `books.lang`. It picks the stemmer for the book's words; a word with another pack's distinctive letters stems with that pack. Not Calibre's `languages` field.
+
+**Stem version**:
+The language packs and their versions that an index's stemmed columns were written with (e.g. `en:1|ru:1|uk:1`), recorded as `meta.stem_version`. When it differs from the server's, search keeps working and `calibre_ping` warns that the stems are stale.
+
 ### Book images
 
 **Embedded image**:
