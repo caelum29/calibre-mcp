@@ -208,6 +208,11 @@ export interface IndexFreshness {
   bookVectorCount(libraryId: string, bookId: number): number;
   /** Books whose chunks are not all embedded (keyword-only or partial entries); 0 for an absent index. */
   booksMissingVectors(libraryId: string): number;
+  /**
+   * Books whose stemmed columns were written with a stem version other than this server's
+   * (ADR-0032 item 6): keyword search still works, the stems are stale. 0 for an absent index.
+   */
+  booksWithStaleStems(libraryId: string): number;
   /** Every book id currently in the index (empty for an absent index) — the prune diff input. */
   indexedBookIds(libraryId: string): number[];
   stats(libraryId: string): { books: number; chunks: number; figures: number };

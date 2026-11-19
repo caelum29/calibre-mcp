@@ -89,6 +89,11 @@ export class SqliteFreshness implements IndexFreshness {
     );
   }
 
+  /** Books written with another stem version (#654): skeleton, counts none yet. */
+  booksWithStaleStems(_libraryId: string): number {
+    return 0;
+  }
+
   vectorCount(libraryId: string): number {
     return this.conn.read(libraryId, (db) => count(db, "embeddings"), 0);
   }

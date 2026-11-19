@@ -32,6 +32,11 @@ export interface LibraryIndex {
    * walk timed out, failed or hit its cap), so it may include removed or merged books.
    */
   indexedUnchecked?: true;
+  /**
+   * #654: books whose keyword stems were written by another stemmer set (books.stem_version);
+   * present only when non-zero. Keyword search still works; a force rebuild re-stems them.
+   */
+  staleStems?: number;
 }
 
 /** The reads the report makes: library list + one count per library, and index coverage. */

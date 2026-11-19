@@ -117,6 +117,10 @@ export class SqliteIndexStore implements IndexStore {
     return this.#freshness.booksMissingVectors(libraryId);
   }
 
+  booksWithStaleStems(libraryId: string): number {
+    return this.#freshness.booksWithStaleStems(libraryId);
+  }
+
   indexedBookIds(libraryId: string): number[] {
     return this.#freshness.indexedBookIds(libraryId);
   }

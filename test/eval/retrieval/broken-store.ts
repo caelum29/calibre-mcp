@@ -16,6 +16,7 @@ export function reversed(inner: IndexStore): IndexStore {
     bookChunkSpans: (l, b) => inner.bookChunkSpans(l, b),
     bookVectorCount: (l, b) => inner.bookVectorCount(l, b),
     booksMissingVectors: (l) => inner.booksMissingVectors(l),
+    booksWithStaleStems: (l) => inner.booksWithStaleStems(l),
     indexedBookIds: (l) => inner.indexedBookIds(l),
     deleteBooks: (l, b) => inner.deleteBooks(l, b),
     searchLibrary: (l, q, k) => inner.searchLibrary(l, q, k).reverse(),
