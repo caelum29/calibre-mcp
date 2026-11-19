@@ -247,6 +247,10 @@ async function indexSection(deps: PingDeps, skipped?: string): Promise<{ line: s
   return { line: label(shown.join(" · ")), indexes };
 }
 
+/** The stale-stems warning after the count (#654): the rebuild the model can run itself. */
+const STALE_STEMS_STEER =
+  "books with stale keyword stems — keyword search still works; re-stem them with calibre_build_index force=true and a query that matches every book";
+
 /** Libraries listed in the Index text before it says "+K more" (#442). */
 const INDEX_TEXT_CAP = 20;
 
@@ -270,7 +274,9 @@ function indexEntry(i: LibraryIndex): string {
         `${head}: ${i.indexed}/${i.total ?? "?"} indexed` +
         (i.withoutEmbeddings ? ` (${i.withoutEmbeddings} without embeddings)` : "") +
         // same fact as indexes[].indexedUnchecked: the count may include removed books (#496)
-        (i.indexedUnchecked ? " (count not checked against the library)" : "")
+        (i.indexedUnchecked ? " (count not checked against the library)" : "") +
+        // same fact as indexes[].staleStems (#654): a stemmer change left these books' keyword stems behind
+        (i.staleStems ? ` (${i.staleStems} ${STALE_STEMS_STEER})` : "")
       );
     case "none":
       return `${head}: none`;

@@ -126,6 +126,11 @@ export class SqliteIndexStore implements IndexStore {
     return this.#freshness.booksMissingVectors(libraryId);
   }
 
+  /** Books whose stems another stemmer set wrote (IndexFreshness, #654). */
+  booksWithStaleStems(libraryId: string): number {
+    return this.#freshness.booksWithStaleStems(libraryId);
+  }
+
   /** Every book id in the index, the prune diff input (IndexFreshness). */
   indexedBookIds(libraryId: string): number[] {
     return this.#freshness.indexedBookIds(libraryId);

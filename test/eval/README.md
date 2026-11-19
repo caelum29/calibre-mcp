@@ -21,7 +21,7 @@ Two eval axes live (or will live) here — they measure different things:
 ## Retrieval eval (`retrieval/`) — the measurement gate for tuning
 
 Every tuning decision downstream (reranker on/off, fusion weights, embedding-model swap,
-chunk sizes) is guesswork without labels. This harness runs 105 labeled golden queries over
+chunk sizes) is guesswork without labels. This harness runs 113 labeled golden queries over
 a committed fixture corpus through the REAL pipeline — `calibre_build_index`'s
 chunk→embed→store path, then the real `calibre_semantic_search` handler per mode
 (hybrid / vector / keyword) — and scores Hit@1, Recall@5, MRR, nDCG@10 per kind and overall.
@@ -69,7 +69,7 @@ It then runs a second, **fusion-only pass** with the reranker off (`thresholds.f
 #356). With rerank ON, `RERANK_POOL` (30) covers the whole fixture, so the cross-encoder
 re-sorts every candidate and a fusion regression can't show (ON hybrid = vector on every
 positive). The OFF pass compares per-query Hit@1 to its own frozen baseline
-(`reports/2026-11-19-01a10ba8-rerankoff.json`): no query solved there may break, in any mode.
+(`reports/2026-11-19-f4e97cc8-654-rerankoff.json`): no query solved there may break, in any mode.
 Cross-lingual drops are listed as report-only (OFF hybrid solves 0/8 today). Both passes
 print, then `OVERALL GATE`. The OFF pass skips the reranker, so it adds only seconds.
 `--gate` rejects `--rerank` (it sets rerank per pass) but honours `--rrf-weights`, which is
@@ -110,13 +110,13 @@ records (`HarnessOptions.timing`), so
 
 ### Layout
 
-- `queries.json` — 105 golden queries `{ id, kind, scope, query, ru?, heldOut?, confusers?,
+- `queries.json` — 113 golden queries `{ id, kind, scope, query, ru?, heldOut?, confusers?,
   relevant, why? }`. Kinds (count): `semantic-paraphrase` (16), `exact-identifier` (14),
-  `figure-caption` (9), `cross-lingual` RU↔EN (8), `ru-monolingual` (8), `front-matter-trap`
+  `figure-caption` (9), `cross-lingual` RU↔EN (8), `ru-monolingual` (8), `uk-monolingual` (8, #654), `front-matter-trap`
   (6), `back-matter-trap` (7, #605), `negative` (6), `figure-negative` (3), and the #359 hard kinds `confuser-pair` (8),
   `no-overlap-paraphrase` (8), `adjacent-negative` (6), `raw-title` (6). The three negative
-  kinds have no right answer and measure the low-confidence signal, leaving 90 positives.
-  35/105 are RU-involved (`ru: true`): RU is the known weak axis and is first-class here, not
+  kinds have no right answer and measure the low-confidence signal, leaving 98 positives.
+  35/113 are RU-involved (`ru: true`; 35 of the 105 EN/RU queries): RU is the known weak axis and is first-class here, not
   an afterthought. `scope: "book"` queries label relevant passages as char spans + a
   `marker` substring (the harness fails loudly if a fixture edit invalidates a span). The
   hard kinds are capability kinds (`thresholds.capabilityKinds`): their drops are listed,
@@ -126,8 +126,9 @@ records (`HarnessOptions.timing`), so
   (`leak-guard.test.ts`, `leak-guard-fts.test.ts`), so keyword Hit@1 = 0 by construction.
   `adjacent-negative` is scored like `negative` but stays out of `negativesFlagged` and
   `rerankFloor` (axis `adjacentNegative`). Every #359 query carries a one-line `why`.
-- `corpus/` + `corpus.json` — 32 self-authored fixture "books" (24 EN incl. 2 code-heavy,
-  8 RU), committed as text. Two are front-matter traps: 116 (plain-text praise/TOC,
+- `corpus/` + `corpus.json` — 34 fixture "books" (24 EN incl. 2 code-heavy, 8 RU, 2 UK),
+  committed as text; all self-authored except 133–134, two public-domain Ukrainian stories
+  (Kotsiubynsky, d. 1913; #654). Two are front-matter traps: 116 (plain-text praise/TOC,
   D-016's chapter detector) and 117 (`headingStructured`, EPUB→Markdown-shaped — only the
   #102 `leadingFrontMatter` rule finds its boundary; a smoke test pins that). 118–127 back
   the #359 kinds. 128–132 (#605) are the front/back-matter kinds: 128 bird guide with an
@@ -346,6 +347,23 @@ Append-only: one entry per re-freeze, newest last. Every number names its corpus
   - **Existing lists changed:** 0 (hash), 0 (on) and 0 (fusionOnly) of 315. No fixture text changes under the character rules (0 of 32) and no fixture chunk boundary moves under the token budget (0 of 32 books), so the fixture cannot show this change; the subset measurement on the live library does (PR body).
   - **Hit@1 and scores:** no per-query metric changed; maxScore |Δ| 0.0000 on 210 rows.
   - **Unchanged:** corpus 32 books / 105 queries; every `fmt-*` Hit@1; `bmt-*` `nonBodyAbove` is 0 everywhere.
+- **2026-11-19, #654 L2 (Ukrainian language pack; Ukrainian fixture).**
+  - **Rule first (this entry, committed before any gate or freeze run).** The fixture gains books 133–134 (public-domain Ukrainian stories, see `corpus.json`) and 8 `uk-monolingual` library-scope queries `uk-01`..`uk-08` [34-book fixture, 113 queries]. The L2 head passes only if all three hold:
+    1. **EN and RU unchanged.** Against the post-N1 baselines on `main`, every existing query's top-10 list is unchanged in all three modes on the on, fusionOnly and hash tiers, except lists that a new book (133 or 134) enters. Each such list is named, with that book as its cause. No existing Hit@1 changes.
+    2. **The keyword half works on Ukrainian.** Across `uk-01`..`uk-08`, the keyword half alone ranks ≥ 2 distinct books at rank 1, on the on and fusionOnly tiers.
+    3. **Hybrid is not below vector.** On the 8 `uk-monolingual` queries, hybrid hit@5 ≥ vector hit@5, on the on and fusionOnly tiers.
+  - Then re-freeze hash, on and fusionOnly as in this log's earlier entries, with the README counts updated in the same PR.
+  - **Amendment (b), committed before any model run (d7c2b6de); it replaces condition 1. Artem decided (2026-11-19): rule (b), d7c2b6de. The verdict under condition 1 as written is still reported, for the record.** Why: the model-free hash tier at fb07c74e changed 138 of 315 lists, many with neither 133 nor 134 in them (two more books shift BM25 IDF and the #651 df-share prune), and `vector/cp-07` lost its Hit@1 to 133/134. The same code on the 32-book fixture (133, 134 and `uk-*` removed) reproduced all 315 hash lists and every Hit@1. The L2 head passes only if all four hold:
+    1. **Stemmer neutrality.** On the 32-book fixture, the L2 code reproduces all 315 frozen lists and every Hit@1 on the hash, on and fusionOnly tiers.
+    2. **Every change has a cause.** On the 34-book fixture, every changed list and every Hit@1 change is named with its cause: a new book (133 or 134) enters, or the IDF/df-share prune shifts. Each Hit@1 change is listed by query.
+    3. **Park on a uk book taking rank 1.** Any on-tier Hit@1 break on a non-cross-lingual EN/RU query where book 133 or 134 takes rank 1 parks L2 for Artem.
+    4. **Ukrainian unchanged.** Conditions 2 and 3 above stand as written.
+  - **Runs (f4e97cc8, token #14).** On and fusionOnly: `pnpm eval --tag 654` → `reports/2026-11-19-f4e97cc8-654.json` and `pnpm eval --rerank off --tag 654-rerankoff` → `reports/2026-11-19-f4e97cc8-654-rerankoff.json` [34-book fixture, 113 queries]. Hash: `pnpm eval:hash-freeze` (339 rows). Neutrality: `pnpm eval --gate` with 133–134 and `uk-*` cut out of the fixture (not committed) [32-book fixture, 105 queries]: OVERALL PASS, 0 of 315 lists changed on both tiers, maxScore |Δ| 0.0000; the hash tier on the same cut reproduces every list.
+  - **Existing lists changed:** 100 (on), 115 (fusionOnly) and 138 (hash) of 315, every row named with its cause in `reports/2026-11-19-654-rebaseline.md`: a new book (133 or 134) enters (54 / 42 / 76), the corpus statistics shift with no new book in the list (45 / 73 / 62), or, for on-tier `vector/rt-05`, a new book enters the rerank pool (book 114 leaves rank 3, 117 enters at 10).
+  - **Hit@1:** no change on on or fusionOnly. Hash only: `hybrid/sp-03` 0 → 1 (corpus statistics) and `vector/cp-07` 1 → 0 (133 and 134 take ranks 1–2 under the lexical hash embedder; the on tier keeps cp-07 at Hit@1).
+  - **Ukrainian:** the keyword half puts 133 or 134 at rank 1 on all 8 `uk-*` queries (2 distinct books, Hit@1 8/8) on on and fusionOnly; hybrid hit@5 8 vs vector 7 (on), 8 vs 8 (fusionOnly).
+  - **Verdict.** Rule (b) (governs): PASS — 1 neutrality holds on all three tiers, 2 every change named, 3 no on-tier Hit@1 break, 4 uk conditions pass. Condition 1 as written (for the record): FAIL on its list clause (45 / 73 / 62 lists changed with no new book in them), PASS on its on/fusionOnly Hit@1 clause, FAIL on hash (cp-07).
+  - **Counts:** corpus 34 books / 113 queries / 35 RU-involved / 28 held out.
 
 ### Rules
 

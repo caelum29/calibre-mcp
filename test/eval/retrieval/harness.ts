@@ -40,6 +40,8 @@ export type QueryKind =
   | "exact-identifier"
   | "cross-lingual"
   | "ru-monolingual"
+  // #654: Ukrainian query, Ukrainian book (keyword half over the uk language pack)
+  | "uk-monolingual"
   // Definitional query whose terms are keyword-dense in the fixture's TOC/praise/foreword —
   // relevant spans are body definitions only, so front-matter hits sink the rank metrics.
   | "front-matter-trap"

@@ -201,7 +201,7 @@ describe("hash tier list diff vs hash-baseline.json", () => {
       const res = evaluateListDiff(await runHashEval(), fromRankBaseline(frozen), hashOpts);
       // the detail carries the re-freeze hint, so a failure prints how to fix it (#392)
       expect(res.drops, res.checks[0]!.detail).toEqual([]);
-      expect(res.checks[0]!.detail).toBe("0 changed, 0 allowed (of 315 rows)"); // 105 queries x 3 modes (#605)
+      expect(res.checks[0]!.detail).toBe("0 changed, 0 allowed (of 339 rows)"); // 113 queries x 3 modes (#654)
     },
     thresholds.hashGate!.maxDurationMs,
   );

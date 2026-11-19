@@ -97,6 +97,8 @@ export interface BookMeta {
   title: string;
   authors: string[];
   lastModified?: string;
+  /** Book language (#654): the language pack id detected from the book's text; absent = none found. */
+  lang?: string;
 }
 
 /** A library-scope hit: the best-matching chunk of a book. */
@@ -146,6 +148,8 @@ export interface IndexMeta {
   indexVersion: number;
   /** ISO timestamp the index db was first created; absent on hand-built/legacy metas. */
   createdAt?: string;
+  /** Stem version (#654) the index's stemmed columns were written with; absent = written before it was recorded. */
+  stemVersion?: string;
 }
 
 /** What an in-place refresh was verified against, and the matter kind of each of those spans (#605). */
@@ -212,6 +216,11 @@ export interface IndexFreshness {
   bookVectorCount(libraryId: string, bookId: number): number;
   /** Books whose chunks are not all embedded (keyword-only or partial entries); 0 for an absent index. */
   booksMissingVectors(libraryId: string): number;
+  /**
+   * Books whose stemmed columns were written with a stem version other than this server's
+   * (ADR-0032 item 6): keyword search still works, the stems are stale. 0 for an absent index.
+   */
+  booksWithStaleStems(libraryId: string): number;
   /** Every book id currently in the index (empty for an absent index) — the prune diff input. */
   indexedBookIds(libraryId: string): number[];
   stats(libraryId: string): { books: number; chunks: number; figures: number };

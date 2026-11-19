@@ -137,6 +137,10 @@ identifiers:false   # no ISBN etc.
   text): the old file is refused on every open, so first delete the index file the message names
   (`<index dir>/<library id>.sqlite` plus `-wal`/`-shm`), then `calibre_build_index force=true`;
   `calibre_search` works meanwhile.
+- **Stale keyword stems**: when `calibre_ping` counts "books with stale keyword stems"
+  (`indexes[].staleStems`), search still works. Tell the user that a full rebuild
+  (`calibre_build_index` with `force: true` and a query matching every book) re-stems them, and
+  that it takes as long as the first build. Don't start it unasked.
 - **Offsets**: `charStart`/`charEnd`, `calibre_get_content` `offset` and cursors are positions in
   the normalised text (ligatures folded, hyphenation joined, EPUB Markdown escapes and emphasis
   markers removed; `\f` page breaks and headings kept),

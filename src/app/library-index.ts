@@ -32,6 +32,11 @@ export interface LibraryIndex {
    * walk timed out, failed or hit its cap), so it may include removed or merged books.
    */
   indexedUnchecked?: true;
+  /**
+   * #654: books whose keyword stems were written by another stemmer set (books.stem_version);
+   * present only when non-zero. Keyword search still works; a force rebuild re-stems them.
+   */
+  staleStems?: number;
   /** state "stale" (#655): the way out — delete the index file, then rebuild (force alone is refused). */
   rebuild?: string;
 }
@@ -40,7 +45,9 @@ export interface LibraryIndex {
 export interface LibraryIndexDeps {
   content: Pick<LibraryReader, "libraryInfo" | "search">;
   index: Pick<StatusIndex, "hasIndex" | "indexMeta" | "stats" | "booksMissingVectors"> &
-    Pick<IndexFreshness, "indexedBookIds">;
+    Pick<IndexFreshness, "indexedBookIds"> &
+    // optional: ports and narrow fakes from before #654 have no stem bookkeeping
+    Partial<Pick<IndexFreshness, "booksWithStaleStems">>;
 }
 
 /** Ids per search page for the live-id walk; most libraries fit in one. */
@@ -117,12 +124,16 @@ export async function libraryIndexReport(deps: LibraryIndexDeps): Promise<Librar
         const rows = deps.index.stats(id).books;
         const withoutEmbeddings = deps.index.booksMissingVectors(id);
         const rowIds = deps.index.indexedBookIds(id);
+        // #654: stale stems are a warning on an ok index, never "stale"/incompatible
+        const stale = deps.index.booksWithStaleStems?.(id) ?? 0;
+        const stems = stale > 0 ? { staleStems: stale } : {};
         const { total, ids } = await liveIds(deps, id, deadline);
         // Only books the library still holds count (#496): rows of removed/merged books are
         // orphans. Without a complete live set, fall back to the raw row count.
-        if (!ids) return { ...lib, state: "ok", indexed: rows, total, withoutEmbeddings, indexedUnchecked: true };
+        if (!ids)
+          return { ...lib, state: "ok", indexed: rows, total, withoutEmbeddings, indexedUnchecked: true, ...stems };
         const indexed = rowIds.filter((b) => ids.has(b)).length;
-        return { ...lib, state: "ok", indexed, total, withoutEmbeddings };
+        return { ...lib, state: "ok", indexed, total, withoutEmbeddings, ...stems };
       } catch (err) {
         if (err instanceof LibraryIdCollisionError) return { ...lib, state: "conflict", conflictsWith: err.owner };
         // a lock is transient, not damage: say so instead of "unreadable" (#442)

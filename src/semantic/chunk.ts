@@ -31,12 +31,12 @@ export interface ChunkForEmbeddingOptions {
   lengthFn?: (s: string) => number;
   /**
    * BCP 47 locale of the book's text for sentence-end breaks (`Intl.Segmenter`, ADR-0033 item 7);
-   * default {@link DEFAULT_SENTENCE_LOCALE}. #654 wires it to the detected book language.
+   * the indexer passes the detected book language (#654), else {@link DEFAULT_SENTENCE_LOCALE}.
    */
   locale?: string;
 }
 
-/** Sentence-segmenter locale until the book's language is wired in (#654). */
+/** Sentence-segmenter locale for a book with no detected language. */
 export const DEFAULT_SENTENCE_LOCALE = "en";
 
 const DEFAULT_BUDGET = 900;

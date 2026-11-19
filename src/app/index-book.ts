@@ -9,6 +9,7 @@ import { indexedFigureCaption, type FigureMarker } from "../domain/figures/marke
 import type { ExtractedText } from "../calibre/extract.js";
 import { inThreadEncoder, structureOf, type BookEncoder } from "../semantic/book-encoder.js";
 import { textMatchesChunks, type ChunkSpan } from "../semantic/content-match.js";
+import { detectBookLanguage } from "../semantic/language/detect.js";
 import { type MatterKind, matterKinds } from "../domain/structure/matter-kind.js";
 import { type BookSections, bookSections } from "../domain/structure/sections.js";
 import { encodeOffsetMap } from "../domain/normalise/offset-map.js";
@@ -169,7 +170,16 @@ export async function prepareBook(deps: IndexBookDeps, bookId: number, opts: Pre
     throw new Error(`no extractable text (${fmt}) — ${noTextReason(fmt)}`);
   }
 
-  const meta: BookMeta = { bookId, title: book.title, authors: book.authors, lastModified: book.lastModified };
+  // Book language from the text (#654, ADR-0032): Calibre's `languages` is often missing or wrong,
+  // and the text is what gets stemmed.
+  const lang = detectBookLanguage(extracted.text);
+  const meta: BookMeta = {
+    bookId,
+    title: book.title,
+    authors: book.authors,
+    lastModified: book.lastModified,
+    ...(lang ? { lang } : {}),
+  };
   // Title, authors, series, tags and blurb as one text (#631): every indexed book gets the row.
   const metadataText = bookMetadataText(book);
   const encoder = opts.encoder ?? inThreadEncoder(deps.embedder);
@@ -206,6 +216,8 @@ export async function prepareBook(deps: IndexBookDeps, bookId: number, opts: Pre
       metadataText: metadataText.text,
       keywordOnly,
       tokenBudgeted,
+      // Sentence breaks in the book's own language (ADR-0033 item 7); ids are BCP 47 tags.
+      ...(lang ? { locale: lang } : {}),
     },
     onPhase ? { onEmbedProgress: (done, total) => onPhase({ phase: "embed", done, total }) } : undefined,
   );
@@ -284,6 +296,8 @@ export function commitBook(deps: IndexBookDeps, libraryId: string, book: Prepare
     format: d.format,
     backend: d.backend,
     keywordOnly: book.keywordOnly,
+    // books.lang is not in any tool output (ADR-0032): the log is where it shows
+    lang: book.meta.lang ?? null,
   });
   return d;
 }

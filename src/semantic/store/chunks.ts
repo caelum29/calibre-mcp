@@ -26,6 +26,7 @@ import {
   type CacheVersion,
   cacheFreshness,
   keywordMatch,
+  libraryLanguages,
   markDirty,
   parseAuthors,
   rollbackQuietly,
@@ -71,7 +72,7 @@ export class SqliteChunkIndex implements ChunkIndex, KeywordPlanReport {
 
   keywordDropped(libraryId: string, query: string): KeywordDrop[] | undefined {
     const db = this.conn.db(libraryId);
-    return keywordMatch(query, this.#termStats(libraryId, db)).dropped;
+    return keywordMatch(query, this.#termStats(libraryId, db), libraryLanguages(db)).dropped;
   }
 
   /** The library's term statistics on `db`, built once per connection; undefined when fts5vocab fails there. */
@@ -138,7 +139,7 @@ export class SqliteChunkIndex implements ChunkIndex, KeywordPlanReport {
 
   searchLibraryFts(libraryId: string, query: string, k: number, allow?: ReadonlySet<number>): LibraryHit[] {
     const db = this.conn.db(libraryId);
-    const { match } = keywordMatch(query, this.#termStats(libraryId, db));
+    const { match } = keywordMatch(query, this.#termStats(libraryId, db), libraryLanguages(db));
     if (!match) return [];
     // Pull a generous pool of chunk hits, then keep the best (first, since bm25-ranked) per book.
     // Equal bm25 orders by book id, then chunk id (#392): SQLite's scan order is no contract.
@@ -214,8 +215,8 @@ export class SqliteChunkIndex implements ChunkIndex, KeywordPlanReport {
   searchBookFts(libraryId: string, bookId: number, query: string, k: number): BookHit[] {
     const db = this.conn.db(libraryId);
     // the book's MATCH runs over the whole library's chunk_fts (FTS-first CTE), so the library's
-    // shares are the ones that price its posting lists
-    const { match } = keywordMatch(query, this.#termStats(libraryId, db));
+    // shares are the ones that price its posting lists; its languages pick the stem variants
+    const { match } = keywordMatch(query, this.#termStats(libraryId, db), libraryLanguages(db));
     if (!match) return [];
     // FTS-first: with a plain JOIN the planner drives from idx_chunks_book and re-runs the
     // OR-ed MATCH per chunk (1.7–250 s on a 313k-chunk index); a MATERIALIZED CTE evaluates

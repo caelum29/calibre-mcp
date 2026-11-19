@@ -7,11 +7,13 @@ export type Script = "Latin" | "Cyrillic";
 
 /** One language's stemmer, stop words and detection hints for the keyword half. */
 export interface LanguagePack {
-  /** Short language code, e.g. `en`. */
+  /** Short language code, e.g. `en`; stored as `books.lang`. */
   readonly id: string;
+  /** Bumped whenever `stem` output changes; part of the stem version (`meta.stem_version`). */
+  readonly version: number;
   /** The script this language's words are written in. */
   readonly script: Script;
-  /** Letters only this language uses within its script; detection evidence (unused until #654 L2). */
+  /** Letters only this language uses within its script; detection and routing evidence. */
   readonly distinctiveLetters: string;
   /** Function words with no topic, lowercased with ё→е; snippet term picking skips them. */
   readonly stopwords: ReadonlySet<string>;

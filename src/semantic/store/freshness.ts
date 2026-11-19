@@ -2,6 +2,7 @@
 // coverage, indexed ids and counts. Diagnostic reads (calibre_ping) never create or write a db
 // file — they go through IndexConnections.read (read-only unless a handle is already open). Home for #244's content fingerprint.
 
+import { stemVersion } from "../language/registry.js";
 import type { DatabaseSync } from "node:sqlite";
 import type { ChunkSpan } from "../content-match.js";
 import type { IndexConnections } from "./schema.js";
@@ -86,6 +87,26 @@ export class SqliteFreshness implements IndexFreshness {
       libraryId,
       (db) => ({ books: count(db, "books"), chunks: count(db, "chunks"), figures: count(db, "figures") }),
       { books: 0, chunks: 0, figures: 0 },
+    );
+  }
+
+  /**
+   * Books whose stemmed columns were written with another stem version than this server's, or
+   * with none recorded (#654). A read-only peek can't migrate: a file without the column counts
+   * every book.
+   */
+  booksWithStaleStems(libraryId: string): number {
+    return this.conn.read(
+      libraryId,
+      (db) => {
+        const cols = db.prepare("PRAGMA table_info(books)").all() as Row[];
+        if (!cols.some((c) => c.name === "stem_version")) return count(db, "books");
+        const row = db
+          .prepare("SELECT COUNT(*) AS n FROM books WHERE stem_version IS NULL OR stem_version <> ?")
+          .get(stemVersion()) as Row;
+        return Number(row.n);
+      },
+      0,
     );
   }
 

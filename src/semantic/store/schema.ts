@@ -8,6 +8,7 @@ import { existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import type { Config } from "../../config.js";
 import type { LogSink } from "../../logging.js";
+import { stemVersion } from "../language/registry.js";
 import { EMBED_DIM, INDEX_VERSION, MODEL_ID } from "../model.js";
 import { DIAGNOSTIC_BUSY_TIMEOUT_MS, isIndexBusy } from "../index-busy.js";
 import { type Row, WEIGHTED_BM25 } from "./shared.js";
@@ -23,7 +24,9 @@ CREATE TABLE IF NOT EXISTS books (
   last_modified TEXT,
   chunk_count INTEGER NOT NULL DEFAULT 0,
   indexed_at TEXT NOT NULL,
-  embedded_chunks INTEGER
+  embedded_chunks INTEGER,
+  lang TEXT,
+  stem_version TEXT
 );
 CREATE TABLE IF NOT EXISTS chunks (
   id INTEGER PRIMARY KEY,
@@ -210,7 +213,14 @@ export class IndexConnections {
       const modelId = kv.get("model_id");
       if (!modelId || !Number.isInteger(indexVersion) || !Number.isInteger(dim)) return undefined;
       const createdAt = kv.get("created_at");
-      return { modelId, dim, indexVersion, ...(createdAt ? { createdAt } : {}) };
+      const stems = kv.get(STEM_VERSION_KEY);
+      return {
+        modelId,
+        dim,
+        indexVersion,
+        ...(createdAt ? { createdAt } : {}),
+        ...(stems ? { stemVersion: stems } : {}),
+      };
     } catch (err) {
       if (opts.diagnostic && isIndexBusy(err)) throw err;
       return undefined; // no meta table / not a sqlite file — "no index" for provenance purposes
@@ -321,6 +331,17 @@ export class IndexConnections {
       db.exec("ALTER TABLE books ADD COLUMN embedded_chunks INTEGER");
       this.log.info("index migrated: books.embedded_chunks added");
     }
+    // #654: each book's detected language; NULL until the book is re-indexed.
+    if (!bookCols.some((c) => c.name === "lang")) {
+      db.exec("ALTER TABLE books ADD COLUMN lang TEXT");
+      this.log.info("index migrated: books.lang added");
+    }
+    // #654 option (a): the stem version each book's stemmed columns were written with; NULL
+    // (stale) until the book is re-indexed, which is what clears calibre_ping's warning.
+    if (!bookCols.some((c) => c.name === "stem_version")) {
+      db.exec("ALTER TABLE books ADD COLUMN stem_version TEXT");
+      this.log.info("index migrated: books.stem_version added");
+    }
   }
 
   /** Write index metadata on a fresh db; refuse to use one built by a different model/version. */
@@ -330,6 +351,8 @@ export class IndexConnections {
       const ins = db.prepare("INSERT INTO meta(key, value) VALUES(?, ?)");
       for (const [k, v] of Object.entries(wantedMeta())) ins.run(k, v);
       db.prepare("INSERT INTO meta(key, value) VALUES(?, ?)").run("created_at", new Date().toISOString());
+      // Recorded, never asserted: a stemmer change leaves search working and calibre_ping warns (ADR-0032).
+      db.prepare("INSERT INTO meta(key, value) VALUES(?, ?)").run(STEM_VERSION_KEY, stemVersion());
       return;
     }
     assertCompatible(existing, file);
@@ -357,6 +380,9 @@ export function indexFileName(libraryId: string): string {
   const safe = libraryId.replace(/[^A-Za-z0-9._-]/g, "_") || "default";
   return `${safe}.sqlite`;
 }
+
+/** Meta key holding the stem version the stemmed columns were written with (#654). */
+const STEM_VERSION_KEY = "stem_version";
 
 /** Meta key holding the id of the library that owns the index file (#414). */
 const OWNER_KEY = "library_id";

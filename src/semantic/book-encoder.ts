@@ -34,6 +34,8 @@ export interface EncodeJob {
   keywordOnly: boolean;
   /** True only after a successful embedder warmup — token budgeting needs a loaded tokenizer. */
   tokenBudgeted: boolean;
+  /** Sentence-break locale: the detected book language (#654); the chunker's default when absent. */
+  locale?: string;
 }
 
 export interface EncodeResult {
@@ -65,17 +67,22 @@ export function inThreadEncoder(embedder: Embedder): BookEncoder {
     async encode(job, hooks) {
       const t0 = Date.now();
       let chunks: EmbedChunk[];
+      const locale = job.locale ? { locale: job.locale } : {};
       if (!job.keywordOnly && job.tokenBudgeted) {
         // Budget in REAL model tokens: the e5 window minus what the "passage: " + context
         // prefixes consume, so RU chunks stop being over-conservative and EN chunks stop
         // silently wasting window. countTokens is safe here — warmup succeeded (tokenBudgeted).
         const budget = Math.max(MIN_TOKEN_BUDGET, MAX_TOKENS - embedder.countTokens(PASSAGE_PREFIX + job.ctx));
         // Async: yields between chunks so a big book can't freeze concurrent I/O (#99).
-        chunks = await chunkForEmbeddingAsync(job.text, { budget, lengthFn: (s) => embedder.countTokens(s) });
+        chunks = await chunkForEmbeddingAsync(job.text, {
+          budget,
+          lengthFn: (s) => embedder.countTokens(s),
+          ...locale,
+        });
       } else {
         // No loaded model (keyword-only or a failed warmup) — no token window to respect;
         // the conservative char-based default applies.
-        chunks = await chunkForEmbeddingAsync(job.text);
+        chunks = await chunkForEmbeddingAsync(job.text, locale);
       }
       // The same classifier the flags-only refresh runs on the stored spans (#605).
       const kinds = matterKinds(job.text, chunks, structureOf(job));

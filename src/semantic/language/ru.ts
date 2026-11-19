@@ -13,6 +13,7 @@ const yoToYe = (w: string): string => w.replace(/ё/g, "е");
 /** Russian: the default pack for Cyrillic-script tokens. */
 export const ru: LanguagePack = {
   id: "ru",
+  version: 1,
   script: "Cyrillic",
   distinctiveLetters: "ыэъё",
   stopwords: new Set(

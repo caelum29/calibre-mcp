@@ -6,6 +6,7 @@ import type { DatabaseSync } from "node:sqlite";
 import type { ChunkSpan } from "../content-match.js";
 import type { MatterKind } from "../../domain/structure/matter-kind.js";
 import type { BookSections } from "../../domain/structure/sections.js";
+import { stemVersion } from "../language/registry.js";
 import { stemText } from "../stem.js";
 import { encodeVector } from "../vector.js";
 import { chunkSpans, vectorCoverage } from "./freshness.js";
@@ -67,10 +68,10 @@ export class SqliteWriter implements IndexWriter {
       // The offset map goes with the chunks too (#655): rewritten, or cleared when none came.
       writeOffsetMap(db, meta.bookId, opts.offsetMap);
       // The metadata row (#631) goes with them too: rewritten here, cleared when none is given.
-      writeBookMetadata(db, meta.bookId, meta.lastModified, opts.metadata);
+      writeBookMetadata(db, meta.bookId, meta.lastModified, opts.metadata, meta.lang);
 
       db.prepare(
-        "INSERT INTO books(book_id, title, authors, last_modified, chunk_count, indexed_at, embedded_chunks) VALUES(?,?,?,?,?,?,?)",
+        "INSERT INTO books(book_id, title, authors, last_modified, chunk_count, indexed_at, embedded_chunks, lang, stem_version) VALUES(?,?,?,?,?,?,?,?,?)",
       ).run(
         meta.bookId,
         meta.title,
@@ -79,6 +80,8 @@ export class SqliteWriter implements IndexWriter {
         chunks.length,
         new Date().toISOString(),
         embedded,
+        meta.lang ?? null,
+        stemVersion(),
       );
 
       const insChunk = db.prepare(
@@ -88,7 +91,7 @@ export class SqliteWriter implements IndexWriter {
       // Stemmed once per book (same transform as body_stem/queries) and repeated on every
       // chunk row, so the FTS half sees book identity — the vector half already gets it via
       // the embedded "[title › authors]" context prefix.
-      const bookMeta = bookMetaStem(meta);
+      const bookMeta = bookMetaStem(meta, meta.lang);
       for (const c of chunks) {
         const kind: MatterKind = c.matterKind ?? "body";
         // Pre-stem here so the FTS keyword half is populated by the insert trigger.
@@ -97,7 +100,7 @@ export class SqliteWriter implements IndexWriter {
           c.charStart,
           c.charEnd,
           c.body,
-          stemText(c.body),
+          stemText(c.body, meta.lang),
           bookMeta,
           kind,
         );
@@ -114,7 +117,7 @@ export class SqliteWriter implements IndexWriter {
           f.figIndex,
           f.page,
           f.caption,
-          stemText(f.caption),
+          stemText(f.caption, meta.lang),
           bookMeta,
           f.charOffset,
           f.format,
@@ -138,7 +141,6 @@ export class SqliteWriter implements IndexWriter {
 
   refreshBookMeta(libraryId: string, meta: BookMeta, check: RefreshCheck): boolean {
     const db = this.conn.db(libraryId);
-    const bookMeta = bookMetaStem(meta);
     // IMMEDIATE for the same reason as replaceBook (#196): wait on another writer's lock — and
     // the span re-check below then sees exactly the rows this transaction updates.
     db.exec("BEGIN IMMEDIATE");
@@ -147,6 +149,10 @@ export class SqliteWriter implements IndexWriter {
         db.exec("ROLLBACK");
         return false;
       }
+      // the chunks keep their stems, so the new title/authors stem in the language they were written in
+      const stored = db.prepare("SELECT lang FROM books WHERE book_id = ?").get(meta.bookId)?.lang;
+      const lang = typeof stored === "string" ? stored : undefined;
+      const bookMeta = bookMetaStem(meta, lang);
       db.prepare("UPDATE books SET title = ?, authors = ?, last_modified = ?, indexed_at = ? WHERE book_id = ?").run(
         meta.title,
         JSON.stringify(meta.authors),
@@ -161,7 +167,7 @@ export class SqliteWriter implements IndexWriter {
       // The flag-only backfill fills section rows too (#695), without touching chunks or vectors.
       if (check.sections) writeSections(db, meta.bookId, check.sections);
       // A metadata edit re-embeds only the metadata row (#631); the flag-only pass leaves it be.
-      if (check.metadata) writeBookMetadata(db, meta.bookId, meta.lastModified, check.metadata);
+      if (check.metadata) writeBookMetadata(db, meta.bookId, meta.lastModified, check.metadata, lang);
       db.exec("COMMIT");
       return true;
     } catch (err) {
@@ -241,8 +247,8 @@ function writeOffsetMap(db: DatabaseSync, bookId: number, map: string | undefine
 }
 
 /** Stemmed "title authors" repeated on every chunk/figure row, so FTS sees book identity. */
-function bookMetaStem(meta: BookMeta): string {
-  return stemText(`${meta.title} ${meta.authors.join(" ")}`);
+function bookMetaStem(meta: BookMeta, lang: string | undefined): string {
+  return stemText(`${meta.title} ${meta.authors.join(" ")}`, lang);
 }
 
 /** Same chunk set: count, offsets and bodies, in order. */
