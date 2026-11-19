@@ -1,0 +1,19 @@
+src/domain/figures/markers.ts
+  s_56e70df11311e3::t_fe2b0cd655cdb3 209-210,256-259,262-270,279
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "07f34543b5444a503e95f7e12c9a8e1f3b8a82b2",
+  "prompts": {},
+  "sessions": {
+    "s_56e70df11311e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2dc5b7bd-454c-4bf5-940e-c64a6f23a19e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
