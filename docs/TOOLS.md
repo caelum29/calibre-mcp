@@ -37,8 +37,9 @@ Limits: an out-of-range `limit`, `topK` or `maxChars` is not an error. The serve
 Confirms the server can reach your running Calibre Content Server (end to end, via
 `calibredb`) and reports semantic-search status — whether the embedding model and its
 dependency are present, how many vectors the index holds, and the index generation
-(`indexVersion`, read from the index itself — flagged **stale** with a rebuild hint when it
-doesn't match the running server). It also prints the server version, MCP SDK version, `calibredb` path, Content Server URL and write-gate state, plus a per-library index line (`Index: My Books (id: My_Books) [default]: 1064/1092 indexed · … · Other Books (id: Other_Books): none`; `indexes[].isDefault`) so unindexed books are visible and every library id is at hand. `indexed` counts only books the library still holds: index rows of removed or merged books are not counted. When ping can't check the count against the library in time (a big or slow library), it shows the raw row count marked `(count not checked against the library)` (`indexes[].indexedUnchecked: true`); that count may include removed books. The semantic-search line names the library its counts describe (`…; My_Books index v4: 1064 books / …`, `semantic.libraryId`). An index another process holds locked shows as `busy — index locked by another process, retry` (`state: "busy"`), not as unreadable. Past 20 libraries the text ends with `… +K more — full list in structuredContent / calibre_list_libraries`; `indexes` keeps them all; books indexed keyword-only (FTS-searchable, out of semantic search's reach) are labelled, e.g. `1064/1092 indexed (40 without embeddings)`. A library refused for a
+(`indexVersion`, read from the index itself — flagged **stale** when it doesn't match the
+running server, with the way out: delete the named index file and its `-wal`/`-shm`, then
+`calibre_build_index force=true`; the entry carries it as `indexes[].rebuild`). It also prints the server version, MCP SDK version, `calibredb` path, Content Server URL and write-gate state, plus a per-library index line (`Index: My Books (id: My_Books) [default]: 1064/1092 indexed · … · Other Books (id: Other_Books): none`; `indexes[].isDefault`) so unindexed books are visible and every library id is at hand. `indexed` counts only books the library still holds: index rows of removed or merged books are not counted. When ping can't check the count against the library in time (a big or slow library), it shows the raw row count marked `(count not checked against the library)` (`indexes[].indexedUnchecked: true`); that count may include removed books. The semantic-search line names the library its counts describe (`…; My_Books index v4: 1064 books / …`, `semantic.libraryId`). An index another process holds locked shows as `busy — index locked by another process, retry` (`state: "busy"`), not as unreadable. Past 20 libraries the text ends with `… +K more — full list in structuredContent / calibre_list_libraries`; `indexes` keeps them all; books indexed keyword-only (FTS-searchable, out of semantic search's reach) are labelled, e.g. `1064/1092 indexed (40 without embeddings)`. A library refused for a
 [case-only id clash](#case-clashing-library-ids) shows as `not indexable` (`state: "conflict"`,
 with `conflictsWith` naming the other id), and the semantic-search line prints the refusal
 instead of a build hint.
@@ -153,6 +154,15 @@ page: each response carries a `nextCursor` token you pass back verbatim as `curs
 where the last excerpt ended. To jump to a known character position (for example the
 `charStart` of a semantic-search passage), pass `offset` instead. `cursor` and `offset` are
 mutually exclusive — pass one or the other, not both.
+
+The text is the **normalised** extraction, the same text the semantic index is built from:
+ligatures and full-width forms are folded (Unicode NFKC, with superscripts and subscripts such
+as `x²` and `H₂O` kept), control characters are dropped, no-break and other Unicode spaces become
+plain spaces, soft hyphens are removed, and a word hyphenated across a line break is joined when
+the next line starts lowercase. Page breaks (`\f`) and Markdown headings are kept. Every offset,
+`charStart`/`charEnd` and cursor is a position in this text, so a search passage's `charStart`
+passed as `offset` lands on that passage. A cursor minted by a server older than this (offsets
+in the raw extraction) is refused with "Invalid cursor"; restart the read.
 
 Set `structure: true` to get a **chapter map** instead of text: a list of headings with
 character ranges, approximate token counts, and a per-chapter `cursor` you can feed back to
@@ -845,7 +855,7 @@ only the part named here is contract. The table is generated from the server's r
 | `calibre_ping` | `Semantic search` | `Semantic search: ready\|UNAVAILABLE\|index STALE …` (the state word is contract; the explanation and steering sentence are Prose) | `semantic.available` |
 | `calibre_ping` | `index` | on the Semantic search line: `; <libraryId> index v<N>: <B> books / <C> chunks / <F> figures, <V> vectors` or `; <libraryId> index busy — …` | `semantic.libraryId` |
 | `calibre_ping` | `Index` | `Index: <entry> · <entry>…[ · … +K more — …]` or `skipped — Calibre unreachable` / `skipped — library busy` / `libraries unavailable` / `(no libraries)` | `indexes` |
-| `calibre_ping` | `id` | each Index entry: `<Name> (id: <libraryId>)[ [default]]: <N>/<M\|?> indexed[ (<K> without embeddings)]\|none\|stale index (rebuild)\|busy — …\|not indexable — …\|index unreadable` (at most 20) | `indexes[].id` |
+| `calibre_ping` | `id` | each Index entry: `<Name> (id: <libraryId>)[ [default]]: <N>/<M\|?> indexed[ (<K> without embeddings)]\|none\|stale index — delete <index file> (and its -wal, -shm), then run calibre_build_index force=true to rebuild.\|busy — …\|not indexable — …\|index unreadable` (at most 20) | `indexes[].id` |
 | `calibre_ping` | `log file` | `log file: <path>\|off (stderr only)` | `logFile` |
 | `calibre_ping` | `recent errors` | `recent errors: <N>[ (<M> occurrences)]` | `recentErrors` |
 

@@ -125,11 +125,22 @@ CREATE TABLE IF NOT EXISTS sections (
 );
 CREATE INDEX IF NOT EXISTS idx_sections_book ON sections(book_id, char_start);
 
+-- Offset maps (#655, ADR-0033): per book, the normalisation stage's edits from the indexed
+-- (cleaned, marker-injected) text back to the converter's raw output, in encodeOffsetMap form;
+-- edits = how many. Rows go with their book's chunks. Used to remap offsets quoted in raw
+-- coordinates (eval labels), never read on the search path.
+CREATE TABLE IF NOT EXISTS text_maps (
+  book_id INTEGER PRIMARY KEY,
+  edits INTEGER NOT NULL,
+  map TEXT NOT NULL
+);
+
 -- Per-book metadata row (#631, index side): title, authors, series, tags and the comments blurb
 -- as one text, its stems, its passage vector and the book's last_modified when it was built.
 -- Its own table, never a chunks row: it has no char offsets, so book scope, cursors, chunk
 -- counts and term statistics never have to exclude it. Nothing ranks with it yet (wave 5).
--- Additive like sections: no INDEX_VERSION bump; books fill it when (re-)indexed or refreshed.
+-- Ships in the version-5 schema with no bump of its own (CREATE IF NOT EXISTS, like sections);
+-- the version-5 re-index fills it, later books when (re-)indexed or refreshed.
 CREATE TABLE IF NOT EXISTS book_metadata (
   book_id INTEGER PRIMARY KEY,
   body TEXT NOT NULL,
@@ -228,7 +239,7 @@ export class IndexConnections {
       db.exec(`PRAGMA busy_timeout = ${DIAGNOSTIC_BUSY_TIMEOUT_MS}`);
       const meta = readMeta(db);
       if (meta.size === 0) throw new Error("INDEX_UNREADABLE: the index file has no meta (not built by this server).");
-      assertCompatible(meta);
+      assertCompatible(meta, this.#file(libraryId));
       return fn(db);
     } finally {
       db.close();
@@ -280,7 +291,7 @@ export class IndexConnections {
     db.exec("PRAGMA journal_mode = WAL");
     db.exec(SCHEMA);
     this.#migrate(db);
-    this.#ensureMeta(db);
+    this.#ensureMeta(db, file);
     try {
       this.guard.claim(db, libraryId); // first build, or a legacy index with no owner yet (#414)
     } catch (err) {
@@ -319,7 +330,7 @@ export class IndexConnections {
   }
 
   /** Write index metadata on a fresh db; refuse to use one built by a different model/version. */
-  #ensureMeta(db: DatabaseSync): void {
+  #ensureMeta(db: DatabaseSync, file: string): void {
     const existing = readMeta(db);
     if (existing.size === 0) {
       const ins = db.prepare("INSERT INTO meta(key, value) VALUES(?, ?)");
@@ -327,7 +338,7 @@ export class IndexConnections {
       db.prepare("INSERT INTO meta(key, value) VALUES(?, ?)").run("created_at", new Date().toISOString());
       return;
     }
-    assertCompatible(existing);
+    assertCompatible(existing, file);
   }
 
   /**
@@ -424,13 +435,21 @@ function wantedMeta(): Record<string, string> {
   return { model_id: MODEL_ID, dim: String(EMBED_DIM), index_version: String(INDEX_VERSION) };
 }
 
+/**
+ * The way out of an incompatible index (#655 review): the guard refuses EVERY open, the build's
+ * included, so `force=true` alone cannot rebuild it; the file must go first.
+ */
+export function rebuildSteps(file: string): string {
+  const target = file === ":memory:" ? "the index file" : `${file} (and ${file}-wal, ${file}-shm if present)`;
+  return `Delete ${target}, then run calibre_build_index force=true to rebuild.`;
+}
+
 /** Refuse an index built by a different model/version — it can't be searched or extended. */
-function assertCompatible(existing: Map<string, string>): void {
+function assertCompatible(existing: Map<string, string>, file: string): void {
   for (const [k, v] of Object.entries(wantedMeta())) {
     if (existing.get(k) !== v) {
       throw new Error(
-        `INDEX_INCOMPATIBLE: index built with ${k}=${existing.get(k)} but this server uses ${v}. ` +
-          `Delete the index and rebuild (calibre_build_index force=true).`,
+        `INDEX_INCOMPATIBLE: index built with ${k}=${existing.get(k)} but this server uses ${v}. ${rebuildSteps(file)}`,
       );
     }
   }

@@ -12,6 +12,7 @@ import { log } from "../../../src/logging.js";
 import type { Book } from "../../../src/domain/book.js";
 import type { FigureInventory } from "../../../src/domain/figures/inventory.js";
 import { type FigureMarker, injectFigureMarkers } from "../../../src/domain/figures/markers.js";
+import { normaliseText, ruleSetsFor } from "../../../src/domain/normalise/normalise.js";
 import { TransformersEmbedder, type Embedder } from "../../../src/semantic/embedder.js";
 import type { Reranker } from "../../../src/semantic/reranker.js";
 import { INDEX_VERSION, MODEL_ID } from "../../../src/semantic/model.js";
@@ -149,7 +150,14 @@ export function loadCorpus(): LoadedCorpus {
   const markers = new Map<number, FigureMarker[]>();
   const inventories = new Map<number, FigureInventory>();
   for (const b of raw.books) {
-    const text = readFileSync(path.join(HERE, "corpus", b.file), "utf8");
+    const onDisk = readFileSync(path.join(HERE, "corpus", b.file), "utf8");
+    // The real extractor's first step (#655, ADR-0033): normalise before markers. The labelled
+    // spans are offsets into the on-disk text, so a rule that changes a fixture text must come
+    // with remapped labels — refuse rather than score drifted spans.
+    const { text, map } = normaliseText(onDisk, ruleSetsFor("raw"));
+    if (map.edits.length > 0) {
+      throw new Error(`fixture book ${b.bookId}: normalisation changed ${map.edits.length} span(s) — remap its labels`);
+    }
     if (b.figures) {
       const inventory = JSON.parse(readFileSync(path.join(HERE, "corpus", b.figures), "utf8")) as FigureInventory;
       // Fixture texts carry no caption lines, so the real injector places every marker via

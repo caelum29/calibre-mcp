@@ -94,6 +94,11 @@ export const getContentTool = defineTool({
   handler: async (args, deps, ctx) => {
     const target = targetBook(args);
     if ("error" in target) return toolError("invalid_input", target.error);
+    // an undecodable cursor (garbage, or minted before an upgrade moved the offsets, #655) fails
+    // before the book is extracted — that can take minutes, and the answer is the same
+    if (args.cursor !== undefined && args.offset === undefined && !decodeContentCursor(args.cursor)) {
+      return toolError("invalid_input", INVALID_CURSOR);
+    }
     const idArg = target.id;
     try {
       const numericId = await resolveNumericId(deps, idArg, args.library);

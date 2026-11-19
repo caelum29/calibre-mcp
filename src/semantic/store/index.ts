@@ -81,22 +81,27 @@ export class SqliteIndexStore implements IndexStore {
     });
   }
 
+  /** The case-insensitive id clash that refuses this library its index, if any (LibraryIdCheck). */
   libraryIdCollision(libraryId: string): LibraryIdCollisionError | undefined {
     return this.#guard.collision(libraryId);
   }
 
+  /** Whether an index file exists for the library; creates none (IndexFreshness). */
   hasIndex(libraryId: string): boolean {
     return this.#freshness.hasIndex(libraryId);
   }
 
+  /** The stored index metadata, or undefined without an index (IndexFreshness). */
   indexMeta(libraryId: string, opts?: { diagnostic?: boolean }): IndexMeta | undefined {
     return this.#freshness.indexMeta(libraryId, opts);
   }
 
+  /** Whether the index holds any embedding vectors; false for a keyword-only build (IndexFreshness). */
   hasVectors(libraryId: string): boolean {
     return this.#freshness.hasVectors(libraryId);
   }
 
+  /** Whether the book is indexed and fresh for `lastModified` (IndexFreshness). */
   isBookIndexed(
     libraryId: string,
     bookId: number,
@@ -106,72 +111,88 @@ export class SqliteIndexStore implements IndexStore {
     return this.#freshness.isBookIndexed(libraryId, bookId, lastModified, opts);
   }
 
+  /** One book's stored chunk spans, sorted by start (IndexFreshness). */
   bookChunkSpans(libraryId: string, bookId: number): ChunkSpan[] {
     return this.#freshness.bookChunkSpans(libraryId, bookId);
   }
 
+  /** Embedded chunks of one book (IndexFreshness). */
   bookVectorCount(libraryId: string, bookId: number): number {
     return this.#freshness.bookVectorCount(libraryId, bookId);
   }
 
+  /** Books whose chunks are not all embedded (IndexFreshness). */
   booksMissingVectors(libraryId: string): number {
     return this.#freshness.booksMissingVectors(libraryId);
   }
 
+  /** Every book id in the index, the prune diff input (IndexFreshness). */
   indexedBookIds(libraryId: string): number[] {
     return this.#freshness.indexedBookIds(libraryId);
   }
 
+  /** Book, chunk and figure counts of the library's index (IndexFreshness). */
   stats(libraryId: string): { books: number; chunks: number; figures: number } {
     return this.#freshness.stats(libraryId);
   }
 
+  /** Number of stored embedding vectors (IndexFreshness). */
   vectorCount(libraryId: string): number {
     return this.#freshness.vectorCount(libraryId);
   }
 
+  /** Replace one book's rows in one transaction (IndexWriter). */
   replaceBook(
     libraryId: string,
     meta: BookMeta,
     chunks: IndexedChunk[],
     figures?: IndexedFigure[],
-    opts?: { preserveEmbedded?: boolean; sections?: BookSections; metadata?: IndexedBookMetadata },
+    opts?: { preserveEmbedded?: boolean; sections?: BookSections; offsetMap?: string; metadata?: IndexedBookMetadata },
   ): ReplaceOutcome {
     return this.#writer.replaceBook(libraryId, meta, chunks, figures, opts);
   }
 
+  /** Rewrite one book's metadata and flags without re-chunking; false when its spans changed (IndexWriter). */
   refreshBookMeta(libraryId: string, meta: BookMeta, check: RefreshCheck): boolean {
     return this.#writer.refreshBookMeta(libraryId, meta, check);
   }
 
+  /** Drop every row of these books (IndexWriter). */
   deleteBooks(libraryId: string, bookIds: number[], opts?: { noWait?: boolean }): PruneCounts {
     return this.#writer.deleteBooks(libraryId, bookIds, opts);
   }
 
+  /** Vector half: rank books by their best passage (ChunkIndex). */
   searchLibrary(libraryId: string, query: Float32Array, k: number, allow?: ReadonlySet<number>): LibraryHit[] {
     return this.#chunks.searchLibrary(libraryId, query, k, allow);
   }
 
+  /** Vector half: rank passages within one book (ChunkIndex). */
   searchBook(libraryId: string, bookId: number, query: Float32Array, k: number): BookHit[] {
     return this.#chunks.searchBook(libraryId, bookId, query, k);
   }
 
+  /** Keyword half: rank books by their best FTS5 match; `query` as typed (ChunkIndex). */
   searchLibraryFts(libraryId: string, query: string, k: number, allow?: ReadonlySet<number>): LibraryHit[] {
     return this.#chunks.searchLibraryFts(libraryId, query, k, allow);
   }
 
+  /** Keyword half: rank passages within one book; `query` as typed (ChunkIndex). */
   searchBookFts(libraryId: string, bookId: number, query: string, k: number): BookHit[] {
     return this.#chunks.searchBookFts(libraryId, bookId, query, k);
   }
 
+  /** The query words the keyword plan leaves out, for the debug output (KeywordPlanReport). */
   keywordDropped(libraryId: string, query: string): KeywordDrop[] | undefined {
     return this.#chunks.keywordDropped(libraryId, query);
   }
 
+  /** The chunk holding a character offset, for figure → context (ChunkIndex). */
   chunkAt(libraryId: string, bookId: number, charOffset: number): ChunkRef | undefined {
     return this.#chunks.chunkAt(libraryId, bookId, charOffset);
   }
 
+  /** Vector half over figure captions, the library or one book (FigureIndex). */
   searchFigures(
     libraryId: string,
     query: Float32Array,
@@ -182,6 +203,7 @@ export class SqliteIndexStore implements IndexStore {
     return this.#figures.searchFigures(libraryId, query, k, bookId, allow);
   }
 
+  /** Keyword half over figure captions; `query` as typed (FigureIndex). */
   searchFiguresFts(
     libraryId: string,
     query: string,
@@ -192,18 +214,22 @@ export class SqliteIndexStore implements IndexStore {
     return this.#figures.searchFiguresFts(libraryId, query, k, bookId, allow);
   }
 
+  /** Indexed-figure count of the library or one book (FigureIndex). */
   figureCount(libraryId: string, bookId?: number): number {
     return this.#figures.figureCount(libraryId, bookId);
   }
 
+  /** Figures whose marker falls inside a text span (FigureIndex). */
   figuresInSpan(libraryId: string, bookId: number, charStart: number, charEnd: number): FigureRef[] {
     return this.#figures.figuresInSpan(libraryId, bookId, charStart, charEnd);
   }
 
+  /** The section path at a character offset, top level first (SectionIndex). */
   sectionPathAt(libraryId: string, bookId: number, charOffset: number): SectionRef[] {
     return this.#sections.sectionPathAt(libraryId, bookId, charOffset);
   }
 
+  /** Close the connections and drop the in-memory chunk and figure caches. */
   close(): void {
     this.#conn.close();
     this.#chunks.clear();

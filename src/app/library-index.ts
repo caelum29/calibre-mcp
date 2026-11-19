@@ -32,6 +32,8 @@ export interface LibraryIndex {
    * walk timed out, failed or hit its cap), so it may include removed or merged books.
    */
   indexedUnchecked?: true;
+  /** state "stale" (#655): the way out — delete the index file, then rebuild (force alone is refused). */
+  rebuild?: string;
 }
 
 /** The reads the report makes: library list + one count per library, and index coverage. */

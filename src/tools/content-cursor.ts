@@ -4,7 +4,8 @@
 
 // v2: image markers entered the extracted text (D-018 Phase B / #84) — every char offset
 // shifted, so v1 cursors must fail loud, never resume at a silently drifted position.
-export const CONTENT_CURSOR_VERSION = 2;
+// v3: offsets are in normalised (cleaned) text (#655, ADR-0033) — v2 cursors point into raw text.
+export const CONTENT_CURSOR_VERSION = 3;
 
 export interface ContentCursor {
   offset: number;
@@ -27,7 +28,7 @@ export function decodeContentCursor(s: string | undefined): ContentCursor | unde
     const parsed = JSON.parse(Buffer.from(s, "base64url").toString("utf8")) as unknown;
     if (typeof parsed !== "object" || parsed === null) return undefined;
     const c = parsed as Record<string, unknown>;
-    if (c.v !== CONTENT_CURSOR_VERSION) return undefined; // pre-marker cursors: offsets drifted
+    if (c.v !== CONTENT_CURSOR_VERSION) return undefined; // older cursors: offsets drifted
     if (typeof c.offset !== "number" || !Number.isFinite(c.offset) || c.offset < 0) return undefined;
     if (typeof c.id !== "number" || !Number.isFinite(c.id)) return undefined;
     if (typeof c.format !== "string") return undefined;
