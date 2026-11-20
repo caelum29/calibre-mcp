@@ -199,9 +199,11 @@ export function pooledHits(rec: RawRecord): PooledHit[] {
     const mode = seen.hybrid !== undefined ? "hybrid" : "keyword";
     const run = rec.runs[mode]!;
     const hit = run.hits[seen[mode]! - 1]!;
-    // no index generation or end offset (pre-#662 runs): the hit can be judged but never stored or reused
+    // no index generation or end offset (pre-#662 runs): the hit can be judged but never stored or reused;
+    // a description hit (#631) is stored as the point -1 of its book
+    const located = hit.from === "description" || (hit.charEnd !== undefined && hit.at >= 0);
     const location =
-      run.indexVersion === undefined || hit.charEnd === undefined || hit.at < 0
+      run.indexVersion === undefined || hit.charEnd === undefined || !located
         ? undefined
         : {
             qid: rec.query.id,

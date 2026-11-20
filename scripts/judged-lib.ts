@@ -27,6 +27,8 @@ export interface RawHit {
   charEnd?: number;
   /** What the judge reads: the fenced snippet / passage body / caption + context. */
   text: string;
+  /** A hit won by the book's metadata row (#631): no offsets, so `at` and `charEnd` are the point -1. */
+  from?: "description";
   cosine?: number;
   rerankScore?: number;
   /** Debug-level ranking provenance (#650): half ranks, fused rank, rerank pool. Never blinded into a batch. */
@@ -101,6 +103,7 @@ interface StructuredHit {
   charEnd?: number;
   charOffset?: number;
   snippet?: string;
+  snippetSource?: string;
   body?: string;
   caption?: string;
   contextSnippet?: string;
@@ -121,8 +124,13 @@ export function toRawRun(
   const hits = list.map((h): RawHit => ({
     bookId: h.bookId ?? q.bookId ?? -1,
     title: h.title ?? "",
-    at: h.charStart ?? h.charOffset ?? -1,
-    ...((h.charEnd ?? h.charOffset) !== undefined ? { charEnd: h.charEnd ?? h.charOffset } : {}),
+    // a description hit (#631) is keyed as the point -1: one per query and book, never a passage
+    ...(h.snippetSource === "description"
+      ? { at: -1, charEnd: -1, from: "description" as const }
+      : {
+          at: h.charStart ?? h.charOffset ?? -1,
+          ...((h.charEnd ?? h.charOffset) !== undefined ? { charEnd: h.charEnd ?? h.charOffset } : {}),
+        }),
     text: h.snippet ?? h.body ?? [h.caption, h.contextSnippet].filter(Boolean).join("\n--- context ---\n"),
     ...(h.cosine !== undefined ? { cosine: h.cosine } : {}),
     ...(h.rerankScore !== undefined ? { rerankScore: h.rerankScore } : {}),

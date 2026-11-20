@@ -438,6 +438,15 @@ function indexedStore(): SqliteIndexStore {
 
 const semanticDeps = (): ToolDeps => fakeDeps({ embedder: fakeEmbedder, index: indexedStore() });
 
+/** The two-book index plus book 103, found only by its metadata row, under metadata-list weight 1 (#631). */
+function describedDeps(): ToolDeps {
+  const s = indexedStore();
+  s.replaceBook("Programming_Books", { bookId: 103, title: "Rust Atomics", authors: ["Mara Bos"] }, [], [], {
+    metadata: { text: "Rust Atomics\nMara Bos\n\nLow-level concurrency.", blurbChars: 23, vector: axis(0) },
+  });
+  return { ...fakeDeps({ embedder: fakeEmbedder, index: s }), retrievalOptions: { rrfWeights: [1, 1, 1] } };
+}
+
 interface Scenario {
   tool: string;
   label: string;
@@ -534,6 +543,12 @@ const SCENARIOS: Scenario[] = [
     label: "library hits",
     args: { query: "ownership", scope: "library" },
     deps: semanticDeps,
+  },
+  {
+    tool: "calibre_semantic_search",
+    label: "library hits with a description hit (#631)",
+    args: { query: "ownership", scope: "library" },
+    deps: describedDeps,
   },
   {
     tool: "calibre_semantic_search",

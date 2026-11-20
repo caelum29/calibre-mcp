@@ -25,6 +25,12 @@ export const PING_LINE_LABELS = {
   semanticSearch: "Semantic search",
 } as const;
 
+/** Labels of calibre_semantic_search's per-hit lines that carry a declared structured field. */
+export const SEMANTIC_LINE_LABELS = {
+  /** Where a library hit's snippet comes from (`results[].snippetSource`, #631): only `description` is printed. */
+  from: "from",
+} as const;
+
 // ── The 1.0 registry (#454) ──────────────────────────────────────────────────────────────────
 // The text half of the public contract (#448): per tool, every Labelled line — a text line whose
 // label + value format carry a declared output field — and nothing else. Prose around them stays
@@ -172,7 +178,19 @@ export const LABELLED_LINES: Readonly<Record<string, ToolLabelledLines>> = {
       },
     ],
   },
-  calibre_semantic_search: { none: PROSE_ONLY },
+  calibre_semantic_search: {
+    lines: [
+      {
+        // #631: a hit won by the book's metadata row; text hits print no such line
+        label: "from",
+        match: "line",
+        pattern: /^from: (?<v>description)$/,
+        format: "`from: description` — right before the fence of a hit whose snippet is the book's description",
+        field: "results[].snippetSource",
+        compare: "equal",
+      },
+    ],
+  },
   calibre_get_figures: { none: "none: text is Prose; no outputSchema (images ride in content blocks)" },
   calibre_recover_metadata: { none: PROSE_ONLY },
   calibre_extract_isbn: { none: PROSE_ONLY },

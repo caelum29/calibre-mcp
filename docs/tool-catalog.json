@@ -2689,6 +2689,13 @@
                 "snippet": {
                   "type": "string"
                 },
+                "snippetSource": {
+                  "description": "Set when the snippet is the book's description, not its text; such a hit has no offsets.",
+                  "enum": [
+                    "description"
+                  ],
+                  "type": "string"
+                },
                 "snippetStart": {
                   "type": "number"
                 },
@@ -2700,8 +2707,6 @@
                 "bookId",
                 "title",
                 "authors",
-                "charStart",
-                "charEnd",
                 "snippet"
               ],
               "type": "object"

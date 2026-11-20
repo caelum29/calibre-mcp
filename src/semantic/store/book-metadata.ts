@@ -1,11 +1,12 @@
-// Per-book metadata row in the index (#631, index side): the row writer the whole-book replace
-// and the in-place refresh share. Its own table with its own FTS index (schema.ts); nothing reads
-// it at query time yet — the third fusion list, rerank input and display come in wave 5.
+// Per-book metadata row in the index (#631): the row writer the whole-book replace and the
+// in-place refresh share, and the metadata list library hybrid fuses as its third RRF list (its
+// weight is 0 by default, so shipped searches never read it). Own table + FTS index: schema.ts.
 
 import type { DatabaseSync } from "node:sqlite";
 import { stemText } from "../stem.js";
-import { encodeVector } from "../vector.js";
-import type { IndexedBookMetadata } from "./types.js";
+import { decodeVector, dot, encodeVector } from "../vector.js";
+import { parseAuthors, type Row } from "./shared.js";
+import type { IndexedBookMetadata, LibraryHit } from "./types.js";
 
 /**
  * Replace one book's metadata row. Runs inside the caller's transaction, so the row changes
@@ -32,4 +33,45 @@ export function writeBookMetadata(
     lastModified ?? null,
     row.vector ? encodeVector(row.vector) : null,
   );
+}
+
+/**
+ * The metadata list (#631): books ranked by the cosine of their metadata row's vector, best first,
+ * equal scores by ascending book id, up to k; `allow` restricts before ranking. Rows without a
+ * vector (keyword-only builds) are skipped. Brute force over every row on each call, no cache:
+ * one row per book (about 1,100 on the largest library), and only a weight above 0 calls it.
+ */
+export function searchBookMetadata(
+  db: DatabaseSync,
+  query: Float32Array,
+  k: number,
+  allow?: ReadonlySet<number>,
+): LibraryHit[] {
+  const rows = db
+    .prepare(
+      "SELECT m.book_id, m.body, m.blurb_chars, m.vector, b.title, b.authors FROM book_metadata m " +
+        "JOIN books b ON b.book_id = m.book_id WHERE m.vector IS NOT NULL",
+    )
+    .all() as Row[];
+  const scored = rows
+    .filter((r) => allow === undefined || allow.has(Number(r.book_id)))
+    .map((r) => ({ r, score: dot(query, decodeVector(r.vector as Uint8Array)) }))
+    .sort((a, b) => b.score - a.score || Number(a.r.book_id) - Number(b.r.book_id));
+  return scored.slice(0, k).map(({ r, score }): LibraryHit => {
+    const body = String(r.body);
+    const blurbChars = Number(r.blurb_chars);
+    return {
+      bookId: Number(r.book_id),
+      chunkId: 0,
+      title: String(r.title),
+      authors: parseAuthors(r.authors),
+      score,
+      // the blurb closes the row text (bookMetadataText); a row without one shows itself
+      snippet: blurbChars > 0 ? body.slice(body.length - blurbChars) : body,
+      body,
+      charStart: 0,
+      charEnd: 0,
+      from: "description",
+    };
+  });
 }

@@ -9,7 +9,7 @@ import type { Embedder } from "./embedder.js";
 import { RRF_K, rrfFuse } from "./fusion.js";
 import { ADAPTIVE_AGREE_TOP, ADAPTIVE_RERANK_POOL, RERANK_FLOOR, RERANK_POOL, type Reranker } from "./reranker.js";
 import { snippetWindow } from "./snippet.js";
-import type { BookHit, ChunkIndex, FigureHit, FigureIndex, LibraryHit } from "./store/index.js";
+import type { BookHit, BookMetadataIndex, ChunkIndex, FigureHit, FigureIndex, LibraryHit } from "./store/index.js";
 
 /** Per-half candidate pool the fuser draws from (design: vector top-50 + keyword top-50). */
 const POOL = 50;
@@ -20,7 +20,11 @@ const POOL = 50;
 // Sweeps pass candidate weights via retrieve()'s opts.rrfWeights instead of editing these.
 const VECTOR_RRF_WEIGHT = 1.0;
 const KEYWORD_RRF_WEIGHT = 1.0;
-const RRF_WEIGHTS: readonly number[] = [VECTOR_RRF_WEIGHT, KEYWORD_RRF_WEIGHT];
+// The metadata list (#631): library hybrid's third list, the books ranked by their metadata row
+// (title, authors, series, tags, blurb). 0 = off: the list is not even read, so shipped rankings
+// are those before #631. Raising it waits for the judged live A/B and a fixture re-freeze.
+const METADATA_RRF_WEIGHT = 0;
+const RRF_WEIGHTS: readonly number[] = [VECTOR_RRF_WEIGHT, KEYWORD_RRF_WEIGHT, METADATA_RRF_WEIGHT];
 
 // Library rerank candidates (#604, Fix A): fusion keys books, so a book in both halves would only
 // show the cross-encoder its vector chunk. Its keyword chunk joins as a second candidate, but only
@@ -56,8 +60,11 @@ export type RetrievalMode = "hybrid" | "vector" | "keyword";
 
 /** What retrieve() needs — a structural subset of ToolDeps, so tools pass theirs as-is. */
 export interface RetrievalDeps {
-  /** Only the retrieval ports (#272): chunk + figure search, never writes or freshness. */
-  index: ChunkIndex & FigureIndex;
+  /**
+   * Only the retrieval ports (#272): chunk + figure search, never writes or freshness. The
+   * metadata list (#631) is optional: an index without it fuses the two halves only.
+   */
+  index: ChunkIndex & FigureIndex & Partial<BookMetadataIndex>;
   embedder: Embedder;
   /** Absent = reranking not wired → the fused order is kept silently. */
   reranker?: Reranker;
@@ -106,7 +113,10 @@ export type RetrievalRequest = LibraryRequest | BookRequest | FiguresRequest;
  * in-process scripts set them (BuildServerOptions.retrievalOptions) — never an env var or tool param.
  */
 export interface RetrievalOptions {
-  /** Weighted-RRF weights, vector first then keyword (default 1.0 / 1.0). */
+  /**
+   * Weighted-RRF weights: vector, keyword, then library hybrid's metadata list (#631) — default
+   * 1.0 / 1.0 / 0. A missing third entry is 0, not 1, so two-weight sweeps keep the list off.
+   */
   rrfWeights?: readonly number[];
   /** Cross-encoded pair cap and rerank candidate count (default RERANK_POOL). */
   rerankPool?: number;
@@ -141,7 +151,10 @@ export interface HitProvenance {
   fusedRank?: number;
   /** True when the cross-encoder scored this hit (a library book: at least one of its candidates). */
   rerankPool: boolean;
-  /** Library hybrid only: the half whose best chunk is shown ("both" when it is the same chunk). */
+  /**
+   * Library hybrid only: the half whose best chunk is shown ("both" when it is the same chunk);
+   * absent on a description hit (#631), which shows no chunk.
+   */
   chunkFrom?: "vector" | "keyword" | "both";
   /** Library only: the rerank score of the book's other candidate chunk, when two were scored (#604). */
   otherRerankScore?: number;
@@ -286,8 +299,12 @@ function placedNote(n: number): string | undefined {
   return n > 0 ? `${n} front/back-matter passage(s) placed after body matches.` : undefined;
 }
 
-/** A library hit whose snippet is the query-term window of its chunk, with its book offset. */
+/**
+ * A library hit whose snippet is the query-term window of its chunk, with its book offset. A
+ * description hit (#631) gets the window of its blurb and no offset: the row has no location.
+ */
 function withSnippet(hit: LibraryHit, query: string): LibraryHit {
+  if (hit.from === "description") return { ...hit, snippet: snippetWindow(hit.snippet, query).text };
   const w = snippetWindow(hit.body, query);
   return { ...hit, snippet: w.text, snippetStart: hit.charStart + w.start };
 }
@@ -341,18 +358,25 @@ function rerankActive(req: BaseRequest, deps: RetrievalDeps): boolean {
 interface Halves<H> {
   vec: Array<H & { score: number }>;
   kw: H[];
+  /** Library hybrid's metadata list (#631), fused third; its hits show only for books neither half has. */
+  meta?: H[];
   idOf: (h: H) => number;
   tieOf: (h: H) => readonly [number, number];
 }
 
-/** RRF-fuse a vector and a keyword ranking, keeping the vector hit (and its cosine) when both have it. */
-function fuse<H>({ vec, kw, idOf, tieOf }: Halves<H>, k: number, w: readonly number[]): Ranked<H>[] {
+/**
+ * RRF-fuse a vector and a keyword ranking (and the metadata list, when given), keeping the vector
+ * hit (and its cosine) when both halves have it; a metadata hit only for a book in neither half.
+ */
+function fuse<H>({ vec, kw, meta = [], idOf, tieOf }: Halves<H>, k: number, w: readonly number[]): Ranked<H>[] {
   const vById = new Map(vec.map((h) => [idOf(h), h]));
   const kById = new Map(kw.map((h) => [idOf(h), h]));
-  const hitOf = (id: number): H => (vById.get(id) ?? kById.get(id))!;
+  const mById = new Map(meta.map((h) => [idOf(h), h]));
+  // a book with a body candidate keeps the body: the row only stands in for a book without one (#631)
+  const hitOf = (id: number): H => (vById.get(id) ?? kById.get(id) ?? mById.get(id))!;
   // re-sort before the cut: rrfFuse breaks ties by the fused id alone, which for figures (fused
   // on the row id) need not follow book order (#457)
-  const fused = rrfFuse([vec.map(idOf), kw.map(idOf)], RRF_K, [...w]).sort((a, b) => {
+  const fused = rrfFuse([vec.map(idOf), kw.map(idOf), meta.map(idOf)], RRF_K, [...w]).sort((a, b) => {
     const [ab, au] = tieOf(hitOf(a.id));
     const [bb, bu] = tieOf(hitOf(b.id));
     return b.score - a.score || ab - bb || au - bu;
@@ -406,10 +430,16 @@ async function rankBooks(
   if (req.mode === "vector") {
     return { items: single(deps.index.searchLibrary(libraryId, q, k, allow), "vector"), cut };
   }
-  // hybrid: fuse book rankings from both halves by bookId (vector first — weights order).
+  // hybrid: fuse book rankings from both halves by bookId (vector first — weights order), plus
+  // the metadata list (#631) when its weight is above 0; a missing third weight is the default 0.
   const vec = deps.index.searchLibrary(libraryId, q, POOL, allow);
   const kw = deps.index.searchLibraryFts(libraryId, req.query, POOL, allow);
-  const fused = withChunkSource(fuse({ vec, kw, idOf: (h) => h.bookId, tieOf: (h) => [h.bookId, h.bookId] }, k, w), kw);
+  const mw = w[2] ?? METADATA_RRF_WEIGHT;
+  const meta =
+    mw > 0 && deps.index.searchLibraryMetadata ? deps.index.searchLibraryMetadata(libraryId, q, POOL, allow) : [];
+  const weights = [w[0] ?? VECTOR_RRF_WEIGHT, w[1] ?? KEYWORD_RRF_WEIGHT, mw];
+  const tieOf = (h: LibraryHit) => [h.bookId, h.bookId] as const;
+  const fused = withChunkSource(fuse({ vec, kw, meta, idOf: (h) => h.bookId, tieOf }, k, weights), kw);
   return {
     items: rerankActive(req, deps) ? withKeywordCandidates(fused, kw) : fused,
     cut: hybridCut(knobs, vec, kw, (h) => h.bookId),
@@ -420,6 +450,7 @@ async function rankBooks(
 function withChunkSource(fused: Ranked<LibraryHit>[], kw: LibraryHit[]): Ranked<LibraryHit>[] {
   const kById = new Map(kw.map((h) => [h.bookId, h]));
   return fused.map((r) => {
+    if (r.hit.from === "description") return r; // a metadata row shows no chunk (#631)
     const k = kById.get(r.hit.bookId);
     // a cosine marks the vector half's hit (fuse keeps it when both halves have the book)
     const chunkFrom = r.cosine === undefined ? "keyword" : k?.chunkId === r.hit.chunkId ? "both" : "vector";

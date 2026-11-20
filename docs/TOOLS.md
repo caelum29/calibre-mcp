@@ -313,6 +313,12 @@ head, opened at the first sentence start if the passage begins mid-sentence. Eac
 `calibre_get_content` as `offset` to read on from the snippet; `charStart`/`charEnd` still span
 the whole passage.
 
+A library hit can instead show the book's description (Calibre comments) when the metadata
+list is on (it ships off; see [`SEMANTIC-SEARCH.md`](./SEMANTIC-SEARCH.md)): its text reads
+`from: description` before the snippet, its label is `MATCH book <id>` with no offsets, and
+`structuredContent.results[].snippetSource` is `"description"` with no `charStart`, `charEnd`
+or `snippetStart`.
+
 Front and back matter is placed after body text: in library scope a hit shows the book's best
 body passage, and a book that matches only in its table of contents, index, bibliography,
 preface or copyright page follows every book with a body match. In book scope only strong
@@ -851,6 +857,7 @@ only the part named here is contract. The table is generated from the server's r
 | `calibre_get_content` | `cursor` | `… cursor: <nextCursor>` at the end of the line — pass the token verbatim (the words before `cursor:` are Prose) | `nextCursor` |
 | `calibre_build_index` | `Indexed ids` | `Indexed ids: <id>, <id>.` | `bookDetails[].bookId` |
 | `calibre_build_index` | `FTS` | `- FTS: write_disabled\|already enabled\|enabled\|failed — …` — only with `enableFts: true` (`already enabled` is `already_enabled`; the words after the dash are Prose) | `fts.status` |
+| `calibre_semantic_search` | `from` | `from: description` — right before the fence of a hit whose snippet is the book's description | `results[].snippetSource` |
 | `calibre_remove_book` | `Not found` | `Not found (skipped): #<id or uuid>, #<id or uuid>` (an unresolved uuid also prints with `#`, a known limit) | `notFoundIds[]` |
 | `calibre_ping` | `calibredb` | `calibredb: <path> (Content Server <url>)` | `calibredbPath` |
 | `calibre_ping` | `calibre version` | `calibre version: <x.y[.z]>\|unknown` — from `calibredb --version` | `calibreVersion` |
@@ -868,7 +875,6 @@ to `calibre_update_book` or `calibre_add_book` while writes are off.
 
 Tools whose text has no Labelled lines beyond the error lines:
 
-- `calibre_semantic_search` — text is Prose (its fields sit inside sentences or item lines)
 - `calibre_get_figures` — text is Prose; no outputSchema (images ride in content blocks)
 - `calibre_recover_metadata` — text is Prose (its fields sit inside sentences or item lines)
 - `calibre_extract_isbn` — text is Prose (its fields sit inside sentences or item lines)

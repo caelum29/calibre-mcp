@@ -175,6 +175,17 @@ Two refinements worth knowing about:
   `[back matter: index]`, `[back matter: bibliography]` or `[back matter: copyright/ads]`, and
   the header notes how many were placed after body matches. Books indexed before this change
   keep only their front-matter labels until they are re-indexed or backfilled.
+- **Book descriptions (off by default).** The index also holds one metadata row per indexed
+  book: title, authors, series, tags and the Calibre description (comments), cut to about
+  1,800 characters. Library hybrid search can rank these rows as a third list in the fusion,
+  so a book whose text barely extracts (an image-only PDF) can still be found by its
+  description. The list ships switched off (weight 0) until a judged live comparison
+  decides it; with it off, results are exactly those without it. When it is on, a book that
+  only this list found is reranked on its description and shown with its description as the
+  snippet: the hit says `from: description` before its snippet, carries
+  `snippetSource: "description"`, and has no `charStart`, `charEnd` or `snippet@` offset,
+  because the description is not a place in the book. A book with a text match keeps
+  showing its text.
 
 ## Figure search
 
