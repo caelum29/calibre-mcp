@@ -59,15 +59,12 @@ export class SqliteWriter implements IndexWriter {
           return "preserved";
         }
       }
-      db.prepare("DELETE FROM embeddings WHERE book_id = ?").run(meta.bookId);
-      db.prepare("DELETE FROM chunks WHERE book_id = ?").run(meta.bookId);
-      db.prepare("DELETE FROM figures WHERE book_id = ?").run(meta.bookId);
-      db.prepare("DELETE FROM books WHERE book_id = ?").run(meta.bookId);
-      // Section rows go with the chunks (#695): rewritten here, cleared when the book has none.
+      // Every per-book table is cleared from one list; the rewrites below re-fill sections, the
+      // offset map and the metadata row (#655, #631, #695), or leave them cleared when none came.
+      clearBookRows(db, meta.bookId);
+      // Section rows go with the chunks (#695).
       writeSections(db, meta.bookId, opts.sections);
-      // The offset map goes with the chunks too (#655): rewritten, or cleared when none came.
       writeOffsetMap(db, meta.bookId, opts.offsetMap);
-      // The metadata row (#631) goes with them too: rewritten here, cleared when none is given.
       writeBookMetadata(db, meta.bookId, meta.lastModified, opts.metadata, meta.lang);
 
       db.prepare(
@@ -208,22 +205,12 @@ export class SqliteWriter implements IndexWriter {
     // BEGIN that upgrades to a writer mid-transaction can fail with SQLITE_BUSY without waiting.
     db.exec("BEGIN IMMEDIATE");
     try {
-      const delEmb = db.prepare("DELETE FROM embeddings WHERE book_id = ?");
-      const delChunks = db.prepare("DELETE FROM chunks WHERE book_id = ?");
-      const delFigures = db.prepare("DELETE FROM figures WHERE book_id = ?");
-      const delBook = db.prepare("DELETE FROM books WHERE book_id = ?");
-      const delSections = db.prepare("DELETE FROM sections WHERE book_id = ?");
-      const delMap = db.prepare("DELETE FROM text_maps WHERE book_id = ?");
-      const delMetadata = db.prepare("DELETE FROM book_metadata WHERE book_id = ?");
       for (const id of bookIds) {
-        delEmb.run(id);
-        delSections.run(id);
-        delMap.run(id);
-        delMetadata.run(id); // its DELETE trigger clears book_metadata_fts
-        // The chunks/figures DELETE triggers keep the FTS shadow tables in sync.
-        counts.chunks += Number(delChunks.run(id).changes);
-        counts.figures += Number(delFigures.run(id).changes);
-        counts.books += Number(delBook.run(id).changes);
+        // The chunks/figures/book_metadata DELETE triggers keep the FTS shadow tables in sync.
+        const cleared = clearBookRows(db, id);
+        counts.chunks += cleared.chunks;
+        counts.figures += cleared.figures;
+        counts.books += cleared.books;
       }
       db.exec("COMMIT");
       return counts;
@@ -234,6 +221,29 @@ export class SqliteWriter implements IndexWriter {
       this.invalidate(libraryId, bookIds);
     }
   }
+}
+
+/**
+ * Every table holding rows keyed by `book_id`. A new per-book table goes here once: a book's
+ * re-index and its prune both clear through this list, so neither can miss it.
+ */
+export const PER_BOOK_TABLES = [
+  "embeddings",
+  "chunks",
+  "figures",
+  "books",
+  "sections",
+  "text_maps",
+  "book_metadata",
+] as const;
+
+/** Delete one book's rows from every per-book table; returns the rows removed per table. */
+function clearBookRows(db: DatabaseSync, bookId: number): Record<(typeof PER_BOOK_TABLES)[number], number> {
+  const out = {} as Record<(typeof PER_BOOK_TABLES)[number], number>;
+  for (const table of PER_BOOK_TABLES) {
+    out[table] = Number(db.prepare(`DELETE FROM ${table} WHERE book_id = ?`).run(bookId).changes);
+  }
+  return out;
 }
 
 /** Replace a book's offset map row (#655); `map` is encodeOffsetMap's `m1:` form, undefined = none. */
