@@ -1,0 +1,59 @@
+src/tools/labelled-lines.ts
+  s_573609c4bcf47a::t_a8d12bf4c40c02 5-6,273-274
+src/tools/calibre_ping.ts
+  s_573609c4bcf47a::t_a8d12bf4c40c02 8,72,228-230,233,254,269-270
+scripts/judged-lengths.ts
+  s_573609c4bcf47a::t_a8d12bf4c40c02 8-9
+src/tools/remediation.ts
+  s_573609c4bcf47a::t_a8d12bf4c40c02 9-11
+test/app/library-index.test.ts
+  s_573609c4bcf47a::t_a8d12bf4c40c02 58-66
+skills/calibre-mcp-setup/SKILL.md
+  s_573609c4bcf47a::t_a8d12bf4c40c02 181
+src/domain/index-steers.ts
+  s_573609c4bcf47a::t_a8d12bf4c40c02 1-36
+test/eval/judged/judged-lengths.test.ts
+  s_573609c4bcf47a::t_a8d12bf4c40c02 17
+docs/TROUBLESHOOTING.md
+  s_573609c4bcf47a::t_a8d12bf4c40c02 119-120,178-179
+test/tools/rebuild-steer-720.test.ts
+  s_573609c4bcf47a::t_a8d12bf4c40c02 1-153
+docs/STABILITY.md
+  s_573609c4bcf47a::t_a8d12bf4c40c02 97
+scripts/keyword-plan-measure.ts
+  s_573609c4bcf47a::t_a8d12bf4c40c02 16-17
+docs/TOOLS.md
+  s_573609c4bcf47a::t_a8d12bf4c40c02 41,861
+skills/calibre-mcp/SKILL.md
+  s_573609c4bcf47a::t_a8d12bf4c40c02 137-138,142
+src/semantic/store/library-owner.ts
+  s_573609c4bcf47a::t_a8d12bf4c40c02 9-10
+src/app/library-index.ts
+  s_573609c4bcf47a::t_a8d12bf4c40c02 15-16,48-49,97-102,130
+src/domain/error-codes.ts
+  s_573609c4bcf47a::t_a8d12bf4c40c02 20,166
+docs/SEMANTIC-SEARCH.md
+  s_573609c4bcf47a::t_a8d12bf4c40c02 213-215
+src/semantic/store/schema.ts
+  s_573609c4bcf47a::t_a8d12bf4c40c02 15,372,455
+src/semantic/status.ts
+  s_573609c4bcf47a::t_a8d12bf4c40c02 20,147-149,178-179,181,184-186
+test/tools/rebuild-steer-guard-720.test.ts
+  s_573609c4bcf47a::t_a8d12bf4c40c02 1-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "479561bc576c69c9f466c6b2b8af5cdfa216da03",
+  "prompts": {},
+  "sessions": {
+    "s_573609c4bcf47a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "83b053bd-6451-4d51-bec0-a2c4fa2aa7f7",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
