@@ -13,7 +13,8 @@ import type { DatabaseSync } from "node:sqlite";
 import { type KeywordPlan, type KeywordToken, planKeywordQuery } from "../src/domain/search/keyword-plan.js";
 import { stemmedTokens } from "../src/semantic/stem.js";
 import { WEIGHTED_BM25, ftsMatch, keywordMatch } from "../src/semantic/store/shared.js";
-import { indexFileName, openReadOnlyIndex } from "../src/semantic/store/schema.js";
+import { openReadOnlyIndex } from "../src/semantic/store/schema.js";
+import { indexFileName } from "../src/domain/index-steers.js";
 import { fts5TermStats, type Fts5TermStats } from "../src/semantic/store/term-stats.js";
 
 interface Query {

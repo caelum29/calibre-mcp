@@ -55,7 +55,15 @@ describe("libraryIndexReport (#346)", () => {
     expect(await libraryIndexReport(deps({}, searches))).toEqual([
       { id: "A", name: "Alpha", isDefault: true, state: "ok", indexed: 40, total: 50, withoutEmbeddings: 3 },
       { id: "B", name: "Beta", isDefault: false, state: "none" },
-      { id: "C", name: "Gamma", isDefault: false, state: "stale" },
+      {
+        id: "C",
+        name: "Gamma",
+        isDefault: false,
+        state: "stale",
+        // #720: the stale entry carries the delete-then-rebuild steer; no config → `<index dir>`
+        rebuild:
+          "Delete <index dir>/C.sqlite (and <index dir>/C.sqlite-wal, <index dir>/C.sqlite-shm if present), then run calibre_build_index force=true to rebuild.",
+      },
       { id: "D", name: "Delta", isDefault: false, state: "unreadable" },
     ]);
     expect(searches).toHaveLength(1);
