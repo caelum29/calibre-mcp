@@ -54,7 +54,7 @@ The cached, cleaned text of a book that every stored offset refers to (chunk spa
 _Avoid_: raw text (that is the converter's output), clean text
 
 **Offset map**:
-Per book, the edits from normalised-text positions back to the converter's raw positions, stored in `text_maps`. Used to remap offsets quoted in raw coordinates (eval labels); never read on the search path.
+Per book, the edits from normalised-text positions back to the converter's raw positions, stored per book in `text_maps` (and in the text-cache envelope). Read by no query path; its first use was the one-time remap of eval labels that carry raw offsets (ADR-0033).
 _Avoid_: text map, position table
 
 **Book metadata row**:

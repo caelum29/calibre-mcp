@@ -128,7 +128,8 @@ The project records decisions as numbered ids (`D-NNN`) cited in code comments; 
 files are listed under [Decision ids](#decision-ids).
 
 1. **A small multilingual embedding model** (D-001, D-012). `multilingual-e5-small` runs on CPU, has 384
-   dimensions, and handles queries against books in either language (measured on the 34-book eval fixture: 24 English, 8 Russian, 2 Ukrainian books). Larger candidates
+   dimensions, and handles English and Russian queries against books in either language
+   (measured on the 34-book eval fixture: 24 English, 8 Russian, 2 Ukrainian books). Larger candidates
    (EmbeddingGemma-300M, bge-m3) were measured on the eval suite and did not earn their size and index rebuild.
    *Trade-off:* a lower ceiling than a large English-only model, in exchange for local, fast, cross-lingual
    search.
