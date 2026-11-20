@@ -1,0 +1,19 @@
+src/tools/remediation.ts
+  s_294e768aed5bc0::t_0b641e247cb6cb 9-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2797e44e737b302df2a02d13abe560e61e53f14b",
+  "prompts": {},
+  "sessions": {
+    "s_294e768aed5bc0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "98d0ad60-17ea-4a29-8345-fb6219b1a5e7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
