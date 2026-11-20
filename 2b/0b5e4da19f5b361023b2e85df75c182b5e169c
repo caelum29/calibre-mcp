@@ -1,0 +1,40 @@
+docs/ARCHITECTURE.md
+  s_a3021d65cec81b::t_44a313b7a24716 107,131-132
+test/domain/normalise/epub-artefacts-560.test.ts
+  s_a3021d65cec81b::t_44a313b7a24716 84
+docs/SEMANTIC-SEARCH.md
+  s_a3021d65cec81b::t_44a313b7a24716 176,181-182,241-244
+README.md
+  s_a3021d65cec81b::t_44a313b7a24716 33-35
+docs/TOOLS.md
+  s_a3021d65cec81b::t_44a313b7a24716 41
+src/semantic/store/writer.ts
+  s_a3021d65cec81b::t_44a313b7a24716 62-65,209-213,226-246
+  s_a3021d65cec81b::t_65bf129c5a5b03 247-248
+test/semantic/encode-worker-metadata-transfer-719.test.ts
+  s_a3021d65cec81b::t_44a313b7a24716 1-55
+GLOSSARY.md
+  s_a3021d65cec81b::t_44a313b7a24716 50-63
+test/semantic/per-book-tables-719.test.ts
+  s_a3021d65cec81b::t_44a313b7a24716 1-126
+test/tools/index-book.refresh-flags.test.ts
+  s_a3021d65cec81b::t_44a313b7a24716 164-192
+src/domain/figures/markers.ts
+  s_a3021d65cec81b::t_44a313b7a24716 281
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2b0b5e4da19f5b361023b2e85df75c182b5e169c",
+  "prompts": {},
+  "sessions": {
+    "s_a3021d65cec81b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0013acb0-bea7-41b4-aa5c-b8fc857e570f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
