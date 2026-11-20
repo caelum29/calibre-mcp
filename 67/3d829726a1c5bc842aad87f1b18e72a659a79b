@@ -1,0 +1,59 @@
+src/tools/labelled-lines.ts
+  s_294e768aed5bc0::t_4fc2477bf195a8 5-6
+  s_294e768aed5bc0::t_18734218bd41e7 273-274
+src/app/library-index.ts
+  s_294e768aed5bc0::t_2f35aaf0907939 48,99
+  s_294e768aed5bc0::t_42093e681488ef 15-16,49,97-98,100-102,130
+src/semantic/status.ts
+  s_294e768aed5bc0::t_42093e681488ef 20,147-149,184,186
+  s_294e768aed5bc0::t_71eba8961c352d 181,185
+  s_294e768aed5bc0::t_45f69ea42114f3 178-179
+docs/TOOLS.md
+  s_294e768aed5bc0::t_ddcec4fa97830d 41
+  s_294e768aed5bc0::t_ac980c732230cd 861
+test/eval/judged/judged-lengths.test.ts
+  s_294e768aed5bc0::t_6faabc8560090b 17
+src/tools/calibre_ping.ts
+  s_294e768aed5bc0::t_cfa33844d7fc35 8,72,233,254,269-270
+  s_294e768aed5bc0::t_b8e2d1e76d10df 228-230
+src/semantic/store/library-owner.ts
+  s_294e768aed5bc0::t_6faabc8560090b 9-10
+skills/calibre-mcp/SKILL.md
+  s_294e768aed5bc0::t_ddcec4fa97830d 137-138,142
+scripts/keyword-plan-measure.ts
+  s_294e768aed5bc0::t_6faabc8560090b 16-17
+src/semantic/store/schema.ts
+  s_294e768aed5bc0::t_f359987ad866cf 455
+  s_294e768aed5bc0::t_f4909754c57a8c 15,372
+src/domain/index-steers.ts
+  s_294e768aed5bc0::t_ea016179f215fd 1-36
+docs/SEMANTIC-SEARCH.md
+  s_294e768aed5bc0::t_ddcec4fa97830d 214-216
+docs/TROUBLESHOOTING.md
+  s_294e768aed5bc0::t_ddcec4fa97830d 119-120,178-179
+docs/STABILITY.md
+  s_294e768aed5bc0::t_2f35aaf0907939 97
+test/app/library-index.test.ts
+  s_294e768aed5bc0::t_2f35aaf0907939 58-66
+scripts/judged-lengths.ts
+  s_294e768aed5bc0::t_6faabc8560090b 8-9
+src/domain/error-codes.ts
+  s_294e768aed5bc0::t_038a0f49ad7550 166
+  s_294e768aed5bc0::t_df551c02f1a6b9 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "673d829726a1c5bc842aad87f1b18e72a659a79b",
+  "prompts": {},
+  "sessions": {
+    "s_294e768aed5bc0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "98d0ad60-17ea-4a29-8345-fb6219b1a5e7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
