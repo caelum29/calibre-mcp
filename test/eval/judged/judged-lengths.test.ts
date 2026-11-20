@@ -14,7 +14,7 @@ import {
   renderLengthBreakdown,
   type BookLengths,
 } from "../../../scripts/judged-lengths.js";
-import { indexFileName } from "../../../src/semantic/store/schema.js";
+import { indexFileName } from "../../../src/domain/index-steers.js";
 
 describe("quartileCuts / quartileOf", () => {
   it("cuts at the sorted counts' 1/4, 2/4, 3/4 positions", () => {

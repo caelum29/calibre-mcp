@@ -2,6 +2,8 @@
 // fields. Error results are text-only on both clients (#437), so their code and next step ride here.
 // One home for the label strings so the public-contract registry (#454) can list them.
 
+import { rebuildSteer, STALE_STEMS_STEER } from "../domain/index-steers.js";
+
 /** Labels of the lines toolError appends to every error text. */
 export const ERROR_LINE_LABELS = {
   code: "Code",
@@ -286,7 +288,8 @@ export const LABELLED_LINES: Readonly<Record<string, ToolLabelledLines>> = {
         match: "segment",
         pattern: /(?:^Index: | · )[^·\n]+? \(id: (?<v>[^)]+)\)(?: \[default\])?: /,
         format:
-          "each Index entry: `<Name> (id: <libraryId>)[ [default]]: <N>/<M|?> indexed[ (<K> without embeddings)][ (<S> books with stale keyword stems — …)]|none|stale index — delete <index file> (and its -wal, -shm), then run calibre_build_index force=true to rebuild.|busy — …|not indexable — …|index unreadable` (at most 20)",
+          // the steers come from their one source (#720), so the spec can't drift from the line
+          `each Index entry: \`<Name> (id: <libraryId>)[ [default]]: <N>/<M|?> indexed[ (<K> without embeddings)][ (<S> ${STALE_STEMS_STEER})]|none|stale index — ${rebuildSteer("<index file>")}.|busy — …|not indexable — …|index unreadable\` (at most 20)`,
         field: "indexes[].id",
         compare: "equal",
       },

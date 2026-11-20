@@ -5,7 +5,6 @@
 
 import { DatabaseSync } from "node:sqlite";
 import { existsSync, mkdirSync } from "node:fs";
-import path from "node:path";
 import type { Config } from "../../config.js";
 import type { LogSink } from "../../logging.js";
 import { stemVersion } from "../language/registry.js";
@@ -13,6 +12,7 @@ import { EMBED_DIM, INDEX_VERSION, MODEL_ID } from "../model.js";
 import { DIAGNOSTIC_BUSY_TIMEOUT_MS, isIndexBusy } from "../index-busy.js";
 import { type Row, WEIGHTED_BM25 } from "./shared.js";
 import type { IndexMeta } from "./types.js";
+import { indexFilePath, rebuildSteer } from "../../domain/index-steers.js";
 import type { LibraryIdGuard } from "./library-owner.js";
 
 const SCHEMA = `
@@ -370,16 +370,8 @@ export class IndexConnections {
 
   /** Db path for a library (no fs side effects). ":memory:" when the index dir is in-memory. */
   #file(libraryId: string): string {
-    if (this.cfg.indexDir === ":memory:") return ":memory:";
-    return path.join(this.cfg.indexDir, indexFileName(libraryId));
+    return indexFilePath(this.cfg.indexDir, libraryId);
   }
-}
-
-/** The index file name for a library id (no fs side effects). */
-export function indexFileName(libraryId: string): string {
-  // Sanitize the library id into a safe filename component.
-  const safe = libraryId.replace(/[^A-Za-z0-9._-]/g, "_") || "default";
-  return `${safe}.sqlite`;
 }
 
 /** Meta key holding the stem version the stemmed columns were written with (#654). */
@@ -456,21 +448,12 @@ function wantedMeta(): Record<string, string> {
   return { model_id: MODEL_ID, dim: String(EMBED_DIM), index_version: String(INDEX_VERSION) };
 }
 
-/**
- * The way out of an incompatible index (#655 review): the guard refuses EVERY open, the build's
- * included, so `force=true` alone cannot rebuild it; the file must go first.
- */
-export function rebuildSteps(file: string): string {
-  const target = file === ":memory:" ? "the index file" : `${file} (and ${file}-wal, ${file}-shm if present)`;
-  return `Delete ${target}, then run calibre_build_index force=true to rebuild.`;
-}
-
 /** Refuse an index built by a different model/version — it can't be searched or extended. */
 function assertCompatible(existing: Map<string, string>, file: string): void {
   for (const [k, v] of Object.entries(wantedMeta())) {
     if (existing.get(k) !== v) {
       throw new Error(
-        `INDEX_INCOMPATIBLE: index built with ${k}=${existing.get(k)} but this server uses ${v}. ${rebuildSteps(file)}`,
+        `INDEX_INCOMPATIBLE: index built with ${k}=${existing.get(k)} but this server uses ${v}. ${rebuildSteer(file, "sentence")}.`,
       );
     }
   }

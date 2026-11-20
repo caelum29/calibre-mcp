@@ -12,6 +12,8 @@ import { within } from "../shared/within.js";
 import { pageIds } from "../domain/search.js";
 import { LibraryIdCollisionError } from "../domain/library-id-collision.js";
 import { isIndexBusy } from "../semantic/index-busy.js";
+import { indexFilePath, rebuildSteer } from "../domain/index-steers.js";
+import type { Config } from "../config.js";
 
 /** One library's index coverage; `total` is null when the Content Server did not answer in time. */
 export interface LibraryIndex {
@@ -43,6 +45,8 @@ export interface LibraryIndex {
 
 /** The reads the report makes: library list + one count per library, and index coverage. */
 export interface LibraryIndexDeps {
+  /** Where the index files live, so a stale entry names the file to delete (#720); absent → `<index dir>` stands in. */
+  config?: Pick<Config, "indexDir">;
   content: Pick<LibraryReader, "libraryInfo" | "search">;
   index: Pick<StatusIndex, "hasIndex" | "indexMeta" | "stats" | "booksMissingVectors"> &
     Pick<IndexFreshness, "indexedBookIds"> &
@@ -90,6 +94,12 @@ async function liveIds(
   }
 }
 
+/** A stale entry's way out (#720): delete its file and side files, then force-rebuild. */
+function staleRebuild(deps: LibraryIndexDeps, id: string): string {
+  const file = indexFilePath(deps.config?.indexDir ?? "<index dir>", id);
+  return `${rebuildSteer(file, "sentence")}.`;
+}
+
 /** The whole index section (libraryInfo + every count) gets one short budget, so ping stays fast. */
 const INDEX_DEADLINE_MS = 5000;
 
@@ -117,7 +127,7 @@ export async function libraryIndexReport(deps: LibraryIndexDeps): Promise<Librar
         if (!deps.index.hasIndex(id)) return { ...lib, state: "none" };
         const meta = deps.index.indexMeta(id, { diagnostic: true });
         if (!meta) return { ...lib, state: "unreadable" };
-        if (staleness(meta) !== undefined) return { ...lib, state: "stale" };
+        if (staleness(meta) !== undefined) return { ...lib, state: "stale", rebuild: staleRebuild(deps, id) };
         // Keyword-only books are FTS-searchable, so they count as indexed; semantic search can't
         // reach them, so the report says how many (#325).
         // every index read before the first request: a damaged store fails without a library round-trip

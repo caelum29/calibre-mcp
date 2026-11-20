@@ -4,9 +4,8 @@
 // libraries the busy breaker is failing fast (calibre/busy.ts), index coverage (app/library-index.ts)
 // and whether Calibre itself accepts writes (#439: our gate alone can say ENABLED while Calibre refuses).
 
-import path from "node:path";
 import { defineTool } from "./define.js";
-import { indexFileName, rebuildSteps } from "../semantic/store/schema.js";
+import { indexFilePath, rebuildSteer, STALE_STEMS_STEER } from "../domain/index-steers.js";
 import { toolError, toolText } from "./result.js";
 import { computeSemanticStatus, formatSemanticStatusLine, type StatusIndex } from "../semantic/status.js";
 import { libraryIndexReport, type LibraryIndex } from "../app/library-index.js";
@@ -70,7 +69,7 @@ export const pingTool = defineTool({
     const busy = busyReport(deps.libraryBusy?.busyLibraries() ?? []);
 
     const semantic = computeSemanticStatus(deps, libId);
-    const semLine = formatSemanticStatusLine(semantic);
+    const semLine = formatSemanticStatusLine(semantic, deps.config.indexDir);
     // Self-diagnosis without file access (#247). Text too — Desktop strips structuredContent.
     const diag = diagnostics();
     const serverUrl = deps.config.serverUrl;
@@ -226,30 +225,16 @@ function serverHeader(deps: BaseDeps, version: CalibreVersionInfo): string {
 async function indexSection(deps: PingDeps, skipped?: string): Promise<{ line: string; indexes?: LibraryIndex[] }> {
   const label = (value: string) => labelledLine(PING_LINE_LABELS.index, value);
   if (skipped !== undefined) return { line: label(`skipped — ${skipped}`) };
-  const report = await libraryIndexReport(deps);
-  if (!report) return { line: label("libraries unavailable") };
-  // a stale index is refused on every open, the build's too: name the file to delete (#655 review)
-  const indexes = report.map((i) =>
-    i.state === "stale"
-      ? {
-          ...i,
-          rebuild: rebuildSteps(
-            deps.config.indexDir === ":memory:" ? ":memory:" : path.join(deps.config.indexDir, indexFileName(i.id)),
-          ),
-        }
-      : i,
-  );
+  // a stale entry's rebuild steer (indexes[].rebuild) comes from the report (#720)
+  const indexes = await libraryIndexReport(deps);
+  if (!indexes) return { line: label("libraries unavailable") };
   if (indexes.length === 0) return { line: label("(no libraries)"), indexes };
   // the text stays bounded however many libraries there are; structuredContent keeps them all (#442)
-  const shown = cappedWithDefault(indexes).map(indexEntry);
+  const shown = cappedWithDefault(indexes).map((i) => indexEntry(i, deps.config.indexDir));
   const more = indexes.length - shown.length;
   if (more > 0) shown.push(`… +${more} more — full list in structuredContent / calibre_list_libraries`);
   return { line: label(shown.join(" · ")), indexes };
 }
-
-/** The stale-stems warning after the count (#654): the rebuild the model can run itself. */
-const STALE_STEMS_STEER =
-  "books with stale keyword stems — keyword search still works; re-stem them with calibre_build_index force=true and a query that matches every book";
 
 /** Libraries listed in the Index text before it says "+K more" (#442). */
 const INDEX_TEXT_CAP = 20;
@@ -266,7 +251,7 @@ function cappedWithDefault(indexes: LibraryIndex[]): LibraryIndex[] {
 }
 
 /** One `Index:` entry: `Name (id: Lib_Id) [default]: <state>` — tools take the id, not the name (#440). */
-function indexEntry(i: LibraryIndex): string {
+function indexEntry(i: LibraryIndex, indexDir: string): string {
   const head = `${i.name} (id: ${i.id})${i.isDefault ? " [default]" : ""}`;
   switch (i.state) {
     case "ok":
@@ -281,7 +266,8 @@ function indexEntry(i: LibraryIndex): string {
     case "none":
       return `${head}: none`;
     case "stale":
-      return `${head}: stale index — ${(i.rebuild ?? "rebuild").replace(/^D/, "d")}`;
+      // same steer as indexes[].rebuild, as a clause after the dash (#720)
+      return `${head}: stale index — ${rebuildSteer(indexFilePath(indexDir, i.id))}.`;
     case "conflict":
       return `${head}: not indexable — id "${i.id}" differs only in case from "${i.conflictsWith}", which was indexed first; rename the "${i.id}" library folder`;
     case "busy":
