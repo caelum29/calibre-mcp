@@ -9,6 +9,54 @@ inserts its generated section above the newest entry. Hand-written notes still g
 `[Unreleased]`; when merging a release PR, fold them into the generated section and leave
 `[Unreleased]` empty.
 
+## [0.15.0](https://github.com/caelum29/calibre-mcp/compare/v0.14.0...v0.15.0) (2026-11-20)
+
+
+### ⚠ BREAKING CHANGES
+
+* **semantic:** calibre_semantic_search passages no longer carry frontMatter; read matterKind: "front".
+
+### Added
+
+* **app:** detect the book language in the index trip ([#654](https://github.com/caelum29/calibre-mcp/issues/654)) ([861c61d](https://github.com/caelum29/calibre-mcp/commit/861c61d76cdc164348741fc7ee006d8559e6c832))
+* **chunk:** break at Intl.Segmenter sentence ends instead of ". " ([#655](https://github.com/caelum29/calibre-mcp/issues/655)) ([a9fc51c](https://github.com/caelum29/calibre-mcp/commit/a9fc51c7be7dc4d32bd00ba7ab46e906152b83f4))
+* **index:** normalise extracted text before markers; index version 5, text cache v9, cursor v3 ([#655](https://github.com/caelum29/calibre-mcp/issues/655)) ([144e81a](https://github.com/caelum29/calibre-mcp/commit/144e81a778afe52fcb2979b31805f74ca3a38ac7))
+* **index:** text-normalisation stage and index version 5 ([#655](https://github.com/caelum29/calibre-mcp/issues/655)) ([3916517](https://github.com/caelum29/calibre-mcp/commit/391651747205fffad86115367eb0fd95404bd757))
+* **normalise:** character rule set and cleaned-to-raw offset map ([#655](https://github.com/caelum29/calibre-mcp/issues/655)) ([40005eb](https://github.com/caelum29/calibre-mcp/commit/40005eb6c3faf8bd0d88a34db7368d582f6f0c74))
+* **normalise:** EPUB artefact rule set for ebook-convert Markdown text ([#560](https://github.com/caelum29/calibre-mcp/issues/560)) ([162cc15](https://github.com/caelum29/calibre-mcp/commit/162cc15bc7393b92dce383278bec28691225ef2c))
+* **normalise:** EPUB artefact rule set for ebook-convert Markdown text ([#560](https://github.com/caelum29/calibre-mcp/issues/560)) ([7aff2ef](https://github.com/caelum29/calibre-mcp/commit/7aff2ef5f34f239dbf700c74e0114ed50ba84929))
+* **semantic:** 800-char library snippets, section and PDF page labels on text hits ([#708](https://github.com/caelum29/calibre-mcp/issues/708)) ([82b75a9](https://github.com/caelum29/calibre-mcp/commit/82b75a92e20f4809985f2e59a44451b255bac249))
+* **semantic:** 800-char library snippets, section and PDF page labels on text hits ([#708](https://github.com/caelum29/calibre-mcp/issues/708)) ([03ff085](https://github.com/caelum29/calibre-mcp/commit/03ff085efa43d49aecb9db4e16e2bf98432bdae4))
+* **semantic:** book language detection and pack routing ([#654](https://github.com/caelum29/calibre-mcp/issues/654)) ([15df97e](https://github.com/caelum29/calibre-mcp/commit/15df97e1e3371a123190535dcdf18a89450e9c81))
+* **semantic:** book-language stems and query stem variants in stem.ts ([#654](https://github.com/caelum29/calibre-mcp/issues/654)) ([dce525b](https://github.com/caelum29/calibre-mcp/commit/dce525b68199a836701ba088b978432748f5e85e))
+* **semantic:** drop the front_matter dual-write and the frontMatter output field ([#693](https://github.com/caelum29/calibre-mcp/issues/693)) ([6ae488b](https://github.com/caelum29/calibre-mcp/commit/6ae488b70ef8cd0553daa6b1ad59f009cb323c59))
+* **semantic:** per-book metadata row in its own table, index side only ([#631](https://github.com/caelum29/calibre-mcp/issues/631)) ([36e6391](https://github.com/caelum29/calibre-mcp/commit/36e6391be523d3c57d224e16309d998bed983091))
+* **semantic:** per-book metadata row, index side ([#631](https://github.com/caelum29/calibre-mcp/issues/631)) ([c86a49c](https://github.com/caelum29/calibre-mcp/commit/c86a49c11792755f611a82abf65e208f899d9c2c))
+* **semantic:** per-book stem version and the calibre_ping stale-stems warning ([#654](https://github.com/caelum29/calibre-mcp/issues/654)) ([81bb09c](https://github.com/caelum29/calibre-mcp/commit/81bb09c242399add9748268806ade36da954b863))
+* **semantic:** query stem variants over the library's book languages ([#654](https://github.com/caelum29/calibre-mcp/issues/654)) ([41113a7](https://github.com/caelum29/calibre-mcp/commit/41113a72936d679020a5fc423f0651a40a414db4))
+* **semantic:** stem the book_metadata row with the book's language pack ([#654](https://github.com/caelum29/calibre-mcp/issues/654)) ([698ad13](https://github.com/caelum29/calibre-mcp/commit/698ad13cb01c1e3d3a02ca3e97b6065a05bfc01e))
+* **semantic:** store books.lang and record meta.stem_version ([#654](https://github.com/caelum29/calibre-mcp/issues/654)) ([fe6d74f](https://github.com/caelum29/calibre-mcp/commit/fe6d74fbeb744d16d133b969be5573bb89693dd5))
+* **semantic:** the detected book language sets the chunker's sentence locale ([#654](https://github.com/caelum29/calibre-mcp/issues/654)) ([5a7a89f](https://github.com/caelum29/calibre-mcp/commit/5a7a89ffb2b00fd4c0505b964fcf9a934bcfc8d9))
+* **semantic:** Ukrainian language pack over a vendored Snowball 3.2.0 stemmer ([#654](https://github.com/caelum29/calibre-mcp/issues/654)) ([6a3fe52](https://github.com/caelum29/calibre-mcp/commit/6a3fe525f5a560f4654a6e76873a559a93653bdc))
+* **semantic:** Ukrainian language pack, book language detection and per-book stem version ([7c42da7](https://github.com/caelum29/calibre-mcp/commit/7c42da755774168eb4867e88329bbf6ac0f7b921))
+
+
+### Fixed
+
+* **figures:** clean inventory caption text placed in markers ([#655](https://github.com/caelum29/calibre-mcp/issues/655)) ([01a10ba](https://github.com/caelum29/calibre-mcp/commit/01a10ba829144099c0a4e169d263039d07bd319c))
+* **figures:** match inventory captions under the text's character rules ([#655](https://github.com/caelum29/calibre-mcp/issues/655)) ([07f3454](https://github.com/caelum29/calibre-mcp/commit/07f34543b5444a503e95f7e12c9a8e1f3b8a82b2))
+* **index:** name the delete step for an incompatible index ([#655](https://github.com/caelum29/calibre-mcp/issues/655)) ([071e727](https://github.com/caelum29/calibre-mcp/commit/071e72739636227a2d4449b6a02304d4eb601a6a))
+* **normalise:** EPUB rules keep escaped stars, unescape backslash pairs, match fences, stay linear ([#560](https://github.com/caelum29/calibre-mcp/issues/560)) ([4a7853a](https://github.com/caelum29/calibre-mcp/commit/4a7853a54df766b871cb0477e8ad84c4ef03b2ba))
+* **normalise:** keep the numero sign out of NFKC ([#655](https://github.com/caelum29/calibre-mcp/issues/655)) ([326694f](https://github.com/caelum29/calibre-mcp/commit/326694f1ad058274a99ffa4a4454115b804bc9bd))
+* **normalise:** keep the space of an empty heading marker ([#560](https://github.com/caelum29/calibre-mcp/issues/560)) ([c3270b5](https://github.com/caelum29/calibre-mcp/commit/c3270b54aba7c5b0ba44a0aeccc0c9ee3e1e1ecf))
+* **remediation:** one rebuild steer for an incompatible index ([#720](https://github.com/caelum29/calibre-mcp/issues/720)) ([36f51da](https://github.com/caelum29/calibre-mcp/commit/36f51dabf179ba8490276ea4202e31c479639077))
+* **remediation:** one source for the rebuild and stale-stems steers ([#720](https://github.com/caelum29/calibre-mcp/issues/720)) ([673d829](https://github.com/caelum29/calibre-mcp/commit/673d829726a1c5bc842aad87f1b18e72a659a79b))
+* **semantic:** normalise the metadata text, drop script bodies, decode common entities, no lone surrogate at the cut ([#631](https://github.com/caelum29/calibre-mcp/issues/631)) ([66520de](https://github.com/caelum29/calibre-mcp/commit/66520debf55bdba8be86113124a0477d27c3cfc8))
+* **semantic:** query candidate packs keep the script default, and distinctive letters switch the query only to a candidate pack ([#654](https://github.com/caelum29/calibre-mcp/issues/654), [#716](https://github.com/caelum29/calibre-mcp/issues/716) review) ([0d32eec](https://github.com/caelum29/calibre-mcp/commit/0d32eec77accac9e767768d469d474d15a4e427f))
+* **semantic:** stale-span check against the indexed text end, read-time title cleaning ([#708](https://github.com/caelum29/calibre-mcp/issues/708)) ([d20677d](https://github.com/caelum29/calibre-mcp/commit/d20677da3bd2259036396dd2e97be0ba37db1fc9))
+* **structure:** label wrapped index pages back_index ([4abb64b](https://github.com/caelum29/calibre-mcp/commit/4abb64b08d646862faf6324244cc4bdadb7260e1))
+* **structure:** label wrapped index pages back_index ([#722](https://github.com/caelum29/calibre-mcp/issues/722)) ([79a140f](https://github.com/caelum29/calibre-mcp/commit/79a140fa0bab1dd7681338fd2e6d51deca0513fc))
+
 ## [0.14.0](https://github.com/caelum29/calibre-mcp/compare/v0.13.0...v0.14.0) (2026-11-18)
 
 
