@@ -116,9 +116,8 @@ The server was upgraded past an index-format change. Index version 5 normalises 
 text and moves every offset into it, so a version-4 index can't be searched or extended — it is
 refused rather than mixed with new offsets, and `calibre_ping` lists it as `stale index — delete
 …`. The refusal applies to every open, the build's included, so `force: true` alone cannot
-rebuild it. First delete the library's index file `<index dir>/<library id>.sqlite` together with its `-wal` and `-shm` files (the error message and ping name the exact path; the
-default index dir is in *Building the index* of `docs/SEMANTIC-SEARCH.md`), then run
-`calibre_build_index` with `force: true` (whole library, or a `query`/`ids` slice at a time). Books become searchable again as they are re-indexed; `calibre_search`
+rebuild it. The steer reads `delete <index dir>/<library id>.sqlite (and <index dir>/<library id>.sqlite-wal, <index dir>/<library id>.sqlite-shm if present), then run calibre_build_index force=true to rebuild` (the error message and ping name the exact path; the
+default index dir is in *Building the index* of `docs/SEMANTIC-SEARCH.md`). The rebuild may cover the whole library, or a `query`/`ids` slice at a time. Books become searchable again as they are re-indexed; `calibre_search`
 (metadata and Calibre full-text) works throughout. Offsets you saved from the old index
 (`charStart`, `offset`, cursors) are stale too: search for the passage again.
 
@@ -176,8 +175,8 @@ index) to drop the stale entries; it reports how many books and chunks it remove
 
 The index has books whose keyword stems were written by an older set of stemmers, for example
 before Ukrainian stemming was added. Search keeps working, but the keyword half of those books
-still uses the old stems: Ukrainian word forms in them may not match each other. Re-index them
-with `calibre_build_index` with `force: true` and a query that matches every book. Each book that
+still uses the old stems: Ukrainian word forms in them may not match each other. The warning says
+`re-stem them with calibre_build_index force=true and a query that matches every book`. Each book that
 is re-indexed drops off the count, and the warning goes away once none is left. The vectors are
 rebuilt too, so this is a full rebuild, not a quick one.
 

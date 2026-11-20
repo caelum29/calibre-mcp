@@ -211,9 +211,9 @@ the running server — search and builds refuse such an index until you delete i
 offsets saved from a version-4 index point into the raw extraction and no longer match. After
 upgrading, `calibre_ping` reports each version-4 index as `stale index — delete …`, semantic
 search answers `index_incompatible`, and nothing is served from it in the meantime. The old file
-is refused on every open, the build's included, so `force=true` alone cannot replace it: first
-delete the library's index file `<index dir>/<library id>.sqlite` together with its `-wal` and `-shm` files (ping and the error name the exact path), then run `calibre_build_index force=true`
-(a full re-index — hours for a library of about a thousand books). Metadata and Calibre full-text search (`calibre_search`) keep working meanwhile.
+is refused on every open, the build's included, so `force=true` alone cannot replace it. The steer reads
+`delete <index dir>/<library id>.sqlite (and <index dir>/<library id>.sqlite-wal, <index dir>/<library id>.sqlite-shm if present), then run calibre_build_index force=true to rebuild` (ping and the error name the exact path;
+a full re-index — hours for a library of about a thousand books). Metadata and Calibre full-text search (`calibre_search`) keep working meanwhile.
 
 ## Multilingual
 

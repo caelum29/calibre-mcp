@@ -17,6 +17,7 @@ import { LibraryIdCollisionError } from "../domain/library-id-collision.js";
 import { EMBED_DIM, INDEX_VERSION, MODEL_ID } from "./model.js";
 import { staleness } from "./staleness.js";
 import { isIndexBusy } from "./index-busy.js";
+import { indexFilePath, rebuildSteer } from "../domain/index-steers.js";
 
 /** The semantic block mirrored onto calibre_ping's structuredContent. */
 export interface SemanticStatus {
@@ -143,7 +144,9 @@ export function computeSemanticStatus(
     reason =
       "the embedding model failed to load in this process, though @huggingface/transformers is installed on disk — restart the server to recover.";
   } else if (stale) {
-    reason = `the index was built with ${staleness(meta!)} — rebuild it with calibre_build_index force=true (search refuses it until then).`;
+    // the stale file is refused on every open, the build's too: name it (#720)
+    const steer = rebuildSteer(indexFilePath(deps.config.indexDir, libraryId!));
+    reason = `the index was built with ${staleness(meta!)} — ${steer} (search refuses it until then).`;
   } else if (clash) {
     reason = clash.message;
   }
@@ -172,12 +175,15 @@ export function computeSemanticStatus(
  * One or two lines summarizing the block, for the TEXT content (clients strip
  * structuredContent — the diagnosis must survive as prose). The locked model name and the
  * index counts are always reported, even when the model can't load (#108): they're known
- * without it, and the index still serves keyword search.
+ * without it, and the index still serves keyword search. `indexDir` lets a stale index's steer
+ * name the file to delete (#720); without it the steer shows a placeholder path.
  */
-export function formatSemanticStatusLine(s: SemanticStatus): string {
+export function formatSemanticStatusLine(s: SemanticStatus, indexDir?: string): string {
   const name = shortModel(s.model);
   if (s.indexStale) {
-    return `Semantic search: index STALE — built with ${name} ${s.dim}-dim, index v${s.indexVersion}; this server builds ${shortModel(MODEL_ID)} ${EMBED_DIM}-dim, index v${s.serverIndexVersion}. Rebuild with calibre_build_index force=true (search refuses this index until then; stored citations from v${s.indexVersion} may point at different text after the rebuild).`;
+    // a stale index carries the library it was read for; the delete step names its file (#720)
+    const steer = rebuildSteer(s.libraryId && indexDir ? indexFilePath(indexDir, s.libraryId) : undefined, "sentence");
+    return `Semantic search: index STALE — built with ${name} ${s.dim}-dim, index v${s.indexVersion}; this server builds ${shortModel(MODEL_ID)} ${EMBED_DIM}-dim, index v${s.serverIndexVersion}. ${steer} (search refuses this index until then; stored citations from v${s.indexVersion} may point at different text after the rebuild).`;
   }
   const index = formatIndexCounts(s);
   if (s.available) {
