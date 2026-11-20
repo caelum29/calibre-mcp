@@ -1,0 +1,19 @@
+test/domain/structure/matter-kind-722.test.ts
+  s_fda633774d99f1::t_7e6bb781b60e7a 1-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a2cc7c8a9e36589b40b6a3b0dcb8d94fb884c9fd",
+  "prompts": {},
+  "sessions": {
+    "s_fda633774d99f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "45586a54-cb3f-48e3-8639-7dabc32a999a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
