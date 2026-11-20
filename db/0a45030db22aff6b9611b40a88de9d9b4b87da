@@ -1,0 +1,21 @@
+docs/tool-catalog.json
+  s_640e5ecd98d974::t_954624831a1258 2573-2576,2612-2618,2664-2667,2704-2710
+docs/TOOLS.md
+  s_640e5ecd98d974::t_954624831a1258 871-872
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "db0a45030db22aff6b9611b40a88de9d9b4b87da",
+  "prompts": {},
+  "sessions": {
+    "s_640e5ecd98d974": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8f94b50f-cb71-4326-bf81-4ca0b12313f3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
