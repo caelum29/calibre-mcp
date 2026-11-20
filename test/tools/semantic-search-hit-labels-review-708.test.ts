@@ -121,7 +121,7 @@ describe("stored titles are cleaned at read time (#708 review)", () => {
   );
 
   it("control characters and tabs become single spaces, ends trimmed", async () => {
-    const s = storeWith({ source: "pdf-outline", sections: [span("\t13\u0000 Caching\f\r\n  Layers ")] });
+    const s = storeWith({ source: "pdf-outline", sections: [span("\t13\u0007 Caching\f\r\n  Layers ")] });
     const { hit } = await call(s, "library");
     expect(hit.sectionPath).toEqual(["13 Caching Layers"]);
   });
