@@ -63,6 +63,11 @@ const TITLE_MAX_CHARS = 60;
 const PROSE_LONG_CHARS = TITLE_MAX_CHARS;
 const PROSE_UNMARKED_CHARS = 20;
 const SENTENCE_END = /[.!?;:,]$/u;
+// A sentence (#722): at least 5 letter-only words ending in . ? or !, read over the chunk's lines
+// joined, since pdftotext wraps prose and index entries alike. A locator (any digit) or a
+// parenthesis breaks the run, so a wrapped index entry never forms one; 2 sentences make prose.
+const SENTENCE = /(?:^|[\s(“"‘])(?:\p{L}[\p{L}’'-]*[,;:]?\s+){4,}\p{L}[\p{L}’'-]*[.!?](?=["”’)]?(?:\s|$))/gu;
+const SENTENCE_PROSE_MIN = 2;
 const CONTENTS_TITLE = /^(?:contents|table of contents|brief contents|оглавление|содержание|зміст)$/u;
 
 /** True when a line ends in a page number or range (index locators, table-of-contents entries). */
@@ -91,6 +96,15 @@ export function carriesProse(chunk: string): boolean {
     if (line.length > PROSE_UNMARKED_CHARS && !CHAPTER_KEYWORD.test(line)) unmarked++;
   }
   return long > 2 || unmarked > 2;
+}
+
+/**
+ * Sentence prose (#722): at least 2 runs of 5+ letter-only words ending in `.`, `?` or `!`, over
+ * the chunk's lines joined. Unlike `carriesProse` it ignores line length, so an index page whose
+ * entries pdftotext wrapped over several locator-less lines does not read as prose.
+ */
+export function carriesSentences(chunk: string): boolean {
+  return (nonEmptyLines(chunk).join(" ").match(SENTENCE) ?? []).length >= SENTENCE_PROSE_MIN;
 }
 
 /** A short line that reads as a title: a letter, at most 60 chars, no sentence punctuation at the end. */
@@ -148,7 +162,9 @@ export function classifyChunk(chunk: string, place: ChunkPlace): MatterKind {
   const lines = nonEmptyLines(chunk);
   const back = place.position > BACK_START;
   const heading = place.heading ?? "";
-  if (back && (isIndexTitle(heading) || locatorDense(lines)) && !carriesProse(chunk)) return "back_index";
+  // Prose needs both guards (#722): wrapped index entries trip the line-length one alone.
+  const prose = carriesProse(chunk) && carriesSentences(chunk);
+  if (back && (isIndexTitle(heading) || locatorDense(lines)) && !prose) return "back_index";
   // A bibliography heading may be the chapter-map span's or a whole line inside the chunk.
   if (citationDense(lines) && (back || isBibliographyTitle(heading) || lines.some(isBibliographyTitle))) {
     return "back_biblio";
