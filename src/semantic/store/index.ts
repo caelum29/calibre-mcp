@@ -234,6 +234,16 @@ export class SqliteIndexStore implements IndexStore {
     return this.#sections.sectionPathAt(libraryId, bookId, charOffset);
   }
 
+  /** The 1-based PDF page at a character offset; undefined for an unpaged text (SectionIndex). */
+  pageAt(libraryId: string, bookId: number, charOffset: number): number | undefined {
+    return this.#sections.pageAt(libraryId, bookId, charOffset);
+  }
+
+  /** The book's indexed text end, its last chunk's charEnd (SectionIndex). */
+  indexedTextEnd(libraryId: string, bookId: number): number | undefined {
+    return this.#sections.indexedTextEnd(libraryId, bookId);
+  }
+
   /** Close the connections and drop the in-memory chunk and figure caches. */
   close(): void {
     this.#conn.close();

@@ -30,6 +30,8 @@ export function reversed(inner: IndexStore): IndexStore {
     keywordDropped: (l, q) => inner.keywordDropped(l, q),
     figuresInSpan: (l, b, s, e) => inner.figuresInSpan(l, b, s, e),
     sectionPathAt: (l, b, o) => inner.sectionPathAt(l, b, o),
+    pageAt: (l, b, o) => inner.pageAt(l, b, o),
+    indexedTextEnd: (l, b) => inner.indexedTextEnd(l, b),
     stats: (l) => inner.stats(l),
     vectorCount: (l) => inner.vectorCount(l),
     close: () => inner.close(),

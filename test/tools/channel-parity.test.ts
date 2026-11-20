@@ -427,9 +427,19 @@ const memoryStore = (): SqliteIndexStore => new SqliteIndexStore(loadConfig({ CA
 /** In-memory index holding two library books with one embedded passage each. */
 function indexedStore(): SqliteIndexStore {
   const s = memoryStore();
-  s.replaceBook("Programming_Books", { bookId: 101, title: "Rust in Action", authors: ["Tim McNamara"] }, [
-    { charStart: 0, charEnd: 30, body: "ownership moves the value", vector: axis(0) },
-  ]);
+  // book 101 is a paged text with a section span, so text hits carry `section:` and `page:` (#708)
+  s.replaceBook(
+    "Programming_Books",
+    { bookId: 101, title: "Rust in Action", authors: ["Tim McNamara"] },
+    [{ charStart: 0, charEnd: 30, body: "ownership moves the\fvalue", vector: axis(0) }],
+    [],
+    {
+      sections: {
+        source: "pdf-outline",
+        sections: [{ title: "4 Ownership", level: 1, charStart: 0, charEnd: 30, parent: null, matterKind: "body" }],
+      },
+    },
+  );
   s.replaceBook("Programming_Books", { bookId: 102, title: "Programming Rust", authors: ["Jim Blandy"] }, [
     { charStart: 40, charEnd: 80, body: "borrowing lends a reference", vector: axis(1) },
   ]);
@@ -1136,6 +1146,8 @@ const ALL_RENDERED = [
 
 /** A structured field's values: `a.b` → [value], `a[].b` → one per item. */
 function fieldValues(sc: unknown, field: string): unknown[] {
+  // `x | y`: whichever field the result carries (#708: results[] at library scope, passages[] at book scope)
+  if (field.includes(" | ")) return field.split(" | ").flatMap((f) => fieldValues(sc, f));
   let cur: unknown[] = [sc];
   for (const part of field.split(".")) {
     const each = part.endsWith("[]");
@@ -1159,6 +1171,7 @@ function expected(l: LabelledLine, sc: unknown): string[] | undefined {
   const vals = fieldValues(sc, l.field);
   if (l.compare === "equal") return vals.map(String);
   if (l.compare === "join") return [vals.map(String).join(", ")];
+  if (l.compare === "path") return vals.map((v) => (v as string[]).join(" › "));
   if (l.compare === "length") return [String((vals[0] as unknown[] | undefined)?.length ?? 0)];
   return undefined;
 }

@@ -146,6 +146,11 @@ identifiers:false   # no ISBN etc.
   markers removed; `\f` page breaks and headings kept),
   the same text search indexed — feed a hit's `charStart` as `offset`. Offsets or cursors saved
   before an index-version change are stale: search again instead of reusing them.
+- **Where a semantic hit sits**: text hits carry `section: A › B › C` (last 3 levels;
+  `sectionPath`) and, for PDFs, `page: N` (`page`, the 1-based PDF page index — not the printed
+  page number, so say "PDF page N" when citing). Library scope labels the snippet's start, book
+  scope the passage's start. No line means no data, not page 1 or no section. Library snippets
+  run up to 800 characters: quote from them before opening the book.
 - **Front/back matter in semantic hits**: hits labelled `[front matter]` or `[back matter:
   …]` (`matterKind` in structured output) come from a table of contents, index, bibliography or
   copyright page. Library scope places every such book after the books with a body match; book
