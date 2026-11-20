@@ -481,11 +481,11 @@ async function libraryScope(
       r.hit.snippet,
     );
     // library scope: the snippet's start decides, so a window past a section start shows that section
-    const labels = hitLabels(
-      deps.index,
-      { libraryId, bookId: r.hit.bookId, offset: r.hit.snippetStart ?? r.hit.charStart },
-      r.hit,
-    );
+    const labels = hitLabels(deps.index, {
+      libraryId,
+      bookId: r.hit.bookId,
+      offset: r.hit.snippetStart ?? r.hit.charStart,
+    });
     blocks.push({ type: "text", text: withProvenanceLine(labelLines(labels) + fenced, r, debug) });
     results.push({
       bookId: r.hit.bookId,
@@ -577,7 +577,7 @@ async function bookScope(
       r.hit.body,
     );
     // book scope: the whole chunk is shown, so its start decides
-    const labels = hitLabels(deps.index, { libraryId, bookId, offset: r.hit.charStart }, r.hit);
+    const labels = hitLabels(deps.index, { libraryId, bookId, offset: r.hit.charStart });
     blocks.push({ type: "text", text: withProvenanceLine(labelLines(labels) + fenced, r, debug) });
     passages.push({
       charStart: r.hit.charStart,

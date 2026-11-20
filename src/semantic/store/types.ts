@@ -331,6 +331,11 @@ export interface SectionIndex {
    * chunks before it leave a gap or overlap, or there is no index (no db file is created).
    */
   pageAt(libraryId: string, bookId: number, charOffset: number): number | undefined;
+  /**
+   * The end of one book's indexed text: its last chunk's `charEnd`. A stored span that ends past
+   * it is from an older, longer text. undefined when the book has no chunks or there is no index.
+   */
+  indexedTextEnd(libraryId: string, bookId: number): number | undefined;
 }
 
 /** The full store: every port plus lifecycle. Callers that need less depend on a port. */

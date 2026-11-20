@@ -95,6 +95,7 @@ function semanticDeps(cache: BoardCache): SemanticDeps {
       figuresInSpan: () => [],
       sectionPathAt: () => [],
       pageAt: () => undefined,
+      indexedTextEnd: () => undefined,
       deleteBooks: () => ({ books: 0, chunks: 0, figures: 0 }),
     } satisfies SemanticIndex,
     boardCache: cache,

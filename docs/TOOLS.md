@@ -326,8 +326,9 @@ count figure hits use, never the printed page number (`structuredContent` `page`
 other unpaged books have none. In library scope both describe the snippet's start, so a snippet
 that runs past a section start names the section it shows; in book scope they describe the
 passage's start. A label whose data is missing is left out (no line, no field): a book without
-section data, a section row that does not hold the hit's passage, or chunks that do not cover
-the text up to the hit. A preface hit carries both `[front matter]` and `section: Preface`.
+section data, section rows left from an older, longer text (a span ending past the book's
+indexed text), or chunks that do not cover the text up to the hit. Titles are printed on one
+line: whitespace and control characters become single spaces, at most 200 characters a level. A preface hit carries both `[front matter]` and `section: Preface`.
 
 Front and back matter is placed after body text: in library scope a hit shows the book's best
 body passage, and a book that matches only in its table of contents, index, bibliography,

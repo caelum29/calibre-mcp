@@ -35,9 +35,11 @@ export interface LabelAt {
   offset: number;
 }
 
-/** The labels at `at` for a hit on `chunk`: the section path (last 3 levels) and the PDF page. */
-export function hitLabels(index: SectionIndex, at: LabelAt, chunk: { charStart: number; charEnd: number }): HitLabels {
-  const sectionPath = hitSectionPath(index.sectionPathAt(at.libraryId, at.bookId, at.offset), chunk);
+/** The labels at `at`: the section path (cleaned, last 3 levels) and the PDF page. */
+export function hitLabels(index: SectionIndex, at: LabelAt): HitLabels {
+  const path = index.sectionPathAt(at.libraryId, at.bookId, at.offset);
+  // the text end is read only when there is a path to check against it
+  const sectionPath = path.length > 0 ? hitSectionPath(path, index.indexedTextEnd(at.libraryId, at.bookId)) : undefined;
   const page = index.pageAt(at.libraryId, at.bookId, at.offset);
   return { ...(sectionPath ? { sectionPath } : {}), ...(page !== undefined ? { page } : {}) };
 }

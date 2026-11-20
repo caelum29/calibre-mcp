@@ -336,7 +336,9 @@ export function renderLabelledLinesDoc(): string {
   const cell = (s: string) => s.replace(/\|/g, "\\|");
   const rows = ["| Tool | Label | Value format | Structured field |", "|---|---|---|---|"];
   const add = (tool: string, l: LabelledLine) =>
-    rows.push(`| ${tool} | \`${l.label}\` | ${cell(l.format)}${l.note ? ` (${cell(l.note)})` : ""} | \`${l.field}\` |`);
+    rows.push(
+      `| ${tool} | \`${l.label}\` | ${cell(l.format)}${l.note ? ` (${cell(l.note)})` : ""} | \`${cell(l.field)}\` |`,
+    );
   for (const l of ERROR_LINES) add("every tool (handler and write-gate errors)", l);
   const none: string[] = [];
   for (const [tool, entry] of Object.entries(LABELLED_LINES)) {

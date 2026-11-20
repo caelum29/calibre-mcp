@@ -239,6 +239,11 @@ export class SqliteIndexStore implements IndexStore {
     return this.#sections.pageAt(libraryId, bookId, charOffset);
   }
 
+  /** The book's indexed text end, its last chunk's charEnd (SectionIndex). */
+  indexedTextEnd(libraryId: string, bookId: number): number | undefined {
+    return this.#sections.indexedTextEnd(libraryId, bookId);
+  }
+
   /** Close the connections and drop the in-memory chunk and figure caches. */
   close(): void {
     this.#conn.close();

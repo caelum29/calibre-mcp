@@ -86,6 +86,8 @@ export class SqliteSectionIndex implements SectionIndex {
       )
       .get(bookId, hitStart) as Row;
     // A gap or an overlap (a dropped chunk, an older chunker) would miscount: no page then.
+    // Known limit: a whitespace-only chunk the chunker drops mid-book leaves such a gap, so every
+    // later hit in that book has no page (safe: absent, never wrong).
     if (Number(before.covered) !== hitStart) return undefined;
     const body = String(hit.body ?? "");
     const breaks = Number(before.breaks) + countBreaks(body.slice(0, charOffset - hitStart));
@@ -96,6 +98,15 @@ export class SqliteSectionIndex implements SectionIndex {
       .prepare("SELECT 1 FROM chunks WHERE book_id = ? AND char_start > ? AND instr(body, char(12)) > 0 LIMIT 1")
       .get(bookId, hitStart);
     return paged ? 1 : undefined;
+  }
+
+  indexedTextEnd(libraryId: string, bookId: number): number | undefined {
+    if (!this.conn.has(libraryId)) return undefined;
+    const row = this.conn
+      .db(libraryId)
+      .prepare("SELECT MAX(char_end) AS e FROM chunks WHERE book_id = ?")
+      .get(bookId) as Row | undefined;
+    return row?.e === null || row?.e === undefined ? undefined : Number(row.e);
   }
 }
 
