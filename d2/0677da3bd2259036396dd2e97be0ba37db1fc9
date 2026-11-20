@@ -1,0 +1,38 @@
+src/domain/structure/sections.ts
+  s_640e5ecd98d974::t_10d1ac3ba093f1 225-229,232-233,235-253
+src/semantic/store/types.ts
+  s_640e5ecd98d974::t_10d1ac3ba093f1 334-338
+src/tools/labelled-lines.ts
+  s_640e5ecd98d974::t_1233a22bc6dd23 339-341
+src/tools/calibre_semantic_search.ts
+  s_640e5ecd98d974::t_1233a22bc6dd23 484-488,580
+src/semantic/store/index.ts
+  s_640e5ecd98d974::t_10d1ac3ba093f1 242-246
+src/semantic/store/sections.ts
+  s_640e5ecd98d974::t_10d1ac3ba093f1 89-90,102-109
+  s_640e5ecd98d974::t_811ef0c3418be0 110
+src/tools/hit-labels.ts
+  s_640e5ecd98d974::t_1233a22bc6dd23 38-42
+test/eval/retrieval/broken-store.ts
+  s_640e5ecd98d974::t_1233a22bc6dd23 34
+test/tools/board-meta.test.ts
+  s_640e5ecd98d974::t_1233a22bc6dd23 98
+docs/TOOLS.md
+  s_640e5ecd98d974::t_9ed7e4c90a9462 329-331
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d20677da3bd2259036396dd2e97be0ba37db1fc9",
+  "prompts": {},
+  "sessions": {
+    "s_640e5ecd98d974": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8f94b50f-cb71-4326-bf81-4ca0b12313f3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
