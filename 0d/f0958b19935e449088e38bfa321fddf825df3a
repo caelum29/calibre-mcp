@@ -1,0 +1,21 @@
+GLOSSARY.md
+  s_573609c4bcf47a::t_cbc98dc71b0dd5 57
+docs/ARCHITECTURE.md
+  s_573609c4bcf47a::t_f096d70900d4e5 131-132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0df0958b19935e449088e38bfa321fddf825df3a",
+  "prompts": {},
+  "sessions": {
+    "s_573609c4bcf47a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "83b053bd-6451-4d51-bec0-a2c4fa2aa7f7",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
