@@ -104,7 +104,7 @@ The pipeline is described for users in [`SEMANTIC-SEARCH.md`](SEMANTIC-SEARCH.md
 2. **Chunk** it into passages of about 460 tokens, split along headings where possible; chunks in
    front matter are flagged.
 3. **Embed** each chunk with `multilingual-e5-small` and store the vectors as BLOBs in a local SQLite file
-   (`node:sqlite`), next to an FTS5 keyword index with English and Russian stemming.
+   (`node:sqlite`), next to an FTS5 keyword index with English, Russian and Ukrainian stemming.
 4. **Retrieve** with two halves: cosine similarity over every chunk vector (top 50) and a stemmed BM25 match
    (top 50), fused by Reciprocal Rank Fusion (k = 60, equal weights)
    ([`semantic/retrieve.ts`](../src/semantic/retrieve.ts), [`semantic/fusion.ts`](../src/semantic/fusion.ts)).
@@ -128,7 +128,8 @@ The project records decisions as numbered ids (`D-NNN`) cited in code comments; 
 files are listed under [Decision ids](#decision-ids).
 
 1. **A small multilingual embedding model** (D-001, D-012). `multilingual-e5-small` runs on CPU, has 384
-   dimensions, and handles English and Russian queries against books in either language. Larger candidates
+   dimensions, and handles English and Russian queries against books in either language
+   (measured on the 34-book eval fixture: 24 English, 8 Russian, 2 Ukrainian books). Larger candidates
    (EmbeddingGemma-300M, bge-m3) were measured on the eval suite and did not earn their size and index rebuild.
    *Trade-off:* a lower ceiling than a large English-only model, in exchange for local, fast, cross-lingual
    search.

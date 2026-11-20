@@ -81,6 +81,7 @@ describe("EPUB artefact rules (#560)", () => {
     const raw = "a \\(b\\) *c*\n\n\n\nd";
     expect(normaliseText(raw, ruleSetsFor("pdftotext")).text).toBe(raw);
     expect(normaliseText(raw, ruleSetsFor("ebook-convert:plain")).text).toBe(raw);
+    expect(normaliseText(raw, ruleSetsFor("pymupdf")).text).toBe(raw);
     expect(normaliseText(raw, ruleSetsFor("raw")).text).toBe(raw);
   });
 });

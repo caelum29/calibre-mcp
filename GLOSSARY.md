@@ -47,6 +47,20 @@ The language pack a book's text is in, detected from the text at index time (dom
 **Stem version**:
 The language packs and their versions that a book's stemmed columns were written with (e.g. `en:1|ru:1|uk:1`), recorded per book as `books.stem_version`; `meta.stem_version` records the set the index file was created with. A book whose stem version differs from the server's has stale stems: search keeps working, and `calibre_ping` counts those books.
 
+### Indexed text
+
+**Normalised text**:
+The cached, cleaned text of a book that every stored offset refers to (chunk spans, sections, figure markers, content cursors). The converter's raw output goes through the text stage's rewrite rules first (ADR-0033).
+_Avoid_: raw text (that is the converter's output), clean text
+
+**Offset map**:
+Per book, the edits from normalised-text positions back to the converter's raw positions, stored per book in `text_maps` (and in the text-cache envelope). Read by no query path; its first use was the one-time remap of eval labels that carry raw offsets (ADR-0033).
+_Avoid_: text map, position table
+
+**Book metadata row**:
+One row per book in `book_metadata` (#631): title, authors, series, tags and the comments blurb as one text, with its stems and its own passage vector. A separate table, never a chunk, because it has no character offsets.
+_Avoid_: metadata chunk
+
 ### Book images
 
 **Embedded image**:

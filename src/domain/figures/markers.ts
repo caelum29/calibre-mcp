@@ -270,7 +270,6 @@ function characterClean(s: string): string {
   return /[^\x20-\x7E]/.test(s) ? normaliseText(s, [CHARACTER_RULES]).text : s;
 }
 
-/** Fallback caption when the line itself wasn't found (page-boundary placement). */
 /**
  * A marker line is part of the indexed text (#655, ADR-0033): caption text taken from the figure
  * inventory (layout-read or page-fallback) gets the same character rules the text already had.
@@ -279,6 +278,7 @@ function cleanCaption(caption: string): string {
   return characterClean(caption);
 }
 
+/** Fallback caption when the line itself wasn't found (page-boundary placement). */
 function composeCaption(entry: FigureEntry): string {
   const label = entry.label ?? "";
   const text = entry.caption ?? "";
