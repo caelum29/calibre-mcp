@@ -1,0 +1,322 @@
+[
+  {
+    "id": "ki-01",
+    "category": "known-thin",
+    "library": "Programming_Books",
+    "scope": "library",
+    "bookId": null,
+    "target": "text",
+    "query": "professional JavaScript for web developers: DOM, events, browser APIs",
+    "mustCover": "The book itself: \"Professional JavaScript for Web Developers\" by Matt Frisbie (a known-item query: the user names this book).",
+    "expectedBooks": [
+      {
+        "id": 247,
+        "title": "Professional JavaScript for Web Developers"
+      }
+    ]
+  },
+  {
+    "id": "ki-02",
+    "category": "known-thin",
+    "library": "Programming_Books",
+    "scope": "library",
+    "bookId": null,
+    "target": "text",
+    "query": "функциональное программирование на JavaScript",
+    "mustCover": "The book itself: \"Функциональное программирование на JavaScript: как улучшить код J avaScript-npoгpaмм\" by Luis Atencio (a known-item query: the user names this book).",
+    "expectedBooks": [
+      {
+        "id": 544,
+        "title": "Функциональное программирование на JavaScript: как улучшить код J avaScript-npoгpaмм"
+      }
+    ]
+  },
+  {
+    "id": "ki-03",
+    "category": "known-thin",
+    "library": "Programming_Books",
+    "scope": "library",
+    "bookId": null,
+    "target": "text",
+    "query": "Fullstack Roadmap: moderne Webentwicklung von Frontend bis Backend",
+    "mustCover": "The book itself: \"Fullstack Roadmap: Moderne Webentwicklung von Frontend bis Backend Schritt für Schritt zum Profi\" by Lukas T Weber (a known-item query: the user names this book).",
+    "expectedBooks": [
+      {
+        "id": 88,
+        "title": "Fullstack Roadmap: Moderne Webentwicklung von Frontend bis Backend Schritt für Schritt zum Profi"
+      }
+    ]
+  },
+  {
+    "id": "ki-04",
+    "category": "known-thin",
+    "library": "Programming_Books",
+    "scope": "library",
+    "bookId": null,
+    "target": "text",
+    "query": "прикладное программирование на C/C++: мультимедийные и сетевые приложения",
+    "mustCover": "The book itself: \"Прикладное программирование на С/С++: с нуля до мультимедийных и сетевых приложений.\" by Ivanov (a known-item query: the user names this book).",
+    "expectedBooks": [
+      {
+        "id": 693,
+        "title": "Прикладное программирование на С/С++: с нуля до мультимедийных и сетевых приложений."
+      }
+    ]
+  },
+  {
+    "id": "ki-05",
+    "category": "known-thin",
+    "library": "Programming_Books",
+    "scope": "library",
+    "bookId": null,
+    "target": "text",
+    "query": "Java secrets: high performance and scalability",
+    "mustCover": "The book itself: \"Java Secrets - High performance and scalability\" by Alex Harrison (a known-item query: the user names this book).",
+    "expectedBooks": [
+      {
+        "id": 502,
+        "title": "Java Secrets - High performance and scalability"
+      }
+    ]
+  },
+  {
+    "id": "ki-06",
+    "category": "known-thin",
+    "library": "Programming_Books",
+    "scope": "library",
+    "bookId": null,
+    "target": "text",
+    "query": "PostgreSQL made easy: a practical guide to installation, querying and administration",
+    "mustCover": "The book itself: \"1233 2 PostgreSQL MADE EASY Kindle img\" by Unknown (a known-item query: the user names this book).",
+    "expectedBooks": [
+      {
+        "id": 470,
+        "title": "1233 2 PostgreSQL MADE EASY Kindle img"
+      }
+    ]
+  },
+  {
+    "id": "ki-07",
+    "category": "known-thin",
+    "library": "Programming_Books",
+    "scope": "library",
+    "bookId": null,
+    "target": "text",
+    "query": "the lean startup by Eric Ries",
+    "mustCover": "The book itself: \"The Lean Startup: How Today's Entrepreneurs Use Continuous Innovation to Create Radically Successful Businesses\" by Eric Ries (a known-item query: the user names this book).",
+    "expectedBooks": [
+      {
+        "id": 1284,
+        "title": "The Lean Startup: How Today's Entrepreneurs Use Continuous Innovation to Create Radically Successful Businesses"
+      }
+    ]
+  },
+  {
+    "id": "ki-08",
+    "category": "known-thin",
+    "library": "Programming_Books",
+    "scope": "library",
+    "bookId": null,
+    "target": "text",
+    "query": "Node.js application developer JSNAD certification study guide",
+    "mustCover": "The book itself: \"OpenJS Node.js Application Developer (JSNAD) Certification Guide: A Complete Practical Study Guide to Become a node.js Certified Developer With 100+ Sample Programs Demonstrated\" by Liora Venith (a known-item query: the user names this book).",
+    "expectedBooks": [
+      {
+        "id": 116,
+        "title": "OpenJS Node.js Application Developer (JSNAD) Certification Guide: A Complete Practical Study Guide to Become a node.js Certified Developer With 100+ Sample Programs Demonstrated"
+      }
+    ]
+  },
+  {
+    "id": "ki-09",
+    "category": "known-thin",
+    "library": "Programming_Books",
+    "scope": "library",
+    "bookId": null,
+    "target": "text",
+    "query": "Beginning React by Andrea Chiarelli",
+    "mustCover": "The book itself: \"Beginning React: Simplify Your Frontend Development Workflow and Enhance the User Experience of Your Applications With React\" by Andrea Chiarelli (a known-item query: the user names this book).",
+    "expectedBooks": [
+      {
+        "id": 239,
+        "title": "Beginning React: Simplify Your Frontend Development Workflow and Enhance the User Experience of Your Applications With React"
+      }
+    ]
+  },
+  {
+    "id": "ki-10",
+    "category": "known-thin",
+    "library": "Programming_Books",
+    "scope": "library",
+    "bookId": null,
+    "target": "text",
+    "query": "Head First Git",
+    "mustCover": "The book itself: \"Head First Git\" by Raju Gandhi (a known-item query: the user names this book).",
+    "expectedBooks": [
+      {
+        "id": 1181,
+        "title": "Head First Git"
+      }
+    ]
+  },
+  {
+    "id": "ki-11",
+    "category": "known-thin",
+    "library": "Programming_Books",
+    "scope": "library",
+    "bookId": null,
+    "target": "text",
+    "query": "mastering SQL joins: a quick handbook with practical exercises",
+    "mustCover": "The book itself: \"Mastering SQL Joins: A Quick Handbook On Mastering SQL Joins With Practical Exercises\" by Dane Wade (a known-item query: the user names this book).",
+    "expectedBooks": [
+      {
+        "id": 57,
+        "title": "Mastering SQL Joins: A Quick Handbook On Mastering SQL Joins With Practical Exercises"
+      }
+    ]
+  },
+  {
+    "id": "ki-12",
+    "category": "known-thin",
+    "library": "Programming_Books",
+    "scope": "library",
+    "bookId": null,
+    "target": "text",
+    "query": "TypeScript: the complete beginner's guide",
+    "mustCover": "The book itself: \"TypeScript: The Complete Beginner's Guide to TypeScript\" by Moaml Mohmmed (a known-item query: the user names this book).",
+    "expectedBooks": [
+      {
+        "id": 225,
+        "title": "TypeScript: The Complete Beginner's Guide to TypeScript"
+      }
+    ]
+  },
+  {
+    "id": "ki-13",
+    "category": "known-ordinary",
+    "library": "Programming_Books",
+    "scope": "library",
+    "bookId": null,
+    "target": "text",
+    "query": "Grokking Algorithms second edition",
+    "mustCover": "The book itself: \"Grokking Algorithms, Second Edition\" by Aditya Y Bhargava (a known-item query: the user names this book).",
+    "expectedBooks": [
+      {
+        "id": 1411,
+        "title": "Grokking Algorithms, Second Edition"
+      }
+    ]
+  },
+  {
+    "id": "ki-14",
+    "category": "known-ordinary",
+    "library": "Programming_Books",
+    "scope": "library",
+    "bookId": null,
+    "target": "text",
+    "query": "the little book of semaphores",
+    "mustCover": "The book itself: \"The Little Book of Semaphores: The Ins and Outs of Concurrency Control and Common Mistakes\" by Allen B. Downey (a known-item query: the user names this book).",
+    "expectedBooks": [
+      {
+        "id": 1310,
+        "title": "The Little Book of Semaphores: The Ins and Outs of Concurrency Control and Common Mistakes"
+      }
+    ]
+  },
+  {
+    "id": "ki-15",
+    "category": "known-ordinary",
+    "library": "Programming_Books",
+    "scope": "library",
+    "bookId": null,
+    "target": "text",
+    "query": "Metasploit penetration tester's guide, second edition",
+    "mustCover": "The book itself: \"Metasploit, 2nd Edition\" by David Kennedy et al. (a known-item query: the user names this book).",
+    "expectedBooks": [
+      {
+        "id": 1126,
+        "title": "Metasploit, 2nd Edition"
+      }
+    ]
+  },
+  {
+    "id": "ki-16",
+    "category": "known-ordinary",
+    "library": "Programming_Books",
+    "scope": "library",
+    "bookId": null,
+    "target": "text",
+    "query": "learning systems thinking for software professionals",
+    "mustCover": "The book itself: \"Learning Systems Thinking: Essential Non-Linear Skills and Practices for Software Professionals\" by Diana Montalion (a known-item query: the user names this book).",
+    "expectedBooks": [
+      {
+        "id": 552,
+        "title": "Learning Systems Thinking: Essential Non-Linear Skills and Practices for Software Professionals"
+      }
+    ]
+  },
+  {
+    "id": "ki-17",
+    "category": "known-ordinary",
+    "library": "Programming_Books",
+    "scope": "library",
+    "bookId": null,
+    "target": "text",
+    "query": "SQL pocket guide by Alice Zhao",
+    "mustCover": "The book itself: \"SQL Pocket Guide\" by Alice Zhao (a known-item query: the user names this book).",
+    "expectedBooks": [
+      {
+        "id": 42,
+        "title": "SQL Pocket Guide"
+      }
+    ]
+  },
+  {
+    "id": "ki-18",
+    "category": "known-ordinary",
+    "library": "Programming_Books",
+    "scope": "library",
+    "bookId": null,
+    "target": "text",
+    "query": "designing large language model applications: a holistic approach",
+    "mustCover": "The book itself: \"Designing Large Language Model Applications: A Holistic Approach to LLMs\" by Suhas Pai (a known-item query: the user names this book).",
+    "expectedBooks": [
+      {
+        "id": 99,
+        "title": "Designing Large Language Model Applications: A Holistic Approach to LLMs"
+      }
+    ]
+  },
+  {
+    "id": "ki-19",
+    "category": "known-ordinary",
+    "library": "Programming_Books",
+    "scope": "library",
+    "bookId": null,
+    "target": "text",
+    "query": "hands-on concurrency with Rust",
+    "mustCover": "The book itself: \"Hands-On Concurrency With Rust: Confidently Build Memory-Safe, Parallel, and Efficient Software in Rust\" by Brian L. Troutwine (a known-item query: the user names this book).",
+    "expectedBooks": [
+      {
+        "id": 271,
+        "title": "Hands-On Concurrency With Rust: Confidently Build Memory-Safe, Parallel, and Efficient Software in Rust"
+      }
+    ]
+  },
+  {
+    "id": "ki-20",
+    "category": "known-ordinary",
+    "library": "Programming_Books",
+    "scope": "library",
+    "bookId": null,
+    "target": "text",
+    "query": "GitOps cookbook",
+    "mustCover": "The book itself: \"GitOps Cookbook\" by Natale Vinto, Alex Soto Bueno (a known-item query: the user names this book).",
+    "expectedBooks": [
+      {
+        "id": 676,
+        "title": "GitOps Cookbook"
+      }
+    ]
+  }
+]

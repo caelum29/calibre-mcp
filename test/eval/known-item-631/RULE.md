@@ -45,3 +45,21 @@ The keyword half's `book_meta` BM25 column weight stays 0.5 in every arm (its sw
   blind hit@3 and ΔNDCG@5 per category from the judgment store
   `docs/dev/evals/judgments/3f335e5122b8.jsonl`, new hits judged blind by the `judged-blind`
   Workflow (judges A = opus, B = sonnet), never by the measuring session.
+
+## How the slice was picked (2026-11-20, before any dump)
+
+From the snapshot (`$WAVE/index/Programming_Books.sqlite`, version 5 with the #722 flags pass), one
+read-only scan: per book with a metadata row, `blurb_chars`, chunk count, extracted characters and
+characters per `\f` page. No search was run.
+
+- **known-thin (12):** books with a blurb and the thinnest text. 247 (3 chars/page, 1 chunk) and
+  544 (8 chars/page) are the two image-only PDFs with 1,800-char blurbs; 693, 502 and 470 are the
+  other near-empty books of the #595 probe that have a (short) blurb; 88 has 3 chunks; the rest are
+  the lowest chars/page among books with a blurb of at least 200 characters (1284, 116, 239, 1181,
+  57, 225). Skipped: 1151 / 1157 (two Vue.js books with the same blurb: no single known item) and
+  286 (a second book, 654, has the same title).
+- **known-ordinary (8):** books with a blurb and normal text (about 800–1,000 chars/page), titles
+  with no near-duplicate in the library: 1411, 1310, 1126, 552, 42, 99, 271, 676.
+
+Queries name the book by title, part of the title, author or topic, as a user would, in the
+book's own language (544 and 693 in Russian, 88 in German).
