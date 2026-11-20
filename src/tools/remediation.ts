@@ -6,6 +6,9 @@
 // Every branch MUST end at the restart step: Node 24 negatively caches a failed package lookup
 // for the whole process life (docs/dev/node24-import-retry-probe.md), so installing while the
 // server runs can never take effect in-process — a restart is mandatory, not optional.
+//
+// The index-repair steers (delete-then-rebuild, re-stem) live in src/domain/index-steers.ts
+// instead: the store's own error needs them, and the store may not import tools (#720).
 
 /** Universal 3-branch install + restart guidance for the optional embedding model. */
 export const INSTALL_TRANSFORMERS =

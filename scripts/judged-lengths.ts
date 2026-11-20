@@ -5,7 +5,8 @@
 
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { indexFileName, readBookChunkCounts } from "../src/semantic/store/schema.js";
+import { readBookChunkCounts } from "../src/semantic/store/schema.js";
+import { indexFileName } from "../src/domain/index-steers.js";
 import { gradesFor, type BlindKey, type FinalGrade, type RawRecord } from "./judged-lib.js";
 
 /** library id → book id → chunk count (book-lengths.json). */

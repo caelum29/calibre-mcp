@@ -6,7 +6,8 @@ import { readdirSync } from "node:fs";
 import path from "node:path";
 import type { DatabaseSync } from "node:sqlite";
 import { LibraryIdCollisionError } from "../../domain/library-id-collision.js";
-import { ensureIndexOwner, indexFileName, readIndexOwner } from "./schema.js";
+import { ensureIndexOwner, readIndexOwner } from "./schema.js";
+import { indexFileName } from "../../domain/index-steers.js";
 
 /**
  * Decides whether a library may use its index file (#414). Required by `IndexConnections`, so no
