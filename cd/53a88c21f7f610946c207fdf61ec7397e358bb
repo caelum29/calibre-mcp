@@ -1,0 +1,26 @@
+src/semantic/store/writer.ts
+  s_573609c4bcf47a::t_fc94ae0205e506 236
+  s_573609c4bcf47a::t_53ae70cae2a1a2 62-65,209-213,226-235,237-246
+  s_573609c4bcf47a::t_25abe43ee51be7 247-248
+test/semantic/per-book-tables-719.test.ts
+  s_573609c4bcf47a::t_39140739a33027 1-57,61-69,79-80,99-106,125-126
+  s_573609c4bcf47a::t_29298110f35d67 58-60,70-78,81-98,107-124
+src/domain/figures/markers.ts
+  s_573609c4bcf47a::t_39ba0b2e5736bc 281
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cd53a88c21f7f610946c207fdf61ec7397e358bb",
+  "prompts": {},
+  "sessions": {
+    "s_573609c4bcf47a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "83b053bd-6451-4d51-bec0-a2c4fa2aa7f7",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
