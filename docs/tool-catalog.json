@@ -2570,6 +2570,10 @@
                   ],
                   "type": "string"
                 },
+                "page": {
+                  "description": "PDF only: the 1-based PDF page index of the hit (never the printed page number; the `page:` line), counted as figure hits count it. Absent for EPUB and other unpaged texts.",
+                  "type": "number"
+                },
                 "provenance": {
                   "additionalProperties": false,
                   "description": "Only at CALIBRE_MCP_LOG_LEVEL=debug: 1-based vector/keyword half ranks, fused rank (hybrid), whether the cross-encoder scored the hit, and for library books which half's chunk is shown.",
@@ -2605,6 +2609,13 @@
                 },
                 "rerankScore": {
                   "type": "number"
+                },
+                "sectionPath": {
+                  "description": "Section titles at the hit, outermost first, at most the last 3 levels (the `section:` line). Absent when the book has no section spans there.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
                 }
               },
               "required": [
@@ -2650,6 +2661,10 @@
                   ],
                   "type": "string"
                 },
+                "page": {
+                  "description": "PDF only: the 1-based PDF page index of the hit (never the printed page number; the `page:` line), counted as figure hits count it. Absent for EPUB and other unpaged texts.",
+                  "type": "number"
+                },
                 "provenance": {
                   "additionalProperties": false,
                   "description": "Only at CALIBRE_MCP_LOG_LEVEL=debug: 1-based vector/keyword half ranks, fused rank (hybrid), whether the cross-encoder scored the hit, and for library books which half's chunk is shown.",
@@ -2685,6 +2700,13 @@
                 },
                 "rerankScore": {
                   "type": "number"
+                },
+                "sectionPath": {
+                  "description": "Section titles at the hit, outermost first, at most the last 3 levels (the `section:` line). Absent when the book has no section spans there.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
                 },
                 "snippet": {
                   "type": "string"

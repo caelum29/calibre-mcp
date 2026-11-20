@@ -868,6 +868,8 @@ only the part named here is contract. The table is generated from the server's r
 | `calibre_get_content` | `cursor` | `… cursor: <nextCursor>` at the end of the line — pass the token verbatim (the words before `cursor:` are Prose) | `nextCursor` |
 | `calibre_build_index` | `Indexed ids` | `Indexed ids: <id>, <id>.` | `bookDetails[].bookId` |
 | `calibre_build_index` | `FTS` | `- FTS: write_disabled\|already enabled\|enabled\|failed — …` — only with `enableFts: true` (`already enabled` is `already_enabled`; the words after the dash are Prose) | `fts.status` |
+| `calibre_semantic_search` | `section` | `section: <title> › <title> › <title>` — outermost first, at most the last 3 levels; one per text hit that has one | `results[].sectionPath | passages[].sectionPath` |
+| `calibre_semantic_search` | `page` | `page: <n>` — the 1-based PDF page index, never the printed number; PDF text hits only | `results[].page | passages[].page` |
 | `calibre_remove_book` | `Not found` | `Not found (skipped): #<id or uuid>, #<id or uuid>` (an unresolved uuid also prints with `#`, a known limit) | `notFoundIds[]` |
 | `calibre_ping` | `calibredb` | `calibredb: <path> (Content Server <url>)` | `calibredbPath` |
 | `calibre_ping` | `calibre version` | `calibre version: <x.y[.z]>\|unknown` — from `calibredb --version` | `calibreVersion` |
@@ -885,7 +887,6 @@ to `calibre_update_book` or `calibre_add_book` while writes are off.
 
 Tools whose text has no Labelled lines beyond the error lines:
 
-- `calibre_semantic_search` — text is Prose (its fields sit inside sentences or item lines)
 - `calibre_get_figures` — text is Prose; no outputSchema (images ride in content blocks)
 - `calibre_recover_metadata` — text is Prose (its fields sit inside sentences or item lines)
 - `calibre_extract_isbn` — text is Prose (its fields sit inside sentences or item lines)
