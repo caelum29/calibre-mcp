@@ -30,8 +30,9 @@ your library, all through natural language.
   filters). Format conversion and export are not tools: they go through the Calibre CLI (the
   `calibre-mcp` skill documents how, safely, while the GUI is open).
 - **Semantic search** — meaning-based, hybrid vector + keyword retrieval over your whole
-  library *or inside a single book*. Multilingual (English + Russian verified,
-  cross-lingual queries work).
+  library *or inside a single book*. Multilingual (the eval fixture holds 34 books:
+  24 English, 8 Russian, 2 Ukrainian; the keyword half stems all three languages; cross-lingual
+  queries work).
 - **In-chat UI (MCP Apps)** — in hosts that support MCP Apps (Claude Desktop), library
   searches render an interactive cover carousel, `calibre_get_book` a book detail card
   with cover, rating, and read/similar actions, and `calibre_get_figures` a figure viewer

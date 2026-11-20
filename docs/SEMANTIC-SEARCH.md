@@ -173,8 +173,7 @@ Two refinements worth knowing about:
   body passages. Without a rerank (keyword mode, rerank off or unavailable), every front/back
   matter hit follows the body hits. Nothing is dropped: such hits are labelled `[front matter]`,
   `[back matter: index]`, `[back matter: bibliography]` or `[back matter: copyright/ads]`, and
-  the header notes how many were placed after body matches. Books indexed before this change
-  keep only their front-matter labels until they are re-indexed or backfilled.
+  the header notes how many were placed after body matches.
 
 ### What a text hit shows
 
@@ -228,9 +227,10 @@ a full re-index — hours for a library of about a thousand books). Metadata and
 
 ## Multilingual
 
-The model is multilingual by design: English and Russian retrieval are verified, and
-**cross-lingual queries work** — an English query finds relevant passages in a
-Russian book and vice versa. The keyword half stems English, Russian and Ukrainian, so
+The model is multilingual by design: English and Russian retrieval are measured (on the 34-book
+eval fixture: 24 English, 8 Russian, 2 Ukrainian books), and **cross-lingual queries work** — an English query finds relevant passages in a
+Russian book and vice versa. The keyword half stems English, Russian and Ukrainian (Ukrainian is
+checked on the same fixture, keyword half only; no vector-side Ukrainian measurement), so
 `книга/книги/книгу` and `функція/функції` match each other too.
 
 An index built before Ukrainian stemming existed keeps working. `calibre_ping` then shows how

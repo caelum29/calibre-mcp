@@ -161,6 +161,35 @@ describe("in-place refresh of front-matter flags (#269 review)", () => {
     expect(flagAt(store, PDF_TEXT.length - 100)).toBe(false);
   });
 
+  it("a metadata-only refresh whose embed throws keeps the old row and reports the book failed (#715)", async () => {
+    const store = freshStore();
+    await buildIndexTool.handler(buildArgs, deps(store, countingEmbedder(), { format: "pdf", text: PDF_TEXT }));
+    const before = store.bookChunkSpans(LIB, 1);
+
+    // The model breaks after warmup: the metadata vector cannot be computed on the refresh.
+    const broken: Embedder = {
+      ...countingEmbedder(),
+      async embedPassages() {
+        throw new Error("model exploded");
+      },
+    };
+    const r = await buildIndexTool.handler(
+      buildArgs,
+      deps(store, broken, { format: "pdf", text: PDF_TEXT, title: "Zanzibar", lastModified: "2026-02-01" }),
+    );
+    expect(r.structuredContent).toMatchObject({
+      booksRefreshed: 0,
+      booksIndexed: 0,
+      failures: ["book 1: model exploded"],
+    });
+    expect(JSON.stringify(r.content)).toContain("model exploded");
+    // Nothing was written: the old title, freshness and chunks stand.
+    expect(title(store)).toBe("other");
+    expect(store.isBookIndexed(LIB, 1, "2026-01-01")).toBe(true);
+    expect(store.isBookIndexed(LIB, 1, "2026-02-01")).toBe(false);
+    expect(store.bookChunkSpans(LIB, 1)).toEqual(before);
+  });
+
   it("writes nothing when another writer re-chunked the book between prepare and commit", async () => {
     const store = freshStore();
     const original = deps(store, countingEmbedder(), { format: "epub", text: EPUB_TEXT });
