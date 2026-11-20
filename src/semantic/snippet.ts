@@ -4,14 +4,20 @@
 import { PACKS } from "./language/registry.js";
 import { stemmedTokens } from "./stem.js";
 
-/** Length of a result snippet (chars) — the store's head snippet and this window share it. */
+/** Head-snippet length (chars): the store's head snippet and a figure hit's `contextSnippet`. */
 export const SNIPPET_CHARS = 320;
+
+/**
+ * Window width of a library-scope text hit (ADR-0034, #708): wide enough that the agent can often
+ * use the hit without opening the book. Figure context and `calibre_search` snippets keep theirs.
+ */
+export const LIBRARY_SNIPPET_CHARS = 800;
 
 // Query stems shorter than this are skipped (в, и, of: noise even off the stopword list).
 const MIN_TERM_CHARS = 3;
 // How far back from a term to look for the start of its sentence, and how far a mid-sentence
 // chunk head may skip forward to one (#657). Basis: heuristic, not measured (#243 review) —
-// about half a snippet width (SNIPPET_CHARS / 2): skipping more would hide more than it gains.
+// half the 320 head width; kept at 800 (ADR-0034: placement unchanged): skipping more hides more.
 const MAX_SENTENCE_LEAD = 160;
 // Near the chunk end a window may start late (at its sentence) only while it keeps this share
 // of the width; below that it shifts back to `end - width` so the snippet isn't a sliver.

@@ -8,7 +8,7 @@ import type { LogSink } from "../logging.js";
 import type { Embedder } from "./embedder.js";
 import { RRF_K, rrfFuse } from "./fusion.js";
 import { ADAPTIVE_AGREE_TOP, ADAPTIVE_RERANK_POOL, RERANK_FLOOR, RERANK_POOL, type Reranker } from "./reranker.js";
-import { snippetWindow } from "./snippet.js";
+import { LIBRARY_SNIPPET_CHARS, snippetWindow } from "./snippet.js";
 import type { BookHit, ChunkIndex, FigureHit, FigureIndex, LibraryHit } from "./store/index.js";
 
 /** Per-half candidate pool the fuser draws from (design: vector top-50 + keyword top-50). */
@@ -288,7 +288,7 @@ function placedNote(n: number): string | undefined {
 
 /** A library hit whose snippet is the query-term window of its chunk, with its book offset. */
 function withSnippet(hit: LibraryHit, query: string): LibraryHit {
-  const w = snippetWindow(hit.body, query);
+  const w = snippetWindow(hit.body, query, LIBRARY_SNIPPET_CHARS);
   return { ...hit, snippet: w.text, snippetStart: hit.charStart + w.start };
 }
 

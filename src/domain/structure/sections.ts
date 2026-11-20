@@ -217,3 +217,20 @@ export function sectionPathAt<T extends { charStart: number; charEnd: number; pa
   }
   return path;
 }
+
+/** Levels a hit's section label keeps (ADR-0034): the leaf and its two nearest ancestors. */
+export const HIT_SECTION_LEVELS = 3;
+
+/**
+ * A text hit's section label (ADR-0034, #708): the titles of `path` (top level first), cut to
+ * the last HIT_SECTION_LEVELS. undefined when the path is empty, or when a span in it does not
+ * overlap the hit's chunk: such a row is stale (ADR-0031), and a wrong label is worse than none.
+ */
+export function hitSectionPath(
+  path: readonly { title: string; charStart: number; charEnd: number }[],
+  chunk: { charStart: number; charEnd: number },
+): string[] | undefined {
+  if (path.length === 0) return undefined;
+  const agrees = path.every((s) => s.charStart < chunk.charEnd && chunk.charStart < s.charEnd);
+  return agrees ? path.slice(-HIT_SECTION_LEVELS).map((s) => s.title) : undefined;
+}
