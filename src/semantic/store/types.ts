@@ -332,7 +332,7 @@ export interface FigureIndex {
   figuresInSpan(libraryId: string, bookId: number, charStart: number, charEnd: number): FigureRef[];
 }
 
-/** Section-span reads (#695): which sections hold a text offset. */
+/** Hit-location reads (#695, #708): which sections hold a text offset, and on which page it is. */
 export interface SectionIndex {
   /**
    * The section path at `charOffset` in one book: every stored span with
@@ -340,6 +340,18 @@ export interface SectionIndex {
    * book has no spans there, or there is no index (no db file is created).
    */
   sectionPathAt(libraryId: string, bookId: number, charOffset: number): SectionRef[];
+  /**
+   * The 1-based page holding `charOffset` in a paged (PDF) text: 1 + the page breaks (`\f`)
+   * before it, counted over the book's chunks — the base figure hits use. undefined when the
+   * text has no page breaks (EPUB and other reflowable formats), the offset is in no chunk, the
+   * chunks before it leave a gap or overlap, or there is no index (no db file is created).
+   */
+  pageAt(libraryId: string, bookId: number, charOffset: number): number | undefined;
+  /**
+   * The end of one book's indexed text: its last chunk's `charEnd`. A stored span that ends past
+   * it is from an older, longer text. undefined when the book has no chunks or there is no index.
+   */
+  indexedTextEnd(libraryId: string, bookId: number): number | undefined;
 }
 
 /** The full store: every port plus lifecycle. Callers that need less depend on a port. */

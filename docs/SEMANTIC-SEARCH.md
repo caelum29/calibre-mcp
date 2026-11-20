@@ -187,6 +187,17 @@ Two refinements worth knowing about:
   because the description is not a place in the book. A book with a text match keeps
   showing its text.
 
+### What a text hit shows
+
+A library-scope hit shows one window of up to 800 characters from the book's best passage,
+placed at the query's terms (or at the passage's first whole sentence when none occurs). A
+book-scope hit shows the whole passage. Both name their place: a `section:` line (the section
+path, last 3 levels: `Part II › 13 Caching › 13.7 Invalidation`, field `sectionPath`) and, for
+PDF books, a `page:` line (the 1-based PDF page index, field `page`). The page is counted from
+the `\f` page breaks the indexed text keeps, so it needs no stored page table and no cached
+book text. Library scope labels the snippet's start, book scope the passage's start; a label
+with missing or disagreeing data is left out, never shown empty.
+
 ## Figure search
 
 `target: figures` runs the same pipeline over a separate corpus: **figure captions**.

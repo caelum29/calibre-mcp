@@ -217,3 +217,38 @@ export function sectionPathAt<T extends { charStart: number; charEnd: number; pa
   }
   return path;
 }
+
+/** Levels a hit's section label keeps (ADR-0034): the leaf and its two nearest ancestors. */
+export const HIT_SECTION_LEVELS = 3;
+
+/**
+ * A text hit's section label (ADR-0034, #708): the titles of `path` (top level first), cleaned
+ * and cut to the last HIT_SECTION_LEVELS. undefined when the path is empty, or when a span on it
+ * ends past `textEnd`, the end of the book's indexed text: such a row is left from an older,
+ * longer text (ADR-0031), and a wrong label is worse than none. Spans shifted inside the text's
+ * bounds pass; catching those needs a per-book write stamp (post-1.0).
+ */
+export function hitSectionPath(
+  path: readonly { title: string; charEnd: number }[],
+  textEnd: number | undefined,
+): string[] | undefined {
+  if (path.length === 0 || textEnd === undefined || path.some((s) => s.charEnd > textEnd)) return undefined;
+  const titles = path
+    .slice(-HIT_SECTION_LEVELS)
+    .map((s) => labelTitle(s.title))
+    .filter(Boolean);
+  return titles.length > 0 ? titles : undefined;
+}
+
+/**
+ * A stored title as a label value: whitespace and control characters collapse to one space, ends
+ * trimmed, at most MAX_SECTION_TITLE chars. It prints outside the untrusted fence, so a row from
+ * any writer (an older build, a hand-edited index) must not break the line it sits on.
+ */
+function labelTitle(raw: string): string {
+  const t = raw.replace(/[\s\p{Cc}]+/gu, " ").trim();
+  if (t.length <= MAX_SECTION_TITLE) return t;
+  // never end on the high half of a surrogate pair
+  const end = /[\uD800-\uDBFF]/.test(t[MAX_SECTION_TITLE - 1]!) ? MAX_SECTION_TITLE - 1 : MAX_SECTION_TITLE;
+  return t.slice(0, end).trimEnd();
+}

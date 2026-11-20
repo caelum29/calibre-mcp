@@ -26,6 +26,7 @@ import type {
   IndexWriter,
   KeywordPlanReport,
   LibraryHit,
+  SectionIndex,
 } from "../semantic/store/index.js";
 import { findGoneBookIds } from "../app/live-hits.js";
 import { type FilterResolution, honestyLines, restrictSet, resolveFilter } from "../app/bundles.js";
@@ -36,7 +37,7 @@ import { bookResourceLink } from "./resource-link.js";
 import { resolveNumericId } from "../app/resolve-id.js";
 import { INSTALL_TRANSFORMERS } from "./remediation.js";
 import { embedderUsable } from "../semantic/status.js";
-import { labelledLine, SEMANTIC_LINE_LABELS } from "./labelled-lines.js";
+import { HIT_LINE_LABELS, labelledLine } from "./labelled-lines.js";
 import { fence, toolError, toolOk, toolErrorFrom } from "./result.js";
 import { TimingRecorder, timingsLine } from "./search-timings.js";
 
@@ -49,6 +50,7 @@ import type { BaseDeps, DepsWithIndex } from "./deps.js";
 import { errorCodeFor } from "../domain/error-codes.js";
 import { figureLocation, figureLocationLabel } from "../domain/figures/location.js";
 import { type MatterKind, NON_BODY_KINDS } from "../domain/structure/matter-kind.js";
+import { hitLabels, labelLines, SectionPathSchema, TextPageSchema } from "./hit-labels.js";
 
 // Debug-level ranking provenance per hit (#650), the same shape for every scope.
 // Front/back matter of a hit (#605); the closed set of stored kinds minus body, which is never sent.
@@ -166,6 +168,8 @@ export const semanticSearchTool = defineTool({
             .describe("Set when the snippet is the book's description, not its text; such a hit has no offsets."),
           // #605: front/back matter of the shown chunk; absent for body text
           matterKind: MatterKindSchema.optional(),
+          sectionPath: SectionPathSchema.optional(),
+          page: TextPageSchema.optional(),
           provenance: ProvenanceSchema,
         }),
       )
@@ -178,6 +182,8 @@ export const semanticSearchTool = defineTool({
           cosine: z.number().optional(),
           rerankScore: z.number().optional(),
           matterKind: MatterKindSchema.optional(),
+          sectionPath: SectionPathSchema.optional(),
+          page: TextPageSchema.optional(),
           body: z.string(),
           provenance: ProvenanceSchema,
         }),
@@ -379,6 +385,8 @@ export type SemanticIndex = Pick<IndexFreshness, "hasIndex" | "indexMeta" | "has
   // the metadata list (#631), off at the shipped weight; optional so an index without it still searches
   Partial<BookMetadataIndex> &
   FigureIndex &
+  // a text hit's section and page labels (#708)
+  SectionIndex &
   // debug output: what the keyword plan left out (#651)
   KeywordPlanReport &
   // the one write: best-effort prune of hits whose book is gone (#579)
@@ -482,8 +490,13 @@ async function libraryScope(
     const at = r.hit.snippetStart !== undefined ? ` snippet@${r.hit.snippetStart}` : "";
     const where = described ? "" : ` @${r.hit.charStart}-${r.hit.charEnd}${at}`;
     const fenced = fence(`MATCH book ${r.hit.bookId}${where}${matterLabel(r.hit.matterKind)}`, r.hit.snippet);
-    const source = described ? `${labelledLine(SEMANTIC_LINE_LABELS.from, "description")}\n` : "";
-    blocks.push({ type: "text", text: withProvenanceLine(source + fenced, r, debug) });
+    // library scope: the snippet's start decides, so a window past a section start shows that section;
+    // a description hit has no place in the book, so no section or page either
+    const labels = described
+      ? {}
+      : hitLabels(deps.index, { libraryId, bookId: r.hit.bookId, offset: r.hit.snippetStart ?? r.hit.charStart });
+    const source = described ? `${labelledLine(HIT_LINE_LABELS.from, "description")}\n` : "";
+    blocks.push({ type: "text", text: withProvenanceLine(source + labelLines(labels) + fenced, r, debug) });
     results.push({
       bookId: r.hit.bookId,
       title: r.hit.title,
@@ -495,6 +508,7 @@ async function libraryScope(
       snippet: fenced,
       ...(described ? { snippetSource: "description" } : {}),
       ...matterField(r.hit.matterKind),
+      ...labels,
       ...provenanceField(r, debug),
     });
   }
@@ -572,13 +586,16 @@ async function bookScope(
       `PASSAGE @${r.hit.charStart}-${r.hit.charEnd}${matterLabel(kind)} ${scoreLabel(r)}`,
       r.hit.body,
     );
-    blocks.push({ type: "text", text: withProvenanceLine(fenced, r, debug) });
+    // book scope: the whole chunk is shown, so its start decides
+    const labels = hitLabels(deps.index, { libraryId, bookId, offset: r.hit.charStart });
+    blocks.push({ type: "text", text: withProvenanceLine(labelLines(labels) + fenced, r, debug) });
     passages.push({
       charStart: r.hit.charStart,
       charEnd: r.hit.charEnd,
       ...(r.cosine !== undefined ? { cosine: r.cosine } : {}),
       ...(r.rerankScore !== undefined ? { rerankScore: r.rerankScore } : {}),
       ...matterField(kind),
+      ...labels,
       body: fenced,
       ...provenanceField(r, debug),
     });

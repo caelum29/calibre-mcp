@@ -15,6 +15,19 @@ export function labelledLine(label: string, value: string): string {
   return `${label}: ${value}`;
 }
 
+/** Labels of a calibre_semantic_search text hit's location lines (ADR-0034, #708). */
+export const HIT_LINE_LABELS = {
+  /** The hit's section path (`sectionPath`): titles joined by SECTION_PATH_SEPARATOR. */
+  section: "section",
+  /** The hit's 1-based PDF page index (`page`). */
+  page: "page",
+  /** Where a library hit's snippet comes from (`snippetSource`, #631): only `description` is printed. */
+  from: "from",
+} as const;
+
+/** Between two levels of a `section:` line. */
+export const SECTION_PATH_SEPARATOR = " › ";
+
 /** Labels of calibre_ping's report lines that carry a declared structured field. */
 export const PING_LINE_LABELS = {
   /** Calibre's own write gate (`calibreWriteAccess`, #439), next to our `writes:` gate line. */
@@ -25,12 +38,6 @@ export const PING_LINE_LABELS = {
   index: "Index",
   /** Semantic-search readiness + the resolved library's counts (`semantic`, #440); built in semantic/status.ts. */
   semanticSearch: "Semantic search",
-} as const;
-
-/** Labels of calibre_semantic_search's per-hit lines that carry a declared structured field. */
-export const SEMANTIC_LINE_LABELS = {
-  /** Where a library hit's snippet comes from (`results[].snippetSource`, #631): only `description` is printed. */
-  from: "from",
 } as const;
 
 // ── The 1.0 registry (#454) ──────────────────────────────────────────────────────────────────
@@ -53,13 +60,17 @@ export interface LabelledLine {
   pattern: RegExp;
   /** Value format, as users read it in docs/TOOLS.md. */
   format: string;
-  /** The structured field the value mirrors (`a.b`, `a[].b` for each item). */
+  /**
+   * The structured field the value mirrors (`a.b`, `a[].b` for each item); `x | y` when the line
+   * mirrors whichever of two fields the result carries (one per scope).
+   */
   field: string;
   /**
    * How the test ties the value to the field: `equal` (same string/number per occurrence, in
-   * order), `join` (the array joined with ", "), `length` (array length), `format` (pattern only).
+   * order), `join` (the array joined with ", "), `path` (each occurrence's array joined with
+   * " › "), `length` (array length), `format` (pattern only).
    */
-  compare: "equal" | "join" | "length" | "format";
+  compare: "equal" | "join" | "path" | "length" | "format";
   /** What part of the line is contract when the rest is Prose. */
   note?: string;
 }
@@ -180,8 +191,26 @@ export const LABELLED_LINES: Readonly<Record<string, ToolLabelledLines>> = {
       },
     ],
   },
+  // text hits, both scopes (ADR-0034, #708): right before the hit's fence, each only when known
   calibre_semantic_search: {
     lines: [
+      {
+        label: "section",
+        match: "line",
+        pattern: /^section: (?<v>.+)$/,
+        format:
+          "`section: <title> › <title> › <title>` — outermost first, at most the last 3 levels; one per text hit that has one",
+        field: "results[].sectionPath | passages[].sectionPath",
+        compare: "path",
+      },
+      {
+        label: "page",
+        match: "line",
+        pattern: /^page: (?<v>\d+)$/,
+        format: "`page: <n>` — the 1-based PDF page index, never the printed number; PDF text hits only",
+        field: "results[].page | passages[].page",
+        compare: "equal",
+      },
       {
         // #631: a hit won by the book's metadata row; text hits print no such line
         label: "from",
@@ -318,7 +347,9 @@ export function renderLabelledLinesDoc(): string {
   const cell = (s: string) => s.replace(/\|/g, "\\|");
   const rows = ["| Tool | Label | Value format | Structured field |", "|---|---|---|---|"];
   const add = (tool: string, l: LabelledLine) =>
-    rows.push(`| ${tool} | \`${l.label}\` | ${cell(l.format)}${l.note ? ` (${cell(l.note)})` : ""} | \`${l.field}\` |`);
+    rows.push(
+      `| ${tool} | \`${l.label}\` | ${cell(l.format)}${l.note ? ` (${cell(l.note)})` : ""} | \`${cell(l.field)}\` |`,
+    );
   for (const l of ERROR_LINES) add("every tool (handler and write-gate errors)", l);
   const none: string[] = [];
   for (const [tool, entry] of Object.entries(LABELLED_LINES)) {

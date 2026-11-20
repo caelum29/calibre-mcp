@@ -305,16 +305,34 @@ re-read it in context). `mode: hybrid` (the default) fuses semantic and keyword 
 best recall; `mode: vector` is semantic-only; `mode: keyword` is exact keyword matching that
 needs no model at query time.
 
-Library-scope hits show a snippet cut around your query's terms, not the head of the matched
-passage. When the passage holds none of your terms (a meaning-only match), the snippet shows its
+Library-scope hits show a snippet of up to 800 characters cut around your query's terms, not
+the head of the matched passage — often enough to use the hit without opening the book. When the passage holds none of your terms (a meaning-only match), the snippet shows its
 head, opened at the first sentence start if the passage begins mid-sentence. Each hit's text label reads `MATCH book <id> @<start>-<end> snippet@<offset>`, and
 `structuredContent.results[].snippetStart` carries the same offset. Pass it to
 `calibre_get_content` as `offset` to read on from the snippet; `charStart`/`charEnd` still span
 the whole passage.
 
+Every text hit, in both scopes, names where it sits, on lines right before its excerpt:
+
+```
+section: Part II › 13 Caching › 13.7 Invalidation
+page: 64
+```
+
+`section:` is the section path, outermost first, cut to its last 3 levels
+(`structuredContent` `sectionPath`, an array of titles); it comes from the book's PDF outline,
+EPUB table of contents or detected chapters. `page:` is the 1-based PDF page index, the same
+count figure hits use, never the printed page number (`structuredContent` `page`); EPUB and
+other unpaged books have none. In library scope both describe the snippet's start, so a snippet
+that runs past a section start names the section it shows; in book scope they describe the
+passage's start. A label whose data is missing is left out (no line, no field): a book without
+section data, section rows left from an older, longer text (a span ending past the book's
+indexed text), or chunks that do not cover the text up to the hit. Titles are printed on one
+line: whitespace and control characters become single spaces, at most 200 characters a level. A preface hit carries both `[front matter]` and `section: Preface`.
+
 A library hit can instead show the book's description (Calibre comments) when the metadata
 list is on (it ships off; see [`SEMANTIC-SEARCH.md`](./SEMANTIC-SEARCH.md)): its text reads
-`from: description` before the snippet, its label is `MATCH book <id>` with no offsets, and
+`from: description` before the snippet, its label is `MATCH book <id>` with no offsets and no `section:` or `page:` line, and
 `structuredContent.results[].snippetSource` is `"description"` with no `charStart`, `charEnd`
 or `snippetStart`.
 
@@ -856,6 +874,8 @@ only the part named here is contract. The table is generated from the server's r
 | `calibre_get_content` | `cursor` | `… cursor: <nextCursor>` at the end of the line — pass the token verbatim (the words before `cursor:` are Prose) | `nextCursor` |
 | `calibre_build_index` | `Indexed ids` | `Indexed ids: <id>, <id>.` | `bookDetails[].bookId` |
 | `calibre_build_index` | `FTS` | `- FTS: write_disabled\|already enabled\|enabled\|failed — …` — only with `enableFts: true` (`already enabled` is `already_enabled`; the words after the dash are Prose) | `fts.status` |
+| `calibre_semantic_search` | `section` | `section: <title> › <title> › <title>` — outermost first, at most the last 3 levels; one per text hit that has one | `results[].sectionPath \| passages[].sectionPath` |
+| `calibre_semantic_search` | `page` | `page: <n>` — the 1-based PDF page index, never the printed number; PDF text hits only | `results[].page \| passages[].page` |
 | `calibre_semantic_search` | `from` | `from: description` — right before the fence of a hit whose snippet is the book's description | `results[].snippetSource` |
 | `calibre_remove_book` | `Not found` | `Not found (skipped): #<id or uuid>, #<id or uuid>` (an unresolved uuid also prints with `#`, a known limit) | `notFoundIds[]` |
 | `calibre_ping` | `calibredb` | `calibredb: <path> (Content Server <url>)` | `calibredbPath` |
