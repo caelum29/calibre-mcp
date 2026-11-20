@@ -4,6 +4,7 @@
 import type { Config } from "../../config.js";
 import { log as defaultLog, type LogSink } from "../../logging.js";
 import type { ChunkSpan } from "../content-match.js";
+import { searchBookMetadata } from "./book-metadata.js";
 import type { ChunkMatrix } from "./chunk-matrix.js";
 import { loadChunkMatrix, SqliteChunkIndex } from "./chunks.js";
 import { SqliteFigureIndex } from "./figures.js";
@@ -170,6 +171,11 @@ export class SqliteIndexStore implements IndexStore {
   /** Vector half: rank books by their best passage (ChunkIndex). */
   searchLibrary(libraryId: string, query: Float32Array, k: number, allow?: ReadonlySet<number>): LibraryHit[] {
     return this.#chunks.searchLibrary(libraryId, query, k, allow);
+  }
+
+  /** The metadata list: rank books by their metadata row's vector (BookMetadataIndex, #631). */
+  searchLibraryMetadata(libraryId: string, query: Float32Array, k: number, allow?: ReadonlySet<number>): LibraryHit[] {
+    return searchBookMetadata(this.#conn.db(libraryId), query, k, allow);
   }
 
   /** Vector half: rank passages within one book (ChunkIndex). */

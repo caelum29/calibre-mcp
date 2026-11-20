@@ -21,6 +21,8 @@ export const HIT_LINE_LABELS = {
   section: "section",
   /** The hit's 1-based PDF page index (`page`). */
   page: "page",
+  /** Where a library hit's snippet comes from (`snippetSource`, #631): only `description` is printed. */
+  from: "from",
 } as const;
 
 /** Between two levels of a `section:` line. */
@@ -207,6 +209,15 @@ export const LABELLED_LINES: Readonly<Record<string, ToolLabelledLines>> = {
         pattern: /^page: (?<v>\d+)$/,
         format: "`page: <n>` — the 1-based PDF page index, never the printed number; PDF text hits only",
         field: "results[].page | passages[].page",
+        compare: "equal",
+      },
+      {
+        // #631: a hit won by the book's metadata row; text hits print no such line
+        label: "from",
+        match: "line",
+        pattern: /^from: (?<v>description)$/,
+        format: "`from: description` — right before the fence of a hit whose snippet is the book's description",
+        field: "results[].snippetSource",
         compare: "equal",
       },
     ],

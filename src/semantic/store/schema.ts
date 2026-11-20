@@ -140,7 +140,8 @@ CREATE TABLE IF NOT EXISTS text_maps (
 -- Per-book metadata row (#631, index side): title, authors, series, tags and the comments blurb
 -- as one text, its stems, its passage vector and the book's last_modified when it was built.
 -- Its own table, never a chunks row: it has no char offsets, so book scope, cursors, chunk
--- counts and term statistics never have to exclude it. Nothing ranks with it yet (wave 5).
+-- counts and term statistics never have to exclude it. Library hybrid ranks its vectors as a third
+-- RRF list, weight 0 by default (retrieve.ts, wave 5); its FTS index has no reader yet.
 -- Ships in the version-5 schema with no bump of its own (CREATE IF NOT EXISTS, like sections);
 -- the version-5 re-index fills it, later books when (re-)indexed or refreshed.
 CREATE TABLE IF NOT EXISTS book_metadata (

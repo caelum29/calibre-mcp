@@ -22,6 +22,7 @@ export function reversed(inner: IndexStore): IndexStore {
     searchLibrary: (l, q, k) => inner.searchLibrary(l, q, k).reverse(),
     searchBook: (l, b, q, k) => inner.searchBook(l, b, q, k).reverse(),
     searchLibraryFts: (l, q, k) => inner.searchLibraryFts(l, q, k).reverse(),
+    searchLibraryMetadata: (l, q, k) => inner.searchLibraryMetadata(l, q, k).reverse(),
     searchBookFts: (l, b, q, k) => inner.searchBookFts(l, b, q, k).reverse(),
     searchFigures: (l, q, k, b) => inner.searchFigures(l, q, k, b).reverse(),
     searchFiguresFts: (l, q, k, b) => inner.searchFiguresFts(l, q, k, b).reverse(),

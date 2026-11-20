@@ -19,6 +19,7 @@ import { z } from "zod";
 import { type HitProvenance, type RankedHits, type RetrievalMode, retrieve } from "../semantic/retrieve.js";
 import { SNIPPET_CHARS } from "../semantic/snippet.js";
 import type {
+  BookMetadataIndex,
   ChunkIndex,
   FigureIndex,
   IndexFreshness,
@@ -36,6 +37,7 @@ import { bookResourceLink } from "./resource-link.js";
 import { resolveNumericId } from "../app/resolve-id.js";
 import { INSTALL_TRANSFORMERS } from "./remediation.js";
 import { embedderUsable } from "../semantic/status.js";
+import { HIT_LINE_LABELS, labelledLine } from "./labelled-lines.js";
 import { fence, toolError, toolOk, toolErrorFrom } from "./result.js";
 import { TimingRecorder, timingsLine } from "./search-timings.js";
 
@@ -153,11 +155,17 @@ export const semanticSearchTool = defineTool({
           authors: z.array(z.string()),
           cosine: z.number().optional(),
           rerankScore: z.number().optional(),
-          charStart: z.number(),
-          charEnd: z.number(),
+          // absent on a description hit (#631): the metadata row has no location in the book
+          charStart: z.number().optional(),
+          charEnd: z.number().optional(),
           // Book offset the snippet starts at (#243) — calibre_get_content offset= jumps there.
           snippetStart: z.number().optional(),
           snippet: z.string(),
+          // #631: the snippet is the book's description (Calibre comments), not its text; text line `from: description`
+          snippetSource: z
+            .enum(["description"])
+            .optional()
+            .describe("Set when the snippet is the book's description, not its text; such a hit has no offsets."),
           // #605: front/back matter of the shown chunk; absent for body text
           matterKind: MatterKindSchema.optional(),
           sectionPath: SectionPathSchema.optional(),
@@ -374,6 +382,8 @@ function filterFields(scope: FilterCtx): {
  */
 export type SemanticIndex = Pick<IndexFreshness, "hasIndex" | "indexMeta" | "hasVectors" | "isBookIndexed"> &
   ChunkIndex &
+  // the metadata list (#631), off at the shipped weight; optional so an index without it still searches
+  Partial<BookMetadataIndex> &
   FigureIndex &
   // a text hit's section and page labels (#708)
   SectionIndex &
@@ -475,28 +485,28 @@ async function libraryScope(
     const link = bookResourceLink({ id: r.hit.bookId, title: r.hit.title, authors: r.hit.authors }, libraryId);
     link.description = [scoreLabel(r), r.hit.authors.join(", ")].filter(Boolean).join(" — ");
     blocks.push(link);
+    // a description hit (#631) has no location: no @range, no snippet@, and says where its text is from
+    const described = r.hit.from === "description";
     const at = r.hit.snippetStart !== undefined ? ` snippet@${r.hit.snippetStart}` : "";
-    const fenced = fence(
-      `MATCH book ${r.hit.bookId} @${r.hit.charStart}-${r.hit.charEnd}${at}${matterLabel(r.hit.matterKind)}`,
-      r.hit.snippet,
-    );
-    // library scope: the snippet's start decides, so a window past a section start shows that section
-    const labels = hitLabels(deps.index, {
-      libraryId,
-      bookId: r.hit.bookId,
-      offset: r.hit.snippetStart ?? r.hit.charStart,
-    });
-    blocks.push({ type: "text", text: withProvenanceLine(labelLines(labels) + fenced, r, debug) });
+    const where = described ? "" : ` @${r.hit.charStart}-${r.hit.charEnd}${at}`;
+    const fenced = fence(`MATCH book ${r.hit.bookId}${where}${matterLabel(r.hit.matterKind)}`, r.hit.snippet);
+    // library scope: the snippet's start decides, so a window past a section start shows that section;
+    // a description hit has no place in the book, so no section or page either
+    const labels = described
+      ? {}
+      : hitLabels(deps.index, { libraryId, bookId: r.hit.bookId, offset: r.hit.snippetStart ?? r.hit.charStart });
+    const source = described ? `${labelledLine(HIT_LINE_LABELS.from, "description")}\n` : "";
+    blocks.push({ type: "text", text: withProvenanceLine(source + labelLines(labels) + fenced, r, debug) });
     results.push({
       bookId: r.hit.bookId,
       title: r.hit.title,
       authors: r.hit.authors,
       ...(r.cosine !== undefined ? { cosine: r.cosine } : {}),
       ...(r.rerankScore !== undefined ? { rerankScore: r.rerankScore } : {}),
-      charStart: r.hit.charStart,
-      charEnd: r.hit.charEnd,
+      ...(described ? {} : { charStart: r.hit.charStart, charEnd: r.hit.charEnd }),
       ...(r.hit.snippetStart !== undefined ? { snippetStart: r.hit.snippetStart } : {}),
       snippet: fenced,
+      ...(described ? { snippetSource: "description" } : {}),
       ...matterField(r.hit.matterKind),
       ...labels,
       ...provenanceField(r, debug),

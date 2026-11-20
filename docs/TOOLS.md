@@ -330,6 +330,12 @@ section data, section rows left from an older, longer text (a span ending past t
 indexed text), or chunks that do not cover the text up to the hit. Titles are printed on one
 line: whitespace and control characters become single spaces, at most 200 characters a level. A preface hit carries both `[front matter]` and `section: Preface`.
 
+A library hit can instead show the book's description (Calibre comments) when the metadata
+list is on (it ships off; see [`SEMANTIC-SEARCH.md`](./SEMANTIC-SEARCH.md)): its text reads
+`from: description` before the snippet, its label is `MATCH book <id>` with no offsets and no `section:` or `page:` line, and
+`structuredContent.results[].snippetSource` is `"description"` with no `charStart`, `charEnd`
+or `snippetStart`.
+
 Front and back matter is placed after body text: in library scope a hit shows the book's best
 body passage, and a book that matches only in its table of contents, index, bibliography,
 preface or copyright page follows every book with a body match. In book scope only strong
@@ -870,6 +876,7 @@ only the part named here is contract. The table is generated from the server's r
 | `calibre_build_index` | `FTS` | `- FTS: write_disabled\|already enabled\|enabled\|failed — …` — only with `enableFts: true` (`already enabled` is `already_enabled`; the words after the dash are Prose) | `fts.status` |
 | `calibre_semantic_search` | `section` | `section: <title> › <title> › <title>` — outermost first, at most the last 3 levels; one per text hit that has one | `results[].sectionPath \| passages[].sectionPath` |
 | `calibre_semantic_search` | `page` | `page: <n>` — the 1-based PDF page index, never the printed number; PDF text hits only | `results[].page \| passages[].page` |
+| `calibre_semantic_search` | `from` | `from: description` — right before the fence of a hit whose snippet is the book's description | `results[].snippetSource` |
 | `calibre_remove_book` | `Not found` | `Not found (skipped): #<id or uuid>, #<id or uuid>` (an unresolved uuid also prints with `#`, a known limit) | `notFoundIds[]` |
 | `calibre_ping` | `calibredb` | `calibredb: <path> (Content Server <url>)` | `calibredbPath` |
 | `calibre_ping` | `calibre version` | `calibre version: <x.y[.z]>\|unknown` — from `calibredb --version` | `calibreVersion` |

@@ -118,6 +118,12 @@ export interface LibraryHit {
   snippetStart?: number;
   /** Front/body/back matter of the shown chunk (#605); absent reads as body. */
   matterKind?: MatterKind;
+  /**
+   * Set when the hit is the book's metadata row, not a chunk (#631): `body` is the row text,
+   * `snippet` its blurb (the whole row when there is none), and `chunkId`, `charStart` and
+   * `charEnd` are 0 — no location; the tool output omits them.
+   */
+  from?: "description";
 }
 
 /** A book-scope hit: one passage within the book. */
@@ -282,6 +288,16 @@ export interface ChunkIndex {
   chunkAt(libraryId: string, bookId: number, charOffset: number): ChunkRef | undefined;
 }
 
+/** The metadata list (#631): books ranked by their metadata row, the third list of library hybrid fusion. */
+export interface BookMetadataIndex {
+  /**
+   * Rank books by the cosine of their metadata row's vector (rows without one are skipped), best
+   * first, equal scores by ascending book id, up to k. `allow` restricts before ranking. Each hit
+   * has `from: "description"`.
+   */
+  searchLibraryMetadata(libraryId: string, query: Float32Array, k: number, allow?: ReadonlySet<number>): LibraryHit[];
+}
+
 /** What the #651 keyword plan leaves out of a query's MATCH, for debug output (#650). */
 export interface KeywordPlanReport {
   /**
@@ -340,6 +356,14 @@ export interface SectionIndex {
 
 /** The full store: every port plus lifecycle. Callers that need less depend on a port. */
 export interface IndexStore
-  extends LibraryIdCheck, IndexFreshness, IndexWriter, ChunkIndex, KeywordPlanReport, FigureIndex, SectionIndex {
+  extends
+    LibraryIdCheck,
+    IndexFreshness,
+    IndexWriter,
+    ChunkIndex,
+    BookMetadataIndex,
+    KeywordPlanReport,
+    FigureIndex,
+    SectionIndex {
   close(): void;
 }

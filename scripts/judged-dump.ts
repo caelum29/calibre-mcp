@@ -1,12 +1,14 @@
 // Blind judged eval, step 1: run every pre-registered query through the real
 // calibre_semantic_search (in-process server, same wiring as debug-call.ts) and save the raw
 // hits + debug timings, then write blind batch files for separate judge agents.
-// Run: pnpm eval:judged:dump <runDir> [--batch 40] [--store <file>] [--strict-text] [--arm <name>]
+// Run: pnpm eval:judged:dump <runDir> [--batch 40] [--store <file>] [--strict-text] [--arm <name>] [--rrf-weights v,k,m]
 // (runDir holds a frozen queries.json) — #602. With --store, the blind batches hold only the hits no
 // stored judgment covers (incremental pooling, #361); the key still maps every pooled item.
 // --arm <name>: one pre-registered #644 rerank latency arm (thresholds.rerankLatency.arms); its
 // rerank options reach retrieve() through BuildServerOptions.retrievalOptions, arm.json records
 // them in the run dir, and 3 warm-up queries outside the judged set run first (discarded).
+// --rrf-weights v,k,m: fusion weights (vector, keyword, #631 metadata list) through the same seam,
+// recorded in rrf-weights.json; a run dir keeps its weights like its arm.
 // Read-only on the library; resumable (queries already in raw-hits.jsonl are skipped).
 // Queries run one at a time: parallel semantic calls compete for the same CPU and skip the rerank.
 
@@ -25,7 +27,7 @@ import { loadRuntimeConfig } from "../src/runtime-config.js";
 const [runDir, ...rest] = process.argv.slice(2);
 if (!runDir) {
   process.stderr.write(
-    "usage: pnpm eval:judged:dump <runDir> [--batch 40] [--store <file>] [--strict-text] [--arm <name>]\n",
+    "usage: pnpm eval:judged:dump <runDir> [--batch 40] [--store <file>] [--strict-text] [--arm <name>] [--rrf-weights v,k,m]\n",
   );
   process.exit(2);
 }
@@ -37,6 +39,12 @@ const batchSize = Number(flag("--batch") ?? 40);
 const storeFile = flag("--store");
 const strictText = rest.includes("--strict-text");
 const armName = flag("--arm");
+const rrfFlag = flag("--rrf-weights");
+const rrfWeights = rrfFlag === undefined ? undefined : rrfFlag.split(",").map(Number);
+if (rrfWeights && (rrfWeights.length < 2 || rrfWeights.some((w) => !Number.isFinite(w) || w < 0))) {
+  process.stderr.write(`--rrf-weights takes 2 or 3 non-negative numbers, got "${rrfFlag}"\n`);
+  process.exit(2);
+}
 
 const queriesJson = readFileSync(join(runDir, "queries.json"), "utf8");
 const pathError = storeFile && storePathError(storeFile, queriesJson);
@@ -80,9 +88,27 @@ if (arm && priorArm === undefined) {
   writeFileSync(armPath, `${JSON.stringify(record, null, 2)}\n`);
 }
 
+// a resumed run dir must keep its fusion weights too (#631), for the same reason
+const rrfPath = join(runDir, "rrf-weights.json");
+const priorRrf = existsSync(rrfPath)
+  ? (JSON.parse(readFileSync(rrfPath, "utf8")) as { rrfWeights: number[] }).rrfWeights
+  : undefined;
+if (JSON.stringify(priorRrf) !== JSON.stringify(rrfWeights) && (priorRrf !== undefined || done.size > 0)) {
+  process.stderr.write(
+    `run dir holds rrf weights ${JSON.stringify(priorRrf ?? null)}, not ${JSON.stringify(rrfWeights ?? null)}: use a fresh run dir\n`,
+  );
+  process.exit(2);
+}
+if (rrfWeights && priorRrf === undefined) {
+  const sha = execSync("git rev-parse HEAD", { encoding: "utf8" }).trim();
+  const record = { rrfWeights, gitSha: sha, node: process.version, startedAt: new Date().toISOString() };
+  writeFileSync(rrfPath, `${JSON.stringify(record, null, 2)}\n`);
+}
+
 // debug log level turns on the per-stage timings in every result
 const env = { CALIBRE_MCP_SERVER_URL: "http://localhost:8080", ...process.env, CALIBRE_MCP_LOG_LEVEL: "debug" };
-const server = buildServer({ env, ...(arm ? { retrievalOptions: arm.options } : {}) });
+const retrievalOptions = { ...arm?.options, ...(rrfWeights ? { rrfWeights } : {}) };
+const server = buildServer({ env, ...(arm || rrfWeights ? { retrievalOptions } : {}) });
 const client = new Client({ name: "judged-dump", version: "0" });
 const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
 await server.connect(serverSide);
