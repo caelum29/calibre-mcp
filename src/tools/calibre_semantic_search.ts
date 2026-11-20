@@ -25,6 +25,7 @@ import type {
   IndexWriter,
   KeywordPlanReport,
   LibraryHit,
+  SectionIndex,
 } from "../semantic/store/index.js";
 import { findGoneBookIds } from "../app/live-hits.js";
 import { type FilterResolution, honestyLines, restrictSet, resolveFilter } from "../app/bundles.js";
@@ -47,6 +48,7 @@ import type { BaseDeps, DepsWithIndex } from "./deps.js";
 import { errorCodeFor } from "../domain/error-codes.js";
 import { figureLocation, figureLocationLabel } from "../domain/figures/location.js";
 import { type MatterKind, NON_BODY_KINDS } from "../domain/structure/matter-kind.js";
+import { hitLabels, labelLines, SectionPathSchema, TextPageSchema } from "./hit-labels.js";
 
 // Debug-level ranking provenance per hit (#650), the same shape for every scope.
 // Front/back matter of a hit (#605); the closed set of stored kinds minus body, which is never sent.
@@ -158,6 +160,8 @@ export const semanticSearchTool = defineTool({
           snippet: z.string(),
           // #605: front/back matter of the shown chunk; absent for body text
           matterKind: MatterKindSchema.optional(),
+          sectionPath: SectionPathSchema.optional(),
+          page: TextPageSchema.optional(),
           provenance: ProvenanceSchema,
         }),
       )
@@ -170,6 +174,8 @@ export const semanticSearchTool = defineTool({
           cosine: z.number().optional(),
           rerankScore: z.number().optional(),
           matterKind: MatterKindSchema.optional(),
+          sectionPath: SectionPathSchema.optional(),
+          page: TextPageSchema.optional(),
           body: z.string(),
           provenance: ProvenanceSchema,
         }),
@@ -369,6 +375,8 @@ function filterFields(scope: FilterCtx): {
 export type SemanticIndex = Pick<IndexFreshness, "hasIndex" | "indexMeta" | "hasVectors" | "isBookIndexed"> &
   ChunkIndex &
   FigureIndex &
+  // a text hit's section and page labels (#708)
+  SectionIndex &
   // debug output: what the keyword plan left out (#651)
   KeywordPlanReport &
   // the one write: best-effort prune of hits whose book is gone (#579)
@@ -472,7 +480,13 @@ async function libraryScope(
       `MATCH book ${r.hit.bookId} @${r.hit.charStart}-${r.hit.charEnd}${at}${matterLabel(r.hit.matterKind)}`,
       r.hit.snippet,
     );
-    blocks.push({ type: "text", text: withProvenanceLine(fenced, r, debug) });
+    // library scope: the snippet's start decides, so a window past a section start shows that section
+    const labels = hitLabels(deps.index, {
+      libraryId,
+      bookId: r.hit.bookId,
+      offset: r.hit.snippetStart ?? r.hit.charStart,
+    });
+    blocks.push({ type: "text", text: withProvenanceLine(labelLines(labels) + fenced, r, debug) });
     results.push({
       bookId: r.hit.bookId,
       title: r.hit.title,
@@ -484,6 +498,7 @@ async function libraryScope(
       ...(r.hit.snippetStart !== undefined ? { snippetStart: r.hit.snippetStart } : {}),
       snippet: fenced,
       ...matterField(r.hit.matterKind),
+      ...labels,
       ...provenanceField(r, debug),
     });
   }
@@ -561,13 +576,16 @@ async function bookScope(
       `PASSAGE @${r.hit.charStart}-${r.hit.charEnd}${matterLabel(kind)} ${scoreLabel(r)}`,
       r.hit.body,
     );
-    blocks.push({ type: "text", text: withProvenanceLine(fenced, r, debug) });
+    // book scope: the whole chunk is shown, so its start decides
+    const labels = hitLabels(deps.index, { libraryId, bookId, offset: r.hit.charStart });
+    blocks.push({ type: "text", text: withProvenanceLine(labelLines(labels) + fenced, r, debug) });
     passages.push({
       charStart: r.hit.charStart,
       charEnd: r.hit.charEnd,
       ...(r.cosine !== undefined ? { cosine: r.cosine } : {}),
       ...(r.rerankScore !== undefined ? { rerankScore: r.rerankScore } : {}),
       ...matterField(kind),
+      ...labels,
       body: fenced,
       ...provenanceField(r, debug),
     });

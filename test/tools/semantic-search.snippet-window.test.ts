@@ -9,6 +9,7 @@ import type { Embedder } from "../../src/semantic/embedder.js";
 import { EMBED_DIM } from "../../src/semantic/model.js";
 import { SqliteIndexStore } from "../../src/semantic/store/index.js";
 import { l2normalize } from "../../src/semantic/vector.js";
+import { LIBRARY_SNIPPET_CHARS } from "../../src/semantic/snippet.js";
 import { fence } from "../../src/shared/fence.js";
 import { semanticSearchTool } from "../../src/tools/calibre_semantic_search.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
@@ -87,8 +88,10 @@ const FILLER_TAIL =
   "chaos testing, write the runbook before the incident, and keep the cluster small enough " +
   "that a human can still reason about it at three in the morning. Most outages trace back to " +
   "a configuration change, not to the protocol itself, so invest in safe rollout tooling first.";
-const BOOK38_BODY = FILLER_HEAD + FILLER_HEAD + RAFT_SENTENCE + FILLER_TAIL;
+// the tail runs twice so the 800-char window (#708) still fits after the Raft sentence
+const BOOK38_BODY = FILLER_HEAD + FILLER_HEAD + RAFT_SENTENCE + FILLER_TAIL + FILLER_TAIL;
 const BOOK38_START = 352024;
+const BOOK38_END = BOOK38_START + BOOK38_BODY.length;
 const RAFT_AT = BOOK38_START + BOOK38_BODY.indexOf(RAFT_SENTENCE);
 
 describe("library snippet window (#243)", () => {
@@ -120,7 +123,8 @@ describe("library snippet window (#243)", () => {
       "Эта глава описывает организацию команд и найм. Мы обсуждаем бюджеты, планирование и " +
       "отчётность перед руководством, а также то, как удерживать сильных инженеров. ";
     const hit = "Согласование состояния в распределённые системы требует протокола консенсуса.";
-    const body = lead + lead + lead + hit + " " + lead;
+    // enough text after the hit for a full 800-char window (#708)
+    const body = lead + lead + lead + hit + " " + lead.repeat(5);
     const store = storeWith(7, "Книга", 1000, body);
     const { top } = await search(store, "консенсус в распределённых системах", "keyword");
     expect(top.snippetStart).toBe(1000 + body.indexOf(hit));
@@ -139,7 +143,9 @@ describe("library snippet window (#243)", () => {
     const store = storeWith(38, "An Elegant Puzzle", BOOK38_START, BOOK38_BODY);
     const { top } = await search(store, "консенсус", "vector");
     expect(top.snippetStart).toBe(BOOK38_START);
-    expect(top.snippet).toBe(fence("MATCH book 38 @352024-354052 snippet@352024", BOOK38_BODY.slice(0, 320)));
+    expect(top.snippet).toBe(
+      fence(`MATCH book 38 @352024-${BOOK38_END} snippet@352024`, BOOK38_BODY.slice(0, LIBRARY_SNIPPET_CHARS)),
+    );
   });
 
   // #657: a chunk cut mid-sentence (lowercase head) falls back to its first sentence start
@@ -148,7 +154,7 @@ describe("library snippet window (#243)", () => {
     const store = storeWith(38, "An Elegant Puzzle", BOOK38_START, body);
     const { text, top } = await search(store, "консенсус", "vector");
     const label = `MATCH book 38 @352024-${352024 + body.length} snippet@352061`;
-    const snippet = fence(label, "…" + body.slice(37, 37 + 320));
+    const snippet = fence(label, "…" + body.slice(37, 37 + LIBRARY_SNIPPET_CHARS));
     expect(top.snippetStart).toBe(BOOK38_START + 37);
     expect(top.snippet).toBe(snippet);
     expect(text).toContain(snippet);
