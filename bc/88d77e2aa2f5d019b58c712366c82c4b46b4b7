@@ -1,0 +1,19 @@
+test/tools/rebuild-steer-guard-720.test.ts
+  s_294e768aed5bc0::t_13eeca51cb662a 1-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bc88d77e2aa2f5d019b58c712366c82c4b46b4b7",
+  "prompts": {},
+  "sessions": {
+    "s_294e768aed5bc0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "98d0ad60-17ea-4a29-8345-fb6219b1a5e7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
