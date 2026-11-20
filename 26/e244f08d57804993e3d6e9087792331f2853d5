@@ -1,0 +1,19 @@
+GLOSSARY.md
+  s_573609c4bcf47a::t_39ba0b2e5736bc 50-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "26e244f08d57804993e3d6e9087792331f2853d5",
+  "prompts": {},
+  "sessions": {
+    "s_573609c4bcf47a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "83b053bd-6451-4d51-bec0-a2c4fa2aa7f7",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
