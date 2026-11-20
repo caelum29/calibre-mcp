@@ -1,0 +1,27 @@
+docs/ARCHITECTURE.md
+  s_573609c4bcf47a::t_39ba0b2e5736bc 107
+  s_573609c4bcf47a::t_3bf83fcd87fc7c 131
+docs/SEMANTIC-SEARCH.md
+  s_573609c4bcf47a::t_3bf83fcd87fc7c 220
+  s_573609c4bcf47a::t_39ba0b2e5736bc 176,219,221-222
+docs/TOOLS.md
+  s_573609c4bcf47a::t_f0131a60fccf6f 42
+README.md
+  s_573609c4bcf47a::t_3bf83fcd87fc7c 33-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e69de4012a4a866013665abc6cd9cf3e11784b38",
+  "prompts": {},
+  "sessions": {
+    "s_573609c4bcf47a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "83b053bd-6451-4d51-bec0-a2c4fa2aa7f7",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
