@@ -1,0 +1,25 @@
+test/domain/normalise/epub-artefacts-560.test.ts
+  s_573609c4bcf47a::t_0ccc136cdc6355 84
+test/semantic/encode-worker-metadata-transfer-719.test.ts
+  s_573609c4bcf47a::t_2b3e960d30f5c7 20-21
+  s_573609c4bcf47a::t_b7778c716c0c34 1-19,22-55
+test/tools/index-book.refresh-flags.test.ts
+  s_573609c4bcf47a::t_29298110f35d67 180-184
+  s_573609c4bcf47a::t_cc2dd1cc299388 164-179,185-192
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4c2b2b8fdde156b8bee85538f74b7e0b8871661f",
+  "prompts": {},
+  "sessions": {
+    "s_573609c4bcf47a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "83b053bd-6451-4d51-bec0-a2c4fa2aa7f7",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
