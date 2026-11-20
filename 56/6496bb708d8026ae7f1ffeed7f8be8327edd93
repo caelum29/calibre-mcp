@@ -1,0 +1,20 @@
+scripts/matter-kind-measure.ts
+  s_fda633774d99f1::t_57cb786265eee3 1-255
+  s_fda633774d99f1::t_fe98977c70d84c 256-283
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "566496bb708d8026ae7f1ffeed7f8be8327edd93",
+  "prompts": {},
+  "sessions": {
+    "s_fda633774d99f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "45586a54-cb3f-48e3-8639-7dabc32a999a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
