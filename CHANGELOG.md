@@ -156,52 +156,42 @@ inserts its generated section above the newest entry. Hand-written notes still g
 
 ### Added
 
-* cancel long tool calls and report progress ([#150](https://github.com/caelum29/calibre-mcp/issues/150)) ([d39c263](https://github.com/caelum29/calibre-mcp/commit/d39c2630387b71c8e69bad73f0138ca9da60d7a6))
-* generate the tool catalog and keep tool counts in sync ([#148](https://github.com/caelum29/calibre-mcp/issues/148)) ([bda73ca](https://github.com/caelum29/calibre-mcp/commit/bda73ca2a06a9ab3b8e772648f7fcd728e79e741))
-
-
-### Fixed
-
-* address verifier findings on the hygiene stack ([#154](https://github.com/caelum29/calibre-mcp/issues/154)) ([9e8c106](https://github.com/caelum29/calibre-mcp/commit/9e8c106fdf6a1989bdd6c4d4d9a621ef58f5ba02))
-* kill child process groups and exit when the client goes away ([#145](https://github.com/caelum29/calibre-mcp/issues/145)) ([47cc35d](https://github.com/caelum29/calibre-mcp/commit/47cc35de0cecc779d414ecd8c01fbbc7894c0e04))
-
-## [Unreleased]
-
-### Added
-
-- **`docs/tool-catalog.json`** — the generated, exact `tools/list` the server advertises
+* **`docs/tool-catalog.json`** — the generated, exact `tools/list` the server advertises
   (writes enabled; client-compat rewrites applied), so schema changes show up as a reviewable
-  diff. `pnpm catalog` regenerates it; `pnpm catalog:check` fails on drift.
-- **Cancellation.** Cancelling a tool call from the client (MCP `notifications/cancelled`)
+  diff. `pnpm catalog` regenerates it; `pnpm catalog:check` fails on drift ([#148](https://github.com/caelum29/calibre-mcp/issues/148))
+* **Cancellation.** Cancelling a tool call from the client (MCP `notifications/cancelled`)
   now stops the work: running `calibredb` / `ebook-convert` / `pdftotext` / figure-scan
   process groups are killed and downloads are aborted. `calibre_build_index` stops between
-  books and reports what was already indexed (re-running the same call resumes).
-- **Progress notifications.** `calibre_build_index` (per book) and `calibre_quality_report`
-  send MCP progress notifications when the client asks for them (throttled, monotonic).
+  books and reports what was already indexed (re-running the same call resumes) ([#150](https://github.com/caelum29/calibre-mcp/issues/150))
+* **Progress notifications.** `calibre_build_index` (per book) and `calibre_quality_report`
+  send MCP progress notifications when the client asks for them (throttled, monotonic) ([#150](https://github.com/caelum29/calibre-mcp/issues/150))
+
 
 ### Changed
 
-- **Minimum Node.js is now 22.16 (was 22.5).** The semantic index needs `node:sqlite` with
+* **Minimum Node.js is now 22.16 (was 22.5).** The semantic index needs `node:sqlite` with
   FTS5: on 22.5–22.12 `node:sqlite` exists only behind `--experimental-sqlite` (the server
   failed to start with `ERR_UNKNOWN_BUILTIN_MODULE`), and 22.13–22.15 ship SQLite without
   FTS5 (index builds failed with `no such module: fts5`). `engines` and the MCPB manifest now
-  say `>=22.16`; Node 22 is tested in CI alongside Node 24.
-- **Releases are automated with release-please.** Merging the release PR tags `vX.Y.Z`,
+  say `>=22.16`; Node 22 is tested in CI alongside Node 24 ([#149](https://github.com/caelum29/calibre-mcp/issues/149))
+* **Releases are automated with release-please.** Merging the release PR tags `vX.Y.Z`,
   creates the GitHub release and publishes to npm, the GitHub release (`.mcpb`) and the MCP
-  Registry from one workflow.
-- **Tool counts in the docs and manifests are now generated and correct.** The plugin and
+  Registry from one workflow ([#151](https://github.com/caelum29/calibre-mcp/issues/151))
+* **Tool counts in the docs and manifests are now generated and correct.** The plugin and
   marketplace descriptions said 17 tools, the skill and `CLAUDE.md` 18; the server advertises
   19 model-facing tools (18 task tools + `calibre_ping`) plus 2 widget-internal ones. Every
-  stated count is now maintained from the catalog.
+  stated count is now maintained from the catalog ([#148](https://github.com/caelum29/calibre-mcp/issues/148))
+
 
 ### Fixed
 
-- **No orphaned `calibredb` / `ebook-convert` processes after the client disconnects.**
+* **No orphaned `calibredb` / `ebook-convert` processes after the client disconnects.**
   Subprocesses run in their own (detached) process group so a timeout can kill the
   conversion worker too — but that also let them outlive the server when the client
   closed stdin or sent SIGTERM mid-call, keeping the library write lock. The server now
   shuts down on stdin EOF/close, SIGINT and SIGTERM, kills every still-running process
-  group first, closes the MCP server and exits 0.
+  group first, closes the MCP server and exits 0 ([#145](https://github.com/caelum29/calibre-mcp/issues/145))
+* address verifier findings on the hygiene stack ([#154](https://github.com/caelum29/calibre-mcp/issues/154)) ([9e8c106](https://github.com/caelum29/calibre-mcp/commit/9e8c106fdf6a1989bdd6c4d4d9a621ef58f5ba02))
 
 ## [0.8.0] — 2026-10-23
 
