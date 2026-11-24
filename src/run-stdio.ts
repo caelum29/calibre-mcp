@@ -49,7 +49,7 @@ async function main(): Promise<void> {
   log.info("calibre-mcp listening on stdio", { version: VERSION, node: process.version, logFile: log.currentFile() });
 }
 
-main().catch((err) => {
+main().catch((err: unknown) => {
   log.error("fatal", err instanceof Error ? (err.stack ?? err.message) : err);
   process.exit(1);
 });

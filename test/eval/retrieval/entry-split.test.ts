@@ -19,7 +19,11 @@ async function importWithBlankArgv1(entry: string, ...flags: string[]) {
     timeout: 20_000,
   }).then(
     (r) => ({ code: 0, stderr: r.stderr }),
-    (e: { code?: number; stderr?: string }) => ({ code: e.code, stderr: e.stderr ?? "" }),
+    (e: unknown) => {
+      // exec rejects with the child's exit code and stderr attached
+      const { code, stderr } = e as { code?: number; stderr?: string };
+      return { code, stderr: stderr ?? "" };
+    },
   );
 }
 const evalLines = (stderr: string) => stderr.split("\n").filter((l) => l.startsWith("[eval]"));

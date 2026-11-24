@@ -121,7 +121,7 @@ describe.skipIf(!RUN || !serverUp)("calibre_merge_books (live Content Server)", 
     if (createdIds.length > 0) {
       await calibre
         .calibredb(["remove", createdIds.join(",")], { library: libId })
-        .catch((e) => log.warn("live-test cleanup remove failed", { msg: String(e) }));
+        .catch((e: unknown) => log.warn("live-test cleanup remove failed", { msg: String(e) }));
     }
     await rm(scratch, { recursive: true, force: true }).catch(() => {});
   });

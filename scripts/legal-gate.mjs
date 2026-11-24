@@ -142,7 +142,7 @@ async function main() {
   process.exit(result.pass ? 0 : 1);
 }
 
-main().catch((e) => {
+main().catch((/** @type {unknown} */ e) => {
   err(`legal-gate error: ${e instanceof Error ? e.stack : String(e)}`);
   process.exit(2);
 });

@@ -140,7 +140,6 @@ export default defineConfig({
         "typescript/consistent-type-imports": "off", // 19
         "unicorn/no-useless-promise-resolve-reject": "off", // 13
         "unicorn/prefer-structured-clone": "off", // 11
-        "typescript/use-unknown-in-catch-callback-variable": "off", // 10
         "unicorn/prefer-set-has": "off", // 7
         "unicorn/prefer-optional-catch-binding": "off", // 5
         "quality/no-reflect-get": "off", // 5

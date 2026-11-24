@@ -308,7 +308,7 @@ function startBootProbes(deps: ToolDeps, extractor: Extractor): void {
   void extractor
     .detectBackends()
     .then((r) => log.info("extractor backends", r))
-    .catch((e) => log.warn("extractor detection failed", { msg: String(e) }));
+    .catch((e: unknown) => log.warn("extractor detection failed", { msg: String(e) }));
 
   void deps.content
     .libraryInfo()

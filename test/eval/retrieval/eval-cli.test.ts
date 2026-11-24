@@ -120,7 +120,11 @@ describe("CLI entry rejects bad --gate flags before any model load", () => {
   const cli = (entry: string, ...args: string[]) =>
     exec(process.execPath, ["--import", "tsx", entry, ...args], { cwd: ROOT, env, timeout: 20_000 }).then(
       (r) => ({ code: 0, stderr: r.stderr }),
-      (e: { code?: number; stderr?: string }) => ({ code: e.code, stderr: e.stderr ?? "" }),
+      (e: unknown) => {
+        // exec rejects with the child's exit code and stderr attached
+        const { code, stderr } = e as { code?: number; stderr?: string };
+        return { code, stderr: stderr ?? "" };
+      },
     );
   // only our own lines: Node 22 adds an ExperimentalWarning (node:sqlite) to stderr
   const evalLines = (r: { code?: number; stderr: string }) => ({
