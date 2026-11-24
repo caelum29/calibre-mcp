@@ -144,7 +144,6 @@ export default defineConfig({
         "unicorn/prefer-set-has": "off", // 7
         "unicorn/prefer-optional-catch-binding": "off", // 5
         "quality/no-reflect-get": "off", // 5
-        "preserve-caught-error": "off", // 5
         "unicorn/text-encoding-identifier-case": "off", // 4
         "unicorn/prefer-top-level-await": "off", // 4
         "quality/no-object-parameters": "off", // 4

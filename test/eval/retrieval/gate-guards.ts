@@ -38,7 +38,7 @@ export function loadGateBaselines(t: Thresholds, read: (rel: string) => string):
       return JSON.parse(read(rel)) as EvalReport;
     } catch (err) {
       const why = err instanceof Error ? err.message : String(err);
-      throw new Error(`thresholds.${key} "${rel}" is unreadable: ${why}`);
+      throw new Error(`thresholds.${key} "${rel}" is unreadable: ${why}`, { cause: err });
     }
   };
   const on = load(t.baselineReport, "baselineReport");
@@ -80,6 +80,7 @@ export function loadAllowEntries(
   } catch (err) {
     throw new Error(
       `thresholds.listDiff.allowFile "${cfg.allowFile}" is unreadable: ${err instanceof Error ? err.message : String(err)}`,
+      { cause: err },
     );
   }
   const entries = (parsed as { entries?: unknown }).entries;

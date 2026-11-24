@@ -105,7 +105,7 @@ export class TransformersReranker implements Reranker {
       // The whole call is one queue task, so a request's pairs never interleave with another's.
       return await this.#queue.run(() => this.#score(tokenizer, model, query, passages, maxTokens));
     } catch (err) {
-      if (err instanceof Error && err.message === QUEUE_BUSY) throw new Error("RERANKER_BUSY");
+      if (err instanceof Error && err.message === QUEUE_BUSY) throw new Error("RERANKER_BUSY", { cause: err });
       throw err;
     }
   }
@@ -158,7 +158,7 @@ export class TransformersReranker implements Reranker {
     } catch (err) {
       const code = (err as NodeJS.ErrnoException).code;
       if (code === "ERR_MODULE_NOT_FOUND" || code === "MODULE_NOT_FOUND") {
-        throw new Error("RERANKER_UNAVAILABLE");
+        throw new Error("RERANKER_UNAVAILABLE", { cause: err });
       }
       throw err;
     }

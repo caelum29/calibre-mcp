@@ -177,7 +177,7 @@ export class TransformersEmbedder implements Embedder {
     } catch (err) {
       const code = (err as NodeJS.ErrnoException).code;
       if (code === "ERR_MODULE_NOT_FOUND" || code === "MODULE_NOT_FOUND") {
-        throw new Error("EMBEDDER_UNAVAILABLE");
+        throw new Error("EMBEDDER_UNAVAILABLE", { cause: err });
       }
       throw err;
     }
