@@ -155,7 +155,7 @@ function sameNumber(a: unknown, b: unknown): boolean {
 // Calibre reads a cleared field back as absent, "", [] or {} depending on the field, so
 // clearing an already-empty field must not show up as a change (#202).
 function isEmptyValue(v: unknown): boolean {
-  if (v == null || v === "") return true;
+  if (v === null || v === undefined || v === "") return true;
   if (Array.isArray(v)) return v.length === 0;
   return typeof v === "object" && Object.keys(v).length === 0;
 }

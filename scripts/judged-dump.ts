@@ -97,7 +97,7 @@ async function search(q: JudgedQuery, mode: "hybrid" | "keyword", topK: number) 
     target: q.target ?? "text",
     mode,
     topK,
-    ...(q.scope === "book" && q.bookId != null ? { bookId: q.bookId } : {}),
+    ...(q.scope === "book" && q.bookId !== null && q.bookId !== undefined ? { bookId: q.bookId } : {}),
   };
   const r = await client.callTool({ name: "calibre_semantic_search", arguments: args });
   const text = (r.content as Array<{ type: string; text?: string }>)

@@ -137,7 +137,6 @@ export default defineConfig({
         "typescript/use-unknown-in-catch-callback-variable": "off", // 10
         "unicorn/prefer-set-has": "off", // 7
         "typescript/no-unsafe-return": "off", // 7
-        eqeqeq: "off", // 7
         "unicorn/prefer-optional-catch-binding": "off", // 5
         "typescript/no-unsafe-assignment": "off", // 5
         "quality/no-reflect-get": "off", // 5

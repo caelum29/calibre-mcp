@@ -113,7 +113,7 @@ export class SqliteFigureIndex implements FigureIndex {
       caption: String(r.caption ?? ""),
       charOffset: Number(r.char_offset),
       format: String(r.format ?? ""),
-      ...(r.source != null ? { source: String(r.source) } : {}),
+      ...(r.source !== null && r.source !== undefined ? { source: String(r.source) } : {}),
     }));
   }
 
@@ -135,7 +135,7 @@ export class SqliteFigureIndex implements FigureIndex {
       caption: String(r.caption ?? ""),
       charOffset: Number(r.char_offset),
       format: String(r.format ?? ""),
-      ...(r.source != null ? { source: String(r.source) } : {}),
+      ...(r.source !== null && r.source !== undefined ? { source: String(r.source) } : {}),
       score,
     };
   }
