@@ -1,0 +1,19 @@
+test/integration/search-old-modes-steer-598.test.ts
+  s_f17c55b783a487::t_0e881bfc8736bc 61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d1a05de4319190e6b75c7346d6f415941bf8e518",
+  "prompts": {},
+  "sessions": {
+    "s_f17c55b783a487": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd568a66-62d4-4115-b3fe-06f84ba644ae",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
