@@ -1,0 +1,16 @@
+src/domain/book-fields.ts
+  h_e22d73abc85ef9 151-152
+src/domain/structure/pdf-outline.ts
+  h_e22d73abc85ef9 25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dd16648e4d48642ae355a0352d3b8650ff90307d",
+  "prompts": {},
+  "humans": {
+    "h_e22d73abc85ef9": {
+      "author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
