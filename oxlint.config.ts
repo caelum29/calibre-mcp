@@ -163,7 +163,6 @@ export default defineConfig({
         "quality/no-known-value-widening": "off", // 111
         "quality/no-array-filter-map": "off", // 59
         "unicorn/prefer-string-raw": "off", // 46
-        "no-promise-executor-return": "off", // 42
         "quality/no-unknown-returns": "off", // 23
       },
     },

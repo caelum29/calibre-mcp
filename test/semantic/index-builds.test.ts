@@ -24,7 +24,10 @@ function registry(opts: { keptTtlMs?: number } = {}) {
   return { reg, advance: (ms: number) => (t += ms) };
 }
 
-const flush = () => new Promise((r) => setTimeout(r, 5));
+const flush = () =>
+  new Promise((r) => {
+    setTimeout(r, 5);
+  });
 
 /** Start a build that outlasts the deadline, then settle it in the background. */
 async function detachedBuild(reg: IndexBuildRegistry<string>, key = "k") {

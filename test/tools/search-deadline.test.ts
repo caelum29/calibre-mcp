@@ -15,7 +15,9 @@ import { textOf } from "./text-of.js";
 
 /** A boundary call that hangs until its own timeout fires, like a request queued behind a held lock. */
 const hangUntilTimeout = (err: () => Error) => (timeoutMs: number | undefined) =>
-  new Promise<never>((_, reject) => setTimeout(() => reject(err()), timeoutMs ?? 30_000));
+  new Promise<never>((_, reject) => {
+    setTimeout(() => reject(err()), timeoutMs ?? 30_000);
+  });
 
 const MATCHES: FtsMatches = {
   bookIds: [1235],

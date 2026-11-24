@@ -27,12 +27,16 @@ beforeAll(async () => {
     res.statusCode = 404;
     res.end();
   });
-  await new Promise<void>((resolve) => http.listen(0, "127.0.0.1", resolve));
+  await new Promise<void>((resolve) => {
+    http.listen(0, "127.0.0.1", resolve);
+  });
   baseUrl = `http://127.0.0.1:${(http.address() as AddressInfo).port}`;
 });
 
 afterAll(async () => {
-  await new Promise<void>((resolve) => http.close(() => resolve()));
+  await new Promise<void>((resolve) => {
+    http.close(() => resolve());
+  });
 });
 
 async function withClient<T>(writeEnabled: boolean, fn: (client: Client) => Promise<T>): Promise<T> {

@@ -77,7 +77,9 @@ describe("spawnCollect", () => {
       const deadline = Date.now() + 5000;
       while (!existsSync(pidFile) || readFileSync(pidFile, "utf8") === "") {
         if (Date.now() > deadline) throw new Error("grandchild never started");
-        await new Promise((r) => setTimeout(r, 25));
+        await new Promise((r) => {
+          setTimeout(r, 25);
+        });
       }
       const grandchildPid = Number(readFileSync(pidFile, "utf8"));
 
@@ -103,7 +105,9 @@ describe("spawnCollect", () => {
       const gone = async (): Promise<boolean> => {
         for (let i = 0; i < 40; i++) {
           if (isDead(grandchildPid)) return true;
-          await new Promise((res) => setTimeout(res, 25));
+          await new Promise((res) => {
+            setTimeout(res, 25);
+          });
         }
         return false;
       };
@@ -134,7 +138,9 @@ describe("spawnCollect", () => {
     // The killed child leaves the live registry once it has actually exited ('close').
     let live = 1;
     for (let i = 0; i < 40 && live > 0; i++) {
-      await new Promise((r) => setTimeout(r, 25));
+      await new Promise((r) => {
+        setTimeout(r, 25);
+      });
       live = killAllChildren();
     }
     expect(live).toBe(0);

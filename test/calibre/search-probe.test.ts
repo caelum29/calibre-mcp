@@ -19,7 +19,9 @@ async function hangingSearchServer(): Promise<string> {
     }
     // search: never answered
   });
-  await new Promise<void>((r) => server!.listen(0, "127.0.0.1", r));
+  await new Promise<void>((r) => {
+    server!.listen(0, "127.0.0.1", r);
+  });
   return `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 }
 

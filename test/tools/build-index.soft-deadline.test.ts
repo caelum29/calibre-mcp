@@ -67,7 +67,9 @@ const extracted = (): ExtractedText => {
 /** Extraction that blocks until `release()` (or rejects on the call's abort signal). */
 function gatedExtractor() {
   let open!: () => void;
-  const gate = new Promise<void>((resolve) => (open = resolve));
+  const gate = new Promise<void>((resolve) => {
+    open = resolve;
+  });
   const calls: number[] = [];
   return {
     calls,
@@ -118,7 +120,9 @@ const text = (r: ToolResult) => (r.content[0] as { text: string }).text;
 /** The handler's result if it settles within `ms`, else "pending". */
 async function within(p: Promise<ToolResult>, ms = SETTLE_MS): Promise<ToolResult | "pending"> {
   let timer: NodeJS.Timeout | undefined;
-  const pending = new Promise<"pending">((resolve) => (timer = setTimeout(() => resolve("pending"), ms)));
+  const pending = new Promise<"pending">((resolve) => {
+    timer = setTimeout(() => resolve("pending"), ms);
+  });
   try {
     return await Promise.race([p, pending]);
   } finally {
@@ -130,7 +134,9 @@ async function within(p: Promise<ToolResult>, ms = SETTLE_MS): Promise<ToolResul
 async function committed(d: ToolDeps & { index: SqliteIndexStore }, bookId: number): Promise<boolean> {
   for (let i = 0; i < 200; i++) {
     if (d.index.indexedBookIds(LIB).includes(bookId)) return true;
-    await new Promise((r) => setTimeout(r, 5));
+    await new Promise((r) => {
+      setTimeout(r, 5);
+    });
   }
   return false;
 }
@@ -243,7 +249,9 @@ describe("calibre_build_index soft deadline (#284)", () => {
     const d = deps(ex, 300);
     const ac = new AbortController();
     const first = buildIndexTool.handler(args(), d, ctx(ac.signal));
-    await new Promise((r) => setTimeout(r, 10));
+    await new Promise((r) => {
+      setTimeout(r, 10);
+    });
     ac.abort();
     const cancelled = (await within(first)) as ToolResult;
     expect(cancelled.isError).toBe(true);

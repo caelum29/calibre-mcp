@@ -58,7 +58,9 @@ describe("LibraryBusyTracker", () => {
     advance(60_000);
     let reachedCalibre = 0;
     let releaseCalibre!: () => void;
-    const calibreAnswers = new Promise<void>((resolve) => (releaseCalibre = resolve));
+    const calibreAnswers = new Promise<void>((resolve) => {
+      releaseCalibre = resolve;
+    });
     const call = async () => {
       busy.assertAvailable("L");
       reachedCalibre++;

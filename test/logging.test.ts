@@ -73,7 +73,9 @@ describe("logger call context", () => {
     const { logger, records } = setup();
     logger.setClient("claude-code");
     await logger.withContext({ tool: "calibre_search", call: "c1" }, async () => {
-      await new Promise((r) => setTimeout(r, 1));
+      await new Promise((r) => {
+        setTimeout(r, 1);
+      });
       logger.error("calibredb failed");
     });
     expect(records()[0]).toMatchObject({ client: "claude-code", tool: "calibre_search", call: "c1" });

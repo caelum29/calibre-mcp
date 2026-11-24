@@ -78,11 +78,15 @@ describe("stdio server lifetime", () => {
         }
       });
     });
-    const exited = new Promise<number | null>((resolve) => child.on("exit", (code) => resolve(code)));
+    const exited = new Promise<number | null>((resolve) => {
+      child.on("exit", (code) => resolve(code));
+    });
     child.stdin.end();
     const code = await Promise.race([
       exited,
-      new Promise<"timeout">((resolve) => setTimeout(() => resolve("timeout"), 10_000)),
+      new Promise<"timeout">((resolve) => {
+        setTimeout(() => resolve("timeout"), 10_000);
+      }),
     ]);
     if (code === "timeout") child.kill("SIGKILL");
     expect(code).toBe(0);

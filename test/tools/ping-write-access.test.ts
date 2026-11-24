@@ -133,9 +133,9 @@ describe("calibre_ping with a hanging write probe (#439 review)", () => {
       "fetch",
       vi.fn(
         (_u: string, init: RequestInit) =>
-          new Promise((_res, rej) =>
-            init.signal!.addEventListener("abort", () => rej(Object.assign(new Error("a"), { name: "AbortError" }))),
-          ),
+          new Promise((_res, rej) => {
+            init.signal!.addEventListener("abort", () => rej(Object.assign(new Error("a"), { name: "AbortError" })));
+          }),
       ),
     );
     const server = new ContentServerClient(loadConfig({ CALIBRE_MCP_SERVER_URL: "http://127.0.0.1:9" }));

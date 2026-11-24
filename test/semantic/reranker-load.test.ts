@@ -59,7 +59,9 @@ describe("TransformersReranker concurrency (#156)", () => {
       AutoTokenizer: { from_pretrained: async () => (texts: string[]) => ({ q: texts[0] }) },
       AutoModelForSequenceClassification: {
         from_pretrained: async () => async (inputs: { q: string }) => {
-          await new Promise((r) => setTimeout(r, ms));
+          await new Promise((r) => {
+            setTimeout(r, ms);
+          });
           log.push(inputs.q);
           return { logits: { sigmoid: () => ({ tolist: () => [[0.5]] }) } };
         },

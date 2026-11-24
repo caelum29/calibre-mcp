@@ -49,7 +49,10 @@ export type Sleep = (ms: number) => Promise<void>;
 export const RETRY_PAUSES_MS: readonly number[] = [1000, 3000];
 
 /** Production sleep. */
-export const realSleep: Sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+export const realSleep: Sleep = (ms) =>
+  new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 
 // Patterns + probe record: domain/calibredb-stderr.ts.
 

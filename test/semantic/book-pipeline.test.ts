@@ -8,7 +8,10 @@ import { describe, expect, it } from "vitest";
 import { runBookPipeline } from "../../src/semantic/book-pipeline.js";
 import { appendProgress, readCompletedIds, resumeProgress } from "../../src/semantic/build-progress.js";
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const sleep = (ms: number) =>
+  new Promise((r) => {
+    setTimeout(r, ms);
+  });
 
 describe("runBookPipeline", () => {
   it("prepares books concurrently but never overlaps two commits", async () => {

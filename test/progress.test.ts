@@ -52,7 +52,9 @@ describe("createProgressReporter", () => {
       onError: (e) => errors.push(e),
     });
     expect(() => report(1, "x")).not.toThrow();
-    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => {
+      setTimeout(r, 0);
+    });
     expect(errors).toHaveLength(1);
   });
 });

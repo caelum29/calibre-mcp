@@ -28,12 +28,16 @@ beforeAll(async () => {
   chmodSync(convert, 0o755);
   writeFileSync(path.join(dir, "calibredb"), ""); // ebook-convert is looked up beside calibredb
   http = createServer((_req, res) => res.end("not really an epub"));
-  await new Promise<void>((resolve) => http.listen(0, "127.0.0.1", resolve));
+  await new Promise<void>((resolve) => {
+    http.listen(0, "127.0.0.1", resolve);
+  });
   baseUrl = `http://127.0.0.1:${(http.address() as AddressInfo).port}`;
 });
 
 afterAll(async () => {
-  await new Promise<void>((resolve) => http.close(() => resolve()));
+  await new Promise<void>((resolve) => {
+    http.close(() => resolve());
+  });
   rmSync(dir, { recursive: true, force: true });
 });
 

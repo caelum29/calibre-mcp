@@ -437,7 +437,9 @@ export async function withBusyRetry<T>(fn: () => T | Promise<T>, pauseMs = 1000)
     return await fn();
   } catch (err) {
     if (!isDbBusy(err)) throw err;
-    await new Promise((r) => setTimeout(r, pauseMs));
+    await new Promise((r) => {
+      setTimeout(r, pauseMs);
+    });
     return await fn();
   }
 }

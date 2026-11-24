@@ -7,7 +7,9 @@ import { InferenceQueue, QUEUE_BUSY } from "../../src/semantic/queue.js";
 /** Promise the test resolves by hand — lets tasks finish in a controlled order. */
 function deferred(): { promise: Promise<void>; resolve: () => void } {
   let resolve!: () => void;
-  const promise = new Promise<void>((r) => (resolve = r));
+  const promise = new Promise<void>((r) => {
+    resolve = r;
+  });
   return { promise, resolve };
 }
 
@@ -21,7 +23,9 @@ describe("InferenceQueue", () => {
       active++;
       maxActive = Math.max(maxActive, active);
       events.push(`start ${name}`);
-      await new Promise((r) => setTimeout(r, ms));
+      await new Promise((r) => {
+        setTimeout(r, ms);
+      });
       events.push(`end ${name}`);
       active--;
       return name;

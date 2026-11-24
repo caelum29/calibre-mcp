@@ -73,13 +73,17 @@ beforeAll(async () => {
     res.statusCode = 404;
     res.end();
   });
-  await new Promise<void>((resolve) => http.listen(0, "127.0.0.1", resolve));
+  await new Promise<void>((resolve) => {
+    http.listen(0, "127.0.0.1", resolve);
+  });
   baseUrl = `http://127.0.0.1:${(http.address() as AddressInfo).port}`;
 });
 
 afterAll(async () => {
   delete process.env.FAKE_CONVERT_SLOW;
-  await new Promise<void>((resolve) => http.close(() => resolve()));
+  await new Promise<void>((resolve) => {
+    http.close(() => resolve());
+  });
   rmSync(dir, { recursive: true, force: true });
 });
 
@@ -120,7 +124,9 @@ async function waitFor(cond: () => boolean, ms = 5000): Promise<boolean> {
   const deadline = Date.now() + ms;
   while (Date.now() < deadline) {
     if (cond()) return true;
-    await new Promise((r) => setTimeout(r, 25));
+    await new Promise((r) => {
+      setTimeout(r, 25);
+    });
   }
   return cond();
 }

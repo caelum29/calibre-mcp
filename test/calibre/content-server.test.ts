@@ -115,7 +115,11 @@ describe("ContentServerClient busy breaker with overlapping calls (#389)", () =>
     });
     // resolves once the n-th fetch has parked; getBook awaits library resolution before getJson
     const reached = (n: number) =>
-      handles.length >= n ? Promise.resolve() : new Promise<void>((resolve) => waiters.push({ n, resolve }));
+      handles.length >= n
+        ? Promise.resolve()
+        : new Promise<void>((resolve) => {
+            waiters.push({ n, resolve });
+          });
     return { handles, reached };
   }
 

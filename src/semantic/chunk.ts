@@ -194,7 +194,9 @@ export async function chunkForEmbeddingAsync(text: string, opts: ChunkForEmbeddi
   for (const c of chunkSteps(text, opts)) {
     chunks.push(c);
     if (Date.now() - slice >= YIELD_EVERY_MS) {
-      await new Promise<void>((r) => setImmediate(r));
+      await new Promise<void>((r) => {
+        setImmediate(r);
+      });
       slice = Date.now();
     }
   }

@@ -42,7 +42,11 @@ function parkedSpawns() {
   );
   // a signal rather than a sync assumption: calibredb may gain an await before it spawns
   const spawned = (n: number) =>
-    handles.length >= n ? Promise.resolve() : new Promise<void>((resolve) => waiters.push({ n, resolve }));
+    handles.length >= n
+      ? Promise.resolve()
+      : new Promise<void>((resolve) => {
+          waiters.push({ n, resolve });
+        });
   return { handles, spawned };
 }
 

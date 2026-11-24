@@ -54,9 +54,9 @@ describe("ContentServerClient.probeWriteAccess", () => {
       "fetch",
       vi.fn(
         (_u: string, init: RequestInit) =>
-          new Promise((_res, rej) =>
-            init.signal!.addEventListener("abort", () => rej(Object.assign(new Error("a"), { name: "AbortError" }))),
-          ),
+          new Promise((_res, rej) => {
+            init.signal!.addEventListener("abort", () => rej(Object.assign(new Error("a"), { name: "AbortError" })));
+          }),
       ),
     );
     expect(await client().probeWriteAccess(asLibId("My_Books"), { timeoutMs: 20 })).toEqual({
