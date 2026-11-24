@@ -31,7 +31,7 @@ export function parseAddedIds(stdout: string): number[] {
   return m[1]
     .split(/[,\s]+/)
     .filter((s) => s.length > 0) // drop empties first — Number("") is 0, not NaN
-    .map((s) => Number(s))
+    .map(Number)
     .filter((n) => Number.isInteger(n));
 }
 

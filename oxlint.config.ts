@@ -150,7 +150,6 @@ export default defineConfig({
         "unicorn/text-encoding-identifier-case": "off", // 4
         "unicorn/prefer-top-level-await": "off", // 4
         "quality/no-object-parameters": "off", // 4
-        "unicorn/prefer-native-coercion-functions": "off", // 1
         "import/no-namespace": "off", // 1
         "@nkzw/no-instanceof": "off", // 1
       },
