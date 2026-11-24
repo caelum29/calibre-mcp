@@ -1,0 +1,47 @@
+test/eval/retrieval/hash-freeze-lib.ts
+  s_94481645943414::t_24ef766cf23d26 8
+test/integration/filter-steer-gate-518.test.ts
+  s_94481645943414::t_24ef766cf23d26 67
+src/semantic/language/uk.ts
+  s_94481645943414::t_24ef766cf23d26 8-9
+src/tools/search-timings.ts
+  s_94481645943414::t_24ef766cf23d26 63-66
+src/tools/coerce.ts
+  s_94481645943414::t_3f0a49213b2be5 43-45
+scripts/keyword-plan-measure.ts
+  s_94481645943414::t_24ef766cf23d26 198
+oxlint.config.ts
+  s_94481645943414::t_9caee5a07343e0 105-110
+test/logging.test.ts
+  s_94481645943414::t_24ef766cf23d26 110
+test/eval/retrieval/hash-freeze.ts
+  s_94481645943414::t_ec518e9fa8d3eb 14
+  s_94481645943414::t_24ef766cf23d26 41
+src/tools/calibre_remove_book.ts
+  s_94481645943414::t_9caee5a07343e0 66-69
+  s_94481645943414::t_3f0a49213b2be5 20
+test/calibre/lib-id-brand.test.ts
+  s_94481645943414::t_9caee5a07343e0 30-32,41
+src/server.ts
+  s_94481645943414::t_3f0a49213b2be5 322
+src/semantic/store/shared.ts
+  s_94481645943414::t_3f0a49213b2be5 309
+test/tools/channel-parity.test.ts
+  s_94481645943414::t_ec518e9fa8d3eb 1148-1150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9cef8bf5df7cc66018d44ac0b906def5a3f7dea8",
+  "prompts": {},
+  "sessions": {
+    "s_94481645943414": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "acee565e-100c-4076-8da7-87b8ef382183",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
