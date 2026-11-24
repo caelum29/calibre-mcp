@@ -267,7 +267,7 @@ function comparable(s: string): string {
 
 /** The text stage's character rules; plain printable ASCII has nothing for them to do. */
 function characterClean(s: string): string {
-  return /[^\x20-\x7E]/.test(s) ? normaliseText(s, [CHARACTER_RULES]).text : s;
+  return /[^\u0020-\u007E]/.test(s) ? normaliseText(s, [CHARACTER_RULES]).text : s;
 }
 
 /**
