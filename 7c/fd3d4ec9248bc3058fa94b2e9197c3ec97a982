@@ -1,0 +1,81 @@
+test/tools/search-notes-show-book-annotations.test.ts
+  s_f17c55b783a487::t_0804682832df9f 1-2,13-14,55,62,72,80,86,92,104,111,116,119,125,147,161,169
+test/tools/index-v4-rebuild-655.test.ts
+  s_f17c55b783a487::t_2489b6841f5e08 71
+test/tools/index-book.refresh-flags.test.ts
+  s_f17c55b783a487::t_397366ab6054e4 134
+src/tools/registry.ts
+  s_f17c55b783a487::t_e3ade44a1cf558 7,31,49
+test/tools/search-annotations-book-title-519.test.ts
+  s_f17c55b783a487::t_2489b6841f5e08 50-53
+  s_f17c55b783a487::t_0804682832df9f 11-12
+test/integration/input-contract-590-591.test.ts
+  s_f17c55b783a487::t_0371abb55f1bf7 177
+test/integration/cancellation-progress.test.ts
+  s_f17c55b783a487::t_2489b6841f5e08 184-186
+src/tools/calibre_search_annotations.ts
+  s_f17c55b783a487::t_14a056166f7e71 1-77
+test/eval/retrieval/harness.ts
+  s_f17c55b783a487::t_397366ab6054e4 429
+src/tools/search-annotations.ts
+  s_f17c55b783a487::t_5a564e6642411f 1-4,28,31,47,59,68-69,194,270
+test/semantic/library-id-case-collision-388.test.ts
+  s_f17c55b783a487::t_397366ab6054e4 111
+src/ui/board/core.js
+  s_f17c55b783a487::t_116a60df54107b 54,59
+src/tools/calibre_build_index.ts
+  s_f17c55b783a487::t_0822b14bc8dcef 7,43,137
+src/tools/input-contract.ts
+  s_f17c55b783a487::t_9e307d497ccb9e 10,16-17,35,37,47-48,87
+test/tools/search-annotations-review-517.test.ts
+  s_f17c55b783a487::t_0804682832df9f 14-15,54,66,72,78,84,94,101,123
+test/tools/search-annotations-notes.test.ts
+  s_f17c55b783a487::t_0804682832df9f 1,11-12,66,68,71,78,83,100,110,126,137,148,159,177,184,190,204,207,212,224,230,236,244,246,253,260,264
+test/integration/tools-list-order.test.ts
+  s_f17c55b783a487::t_2489b6841f5e08 15
+test/integration/filter-steer-gate-518.test.ts
+  s_f17c55b783a487::t_2489b6841f5e08 46-50
+  s_f17c55b783a487::t_0804682832df9f 9
+test/tools/index-book.epub-front-matter.test.ts
+  s_f17c55b783a487::t_397366ab6054e4 112
+src/server.ts
+  s_f17c55b783a487::t_9e307d497ccb9e 163
+src/tools/define.ts
+  s_f17c55b783a487::t_9e307d497ccb9e 29
+src/tools/build-index-results.ts
+  s_f17c55b783a487::t_2489b6841f5e08 21
+  s_f17c55b783a487::t_0822b14bc8dcef 68
+test/tools/cli-gateway-busy-529.test.ts
+  s_f17c55b783a487::t_0804682832df9f 11-12,57-58
+src/tools/calibre_search.ts
+  s_f17c55b783a487::t_51c9eee78850c1 476
+  s_f17c55b783a487::t_e3ade44a1cf558 49,466-475,477-480,485,488,522,527
+test/tools/channel-parity.test.ts
+  s_f17c55b783a487::t_2489b6841f5e08 1136
+  s_f17c55b783a487::t_6d3e3552c6ea95 479-483
+  s_f17c55b783a487::t_e674ff31f98ca4 686-688,692-694,699-701,705-707,711-713
+src/tools/labelled-lines.ts
+  s_f17c55b783a487::t_116a60df54107b 144-146,152,161
+test/tools/build-index.heartbeat.test.ts
+  s_f17c55b783a487::t_397366ab6054e4 98
+src/tools/types.ts
+  s_f17c55b783a487::t_9e307d497ccb9e 71-79,104-109,131-132
+src/ui/generated/widgets.ts
+  s_f17c55b783a487::t_1ded8bf30c3537 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7cfd3d4ec9248bc3058fa94b2e9197c3ec97a982",
+  "prompts": {},
+  "sessions": {
+    "s_f17c55b783a487": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd568a66-62d4-4115-b3fe-06f84ba644ae",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
