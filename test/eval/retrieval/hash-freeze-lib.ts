@@ -21,7 +21,7 @@ export function pruneHashAllowEntries<F extends AllowFile>(file: F): { file: F; 
 }
 
 /** Files the freeze itself writes: dirty copies of these are expected, not a dirty tree. */
-const FREEZE_OUTPUTS = ["test/eval/retrieval/hash-baseline.json", "test/eval/retrieval/list-diff-allow.json"];
+const FREEZE_OUTPUTS = new Set(["test/eval/retrieval/hash-baseline.json", "test/eval/retrieval/list-diff-allow.json"]);
 const THRESHOLDS = "test/eval/retrieval/thresholds.json";
 
 /**
@@ -41,6 +41,6 @@ export function freezeTreeCheck(porcelain: string, sha: string): { refuse?: stri
       dirty: paths,
     };
   }
-  const dirty = paths.filter((p) => !FREEZE_OUTPUTS.includes(p));
+  const dirty = paths.filter((p) => !FREEZE_OUTPUTS.has(p));
   return { gitSha: dirty.length ? `${sha}-dirty` : sha, dirty };
 }

@@ -15,7 +15,7 @@ import type { ToolResult } from "../../src/tools/types.js";
 
 const LIB = "Programming_Books";
 /** Books the library holds; any other id is not found. */
-const KNOWN = [1, 2];
+const KNOWN = new Set([1, 2]);
 
 const book = (id: number): Book => ({
   id,
@@ -40,7 +40,7 @@ function setup(err: Error, present: number[] = []) {
   });
   const content = {
     resolveLibraryId: async (): Promise<string> => LIB,
-    booksByIds: async (ids: number[]) => new Map(ids.map((id) => [id, KNOWN.includes(id) ? book(id) : null] as const)),
+    booksByIds: async (ids: number[]) => new Map(ids.map((id) => [id, KNOWN.has(id) ? book(id) : null] as const)),
     getBook,
   };
   const deps = {

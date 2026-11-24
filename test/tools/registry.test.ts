@@ -105,7 +105,7 @@ describe("no bare boolean anywhere in an input schema (#212)", () => {
     [k: string]: unknown;
   }
   const defOf = (s: unknown): Def => (s as { _zod: { def: Def } })._zod.def;
-  const WRAPPERS = ["optional", "nullable", "default", "prefault", "readonly", "catch", "nonoptional"];
+  const WRAPPERS = new Set(["optional", "nullable", "default", "prefault", "readonly", "catch", "nonoptional"]);
 
   /** Collect paths of uncoerced booleans; `stats.coerced` counts CoercedBool sites seen. */
   function walk(schema: unknown, where: string, out: string[], stats: { coerced: number }): void {
@@ -120,7 +120,7 @@ describe("no bare boolean anywhere in an input schema (#212)", () => {
         walk(def.in, `${where}<in>`, out, stats);
         walk(def.out, where, out, stats);
       }
-    } else if (WRAPPERS.includes(def.type)) {
+    } else if (WRAPPERS.has(def.type)) {
       walk(def.innerType, where, out, stats);
     } else if (def.type === "object") {
       for (const [k, v] of Object.entries(def.shape as Record<string, unknown>)) walk(v, `${where}.${k}`, out, stats);

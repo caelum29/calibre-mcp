@@ -36,8 +36,8 @@ const PINNED_ORDER = [
 
 // Gate off: only the write tools with no call that writes nothing drop out (#435, D-028);
 // the rest keep their order.
-const HIDDEN_WHEN_GATE_OFF = ["calibre_update_book", "calibre_add_book"];
-const PINNED_GATE_OFF = PINNED_ORDER.filter((n) => !HIDDEN_WHEN_GATE_OFF.includes(n));
+const HIDDEN_WHEN_GATE_OFF = new Set(["calibre_update_book", "calibre_add_book"]);
+const PINNED_GATE_OFF = PINNED_ORDER.filter((n) => !HIDDEN_WHEN_GATE_OFF.has(n));
 
 async function listToolNames(writeEnabled: boolean, calls = 1): Promise<string[][]> {
   const server = buildServer({

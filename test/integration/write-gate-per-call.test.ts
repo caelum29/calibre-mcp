@@ -94,13 +94,13 @@ async function call(writeEnabled: boolean, name: string, args: Record<string, un
 describe("write gate per call (#435)", () => {
   describe("gate off", () => {
     it("should_list_the_five_previewable_write_tools", async () => {
-      const names = (await listTools(false)).map((t) => t.name);
-      expect(LISTED_WRITE_TOOLS.filter((n) => names.includes(n))).toEqual(LISTED_WRITE_TOOLS);
+      const names = new Set((await listTools(false)).map((t) => t.name));
+      expect(LISTED_WRITE_TOOLS.filter((n) => names.has(n))).toEqual(LISTED_WRITE_TOOLS);
     });
 
     it("should_hide_update_book_and_add_book", async () => {
-      const names = (await listTools(false)).map((t) => t.name);
-      expect(HIDDEN_WRITE_TOOLS.filter((n) => names.includes(n))).toEqual([]);
+      const names = new Set((await listTools(false)).map((t) => t.name));
+      expect(HIDDEN_WRITE_TOOLS.filter((n) => names.has(n))).toEqual([]);
     });
 
     it("should_announce_the_listed_write_tools_as_read_only_without_destructiveHint", async () => {
@@ -129,9 +129,9 @@ describe("write gate per call (#435)", () => {
 
   describe("gate on", () => {
     it("should_list_every_write_tool", async () => {
-      const names = (await listTools(true)).map((t) => t.name);
+      const names = new Set((await listTools(true)).map((t) => t.name));
       const all = [...LISTED_WRITE_TOOLS, ...HIDDEN_WRITE_TOOLS];
-      expect(all.filter((n) => names.includes(n))).toEqual(all);
+      expect(all.filter((n) => names.has(n))).toEqual(all);
     });
 
     it("should_announce_the_declared_annotations_unchanged", async () => {
