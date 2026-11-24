@@ -122,6 +122,12 @@ export default defineConfig({
       files: ["src/calibre/extract.ts", "src/calibre/figure-inventory.ts", "test/calibre/extract.test.ts"],
       rules: { "unicorn/text-encoding-identifier-case": "off" },
     },
+    // Entry modules are also imported (test/eval/retrieval/entry-split.test.ts); a top-level await
+    // there would hold the importer until main() settles.
+    {
+      files: ["src/run-stdio.ts", "scripts/legal-gate.mjs", "test/eval/retrieval/run-cli.ts"],
+      rules: { "unicorn/prefer-top-level-await": "off" },
+    },
     // MIGRATION BASELINE (temporary): preset rules that fail today, with their finding counts.
     // Each one is either enabled with fixes or kept off with a reason, one commit per rule.
     // Last override, so it also beats preset overrides that re-enable a rule (tests, *.ts).
@@ -154,7 +160,6 @@ export default defineConfig({
         "unicorn/no-useless-promise-resolve-reject": "off", // 13
         "unicorn/prefer-structured-clone": "off", // 11
         "quality/no-reflect-get": "off", // 5
-        "unicorn/prefer-top-level-await": "off", // 4
         "quality/no-object-parameters": "off", // 4
         "import/no-namespace": "off", // 1
         "@nkzw/no-instanceof": "off", // 1
