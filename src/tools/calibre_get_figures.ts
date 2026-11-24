@@ -96,7 +96,7 @@ export const getFiguresTool = defineTool({
       }
 
       if (args.indexes !== undefined && args.indexes.length > 0) {
-        return fetchFigures(args, deps, { numericId, fmt, downloadUrl, inventory });
+        return await fetchFigures(args, deps, { numericId, fmt, downloadUrl, inventory });
       }
       const otherFormats = FIGURE_FORMATS.filter((f) => f !== fmt && book.formats.some((b) => b.toLowerCase() === f));
       return listFigures(args, { numericId, fmt, inventory }, otherFormats);

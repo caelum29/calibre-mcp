@@ -152,7 +152,6 @@ export default defineConfig({
         "typescript/no-misused-spread": "off", // 3
         "unicorn/no-hex-escape": "off", // 2
         "unicorn/prefer-native-coercion-functions": "off", // 1
-        "typescript/return-await": "off", // 1
         "import/no-namespace": "off", // 1
         "@nkzw/no-instanceof": "off", // 1
       },
