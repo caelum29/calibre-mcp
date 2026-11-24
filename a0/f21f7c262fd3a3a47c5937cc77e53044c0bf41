@@ -1,0 +1,23 @@
+src/semantic/reranker.ts
+  s_94481645943414::t_4ceb8af4125d64 108,161
+src/semantic/embedder.ts
+  s_94481645943414::t_4ceb8af4125d64 180
+test/eval/retrieval/gate-guards.ts
+  s_94481645943414::t_4ceb8af4125d64 41,83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a0f21f7c262fd3a3a47c5937cc77e53044c0bf41",
+  "prompts": {},
+  "sessions": {
+    "s_94481645943414": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "acee565e-100c-4076-8da7-87b8ef382183",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
