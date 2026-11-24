@@ -1,0 +1,73 @@
+test/tools/ping-write-access.test.ts
+  s_94481645943414::t_be39b76591a884 136-138
+test/tools/search-deadline.test.ts
+  s_94481645943414::t_be39b76591a884 18-20
+test/calibre/client-busy-interleave.test.ts
+  s_94481645943414::t_be39b76591a884 45-49
+test/tools/build-index.soft-deadline.test.ts
+  s_94481645943414::t_be39b76591a884 70-72,123-125,137-139,252-254
+src/app/index-book.ts
+  s_94481645943414::t_be39b76591a884 440-442
+test/calibre/write-access-probe.test.ts
+  s_94481645943414::t_be39b76591a884 57-59
+test/semantic/reranker-load.test.ts
+  s_94481645943414::t_be39b76591a884 62-64
+test/tools/select-books.test.ts
+  s_94481645943414::t_be39b76591a884 48-50
+test/app/library-index.test.ts
+  s_94481645943414::t_be39b76591a884 108-110,153-155
+test/logging.test.ts
+  s_94481645943414::t_7a029b2922a5e2 76-78
+test/calibre/content-server.test.ts
+  s_94481645943414::t_be39b76591a884 118-122
+test/calibre/extract-normalise-655.test.ts
+  s_94481645943414::t_be39b76591a884 31-33,38-40
+test/integration/write-gate-preview-hint-554.test.ts
+  s_94481645943414::t_be39b76591a884 30-32,37-39
+test/semantic/index-builds.test.ts
+  s_94481645943414::t_be39b76591a884 27-30
+test/calibre/http-bytes.test.ts
+  s_94481645943414::t_be39b76591a884 31-33
+test/tools/ping-index-budget.test.ts
+  s_94481645943414::t_be39b76591a884 126-128,137-139
+test/app/library-index-live-walk-496.test.ts
+  s_94481645943414::t_be39b76591a884 22-25
+test/tools/build-index.background.test.ts
+  s_94481645943414::t_be39b76591a884 66-68,116-119
+src/semantic/chunk.ts
+  s_94481645943414::t_be39b76591a884 197-199
+src/app/write-policy.ts
+  s_94481645943414::t_be39b76591a884 52-55
+test/shutdown.test.ts
+  s_94481645943414::t_be39b76591a884 81-83,87-89
+test/progress.test.ts
+  s_94481645943414::t_be39b76591a884 55-57
+test/semantic/book-pipeline.test.ts
+  s_94481645943414::t_be39b76591a884 11-14
+test/integration/cancellation-progress.test.ts
+  s_94481645943414::t_be39b76591a884 76-78,84-86,127-129
+test/calibre/spawn.test.ts
+  s_94481645943414::t_be39b76591a884 80-82,108-110,141-143
+test/semantic/queue.test.ts
+  s_94481645943414::t_be39b76591a884 10-12,26-28
+test/calibre/search-probe.test.ts
+  s_94481645943414::t_be39b76591a884 22-24
+test/calibre/busy.test.ts
+  s_94481645943414::t_be39b76591a884 61-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7f0125b57401f48ff46cd4e92c95ebce80d69ac7",
+  "prompts": {},
+  "sessions": {
+    "s_94481645943414": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "acee565e-100c-4076-8da7-87b8ef382183",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
