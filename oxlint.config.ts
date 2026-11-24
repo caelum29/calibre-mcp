@@ -131,6 +131,8 @@ export default defineConfig({
       files: ["src/run-stdio.ts", "scripts/legal-gate.mjs", "test/eval/retrieval/run-cli.ts"],
       rules: { "unicorn/prefer-top-level-await": "off" },
     },
+    // Test fakes: helpers take partial port objects and spread them over defaults.
+    { files: ["test/**"], rules: { "quality/no-object-parameters": "off" } },
     // MIGRATION BASELINE (temporary): preset rules that fail today, with their finding counts.
     // Each one is either enabled with fixes or kept off with a reason, one commit per rule.
     // Last override, so it also beats preset overrides that re-enable a rule (tests, *.ts).
@@ -162,7 +164,6 @@ export default defineConfig({
         "unicorn/prefer-at": "off", // 20
         "unicorn/no-useless-promise-resolve-reject": "off", // 13
         "unicorn/prefer-structured-clone": "off", // 11
-        "quality/no-object-parameters": "off", // 4
       },
     },
   ],
