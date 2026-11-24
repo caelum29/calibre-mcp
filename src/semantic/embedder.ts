@@ -76,7 +76,7 @@ type SentenceEmbeddingModel = (inputs: Record<string, unknown>) => Promise<{
 
 /** One loaded model, normalized to "texts in → raw rows out" whatever the output scheme. */
 interface Loaded {
-  embed(texts: string[]): Promise<number[][]>;
+  embed: (texts: string[]) => Promise<number[][]>;
   tokenizer: Tokenizer;
 }
 
