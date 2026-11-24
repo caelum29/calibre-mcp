@@ -290,5 +290,5 @@ function similarSize(a: LayoutLine, b: LayoutLine): boolean {
 
 /** Label as printed → comparable form (`1.5.` ≙ `1.5`, `2-1` ≙ `2.1`). */
 function normalizeLabel(s: string): string {
-  return s.replace(/[.:,]+$/u, "").replace(/[-–.,]/gu, ".");
+  return s.replace(/[.:,]+$/u, "").replaceAll(/[-–.,]/gu, ".");
 }

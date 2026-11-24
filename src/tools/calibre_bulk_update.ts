@@ -358,7 +358,7 @@ const MAX_ERROR_TEXT = 200;
  * failed id keeps exactly one `#id:` line in the text (#216).
  */
 function oneLine(error: string): string {
-  const s = error.replace(/\s+/g, " ").trim();
+  const s = error.replaceAll(/\s+/g, " ").trim();
   return s.length > MAX_ERROR_TEXT ? `${s.slice(0, MAX_ERROR_TEXT - 1)}…` : s;
 }
 

@@ -15,7 +15,7 @@ function contentStems(query: string): string[] {
     const raw = query
       .slice(t.index, t.index + t.length)
       .toLowerCase()
-      .replace(/ё/g, "е");
+      .replaceAll("ё", "е");
     if (!STOPWORDS.has(raw) && t.stem.length >= MIN_TERM_CHARS && !out.includes(t.stem)) out.push(t.stem);
   }
   return out;
@@ -38,7 +38,7 @@ const RAW_TOKEN = /[\p{L}\p{N}\p{M}_+#.-]+/gu;
 function ftsTokens(query: string): string[] {
   const expr = ftsMatch(query);
   if (!expr) return [];
-  return [...expr.matchAll(/"((?:[^"]|"")*)"/g)].map((m) => m[1]!.replace(/""/g, '"'));
+  return [...expr.matchAll(/"((?:[^"]|"")*)"/g)].map((m) => m[1]!.replaceAll('""', '"'));
 }
 
 /**

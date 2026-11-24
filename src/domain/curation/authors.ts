@@ -7,7 +7,7 @@ export type AuthorSuspectReason = "comma" | "semicolon" | "no-letters";
 
 /** Collapse runs of whitespace and trim. */
 function collapseWs(s: string): string {
-  return s.replace(/\s+/g, " ").trim();
+  return s.replaceAll(/\s+/g, " ").trim();
 }
 
 /**

@@ -72,7 +72,7 @@ export function modelFacingTools(tools: readonly CatalogTool[]): CatalogTool[] {
 function words(text: string): Set<string> {
   return new Set(
     text
-      .replace(/calibre_\w+/g, " ")
+      .replaceAll(/calibre_\w+/g, " ")
       .toLowerCase()
       .split(/[^\p{L}\p{N}]+/u)
       .filter((w) => w.length >= 3 && !STOP.has(w))
@@ -93,7 +93,7 @@ function jaccard(a: Set<string>, b: Set<string>): number {
 }
 
 const mentions = (text: string, word: string): boolean => new RegExp(`\\b${word}\\b`).test(text);
-const escape = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const escape = (s: string): string => s.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /**
  * The arg is named AS a parameter (`name`, name=, or (name)), so a prose coincidence ("Calibre

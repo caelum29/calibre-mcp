@@ -61,7 +61,7 @@ const PREFIX = 60;
 const hasNumber = (text: string, n: number): boolean => new RegExp(`(^|[^\\d.])${n}($|[^\\d])`).test(text);
 
 const hasToken = (text: string, t: string): boolean =>
-  new RegExp(`(^|[^\\w])${t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}($|[^\\w])`).test(text);
+  new RegExp(`(^|[^\\w])${t.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&")}($|[^\\w])`).test(text);
 
 /** Every scalar leaf of a diff entry (field names, before/after values). */
 function diffLeaves(v: unknown, out: (string | number)[] = []): (string | number)[] {
@@ -807,7 +807,7 @@ describe("dual-channel parity: scenarios are not vacuous", () => {
       // the message alone: drop the prefix and the labelled Code:/Next: lines (#437)
       const steer = textChannel(r)
         .replace(/^Error: /, "")
-        .replace(/\n(Code|Next): .*$/gm, "")
+        .replaceAll(/\n(Code|Next): .*$/gm, "")
         .slice(0, PREFIX);
       expect({
         gaps: parityGaps(r),

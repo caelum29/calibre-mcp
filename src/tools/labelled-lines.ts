@@ -324,7 +324,7 @@ export const LABELLED_LINES: Readonly<Record<string, ToolLabelledLines>> = {
 
 /** The docs table (docs/TOOLS.md "Labelled lines"), generated so the registry is reviewable as a diff. */
 export function renderLabelledLinesDoc(): string {
-  const cell = (s: string) => s.replace(/\|/g, "\\|");
+  const cell = (s: string) => s.replaceAll("|", "\\|");
   const rows = ["| Tool | Label | Value format | Structured field |", "|---|---|---|---|"];
   const add = (tool: string, l: LabelledLine) =>
     rows.push(

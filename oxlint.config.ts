@@ -150,7 +150,6 @@ export default defineConfig({
         "quality/no-unsafe-dictionary-type": "off", // 206
         "unicorn/catch-error-name": "off", // 131
         "no-undef": "off", // 127
-        "unicorn/prefer-string-replace-all": "off", // 117
         "quality/no-known-value-widening": "off", // 111
         "typescript/no-unnecessary-type-assertion": "off", // 104
         "quality/no-array-filter-map": "off", // 59

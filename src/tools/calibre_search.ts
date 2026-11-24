@@ -410,7 +410,7 @@ const COLUMN_FILTER_STEER =
 
 // `word:` or `{a b}:` outside quotes; a colon inside a word (`std::vector`) is no filter.
 function hasColumnFilter(query: string): boolean {
-  return /(?:^|[\s(])(?:\{[^}]*\}|[\p{L}\p{N}_]+)\s*:(?!:)/u.test(query.replace(/"[^"]*"/g, '""'));
+  return /(?:^|[\s(])(?:\{[^}]*\}|[\p{L}\p{N}_]+)\s*:(?!:)/u.test(query.replaceAll(/"[^"]*"/g, '""'));
 }
 
 /** A site's own steer, plus the part of it that is the next step (passed as the hint, so no second `Next:` line). */

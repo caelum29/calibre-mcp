@@ -12,7 +12,7 @@ const VERSION = "9.9.9-snap";
 const SNAP_DIR = new URL("./__snapshots__/widgets/", import.meta.url);
 
 // Whitespace-only normalization: every run of whitespace becomes one space, ends trimmed.
-const norm = (s: string): string => s.replace(/\s+/g, " ").trim();
+const norm = (s: string): string => s.replaceAll(/\s+/g, " ").trim();
 const snapshot = (name: string): string => readFileSync(new URL(name, SNAP_DIR), "utf8");
 
 const cases: [name: string, render: () => string][] = [];

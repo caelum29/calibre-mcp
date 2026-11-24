@@ -144,7 +144,7 @@ export function loadConfig(
  */
 function parseBoardStyle(v: string | undefined): Config["boardStyle"] {
   const t = envStr(v)
-    ?.replace(/^["']+|["']+$/g, "")
+    ?.replaceAll(/^["']+|["']+$/g, "")
     .trim()
     .toLowerCase();
   return t === "coverflow" || t === "true" || t === "1" || t === "yes" ? "coverflow" : "shelf";

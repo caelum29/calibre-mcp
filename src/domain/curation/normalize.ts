@@ -8,7 +8,7 @@ import { pubYear, splitEdition, splitTrailingYear } from "./edition.js";
 
 /** Collapse runs of whitespace and trim. */
 function collapseWs(s: string): string {
-  return s.replace(/\s+/g, " ").trim();
+  return s.replaceAll(/\s+/g, " ").trim();
 }
 
 /** Lowercase + collapse whitespace — the light-touch normalization. */
@@ -38,21 +38,21 @@ const SUFFIXES = new Set(["jr", "sr", "ii", "iii", "iv", "phd", "md"]);
 export function foldAccents(s: string): string {
   return s
     .normalize("NFKD")
-    .replace(/([\p{Script=Latin}\p{Script=Greek}])\p{M}+/gu, "$1")
+    .replaceAll(/([\p{Script=Latin}\p{Script=Greek}])\p{M}+/gu, "$1")
     .normalize("NFC")
-    .replace(/ё/g, "е");
+    .replaceAll("ё", "е");
 }
 
 /** Replace everything except letters, digits and (non-Latin) combining marks with a space. */
 function keepWordChars(s: string): string {
-  return s.replace(/[^\p{L}\p{N}\p{M}\s]/gu, " ");
+  return s.replaceAll(/[^\p{L}\p{N}\p{M}\s]/gu, " ");
 }
 
 /** Lowercase → word chars only → collapse → drop a leading English article → no spaces. */
 function squash(s: string): string {
   return collapseWs(keepWordChars(s))
     .replace(/^(the|a|an)\s+/, "")
-    .replace(/\s+/g, "");
+    .replaceAll(/\s+/g, "");
 }
 
 /**
@@ -186,7 +186,7 @@ export function authorToAuthorSort(name: string): string {
 
   let suffix = "";
   const last = parts.at(-1)!;
-  if (SUFFIXES.has(last.replace(/\./g, "").toLowerCase()) && parts.length > 2) {
+  if (SUFFIXES.has(last.replaceAll(".", "").toLowerCase()) && parts.length > 2) {
     suffix = ` ${last}`;
     parts.pop();
   }

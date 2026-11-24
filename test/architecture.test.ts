@@ -26,7 +26,7 @@ function listTsFiles(dir: string): string[] {
 
 // Comments may name the package (e.g. src/tools/types.ts explains the seam) — only code counts.
 function stripComments(source: string): string {
-  return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`])\/\/.*$/gm, "$1");
+  return source.replaceAll(/\/\*[\s\S]*?\*\//g, "").replaceAll(/(^|[^:"'`])\/\/.*$/gm, "$1");
 }
 
 /** Repo-relative paths of files outside the allowlist that import the MCP SDK. */

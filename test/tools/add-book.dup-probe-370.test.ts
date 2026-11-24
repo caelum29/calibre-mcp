@@ -44,7 +44,7 @@ function deps(added: Book, books: Book[], queries: string[]): BaseDeps {
     search: async ({ query }: { query: string }) => {
       queries.push(query);
       const m = /^title:"((?:[^"\\]|\\.)*)"$/.exec(query);
-      const needle = m ? m[1]!.replace(/\\(.)/g, "$1").toLowerCase() : undefined;
+      const needle = m ? m[1]!.replaceAll(/\\(.)/g, "$1").toLowerCase() : undefined;
       const ids =
         needle === undefined ? [] : all.filter((b) => b.title.toLowerCase().includes(needle)).map((b) => b.id);
       return { bookIds: ids, total: ids.length, num: ids.length, offset: 0, sort: "title", libraryId: "Lib" };

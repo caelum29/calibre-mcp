@@ -20,7 +20,7 @@ const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"'
 
 /** Decode the XML/HTML entities that show up in outline and TOC titles. */
 export function decodeEntities(s: string): string {
-  return s.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e: string) => {
+  return s.replaceAll(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e: string) => {
     if (e[0] === "#") {
       const cp = e[1] === "x" || e[1] === "X" ? Number.parseInt(e.slice(2), 16) : Number.parseInt(e.slice(1), 10);
       return Number.isFinite(cp) && cp > 0 && cp <= 0x10_ff_ff ? String.fromCodePoint(cp) : m;
@@ -47,8 +47,8 @@ export function parsePdfOutlineXml(xml: string): OutlineEntry[] {
     } else if (depth > 0) {
       const pageAttr = /\bpage\s*=\s*"(\d+)"/.exec(m[2] ?? "");
       const page = pageAttr ? Number(pageAttr[1]) : null;
-      const title = decodeEntities((m[3] ?? "").replace(/<[^>]*>/g, ""))
-        .replace(/\s+/g, " ")
+      const title = decodeEntities((m[3] ?? "").replaceAll(/<[^>]*>/g, ""))
+        .replaceAll(/\s+/g, " ")
         .trim();
       if (title) out.push({ title, page: page !== null && page >= 1 ? page : null, level: depth });
     }

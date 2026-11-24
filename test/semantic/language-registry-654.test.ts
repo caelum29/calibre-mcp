@@ -22,7 +22,7 @@ function frozenIsCode(tok: string): boolean {
 function frozenStemToken(tok: string): string {
   const lower = tok.toLowerCase();
   if (frozenIsCode(tok)) return lower;
-  if (/\p{Script=Cyrillic}/u.test(tok)) return frozenRu.stem(lower.replace(/ё/g, "е"));
+  if (/\p{Script=Cyrillic}/u.test(tok)) return frozenRu.stem(lower.replaceAll("ё", "е"));
   if (/\p{Script=Latin}/u.test(tok)) return frozenEn.stem(lower);
   return lower;
 }
@@ -42,7 +42,7 @@ const FROZEN_STOPWORDS = new Set(
     "можно нужно надо"
   )
     .split(" ")
-    .map((w) => w.replace(/ё/g, "е")),
+    .map((w) => w.replaceAll("ё", "е")),
 );
 
 // The uk pack's snippet stop words (#654 L2), in pack order.

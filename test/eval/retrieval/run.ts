@@ -194,7 +194,7 @@ function ensureModelCache(workDir: string): void {
 
 /** Store filename for a library id — mirrors SqliteIndexStore's sanitizer. */
 function sqliteName(libraryId: string): string {
-  return `${libraryId.replace(/[^A-Za-z0-9._-]/g, "_") || "default"}.sqlite`;
+  return `${libraryId.replaceAll(/[^A-Za-z0-9._-]/g, "_") || "default"}.sqlite`;
 }
 
 interface LiveRelevance {

@@ -65,7 +65,7 @@ function skipHint(matchId: number | undefined, title: string | undefined): strin
     );
   }
   const find = title
-    ? `calibre_search query='title:"${title.replace(/"/g, "")}"'`
+    ? `calibre_search query='title:"${title.replaceAll('"', "")}"'`
     : "calibre_search by the book's title";
   return `Find the existing book with ${find}, then review it with calibre_find_duplicates mode=compare.`;
 }

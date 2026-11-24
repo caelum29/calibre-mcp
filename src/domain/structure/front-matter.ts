@@ -42,9 +42,9 @@ interface Heading {
 /** Strip Markdown emphasis/escapes that EPUB→Markdown conversion wraps headings in. */
 export function cleanHeading(raw: string): string {
   return raw
-    .replace(/\\(.)/g, "$1")
-    .replace(/[*_]+/g, " ") // "CHAPTER 1**Routing**" → "CHAPTER 1 Routing"
-    .replace(/\s+/g, " ")
+    .replaceAll(/\\(.)/g, "$1")
+    .replaceAll(/[*_]+/g, " ") // "CHAPTER 1**Routing**" → "CHAPTER 1 Routing"
+    .replaceAll(/\s+/g, " ")
     .trim()
     .replace(/^\[\s*(.*?)\s*\]$/, "$1"); // "[ 1 ]" chapter-number boxes
 }

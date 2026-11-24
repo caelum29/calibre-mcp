@@ -86,8 +86,8 @@ function splitHref(raw: string, tocDir: string): { href: string; fragment?: stri
 }
 
 const cleanTitle = (html: string): string =>
-  decodeEntities(html.replace(/<[^>]*>/g, " "))
-    .replace(/\s+/g, " ")
+  decodeEntities(html.replaceAll(/<[^>]*>/g, " "))
+    .replaceAll(/\s+/g, " ")
     .trim();
 
 const dirOf = (p: string): string => (p.includes("/") ? p.slice(0, p.lastIndexOf("/")) : "");
@@ -203,9 +203,9 @@ function bodyText(html: string): string {
   const body = /<body\b[^>]*>([\s\S]*)/i.exec(html)?.[1] ?? html;
   return decodeEntities(
     body
-      .replace(/<(script|style|head)\b[\s\S]*?<\/\1\s*>/gi, " ")
-      .replace(/<!--[\s\S]*?-->/g, " ")
-      .replace(/<[^>]*>/g, " "),
+      .replaceAll(/<(script|style|head)\b[\s\S]*?<\/\1\s*>/gi, " ")
+      .replaceAll(/<!--[\s\S]*?-->/g, " ")
+      .replaceAll(/<[^>]*>/g, " "),
   );
 }
 

@@ -121,7 +121,7 @@ function dropStrayLabels(captions: Caption[]): Caption[] {
 
 /** Label separators vary within one book (`2-1` vs `2.1` vs `2–1`) — compare canonically. */
 function normalizeLabel(label: string): string {
-  return label.replace(/[-–.,]/g, ".");
+  return label.replaceAll(/[-–.,]/g, ".");
 }
 
 /** The caption starting at `lines[i]` with its continuation lines joined; null when none. */

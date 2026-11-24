@@ -34,7 +34,7 @@ const KINDLE_IMG = /\s+kindle\s+img$/i;
 
 /** Normalize an author or parenthetical for comparison: case, whitespace. */
 function norm(s: string): string {
-  return s.trim().toLowerCase().replace(/\s+/g, " ");
+  return s.trim().toLowerCase().replaceAll(/\s+/g, " ");
 }
 
 /**
@@ -123,8 +123,8 @@ export function slugTitleQuery(title: string): string | undefined {
   // Mixed-case joins ("Self-Hosting", "Docker-Deep-Dive") are real titles; only split a slug
   // that came out of a filename wrapper, is all-lowercase, or the shared predicate flags.
   const filenameSlug = unwrapped || q === q.toLowerCase() || looksLikeRawFilename(t);
-  if (filenameSlug && (JOINED_SLUG.test(q) || DOT_SLUG.test(q))) q = q.replace(/[-_.]+/g, " ");
-  q = q.replace(/\s+/g, " ").trim();
+  if (filenameSlug && (JOINED_SLUG.test(q) || DOT_SLUG.test(q))) q = q.replaceAll(/[-_.]+/g, " ");
+  q = q.replaceAll(/\s+/g, " ").trim();
   if (q === t) return undefined; // not slug-shaped: nothing was unwrapped
   if (DIGITS.test(q) || DIGIT_PAIR.test(q) || ASIN.test(q) || PLACEHOLDER.test(q)) return undefined;
   const words = q.split(" ").filter((w) => /\p{L}/u.test(w));

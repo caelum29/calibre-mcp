@@ -68,7 +68,7 @@ export function defaultProgressPath(indexDir: string, libraryId: string, flagsOn
   const ext = ".jsonl";
   // Library ids come from the server — keep the file inside the index dir whatever they contain.
   // Unicode-aware so distinct non-ASCII ids stay distinct.
-  const clean = libraryId.replace(/[^\p{L}\p{N}_.-]/gu, "_");
+  const clean = libraryId.replaceAll(/[^\p{L}\p{N}_.-]/gu, "_");
   // Untouched ids that fit keep today's name: renaming one would orphan its resume log.
   const plain = `${prefix}${clean}${ext}`;
   if (clean === libraryId && Buffer.byteLength(plain) <= NAME_MAX_BYTES) return path.join(indexDir, plain);

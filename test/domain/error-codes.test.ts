@@ -48,7 +48,7 @@ function codeOnly(source: string): string {
     } else if (c === "/" && next === "*") {
       const end = source.indexOf("*/", i + 2);
       const stop = end === -1 ? source.length : end + 2;
-      out += source.slice(i, stop).replace(/[^\n]/g, " ");
+      out += source.slice(i, stop).replaceAll(/[^\n]/g, " ");
       i = stop - 1;
     } else {
       if (c === '"' || c === "'" || c === "`") quote = c;
@@ -114,7 +114,7 @@ const CAST = /\bas\s+(?!const\b)[A-Za-z_$({["'`]|(?:^|[(?:,=&|!])\s*<\s*[A-Za-z_
  */
 function toolErrorViolations(source: string, file?: string): string[] {
   return helperCalls(source, "toolError", file)
-    .filter(({ args }) => CAST.test((args[0] ?? "").replace(STRING_LITERAL, '""')))
+    .filter(({ args }) => CAST.test((args[0] ?? "").replaceAll(STRING_LITERAL, '""')))
     .map(({ at, args }) => `${at}: toolError(${args[0] ?? ""}, …)`);
 }
 
@@ -142,7 +142,7 @@ function helperViolations(source: string, file?: string): string[] {
 
 /** Call-like occurrences of `name` (`name(`, `name <T>(`, `name<`), definitions and imports excluded. */
 function rawCallLike(source: string, name: Helper): number {
-  const code = codeOnly(source).replace(IMPORT_STATEMENT, "");
+  const code = codeOnly(source).replaceAll(IMPORT_STATEMENT, "");
   return [...code.matchAll(new RegExp(`(?<!function )\\b${name}\\s*[(<]`, "g"))].length;
 }
 
@@ -158,7 +158,7 @@ function aliasViolations(source: string, file = "<source>"): string[] {
       if (new RegExp(`\\b${name}\\s+as\\b`).test(imp)) bad.push(`${file}: import alias of ${name}`);
     }
   }
-  const rest = code.replace(IMPORT_STATEMENT, "");
+  const rest = code.replaceAll(IMPORT_STATEMENT, "");
   for (const name of HELPERS) {
     for (const m of rest.matchAll(new RegExp(`(?<!function )\\b${name}\\b(?!\\s*[(<])`, "g"))) {
       bad.push(`${file}:${rest.slice(0, m.index).split("\n").length}: bare reference to ${name}`);

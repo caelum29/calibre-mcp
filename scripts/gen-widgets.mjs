@@ -46,7 +46,7 @@ function assemble(file, stack = []) {
   if (!existsSync(file)) fail(`missing include ${path.relative(root, file)}`);
   const body = readFileSync(file, "utf8").replace(HEADER, "");
   const inline = (_, rel) => assemble(path.join(path.dirname(file), rel), [...stack, file]);
-  return body.replace(JS_INCLUDE_LINE, inline).replace(INCLUDE, inline);
+  return body.replaceAll(JS_INCLUDE_LINE, inline).replaceAll(INCLUDE, inline);
 }
 
 const lines = [

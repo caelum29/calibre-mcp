@@ -8,7 +8,7 @@ import type { LanguagePack } from "./pack.js";
 const stemmer = snowball.newStemmer("russian");
 
 // ё and е are one letter to most writers, so both spellings must share a stem and a stop word.
-const yoToYe = (w: string): string => w.replace(/ё/g, "е");
+const yoToYe = (w: string): string => w.replaceAll("ё", "е");
 
 /** Russian: the default pack for Cyrillic-script tokens. */
 export const ru: LanguagePack = {

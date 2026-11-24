@@ -244,7 +244,7 @@ process.stderr.write(`wrote token-shares.tsv + thresholds.md to ${outDir}\n`);
 
 // ---- 3. keyword-half timing (needs the exclusive machine token) ----------------------------
 if (timing) {
-  const phrase = (t: string) => `"${t.replace(/"/g, '""')}"`;
+  const phrase = (t: string) => `"${t.replaceAll('"', '""')}"`;
   // the identifier extras ftsMatch adds after the stems (#634) stay in every arm
   const extrasOf = (query: string, stemCount: number) => (ftsMatch(query) ?? "").split(" OR ").slice(stemCount);
   // the unfiltered library branch of searchLibraryFts, pool = max(k*20, 200) at k=10

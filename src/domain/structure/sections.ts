@@ -142,7 +142,7 @@ function inOrder(placed: readonly Placed[]): Placed[] {
 function cleanTitle(raw: string): string {
   const t = raw
     .replace(/^#+\s*/, "")
-    .replace(/\s+/g, " ")
+    .replaceAll(/\s+/g, " ")
     .trim();
   return t.length > MAX_SECTION_TITLE ? t.slice(0, MAX_SECTION_TITLE).trimEnd() : t;
 }
@@ -246,7 +246,7 @@ export function hitSectionPath(
  * any writer (an older build, a hand-edited index) must not break the line it sits on.
  */
 function labelTitle(raw: string): string {
-  const t = raw.replace(/[\s\p{Cc}]+/gu, " ").trim();
+  const t = raw.replaceAll(/[\s\p{Cc}]+/gu, " ").trim();
   if (t.length <= MAX_SECTION_TITLE) return t;
   // never end on the high half of a surrogate pair
   const end = /[\uD800-\uDBFF]/.test(t[MAX_SECTION_TITLE - 1]!) ? MAX_SECTION_TITLE - 1 : MAX_SECTION_TITLE;

@@ -53,7 +53,7 @@ function byLetters(lower: string, candidates: readonly LanguagePack[]): { pack: 
 
 /** The candidate with the largest share of stop words among the script's words; ties keep the default. */
 function byStopwords(lower: string, script: Script, candidates: readonly LanguagePack[]): LanguagePack {
-  const words = (lower.match(WORD) ?? []).filter((w) => SCRIPT_TEST[script].test(w)).map((w) => w.replace(/ё/g, "е"));
+  const words = (lower.match(WORD) ?? []).filter((w) => SCRIPT_TEST[script].test(w)).map((w) => w.replaceAll("ё", "е"));
   let best = candidates[0]!;
   let bestHits = -1;
   for (const pack of candidates) {

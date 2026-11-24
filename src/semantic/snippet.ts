@@ -125,7 +125,7 @@ function queryTerms(query: string): Set<string> {
     const raw = query
       .slice(t.index, t.index + t.length)
       .toLowerCase()
-      .replace(/ё/g, "е");
+      .replaceAll("ё", "е");
     if (!STOPWORDS.has(raw) && t.stem.length >= MIN_TERM_CHARS) terms.add(t.stem);
   }
   return terms;

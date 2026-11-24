@@ -202,7 +202,7 @@ function identifierTokens(query: string): string[] {
   return [...out];
 }
 
-const phrase = (t: string): string => `"${t.replace(/"/g, '""')}"`;
+const phrase = (t: string): string => `"${t.replaceAll('"', '""')}"`;
 
 /**
  * Build an FTS5 MATCH expression from the query as typed (#634). Its stems are OR-ed

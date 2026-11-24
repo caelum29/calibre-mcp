@@ -30,7 +30,7 @@ export function isbnKey(b: Book): string {
 // stand for spaces, so the edition parser sees "learning go 2nd edition". Titles with spaces
 // keep their dots/dashes ("Node.js", "Sci-Fi"); squash drops them anyway after parsing.
 function unslug(b: Book): Book {
-  return /\s/.test(b.title) ? b : { ...b, title: b.title.replace(/[-_.]+/g, " ") };
+  return /\s/.test(b.title) ? b : { ...b, title: b.title.replaceAll(/[-_.]+/g, " ") };
 }
 
 // A raw import has no authors yet, so its authors are unknown rather than different:
@@ -77,7 +77,7 @@ export function matchAddedBook(added: Book, candidates: Book[]): PossibleDuplica
 // Case, accents, punctuation and spacing only: calibredb's own check already matched the
 // authors, so anything looser than this could name a different book (#555).
 function titleKey(title: string): string {
-  return foldAccents(title.toLowerCase()).replace(/[^\p{L}\p{N}\p{M}]+/gu, "");
+  return foldAccents(title.toLowerCase()).replaceAll(/[^\p{L}\p{N}\p{M}]+/gu, "");
 }
 
 /**

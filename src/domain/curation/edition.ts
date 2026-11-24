@@ -78,7 +78,7 @@ export interface EditionSplit {
  * edition noise); if the phrase opens the title, only the phrase itself is removed.
  */
 export function splitEdition(title: string): EditionSplit {
-  const t = title.replace(/[’ʼ]/g, "'");
+  const t = title.replaceAll(/[’ʼ]/g, "'");
   let best: RegExpExecArray | undefined;
   for (const re of PATTERNS) {
     const m = re.exec(t);

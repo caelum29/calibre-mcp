@@ -138,7 +138,7 @@ describe("matchCaptionElement", () => {
 describe("caption quirks on real pages (#107)", () => {
   // Every fixture is a real pdftotext snippet; see fixtures/caption-quirks-107.md.
   for (const [name, fixture] of Object.entries(quirks)) {
-    it(`should_scan_${name}_like_${fixture.source.replace(/\W+/g, "_")}`, () => {
+    it(`should_scan_${name}_like_${fixture.source.replaceAll(/\W+/g, "_")}`, () => {
       const found = scanCaptions(fixture.page).map(({ label, text }) => ({ label, text }));
       expect(found).toEqual(fixture.expected);
     });

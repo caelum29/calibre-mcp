@@ -33,7 +33,7 @@ export function freezeTreeCheck(porcelain: string, sha: string): { refuse?: stri
   const paths = porcelain
     .split("\n")
     .filter((l) => l.trim() !== "")
-    .map((l) => l.slice(3).split(" -> ").pop()!.replace(/^"|"$/g, ""));
+    .map((l) => l.slice(3).split(" -> ").pop()!.replaceAll(/^"|"$/g, ""));
   if (paths.includes(THRESHOLDS)) {
     return {
       refuse: `${THRESHOLDS} has uncommitted changes: commit the rule before freezing (D-012)`,
