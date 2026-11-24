@@ -147,7 +147,6 @@ export default defineConfig({
         "unicorn/no-useless-promise-resolve-reject": "off", // 13
         "unicorn/prefer-structured-clone": "off", // 11
         "unicorn/prefer-set-has": "off", // 7
-        "unicorn/prefer-optional-catch-binding": "off", // 5
         "quality/no-reflect-get": "off", // 5
         "unicorn/text-encoding-identifier-case": "off", // 4
         "unicorn/prefer-top-level-await": "off", // 4
