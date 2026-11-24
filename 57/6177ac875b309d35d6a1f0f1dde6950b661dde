@@ -1,0 +1,22 @@
+test/eval/retrieval/hash-freeze-lib.ts
+  h_e22d73abc85ef9 24,44
+test/integration/tools-list-order.test.ts
+  h_e22d73abc85ef9 39-40
+test/integration/write-gate-per-call.test.ts
+  h_e22d73abc85ef9 97-98,102-103,132,134
+test/tools/registry.test.ts
+  h_e22d73abc85ef9 108,123
+test/tools/remove-book-settle-paths-584.test.ts
+  h_e22d73abc85ef9 18,43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "576177ac875b309d35d6a1f0f1dde6950b661dde",
+  "prompts": {},
+  "humans": {
+    "h_e22d73abc85ef9": {
+      "author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
