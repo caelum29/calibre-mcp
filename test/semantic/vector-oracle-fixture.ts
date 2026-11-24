@@ -55,7 +55,7 @@ export function seededLibrary(seed: number, bookCount = 56, maxChunks = 24): See
  * book's first vector — that book's best score then ties between its first and last chunk.
  */
 export function seededQueries(seed: number, books: SeededBook[]): Float32Array[] {
-  const rand = mulberry32(seed ^ 0x9e3779b9);
+  const rand = mulberry32(seed ^ 0x9e_37_79_b9);
   const all = books.flatMap((b) => b.vectors);
   return [
     randomUnit(rand),

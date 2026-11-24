@@ -64,7 +64,7 @@ function deps(opts: FakeOpts = {}): BaseDeps {
 
 const args = (over: Record<string, unknown> = {}) => ({
   id: 1,
-  maxChars: 8_000,
+  maxChars: 8000,
   sentenceAware: false,
   ...over,
 });
@@ -95,7 +95,7 @@ describe("calibre_get_content handler", () => {
       const cursor = first.structuredContent?.nextCursor as string;
       const second = await getContentTool.handler(args({ cursor }), deps());
       expect(second.isError).toBeFalsy();
-      expect((second.structuredContent as { offset: number }).offset).toBe(8_000);
+      expect((second.structuredContent as { offset: number }).offset).toBe(8000);
     });
 
     it("errors on a hand-constructed cursor instead of silently restarting at 0", async () => {
@@ -164,7 +164,7 @@ describe("calibre_get_content handler", () => {
   // The cursor binds {id, format}, and the description says to pass nextCursor verbatim,
   // so a model that drops id on the follow-up call must still continue the book (#536).
   describe("cursor-only call (#536)", () => {
-    const cursorFor = (id: number, format: string, offset = 8_000) => encodeContentCursor({ offset, id, format });
+    const cursorFor = (id: number, format: string, offset = 8000) => encodeContentCursor({ offset, id, format });
     const textOf = (r: { content: unknown[] }) => (r.content[0] as { text: string }).text;
 
     it("continues the book the cursor was minted for when id is omitted", async () => {
@@ -175,7 +175,7 @@ describe("calibre_get_content handler", () => {
       );
       expect(r.isError).toBeFalsy();
       expect(calls[0]?.id).toBe(7);
-      expect((r.structuredContent as { offset: number }).offset).toBe(8_000);
+      expect((r.structuredContent as { offset: number }).offset).toBe(8000);
     });
 
     it("walks a nextCursor chain without id", async () => {
@@ -183,7 +183,7 @@ describe("calibre_get_content handler", () => {
       const cursor = first.structuredContent?.nextCursor as string;
       const second = await getContentTool.handler(args({ id: undefined, cursor }), deps());
       expect(second.isError).toBeFalsy();
-      expect((second.structuredContent as { offset: number }).offset).toBe(8_000);
+      expect((second.structuredContent as { offset: number }).offset).toBe(8000);
     });
 
     it("takes the format from the cursor, not the default preference", async () => {

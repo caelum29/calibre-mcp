@@ -177,5 +177,5 @@ export function fromEarlierCall(result: ToolResult, finishedAgoMs: number): Tool
 }
 
 function ago(ms: number): string {
-  return ms < 1_000 ? "just now" : `${Math.round(ms / 1_000)} s ago`;
+  return ms < 1000 ? "just now" : `${Math.round(ms / 1000)} s ago`;
 }

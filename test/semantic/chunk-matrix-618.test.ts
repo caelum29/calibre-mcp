@@ -191,7 +191,7 @@ describe("mergeMatrix builds what a cold pack builds (#618)", () => {
     const old = matrixOf(cands);
     const rewritten = rewrite(ids[4]!, 5000, 3);
     const added = rewrite(1, 6000, 2); // below every seeded id: merges in front
-    const stale = new Set([ids[4]!, ids[9]!, 1, 424242]);
+    const stale = new Set([ids[4]!, ids[9]!, 1, 424_242]);
     const kept = cands.filter((c) => !stale.has(c.bookId));
     const fresh = matrixOf([...rewritten, ...added]);
     const merged = mergeMatrix(old, stale, fresh);

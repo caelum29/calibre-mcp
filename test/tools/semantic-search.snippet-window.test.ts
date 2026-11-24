@@ -90,7 +90,7 @@ const FILLER_TAIL =
   "a configuration change, not to the protocol itself, so invest in safe rollout tooling first.";
 // the tail runs twice so the 800-char window (#708) still fits after the Raft sentence
 const BOOK38_BODY = FILLER_HEAD + FILLER_HEAD + RAFT_SENTENCE + FILLER_TAIL + FILLER_TAIL;
-const BOOK38_START = 352024;
+const BOOK38_START = 352_024;
 const BOOK38_END = BOOK38_START + BOOK38_BODY.length;
 const RAFT_AT = BOOK38_START + BOOK38_BODY.indexOf(RAFT_SENTENCE);
 
@@ -153,7 +153,7 @@ describe("library snippet window (#243)", () => {
     const body = BOOK38_BODY.slice("Migrating to microservices ".length); // "changes how teams own …"
     const store = storeWith(38, "An Elegant Puzzle", BOOK38_START, body);
     const { text, top } = await search(store, "консенсус", "vector");
-    const label = `MATCH book 38 @352024-${352024 + body.length} snippet@352061`;
+    const label = `MATCH book 38 @352024-${352_024 + body.length} snippet@352061`;
     const snippet = fence(label, "…" + body.slice(37, 37 + LIBRARY_SNIPPET_CHARS));
     expect(top.snippetStart).toBe(BOOK38_START + 37);
     expect(top.snippet).toBe(snippet);

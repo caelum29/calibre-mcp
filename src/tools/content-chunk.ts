@@ -24,7 +24,7 @@ export interface ChunkOptions {
 
 /** True for a UTF-16 high surrogate (first half of an astral-plane code point). */
 function isHighSurrogate(code: number): boolean {
-  return code >= 0xd800 && code <= 0xdbff;
+  return code >= 0xd8_00 && code <= 0xdb_ff;
 }
 
 /** True for `.`, `!` or `?` — the sentence ends sentenceAware prefers. */

@@ -46,7 +46,7 @@ describe("LibraryBusyTracker", () => {
     busy.markBusy("L", "calibredb"); // ...and it timed out again
     advance(119_000);
     expect(() => busy.assertAvailable("L")).toThrow(CalibreBusyError);
-    advance(1_000);
+    advance(1000);
     expect(() => busy.assertAvailable("L")).not.toThrow();
     busy.markBusy("L", "calibredb"); // third strike: 240 s, capped at 150 s
     expect(busy.busyLibraries()[0]?.retryInMs).toBe(150_000);
@@ -187,7 +187,7 @@ describe("LibraryBusyTracker", () => {
     expect(() => busy.assertAvailable("L")).toThrow("Retry in ~120 s");
     advance(119_000);
     expect(() => busy.assertAvailable("L")).toThrow(CalibreBusyError);
-    advance(1_000);
+    advance(1000);
     const reprobe = busy.assertAvailable("L"); // window over: exactly one new probe
     expect(reprobe).toBeDefined();
     expect(() => busy.assertAvailable("L")).toThrow(CalibreBusyError);

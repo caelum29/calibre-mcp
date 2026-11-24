@@ -27,7 +27,7 @@ function deps(bigTotal: number, pageMs: number, searches: SearchParams[] = []): 
       hasIndex: () => true,
       indexMeta: () => META,
       stats: (id) => ({ books: id === "Big" ? 1001 : 3, chunks: 1, figures: 0 }),
-      indexedBookIds: (id) => (id === "Big" ? [...ids(1, 1000), 99999] : [1, 2, 99999]),
+      indexedBookIds: (id) => (id === "Big" ? [...ids(1, 1000), 99_999] : [1, 2, 99_999]),
       booksMissingVectors: () => 0,
     },
   };

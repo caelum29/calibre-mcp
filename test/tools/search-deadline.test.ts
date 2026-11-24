@@ -100,7 +100,7 @@ describe("calibre_search deadline (2026-10-31 hang)", () => {
   it("should_still_search_when_saved_searches_times_out", async () => {
     const { r, ms } = await timed(deps({ savedSearches: true }));
     expect(r.isError).toBeFalsy();
-    expect(ms).toBeLessThanOrEqual(5_000); // the exclusion sweep waits its short cold cap, not 30 s
+    expect(ms).toBeLessThanOrEqual(5000); // the exclusion sweep waits its short cold cap, not 30 s
     expect(textOf(r)).toContain("Found 1 books with full-text matches");
     expect(textOf(r)).toContain("exclusion check unavailable");
   });

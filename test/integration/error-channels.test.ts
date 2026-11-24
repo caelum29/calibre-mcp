@@ -110,7 +110,7 @@ describe("#325 write gate", () => {
     const { client, close } = await connect();
     try {
       const call = client.callTool({ name: "calibre_update_book", arguments: { id: 1 } });
-      await expect(call).rejects.toMatchObject({ code: -32602, message: "Tool calibre_update_book disabled" });
+      await expect(call).rejects.toMatchObject({ code: -32_602, message: "Tool calibre_update_book disabled" });
     } finally {
       await close();
     }

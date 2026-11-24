@@ -26,7 +26,7 @@ export interface ShutdownDeps {
  */
 export function createShutdown(deps: ShutdownDeps): (reason: string) => Promise<void> {
   const killChildren = deps.killChildren ?? killAllChildren;
-  const closeTimeoutMs = deps.closeTimeoutMs ?? 2_000;
+  const closeTimeoutMs = deps.closeTimeoutMs ?? 2000;
   let pending: Promise<void> | undefined;
 
   return (reason: string) => {

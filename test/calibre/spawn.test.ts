@@ -15,7 +15,7 @@ const node = process.execPath;
 describe("spawnCollect", () => {
   it("collects stdout and a zero exit code", async () => {
     const r = await spawnCollect(node, ["-e", "process.stdout.write('ok')"], {
-      timeoutMs: 5_000,
+      timeoutMs: 5000,
       maxBuffer: 1 << 20,
     });
     expect(r).toEqual({ stdout: "ok", stderr: "", code: 0 });
@@ -23,7 +23,7 @@ describe("spawnCollect", () => {
 
   it("captures stderr and a non-zero exit code (does not throw)", async () => {
     const r = await spawnCollect(node, ["-e", "process.stderr.write('boom');process.exit(3)"], {
-      timeoutMs: 5_000,
+      timeoutMs: 5000,
       maxBuffer: 1 << 20,
     });
     expect(r.code).toBe(3);
@@ -32,7 +32,7 @@ describe("spawnCollect", () => {
 
   it("rejects with the ENOENT error when the binary is missing", async () => {
     await expect(
-      spawnCollect("definitely-not-a-real-binary-xyz", [], { timeoutMs: 5_000, maxBuffer: 1 << 20 }),
+      spawnCollect("definitely-not-a-real-binary-xyz", [], { timeoutMs: 5000, maxBuffer: 1 << 20 }),
     ).rejects.toMatchObject({ code: "ENOENT" });
   });
 
@@ -50,13 +50,13 @@ describe("spawnCollect", () => {
       SpawnTimeoutError,
     );
     // Must settle near the timeout, NOT wait for the 30s grandchild.
-    expect(Date.now() - start).toBeLessThan(5_000);
+    expect(Date.now() - start).toBeLessThan(5000);
   });
 
   it("kills the group and rejects when output exceeds maxBuffer", async () => {
     await expect(
       spawnCollect(node, ["-e", "process.stdout.write('x'.repeat(100))"], {
-        timeoutMs: 5_000,
+        timeoutMs: 5000,
         maxBuffer: 10,
       }),
     ).rejects.toBeInstanceOf(SpawnMaxBufferError);
@@ -74,7 +74,7 @@ describe("spawnCollect", () => {
         `spawn(process.execPath,['-e',${JSON.stringify(grandchild)}],{stdio:'ignore'});` +
         "setTimeout(()=>{},30000);";
       const run = spawnCollect(node, ["-e", script], { timeoutMs: 30_000, maxBuffer: 1 << 20 });
-      const deadline = Date.now() + 5_000;
+      const deadline = Date.now() + 5000;
       while (!existsSync(pidFile) || readFileSync(pidFile, "utf8") === "") {
         if (Date.now() > deadline) throw new Error("grandchild never started");
         await new Promise((r) => setTimeout(r, 25));
@@ -116,7 +116,7 @@ describe("spawnCollect", () => {
   }, 15_000);
 
   it("forgets children that exited on their own", async () => {
-    await spawnCollect(node, ["-e", "0"], { timeoutMs: 5_000, maxBuffer: 1 << 20 });
+    await spawnCollect(node, ["-e", "0"], { timeoutMs: 5000, maxBuffer: 1 << 20 });
     expect(killAllChildren()).toBe(0);
   });
 
@@ -130,7 +130,7 @@ describe("spawnCollect", () => {
     });
     setTimeout(() => controller.abort(), 100);
     await expect(run).rejects.toBeInstanceOf(SpawnAbortedError);
-    expect(Date.now() - start).toBeLessThan(5_000);
+    expect(Date.now() - start).toBeLessThan(5000);
     // The killed child leaves the live registry once it has actually exited ('close').
     let live = 1;
     for (let i = 0; i < 40 && live > 0; i++) {
@@ -144,7 +144,7 @@ describe("spawnCollect", () => {
     const controller = new AbortController();
     controller.abort();
     await expect(
-      spawnCollect(node, ["-e", "0"], { timeoutMs: 5_000, maxBuffer: 1 << 20, signal: controller.signal }),
+      spawnCollect(node, ["-e", "0"], { timeoutMs: 5000, maxBuffer: 1 << 20, signal: controller.signal }),
     ).rejects.toBeInstanceOf(SpawnAbortedError);
     expect(killAllChildren()).toBe(0);
   });

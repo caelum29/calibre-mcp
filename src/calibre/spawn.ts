@@ -72,7 +72,7 @@ function killTree(child: ChildProcess, sync: boolean): void {
   try {
     if (process.platform === "win32") {
       const taskkillArgs = ["/pid", String(pid), "/T", "/F"];
-      if (sync) spawnSync("taskkill", taskkillArgs, { stdio: "ignore", timeout: 5_000 });
+      if (sync) spawnSync("taskkill", taskkillArgs, { stdio: "ignore", timeout: 5000 });
       else spawn("taskkill", taskkillArgs, { stdio: "ignore" });
     } else {
       process.kill(-pid, "SIGKILL");

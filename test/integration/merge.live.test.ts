@@ -35,7 +35,7 @@ let serverUp = false;
 if (RUN) {
   try {
     const res = await fetch(`${config.serverUrl}/ajax/library-info`, {
-      signal: AbortSignal.timeout(3_000),
+      signal: AbortSignal.timeout(3000),
     });
     serverUp = res.ok;
   } catch {

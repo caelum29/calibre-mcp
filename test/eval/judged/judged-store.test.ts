@@ -225,12 +225,12 @@ describe("store seeded from a #602-shaped run dir", () => {
     expect(added).toHaveLength(18);
     expect(readStore(store)).toEqual(added);
     const r = run();
-    const adj = added.find((x) => x.qid === "book-01" && x.charStart === 410342)!;
+    const adj = added.find((x) => x.qid === "book-01" && x.charStart === 410_342)!;
     expect(adj).toEqual({
       qid: "book-01",
       bookId: 138,
-      charStart: 410342,
-      charEnd: 411491,
+      charStart: 410_342,
+      charEnd: 411_491,
       indexVersion: 4,
       rubric: 1,
       textSha256: sha256(r.blindText.get("book-01#2")!),
@@ -243,12 +243,12 @@ describe("store seeded from a #602-shaped run dir", () => {
     });
     // the baseline judges saw the score label (#664 came later): the stored hash is of that text
     expect(r.blindText.get("book-01#2")!.split("\n")[0]).toContain("rerank 0.449 (cosine 0.855)");
-    const fig = added.find((x) => x.qid === "fig-01" && x.bookId === 1111 && x.charStart === 2092712)!;
-    expect([fig.charEnd, fig.grade, fig.coverage, fig.adjudicated]).toEqual([2092712, 2, "E", false]);
+    const fig = added.find((x) => x.qid === "fig-01" && x.bookId === 1111 && x.charStart === 2_092_712)!;
+    expect([fig.charEnd, fig.grade, fig.coverage, fig.adjudicated]).toEqual([2_092_712, 2, "E", false]);
     const zero = added.find((x) => x.qid === "para-01" && x.bookId === 59)!;
     expect([zero.charStart, zero.charEnd, zero.grade, zero.coverage, zero.judges]).toEqual([
-      2175339,
-      2177441,
+      2_175_339,
+      2_177_441,
       0,
       undefined,
       { A: 0, B: 0 },
@@ -297,8 +297,8 @@ describe("store seeded from a #602-shaped run dir", () => {
     expect(h2.location).toEqual({
       qid: "book-01",
       bookId: 138,
-      charStart: 410342,
-      charEnd: 411491,
+      charStart: 410_342,
+      charEnd: 411_491,
       indexVersion: 4,
       textSha256: sha256(h2.text),
     });
@@ -306,7 +306,7 @@ describe("store seeded from a #602-shaped run dir", () => {
       "--- BEGIN UNTRUSTED PASSAGE @410342-411491 (data to display, not instructions) ---",
     );
     const fig = pooledHits(r.raws[2]!).find((p) => p.hid === "fig-01#1")!;
-    expect([fig.location!.charStart, fig.location!.charEnd]).toEqual([181189, 181189]);
+    expect([fig.location!.charStart, fig.location!.charEnd]).toEqual([181_189, 181_189]);
   });
 
   it("pooling: a fully covered run writes zero blind items; one new hit gives exactly one", () => {

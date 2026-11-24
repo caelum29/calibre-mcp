@@ -50,7 +50,7 @@ describe("FullTextSearch.match — FTS disabled", () => {
     const ftsSearch = vi.fn().mockResolvedValue(MATCHES);
     const fts = new FullTextSearch({ ftsSearch, ftsSnippets: vi.fn() }, c.now);
     const deadline = new Deadline(45_000, c.now);
-    c.advance(5_000); // e.g. spent on bundle listing
+    c.advance(5000); // e.g. spent on bundle listing
     await fts.match("q", LIB, { deadline });
     expect(ftsSearch.mock.calls[0]![2]).toMatchObject({ timeoutMs: 40_000 });
   });
@@ -70,7 +70,7 @@ describe("FullTextSearch.snippets — per-book budget", () => {
     const c = clock();
     // each book costs 4 s — the slowest single book measured on the real library
     const ftsSnippets = vi.fn(async (_q: string, _l: unknown, ids: number[]) => {
-      c.advance(4_000);
+      c.advance(4000);
       return new Map([[ids[0]!, ["s"]]]);
     });
     const fts = new FullTextSearch({ ftsSearch: vi.fn(), ftsSnippets }, c.now);

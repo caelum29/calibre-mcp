@@ -117,7 +117,7 @@ function isDead(pid: number): boolean {
   }
 }
 
-async function waitFor(cond: () => boolean, ms = 5_000): Promise<boolean> {
+async function waitFor(cond: () => boolean, ms = 5000): Promise<boolean> {
   const deadline = Date.now() + ms;
   while (Date.now() < deadline) {
     if (cond()) return true;

@@ -52,7 +52,7 @@ describe("limitParam", () => {
   it.each([
     [0, "limit", 50, 20],
     [-5, "topK", 50, 10],
-    [0, "maxChars", 40_000, 8_000],
+    [0, "maxChars", 40_000, 8000],
     [0.5, "fractional below 1", 50, 20],
     [-0.5, "negative fraction", 50, 20],
     ["0", "string zero", 50, 20],

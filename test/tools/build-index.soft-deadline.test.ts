@@ -21,7 +21,7 @@ const LIB = "Programming_Books";
 /** Short real deadline: the fake extraction is gated, so it outlasts this unless released. */
 const DEADLINE_MS = 40;
 /** How long a test waits for a handler that should return near the deadline. */
-const SETTLE_MS = 1_000;
+const SETTLE_MS = 1000;
 
 const book = (id: number): Book => ({
   id,

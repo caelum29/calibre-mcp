@@ -166,7 +166,7 @@ await runBookPipeline<PrepareResult>(todo, concurrency, {
     if (settled % 10 === 0) {
       const avg = (Date.now() - t0) / settled;
       say(
-        `progress ${settled}/${todo.length} (${(avg / 1000).toFixed(1)} s/book wall, ~${Math.round(((todo.length - settled) * avg) / 60000)} min left)`,
+        `progress ${settled}/${todo.length} (${(avg / 1000).toFixed(1)} s/book wall, ~${Math.round(((todo.length - settled) * avg) / 60_000)} min left)`,
       );
     }
   },

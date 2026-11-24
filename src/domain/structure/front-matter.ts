@@ -22,11 +22,11 @@ export const FM_MAX_FRACTION = 0.2;
 export const FM_MAX_CHARS = 60_000;
 // A section this short (heading to next heading) is a title page, copyright or
 // revision-history stub, not body content — real chapter sections run thousands of chars.
-export const FM_SHORT_SECTION_CHARS = 2_500;
+export const FM_SHORT_SECTION_CHARS = 2500;
 // The run rule only applies to heading-first texts (EPUB→Markdown conversions): the first
 // heading must sit this close to the start. PDF text has no headings, and the "# ..."
 // lines it does have are code comments deep in the body.
-export const FM_FIRST_HEADING_MAX_CHARS = 1_500;
+export const FM_FIRST_HEADING_MAX_CHARS = 1500;
 // The leading run never spans more sections than this (a TOC rendered as headings can be
 // long, but past this we are inside the body).
 export const FM_MAX_RUN_SECTIONS = 40;

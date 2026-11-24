@@ -152,7 +152,6 @@ export default defineConfig({
         "no-undef": "off", // 127
         "unicorn/prefer-string-replace-all": "off", // 117
         "quality/no-known-value-widening": "off", // 111
-        "unicorn/numeric-separators-style": "off", // 108
         "typescript/no-unnecessary-type-assertion": "off", // 104
         "quality/no-array-filter-map": "off", // 59
         "unicorn/prefer-single-call": "off", // 56

@@ -669,7 +669,7 @@ describe("dual-channel parity: pagination (#211)", () => {
 
 // #199: text payloads (issue lines, snippets, dup groups, compare diff) must have a
 // structured counterpart — Claude Code drops the text channel.
-const RAW = LIBRARY.map((b, i) => ({ ...b, title: `${795731065 + i}` }));
+const RAW = LIBRARY.map((b, i) => ({ ...b, title: `${795_731_065 + i}` }));
 const DUPES: Book[] = [
   ...LIBRARY,
   book({ id: 104, uuid: "u-104", title: "rust in action", formats: ["pdf"] }),
@@ -1125,11 +1125,11 @@ const PING_FIXTURES: Scenario[] = [
 ];
 // real + unknown ids: both results print `Not found (skipped): …` (#522, #529); gate on for the apply
 const REMOVE_MIXED: Scenario[] = [
-  { tool: "calibre_remove_book", label: "dry run, mixed ids", args: { ids: [101, 999998, 102, 999999] } },
+  { tool: "calibre_remove_book", label: "dry run, mixed ids", args: { ids: [101, 999_998, 102, 999_999] } },
   {
     tool: "calibre_remove_book",
     label: "confirmed, mixed ids",
-    args: { ids: [101, 999998, 102, 999999], confirm: "true" },
+    args: { ids: [101, 999_998, 102, 999_999], confirm: "true" },
     deps: () => fakeDeps({ env: { CALIBRE_MCP_ENABLE_WRITE: "1" } }),
   },
 ];
@@ -1228,7 +1228,7 @@ describe("Labelled lines (#454)", () => {
     "calibre_remove_book's Not found line is registered and carries notFoundIds (%s)",
     async (_label, sc) => {
       const hit = (await rendered).find(({ s }) => s === sc)!;
-      expect(hit.r.structuredContent).toMatchObject({ notFoundIds: [999998, 999999] });
+      expect(hit.r.structuredContent).toMatchObject({ notFoundIds: [999_998, 999_999] });
       expect(occurrences(textChannel(hit.r), registered("calibre_remove_book", "Not found"))).toEqual([
         "999998",
         "999999",

@@ -86,7 +86,7 @@ describe("calibre_update_book missing id (#251)", () => {
       },
       { calibredb: async () => ({ stdout: "", stderr: "" }) },
     );
-    const r = await updateBookTool.handler({ id: 999999, changes: { tags: ["x"] } }, d);
+    const r = await updateBookTool.handler({ id: 999_999, changes: { tags: ["x"] } }, d);
     expect(r.isError).toBe(true);
     expect(textOf(r)).toContain("No book with id 999999 in the requested library");
     expect(textOf(r)).not.toContain("HTTP");

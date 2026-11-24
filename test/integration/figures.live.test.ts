@@ -30,7 +30,7 @@ if (RUN) {
     const probe = async (id: number) =>
       (
         await fetch(`${config.serverUrl}/ajax/book/${id}/Programming_Books`, {
-          signal: AbortSignal.timeout(3_000),
+          signal: AbortSignal.timeout(3000),
         })
       ).ok;
     ready = (await probe(PDF_BOOK)) && (await probe(EPUB_BOOK));

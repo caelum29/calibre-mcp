@@ -23,7 +23,7 @@ export function decodeEntities(s: string): string {
   return s.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e: string) => {
     if (e[0] === "#") {
       const cp = e[1] === "x" || e[1] === "X" ? Number.parseInt(e.slice(2), 16) : Number.parseInt(e.slice(1), 10);
-      return Number.isFinite(cp) && cp > 0 && cp <= 0x10ffff ? String.fromCodePoint(cp) : m;
+      return Number.isFinite(cp) && cp > 0 && cp <= 0x10_ff_ff ? String.fromCodePoint(cp) : m;
     }
     return ENTITIES[e.toLowerCase()] ?? m;
   });

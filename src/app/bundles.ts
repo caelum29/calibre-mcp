@@ -102,7 +102,7 @@ export async function loadBundles(
 // waits, briefly. manage_bundles writes invalidate. Process-lifetime, single stdio client.
 const CACHE_FRESH_MS = 30_000;
 /** Cold-cache wait for the best-effort exclusion sweep. Basis: `saved_searches list` answers in 0.5–1.4 s (2026-10-31). */
-export const BUNDLES_COLD_TIMEOUT_MS = 5_000;
+export const BUNDLES_COLD_TIMEOUT_MS = 5000;
 /** Background refreshes don't block anyone, but must still end. */
 const BACKGROUND_TIMEOUT_MS = 15_000;
 const cache = new Map<LibId, { at: number; bundles: BundleEntry[] }>();

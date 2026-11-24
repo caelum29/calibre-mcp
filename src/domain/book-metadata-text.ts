@@ -82,7 +82,7 @@ function decodeEntity(e: string): string | undefined {
   if (e[0] !== "#") return ENTITIES[e.toLowerCase()];
   const code = e[1] === "x" || e[1] === "X" ? Number.parseInt(e.slice(2), 16) : Number.parseInt(e.slice(1), 10);
   // Out-of-range code points stay as written rather than throw.
-  return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : undefined;
+  return code > 0 && code <= 0x10_ff_ff ? String.fromCodePoint(code) : undefined;
 }
 
 /** At most `max` chars, cut at the last whitespace within the cap; a hard cut when there is none. */
