@@ -60,7 +60,10 @@ export class TimingRecorder {
         if (typeof value !== "function") return value;
         const stage = typeof prop === "string" ? stageOf(prop) : undefined;
         // bind to the real object so private fields and `this`-reliant methods keep working
-        if (!stage) return value.bind(obj);
+        if (!stage) {
+          const bound: unknown = value.bind(obj);
+          return bound;
+        }
         return (...callArgs: unknown[]) => {
           const start = performance.now();
           const stop = () => this.add(stage, performance.now() - start);

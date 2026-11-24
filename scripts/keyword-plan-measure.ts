@@ -195,7 +195,7 @@ for (const thr of thresholds) {
     const toks = tokensOf(q.query);
     const p = planKeywordQuery(toks, stats, { maxDocShare: thr, bigrams: false });
     let m = plans.get(q.id);
-    if (!m) plans.set(q.id, (m = new Map()));
+    if (!m) plans.set(q.id, (m = new Map<number, KeywordPlan>()));
     m.set(thr, p);
     const tooCommon = new Set(p.dropped.filter((d) => d.reason === "too-common").map((d) => d.term));
     occ += toks.filter((t) => tooCommon.has(t.stem)).length;

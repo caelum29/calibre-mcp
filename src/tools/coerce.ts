@@ -40,8 +40,9 @@ export function jsonStringList() {
     if (parsed === undefined || parsed === null) return undefined;
     const list = typeof parsed === "string" ? parsed.split(",") : typeof parsed === "number" ? [parsed] : parsed;
     if (!Array.isArray(list)) return list;
-    return list
-      .map((x) => (typeof x === "number" ? String(x) : typeof x === "string" ? x.trim() : x))
+    const items: unknown[] = list;
+    return items
+      .map((x): unknown => (typeof x === "number" ? String(x) : typeof x === "string" ? x.trim() : x))
       .filter((x) => x !== "");
   }, z.array(z.string()).optional());
 }

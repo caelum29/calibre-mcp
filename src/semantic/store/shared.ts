@@ -306,7 +306,7 @@ export function libraryLanguages(db: DatabaseSync): Set<string | undefined> {
 export function parseAuthors(raw: unknown): string[] {
   if (typeof raw !== "string") return [];
   try {
-    const v = JSON.parse(raw);
+    const v: unknown = JSON.parse(raw);
     return Array.isArray(v) ? v.map(String) : [];
   } catch {
     return raw ? [raw] : [];

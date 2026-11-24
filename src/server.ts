@@ -319,7 +319,7 @@ function startBootProbes(deps: ToolDeps, extractor: Extractor): void {
         default: info.defaultLibrary,
       }),
     )
-    .catch((err) =>
+    .catch((err: unknown) =>
       log.warn("content server unreachable at boot", {
         url: config.serverUrl,
         hint: "start it in Calibre (Connect/share → Start Content server) or set CALIBRE_MCP_SERVER_URL",

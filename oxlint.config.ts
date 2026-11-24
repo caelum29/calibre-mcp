@@ -102,6 +102,12 @@ export default defineConfig({
         "unicorn/prefer-top-level-await": "off",
       },
     },
+    // These tests pull pure functions out of the widget JS with `new Function`, which is untyped
+    // by nature; each call is cast to the shape the test asserts on.
+    {
+      files: ["test/ui/figures-location.test.ts", "test/ui/figures-pairing.test.ts", "test/ui/widgets.test.ts"],
+      rules: { "typescript/no-unsafe-call": "off" },
+    },
     // MIGRATION BASELINE (temporary): preset rules that fail today, with their finding counts.
     // Each one is either enabled with fixes or kept off with a reason, one commit per rule.
     // Last override, so it also beats preset overrides that re-enable a rule (tests, *.ts).
@@ -136,14 +142,11 @@ export default defineConfig({
         "unicorn/prefer-structured-clone": "off", // 11
         "typescript/use-unknown-in-catch-callback-variable": "off", // 10
         "unicorn/prefer-set-has": "off", // 7
-        "typescript/no-unsafe-return": "off", // 7
         "unicorn/prefer-optional-catch-binding": "off", // 5
-        "typescript/no-unsafe-assignment": "off", // 5
         "quality/no-reflect-get": "off", // 5
         "preserve-caught-error": "off", // 5
         "unicorn/text-encoding-identifier-case": "off", // 4
         "unicorn/prefer-top-level-await": "off", // 4
-        "typescript/no-unsafe-call": "off", // 4
         "quality/no-object-parameters": "off", // 4
         "unicorn/prefer-number-properties": "off", // 3
         "typescript/no-misused-spread": "off", // 3
@@ -151,8 +154,6 @@ export default defineConfig({
         "unicorn/prefer-native-coercion-functions": "off", // 1
         "typescript/unbound-method": "off", // 1
         "typescript/return-await": "off", // 1
-        "typescript/no-unsafe-member-access": "off", // 1
-        "typescript/no-unsafe-argument": "off", // 1
         "import/no-namespace": "off", // 1
         "@nkzw/no-instanceof": "off", // 1
       },

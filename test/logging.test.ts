@@ -107,7 +107,7 @@ describe("logger file sink", () => {
     const msgs = readFileSync(today, "utf8")
       .trim()
       .split("\n")
-      .map((l) => JSON.parse(l).msg);
+      .map((l): unknown => JSON.parse(l).msg);
     expect({ msgs, current: logger.currentFile() }).toEqual({ msgs: ["a", "b"], current: today });
   });
 

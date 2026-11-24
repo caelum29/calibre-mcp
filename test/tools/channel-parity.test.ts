@@ -1145,7 +1145,9 @@ function fieldValues(sc: unknown, field: string): unknown[] {
     const key = each ? part.slice(0, -2) : part;
     cur = cur.flatMap((v) => {
       const x = v && typeof v === "object" ? (v as Record<string, unknown>)[key] : undefined;
-      return each ? (Array.isArray(x) ? x : []) : x === undefined ? [] : [x];
+      if (!each) return x === undefined ? [] : [x];
+      const xs: unknown[] = Array.isArray(x) ? x : [];
+      return xs;
     });
   }
   return cur;

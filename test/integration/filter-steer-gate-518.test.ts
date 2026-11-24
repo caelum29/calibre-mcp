@@ -64,6 +64,6 @@ describe("unknown-bundle steer follows the gate in every filter-taking tool (#51
       ).handler({ ...args, filter: "Golang" }, deps(on));
       out.push(text(r));
     }
-    expect(out).toEqual([`${FACT} ${GATE_OFF}`, `${FACT} ${GATE_ON}`].map((t) => expect.stringContaining(t)));
+    expect(out).toEqual([`${FACT} ${GATE_OFF}`, `${FACT} ${GATE_ON}`].map((t): unknown => expect.stringContaining(t)));
   });
 });

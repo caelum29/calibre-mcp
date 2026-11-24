@@ -5,7 +5,7 @@
 import { rowKey, type AllowEntry } from "./gate.js";
 
 /** list-diff-allow.json: `$comment` plus the entries array (extra keys kept as-is). */
-interface AllowFile {
+export interface AllowFile {
   entries: AllowEntry[];
   [key: string]: unknown;
 }

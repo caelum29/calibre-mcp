@@ -5,7 +5,8 @@
 import UkrainianStemmer from "./snowball/ukrainian-stemmer.js";
 import type { LanguagePack } from "./pack.js";
 
-const stemmer = new UkrainianStemmer();
+// the vendored stemmer is @ts-nocheck JS, so pin the one method we call
+const stemmer: { stemWord(word: string): string } = new UkrainianStemmer();
 
 /** Ukrainian: picked by book language or by its distinctive letters, never the Cyrillic default. */
 export const uk: LanguagePack = {
