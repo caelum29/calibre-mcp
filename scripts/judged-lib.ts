@@ -320,7 +320,7 @@ export function medianAndMax(xs: number[]): { median: number; max: number } | un
   if (xs.length === 0) return undefined;
   const s = [...xs].sort((a, b) => a - b);
   const mid = Math.floor(s.length / 2);
-  return { median: s.length % 2 ? s[mid]! : (s[mid - 1]! + s[mid]!) / 2, max: s[s.length - 1]! };
+  return { median: s.length % 2 ? s[mid]! : (s[mid - 1]! + s[mid]!) / 2, max: s.at(-1)! };
 }
 
 /** Query id of a blind item id (`<qid>#<n>`). */

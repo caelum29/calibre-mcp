@@ -239,7 +239,7 @@ export function anchorSpineDocs(text: string, docs: SpineHtml[]): SpineAnchor[] 
       if (at === -1) continue;
       // Snap back to the line start so the anchor includes the heading's own "# " prefix.
       const start = lineStartAt(text, map[at]!);
-      if (anchors.length === 0 || start > anchors[anchors.length - 1]!.start) {
+      if (anchors.length === 0 || start > anchors.at(-1)!.start) {
         anchors.push({ href: doc.href, start });
       }
       from = at + probe.length;
@@ -289,7 +289,7 @@ export function epubTocChapters(
     if (di === undefined) continue; // points at a doc that wasn't anchored
     const docStart = toc.anchors[di]!.start;
     const docEnd = di + 1 < toc.anchors.length ? toc.anchors[di + 1]!.start : text.length;
-    const prev = starts[starts.length - 1];
+    const prev = starts.at(-1);
     let startChar = docStart;
     if (e.fragment) {
       // Mid-doc target: search past the previous chapter so two entries can't share a heading.

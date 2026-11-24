@@ -136,7 +136,7 @@ export function composeEdits(first: readonly TextEdit[], second: readonly TextEd
 export function mergeTouching(edits: readonly TextEdit[]): TextEdit[] {
   const out: TextEdit[] = [];
   for (const e of edits) {
-    const last = out[out.length - 1];
+    const last = out.at(-1);
     if (last && e.inStart <= last.inEnd) {
       last.inEnd = Math.max(last.inEnd, e.inEnd);
       last.outEnd = Math.max(last.outEnd, e.outEnd);

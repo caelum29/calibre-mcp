@@ -149,7 +149,7 @@ function checkSeriesGaps(books: Book[]): Issue[] {
 
     if (ints.length >= 2) {
       const missing: number[] = [];
-      for (let n = ints[0]!; n <= ints[ints.length - 1]!; n++) {
+      for (let n = ints[0]!; n <= ints.at(-1)!; n++) {
         if (!ints.includes(n)) missing.push(n);
       }
       if (missing.length) problems.push(`missing index ${missing.join(", ")}`);

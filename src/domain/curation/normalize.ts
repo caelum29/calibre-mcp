@@ -185,7 +185,7 @@ export function authorToAuthorSort(name: string): string {
   if (parts.length < 2) return trimmed;
 
   let suffix = "";
-  const last = parts[parts.length - 1]!;
+  const last = parts.at(-1)!;
   if (SUFFIXES.has(last.replace(/\./g, "").toLowerCase()) && parts.length > 2) {
     suffix = ` ${last}`;
     parts.pop();

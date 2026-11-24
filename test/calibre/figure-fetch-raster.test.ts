@@ -23,7 +23,7 @@ afterEach(() => rmSync(scratch, { recursive: true, force: true }));
 function fakeRunner(dir: string): Runner {
   return async (_bin, args) => {
     if (args.includes("-list")) return PAGE_LIST;
-    const root = args[args.length - 1] as string;
+    const root = args.at(-1) as string;
     for (let i = 0; i < 3; i++) writeFileSync(`${root}-${String(i).padStart(3, "0")}.png`, "");
     return dir;
   };

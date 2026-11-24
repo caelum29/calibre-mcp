@@ -64,8 +64,8 @@ export function parsePdfImagesList(output: string): RasterImage[] {
     const [page, num, type, width, height] = cols;
     if (!page || !num || !/^\d+$/.test(page) || !/^\d+$/.test(num)) continue; // header/noise
     // counted from the end: inline images print `[inline]` where others print `<obj> <gen>`
-    const xPpi = Number(cols[cols.length - 4]);
-    const yPpi = Number(cols[cols.length - 3]);
+    const xPpi = Number(cols.at(-4));
+    const yPpi = Number(cols.at(-3));
     rasters.push({
       page: Number(page),
       num: Number(num),

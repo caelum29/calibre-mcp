@@ -118,7 +118,7 @@ function placeToc(text: string, toc: EpubToc): Placed[] {
 /** The title line in [from, end), searched past the previous entry so two can't share a line. */
 function snap(text: string, prev: readonly Placed[], range: { from: number; end: number }, title: string): number {
   const { from, end } = range;
-  const last = prev[prev.length - 1];
+  const last = prev.at(-1);
   const after = last && last.start >= from && last.start < end ? last.start + 1 : from;
   return (after < end ? findTitleLine(text, after, end, title) : null) ?? from;
 }
@@ -132,7 +132,7 @@ function inOrder(placed: readonly Placed[]): Placed[] {
   const kept: Placed[] = [];
   for (const p of placed) {
     const title = cleanTitle(p.title);
-    const prev = kept[kept.length - 1];
+    const prev = kept.at(-1);
     if (!title || (prev && (p.start < prev.start || (p.start === prev.start && p.level <= prev.level)))) continue;
     kept.push({ ...p, title });
   }
@@ -152,13 +152,13 @@ function nest(textLength: number, items: readonly Placed[]): SectionSpan[] {
   const out: SectionSpan[] = [];
   const open: number[] = [];
   for (const it of items) {
-    while (open.length > 0 && out[open[open.length - 1]!]!.level >= it.level) out[open.pop()!]!.charEnd = it.start;
+    while (open.length > 0 && out[open.at(-1)!]!.level >= it.level) out[open.pop()!]!.charEnd = it.start;
     out.push({
       title: it.title,
       level: it.level,
       charStart: it.start,
       charEnd: textLength,
-      parent: open.length > 0 ? open[open.length - 1]! : null,
+      parent: open.length > 0 ? open.at(-1)! : null,
       matterKind: BODY_KIND,
     });
     open.push(out.length - 1);

@@ -508,7 +508,7 @@ describe("calibre_semantic_search front-matter demotion (issue #18)", () => {
     );
     expect(r.isError).toBeUndefined();
     const passages = (r.structuredContent as { passages: Array<{ matterKind?: string }> }).passages;
-    expect(passages[passages.length - 1]!.matterKind).toBe("front");
+    expect(passages.at(-1)!.matterKind).toBe("front");
   });
 
   it("claims no demotion when nothing is front matter", async () => {

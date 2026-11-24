@@ -87,8 +87,8 @@ function buildTree<T extends LeveledTitle>(entries: T[]): OutlineNode<T>[] {
   const stack: OutlineNode<T>[] = [];
   for (const entry of entries) {
     const node: OutlineNode<T> = { entry, children: [] };
-    while (stack.length > 0 && stack[stack.length - 1]!.entry.level >= entry.level) stack.pop();
-    (stack.length > 0 ? stack[stack.length - 1]!.children : roots).push(node);
+    while (stack.length > 0 && stack.at(-1)!.entry.level >= entry.level) stack.pop();
+    (stack.length > 0 ? stack.at(-1)!.children : roots).push(node);
     stack.push(node);
   }
   return roots;
@@ -220,7 +220,7 @@ export function outlineChapters(text: string, entries: OutlineEntry[]): ChapterS
     const pageStart = pageStarts[p - 1]!;
     const pageEnd = p < pageStarts.length ? pageStarts[p]! : text.length;
     const startChar = snapToTitle(text, pageStart, pageEnd, e.title);
-    const prev = starts[starts.length - 1];
+    const prev = starts.at(-1);
     // Out-of-order or same-offset bookmarks would yield empty/negative spans — drop them.
     if (prev && startChar <= prev.startChar) continue;
     starts.push({ heading: e.title, startChar });
