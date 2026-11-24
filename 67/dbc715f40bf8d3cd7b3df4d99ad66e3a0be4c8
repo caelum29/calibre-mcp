@@ -1,0 +1,60 @@
+scripts/check-versions.mjs
+  h_e22d73abc85ef9 14
+scripts/gen-tool-catalog.mjs
+  h_e22d73abc85ef9 29
+scripts/gen-widgets.mjs
+  h_e22d73abc85ef9 20
+scripts/pack-mcpb.mjs
+  h_e22d73abc85ef9 11
+src/semantic/status.ts
+  h_e22d73abc85ef9 97,232
+src/version.ts
+  h_e22d73abc85ef9 26
+test/eval/retrieval/axes.test.ts
+  h_e22d73abc85ef9 15
+test/eval/retrieval/capability-kinds-guard.test.ts
+  h_e22d73abc85ef9 11
+test/eval/retrieval/entry-split.test.ts
+  h_e22d73abc85ef9 11
+test/eval/retrieval/eval-cli.test.ts
+  h_e22d73abc85ef9 20
+test/eval/retrieval/golden-set.test.ts
+  h_e22d73abc85ef9 14
+test/eval/retrieval/golden-set.ts
+  h_e22d73abc85ef9 11
+test/eval/retrieval/harness.ts
+  h_e22d73abc85ef9 128
+test/eval/retrieval/hash-freeze.ts
+  h_e22d73abc85ef9 16
+test/eval/retrieval/hash-gate.test.ts
+  h_e22d73abc85ef9 12
+test/eval/retrieval/held-out.test.ts
+  h_e22d73abc85ef9 13
+test/eval/retrieval/list-diff.test.ts
+  h_e22d73abc85ef9 187
+test/eval/retrieval/platform-replay.test.ts
+  h_e22d73abc85ef9 21
+test/eval/retrieval/readme-counts.test.ts
+  h_e22d73abc85ef9 9
+test/eval/retrieval/rerank-floor.ts
+  h_e22d73abc85ef9 13,19
+test/eval/retrieval/rerank-latency-644.test.ts
+  h_e22d73abc85ef9 15
+test/eval/retrieval/rerank-latency-pins-694.test.ts
+  h_e22d73abc85ef9 9
+test/eval/retrieval/rrf-sweep.ts
+  h_e22d73abc85ef9 12,17
+test/eval/retrieval/run.ts
+  h_e22d73abc85ef9 77,131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "67dbc715f40bf8d3cd7b3df4d99ad66e3a0be4c8",
+  "prompts": {},
+  "humans": {
+    "h_e22d73abc85ef9": {
+      "author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
