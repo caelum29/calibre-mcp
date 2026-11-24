@@ -1,0 +1,35 @@
+.claude-plugin/marketplace.json
+  s_f17c55b783a487::t_393a5531e7662a 14
+.claude-plugin/plugin.json
+  s_f17c55b783a487::t_3cb2dcd55efa10 4
+CLAUDE.md
+  s_f17c55b783a487::t_3f270a8abb7c5d 69-70
+README.md
+  s_f17c55b783a487::t_0bb78bc49b98ac 27
+docs/TOOLS.md
+  s_f17c55b783a487::t_67132690c4a2c7 3,863-864
+docs/tool-catalog.json
+  s_f17c55b783a487::t_b8fe2f39cb2814 3-4,6,214,2008,2051,2160-2325,2370
+manifest.json
+  s_f17c55b783a487::t_a8d20d7ab7cb1c 105-108
+scripts/demo-gif.sh
+  s_f17c55b783a487::t_d0031b899e7404 22
+skills/calibre-mcp/SKILL.md
+  s_f17c55b783a487::t_7ae57c8ef0eeaa 3,37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "db9af5fc1072dc234de037ed5944c817dc28c5ca",
+  "prompts": {},
+  "sessions": {
+    "s_f17c55b783a487": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd568a66-62d4-4115-b3fe-06f84ba644ae",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
