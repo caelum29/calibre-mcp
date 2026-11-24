@@ -79,6 +79,29 @@ export default defineConfig({
       files: ["src/ui/board/core.js", "src/ui/card/card.js", "src/ui/figures/figures.js"],
       rules: { "no-unused-expressions": "off" },
     },
+    // Widget JS stays ES5-style: pre-preset code, pinned byte-for-byte by
+    // test/ui/widget-snapshot.test.ts, and any edit needs a Desktop render check. Modernizing it
+    // (append(), arrow callbacks, let/const) is its own change, not part of the lint migration.
+    // no-undef: the fragments share one IIFE scope, so cross-file names look undefined here.
+    {
+      files: ["src/ui/**/*.js"],
+      rules: {
+        curly: "off",
+        eqeqeq: "off",
+        "no-undef": "off",
+        "no-var": "off",
+        "object-shorthand": "off",
+        "prefer-arrow-callback": "off",
+        "typescript/no-floating-promises": "off",
+        "typescript/use-unknown-in-catch-callback-variable": "off",
+        "unicorn/catch-error-name": "off",
+        "unicorn/numeric-separators-style": "off",
+        "unicorn/prefer-dom-node-append": "off",
+        "unicorn/prefer-optional-catch-binding": "off",
+        "unicorn/prefer-string-replace-all": "off",
+        "unicorn/prefer-top-level-await": "off",
+      },
+    },
     // MIGRATION BASELINE (temporary): preset rules that fail today, with their finding counts.
     // Each one is either enabled with fixes or kept off with a reason, one commit per rule.
     // Last override, so it also beats preset overrides that re-enable a rule (tests, *.ts).
@@ -91,7 +114,6 @@ export default defineConfig({
         "import/consistent-type-specifier-style": "off", // 458
         "typescript/no-non-null-assertion": "off", // 333
         "quality/no-chained-type-assertions": "off", // 276
-        "no-var": "off", // 268
         "unicorn/consistent-function-scoping": "off", // 234
         "quality/no-conditional-empty-object-spread": "off", // 223
         "quality/no-unsafe-dictionary-type": "off", // 206
@@ -99,8 +121,6 @@ export default defineConfig({
         "no-undef": "off", // 127
         "unicorn/prefer-string-replace-all": "off", // 117
         "quality/no-known-value-widening": "off", // 111
-        "unicorn/prefer-dom-node-append": "off", // 110
-        "prefer-arrow-callback": "off", // 109
         "unicorn/numeric-separators-style": "off", // 108
         "typescript/no-unnecessary-type-assertion": "off", // 104
         "quality/no-array-filter-map": "off", // 59
@@ -112,7 +132,6 @@ export default defineConfig({
         "quality/no-unknown-returns": "off", // 23
         "unicorn/prefer-at": "off", // 20
         "typescript/consistent-type-imports": "off", // 19
-        "object-shorthand": "off", // 14
         "unicorn/no-useless-promise-resolve-reject": "off", // 13
         "unicorn/prefer-structured-clone": "off", // 11
         "typescript/use-unknown-in-catch-callback-variable": "off", // 10
@@ -121,7 +140,6 @@ export default defineConfig({
         eqeqeq: "off", // 7
         "unicorn/prefer-optional-catch-binding": "off", // 5
         "typescript/no-unsafe-assignment": "off", // 5
-        "typescript/no-floating-promises": "off", // 5
         "quality/no-reflect-get": "off", // 5
         "preserve-caught-error": "off", // 5
         "unicorn/text-encoding-identifier-case": "off", // 4
