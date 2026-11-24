@@ -69,6 +69,7 @@ export class TimingRecorder {
           const stop = () => this.add(stage, performance.now() - start);
           try {
             const result: unknown = value.apply(obj, callArgs);
+            // oxlint-disable-next-line @nkzw/no-instanceof -- only native promises from the wrapped port get .finally
             if (result instanceof Promise) return result.finally(stop);
             stop();
             return result;

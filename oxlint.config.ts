@@ -163,7 +163,6 @@ export default defineConfig({
         "unicorn/no-useless-promise-resolve-reject": "off", // 13
         "unicorn/prefer-structured-clone": "off", // 11
         "quality/no-object-parameters": "off", // 4
-        "@nkzw/no-instanceof": "off", // 1
       },
     },
   ],
