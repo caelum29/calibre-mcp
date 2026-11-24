@@ -141,6 +141,9 @@ export default defineConfig({
       files: ["scripts/*.workflow.js"],
       globals: { agent: "readonly", args: "readonly", log: "readonly", parallel: "readonly", pipeline: "readonly" },
     },
+    // Tests JSON round-trip results on purpose: that is the JSON-RPC wire (drops undefined,
+    // stringifies), which structuredClone would not reproduce.
+    { files: ["test/**"], rules: { "unicorn/prefer-structured-clone": "off" } },
     // MIGRATION BASELINE (temporary): preset rules that fail today, with their finding counts.
     // Each one is either enabled with fixes or kept off with a reason, one commit per rule.
     // Last override, so it also beats preset overrides that re-enable a rule (tests, *.ts).
@@ -162,7 +165,6 @@ export default defineConfig({
         "unicorn/prefer-string-raw": "off", // 46
         "no-promise-executor-return": "off", // 42
         "quality/no-unknown-returns": "off", // 23
-        "unicorn/prefer-structured-clone": "off", // 11
       },
     },
   ],
