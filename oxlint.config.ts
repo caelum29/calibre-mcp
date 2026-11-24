@@ -108,6 +108,12 @@ export default defineConfig({
       files: ["test/ui/figures-location.test.ts", "test/ui/figures-pairing.test.ts", "test/ui/widgets.test.ts"],
       rules: { "typescript/no-unsafe-call": "off" },
     },
+    // Letter scans: these spread strings on purpose to walk code points (Cyrillic/Latin letters are
+    // one each); grapheme segmentation would change nothing here and cost an Intl.Segmenter.
+    {
+      files: ["src/domain/structure/epub-toc.ts", "src/semantic/language/*.ts"],
+      rules: { "typescript/no-misused-spread": "off" },
+    },
     // MIGRATION BASELINE (temporary): preset rules that fail today, with their finding counts.
     // Each one is either enabled with fixes or kept off with a reason, one commit per rule.
     // Last override, so it also beats preset overrides that re-enable a rule (tests, *.ts).
@@ -147,7 +153,6 @@ export default defineConfig({
         "unicorn/prefer-top-level-await": "off", // 4
         "quality/no-object-parameters": "off", // 4
         "unicorn/prefer-number-properties": "off", // 3
-        "typescript/no-misused-spread": "off", // 3
         "unicorn/no-hex-escape": "off", // 2
         "unicorn/prefer-native-coercion-functions": "off", // 1
         "import/no-namespace": "off", // 1
