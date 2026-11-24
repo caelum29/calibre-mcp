@@ -24,7 +24,7 @@ your library, all through natural language.
 
 ## ✨ Highlights
 
-- **<!-- tool-count:modelFacing -->19<!-- /tool-count:modelFacing --> tools** for searching, reading, curating and (opt-in) editing a library: search,
+- **<!-- tool-count:modelFacing -->20<!-- /tool-count:modelFacing --> tools** for searching, reading, curating and (opt-in) editing a library: search,
   read content, browse categories, audit and recover metadata, and — with writes on — update
   metadata, bulk-edit, merge duplicates, import, delete, and manage bundles (named topical
   filters). Format conversion and export are not tools: they go through the Calibre CLI (the

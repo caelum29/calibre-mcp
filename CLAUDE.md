@@ -66,8 +66,8 @@ search spans both via a `scope: library|book` param, not extra tools.
 - **Tool-count ≤ ~20.** Selection accuracy degrades as confusable tools pile up (`docs/dev/DESIGN.md`
   §9.1), so fold related calibredb subcommands into task/intent tools — one `calibre_recover_metadata`,
   not three chainable ones; don't 1:1-mirror the CLI (D-005; build list of record =
-  `docs/dev/TOOLS-spec.md`). Currently **<!-- tool-count:modelFacing -->19<!-- /tool-count:modelFacing --> model-facing
-  tools** — <!-- tool-count:task -->18<!-- /tool-count:task --> task tools + `calibre_ping` — plus
+  `docs/dev/TOOLS-spec.md`). Currently **<!-- tool-count:modelFacing -->20<!-- /tool-count:modelFacing --> model-facing
+  tools** — <!-- tool-count:task -->19<!-- /tool-count:task --> task tools + `calibre_ping` — plus
   <!-- tool-count:appOnly -->2<!-- /tool-count:appOnly --> widget-internal (`calibre_board_data`, `calibre_open_book`;
   `_meta.ui.visibility ["app"]`, D-017). The counts are generator-maintained from
   `docs/tool-catalog.json` (`pnpm catalog`).

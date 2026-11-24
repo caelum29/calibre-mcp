@@ -1,6 +1,6 @@
 # Tool reference
 
-The calibre-mcp server exposes <!-- tool-count:modelFacing -->19<!-- /tool-count:modelFacing --> tools your AI assistant can call to work with your
+The calibre-mcp server exposes <!-- tool-count:modelFacing -->20<!-- /tool-count:modelFacing --> tools your AI assistant can call to work with your
 [Calibre](https://calibre-ebook.com) library. They fall into two scopes:
 
 - **Catalog / library** — search across the whole library, browse categories, curate
@@ -860,14 +860,13 @@ only the part named here is contract. The table is generated from the server's r
 | `calibre_list_libraries` | `id` | `<Name> (id: <libraryId>)[ [default]]` — one line per library | `libraries[].id` |
 | `calibre_get_book` | `id` | `id: <id> \| uuid: <uuid>[ \| …]` (fields after the uuid are Prose) | `book.id` |
 | `calibre_search` | `cursor` | `… cursor: <nextCursor>` at the end of the line — pass the token verbatim (the words before `cursor:` are Prose) | `nextCursor` |
-| `calibre_search` | `annotation` | `annotation <id> · <type> · book <bookId> · <format> · <title>` — mode=annotations, one per hit (the format and title after `book <bookId>` are Prose) | `annotations[].id` |
-| `calibre_search` | `note` | `note · <field>: <item>` — mode=notes, one per hit | `notes[].item` |
+| `calibre_search_annotations` | `annotation` | `annotation <id> · <type> · book <bookId> · <format> · <title>` — kind=annotations, one per hit (the format and title after `book <bookId>` are Prose) | `annotations[].id` |
+| `calibre_search_annotations` | `note` | `note · <field>: <item>` — kind=notes, one per hit | `notes[].item` |
 | `calibre_list_categories` | `cursor` | `… cursor: <nextCursor>` at the end of the line — pass the token verbatim (the words before `cursor:` are Prose) | `nextCursor` |
 | `calibre_quality_report` | `cursor` | `… cursor: <nextCursor>` at the end of the line — pass the token verbatim (the words before `cursor:` are Prose) | `nextCursor` |
 | `calibre_find_duplicates` | `cursor` | `… cursor: <nextCursor>` at the end of the line — pass the token verbatim (the words before `cursor:` are Prose) | `nextCursor` |
 | `calibre_get_content` | `cursor` | `… cursor: <nextCursor>` at the end of the line — pass the token verbatim (the words before `cursor:` are Prose) | `nextCursor` |
 | `calibre_build_index` | `Indexed ids` | `Indexed ids: <id>, <id>.` | `bookDetails[].bookId` |
-| `calibre_build_index` | `FTS` | `- FTS: write_disabled\|already enabled\|enabled\|failed — …` — only with `enableFts: true` (`already enabled` is `already_enabled`; the words after the dash are Prose) | `fts.status` |
 | `calibre_semantic_search` | `section` | `section: <title> › <title> › <title>` — outermost first, at most the last 3 levels; one per text hit that has one | `results[].sectionPath \| passages[].sectionPath` |
 | `calibre_semantic_search` | `page` | `page: <n>` — the 1-based PDF page index, never the printed number; PDF text hits only | `results[].page \| passages[].page` |
 | `calibre_remove_book` | `Not found` | `Not found (skipped): #<id or uuid>, #<id or uuid>` (an unresolved uuid also prints with `#`, a known limit) | `notFoundIds[]` |
