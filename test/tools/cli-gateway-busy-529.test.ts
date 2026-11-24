@@ -55,8 +55,8 @@ describe("a calibredb-routed read that hits a gateway 503 (#529)", () => {
       log,
     } as unknown as SearchDeps;
     const r = await searchAnnotationsTool.handler(
-      { scope: "library", limit: 20, query: "tcp", kind: "annotations" } as never,
-      d as never,
+      { scope: "library", limit: 20, query: "tcp", kind: "annotations" },
+      d,
     );
     expect(r.structuredContent).toMatchObject({ errorCode: "calibre_busy" });
     expect((r.content[0] as { text: string }).text).toMatch(

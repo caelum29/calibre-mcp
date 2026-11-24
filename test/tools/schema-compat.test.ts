@@ -35,7 +35,7 @@ async function liveTools(): Promise<WireTool[]> {
   try {
     const result = await client.listTools();
     applyToolsListCompat(result);
-    return result.tools as WireTool[];
+    return result.tools;
   } finally {
     await Promise.allSettled([client.close(), server.close()]);
   }

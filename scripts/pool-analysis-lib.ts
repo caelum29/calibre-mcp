@@ -22,7 +22,7 @@ export interface Provenance {
 export function provenanceOf(hit: RawHit): Provenance | undefined {
   const p = hit.provenance;
   if (!p) return undefined;
-  const num = (k: string) => (typeof p[k] === "number" ? (p[k] as number) : undefined);
+  const num = (k: string) => (typeof p[k] === "number" ? p[k] : undefined);
   return {
     ...(num("vectorRank") !== undefined ? { vectorRank: num("vectorRank") } : {}),
     ...(num("keywordRank") !== undefined ? { keywordRank: num("keywordRank") } : {}),

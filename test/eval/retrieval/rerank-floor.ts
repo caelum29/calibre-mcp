@@ -203,7 +203,7 @@ function scoreRows(
     zeroBrokenPass && !!best && best.floor !== t.currentFloor && current.falseFlagRate - best.falseFlagRate >= 0.15;
   return {
     verdicts,
-    selected: adopted ? best!.floor : t.currentFloor,
+    selected: adopted ? best.floor : t.currentFloor,
     adopted,
     maxNegative,
     minHit1Positive,

@@ -61,7 +61,7 @@ function deps(stall: Stalls): SearchDeps {
     config: loadConfig({}),
     content: content as unknown as ToolDeps["content"],
     calibre: calibre as unknown as ToolDeps["calibre"],
-    fts: new FullTextSearch(content as unknown as ConstructorParameters<typeof FullTextSearch>[0]),
+    fts: new FullTextSearch(content),
     extractor: {} as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],

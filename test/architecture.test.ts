@@ -334,7 +334,7 @@ function valueImports(source: string, includeTypes = false): string[] {
     } else if (ts.isCallExpression(n) && isLiteral(n.arguments[0])) {
       const callee = n.expression;
       if (callee.kind === ts.SyntaxKind.ImportKeyword || (ts.isIdentifier(callee) && callee.text === "require")) {
-        out.push((n.arguments[0] as ts.StringLiteralLike).text);
+        out.push(n.arguments[0].text);
       }
     }
     ts.forEachChild(n, visit);

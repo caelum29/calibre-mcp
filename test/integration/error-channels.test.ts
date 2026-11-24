@@ -171,6 +171,8 @@ describe("#325 review — channels and 4xx", () => {
     const { client, close } = await connect();
     try {
       const r = await client.callTool({ name: "calibre_search", arguments: { query: "ddd" } });
+      // tsc 5.9 needs the widening; tsrs (TS 7 beta, behind the type-aware lint) sees `lvl` already
+      // oxlint-disable-next-line typescript/no-unnecessary-type-assertion
       const closing = records(lines).find((rec) => rec.msg === "tool call" && rec.tool === "calibre_search") as
         | (Rec & { lvl?: string })
         | undefined;

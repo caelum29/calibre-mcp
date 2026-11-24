@@ -73,7 +73,7 @@ describe("calibre_bulk_update handler", () => {
     const r = await bulkUpdateTool.handler({ changes: { publisher: "Acme" }, ids: [1], preview: true }, deps());
     const books = r.structuredContent?.books as { changed: unknown[] }[];
     expect(books[0]!.changed).toEqual([{ field: "publisher", before: null, after: "Acme" }]);
-    const schema = z.object(bulkUpdateTool.outputSchema!);
+    const schema = z.object(bulkUpdateTool.outputSchema);
     expect(schema.safeParse(JSON.parse(JSON.stringify(r.structuredContent))).success).toBe(true);
   });
 
@@ -210,7 +210,7 @@ describe("calibre_bulk_update mid-loop write refusal (#213)", () => {
       { changes: { tags: ["new"] }, ids: [1, 2, 3], preview: false },
       deps({ fixture: three, calibredb: scripted([null, refusal]) }),
     );
-    const schema = z.object(bulkUpdateTool.outputSchema!);
+    const schema = z.object(bulkUpdateTool.outputSchema);
     expect(schema.safeParse(JSON.parse(JSON.stringify(r.structuredContent))).success).toBe(true);
   });
 

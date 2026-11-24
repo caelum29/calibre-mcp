@@ -128,7 +128,7 @@ export function toRawRun(
     ...(h.rerankScore !== undefined ? { rerankScore: h.rerankScore } : {}),
     ...(h.provenance ? { provenance: h.provenance } : {}),
   }));
-  const num = (k: string) => (typeof structured[k] === "number" ? (structured[k] as number) : undefined);
+  const num = (k: string) => (typeof structured[k] === "number" ? structured[k] : undefined);
   const timings = structured.timings as Record<string, number> | undefined;
   return {
     isError: false,

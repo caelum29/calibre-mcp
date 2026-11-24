@@ -81,27 +81,27 @@ interface Case {
 const CASES: Case[] = [
   {
     tool: "calibre_search mode=meta",
-    run: (a) => searchTool.handler({ query: "rust", mode: "meta", scope: "library", limit: 2, ...a } as never, deps()),
+    run: (a) => searchTool.handler({ query: "rust", mode: "meta", scope: "library", limit: 2, ...a }, deps()),
     base: {},
   },
   {
     tool: "calibre_search mode=fts",
-    run: (a) => searchTool.handler({ query: "rust", mode: "fts", scope: "library", limit: 2, ...a } as never, deps()),
+    run: (a) => searchTool.handler({ query: "rust", mode: "fts", scope: "library", limit: 2, ...a }, deps()),
     base: {},
   },
   {
     tool: "calibre_list_categories",
-    run: (a) => listCategoriesTool.handler({ field: "tags", limit: 2, ...a } as never, deps()),
+    run: (a) => listCategoriesTool.handler({ field: "tags", limit: 2, ...a }, deps()),
     base: {},
   },
   {
     tool: "calibre_quality_report",
-    run: (a) => qualityReportTool.handler({ limit: 2, ...a } as never, deps()),
+    run: (a) => qualityReportTool.handler({ limit: 2, ...a }, deps()),
     base: {},
   },
   {
     tool: "calibre_find_duplicates",
-    run: (a) => findDuplicatesTool.handler({ mode: "identical", limit: 2, ...a } as never, deps()),
+    run: (a) => findDuplicatesTool.handler({ mode: "identical", limit: 2, ...a }, deps()),
     base: {},
   },
 ];

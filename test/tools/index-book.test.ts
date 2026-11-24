@@ -60,7 +60,7 @@ function deps(store: SqliteIndexStore): ToolDeps {
         outline: [],
         epubToc: null,
       }),
-    } satisfies Partial<ToolDeps["extractor"]> as ToolDeps["extractor"],
+    } satisfies Partial<ToolDeps["extractor"]>,
     embedder,
     index: store,
     log,

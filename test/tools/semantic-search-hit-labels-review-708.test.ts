@@ -74,7 +74,7 @@ async function call(s: SqliteIndexStore, scope: "library" | "book") {
     topK: 5,
     ...(scope === "book" ? { bookId: 1 } : {}),
   };
-  const r = await semanticSearchTool.handler(args as never, deps(s));
+  const r = await semanticSearchTool.handler(args, deps(s));
   expect(r.isError).toBeFalsy();
   const text = r.content.map((b) => ("text" in b ? b.text : "")).join("\n");
   const sc = r.structuredContent as {

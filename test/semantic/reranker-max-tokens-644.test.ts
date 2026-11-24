@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { loadConfig } from "../../src/config.js";
 import { TransformersReranker } from "../../src/semantic/reranker.js";
 
-const cfg = loadConfig({ CALIBRE_MCP_INDEX_DIR: "/tmp/unused-index" } as NodeJS.ProcessEnv);
+const cfg = loadConfig({ CALIBRE_MCP_INDEX_DIR: "/tmp/unused-index" });
 
 /** Fake transformers.js module whose tokenizer records the max_length and pair count of every call. */
 function recordingModule(seen: Array<{ maxLength: number; pairs: number }>) {

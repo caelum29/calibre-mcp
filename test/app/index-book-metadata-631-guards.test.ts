@@ -126,7 +126,7 @@ describe("keyword-only pass over an embedded book (#631, #715 review)", () => {
         outline: [],
         epubToc: null,
       }),
-    } satisfies Partial<ToolDeps["extractor"]> as ToolDeps["extractor"],
+    } satisfies Partial<ToolDeps["extractor"]>,
     figures: {} as ToolDeps["figures"],
     embedder,
     index: store,

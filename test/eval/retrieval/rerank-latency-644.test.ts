@@ -99,7 +99,7 @@ describe("thresholds.rerankLatency (#644): pre-registered arms", () => {
   });
 
   it("no block → no arms", () => {
-    expect(rerankLatencyArms({ baselineReport: "r.json", nonRegression: {} } as unknown as Thresholds).size).toBe(0);
+    expect(rerankLatencyArms({ baselineReport: "r.json", nonRegression: {} }).size).toBe(0);
   });
 
   it("rejects an unknown top-level key", () => {

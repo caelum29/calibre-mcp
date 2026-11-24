@@ -49,7 +49,7 @@ describe("preview warnings in structuredContent (#370)", () => {
   it("should_stay_outputSchema_valid_with_warnings", async () => {
     const f = fakeBulkDeps({ selected: [book({ id: 1, tags: ["x", "y", "z"] })] });
     const r = await run({ ids: [1], changes: { tags: ["zz"] } }, f.deps);
-    const out = z.object(bulkUpdateTool.outputSchema!);
+    const out = z.object(bulkUpdateTool.outputSchema);
     const parsed = out.safeParse(JSON.parse(JSON.stringify(r.structuredContent)));
     expect(parsed.success && (parsed.data.books as { warnings?: string[] }[])[0]?.warnings).toEqual([REPLACES]);
   });

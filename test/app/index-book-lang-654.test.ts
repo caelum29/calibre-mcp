@@ -61,7 +61,7 @@ function deps(text: string, languages: string[]): ToolDeps {
         outline: [],
         epubToc: null,
       }),
-    } satisfies Partial<ToolDeps["extractor"]> as ToolDeps["extractor"],
+    } satisfies Partial<ToolDeps["extractor"]>,
     figures: {} as ToolDeps["figures"],
     embedder,
     index: new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" })),

@@ -51,7 +51,7 @@ const empty: Calibredb = async () => ({ stdout: "Integration status: False\n[]\n
 const textOf = (r: ToolResult) => r.content.map((b) => ("text" in b ? b.text : "")).join("\n");
 const sc = (r: ToolResult) => r.structuredContent as Record<string, unknown>;
 const run = (args: Record<string, unknown>, d: SearchDeps) =>
-  searchAnnotationsTool.handler({ scope: "library", limit: 20, ...args } as never, d as never);
+  searchAnnotationsTool.handler({ scope: "library", limit: 20, ...args }, d);
 
 /** calibredb failing the way the client reports it: exit 1, stdout + stderr joined (calibre/client.ts). */
 const capturedFailure =

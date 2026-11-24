@@ -74,7 +74,7 @@ const GRADES: Record<string, Array<FinalGrade["grade"] | undefined>> = {
 };
 const key = Object.assign({}, ...RAWS.map((r) => blindRecord(r).key));
 const final = new Map<string, FinalGrade>();
-for (const [hid, seen] of Object.entries(key) as Array<[string, { hybrid?: number }]>) {
+for (const [hid, seen] of Object.entries<{ hybrid?: number }>(key)) {
   const g = GRADES[hid.slice(0, hid.lastIndexOf("#"))]![seen.hybrid! - 1];
   if (g !== undefined) final.set(hid, { grade: g });
 }

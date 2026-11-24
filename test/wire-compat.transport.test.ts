@@ -8,7 +8,6 @@ import { createRequire } from "node:module";
 import { PassThrough } from "node:stream";
 import { fileURLToPath } from "node:url";
 import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
-import type { JSONRPCMessage } from "@modelcontextprotocol/server";
 import { installWireCompat } from "../src/wire-compat.js";
 
 interface WireTool {
@@ -36,7 +35,7 @@ describe("installWireCompat on a StdioServerTransport", () => {
           },
         ],
       },
-    } as JSONRPCMessage);
+    });
 
     expect(JSON.parse(written.join(""))).toEqual({
       jsonrpc: "2.0",

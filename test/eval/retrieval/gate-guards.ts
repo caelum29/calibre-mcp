@@ -259,8 +259,8 @@ export function rerankLatencyArms(t: Thresholds): Map<string, RerankLatencyArm> 
     }
     out.set(name, {
       role: a.role as RerankLatencyArm["role"],
-      options: o as RerankOptions,
-      ...(onlyIf ? { onlyIf: onlyIf as string[] } : {}),
+      options: o,
+      ...(onlyIf ? { onlyIf } : {}),
     });
   }
   const baselines = [...out.values()].filter((a) => a.role === "baseline").length;

@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from "vitest";
 import { loadConfig } from "../../src/config.js";
 import { TransformersEmbedder } from "../../src/semantic/embedder.js";
 
-const cfg = loadConfig({ CALIBRE_MCP_INDEX_DIR: "/tmp/unused-index" } as NodeJS.ProcessEnv);
+const cfg = loadConfig({ CALIBRE_MCP_INDEX_DIR: "/tmp/unused-index" });
 
 /** ERR_MODULE_NOT_FOUND as Node raises it for a missing optional dep. */
 function moduleNotFound(): NodeJS.ErrnoException {

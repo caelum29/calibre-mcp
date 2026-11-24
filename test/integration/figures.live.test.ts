@@ -22,7 +22,7 @@ const RUN = process.env.RUN_CALIBRE_TESTS === "1";
 const PDF_BOOK = 164; // Software Architecture Metrics
 const EPUB_BOOK = 755; // Learning Domain-Driven Design
 
-const config = loadRuntimeConfig(process.env as Record<string, string | undefined>);
+const config = loadRuntimeConfig(process.env);
 
 let ready = false;
 if (RUN) {

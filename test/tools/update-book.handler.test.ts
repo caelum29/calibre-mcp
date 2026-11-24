@@ -71,7 +71,7 @@ describe("calibre_update_book handler", () => {
     expect(r.isError).toBeFalsy();
     expect(r.structuredContent?.changed).toEqual([{ field: "publisher", before: null, after: "Acme" }]);
     // the committed write must survive the SDK's outputSchema validation
-    const schema = z.object(updateBookTool.outputSchema!);
+    const schema = z.object(updateBookTool.outputSchema);
     expect(schema.safeParse(JSON.parse(JSON.stringify(r.structuredContent))).success).toBe(true);
   });
 

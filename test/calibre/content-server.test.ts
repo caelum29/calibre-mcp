@@ -61,7 +61,7 @@ afterEach(() => {
 
 beforeEach(() => {
   mocked.mockReset();
-  mocked.mockImplementation(((url: string) => {
+  mocked.mockImplementation((url: string) => {
     if (url.includes("/ajax/library-info")) return Promise.resolve(libInfo);
     if (url.includes("/ajax/search/")) return Promise.resolve(search);
     if (url.includes("/ajax/books/")) return Promise.resolve({ "658": book658 });
@@ -69,7 +69,7 @@ beforeEach(() => {
     if (url.includes("/ajax/categories/")) return Promise.resolve(categories);
     if (url.includes("/ajax/category/")) return Promise.resolve(languageItems);
     return Promise.reject(new Error("unexpected url " + url));
-  }) as typeof getJson);
+  });
 });
 
 describe("ContentServerClient busy breaker (#343)", () => {
@@ -80,10 +80,9 @@ describe("ContentServerClient busy breaker (#343)", () => {
     busy.markBusy("Programming_Books", "content-server");
     vi.advanceTimersByTime(60_000);
     const cs = new ContentServerClient(loadConfig({}), busy);
-    mocked.mockImplementation(((url: string) =>
-      url.includes("/ajax/library-info")
-        ? Promise.resolve(libInfo)
-        : Promise.reject(new Error("boom"))) as typeof getJson);
+    mocked.mockImplementation((url: string) =>
+      url.includes("/ajax/library-info") ? Promise.resolve(libInfo) : Promise.reject(new Error("boom")),
+    );
     // two sequential probes both reach getJson: a plain failure must not leave the slot taken
     await expect(cs.getBook(658, "Programming_Books")).rejects.toThrow("boom");
     await expect(cs.getBook(658, "Programming_Books")).rejects.toThrow("boom");
@@ -102,7 +101,7 @@ describe("ContentServerClient busy breaker with overlapping calls (#389)", () =>
   function parkedBookFetches() {
     const handles: Parked[] = [];
     let waiters: { n: number; resolve: () => void }[] = [];
-    mocked.mockImplementation(((url: string) => {
+    mocked.mockImplementation((url: string) => {
       if (url.includes("/ajax/library-info")) return Promise.resolve(libInfo);
       return new Promise<unknown>((resolve, reject) => {
         handles.push({
@@ -113,7 +112,7 @@ describe("ContentServerClient busy breaker with overlapping calls (#389)", () =>
         for (const w of waiters) if (handles.length >= w.n) w.resolve();
         waiters = waiters.filter((w) => handles.length < w.n);
       });
-    }) as typeof getJson);
+    });
     // resolves once the n-th fetch has parked; getBook awaits library resolution before getJson
     const reached = (n: number) =>
       handles.length >= n ? Promise.resolve() : new Promise<void>((resolve) => waiters.push({ n, resolve }));
@@ -314,8 +313,9 @@ describe("matchCategory", () => {
       cover: "/get/cover/658",
       user_metadata: { "#read": { datatype: "bool", "#value#": true }, plain: {} },
     };
-    mocked.mockImplementation(((url: string) =>
-      Promise.resolve(url.includes("/ajax/library-info") ? libInfo : withCustom)) as typeof getJson);
+    mocked.mockImplementation((url: string) =>
+      Promise.resolve(url.includes("/ajax/library-info") ? libInfo : withCustom),
+    );
     const facts = await client().bookMergeFacts(658);
     expect(facts).toEqual({
       customFields: [{ label: "#read", datatype: "bool", isMultiple: false, value: true, extra: undefined }],

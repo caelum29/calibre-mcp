@@ -96,7 +96,7 @@ function deps(store: SqliteIndexStore, lastModified = "2026-01-01"): ToolDeps {
         outline: OUTLINE,
         epubToc: null,
       }),
-    } satisfies Partial<ToolDeps["extractor"]> as ToolDeps["extractor"],
+    } satisfies Partial<ToolDeps["extractor"]>,
     figures: {} as ToolDeps["figures"],
     embedder,
     index: store,

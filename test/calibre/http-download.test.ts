@@ -71,7 +71,7 @@ function drip(chunks: string[], gapMs: number, signal?: AbortSignal): ReadableSt
     pull(controller) {
       return new Promise<void>((resolve) => {
         const timer = setTimeout(() => {
-          if (i < chunks.length) controller.enqueue(enc.encode(chunks[i++]!));
+          if (i < chunks.length) controller.enqueue(enc.encode(chunks[i++]));
           else controller.close();
           resolve();
         }, gapMs);

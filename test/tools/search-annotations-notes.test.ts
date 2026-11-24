@@ -63,7 +63,7 @@ function deps(
 const textOf = (r: ToolResult) => r.content.map((b) => ("text" in b ? b.text : "")).join("\n");
 const sc = (r: ToolResult) => r.structuredContent as Record<string, unknown>;
 const run = (args: Record<string, unknown>, d: SearchDeps) =>
-  searchAnnotationsTool.handler({ scope: "library", limit: 20, ...args } as never, d as never);
+  searchAnnotationsTool.handler({ scope: "library", limit: 20, ...args }, d);
 
 describe("calibre_search_annotations kind=annotations (#500)", () => {
   it("should_run_calibredb_annotations_search_as_json_on_the_resolved_library_id", async () => {

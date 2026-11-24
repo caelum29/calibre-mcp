@@ -10,7 +10,6 @@ import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
-import type { CallToolResult } from "@modelcontextprotocol/client";
 import { buildServer } from "../../src/server.js";
 
 const posix = process.platform !== "win32";
@@ -204,13 +203,13 @@ describe.runIf(posix)("progress", () => {
     const { client, close } = await connect();
     try {
       const seen: Array<{ progress: number; total?: number; message?: string }> = [];
-      const r = (await client.callTool(
+      const r = await client.callTool(
         {
           name: "calibre_build_index",
           arguments: { query: "all", force: true, keywordOnly: true },
         },
         { onprogress: (p) => seen.push(p) },
-      )) as CallToolResult;
+      );
       expect(r.isError).toBeFalsy();
       expect(r.structuredContent).toMatchObject({ booksRequested: 3, booksIndexed: 3 });
       expect(seen.length).toBeGreaterThanOrEqual(2);
@@ -233,10 +232,10 @@ describe.runIf(posix)("progress", () => {
       notified++;
     });
     try {
-      const r = (await client.callTool({
+      const r = await client.callTool({
         name: "calibre_build_index",
         arguments: { query: "all", force: true, keywordOnly: true },
-      })) as CallToolResult;
+      });
       expect(r.isError).toBeFalsy();
       expect(notified).toBe(0);
     } finally {

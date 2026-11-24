@@ -673,7 +673,7 @@ export async function runRetrievalEval(opts: HarnessOptions): Promise<EvalReport
   const { corpus, texts, markers } = loaded;
   let queries = loadQueries(texts, markers);
 
-  const cfg = loadConfig({ CALIBRE_MCP_INDEX_DIR: opts.indexDir } as NodeJS.ProcessEnv);
+  const cfg = loadConfig({ CALIBRE_MCP_INDEX_DIR: opts.indexDir });
   const store = new SqliteIndexStore(cfg);
   const embedder = opts.embedder ?? new TransformersEmbedder(cfg);
 
@@ -785,7 +785,7 @@ function assemble(perQuery: PerQueryRow[], meta: EvalReport["meta"]): EvalReport
     figureNegatives[mode] = negAgg(rows.filter((r) => r.kind === "figure-negative"));
     for (const kind of new Set(scored.map((r) => r.kind))) {
       byKind[kind] ??= {};
-      byKind[kind]![mode] = aggregate(scored.filter((r) => r.kind === kind).map((r) => r.metrics!));
+      byKind[kind][mode] = aggregate(scored.filter((r) => r.kind === kind).map((r) => r.metrics!));
     }
   }
   return { meta, overall, ruInvolved, byKind, negatives, figureNegatives, perQuery };

@@ -90,7 +90,7 @@ function store(): SqliteIndexStore {
 const QUERY = "invalidation stale entries";
 
 async function call(index: ToolDeps["index"], args: Record<string, unknown>) {
-  const r = await semanticSearchTool.handler({ topK: 10, mode: "keyword", ...args } as never, deps(index));
+  const r = await semanticSearchTool.handler({ topK: 10, mode: "keyword", ...args }, deps(index));
   expect(r.isError).toBeFalsy();
   const text = r.content.map((b) => ("text" in b ? b.text : "")).join("\n");
   return { text, sc: r.structuredContent as Record<string, unknown> };

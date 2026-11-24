@@ -28,7 +28,7 @@ import { noPruneIndex, type WithPrune } from "../tools/fake-prune-index.js";
 const RUN = process.env.RUN_CALIBRE_TESTS === "1";
 const TEST_LIBRARY = process.env.CALIBRE_TEST_LIBRARY; // display name or libId; default lib otherwise
 
-const config = loadRuntimeConfig(process.env as Record<string, string | undefined>);
+const config = loadRuntimeConfig(process.env);
 
 // Probe the server once at collection time: down → the whole suite SKIPS, not fails.
 let serverUp = false;

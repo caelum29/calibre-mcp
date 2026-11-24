@@ -173,7 +173,7 @@ function parseWeights(v: string): number[] {
  * model cache).
  */
 function defaultIndexDir(): string {
-  return loadConfig({} as NodeJS.ProcessEnv).indexDir;
+  return loadConfig({}).indexDir;
 }
 
 /** Reuse an already-downloaded e5 model: copy the cache into the work dir once. */
@@ -287,8 +287,7 @@ export async function runPass(
   // Rerank stage mirrors the shipped default: ON for hybrid/vector unless --rerank off.
   const reranker = rerankOff
     ? undefined
-    : (deps.reranker ??
-      new TransformersReranker(loadConfig({ CALIBRE_MCP_INDEX_DIR: args.workDir } as NodeJS.ProcessEnv)));
+    : (deps.reranker ?? new TransformersReranker(loadConfig({ CALIBRE_MCP_INDEX_DIR: args.workDir })));
   const rerankLabel = rerankOff ? "off" : (args.rerank ?? `${RERANKER_MODEL_ID} q8`);
   const rerankOptions = rerankOptionsOf(args);
 

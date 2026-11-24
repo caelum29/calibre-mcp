@@ -154,7 +154,7 @@ describe("write_disabled error code (#435)", () => {
   });
 
   it("should_name_the_mcp_side_gate_in_its_default_hint", () => {
-    const hint = defaultHint("write_disabled" as never) ?? "";
+    const hint = defaultHint("write_disabled") ?? "";
     expect(hint).toContain("CALIBRE_MCP_ENABLE_WRITE=1");
     expect(hint).toContain("Enable writes");
   });

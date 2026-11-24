@@ -50,7 +50,7 @@ describe("old-shape cursors through the real handlers (#325)", () => {
     ["old {offset, query}", OLD_SHAPE],
     ["version 1", V1_SHAPE],
   ])("quality_report refuses a %s cursor with the actionable error", async (_n, cursor) => {
-    const r = await qualityReportTool.handler({ limit: 2, cursor } as never, deps);
+    const r = await qualityReportTool.handler({ limit: 2, cursor }, deps);
     expect(r.isError).toBe(true);
     expect(r.structuredContent).toMatchObject({
       errorCode: "invalid_input",
@@ -63,7 +63,7 @@ describe("old-shape cursors through the real handlers (#325)", () => {
     ["old {offset, query}", OLD_SHAPE],
     ["version 1", V1_SHAPE],
   ])("find_duplicates refuses a %s cursor with the actionable error", async (_n, cursor) => {
-    const r = await findDuplicatesTool.handler({ mode: "identical", limit: 2, cursor } as never, deps);
+    const r = await findDuplicatesTool.handler({ mode: "identical", limit: 2, cursor }, deps);
     expect(r.isError).toBe(true);
     expect(r.structuredContent).toMatchObject({
       errorCode: "invalid_input",

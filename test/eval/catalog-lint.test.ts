@@ -68,7 +68,7 @@ const realCatalog = JSON.parse(readFileSync("docs/tool-catalog.json", "utf8")) a
 const skillDescription = (/^description:\s*"(.*)"\s*$/m.exec(readFileSync("skills/calibre-mcp/SKILL.md", "utf8")) ?? [
   "",
   "",
-])[1]!;
+])[1];
 
 describe("catalog lint on a fixture catalog (#362 Layer A)", () => {
   it("should_report_exactly_the_confusable_pair_the_preview_gap_and_the_undocumented_arg", () => {

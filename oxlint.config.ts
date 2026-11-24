@@ -151,7 +151,6 @@ export default defineConfig({
         "unicorn/catch-error-name": "off", // 131
         "no-undef": "off", // 127
         "quality/no-known-value-widening": "off", // 111
-        "typescript/no-unnecessary-type-assertion": "off", // 104
         "quality/no-array-filter-map": "off", // 59
         "unicorn/prefer-single-call": "off", // 56
         "unicorn/prefer-string-raw": "off", // 46

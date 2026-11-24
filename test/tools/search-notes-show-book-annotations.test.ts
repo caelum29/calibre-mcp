@@ -52,7 +52,7 @@ const stdout =
 const textOf = (r: ToolResult) => r.content.map((b) => ("text" in b ? b.text : "")).join("\n");
 const sc = (r: ToolResult) => r.structuredContent as Record<string, unknown>;
 const run = (args: Record<string, unknown>, d: SearchDeps) =>
-  searchAnnotationsTool.handler({ scope: "library", limit: 20, ...args } as never, d as never);
+  searchAnnotationsTool.handler({ scope: "library", limit: 20, ...args }, d);
 
 const BELLEMARE_NOTE =
   "**Adam Bellemare** — Staff Technologist at Confluent, author of *Building Event-Driven Microservices* " +

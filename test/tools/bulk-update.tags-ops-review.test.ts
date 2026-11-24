@@ -85,7 +85,7 @@ describe("tags ops — counts in structuredContent (PR #333 review)", () => {
       { id: 2, tagsAdded: 0, tagsRemoved: 0 },
     ]);
     expect(
-      z.object(bulkUpdateTool.outputSchema!).safeParse(JSON.parse(JSON.stringify(r.structuredContent))).success,
+      z.object(bulkUpdateTool.outputSchema).safeParse(JSON.parse(JSON.stringify(r.structuredContent))).success,
     ).toBe(true);
   });
 });
