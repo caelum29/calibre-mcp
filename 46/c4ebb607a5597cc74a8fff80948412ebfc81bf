@@ -1,0 +1,41 @@
+scripts/judged-lib.ts
+  s_94481645943414::t_e6a43e6d6a5909 323
+src/calibre/figure-inventory.ts
+  s_94481645943414::t_a781ef7507d661 367
+src/domain/curation/normalize.ts
+  s_94481645943414::t_c8df7ef8ab1847 188
+src/domain/curation/quality.ts
+  s_94481645943414::t_54dca1f96ed52b 152
+src/domain/figures/caption-layout.ts
+  s_94481645943414::t_ddac5057c69ca4 192,222
+src/domain/figures/inventory.ts
+  s_94481645943414::t_a220fd70ce1f9b 67-68
+src/domain/normalise/offset-map.ts
+  s_94481645943414::t_69eab226adcf5d 139
+src/domain/structure/epub-toc.ts
+  s_94481645943414::t_feba3ea0fa68d1 242,292
+src/domain/structure/pdf-outline.ts
+  s_94481645943414::t_fbb5336114889f 90-91,223
+src/domain/structure/sections.ts
+  s_94481645943414::t_fa1e837a7bfece 121,135,155,161
+test/calibre/figure-fetch-raster.test.ts
+  s_94481645943414::t_962321a9cc7297 26
+test/tools/semantic-search.handler.test.ts
+  s_94481645943414::t_fe4ded923a9528 511
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "46c4ebb607a5597cc74a8fff80948412ebfc81bf",
+  "prompts": {},
+  "sessions": {
+    "s_94481645943414": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "acee565e-100c-4076-8da7-87b8ef382183",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
