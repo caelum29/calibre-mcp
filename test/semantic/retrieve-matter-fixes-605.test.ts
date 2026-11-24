@@ -118,7 +118,7 @@ describe("non-body fallbacks never displace body books at topK (#605 review)", (
 
   it("keyword half: topK 2 returns both body books", async () => {
     const r = await retrieve(deps(store()), lib("keyword", 2));
-    expect(r.hits.map((h) => h.hit.bookId).sort()).toEqual([2, 3]);
+    expect(r.hits.map((h) => h.hit.bookId).sort((a, b) => a - b)).toEqual([2, 3]);
   });
 
   it("with room left, the fallback book follows the body books", async () => {

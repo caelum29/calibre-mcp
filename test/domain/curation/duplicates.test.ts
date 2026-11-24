@@ -15,7 +15,7 @@ describe("findDuplicateGroups", () => {
     ];
     const groups = findDuplicateGroups(books, "identical");
     expect(groups).toHaveLength(1);
-    expect(groups[0]!.books.map((b) => b.id).sort()).toEqual([1, 2]);
+    expect(groups[0]!.books.map((b) => b.id).sort((a, b) => a - b)).toEqual([1, 2]);
   });
 
   it("groups fuzzily in similar mode", () => {

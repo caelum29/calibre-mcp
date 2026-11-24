@@ -71,6 +71,6 @@ describe("a NULL-language book and a Ukrainian book both match (#716 review, fix
     s.replaceBook(LIB, { bookId: 2, title: "Uk", authors: ["B"], lang: "uk" }, [chunk(1, "основи програмування")]);
     const books = s.searchLibraryFts(LIB, "програмування", 10).map((h) => h.bookId);
     s.close();
-    expect(books.sort()).toEqual([1, 2]);
+    expect(books.sort((a, b) => a - b)).toEqual([1, 2]);
   });
 });

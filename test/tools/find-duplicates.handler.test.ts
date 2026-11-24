@@ -139,7 +139,7 @@ describe("calibre_find_duplicates groups[] / diff[] in structuredContent (#199)"
     ];
     const r = await findDuplicatesTool.handler(args(), deps(fixture));
     const groups = r.structuredContent?.groups as Group[];
-    expect(groups.map((g) => [...g.bookIds].sort())).toEqual(
+    expect(groups.map((g) => [...g.bookIds].sort((a, b) => a - b))).toEqual(
       expect.arrayContaining([
         [1, 2],
         [3, 4],

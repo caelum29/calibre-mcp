@@ -47,7 +47,7 @@ describe("SqliteIndexStore", () => {
     const hits = s.searchLibrary(LIB, axis(3), 10);
     expect(hits[0]!.bookId).toBe(2); // axis-3 query → Book Two ranks first
     expect(hits[0]!.title).toBe("Book Two");
-    expect(hits.map((h) => h.bookId).sort()).toEqual([1, 2]);
+    expect(hits.map((h) => h.bookId).sort((a, b) => a - b)).toEqual([1, 2]);
     s.close();
   });
 
@@ -610,7 +610,7 @@ describe("identifier-like query tokens reach the raw body column (#634)", () => 
   ])("ranks both %s chunks above the look-alike chunk", (query, mid, final, lookalike) => {
     const s = seed(mid, final, lookalike);
     const ids = s.searchLibraryFts(LIB, query, 10).map((h) => h.bookId);
-    expect([ids.slice(0, 2).sort(), ids[2]]).toEqual([[1, 2], 3]);
+    expect([ids.slice(0, 2).sort((a, b) => a - b), ids[2]]).toEqual([[1, 2], 3]);
     s.close();
   });
 
@@ -623,7 +623,7 @@ describe("identifier-like query tokens reach the raw body column (#634)", () => 
       ...FILLER.map((text, i) => chunk(text, 3 + i, 300 + i * 100)),
     ]);
     const starts = s.searchBookFts(LIB, 1, "c++", 10).map((h) => h.charStart);
-    expect([starts.slice(0, 2).sort(), starts[2]]).toEqual([[100, 200], 0]);
+    expect([starts.slice(0, 2).sort((a, b) => a - b), starts[2]]).toEqual([[100, 200], 0]);
     s.close();
   });
 
@@ -660,7 +660,7 @@ describe("identifier-like query tokens reach the raw body column (#634)", () => 
       s.replaceBook(LIB, { bookId: 4 + i, title: "Filler", authors: [] }, [chunk("body", 3 + i)], [caption(0, text)]),
     );
     const ids = s.searchFiguresFts(LIB, "c++", 10).map((h) => h.bookId);
-    expect([ids.slice(0, 2).sort(), ids[2]]).toEqual([[1, 2], 3]);
+    expect([ids.slice(0, 2).sort((a, b) => a - b), ids[2]]).toEqual([[1, 2], 3]);
     s.close();
   });
 });

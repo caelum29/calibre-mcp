@@ -65,7 +65,7 @@ describe("library-scope representative chunk (#605)", () => {
   it("keyword half: best body chunk per book among the pool, else the best non-body chunk", () => {
     const s = seeded();
     const hits = s.searchLibraryFts(LIB, "kiwi", 10);
-    expect(hits.map((h) => [h.bookId, h.matterKind]).sort()).toEqual([
+    expect(hits.map((h) => [h.bookId, h.matterKind]).sort((a, b) => Number(a[0]) - Number(b[0]))).toEqual([
       [1, "body"],
       [2, "body"],
       [3, "back_other"],

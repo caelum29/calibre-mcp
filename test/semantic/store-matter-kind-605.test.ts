@@ -98,7 +98,7 @@ describe("hits carry their matter kind (#605)", () => {
       s
         .searchBookFts(LIB, 1, "zebra", 3)
         .map((h) => [h.charStart, h.matterKind])
-        .sort(),
+        .sort((a, b) => Number(a[0]) - Number(b[0])),
     ).toEqual([
       [0, "front"],
       [100, "body"],

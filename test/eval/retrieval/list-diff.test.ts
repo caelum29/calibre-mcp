@@ -211,7 +211,7 @@ describe("hash tier list diff vs hash-baseline.json", () => {
       const report = await runHashEval({ patchDeps: (deps) => ({ ...deps, index: reversed(deps.index) }) });
       const res = evaluateListDiff(report, fromRankBaseline(frozen), hashOpts);
       expect(res.pass).toBe(false);
-      const modes = new Set(res.drops.map((d) => d.split("/")[0]));
+      const modes = new Set(res.drops.map((d) => d.split("/")[0] ?? ""));
       expect([...modes].sort()).toEqual(["hybrid", "keyword", "vector"]);
     },
     thresholds.hashGate!.maxDurationMs,

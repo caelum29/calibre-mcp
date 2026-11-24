@@ -25,6 +25,7 @@ export default defineConfig({
     "max-depth": ["warn", 4],
     "max-lines": ["warn", { max: 500, skipBlankLines: true, skipComments: true }],
     "max-params": ["warn", 4],
+    "typescript/require-array-sort-compare": ["error", { ignoreStringArrays: true }],
     // Kept off: Reflect.get only appears in Proxy get traps (search-timings, test spies), where it
     // is the forwarding idiom and the receiver argument matters.
     "quality/no-reflect-get": "off",
@@ -156,7 +157,6 @@ export default defineConfig({
         "quality/no-array-filter-map": "off", // 59
         "unicorn/prefer-string-raw": "off", // 46
         "no-promise-executor-return": "off", // 42
-        "typescript/require-array-sort-compare": "off", // 23
         "quality/no-unknown-returns": "off", // 23
         "unicorn/prefer-structured-clone": "off", // 11
       },

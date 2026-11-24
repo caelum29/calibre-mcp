@@ -286,7 +286,7 @@ describe("store seeded from a #602-shaped run dir", () => {
   it("grading from the store reproduces the run's own final grades", () => {
     const final = finalOf();
     const graded = gradeFromStore(run().raws, readStore((importRun(FIXTURE, store), store)));
-    expect(new Map([...graded].sort())).toEqual(new Map([...final].sort()));
+    expect(graded).toEqual(final); // Map equality ignores insertion order
   });
 
   it("pooledHits locates every blind item (figures as a point) with the de-labelled text", () => {
