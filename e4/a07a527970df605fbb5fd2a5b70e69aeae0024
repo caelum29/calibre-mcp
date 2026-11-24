@@ -1,0 +1,27 @@
+scripts/judged-dump.ts
+  s_94481645943414::t_a8ae4c02197592 100
+src/semantic/store/figures.ts
+  s_94481645943414::t_a8ae4c02197592 116,138
+src/domain/book-fields.ts
+  s_94481645943414::t_a8ae4c02197592 158
+src/semantic/store/freshness.ts
+  s_94481645943414::t_a8ae4c02197592 137
+scripts/pool-dump.ts
+  s_94481645943414::t_a8ae4c02197592 74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e4a07a527970df605fbb5fd2a5b70e69aeae0024",
+  "prompts": {},
+  "sessions": {
+    "s_94481645943414": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "acee565e-100c-4076-8da7-87b8ef382183",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
