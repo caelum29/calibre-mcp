@@ -39,7 +39,6 @@ if (RUN) {
   }
 }
 if (RUN && !ready) {
-  // eslint-disable-next-line no-console
   console.error(`[figures.live] Content Server/probe books not reachable at ${config.serverUrl} — skipping`);
 }
 

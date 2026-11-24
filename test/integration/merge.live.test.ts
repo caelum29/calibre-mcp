@@ -43,7 +43,6 @@ if (RUN) {
   }
 }
 if (RUN && !serverUp) {
-  // eslint-disable-next-line no-console
   console.error(`[merge.live] Content Server not reachable at ${config.serverUrl} — skipping`);
 }
 

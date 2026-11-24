@@ -1,6 +1,6 @@
 // Mechanical guards for architecture invariants from CLAUDE.md, so violations fail CI
 // instead of relying on the model reading the docs. (The user-regex rule lives in
-// .oxlintrc.json as a `no-restricted-globals` override on src/tools/**.)
+// oxlint.config.ts as a `no-restricted-globals` override on src/tools/**.)
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, relative } from "node:path";
 import ts from "typescript";
@@ -718,7 +718,7 @@ describe("one home per mechanism — #347 leftovers", () => {
 const STORE_DIR = "src/semantic/store";
 // One module per concern; index.ts composes them behind the full IndexStore.
 const STORE_MODULES = ["schema.ts", "writer.ts", "freshness.ts", "chunks.ts", "figures.ts", "index.ts"];
-// Mirrors .oxlintrc.json max-lines (skipBlankLines + skipComments) — the split must stay split.
+// Mirrors oxlint.config.ts max-lines (skipBlankLines + skipComments) — the split must stay split.
 const STORE_MAX_LINES = 500;
 
 /** Lines that are neither blank nor comment-only (the oxlint max-lines counting rule). */

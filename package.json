@@ -82,6 +82,7 @@
     "@huggingface/transformers": "4.3.2"
   },
   "devDependencies": {
+    "@cloudflare/oxlint-config": "0.2.0",
     "@modelcontextprotocol/client": "2.4.0",
     "@modelcontextprotocol/inspector": "2.13.0",
     "@types/node": "24.19.2",
@@ -91,7 +92,8 @@
     "knip": "6.44.1",
     "lint-staged": "17.6.0",
     "oxfmt": "0.75.0",
-    "oxlint": "1.90.0",
+    "oxlint": "1.94.0",
+    "tsrs": "7.1.0-beta.tsrs4",
     "tsx": "4.23.15",
     "typescript": "5.9.3",
     "vite": "8.3.5",
