@@ -117,6 +117,11 @@ export default defineConfig({
       files: ["src/domain/structure/epub-toc.ts", "src/semantic/language/*.ts"],
       rules: { "typescript/no-misused-spread": "off" },
     },
+    // pdftotext takes its own encoding names (`-enc UTF-8`), not a Node encoding identifier.
+    {
+      files: ["src/calibre/extract.ts", "src/calibre/figure-inventory.ts", "test/calibre/extract.test.ts"],
+      rules: { "unicorn/text-encoding-identifier-case": "off" },
+    },
     // MIGRATION BASELINE (temporary): preset rules that fail today, with their finding counts.
     // Each one is either enabled with fixes or kept off with a reason, one commit per rule.
     // Last override, so it also beats preset overrides that re-enable a rule (tests, *.ts).
@@ -149,7 +154,6 @@ export default defineConfig({
         "unicorn/no-useless-promise-resolve-reject": "off", // 13
         "unicorn/prefer-structured-clone": "off", // 11
         "quality/no-reflect-get": "off", // 5
-        "unicorn/text-encoding-identifier-case": "off", // 4
         "unicorn/prefer-top-level-await": "off", // 4
         "quality/no-object-parameters": "off", // 4
         "import/no-namespace": "off", // 1
