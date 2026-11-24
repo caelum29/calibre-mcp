@@ -1,0 +1,110 @@
+scripts/gen-widgets.mjs
+  h_e22d73abc85ef9 49
+scripts/keyword-plan-measure.ts
+  h_e22d73abc85ef9 247
+scripts/legal-gate.mjs
+  h_e22d73abc85ef9 61
+src/app/tag-spelling.ts
+  h_e22d73abc85ef9 33
+src/calibre/fts-highlight.ts
+  h_e22d73abc85ef9 130,200
+src/config.ts
+  h_e22d73abc85ef9 147
+src/domain/book-metadata-text.ts
+  h_e22d73abc85ef9 68-69,71-73,76
+src/domain/curation/add-probe.ts
+  h_e22d73abc85ef9 33,80
+src/domain/curation/authors.ts
+  h_e22d73abc85ef9 10
+src/domain/curation/edition.ts
+  h_e22d73abc85ef9 81
+src/domain/curation/isbn.ts
+  h_e22d73abc85ef9 7
+src/domain/curation/normalize.ts
+  h_e22d73abc85ef9 11,41,43,48,55,189
+src/domain/distill/legal-gate.ts
+  h_e22d73abc85ef9 32,56-59,159-160
+src/domain/enrich/filename-guess.ts
+  h_e22d73abc85ef9 37,126-127
+src/domain/figures/band.ts
+  h_e22d73abc85ef9 131-136
+src/domain/figures/caption-layout.ts
+  h_e22d73abc85ef9 293
+src/domain/figures/captions.ts
+  h_e22d73abc85ef9 124
+src/domain/figures/epub.ts
+  h_e22d73abc85ef9 188,236-238
+src/domain/figures/markers.ts
+  h_e22d73abc85ef9 140,144,150,263-264,314,318
+src/domain/index-steers.ts
+  h_e22d73abc85ef9 9
+src/domain/structure/chapters.ts
+  h_e22d73abc85ef9 104,157
+src/domain/structure/epub-toc.ts
+  h_e22d73abc85ef9 89-90,206-208
+src/domain/structure/front-matter-titles.ts
+  h_e22d73abc85ef9 130
+src/domain/structure/front-matter.ts
+  h_e22d73abc85ef9 45-47
+src/domain/structure/pdf-outline.ts
+  h_e22d73abc85ef9 23,50-51
+src/domain/structure/sections.ts
+  h_e22d73abc85ef9 145,249
+src/semantic/build-progress.ts
+  h_e22d73abc85ef9 71
+src/semantic/language/detect.ts
+  h_e22d73abc85ef9 56
+src/semantic/language/ru.ts
+  h_e22d73abc85ef9 11
+src/semantic/snippet.ts
+  h_e22d73abc85ef9 128
+src/semantic/store/shared.ts
+  h_e22d73abc85ef9 205
+src/tools/add-dup-probe.ts
+  h_e22d73abc85ef9 92
+src/tools/calibre_add_book.ts
+  h_e22d73abc85ef9 68
+src/tools/calibre_bulk_update.ts
+  h_e22d73abc85ef9 361
+src/tools/calibre_search.ts
+  h_e22d73abc85ef9 413
+src/tools/labelled-lines.ts
+  h_e22d73abc85ef9 327
+test/architecture.test.ts
+  h_e22d73abc85ef9 29
+test/domain/error-codes.test.ts
+  h_e22d73abc85ef9 51,117,145,161
+test/domain/figures/captions.test.ts
+  h_e22d73abc85ef9 141
+test/eval/catalog-lint.ts
+  h_e22d73abc85ef9 75,96
+test/eval/retrieval/hash-freeze-lib.ts
+  h_e22d73abc85ef9 36
+test/eval/retrieval/leak-guard.ts
+  h_e22d73abc85ef9 18,41
+test/eval/retrieval/run.ts
+  h_e22d73abc85ef9 197
+test/semantic/language-registry-654.test.ts
+  h_e22d73abc85ef9 25,45
+test/tools/add-book.dup-probe-370.test.ts
+  h_e22d73abc85ef9 47
+test/tools/add-book.dup-probe-operator-led-title-370.test.ts
+  h_e22d73abc85ef9 47
+test/tools/channel-parity.test.ts
+  h_e22d73abc85ef9 64,810
+test/ui/widget-shared-tokens.test.ts
+  h_e22d73abc85ef9 19,29-30
+test/ui/widget-snapshot.test.ts
+  h_e22d73abc85ef9 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "baafab3d84847398e4abfde807783eb1421a5710",
+  "prompts": {},
+  "humans": {
+    "h_e22d73abc85ef9": {
+      "author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
