@@ -1,0 +1,19 @@
+src/tools/calibre_get_figures.ts
+  s_94481645943414::t_04b7f75ac49fcf 99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fb70005e961dc392d37d201ac1e9db3b3c8c81d2",
+  "prompts": {},
+  "sessions": {
+    "s_94481645943414": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "acee565e-100c-4076-8da7-87b8ef382183",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
