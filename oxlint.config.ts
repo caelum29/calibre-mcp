@@ -133,6 +133,8 @@ export default defineConfig({
     },
     // Test fakes: helpers take partial port objects and spread them over defaults.
     { files: ["test/**"], rules: { "quality/no-object-parameters": "off" } },
+    // Report builders: one `lines.push()` per Markdown line reads like the output it renders.
+    { files: ["test/eval/**", "scripts/**"], rules: { "unicorn/prefer-single-call": "off" } },
     // MIGRATION BASELINE (temporary): preset rules that fail today, with their finding counts.
     // Each one is either enabled with fixes or kept off with a reason, one commit per rule.
     // Last override, so it also beats preset overrides that re-enable a rule (tests, *.ts).
@@ -152,7 +154,6 @@ export default defineConfig({
         "no-undef": "off", // 127
         "quality/no-known-value-widening": "off", // 111
         "quality/no-array-filter-map": "off", // 59
-        "unicorn/prefer-single-call": "off", // 56
         "unicorn/prefer-string-raw": "off", // 46
         "no-promise-executor-return": "off", // 42
         "typescript/require-array-sort-compare": "off", // 23

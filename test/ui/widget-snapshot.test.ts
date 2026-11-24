@@ -23,8 +23,10 @@ for (const debug of [false, true]) {
       cases.push([`board-${tool}-${style}-${d}.html`, () => boardHtml(tool, VERSION, style, debug)]);
     }
   }
-  cases.push([`card-${d}.html`, () => cardHtml(VERSION, debug)]);
-  cases.push([`figures-${d}.html`, () => figuresHtml(VERSION, debug)]);
+  cases.push(
+    [`card-${d}.html`, () => cardHtml(VERSION, debug)],
+    [`figures-${d}.html`, () => figuresHtml(VERSION, debug)],
+  );
 }
 
 describe("rendered widget HTML snapshot (#271)", () => {

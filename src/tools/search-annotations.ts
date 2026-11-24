@@ -175,8 +175,10 @@ function renderAnnotation(a: AnnotationHit): string {
   const id = a.id === undefined ? "" : ` ${a.id}`;
   const lines = [`annotation${id} · ${a.type} · book ${a.bookId} · ${a.format}${a.title ? ` · ${a.title}` : ""}`];
   if (a.chapter) lines.push(`chapter: ${a.chapter}`);
-  lines.push(`by ${a.user}${a.timestamp ? ` at ${a.timestamp}` : ""}`);
-  lines.push(fence(a.type === "bookmark" ? "BOOKMARK TITLE" : "HIGHLIGHT", a.text));
+  lines.push(
+    `by ${a.user}${a.timestamp ? ` at ${a.timestamp}` : ""}`,
+    fence(a.type === "bookmark" ? "BOOKMARK TITLE" : "HIGHLIGHT", a.text),
+  );
   if (a.note) lines.push(fence("ANNOTATION NOTE", a.note));
   return lines.join("\n");
 }

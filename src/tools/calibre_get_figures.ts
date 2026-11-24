@@ -235,11 +235,13 @@ async function fetchFigures(
     const cap = entry?.caption ? ` — ${entry.label ? `Figure ${entry.label}: ` : ""}${entry.caption}` : "";
     // mime + size go in the TEXT line too: Desktop strips structuredContent (#80).
     const kb = (f.image.bytes / 1024).toFixed(1);
-    blocks.push({
-      type: "text",
-      text: `Figure index ${f.index} (${figureLocationLabel(fmt, entry?.page)}, ${entry?.source}, ${f.image.mimeType} ${kb} KB${cap ? "" : ", uncaptioned"})${cap}`,
-    });
-    blocks.push({ type: "image", data: f.image.data, mimeType: f.image.mimeType });
+    blocks.push(
+      {
+        type: "text",
+        text: `Figure index ${f.index} (${figureLocationLabel(fmt, entry?.page)}, ${entry?.source}, ${f.image.mimeType} ${kb} KB${cap ? "" : ", uncaptioned"})${cap}`,
+      },
+      { type: "image", data: f.image.data, mimeType: f.image.mimeType },
+    );
     returned.push({ index: f.index, mimeType: f.image.mimeType, bytes: f.image.bytes });
     // stable msg, values in meta (#680): one greppable event instead of one msg per fetch
     deps.log.info("figure fetched", {
