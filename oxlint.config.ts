@@ -25,6 +25,9 @@ export default defineConfig({
     "max-depth": ["warn", 4],
     "max-lines": ["warn", { max: 500, skipBlankLines: true, skipComments: true }],
     "max-params": ["warn", 4],
+    // `typeof import("@huggingface/transformers")` types the lazily loaded optional dependency and
+    // vitest's importActual; a static `import type * as` would trip import/no-namespace instead.
+    "typescript/consistent-type-imports": ["error", { disallowTypeAnnotations: false }],
   },
   overrides: [
     {
@@ -143,7 +146,6 @@ export default defineConfig({
         "typescript/require-array-sort-compare": "off", // 23
         "quality/no-unknown-returns": "off", // 23
         "unicorn/prefer-at": "off", // 20
-        "typescript/consistent-type-imports": "off", // 19
         "unicorn/no-useless-promise-resolve-reject": "off", // 13
         "unicorn/prefer-structured-clone": "off", // 11
         "quality/no-reflect-get": "off", // 5
