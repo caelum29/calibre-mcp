@@ -58,7 +58,7 @@ describe("calibre_search old modes (#598)", () => {
     const { client, close } = await connect();
     try {
       const { tools } = await client.listTools();
-      const schema = tools.find((t) => t.name === "calibre_search")!.inputSchema as {
+      const schema = tools.find((t) => t.name === "calibre_search")!.inputSchema as unknown as {
         properties: { mode: { enum: string[] } };
       };
       expect(schema.properties.mode.enum).toEqual(["meta", "fts"]);
