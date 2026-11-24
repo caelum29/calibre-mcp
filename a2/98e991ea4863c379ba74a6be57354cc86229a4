@@ -1,0 +1,14 @@
+src/tools/search-timings.ts
+  h_e22d73abc85ef9 72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a298e991ea4863c379ba74a6be57354cc86229a4",
+  "prompts": {},
+  "humans": {
+    "h_e22d73abc85ef9": {
+      "author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
