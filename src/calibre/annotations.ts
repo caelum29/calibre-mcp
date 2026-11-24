@@ -4,7 +4,7 @@
 
 import { stripCalibredbBanner } from "../domain/calibredb-banner.js";
 
-/** One highlight or bookmark, as calibre_search mode=annotations returns it. */
+/** One highlight or bookmark, as calibre_search_annotations returns it. */
 export interface AnnotationHit {
   /** Calibre's annotation id; `annotations export` (a whole book) does not carry it. */
   id?: number;

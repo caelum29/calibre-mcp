@@ -38,14 +38,15 @@ ID `My_Books`. Calibre GUI + Content Server on `:8080` are normally running.
 
 | Tool | Purpose | Key params |
 |---|---|---|
-| `calibre_search` | Find books by metadata or full text; also keyword search *inside* one book; highlights/bookmarks and author/series/tag notes (Calibre 9.18+) | `query`, `mode: meta\|fts\|annotations\|notes`, `scope: library\|book`, `bookId`, `sort`, `limit`, `cursor`, `filter` (bundle), `include_excluded` |
+| `calibre_search` | Find books by metadata or full text; also keyword search *inside* one book | `query`, `mode: meta\|fts`, `scope: library\|book`, `bookId`, `sort`, `limit`, `cursor`, `filter` (bundle), `include_excluded` |
+| `calibre_search_annotations` | Your highlights, bookmarks and notes on authors/series/tags/publisher (Calibre 9.18+) | `query`, `kind: annotations\|notes`, `scope: library\|book`, `bookId`, `limit`, `countOnly`, `filter` (bundle, annotations only), `include_excluded` |
 | `calibre_get_book` | Full metadata + formats + cover for one book | `id` (number or uuid) |
 | `calibre_get_content` | Read book text chunk-by-chunk without flooding context | `id`, `maxChars` (default 8k, max 40k), `cursor`, `structure` (outline), `sentenceAware` |
 | `calibre_get_figures` | List a book's captioned figures (location: PDF page `p.N`, EPUB spine section `§N`), then fetch ≤3 as images (also rendered for the user in an in-chat figure viewer on MCP Apps hosts) | `id`, `indexes` (omit to list), `detail: standard\|high`, `include_uncaptioned`, `format` |
 | `calibre_list_categories` | Tags/authors/series/etc. values + counts; schema discovery | `field`, `valueFilter` (regex), `limit`, `cursor` |
 | `calibre_list_libraries` | Library map + default | — |
 | `calibre_semantic_search` | Meaning-based search across the library or within one book | `query`, `scope: library\|book`, `bookId`, `mode: hybrid\|vector\|keyword`, `topK`, `filter` (bundle), `include_excluded` |
-| `calibre_build_index` | Build/refresh the semantic index (needed before semantic search) | `ids`/`query`/`bookId` to scope, `force`, `enableFts` (turn on Calibre FTS; needs writes enabled, else `fts.status: write_disabled`), `keywordOnly` |
+| `calibre_build_index` | Build/refresh the semantic index (needed before semantic search) | `ids`/`query`/`bookId` to scope, `force`, `keywordOnly`, `prune` |
 | `calibre_find_duplicates` | Dup detection | `mode: identical\|similar\|compare`, `ids`, `query`, `filter` (bundle) |
 | `calibre_quality_report` | Library audit: missing metadata, rule violations | `checks`, `ids`/`query`/`filter` |
 | `calibre_recover_metadata` | Propose metadata for raw-filename books (ISBN → OpenLibrary → Google Books) | `id`, `sources` — returns a *proposal*; apply via `calibre_update_book` (needs writes enabled) |
@@ -165,6 +166,9 @@ identifiers:false   # no ISBN etc.
 then drill into a hit: `calibre_search scope:book bookId:N` or
 `calibre_semantic_search scope:book` → `calibre_get_content` for full passages.
 
+**What did I highlight or note?**
+`calibre_search_annotations` (not `calibre_search`): `kind: annotations` for highlights, their notes and bookmarks; `kind: notes` for notes on authors/series/tags/publisher. Old `calibre_search mode:annotations|notes` calls get an `invalid_input` steer to it.
+
 **Read a whole book / big sections:**
 `calibre_get_content` with `structure:true` first for the outline, then walk with `cursor`.
 
@@ -265,10 +269,10 @@ row count and may include removed books.
 | "Які книги по JS є?" | `calibre_search` query: `"javascript"` |
 | "В якій книзі є event sourcing?" | `calibre_semantic_search` query: `"event sourcing"` |
 | "Where exactly does this book cover CQRS?" | `calibre_search` mode:fts scope:book bookId:N |
-| "What did I highlight about commits?" | `calibre_search` mode:annotations query:`"commit"` (Calibre 9.18+; `calibre_too_old` on older) |
-| "What do my author notes say about the outbox?" | `calibre_search` mode:notes query:`"outbox"` (notes attach to items: no `filter`) |
-| "Show my note on Adam Bellemare" | `calibre_search` mode:notes query:`'authors:"Adam Bellemare"'` (also `series:` / `tags:` / `publisher:` / `#custom:`) |
-| "All my highlights in book N" | `calibre_search` mode:annotations scope:book bookId:N query:`"*"` |
+| "What did I highlight about commits?" | `calibre_search_annotations` query:`"commit"` (Calibre 9.18+; `calibre_too_old` on older) |
+| "What do my author notes say about the outbox?" | `calibre_search_annotations` kind:notes query:`"outbox"` (notes attach to items: no `filter`) |
+| "Show my note on Adam Bellemare" | `calibre_search_annotations` kind:notes query:`'authors:"Adam Bellemare"'` (also `series:` / `tags:` / `publisher:` / `#custom:`) |
+| "All my highlights in book N" | `calibre_search_annotations` scope:book bookId:N query:`"*"` |
 | "Rate Vibe Coding 5 stars" | `calibre_update_book` changes: `{rating: 10}` |
 | "Зміни теги книги" | `calibre_update_book` changes: `{tags: [...]}` |
 | "Tag all SQL books" | `calibre_bulk_update` query:"title:SQL" → preview → apply |
