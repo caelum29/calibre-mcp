@@ -201,7 +201,12 @@ describe("runIndexBuild (#346)", () => {
     const ids = Array.from({ length: 101 }, (_, i) => i + 1);
     const s = state();
     const out = await runIndexBuild(
-      deps({ libraryIds: ids, getText: async () => Promise.reject(new Error("EXTRACT_FAILED")) }),
+      deps({
+        libraryIds: ids,
+        getText: async () => {
+          throw new Error("EXTRACT_FAILED");
+        },
+      }),
       req({ query: "tag:rust" }),
       LIB,
       s,

@@ -29,7 +29,9 @@ function deps(fts: ToolDeps["fts"]): SearchDeps {
 
 const rejecting422 = () =>
   fakeFts([], {
-    match: async () => Promise.reject(new FtsError("FTS_QUERY_INVALID", asLibId("Programming_Books"))),
+    match: async () => {
+      throw new FtsError("FTS_QUERY_INVALID", asLibId("Programming_Books"));
+    },
   });
 
 describe("calibre_search mode=fts column filters (#419)", () => {

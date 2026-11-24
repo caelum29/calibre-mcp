@@ -124,7 +124,9 @@ describe("calibre_ping busy libraries", () => {
     const busy = new LibraryBusyTracker();
     busy.markBusy("Programming_Books", "content-server");
     const { d } = deps({
-      listLibraries: async () => Promise.reject(new CalibreBusyError("Programming_Books", 60_000)),
+      listLibraries: async () => {
+        throw new CalibreBusyError("Programming_Books", 60_000);
+      },
     });
     const r = await pingTool().handler({}, { ...d, libraryBusy: busy });
     expect(text(r)).toContain('busy: library "Programming_Books" — Calibre timed out (content-server)');
@@ -141,7 +143,9 @@ describe("calibre_ping busy libraries", () => {
     vi.advanceTimersByTime(60_000);
     busy.assertAvailable("Programming_Books"); // some other call is the probe
     const { d } = deps({
-      listLibraries: async () => Promise.reject(new CalibreBusyError("Programming_Books", 0, true)),
+      listLibraries: async () => {
+        throw new CalibreBusyError("Programming_Books", 0, true);
+      },
     });
     const r = await pingTool().handler({}, { ...d, libraryBusy: busy });
     expect(text(r)).toContain('busy: library "Programming_Books" — Calibre timed out (content-server)');

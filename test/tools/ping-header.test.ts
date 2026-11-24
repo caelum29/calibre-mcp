@@ -130,7 +130,14 @@ describe("calibre_ping per-library index breakdown (#304)", () => {
   });
 
   it("still pings ok when libraries cannot be listed", async () => {
-    const r = await ping.handler({}, deps({ libraryInfo: async () => Promise.reject(new Error("down")) }));
+    const r = await ping.handler(
+      {},
+      deps({
+        libraryInfo: async () => {
+          throw new Error("down");
+        },
+      }),
+    );
     expect(r.isError).toBeUndefined();
     expect(text(r).split("\n")).toContain("Index: libraries unavailable");
   });

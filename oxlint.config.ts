@@ -159,7 +159,6 @@ export default defineConfig({
         "unicorn/prefer-import-meta-properties": "off", // 26
         "typescript/require-array-sort-compare": "off", // 23
         "quality/no-unknown-returns": "off", // 23
-        "unicorn/no-useless-promise-resolve-reject": "off", // 13
         "unicorn/prefer-structured-clone": "off", // 11
       },
     },

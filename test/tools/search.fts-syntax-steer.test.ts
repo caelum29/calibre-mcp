@@ -38,7 +38,9 @@ describe("calibre_search FTS syntax consistency (PR #311 review)", () => {
 
   it("should_not_tell_the_model_to_drop_supported_boolean_operators_on_a_parse_error", async () => {
     const failing = fakeFts([], {
-      match: async () => Promise.reject(new FtsError("FTS_QUERY_INVALID", asLibId("Programming_Books"))),
+      match: async () => {
+        throw new FtsError("FTS_QUERY_INVALID", asLibId("Programming_Books"));
+      },
     });
     const r = await searchTool.handler({ query: "a:b-", mode: "fts", scope: "library", limit: 20 }, deps(failing));
     const t = textOf(r);
@@ -47,7 +49,9 @@ describe("calibre_search FTS syntax consistency (PR #311 review)", () => {
 
   it("should_steer_a_parse_error_to_operator_placement", async () => {
     const failing = fakeFts([], {
-      match: async () => Promise.reject(new FtsError("FTS_QUERY_INVALID", asLibId("Programming_Books"))),
+      match: async () => {
+        throw new FtsError("FTS_QUERY_INVALID", asLibId("Programming_Books"));
+      },
     });
     const r = await searchTool.handler({ query: "NOT foo", mode: "fts", scope: "library", limit: 20 }, deps(failing));
     expect(textOf(r)).toContain("AND/OR/NOT go between terms");

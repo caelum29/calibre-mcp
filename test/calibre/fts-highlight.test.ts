@@ -12,7 +12,9 @@ const LIB = asLibId("Programming_Books");
 /** Snippets for book 1 after a round trip through a fake Content Server returning `raw`. */
 async function snippetsFor(query: string, raw: string[]): Promise<string[]> {
   const fts = new FullTextSearch({
-    ftsSearch: async () => Promise.reject(new Error("unused")),
+    ftsSearch: async () => {
+      throw new Error("unused");
+    },
     ftsSnippets: async () => new Map([[1, raw]]),
   });
   const batch = await fts.snippets(query, LIB, [1], { deadline: new Deadline(45_000) });

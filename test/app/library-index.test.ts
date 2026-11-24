@@ -80,7 +80,13 @@ describe("libraryIndexReport (#346)", () => {
   });
 
   it("a count that errors reports total null, not a failure", async () => {
-    const out = await libraryIndexReport(deps({ search: async () => Promise.reject(new Error("timeout")) }));
+    const out = await libraryIndexReport(
+      deps({
+        search: async () => {
+          throw new Error("timeout");
+        },
+      }),
+    );
     expect(out?.[0]).toEqual({
       id: "A",
       name: "Alpha",
