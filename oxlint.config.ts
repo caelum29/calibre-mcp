@@ -161,7 +161,6 @@ export default defineConfig({
         "unicorn/prefer-structured-clone": "off", // 11
         "quality/no-reflect-get": "off", // 5
         "quality/no-object-parameters": "off", // 4
-        "import/no-namespace": "off", // 1
         "@nkzw/no-instanceof": "off", // 1
       },
     },

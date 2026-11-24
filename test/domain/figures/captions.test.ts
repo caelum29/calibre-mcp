@@ -9,6 +9,7 @@ import {
   scanCaptions,
   splitPages,
 } from "../../../src/domain/figures/captions.js";
+// oxlint-disable-next-line import/no-namespace -- the test iterates every fixture export
 import * as quirks from "./fixtures/caption-quirks-107.js";
 
 describe("matchCaptionLine", () => {
