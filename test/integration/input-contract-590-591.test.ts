@@ -174,6 +174,7 @@ describe("#591 a limit param that falls back says so", () => {
         "calibre_list_categories",
         "calibre_quality_report",
         "calibre_search",
+        "calibre_search_annotations",
         "calibre_semantic_search",
       ]);
     } finally {

@@ -19,7 +19,7 @@ TITLE=${TITLE:-calibre-mcp}
 SUBTITLE=${SUBTITLE:-Your Calibre library, searched by meaning}
 OUTRO=${OUTRO:-github.com/caelum29/calibre-mcp}
 # closing card: headline + up to 3 lines of tool names (";"-separated), then the repo URL
-OUTRO_TITLE=${OUTRO_TITLE:-…and 19 tools in total}
+OUTRO_TITLE=${OUTRO_TITLE:-…and 20 tools in total}
 OUTRO_LINES=${OUTRO_LINES:-find duplicates · audit metadata quality · recover metadata from ISBN;bulk edit · merge books · topical bundles · extract ISBN;read any chapter · build the semantic index · open in Calibre}
 MP4=${MP4:-assets/demo.mp4}
 

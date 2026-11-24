@@ -24,7 +24,7 @@ your library, all through natural language.
 
 ## ✨ Highlights
 
-- **<!-- tool-count:modelFacing -->19<!-- /tool-count:modelFacing --> tools** for searching, reading, curating and (opt-in) editing a library: search,
+- **<!-- tool-count:modelFacing -->20<!-- /tool-count:modelFacing --> tools** for searching, reading, curating and (opt-in) editing a library: search,
   read content, browse categories, audit and recover metadata, and — with writes on — update
   metadata, bulk-edit, merge duplicates, import, delete, and manage bundles (named topical
   filters). Format conversion and export are not tools: they go through the Calibre CLI (the
@@ -183,8 +183,7 @@ Write tools (`calibre_update_book`, `calibre_bulk_update`, `calibre_add_book`,
    previews work, while a call that would write (`apply: true`, `preview: false` or `confirm: true`)
    returns `write_disabled`. `calibre_update_book` and `calibre_add_book` have no preview, so they
    are hidden from the tool list. `calibre_build_index` is not a write tool: with the gate off it
-   still builds the index, and `enableFts: true` reports `fts.status: write_disabled` instead of
-   enabling Calibre's full-text indexing.
+   still builds the index.
 2. **The Calibre-side gate** — the Content Server must allow local writes. **By
    default the server embedded in the Calibre GUI is read-only**, so either enable
    the GUI option below or run a standalone server with `--enable-local-write`:

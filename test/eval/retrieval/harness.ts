@@ -426,7 +426,7 @@ function fixtureDeps(
 /** Index the whole fixture corpus through the real build tool; throws on any failure. */
 async function buildFixtureIndex(deps: ToolDeps, corpus: Corpus): Promise<void> {
   const r = await buildIndexTool.handler(
-    { ids: corpus.books.map((b) => b.bookId), force: true, enableFts: false, keywordOnly: false },
+    { ids: corpus.books.map((b) => b.bookId), force: true, keywordOnly: false },
     deps,
   );
   const sc = r.structuredContent ?? {};

@@ -6,7 +6,6 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseAnnotationExport, parseAnnotationSearch, parseNoteShow } from "../../src/calibre/annotations.js";
-import { enableFts } from "../../src/app/enable-fts.js";
 import { parseSavedSearches } from "../../src/app/bundles.js";
 import { parseCalibreVersion } from "../../src/domain/calibre-version.js";
 
@@ -76,29 +75,5 @@ describe("version and saved-search parsers (#518)", () => {
     ["no banner", saved],
   ])("should_list_saved_searches_with_%s", (_n, out) => {
     expect(parseSavedSearches(out)).toEqual([{ name: "Rust", expression: 'tags:"=Rust"' }]);
-  });
-});
-
-describe("enableFts status parsing (#518)", () => {
-  const run = (statusOut: string) =>
-    enableFts(
-      {
-        writeEnabled: true,
-        calibre: {
-          calibredb: async (a: readonly string[]) => ({
-            stdout: a[1] === "status" ? statusOut : "",
-            stderr: "",
-          }),
-        } as never,
-      },
-      "Programming_Books" as never,
-    );
-  const line = "FTS is enabled\n1153 of 1153 books files indexed\n";
-  it.each([
-    ["banner first", `${BANNER}${line}`],
-    ["banner last", `${line}${BANNER}`],
-    ["no banner", line],
-  ])("should_report_already_enabled_with_progress_with_%s", async (_n, out) => {
-    expect(await run(out)).toEqual({ status: "already_enabled", progress: "1153 of 1153 books files indexed" });
   });
 });

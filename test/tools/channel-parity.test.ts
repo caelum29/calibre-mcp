@@ -476,6 +476,11 @@ const SCENARIOS: Scenario[] = [
   { tool: "calibre_search", label: "meta single page", args: { query: "rust" } },
   { tool: "calibre_search", label: "meta countOnly", args: { query: "rust", countOnly: "true" } },
   { tool: "calibre_search", label: "scope=book without bookId (error)", args: { query: "x", scope: "book" } },
+  {
+    tool: "calibre_search_annotations",
+    label: "scope=book without bookId (error)",
+    args: { query: "x", scope: "book" },
+  },
   { tool: "calibre_list_categories", label: "lists fields", args: {} },
   { tool: "calibre_list_categories", label: "single page of values", args: { field: "Tags" } },
   { tool: "calibre_list_categories", label: "unknown field (error)", args: { field: "Nope" } },
@@ -678,34 +683,34 @@ const SNIPPETS = [
 
 const PAYLOAD_SCENARIOS: Scenario[] = [
   {
-    tool: "calibre_search",
-    label: "mode=annotations highlights with notes (#500)",
-    args: { query: "commit", mode: "annotations" },
+    tool: "calibre_search_annotations",
+    label: "kind=annotations highlights with notes (#500)",
+    args: { query: "commit", kind: "annotations" },
     deps: () => fakeDeps({ calibredb: async () => ({ stdout: capture500("annotations-search-commit"), stderr: "" }) }),
   },
   {
-    tool: "calibre_search",
-    label: "mode=annotations bookmark (#500)",
-    args: { query: "outbox", mode: "annotations" },
+    tool: "calibre_search_annotations",
+    label: "kind=annotations bookmark (#500)",
+    args: { query: "outbox", kind: "annotations" },
     deps: () =>
       fakeDeps({ calibredb: async () => ({ stdout: capture500("annotations-search-bookmark"), stderr: "" }) }),
   },
   {
-    tool: "calibre_search",
-    label: "mode=notes show one item (#500)",
-    args: { query: "authors:Adam Bellemare", mode: "notes" },
+    tool: "calibre_search_annotations",
+    label: "kind=notes show one item (#500)",
+    args: { query: "authors:Adam Bellemare", kind: "notes" },
     deps: () => fakeDeps({ calibredb: async () => ({ stdout: capture500("notes-show-bellemare"), stderr: "" }) }),
   },
   {
-    tool: "calibre_search",
-    label: 'mode=annotations scope=book query "*" (#500)',
-    args: { query: "*", mode: "annotations", scope: "book", bookId: 101 },
+    tool: "calibre_search_annotations",
+    label: 'kind=annotations scope=book query "*" (#500)',
+    args: { query: "*", kind: "annotations", scope: "book", bookId: 101 },
     deps: () => fakeDeps({ calibredb: async () => ({ stdout: capture500("annotations-export"), stderr: "" }) }),
   },
   {
-    tool: "calibre_search",
-    label: "mode=notes (#500)",
-    args: { query: "outbox", mode: "notes" },
+    tool: "calibre_search_annotations",
+    label: "kind=notes (#500)",
+    args: { query: "outbox", kind: "notes" },
     deps: () => fakeDeps({ calibredb: async () => ({ stdout: capture500("notes-search-outbox"), stderr: "" }) }),
   },
   {
@@ -1118,13 +1123,6 @@ const PING_FIXTURES: Scenario[] = [
     deps: () => pingDeps({ env: { CALIBRE_MCP_ENABLE_WRITE: "0" } }),
   },
 ];
-// enableFts adds the `- FTS:` line; with the gate off no calibredb call is made (#519)
-const FTS_FIXTURE: Scenario = {
-  tool: "calibre_build_index",
-  label: "enableFts, writes off",
-  args: { bookId: 101, enableFts: true },
-  deps: () => fakeDeps({ embedder: fakeEmbedder, index: memoryStore(), env: { CALIBRE_MCP_ENABLE_WRITE: "0" } }),
-};
 // real + unknown ids: both results print `Not found (skipped): …` (#522, #529); gate on for the apply
 const REMOVE_MIXED: Scenario[] = [
   { tool: "calibre_remove_book", label: "dry run, mixed ids", args: { ids: [101, 999998, 102, 999999] } },
@@ -1135,14 +1133,7 @@ const REMOVE_MIXED: Scenario[] = [
     deps: () => fakeDeps({ env: { CALIBRE_MCP_ENABLE_WRITE: "1" } }),
   },
 ];
-const ALL_RENDERED = [
-  ...SCENARIOS,
-  ...PAGINATED_SCENARIOS,
-  ...PAYLOAD_SCENARIOS,
-  ...PING_FIXTURES,
-  FTS_FIXTURE,
-  ...REMOVE_MIXED,
-];
+const ALL_RENDERED = [...SCENARIOS, ...PAGINATED_SCENARIOS, ...PAYLOAD_SCENARIOS, ...PING_FIXTURES, ...REMOVE_MIXED];
 
 /** A structured field's values: `a.b` → [value], `a[].b` → one per item. */
 function fieldValues(sc: unknown, field: string): unknown[] {
@@ -1242,12 +1233,6 @@ describe("Labelled lines (#454)", () => {
       ]);
     },
   );
-
-  it("calibre_build_index's FTS line is registered and carries fts.status", async () => {
-    const hit = (await rendered).find(({ s }) => s === FTS_FIXTURE)!;
-    expect(hit.r.structuredContent).toMatchObject({ fts: { status: "write_disabled" } });
-    expect(occurrences(textChannel(hit.r), registered("calibre_build_index", "FTS"))).toEqual(["write_disabled"]);
-  });
 
   it("docs/TOOLS.md's Labelled lines table is the registry (regenerate with pnpm catalog)", () => {
     const doc = readFileSync(path.join(process.cwd(), "docs/TOOLS.md"), "utf8");

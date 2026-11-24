@@ -103,6 +103,10 @@
       "description": "Find books by title, author, ISBN, tag, Calibre query syntax, or full text; library- or book-scoped"
     },
     {
+      "name": "calibre_search_annotations",
+      "description": "Search your highlights, bookmarks and item notes (Calibre 9.18+); library- or book-scoped"
+    },
+    {
       "name": "calibre_get_book",
       "description": "Full metadata, formats, and cover link for one book"
     },

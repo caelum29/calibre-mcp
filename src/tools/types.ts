@@ -68,6 +68,15 @@ export interface ToolContext {
  * the per-call write gate (`tools/write-gate.ts`, #435) to `write` tools. `D` is the deps slice
  * the handler reads (#272): BaseDeps by default, or a `DepsWithIndex<…>` for index consumers.
  */
+/** A tool's own words for a refused call: the message, and the one next step (also its `Next:` line). */
+export interface InputSteer {
+  message: string;
+  hint: string;
+}
+
+/** See ToolDescriptor.inputSteer. */
+export type InputSteerFn = (rawArgs: unknown) => InputSteer | undefined;
+
 export interface ToolDescriptor<Shape extends z.ZodRawShape = z.ZodRawShape, D = BaseDeps> {
   /** Template-literal enforces the `calibre_` namespace (DESIGN §2). */
   name: `calibre_${string}`;
@@ -92,6 +101,12 @@ export interface ToolDescriptor<Shape extends z.ZodRawShape = z.ZodRawShape, D =
    * "every readOnlyHint:false tool must be write-gated" (currently just calibre_build_index).
    */
   localWrite?: boolean;
+  /**
+   * For a removed input value (#598): given the raw arguments of a call the schema refused, a steer
+   * that replaces the generic invalid_input text, or undefined for no special advice. Keeps the
+   * advertised schema exact (no legacy enum members) while the old call still says where it went.
+   */
+  inputSteer?: InputSteerFn;
   /** `ctx` is always supplied by server.ts; optional so direct (test) calls can omit it. */
   handler: (args: z.infer<z.ZodObject<Shape>>, deps: D, ctx?: ToolContext) => Promise<ToolResult>;
 }
@@ -113,6 +128,8 @@ export interface AnyToolDescriptor {
   writeCall?: "always" | ((args: unknown) => boolean);
   /** See ToolDescriptor.localWrite — index-dir write, not library write; not gate-controlled. */
   localWrite?: boolean;
+  /** See ToolDescriptor.inputSteer. */
+  inputSteer?: InputSteerFn;
   handler: (args: unknown, deps: ToolDeps, ctx?: ToolContext) => Promise<ToolResult>;
 }
 

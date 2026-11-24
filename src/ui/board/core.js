@@ -51,12 +51,12 @@ __DEBUG__
   });
 
   // Calls whose results are not a list of books: in-book passages, count aggregates (#67),
-  // annotations / notes and figure hits (#535). countOnly checked as a string too: hosts
+  // and figure hits (#535). countOnly checked as a string too: hosts
   // forward raw args uncoerced (#67).
   function isNoBoardCall(a) {
     if (!a) return false;
     return a.scope === "book" || a.countOnly === true || a.countOnly === "true" ||
-      a.mode === "annotations" || a.mode === "notes" || a.target === "figures";
+      a.target === "figures";
   }
 
   function collapse() {

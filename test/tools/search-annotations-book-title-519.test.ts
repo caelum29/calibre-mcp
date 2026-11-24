@@ -8,8 +8,8 @@ import { loadConfig } from "../../src/config.js";
 import { invalidateBundleCache } from "../../src/app/bundles.js";
 import { log } from "../../src/logging.js";
 import { parseCalibreVersion } from "../../src/domain/calibre-version.js";
-import { searchTool } from "../../src/tools/calibre_search.js";
-import type { SearchDeps } from "../../src/tools/calibre_search.js";
+import { searchAnnotationsTool } from "../../src/tools/calibre_search_annotations.js";
+import type { ToolDeps as SearchDeps } from "../../src/tools/deps.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
 import type { ToolResult } from "../../src/tools/types.js";
 
@@ -47,7 +47,10 @@ function deps(getBook: (id: number) => Promise<{ title: string }>) {
 const textOf = (r: ToolResult) => r.content.map((b) => ("text" in b ? b.text : "")).join("\n");
 const sc = (r: ToolResult) => r.structuredContent as Record<string, unknown>;
 const run = (d: SearchDeps) =>
-  searchTool.handler({ query: "*", mode: "annotations", scope: "book", bookId: 644, limit: 20 } as never, d as never);
+  searchAnnotationsTool.handler(
+    { query: "*", kind: "annotations", scope: "book", bookId: 644, limit: 20 } as never,
+    d as never,
+  );
 
 describe("whole-book annotations fill the title from the book (#519)", () => {
   it("should_print_the_title_in_the_header_line_of_the_books_records", async () => {

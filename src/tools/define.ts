@@ -26,6 +26,7 @@ export function defineTool<Shape extends z.ZodRawShape, D = BaseDepsDefault>(
     write: d.write,
     writeCall: eraseWriteCall(d.writeCall),
     localWrite: d.localWrite,
+    inputSteer: d.inputSteer,
     handler: (args, deps: D, ctx) => d.handler(args as z.infer<z.ZodObject<Shape>>, deps, ctx),
   };
 }

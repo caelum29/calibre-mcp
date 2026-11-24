@@ -12,22 +12,13 @@ export interface BuildSelector {
   ids?: (number | string)[] | undefined;
   query?: string | undefined;
   force: boolean;
-  enableFts: boolean;
   keywordOnly: boolean;
   prune: boolean;
 }
 
 /** Stable key for "the same call": every arg that changes what the build does (library aside). */
 export function selectorKey(a: BuildSelector): string {
-  return JSON.stringify([
-    a.bookId ?? null,
-    a.ids ?? null,
-    a.query ?? null,
-    a.force,
-    a.enableFts,
-    a.keywordOnly,
-    a.prune,
-  ]);
+  return JSON.stringify([a.bookId ?? null, a.ids ?? null, a.query ?? null, a.force, a.keywordOnly, a.prune]);
 }
 
 /** isError result for a build the client cancelled — partial counts, and how to resume. */
@@ -74,7 +65,7 @@ export function cancelledResult(c: {
  * but a different mode (say force:true) are different work, so neither covers the other.
  */
 export function buildModeKey(a: BuildSelector): string {
-  return JSON.stringify([a.force, a.enableFts, a.keywordOnly, a.prune]);
+  return JSON.stringify([a.force, a.keywordOnly, a.prune]);
 }
 
 /** What a refused call asked for: its ids (see {@link requestedIds}) and {@link buildModeKey}. */

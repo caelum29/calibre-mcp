@@ -32,8 +32,7 @@ A breaking change to any of these is a **major** release.
   would write returns `write_disabled`. `calibre_update_book` and `calibre_add_book` have no
   preview and are hidden. Destructive and bulk tools show a preview first and write only on an
   explicit `apply` / `confirm`. `calibre_build_index` is not a write tool: with the gate off the index
-  build still runs, and with `enableFts: true` its result carries `fts.status: write_disabled`
-  (not an error) instead of enabling Calibre's full-text indexing.
+  build still runs.
 - **The resource URI template** `calibre://book/{libId}/{id}`.
 - **The minimum Node version** (`engines.node` in `package.json`): raising it is a major release.
 
@@ -59,7 +58,7 @@ A breaking change to any of these is a **major** release.
   them and the unit suite runs on Linux in CI, but neither has had a live check.
 - **Calibre:** developed and tested against 9.x (9.18 at the time of writing). There is no general
   minimum version: the server starts and most tools work on older releases. The 9.18-only calls
-  (`calibre_search` with `mode: annotations` or `notes`) return `calibre_too_old` on an older Calibre;
+  (`calibre_search_annotations`) return `calibre_too_old` on an older Calibre;
   that is part of the contract. (Date keywords such as `lastmonth` also need 9.18+; older versions
   don't know them, and no `calibre_too_old` is returned for them; see [Tools](TOOLS.md).)
 

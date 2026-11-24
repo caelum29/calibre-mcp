@@ -1,6 +1,6 @@
 # Tool reference
 
-The calibre-mcp server exposes <!-- tool-count:modelFacing -->19<!-- /tool-count:modelFacing --> tools your AI assistant can call to work with your
+The calibre-mcp server exposes <!-- tool-count:modelFacing -->20<!-- /tool-count:modelFacing --> tools your AI assistant can call to work with your
 [Calibre](https://calibre-ebook.com) library. They fall into two scopes:
 
 - **Catalog / library** — search across the whole library, browse categories, curate
@@ -78,7 +78,7 @@ of contents or front matter; for a definitional or topic question within a book,
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
 | `query` | string | *(required)* | Search text or Calibre query syntax (e.g. `author:knuth`, `tag:rust`) |
-| `mode` | `meta` \| `fts` \| `annotations` \| `notes` | `meta` | `meta` = metadata/query-syntax search; `fts` = full-text search; `annotations` / `notes` = highlights and item notes (Calibre 9.18+) |
+| `mode` | `meta` \| `fts` | `meta` | `meta` = metadata/query-syntax search; `fts` = full-text search |
 | `scope` | `library` \| `book` | `library` | `book` searches inside one book (forces full text; needs `bookId`) |
 | `bookId` | number \| uuid | — | Required when `scope: book` |
 | `library` | string | *(default)* | Library name or id |
@@ -113,23 +113,42 @@ built, the result says how far along it is (`indexing`). Each call answers withi
 Calibre is still busy with an earlier long request, the call fails fast with a retry time
 instead of queueing behind it.
 
-**Annotations and notes (Calibre 9.18+).** `mode: annotations` searches the highlights,
+Highlights, bookmarks and item notes are searched with [`calibre_search_annotations`](#calibre_search_annotations) (since #598 `mode: annotations` / `notes` here return `invalid_input` naming it).
+
+> Ask: *"find books about Rust"* · *"search my library for author:knuth"* · *"where does book 187 mention rebalancing?"* (`scope: book`) · *"search async runtimes in the Rust bundle"* (`filter`)
+
+### `calibre_search_annotations`
+
+Your highlights, bookmarks and item notes (Calibre 9.18+). Use it for "what did I highlight
+about X?", not `calibre_search`. `kind: annotations` (the default) searches the highlights,
 their notes and the bookmark titles made in the Calibre E-book viewer (and by Content Server
 users) — all users, read-only. Hits come in Calibre's relevance order, one
 `annotation <id> · <type> · book <bookId> · …` line each, with the highlighted text and the
 note fenced as data; `structuredContent.annotations[]` carries `id`, `bookId`, `title`,
 `format`, `type` (`highlight` / `bookmark`), `text`, `note`, `chapter`, `timestamp`, `user`.
-`filter` and exclusion markers apply as in `meta` / `fts`; `scope: book` + `bookId` searches
+`filter` and exclusion markers apply as in `calibre_search`; `scope: book` + `bookId` searches
 one book, and `query: "*"` there lists every annotation of the book (in Calibre's export order;
-those rows carry no annotation `id` or `title`). `mode: notes` searches the notes attached to
+those rows carry no annotation `id` or `title`). `kind: notes` searches the notes attached to
 authors, series, tags and other items: one `note · <field>: <item>` line per hit with Calibre's
 snippet (`structuredContent.notes[].snippet`). A query of the form `<field>:<item>` — `authors`,
 `series`, `tags`, `publisher` or a custom `#column`, item quoted or not (`authors:"Adam Bellemare"`)
 — shows that item's whole note as Markdown (`notes[].text`); an item without a note returns
-`not_found`. Notes belong to items, not books, so `filter` and `scope: book` don't apply. Both modes cap at
+`not_found`. Notes belong to items, not books, so `filter` and `scope: book` don't apply. Both kinds cap at
 `limit` (no `cursor`, no `sort`); on a Calibre older than 9.18 they return `calibre_too_old`.
 
-> Ask: *"find books about Rust"* · *"search my library for author:knuth"* · *"where does book 187 mention rebalancing?"* (`scope: book`) · *"search async runtimes in the Rust bundle"* (`filter`) · *"what did I highlight about commits?"* (`mode: annotations`) · *"which author notes mention the outbox pattern?"* (`mode: notes`)
+| Parameter | Type | Default | Meaning |
+|---|---|---|---|
+| `query` | string | *(required)* | Search text; `"*"` with `scope: book` lists the book's annotations; `<field>:<item>` with `kind: notes` shows one item's note |
+| `kind` | `annotations` \| `notes` | `annotations` | Highlights/bookmarks, or notes attached to authors, series, tags, publisher |
+| `scope` | `library` \| `book` | `library` | `book` searches one book's annotations (needs `bookId`; `kind: annotations` only) |
+| `bookId` | number \| uuid | — | Required when `scope: book` |
+| `library` | string | *(default)* | Library name or id |
+| `limit` | number | `20` | Results to show (max 50) |
+| `countOnly` | boolean | `false` | Return only the count |
+| `filter` | string | — | Bundle name to scope the search to (`kind: annotations`, library scope) |
+| `include_excluded` | boolean | `false` | Include books from `-`-named exclusion bundles |
+
+> Ask: *"what did I highlight about commits?"* · *"which author notes mention the outbox pattern?"* (`kind: notes`) · *"show my note on Adam Bellemare"* · *"all my highlights in book 644"* (`scope: book`, `query: "*"`)
 
 ### `calibre_get_book`
 
@@ -438,18 +457,9 @@ Pass `prune: true` to reconcile: it deletes the index entries for every book tha
 in the library and reports how many it dropped. A selected id the library no longer holds (it 404s and is missing from the listing the prune checked) is listed once as `Selected but no longer in the library: #N — removed from the index, not a failure.` (`removedIds`), not as a failed book. Without `prune`, or when the prune is skipped, it still counts as failed.
 
 The index build writes only to the server's own local index directory — not to your Calibre
-library — so it runs without enabling library writes. Only `enableFts: true` needs them.
-
-**`enableFts: true`** also turns on Calibre's own full-text indexing for the library (the engine
-behind `calibre_search` `mode: fts`), through `calibredb fts_index enable`. Calibre indexes in the
-background; the call doesn't wait and reports what Calibre says (`0 of 144 books files indexed`).
-It changes a library setting, so it needs writes enabled (`CALIBRE_MCP_ENABLE_WRITE`): with writes
-off the semantic build still runs and the FTS line says `write_disabled`, with the remedy (enable
-writes, or tick FTS in the Calibre GUI: the **FT** button left of the search bar). If FTS is
-already on, it's a no-op that says so. A failed enable is reported in the FTS line and doesn't
-fail the build. Structured output carries the same as `fts.status`:
-`enabled` | `already_enabled` | `write_disabled` | `failed`. Enable-only: there's no status or
-reindex action.
+library — so it runs without enabling library writes. It does not touch Calibre's own full-text
+index: turn that on in Calibre (the **FT** button left of the search bar), as the `calibre_search`
+`mode: fts` error explains.
 
 #### Case-clashing library ids
 
@@ -860,14 +870,13 @@ only the part named here is contract. The table is generated from the server's r
 | `calibre_list_libraries` | `id` | `<Name> (id: <libraryId>)[ [default]]` — one line per library | `libraries[].id` |
 | `calibre_get_book` | `id` | `id: <id> \| uuid: <uuid>[ \| …]` (fields after the uuid are Prose) | `book.id` |
 | `calibre_search` | `cursor` | `… cursor: <nextCursor>` at the end of the line — pass the token verbatim (the words before `cursor:` are Prose) | `nextCursor` |
-| `calibre_search` | `annotation` | `annotation <id> · <type> · book <bookId> · <format> · <title>` — mode=annotations, one per hit (the format and title after `book <bookId>` are Prose) | `annotations[].id` |
-| `calibre_search` | `note` | `note · <field>: <item>` — mode=notes, one per hit | `notes[].item` |
+| `calibre_search_annotations` | `annotation` | `annotation <id> · <type> · book <bookId> · <format> · <title>` — kind=annotations, one per hit (the format and title after `book <bookId>` are Prose) | `annotations[].id` |
+| `calibre_search_annotations` | `note` | `note · <field>: <item>` — kind=notes, one per hit | `notes[].item` |
 | `calibre_list_categories` | `cursor` | `… cursor: <nextCursor>` at the end of the line — pass the token verbatim (the words before `cursor:` are Prose) | `nextCursor` |
 | `calibre_quality_report` | `cursor` | `… cursor: <nextCursor>` at the end of the line — pass the token verbatim (the words before `cursor:` are Prose) | `nextCursor` |
 | `calibre_find_duplicates` | `cursor` | `… cursor: <nextCursor>` at the end of the line — pass the token verbatim (the words before `cursor:` are Prose) | `nextCursor` |
 | `calibre_get_content` | `cursor` | `… cursor: <nextCursor>` at the end of the line — pass the token verbatim (the words before `cursor:` are Prose) | `nextCursor` |
 | `calibre_build_index` | `Indexed ids` | `Indexed ids: <id>, <id>.` | `bookDetails[].bookId` |
-| `calibre_build_index` | `FTS` | `- FTS: write_disabled\|already enabled\|enabled\|failed — …` — only with `enableFts: true` (`already enabled` is `already_enabled`; the words after the dash are Prose) | `fts.status` |
 | `calibre_semantic_search` | `section` | `section: <title> › <title> › <title>` — outermost first, at most the last 3 levels; one per text hit that has one | `results[].sectionPath \| passages[].sectionPath` |
 | `calibre_semantic_search` | `page` | `page: <n>` — the 1-based PDF page index, never the printed number; PDF text hits only | `results[].page \| passages[].page` |
 | `calibre_remove_book` | `Not found` | `Not found (skipped): #<id or uuid>, #<id or uuid>` (an unresolved uuid also prints with `#`, a known limit) | `notFoundIds[]` |

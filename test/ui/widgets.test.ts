@@ -128,13 +128,12 @@ describe("widget templates", () => {
   });
 
   it("should_collapse_on_calls_whose_results_are_not_book_lists", () => {
-    // Issue #535: annotations, notes and figure hits carry no board payload, so the
-    // board must collapse on tool-input instead of pulling and landing in its error state.
+    // Issue #535: figure hits carry no board payload, so the board must collapse on tool-input
+    // instead of pulling and landing in its error state. (Annotations and notes left the board's
+    // tool in #598: calibre_search_annotations has no widget.)
     for (const html of boards) {
       const collapses = noBoardPredicate(html);
       for (const args of [
-        { mode: "annotations", query: "the" },
-        { mode: "notes", query: "the" },
         { target: "figures", query: "brain" },
         { scope: "book", bookId: 1, query: "x" },
         { countOnly: true, query: "x" },

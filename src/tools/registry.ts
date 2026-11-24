@@ -4,6 +4,7 @@
 import type { AnyToolDescriptor } from "./types.js";
 import { listLibrariesTool } from "./calibre_list_libraries.js";
 import { searchTool } from "./calibre_search.js";
+import { searchAnnotationsTool } from "./calibre_search_annotations.js";
 import { getBookTool } from "./calibre_get_book.js";
 import { getContentTool } from "./calibre_get_content.js";
 import { getFiguresTool } from "./calibre_get_figures.js";
@@ -27,6 +28,7 @@ import { pingTool } from "./calibre_ping.js";
 export const allTools: AnyToolDescriptor[] = [
   listLibrariesTool,
   searchTool,
+  searchAnnotationsTool,
   getBookTool,
   getContentTool,
   getFiguresTool,
@@ -44,7 +46,7 @@ export const allTools: AnyToolDescriptor[] = [
   mergeBooksTool,
   manageBundlesTool,
   // Widget-internal (_meta.ui.visibility ["app"], issues #22/#53) — hosts that honor MCP
-  // Apps hide these from the model, so the model-facing surface stays at 18 tools (+ ping).
+  // Apps hide these from the model, so the model-facing surface stays at 19 tools (+ ping).
   boardDataTool,
   openBookTool,
   // Health check, kept last: tools/list order is pinned (tools-list-order.test.ts).
