@@ -1,0 +1,35 @@
+test/ui/widgets.test.ts
+  s_f17c55b783a487::t_8ea583767829a4 131-133
+test/ui/__snapshots__/widgets/board-calibre_search-coverflow-debug.html
+  s_f17c55b783a487::t_0723c5602aecca 634,639
+test/ui/__snapshots__/widgets/board-calibre_search-coverflow-nodebug.html
+  s_f17c55b783a487::t_f8c52384cedd4a 492,497
+test/ui/__snapshots__/widgets/board-calibre_search-shelf-debug.html
+  s_f17c55b783a487::t_e690e1eb87343d 634,639
+test/ui/__snapshots__/widgets/board-calibre_search-shelf-nodebug.html
+  s_f17c55b783a487::t_6c6c8b353baa13 492,497
+test/ui/__snapshots__/widgets/board-calibre_semantic_search-coverflow-debug.html
+  s_f17c55b783a487::t_31e56d5c26c7a7 634,639
+test/ui/__snapshots__/widgets/board-calibre_semantic_search-coverflow-nodebug.html
+  s_f17c55b783a487::t_3b12d12eac4a48 492,497
+test/ui/__snapshots__/widgets/board-calibre_semantic_search-shelf-debug.html
+  s_f17c55b783a487::t_6c311110473a04 634,639
+test/ui/__snapshots__/widgets/board-calibre_semantic_search-shelf-nodebug.html
+  s_f17c55b783a487::t_86126df4653a1c 492,497
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "238949adaebc160848677c76d183da98505dce8f",
+  "prompts": {},
+  "sessions": {
+    "s_f17c55b783a487": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd568a66-62d4-4115-b3fe-06f84ba644ae",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
