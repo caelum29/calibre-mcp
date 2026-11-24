@@ -1,0 +1,20 @@
+oxlint.config.ts
+  s_94481645943414::t_f99832c026fea6 82-91,96-98,100-104
+  s_94481645943414::t_99e7d41345a254 92-95,99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "64762c6b3e696118ecab6f7df904cbbd179a6ce9",
+  "prompts": {},
+  "sessions": {
+    "s_94481645943414": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "acee565e-100c-4076-8da7-87b8ef382183",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
