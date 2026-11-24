@@ -9,12 +9,11 @@
 import { execSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import type { Thresholds } from "./gate.js";
 import { type AllowFile, freezeTreeCheck, pruneHashAllowEntries } from "./hash-freeze-lib.js";
 import { runHashEval, toRankBaseline } from "./hash-gate.js";
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
+const HERE = import.meta.dirname;
 const log = (msg: string) => process.stderr.write(`[hash-freeze] ${msg}\n`);
 const git = (cmd: string) => execSync(`git ${cmd}`, { cwd: HERE, encoding: "utf8" });
 const root = git("rev-parse --show-toplevel").trim();

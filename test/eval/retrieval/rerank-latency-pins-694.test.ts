@@ -4,10 +4,9 @@
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
+const HERE = import.meta.dirname;
 const block = (JSON.parse(readFileSync(path.join(HERE, "thresholds.json"), "utf8")) as Record<string, unknown>)
   .rerankLatency as { protocol: Record<string, string>; qualityBaseline: Record<string, string> };
 

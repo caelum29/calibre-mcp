@@ -4,12 +4,11 @@
 import { execFile } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
 
 const exec = promisify(execFile);
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+const ROOT = path.resolve(import.meta.dirname, "../../..");
 
 /** Import `entry` in a fresh node with argv[1] blanked (the fail-open scenario), flags after it. */
 async function importWithBlankArgv1(entry: string, ...flags: string[]) {

@@ -6,7 +6,6 @@ import { execFile } from "node:child_process";
 import { mkdtempSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { describe, expect, it, vi } from "vitest";
 import type { Reranker } from "../../../src/semantic/reranker.js";
@@ -18,7 +17,7 @@ import { runRetrievalEval, type EvalReport, type Mode, type PerQueryRow } from "
 import { degradedWarning, parseArgs, passSummary, runPass } from "./run.js";
 import { saturationLines } from "./saturation.js";
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
+const HERE = import.meta.dirname;
 const ROOT = path.resolve(HERE, "../../..");
 const thresholds = JSON.parse(readFileSync(path.join(HERE, "thresholds.json"), "utf8")) as Thresholds;
 const read = (rel: string) => readFileSync(path.join(HERE, rel), "utf8");

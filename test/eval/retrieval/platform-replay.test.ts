@@ -6,7 +6,6 @@
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   evaluateFusionOnlyGate,
@@ -19,7 +18,7 @@ import {
 import { gateRuleFor } from "./gate-guards.js";
 import type { EvalReport } from "./harness.js";
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
+const HERE = import.meta.dirname;
 const read = <T>(rel: string): T => JSON.parse(readFileSync(path.join(HERE, rel), "utf8")) as T;
 // the replayed nightlies predate #605's back-matter-trap queries, so its block can't apply to them
 const { backMatterTrap: _predates, ...thresholds } = read<Thresholds>("thresholds.json");

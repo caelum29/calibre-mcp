@@ -5,7 +5,6 @@
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import type { Reranker } from "../../../src/semantic/reranker.js";
 import { ablationMatrix, auc, computeAxes, percentile, renderAxes } from "./axes.js";
@@ -13,7 +12,7 @@ import type { Thresholds } from "./gate.js";
 import { hashEmbedder } from "./hash-embedder.js";
 import { runRetrievalEval, type EvalReport, type Mode, type PerQueryRow } from "./harness.js";
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
+const HERE = import.meta.dirname;
 const thresholds = JSON.parse(readFileSync(path.join(HERE, "thresholds.json"), "utf8")) as Thresholds;
 
 function report(rows: PerQueryRow[], modes: Mode[] = ["hybrid", "keyword"]): EvalReport {

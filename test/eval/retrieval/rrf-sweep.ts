@@ -9,12 +9,12 @@
 
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { pathToFileURL } from "node:url";
 import { evaluateGate, type Thresholds } from "./gate.js";
 import { heldOutIds, withoutHeldOut, type EvalReport, type Mode } from "./harness.js";
 import { compareReports, formatPaired, pairingWarnings, type CompareRow } from "./stats.js";
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
+const HERE = import.meta.dirname;
 const HYBRID: Mode = "hybrid";
 
 export type Measurement = "fixtureOn" | "fixtureOff" | "liveOn";

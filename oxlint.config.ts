@@ -156,7 +156,6 @@ export default defineConfig({
         "unicorn/prefer-single-call": "off", // 56
         "unicorn/prefer-string-raw": "off", // 46
         "no-promise-executor-return": "off", // 42
-        "unicorn/prefer-import-meta-properties": "off", // 26
         "typescript/require-array-sort-compare": "off", // 23
         "quality/no-unknown-returns": "off", // 23
         "unicorn/prefer-structured-clone": "off", // 11

@@ -16,9 +16,8 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const root = path.resolve(import.meta.dirname, "..");
 const UI = path.join(root, "src", "ui");
 const OUT = path.join(UI, "generated", "widgets.ts");
 const check = process.argv.includes("--check");

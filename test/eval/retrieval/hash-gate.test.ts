@@ -4,13 +4,12 @@
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { reversed } from "./broken-store.js";
 import { capabilityKindsOf, type Thresholds } from "./gate.js";
 import { evaluateHashGate, fromRankBaseline, runHashEval, toRankBaseline, type RankBaseline } from "./hash-gate.js";
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
+const HERE = import.meta.dirname;
 const thresholds = JSON.parse(readFileSync(path.join(HERE, "thresholds.json"), "utf8")) as Thresholds;
 const rule = thresholds.hashGate!;
 const baseline = JSON.parse(readFileSync(path.join(HERE, rule.baselineReport!), "utf8")) as RankBaseline;

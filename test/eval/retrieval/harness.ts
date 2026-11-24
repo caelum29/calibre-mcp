@@ -6,7 +6,6 @@
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { loadConfig, type Config } from "../../../src/config.js";
 import { log } from "../../../src/logging.js";
 import type { Book } from "../../../src/domain/book.js";
@@ -126,7 +125,7 @@ export interface Corpus {
 /** A retrieved chunk must cover ≥30% of a labeled span to count (excludes corner clips). */
 const SPAN_OVERLAP_MIN = 0.3;
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
+const HERE = import.meta.dirname;
 
 export interface LoadedCorpus {
   corpus: Corpus;

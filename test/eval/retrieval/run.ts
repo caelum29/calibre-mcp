@@ -37,7 +37,6 @@
 import { execSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { loadConfig } from "../../../src/config.js";
 import type { Embedder } from "../../../src/semantic/embedder.js";
 import { RERANKER_MODEL_ID, TransformersReranker, type Reranker } from "../../../src/semantic/reranker.js";
@@ -75,7 +74,7 @@ import { heldOutLines } from "./held-out.js";
 import { saturationLines } from "./saturation.js";
 import { compareReports, pairingWarnings, renderCompare } from "./stats.js";
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
+const HERE = import.meta.dirname;
 const progress = (msg: string) => process.stderr.write(`[eval] ${msg}\n`);
 
 export interface CliArgs {
@@ -129,7 +128,7 @@ export function parseArgs(argv: string[]): CliArgs {
     else if (a === "--work-dir") args.workDir = next();
     else if (a === "--out-dir") args.outDir = next();
     else if (a === "--help" || a === "-h") {
-      process.stderr.write(readFileSync(fileURLToPath(import.meta.url), "utf8").split("\n\nimport")[0]! + "\n");
+      process.stderr.write(readFileSync(import.meta.filename, "utf8").split("\n\nimport")[0]! + "\n");
       process.exit(0);
     } else throw new Error(`unknown flag ${a} (see --help)`);
   }

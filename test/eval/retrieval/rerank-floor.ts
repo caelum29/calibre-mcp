@@ -10,13 +10,13 @@
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { pathToFileURL } from "node:url";
 import { evaluateGate, type Thresholds } from "./gate.js";
 import { heldOutIds, type EvalReport, type Mode, type PerQueryRow } from "./harness.js";
 import { crossValidate, kFold } from "./folds.js";
 import { signTest } from "./stats.js";
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
+const HERE = import.meta.dirname;
 // Mirrors config.ts's default semanticFloor — the cosine half of confidence().
 const SEMANTIC_FLOOR = 0.78;
 

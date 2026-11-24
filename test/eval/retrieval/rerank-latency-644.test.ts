@@ -5,7 +5,6 @@
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import type { RerankCallOptions, Reranker } from "../../../src/semantic/reranker.js";
 import { rerankLatencyArms } from "./gate-guards.js";
@@ -13,7 +12,7 @@ import type { Thresholds } from "./gate.js";
 import { hashEmbedder } from "./hash-embedder.js";
 import { parseArgs, runPass } from "./run.js";
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
+const HERE = import.meta.dirname;
 const thresholds = JSON.parse(readFileSync(path.join(HERE, "thresholds.json"), "utf8")) as Thresholds;
 
 describe("pnpm eval rerank flags (#644)", () => {

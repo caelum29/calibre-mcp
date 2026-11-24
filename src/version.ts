@@ -4,7 +4,6 @@
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 function readVersion(): string {
   try {
@@ -24,7 +23,7 @@ export const VERSION: string = readVersion();
  * "unknown" if it can't be found — ping must never fail on this.
  */
 function readSdkVersion(): string {
-  let dir = fileURLToPath(new URL(".", import.meta.url));
+  let dir = import.meta.dirname;
   for (;;) {
     try {
       const raw = readFileSync(
