@@ -1,0 +1,14 @@
+src/domain/figures/markers.ts
+  h_e22d73abc85ef9 270
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "23ba1d34d128c0a90d689b34cc4ccca482b9f14b",
+  "prompts": {},
+  "humans": {
+    "h_e22d73abc85ef9": {
+      "author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
