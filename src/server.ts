@@ -160,7 +160,7 @@ export function buildServer(options: BuildServerOptions = {}): McpServer {
       // v2 takes Standard Schemas, not raw Zod shapes: wrap the descriptor's shapes here (the
       // seam) so tool modules keep their SDK-agnostic raw shapes.
       // A violation reaches the handler below as a verdict, not the SDK's bare text (#590).
-      inputSchema: tolerantInputSchema(t.inputSchema),
+      inputSchema: tolerantInputSchema(t.inputSchema, t.inputSteer),
       // limit-param tools may say a value fell back (#591)
       outputSchema: output && z.object(hasLimitParam(t.inputSchema) ? { ...output, ...PARAM_NOTES_OUTPUT } : output),
       annotations: sessionAnnotations(t, config.writeEnabled),

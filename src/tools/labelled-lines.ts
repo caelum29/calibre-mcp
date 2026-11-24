@@ -141,14 +141,15 @@ export const LABELLED_LINES: Readonly<Record<string, ToolLabelledLines>> = {
       },
     ],
   },
-  calibre_search: {
+  calibre_search: { lines: [CURSOR_LINE] },
+  // kind=annotations / kind=notes (#598): no cursor, one line per hit
+  calibre_search_annotations: {
     lines: [
-      CURSOR_LINE,
       {
         label: "annotation",
         match: "line",
         pattern: /^annotation (?<v>\d+) · \w+ · book \d+ · .+$/,
-        format: "`annotation <id> · <type> · book <bookId> · <format> · <title>` — mode=annotations, one per hit",
+        format: "`annotation <id> · <type> · book <bookId> · <format> · <title>` — kind=annotations, one per hit",
         field: "annotations[].id",
         compare: "equal",
         note: "the format and title after `book <bookId>` are Prose",
@@ -157,7 +158,7 @@ export const LABELLED_LINES: Readonly<Record<string, ToolLabelledLines>> = {
         label: "note",
         match: "line",
         pattern: /^note · [^:]+: (?<v>.+)$/,
-        format: "`note · <field>: <item>` — mode=notes, one per hit",
+        format: "`note · <field>: <item>` — kind=notes, one per hit",
         field: "notes[].item",
         compare: "equal",
       },
@@ -176,16 +177,6 @@ export const LABELLED_LINES: Readonly<Record<string, ToolLabelledLines>> = {
         format: "`Indexed ids: <id>, <id>.`",
         field: "bookDetails[].bookId",
         compare: "join",
-      },
-      {
-        // enableFts=true only (#447); its twin is structuredContent.fts (#519)
-        label: "FTS",
-        match: "line",
-        pattern: /^- FTS: (?<v>write_disabled|already enabled|enabled|failed) — .+$/,
-        format: "`- FTS: write_disabled|already enabled|enabled|failed — …` — only with `enableFts: true`",
-        field: "fts.status",
-        compare: "format",
-        note: "`already enabled` is `already_enabled`; the words after the dash are Prose",
       },
     ],
   },

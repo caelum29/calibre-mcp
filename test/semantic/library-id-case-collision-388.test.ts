@@ -108,7 +108,7 @@ describe("calibre_build_index refuses the later id (#388, #414)", () => {
       log,
     };
   }
-  const build = { ids: [1], library: "books", force: false, enableFts: false, keywordOnly: false, prune: false };
+  const build = { ids: [1], library: "books", force: false, keywordOnly: false, prune: false };
 
   it("should_return_isError_with_code_and_both_ids_in_text_and_structuredContent", async () => {
     const d = deps(ownedByBooks(), "books");

@@ -1,8 +1,6 @@
 // Gate-off wording for write steers (#519): with CALIBRE_MCP_ENABLE_WRITE off, a preview names
 // what applying needs, never a call that returns write_disabled or a tool that is hidden then.
 
-import { defaultHint } from "../domain/error-codes.js";
-
 /** The remedy clause, worded as the bundles steer from #513. */
 export const NEEDS_WRITES = "needs writes enabled (CALIBRE_MCP_ENABLE_WRITE)";
 
@@ -15,9 +13,6 @@ export const NEEDS_WRITES = "needs writes enabled (CALIBRE_MCP_ENABLE_WRITE)";
 export function writeStep(writeEnabled: boolean, gateOn: string, subject: string): string {
   return writeEnabled ? gateOn : `${subject} ${NEEDS_WRITES}.`;
 }
-
-/** The `detail` of an FTS outcome refused by the write gate: the gate hint plus the GUI route (#447). */
-export const FTS_WRITE_DISABLED_DETAIL = `${defaultHint("write_disabled") ?? ""}; or enable FTS in the Calibre GUI (the FT button left of the search bar)`;
 
 /** The end of an unknown-bundle error: what the session can do about it, by write gate (#435). */
 export function unknownBundleSteer(writeEnabled: boolean): string {

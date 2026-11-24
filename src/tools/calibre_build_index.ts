@@ -4,14 +4,12 @@
 // extracted (reusing calibre_get_content's cache), chunked, embedded, and persisted; a
 // deterministic "[title › authors]" prefix gives each chunk cheap document context.
 // Per-book failures are collected, not fatal. Listed in every session (it writes the local index
-// dir, not the library); only the optional enableFts part needs the library write gate (#447).
+// dir, not the library, so the library write gate does not apply).
 
 import { z } from "zod";
 import { BookId, CoercedBool, jsonArray } from "./coerce.js";
 import { defineTool } from "./define.js";
 import { describeError } from "../app/index-book.js";
-import { FTS_WRITE_DISABLED_DETAIL } from "./writes-remedy.js";
-import { enableFts, type FtsOutcome } from "../app/enable-fts.js";
 import { runIndexBuild, type BuildIndexDeps, type BuildSummary } from "../app/build-index.js";
 import type { LibId } from "../calibre/lib-id.js";
 import { INSTALL_TRANSFORMERS } from "./remediation.js";
@@ -42,14 +40,13 @@ export const buildIndexTool = defineTool({
   name: "calibre_build_index",
   title: "Build semantic index",
   description:
-    'Build the semantic index for specific books (select them with bookId, ids, or query; at least one is required; to index everything, pass a query that matches every book). A query selects ALL matching books (no 100-book cap); a call still working after ~45 s returns a "still running" status (not an error) while the build keeps committing in the background — re-run the same call to get its result; only one build runs per library at a time, and up-to-date books are skipped. Extracts, chunks, and embeds each book. Set keywordOnly=true (or when the embedding model is absent, it happens automatically) to build a keyword-only index that powers mode:"keyword" search with zero ML dependencies. Re-run after adding books; use force to re-index unchanged ones. Set enableFts=true to also turn on the Calibre full-text index for the library (needs writes enabled on this server; with writes off the semantic build still runs and the fts.status result field is write_disabled; already-enabled is a no-op; Calibre indexes in the background and the call does not wait). Set prune=true to also drop index entries for books that no longer exist in the library (removals/merges leave searchable orphans behind).',
+    'Build the semantic index for specific books (select them with bookId, ids, or query; at least one is required; to index everything, pass a query that matches every book). A query selects ALL matching books (no 100-book cap); a call still working after ~45 s returns a "still running" status (not an error) while the build keeps committing in the background — re-run the same call to get its result; only one build runs per library at a time, and up-to-date books are skipped. Extracts, chunks, and embeds each book. Set keywordOnly=true (or when the embedding model is absent, it happens automatically) to build a keyword-only index that powers mode:"keyword" search with zero ML dependencies. Re-run after adding books; use force to re-index unchanged ones. Set prune=true to also drop index entries for books that no longer exist in the library (removals/merges leave searchable orphans behind).',
   inputSchema: {
     bookId: BookId().optional(),
     ids: jsonArray(BookId()).optional(),
     query: z.string().max(512).optional(),
     library: z.string().optional(),
     force: CoercedBool().default(false),
-    enableFts: CoercedBool().default(false),
     keywordOnly: CoercedBool().default(false),
     prune: CoercedBool().default(false),
   },
@@ -70,14 +67,6 @@ export const buildIndexTool = defineTool({
     // #561: selected ids gone from the library (404 + absent from the prune listing) — not failures
     removedIds: z.array(z.number()).optional(),
     elapsedMs: z.number().optional(),
-    // enableFts=true only (#447): what happened to Calibre's own full-text indexing.
-    fts: z
-      .object({
-        status: z.enum(["write_disabled", "enabled", "already_enabled", "failed"]),
-        progress: z.string().optional(),
-        detail: z.string().optional(),
-      })
-      .optional(),
     // Soft-deadline status (#284): a build is still running in the background — a success, not
     // an error. runningBuild says whose: "this" = this call's selection; "other" = another
     // selector's build that blocks this one, and booksRequested/booksDone/booksIndexed/indexedIds
@@ -124,7 +113,6 @@ export const buildIndexTool = defineTool({
   // user's library, so the library write gate doesn't apply. localWrite marks that carve-out.
   localWrite: true,
   handler: async (args, deps: BuildIndexDeps, ctx) => {
-    const signal = ctx?.signal;
     if (args.bookId === undefined && !args.ids?.length && !args.query) {
       return toolError(
         "invalid_input",
@@ -146,18 +134,7 @@ export const buildIndexTool = defineTool({
     // One build per library at a time (one index file, one writer); past the soft deadline the
     // call returns a "still running" status and the build keeps committing in the background.
     const builds = deps.indexBuilds ?? sharedBuilds;
-    // The FTS part is independent of the build outcome (#447): started once here, it is attached
-    // to whatever result the call returns (final, still running, nothing to build, failed).
-    const ftsRun = args.enableFts
-      ? // never rejects: a cancel (or a throwing build) must not leave an unhandled rejection
-        enableFts({ calibre: deps.calibre, writeEnabled: deps.config.writeEnabled }, libraryId, signal).catch(
-          () => undefined,
-        )
-      : undefined;
-    const result = await runOrReport(builds, libraryId, args, deps, ctx);
-    const fts = await ftsRun;
-    // a cancelled call returns the build's result as is, without an FTS line
-    return fts && !signal?.aborted ? withFts(result, withRemedy(fts)) : result;
+    return await runOrReport(builds, libraryId, args, deps, ctx);
   },
 });
 
@@ -185,19 +162,6 @@ async function runOrReport(
   return outcome.earlierCallFinishedAgoMs === undefined
     ? outcome.result
     : fromEarlierCall(outcome.result, outcome.earlierCallFinishedAgoMs);
-}
-
-/** The write gate's remedy is worded here, not in the use case. */
-function withRemedy(f: FtsOutcome): FtsOutcome {
-  return f.status === "write_disabled" ? { ...f, detail: FTS_WRITE_DISABLED_DETAIL } : f;
-}
-
-/** Attach the FTS outcome to a result: one more text line plus `structuredContent.fts`. Non-mutating (results are cached). */
-function withFts(r: ToolResult, fts: FtsOutcome): ToolResult {
-  const [first, ...rest] = r.content;
-  const content =
-    first && first.type === "text" ? [{ ...first, text: `${first.text}\n- ${ftsLine(fts)}` }, ...rest] : r.content;
-  return { ...r, content, structuredContent: { ...r.structuredContent, fts } };
 }
 
 /** Args of one build call, as parsed by the input schema. */
@@ -236,21 +200,6 @@ async function runBuild(
   // a requested keyword-only build never warmed the model: probe it without loading (#559)
   const s = outcome.summary;
   return summaryResult({ ...s, embedderAvailable: s.embedderAvailable ?? embedderUsable(deps.embedder) });
-}
-
-/** The FTS line of the summary: always names the status so clients that drop structuredContent see it. */
-function ftsLine(f: FtsOutcome): string {
-  const progress = f.progress ? ` ${f.progress}.` : "";
-  switch (f.status) {
-    case "write_disabled":
-      return `FTS: write_disabled — Calibre full-text indexing was not enabled (the semantic build ran). Remedy: ${f.detail}.`;
-    case "already_enabled":
-      return `FTS: already enabled — nothing changed.${progress}`;
-    case "enabled":
-      return `FTS: enabled — Calibre indexes in the background.${progress}`;
-    case "failed":
-      return `FTS: failed — could not enable Calibre full-text indexing (${f.detail}). The semantic build is unaffected.`;
-  }
 }
 
 /** The finished build's text summary + structuredContent. */

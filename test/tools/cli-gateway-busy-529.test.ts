@@ -8,8 +8,8 @@ import { log } from "../../src/logging.js";
 import { CalibreCliError } from "../../src/domain/errors.js";
 import { errorCodeFor } from "../../src/domain/error-codes.js";
 import { parseCalibreVersion } from "../../src/domain/calibre-version.js";
-import { searchTool } from "../../src/tools/calibre_search.js";
-import type { SearchDeps } from "../../src/tools/calibre_search.js";
+import { searchAnnotationsTool } from "../../src/tools/calibre_search_annotations.js";
+import type { ToolDeps as SearchDeps } from "../../src/tools/deps.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
 
 const cli = (stderr: string) => new CalibreCliError(1, "calibredb command failed", stderr);
@@ -54,8 +54,8 @@ describe("a calibredb-routed read that hits a gateway 503 (#529)", () => {
       embedder: {} as ToolDeps["embedder"],
       log,
     } as unknown as SearchDeps;
-    const r = await searchTool.handler(
-      { scope: "library", limit: 20, query: "tcp", mode: "annotations" } as never,
+    const r = await searchAnnotationsTool.handler(
+      { scope: "library", limit: 20, query: "tcp", kind: "annotations" } as never,
       d as never,
     );
     expect(r.structuredContent).toMatchObject({ errorCode: "calibre_busy" });

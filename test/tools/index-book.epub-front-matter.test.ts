@@ -109,7 +109,7 @@ const opts = (over: Partial<PrepareOptions> = {}): PrepareOptions => ({
   tokenBudgeted: true,
   ...over,
 });
-const buildArgs = { bookId: 1, force: false, enableFts: false, keywordOnly: false, prune: false };
+const buildArgs = { bookId: 1, force: false, keywordOnly: false, prune: false };
 const flagAt = (store: SqliteIndexStore, offset: number) => store.chunkAt(LIB, 1, offset)?.matterKind === "front";
 
 describe("EPUB TOC front-matter boundary in the index (#269)", () => {

@@ -95,7 +95,7 @@ function progressCtx(sent: ProgressNotification[]) {
   };
 }
 
-const args = { bookId: 1, force: false, enableFts: false, keywordOnly: false, prune: false };
+const args = { bookId: 1, force: false, keywordOnly: false, prune: false };
 const count = (sent: ProgressNotification[], re: RegExp) => sent.filter((p) => re.test(p.message ?? "")).length;
 
 describe("calibre_build_index phase heartbeat (#245)", () => {

@@ -1,7 +1,7 @@
-// calibre_search mode=annotations / mode=notes (#500, D-029): read the highlights, bookmarks and
-// item notes Calibre 9.18 exposes through calibredb. Read-only; behind the Calibre version gate.
-// Annotations respect Bundles and Exclusion markers (calibredb --search); notes attach to items
-// (authors, series, tags…), not books, so filters do not apply to them.
+// calibre_search_annotations kind=annotations / kind=notes (#500, D-029, #598): read the highlights,
+// bookmarks and item notes Calibre 9.18 exposes through calibredb. Read-only; behind the Calibre
+// version gate. Annotations respect Bundles and Exclusion markers (calibredb --search); notes attach
+// to items (authors, series, tags…), not books, so filters do not apply to them.
 
 import { filterErrorText } from "./writes-remedy.js";
 import { honestyLines, resolveFilter, scopeExpression } from "../app/bundles.js";
@@ -25,16 +25,14 @@ import type { BaseDeps } from "./deps.js";
 import { fence, toolError, toolErrorFrom, toolText } from "./result.js";
 import type { ToolResult } from "./types.js";
 
-/** The calibre_search args these modes read. */
+/** The calibre_search_annotations args. */
 export interface AnnotationNoteArgs {
   query: string;
-  mode: "annotations" | "notes";
+  kind: "annotations" | "notes";
   scope: "library" | "book";
   bookId?: number | string;
   library?: string;
-  sort?: string;
   limit: number;
-  cursor?: string;
   countOnly?: boolean;
   filter?: string;
   include_excluded?: boolean;
@@ -46,7 +44,7 @@ const MIN_CALIBRE = "9.18";
 // Decided by Artem (#500): with scope=book, `query: "*"` lists every annotation of the book
 const WHOLE_BOOK = "*";
 
-// Decided by Artem (#500): in mode=notes, `<notes field>:<item>` shows that item's note.
+// Decided by Artem (#500): in kind=notes, `<notes field>:<item>` shows that item's note.
 // Notes attach to these fields (and custom ones, `#name`); an item may be quoted.
 const NOTE_ITEM = /^(authors|series|tags|publisher|#\w+):\s*(?:"([^"]+)"|(.+))$/s;
 
@@ -58,7 +56,7 @@ function noteItem(query: string): { field: string; item: string } | undefined {
   return item ? { field: m[1]!, item } : undefined;
 }
 
-/** Run mode=annotations or mode=notes; the version gate runs before any calibredb spawn. */
+/** Run kind=annotations or kind=notes; the version gate runs before any calibredb spawn. */
 export async function searchAnnotationsOrNotes(
   args: AnnotationNoteArgs,
   deps: BaseDeps,
@@ -67,14 +65,8 @@ export async function searchAnnotationsOrNotes(
 ): Promise<ToolResult> {
   const tooOld = await calibreTooOld(deps.calibre, MIN_CALIBRE);
   if (tooOld) return tooOld;
-  // calibredb returns the whole hit list at once: there is no page to walk or re-sort
-  if (args.cursor !== undefined || args.sort !== undefined) {
-    return toolError(
-      "invalid_input",
-      `cursor and sort apply to mode=meta/fts only — mode=${args.mode} returns Calibre's relevance order, capped by limit.`,
-    );
-  }
-  return args.mode === "notes" ? notes(args, deps, deadline, signal) : annotations(args, deps, deadline, signal);
+  // calibredb returns the whole hit list at once: no cursor or sort exist on this tool
+  return args.kind === "notes" ? notes(args, deps, deadline, signal) : annotations(args, deps, deadline, signal);
 }
 
 async function annotations(
@@ -199,7 +191,7 @@ async function notes(
   if (args.filter !== undefined || args.scope === "book") {
     return toolError(
       "invalid_input",
-      "mode=notes searches notes attached to authors, series, tags and other items — filter and scope=book apply to books, not notes.",
+      "kind=notes searches notes attached to authors, series, tags and other items — filter and scope=book apply to books, not notes.",
     );
   }
   const libId = await deps.content.resolveLibraryId(args.library);
@@ -275,7 +267,7 @@ async function showNote(
     if (miss === undefined) throw err;
     return toolError(
       "not_found",
-      `${miss}. Search notes with a plain word (mode: "notes") to see which items have one.`,
+      `${miss}. Search notes with a plain word (kind: "notes") to see which items have one.`,
     );
   }
   const hit: NoteHit = { field: one.field, item: one.item, text: parseNoteShow(stdout) };

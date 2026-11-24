@@ -1,4 +1,4 @@
-// calibre_search mode=annotations / mode=notes (#500, D-029): Calibre 9.18+ highlights, bookmarks
+// calibre_search_annotations kind=annotations / kind=notes (#500, D-029): Calibre 9.18+ highlights, bookmarks
 // and item notes, read through calibredb. Fixtures are real captures (docs/dev/local-groundtruth.md).
 
 import { readFileSync } from "node:fs";
@@ -8,8 +8,8 @@ import { loadConfig } from "../../src/config.js";
 import { invalidateBundleCache } from "../../src/app/bundles.js";
 import { log } from "../../src/logging.js";
 import { parseCalibreVersion, type CalibreVersionInfo } from "../../src/domain/calibre-version.js";
-import { searchTool } from "../../src/tools/calibre_search.js";
-import type { SearchDeps } from "../../src/tools/calibre_search.js";
+import { searchAnnotationsTool } from "../../src/tools/calibre_search_annotations.js";
+import type { ToolDeps as SearchDeps } from "../../src/tools/deps.js";
 import type { ToolDeps } from "../../src/tools/deps.js";
 import type { ToolResult } from "../../src/tools/types.js";
 
@@ -63,24 +63,24 @@ function deps(
 const textOf = (r: ToolResult) => r.content.map((b) => ("text" in b ? b.text : "")).join("\n");
 const sc = (r: ToolResult) => r.structuredContent as Record<string, unknown>;
 const run = (args: Record<string, unknown>, d: SearchDeps) =>
-  searchTool.handler({ scope: "library", limit: 20, ...args } as never, d as never);
+  searchAnnotationsTool.handler({ scope: "library", limit: 20, ...args } as never, d as never);
 
-describe("calibre_search mode=annotations (#500)", () => {
+describe("calibre_search_annotations kind=annotations (#500)", () => {
   it("should_run_calibredb_annotations_search_as_json_on_the_resolved_library_id", async () => {
     const f = deps(() => raw("annotations-search-commit"));
-    await run({ query: "commit", mode: "annotations", include_excluded: true }, f.d);
+    await run({ query: "commit", kind: "annotations", include_excluded: true }, f.d);
     expect(f.searchCalls()).toEqual([
       { args: ["annotations", "search", "commit", "--format", "json"], library: "Programming_Books" },
     ]);
   });
 
   it("should_keep_calibres_relevance_order", async () => {
-    const r = await run({ query: "commit", mode: "annotations" }, deps(() => raw("annotations-search-commit")).d);
+    const r = await run({ query: "commit", kind: "annotations" }, deps(() => raw("annotations-search-commit")).d);
     expect((sc(r).annotations as Array<{ id: number }>).map((a) => a.id)).toEqual([23, 16]);
   });
 
   it("should_map_a_highlight_with_its_note_chapter_and_book", async () => {
-    const r = await run({ query: "commit", mode: "annotations" }, deps(() => raw("annotations-search-commit")).d);
+    const r = await run({ query: "commit", kind: "annotations" }, deps(() => raw("annotations-search-commit")).d);
     expect((sc(r).annotations as unknown[])[0]).toEqual({
       id: 23,
       bookId: 644,
@@ -97,7 +97,7 @@ describe("calibre_search mode=annotations (#500)", () => {
 
   it("should_show_every_hit_in_the_text_channel_in_order", async () => {
     const t = textOf(
-      await run({ query: "commit", mode: "annotations" }, deps(() => raw("annotations-search-commit")).d),
+      await run({ query: "commit", kind: "annotations" }, deps(() => raw("annotations-search-commit")).d),
     );
     expect(t).toContain('Found 2 annotations matching "commit"');
     expect(t.indexOf("annotation 23 ·")).toBeGreaterThan(-1);
@@ -107,7 +107,7 @@ describe("calibre_search mode=annotations (#500)", () => {
   });
 
   it("should_map_a_bookmark_with_its_title_as_text", async () => {
-    const r = await run({ query: "outbox", mode: "annotations" }, deps(() => raw("annotations-search-bookmark")).d);
+    const r = await run({ query: "outbox", kind: "annotations" }, deps(() => raw("annotations-search-bookmark")).d);
     expect(sc(r).annotations).toEqual([
       {
         id: 17,
@@ -123,7 +123,7 @@ describe("calibre_search mode=annotations (#500)", () => {
   });
 
   it("should_report_zero_hits_without_an_error", async () => {
-    const r = await run({ query: "zzzz", mode: "annotations" }, deps(() => raw("annotations-search-nomatch")).d);
+    const r = await run({ query: "zzzz", kind: "annotations" }, deps(() => raw("annotations-search-nomatch")).d);
     expect({ isError: r.isError === true, total: sc(r).total, annotations: sc(r).annotations }).toEqual({
       isError: false,
       total: 0,
@@ -134,7 +134,7 @@ describe("calibre_search mode=annotations (#500)", () => {
 
   it("should_cap_the_hits_at_limit_and_keep_the_total", async () => {
     const r = await run(
-      { query: "commit", mode: "annotations", limit: 1 },
+      { query: "commit", kind: "annotations", limit: 1 },
       deps(() => raw("annotations-search-commit")).d,
     );
     expect({ total: sc(r).total, ids: (sc(r).annotations as Array<{ id: number }>).map((a) => a.id) }).toEqual({
@@ -145,7 +145,7 @@ describe("calibre_search mode=annotations (#500)", () => {
 
   it("should_answer_countOnly_with_the_count", async () => {
     const r = await run(
-      { query: "commit", mode: "annotations", countOnly: true },
+      { query: "commit", kind: "annotations", countOnly: true },
       deps(() => raw("annotations-search-commit")).d,
     );
     expect({ text: textOf(r), total: sc(r).total }).toEqual({
@@ -156,7 +156,7 @@ describe("calibre_search mode=annotations (#500)", () => {
 
   it("should_restrict_to_the_bundle_and_subtract_markers_via_search", async () => {
     const f = deps(() => raw("annotations-search-scoped"));
-    const r = await run({ query: "commit", mode: "annotations", filter: "Rust" }, f.d);
+    const r = await run({ query: "commit", kind: "annotations", filter: "Rust" }, f.d);
     expect(f.searchCalls()[0]?.args).toEqual([
       "annotations",
       "search",
@@ -174,20 +174,20 @@ describe("calibre_search mode=annotations (#500)", () => {
   it("should_report_how_many_books_the_markers_removed_from_the_filter_in_both_channels", async () => {
     // the fake content.search answers total 7 for every query, incl. the removed-books count
     const f = deps(() => raw("annotations-search-scoped"));
-    const r = await run({ query: "commit", mode: "annotations", filter: "Rust" }, f.d);
+    const r = await run({ query: "commit", kind: "annotations", filter: "Rust" }, f.d);
     expect(textOf(r)).toContain("exclusions applied: [-hidden] removed 7 books from the filter");
     expect(sc(r)).toMatchObject({ exclusionsApplied: ["-hidden"], exclusionsRemoved: 7 });
   });
 
   it("should_apply_exclusion_markers_without_a_filter", async () => {
     const f = deps(() => raw("annotations-search-commit"));
-    await run({ query: "commit", mode: "annotations" }, f.d);
+    await run({ query: "commit", kind: "annotations" }, f.d);
     expect(f.searchCalls()[0]?.args.slice(-2)).toEqual(["--search", 'not search:"=-hidden"']);
   });
 
   it("should_search_one_book_with_scope_book", async () => {
     const f = deps(() => raw("annotations-search-scoped"));
-    const r = await run({ query: "commit", mode: "annotations", scope: "book", bookId: 644 }, f.d);
+    const r = await run({ query: "commit", kind: "annotations", scope: "book", bookId: 644 }, f.d);
     expect(f.searchCalls()[0]?.args).toEqual([
       "annotations",
       "search",
@@ -199,25 +199,17 @@ describe("calibre_search mode=annotations (#500)", () => {
     ]);
     expect((sc(r).annotations as Array<{ id: number }>).map((a) => a.id)).toEqual([23]);
   });
-
-  it("should_refuse_a_cursor", async () => {
-    const r = await run(
-      { query: "commit", mode: "annotations", cursor: "abc" },
-      deps(() => raw("annotations-search-commit")).d,
-    );
-    expect(sc(r)).toMatchObject({ errorCode: "invalid_input" });
-  });
 });
 
-describe("calibre_search mode=notes (#500)", () => {
+describe("calibre_search_annotations kind=notes (#500)", () => {
   it("should_run_calibredb_notes_search_on_the_resolved_library_id", async () => {
     const f = deps(() => raw("notes-search-outbox"));
-    await run({ query: "outbox", mode: "notes" }, f.d);
+    await run({ query: "outbox", kind: "notes" }, f.d);
     expect(f.calls).toEqual([{ args: ["notes", "search", "outbox"], library: "Programming_Books" }]);
   });
 
   it("should_return_field_item_and_snippet_per_hit", async () => {
-    const r = await run({ query: "outbox", mode: "notes" }, deps(() => raw("notes-search-outbox")).d);
+    const r = await run({ query: "outbox", kind: "notes" }, deps(() => raw("notes-search-outbox")).d);
     expect(sc(r).notes).toEqual([
       {
         field: "authors",
@@ -229,19 +221,19 @@ describe("calibre_search mode=notes (#500)", () => {
   });
 
   it("should_show_the_hit_in_the_text_channel", async () => {
-    const t = textOf(await run({ query: "outbox", mode: "notes" }, deps(() => raw("notes-search-outbox")).d));
+    const t = textOf(await run({ query: "outbox", kind: "notes" }, deps(() => raw("notes-search-outbox")).d));
     expect(t).toContain("note · authors: Adam Bellemare");
     expect(t).toContain("the transactional outbox");
   });
 
   it("should_refuse_a_filter_because_notes_attach_to_items_not_books", async () => {
-    const r = await run({ query: "outbox", mode: "notes", filter: "Rust" }, deps(() => raw("notes-search-outbox")).d);
+    const r = await run({ query: "outbox", kind: "notes", filter: "Rust" }, deps(() => raw("notes-search-outbox")).d);
     expect(sc(r)).toMatchObject({ errorCode: "invalid_input" });
   });
 
   it("should_not_run_the_exclusion_sweep", async () => {
     const f = deps(() => raw("notes-search-outbox"));
-    await run({ query: "outbox", mode: "notes" }, f.d);
+    await run({ query: "outbox", kind: "notes" }, f.d);
     expect(f.calls.map((c) => c.args[0])).toEqual(["notes"]);
   });
 });
@@ -249,27 +241,27 @@ describe("calibre_search mode=notes (#500)", () => {
 describe("Calibre version gate on annotations and notes (#500)", () => {
   const old = parseCalibreVersion("calibredb (calibre 9.11)");
 
-  it.each([["annotations"], ["notes"]])("should_refuse_mode_%s_on_calibre_9_11_before_any_spawn", async (mode) => {
+  it.each([["annotations"], ["notes"]])("should_refuse_kind_%s_on_calibre_9_11_before_any_spawn", async (kind) => {
     const f = deps(() => "", old);
-    const r = await run({ query: "commit", mode }, f.d);
+    const r = await run({ query: "commit", kind }, f.d);
     expect({ code: sc(r).errorCode, calls: f.calls.length }).toEqual({ code: "calibre_too_old", calls: 0 });
     expect(textOf(r)).toContain("requires Calibre 9.18+ (found 9.11)");
   });
 
   it("should_run_when_the_version_is_unknown", async () => {
     const r = await run(
-      { query: "commit", mode: "annotations" },
+      { query: "commit", kind: "annotations" },
       deps(() => raw("annotations-search-commit"), "unknown").d,
     );
     expect(r.isError).not.toBe(true);
   });
 });
 
-describe("calibre_search mode=notes with a custom column field (#519)", () => {
+describe("calibre_search_annotations kind=notes with a custom column field (#519)", () => {
   it("should_show_the_note_of_a_custom_column_item_with_the_field_and_item_as_written", async () => {
     // <field>:<item> shows that item's note (decided in #500); `#name` is a custom column
     const f = deps(() => raw("notes-show-bellemare"));
-    await run({ query: "#mycol:value", mode: "notes" }, f.d);
+    await run({ query: "#mycol:value", kind: "notes" }, f.d);
     expect(f.calls).toEqual([{ args: ["notes", "show", "#mycol", "value"], library: "Programming_Books" }]);
   });
 });

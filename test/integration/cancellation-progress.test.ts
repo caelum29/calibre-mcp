@@ -181,11 +181,9 @@ describe.runIf(posix)("cancellation", () => {
     };
     const controller = new AbortController();
     try {
-      const pending = buildIndexTool.handler(
-        { query: "all", force: true, keywordOnly: true, enableFts: false, prune: false },
-        deps,
-        { signal: controller.signal },
-      );
+      const pending = buildIndexTool.handler({ query: "all", force: true, keywordOnly: true, prune: false }, deps, {
+        signal: controller.signal,
+      });
       expect(await waitFor(() => existsSync(pidFile) && readFileSync(pidFile, "utf8") !== "")).toBe(true);
       const pid = Number(readFileSync(pidFile, "utf8"));
       controller.abort();

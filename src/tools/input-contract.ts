@@ -7,12 +7,14 @@
 import { z } from "zod";
 import { limitNote, limitParamBounds } from "./coerce.js";
 import { toolError } from "./result.js";
-import type { ToolResult } from "./types.js";
+import type { InputSteer, InputSteerFn, ToolResult } from "./types.js";
 
 /** What validation found about one call's arguments, beyond the parsed values. */
 export interface InputVerdict {
   /** The schema violation, as `path: message` pairs; the handler must not run. */
   invalid?: string;
+  /** The tool's own steer for this refused call (#598); replaces the generic text. */
+  steer?: InputSteer;
   /** One line per limit param that did not get the value the caller sent (#591). */
   paramNotes?: string[];
 }
@@ -30,8 +32,9 @@ export function inputVerdict(args: unknown): InputVerdict | undefined {
  * The tool's input schema with a failure path that never fails: an invalid call validates to an
  * empty args object carrying `invalid`, so {@link refuseInvalidInput} can answer it in-contract.
  * `~standard.jsonSchema` is the Zod object's own, so tools/list advertises the same schema.
+ * `steer` lets a tool word the refusal of a value it used to accept (#598).
  */
-export function tolerantInputSchema(shape: z.ZodRawShape) {
+export function tolerantInputSchema(shape: z.ZodRawShape, steer?: InputSteerFn) {
   const object = z.object(shape);
   const std = object["~standard"];
   const validate: typeof std.validate = (raw) => {
@@ -41,7 +44,8 @@ export function tolerantInputSchema(shape: z.ZodRawShape) {
         .map((i) => `${i.path.length ? i.path.join(".") : "arguments"}: ${i.message}`)
         .join("; ");
       const value = {} as z.output<typeof object>;
-      VERDICTS.set(value, { invalid });
+      const own = steer?.(raw);
+      VERDICTS.set(value, own ? { invalid, steer: own } : { invalid });
       return { value };
     }
     const paramNotes = limitNotes(shape, raw, parsed.data);
@@ -80,6 +84,7 @@ export function refuseInvalidInput(toolName: string, args: unknown): ToolResult 
     );
   }
   if (verdict.invalid === undefined) return undefined;
+  if (verdict.steer) return toolError("invalid_input", verdict.steer.message, { hint: verdict.steer.hint });
   return toolError("invalid_input", `Invalid arguments for ${toolName} — ${verdict.invalid}`, {
     hint: INVALID_INPUT_HINT,
   });

@@ -6,6 +6,7 @@ import { invalidateBundleCache } from "../../src/app/bundles.js";
 import { log } from "../../src/logging.js";
 import { parseCalibreVersion } from "../../src/domain/calibre-version.js";
 import { searchTool } from "../../src/tools/calibre_search.js";
+import { searchAnnotationsTool } from "../../src/tools/calibre_search_annotations.js";
 import { semanticSearchTool } from "../../src/tools/calibre_semantic_search.js";
 import { bulkUpdateTool } from "../../src/tools/calibre_bulk_update.js";
 import { qualityReportTool } from "../../src/tools/calibre_quality_report.js";
@@ -42,7 +43,11 @@ const text = (r: { content: Array<{ type: string; text?: string }> }) => r.conte
 
 const TOOLS: Array<[string, AnyToolDescriptor, Record<string, unknown>]> = [
   ["calibre_search meta", searchTool as never, { query: "x", mode: "meta", scope: "library", limit: 5 }],
-  ["calibre_search annotations", searchTool as never, { query: "x", mode: "annotations", scope: "library", limit: 5 }],
+  [
+    "calibre_search_annotations",
+    searchAnnotationsTool as never,
+    { query: "x", kind: "annotations", scope: "library", limit: 5 },
+  ],
   ["calibre_semantic_search", semanticSearchTool as never, { query: "x", scope: "library", limit: 5 }],
   ["calibre_bulk_update", bulkUpdateTool as never, { query: "x", changes: { title: "t" } }],
   ["calibre_quality_report", qualityReportTool as never, { limit: 5 }],

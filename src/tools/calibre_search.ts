@@ -42,12 +42,11 @@ import type { ContentBlock, ToolResult } from "./types.js";
 import type { BaseDeps, DepsWithIndex } from "./deps.js";
 import type { IndexFreshness } from "../semantic/store/index.js";
 import { errorCodeFor } from "../domain/error-codes.js";
-import { searchAnnotationsOrNotes } from "./search-annotations.js";
 import { LibraryIdCollisionError } from "../domain/library-id-collision.js";
 
 type SearchArgs = {
   query: string;
-  mode: "meta" | "fts" | "annotations" | "notes";
+  mode: "meta" | "fts";
   scope: "library" | "book";
   bookId?: number | string;
   library?: string;
@@ -464,14 +463,29 @@ function searchErrorSteer(err: unknown, deadline: Deadline, query: string): Stee
   return undefined;
 }
 
+/**
+ * #598 (ADR-0035): mode=annotations / mode=notes moved to calibre_search_annotations. No alias —
+ * the refused call says where it went and which kind to pass. Lives on the input side so the
+ * advertised mode enum stays exactly meta|fts.
+ */
+function legacyModeSteer(raw: unknown): { message: string; hint: string } | undefined {
+  const mode = typeof raw === "object" && raw !== null ? (raw as { mode?: unknown }).mode : undefined;
+  if (mode !== "annotations" && mode !== "notes") return undefined;
+  const hint = `call calibre_search_annotations with kind: "${mode}" and the same query (scope, bookId, library, filter and limit carry over; cursor and sort do not exist there)`;
+  return {
+    message: `calibre_search no longer has mode: "${mode}" — highlights, bookmarks and item notes moved to calibre_search_annotations (kind: "${mode}").`,
+    hint,
+  };
+}
+
 export const searchTool = defineTool({
   name: "calibre_search",
   title: "Search books",
   description:
-    'Find books by `query`: exact title, author, ISBN, tag, or Calibre query syntax (mode=meta), or full text (mode=fts). mode=fts words match independently and stemmed (events matches event); wrap a phrase in double quotes for an exact match ("event sourcing"); supports AND/OR/NOT between terms (uppercase, e.g. a NOT b). scope=book returns short keyword snippets from inside one book; first hits often land in TOC/front matter — for definitional or topic questions within a book prefer calibre_semantic_search scope=book (ranked passages with char offsets). Use calibre_semantic_search for meaning/topic queries. For "how many" questions use countOnly=true (returns only the count). filter accepts a bundle name to scope the search (list bundles via calibre_manage_bundles). Calibre 9.18+: mode=annotations searches highlights, their notes and bookmark titles (filter applies; scope=book + bookId searches one book, query "*" lists all its annotations); mode=notes searches notes attached to authors, series, tags, publisher (filters do not apply), and query "authors:Name" (or series:/tags:/publisher:/#custom:, item may be quoted) shows the whole note of that item.',
+    'Find books by `query`: exact title, author, ISBN, tag, or Calibre query syntax (mode=meta), or full text (mode=fts). mode=fts words match independently and stemmed (events matches event); wrap a phrase in double quotes for an exact match ("event sourcing"); supports AND/OR/NOT between terms (uppercase, e.g. a NOT b). scope=book returns short keyword snippets from inside one book; first hits often land in TOC/front matter — for definitional or topic questions within a book prefer calibre_semantic_search scope=book (ranked passages with char offsets). Use calibre_semantic_search for meaning/topic queries. For "how many" questions use countOnly=true (returns only the count). filter accepts a bundle name to scope the search (list bundles via calibre_manage_bundles). Highlights, bookmarks and item notes: calibre_search_annotations.',
   inputSchema: {
     query: z.string().max(512),
-    mode: z.enum(["meta", "fts", "annotations", "notes"]).optional().default("meta"),
+    mode: z.enum(["meta", "fts"]).optional().default("meta"),
     scope: z.enum(["library", "book"]).optional().default("library"),
     bookId: BookId().optional(),
     library: z.string().optional(),
@@ -496,29 +510,6 @@ export const searchTool = defineTool({
     filter: z.string().optional(),
     exclusionsApplied: z.array(z.string()).optional(),
     exclusionsRemoved: z.number().optional(),
-    // mode=annotations (#500): highlights and bookmarks, in Calibre's relevance order
-    annotations: z
-      .array(
-        z.object({
-          id: z.number().optional(),
-          bookId: z.number(),
-          title: z.string().optional(),
-          format: z.string(),
-          type: z.string(),
-          text: z.string(),
-          note: z.string().optional(),
-          chapter: z.string().optional(),
-          timestamp: z.string().optional(),
-          user: z.string(),
-        }),
-      )
-      .optional(),
-    // mode=notes (#500): the item each note is attached to, plus Calibre's snippet
-    notes: z
-      .array(
-        z.object({ field: z.string(), item: z.string(), snippet: z.string().optional(), text: z.string().optional() }),
-      )
-      .optional(),
     // FTS snippets mirrored for structured-only clients (#199), fenced exactly like the text
     // blocks; bookId is set on library-scope hits (one entry per book with snippets).
     hits: z.array(z.object({ bookId: z.number().optional(), snippet: z.string() })).optional(),
@@ -528,20 +519,17 @@ export const searchTool = defineTool({
     indexing: z.object({ left: z.number(), total: z.number() }).optional(),
   },
   annotations: { readOnlyHint: true, openWorldHint: true },
+  inputSteer: legacyModeSteer,
   handler: async (args, deps: SearchDeps, ctx) => {
     // the schema keeps a plain string (#590): an empty query gets the error contract, not the SDK's text
     if (args.query.trim() === "") {
       return toolError("invalid_input", "query is empty.", {
-        hint: 'pass a non-empty query (mode=annotations with scope=book: "*" lists all annotations)',
+        hint: "pass a non-empty query",
       });
     }
     // One budget for every Calibre sub-call below (bundle listing, id resolution, FTS, snippets).
     const deadline = new Deadline();
     try {
-      // Calibre 9.18+ annotations / item notes (#500): own module, own version gate
-      if (args.mode === "annotations" || args.mode === "notes") {
-        return await searchAnnotationsOrNotes({ ...args, mode: args.mode }, deps, deadline, ctx?.signal);
-      }
       const fts = deps.fts;
       // scope=book → full-text within one book (metadata search on a single record is moot).
       // Bundles scope LIBRARY discovery; a named book is already the narrowest scope.

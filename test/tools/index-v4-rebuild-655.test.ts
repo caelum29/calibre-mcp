@@ -68,10 +68,7 @@ describe("version-4 index: the steer names the delete step (#655)", () => {
       index: new SqliteIndexStore(cfg),
       log,
     };
-    const r = await buildIndexTool.handler(
-      { bookId: 1, force: true, enableFts: false, keywordOnly: true, prune: false },
-      deps,
-    );
+    const r = await buildIndexTool.handler({ bookId: 1, force: true, keywordOnly: true, prune: false }, deps);
     // the build reports the refusal as the book's failure; its wording must lead out of the dead end
     for (const channel of [text(r), JSON.stringify(r.structuredContent)]) {
       expect(channel).toContain(`Delete ${file}`);

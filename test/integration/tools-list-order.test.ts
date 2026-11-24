@@ -12,6 +12,7 @@ import { buildServer } from "../../src/server.js";
 const PINNED_ORDER = [
   "calibre_list_libraries",
   "calibre_search",
+  "calibre_search_annotations",
   "calibre_get_book",
   "calibre_get_content",
   "calibre_get_figures",
