@@ -1,0 +1,22 @@
+test/integration/search-old-modes-steer-598.test.ts
+  s_f17c55b783a487::t_14cdb3859846c0 1-80
+  s_f17c55b783a487::t_dbd96851653fbe 81-83
+test/tools/search-annotations-tool-598.test.ts
+  s_f17c55b783a487::t_14cdb3859846c0 1-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ec54fb40200129505a3f6a2bc5f1cd486ca6c69a",
+  "prompts": {},
+  "sessions": {
+    "s_f17c55b783a487": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd568a66-62d4-4115-b3fe-06f84ba644ae",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
