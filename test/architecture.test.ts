@@ -3,7 +3,15 @@
 // oxlint.config.ts as a `no-restricted-globals` override on src/tools/**.)
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, relative } from "node:path";
-import ts from "typescript";
+import {
+  parseSync,
+  Visitor,
+  type Comment,
+  type Directive,
+  type Expression,
+  type Program,
+  type Statement,
+} from "oxc-parser";
 import { describe, expect, it } from "vitest";
 
 const ROOT = join(import.meta.dirname, "..");
@@ -260,18 +268,30 @@ const ADAPTER_TREES = ["src/calibre/", "src/enrich/", "src/ui/"];
 /** Mixed tree (ranking/pure logic beside the store and model adapters): a module is an adapter only if it shows it. */
 const MIXED_TREES = ["src/semantic/"];
 
-function parseTs(source: string): ts.SourceFile {
-  return ts.createSourceFile("x.ts", source, ts.ScriptTarget.ES2022, true);
+interface Parsed {
+  program: Program;
+  comments: Comment[];
 }
+
+/** Parses TS with oxc (ESTree / TS-ESTree shape); a syntax error fails loudly instead of hiding imports. */
+function parseTs(source: string, path = "x.ts"): Parsed {
+  const r = parseSync(path, source, { lang: "ts", sourceType: "module" });
+  if (r.errors.length > 0) throw new Error(`${path}: ${r.errors.map((e) => e.message).join("; ")}`);
+  return { program: r.program, comments: r.comments };
+}
+
+/** Source text of an AST node (oxc spans are UTF-16 offsets, like JS string indices). */
+const textOf = (source: string, n: { start: number; end: number }): string => source.slice(n.start, n.end);
 
 /** Exported non-Error classes: ContentServerClient, SqliteIndexStore, TransformersEmbedder, … */
 function exportsAdapterClass(source: string): boolean {
-  return parseTs(source).statements.some(
-    (st) =>
-      ts.isClassDeclaration(st) &&
-      st.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword) === true &&
-      !st.heritageClauses?.some((h) => h.types.some((t) => t.expression.getText().endsWith("Error"))),
-  );
+  return parseTs(source).program.body.some((st) => {
+    if (st.type !== "ExportNamedDeclaration" && st.type !== "ExportDefaultDeclaration") return false;
+    const cls = st.declaration;
+    if (cls?.type !== "ClassDeclaration") return false;
+    const heritage = [cls.superClass, ...(cls.implements ?? []).map((i) => i.expression)];
+    return !heritage.some((h) => h !== null && textOf(source, h).endsWith("Error"));
+  });
 }
 
 /** Node modules that mean real I/O: filesystem, subprocess, SQLite, network. */
@@ -283,11 +303,11 @@ function doesIo(source: string): boolean {
   // a module typed against the SQLite handle (store/shared.ts) is store code even if it only names the type
   if (valueImports(source, true).some((spec) => /^(?:node:)?sqlite$/.test(spec))) return true;
   let found = false;
-  const visit = (n: ts.Node): void => {
-    if (ts.isCallExpression(n) && ts.isIdentifier(n.expression) && n.expression.text === "fetch") found = true;
-    if (!found) ts.forEachChild(n, visit);
-  };
-  visit(parseTs(source));
+  new Visitor({
+    CallExpression(n) {
+      if (n.callee.type === "Identifier" && n.callee.name === "fetch") found = true;
+    },
+  }).visit(parseTs(source).program);
   return found;
 }
 
@@ -315,32 +335,44 @@ function adapterModules(files: SourceFile[]): Set<string> {
  */
 function valueImports(source: string, includeTypes = false): string[] {
   const out: string[] = [];
-  const isLiteral = (n: ts.Node | undefined): n is ts.StringLiteralLike => n !== undefined && ts.isStringLiteralLike(n);
-  const visit = (n: ts.Node): void => {
-    if (ts.isImportDeclaration(n) && isLiteral(n.moduleSpecifier)) {
-      // verbatimModuleSyntax keeps `import { type A } from "m"` as a side-effect `import {} from "m"`,
-      // so only `import type …` is erased
-      const typeOnly = !includeTypes && n.importClause?.isTypeOnly === true;
-      if (!typeOnly) out.push(n.moduleSpecifier.text);
-    } else if (ts.isExportDeclaration(n) && isLiteral(n.moduleSpecifier)) {
-      const typeOnly = !includeTypes && n.isTypeOnly; // `export { type A } from "m"` stays a runtime re-export
-      if (!typeOnly) out.push(n.moduleSpecifier.text);
-    } else if (
-      ts.isImportEqualsDeclaration(n) &&
-      ts.isExternalModuleReference(n.moduleReference) &&
-      isLiteral(n.moduleReference.expression)
-    ) {
-      if (!n.isTypeOnly) out.push(n.moduleReference.expression.text);
-    } else if (ts.isCallExpression(n) && isLiteral(n.arguments[0])) {
-      const callee = n.expression;
-      if (callee.kind === ts.SyntaxKind.ImportKeyword || (ts.isIdentifier(callee) && callee.text === "require")) {
-        out.push(n.arguments[0].text);
+  const keep = (kind: "type" | "value" | undefined): boolean => includeTypes || kind !== "type";
+  new Visitor({
+    // verbatimModuleSyntax keeps `import { type A } from "m"` as a side-effect `import {} from "m"`,
+    // so only `import type …` (importKind "type") is erased
+    ImportDeclaration(n) {
+      if (keep(n.importKind)) out.push(n.source.value);
+    },
+    // `export { type A } from "m"` stays a runtime re-export; only `export type … from` is erased
+    ExportNamedDeclaration(n) {
+      if (n.source && keep(n.exportKind)) out.push(n.source.value);
+    },
+    ExportAllDeclaration(n) {
+      if (keep(n.exportKind)) out.push(n.source.value);
+    },
+    TSImportEqualsDeclaration(n) {
+      // `import type x = require("m")` stays skipped even with includeTypes, as before the oxc port
+      if (n.moduleReference.type === "TSExternalModuleReference" && n.importKind !== "type") {
+        out.push(n.moduleReference.expression.value);
       }
-    }
-    ts.forEachChild(n, visit);
-  };
-  visit(parseTs(source));
+    },
+    ImportExpression(n) {
+      const spec = stringLiteralText(n.source);
+      if (spec !== undefined) out.push(spec);
+    },
+    CallExpression(n) {
+      const arg = n.arguments[0];
+      const spec = arg?.type === "SpreadElement" ? undefined : stringLiteralText(arg);
+      if (spec !== undefined && n.callee.type === "Identifier" && n.callee.name === "require") out.push(spec);
+    },
+  }).visit(parseTs(source).program);
   return out;
+}
+
+/** Value of `"m"` or a substitution-free `` `m` `` — the specifier forms `import()` / `require()` resolve statically. */
+function stringLiteralText(n: Expression | undefined): string | undefined {
+  if (n?.type === "Literal" && typeof n.value === "string") return n.value;
+  if (n?.type === "TemplateLiteral" && n.expressions.length === 0) return n.quasis[0]?.value.cooked ?? undefined;
+  return undefined;
 }
 
 /** `"<file> -> <adapter module>"` for every value import of a concrete adapter module from src/app/. */
@@ -747,23 +779,39 @@ describe("semantic store split (#272)", () => {
 // ── JSDoc on the public surface (#224) ───────────────────────────────────────────────
 
 /** Names a top-level statement exports as a function or class (incl. function-valued consts). */
-function exportedCallableNames(st: ts.Statement, sf: ts.SourceFile): string[] {
-  const exported = ts.canHaveModifiers(st) && ts.getModifiers(st)?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword);
-  if (!exported) return [];
-  if ((ts.isFunctionDeclaration(st) || ts.isClassDeclaration(st)) && st.name) return [st.name.text];
-  if (!ts.isVariableStatement(st)) return [];
-  return st.declarationList.declarations
-    .filter((d) => d.initializer && (ts.isArrowFunction(d.initializer) || ts.isFunctionExpression(d.initializer)))
-    .map((d) => d.name.getText(sf));
+function exportedCallableNames(st: Directive | Statement, source: string): string[] {
+  if (st.type !== "ExportNamedDeclaration" && st.type !== "ExportDefaultDeclaration") return [];
+  const decl = st.declaration;
+  if (!decl) return [];
+  if (
+    (decl.type === "FunctionDeclaration" || decl.type === "TSDeclareFunction" || decl.type === "ClassDeclaration") &&
+    decl.id
+  ) {
+    return [decl.id.name];
+  }
+  if (decl.type !== "VariableDeclaration") return [];
+  return decl.declarations
+    .filter((d) => d.init?.type === "ArrowFunctionExpression" || d.init?.type === "FunctionExpression")
+    .map((d) => textOf(source, d.id));
+}
+
+// Same rule as TS's getJSDocCommentsAndTags: a `/** … */` in the statement's leading trivia counts, but one on
+// the previous statement's last line is that statement's trailing comment (`/**/` is not JSDoc at all)
+function hasLeadingJsDoc(source: string, comments: Comment[], prevEnd: number | undefined, start: number): boolean {
+  const newline = prevEnd === undefined ? 0 : source.indexOf("\n", prevEnd);
+  const from = newline === -1 ? start : newline;
+  return comments.some((c) => c.type === "Block" && c.value.startsWith("*") && c.start >= from && c.end <= start);
 }
 
 /** `"<path> <name>"` for every exported function, class or function-valued const without JSDoc. */
 function findUndocumentedExports(files: SourceFile[]): string[] {
   return files.flatMap((f) => {
-    const sf = ts.createSourceFile(f.path, f.source, ts.ScriptTarget.Latest, true);
-    return sf.statements
-      .filter((st) => ts.getJSDocCommentsAndTags(st).length === 0)
-      .flatMap((st) => exportedCallableNames(st, sf).map((name) => `${f.path} ${name}`));
+    const { program, comments } = parseTs(f.source, f.path);
+    return program.body.flatMap((st, i) =>
+      hasLeadingJsDoc(f.source, comments, program.body[i - 1]?.end, st.start)
+        ? []
+        : exportedCallableNames(st, f.source).map((name) => `${f.path} ${name}`),
+    );
   });
 }
 

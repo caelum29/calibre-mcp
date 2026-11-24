@@ -9,6 +9,16 @@ inserts its generated section above the newest entry. Hand-written notes still g
 `[Unreleased]`; when merging a release PR, fold them into the generated section and leave
 `[Unreleased]` empty.
 
+## [Unreleased]
+
+### Chore
+
+- **Dev toolchain on TypeScript 7.0** (the native compiler; was 5.9.3). Emitted `.js` and
+  `.d.ts` are byte-identical to 5.9's, so the published package does not change; only
+  source maps differ. TypeScript 7.0 ships no JS compiler API, so the architecture test
+  now parses sources with `oxc-parser` instead of `import ts from "typescript"`. Editors
+  need TypeScript 7 support (its LSP server) for in-editor diagnostics to match `tsc`.
+
 ## [0.14.0](https://github.com/caelum29/calibre-mcp/compare/v0.13.0...v0.14.0) (2026-11-18)
 
 
