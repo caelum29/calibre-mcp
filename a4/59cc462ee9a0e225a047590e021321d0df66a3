@@ -1,0 +1,98 @@
+scripts/judged-lib.ts
+  h_e22d73abc85ef9 146,149
+scripts/matter-kind-measure.ts
+  h_e22d73abc85ef9 146,150
+scripts/reindex.ts
+  h_e22d73abc85ef9 169
+src/app/bundles.ts
+  h_e22d73abc85ef9 105
+src/calibre/extract.ts
+  h_e22d73abc85ef9 155,159,169
+src/calibre/spawn.ts
+  h_e22d73abc85ef9 75
+src/domain/book-metadata-text.ts
+  h_e22d73abc85ef9 85
+src/domain/structure/chapters.ts
+  h_e22d73abc85ef9 157
+src/domain/structure/front-matter.ts
+  h_e22d73abc85ef9 25,29
+src/domain/structure/pdf-outline.ts
+  h_e22d73abc85ef9 26
+src/semantic/chunk.ts
+  h_e22d73abc85ef9 93
+src/semantic/snippet.ts
+  h_e22d73abc85ef9 107-108
+src/shutdown.ts
+  h_e22d73abc85ef9 29
+src/tools/build-index-results.ts
+  h_e22d73abc85ef9 180
+src/tools/calibre_get_content.ts
+  h_e22d73abc85ef9 47
+src/tools/content-chunk.ts
+  h_e22d73abc85ef9 27
+test/app/library-index-live-walk-496.test.ts
+  h_e22d73abc85ef9 30
+test/calibre/busy.test.ts
+  h_e22d73abc85ef9 49,190
+test/calibre/fts-service.test.ts
+  h_e22d73abc85ef9 53,73
+test/calibre/spawn.test.ts
+  h_e22d73abc85ef9 18,26,35,53,59,77,119,133,147
+test/call-log.test.ts
+  h_e22d73abc85ef9 354
+test/domain/distill/legal-gate.test.ts
+  h_e22d73abc85ef9 173
+test/domain/structure/matter-kind-722.test.ts
+  h_e22d73abc85ef9 9,30,34,38,44,49-50
+test/eval/judged/judged-store.test.ts
+  h_e22d73abc85ef9 228,232-233,246-247,250-251,300-301,309
+test/eval/retrieval/hash-embedder.ts
+  h_e22d73abc85ef9 11,14
+test/eval/retrieval/stats.ts
+  h_e22d73abc85ef9 8,18,22
+test/integration/cancellation-progress.test.ts
+  h_e22d73abc85ef9 120
+test/integration/error-channels.test.ts
+  h_e22d73abc85ef9 113
+test/integration/figures.live.test.ts
+  h_e22d73abc85ef9 33
+test/integration/merge.live.test.ts
+  h_e22d73abc85ef9 38
+test/semantic/chunk-matrix-618.test.ts
+  h_e22d73abc85ef9 194
+test/semantic/index-builds.test.ts
+  h_e22d73abc85ef9 63,67,92,100
+test/semantic/vector-oracle-fixture.ts
+  h_e22d73abc85ef9 58
+test/tools/book-not-found-hint-498.test.ts
+  h_e22d73abc85ef9 48
+test/tools/build-index.soft-deadline.test.ts
+  h_e22d73abc85ef9 24
+test/tools/channel-parity.test.ts
+  h_e22d73abc85ef9 672,1128,1132,1231
+test/tools/coerce.test.ts
+  h_e22d73abc85ef9 55
+test/tools/content-cursor-v3-655.test.ts
+  h_e22d73abc85ef9 68
+test/tools/get-content.handler.test.ts
+  h_e22d73abc85ef9 67,98,167,178,186
+test/tools/remove-book.handler.test.ts
+  h_e22d73abc85ef9 69,81,97,104,113,118
+test/tools/search-deadline.test.ts
+  h_e22d73abc85ef9 103
+test/tools/semantic-search.snippet-window.test.ts
+  h_e22d73abc85ef9 93,156
+test/tools/steers-251.test.ts
+  h_e22d73abc85ef9 89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a459cc462ee9a0e225a047590e021321d0df66a3",
+  "prompts": {},
+  "humans": {
+    "h_e22d73abc85ef9": {
+      "author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
