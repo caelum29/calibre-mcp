@@ -1,0 +1,19 @@
+src/tools/calibre_add_book.ts
+  s_94481645943414::t_aef6bcffc9d021 34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "084e1ac99142a4753e27a19df4e61269721f9850",
+  "prompts": {},
+  "sessions": {
+    "s_94481645943414": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "acee565e-100c-4076-8da7-87b8ef382183",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
