@@ -1,0 +1,32 @@
+test/app/build-index.test.ts
+  h_e22d73abc85ef9 204-209
+test/app/library-index.test.ts
+  h_e22d73abc85ef9 83-89
+test/calibre/fts-highlight.test.ts
+  h_e22d73abc85ef9 15-17
+test/tools/book-not-found-numeric-498.test.ts
+  h_e22d73abc85ef9 22-24
+test/tools/ping-header.test.ts
+  h_e22d73abc85ef9 133-140
+test/tools/ping.handler.test.ts
+  h_e22d73abc85ef9 127-129,146-148
+test/tools/search.fts-column-filter-419.test.ts
+  h_e22d73abc85ef9 32-34
+test/tools/search.fts-syntax-steer.test.ts
+  h_e22d73abc85ef9 41-43,52-54
+test/tools/steer-once-437b.test.ts
+  h_e22d73abc85ef9 30-34
+test/tools/steers-251.test.ts
+  h_e22d73abc85ef9 36-40,88-90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e4053048fc17bdb88c46a3f066781d9f35f2b44e",
+  "prompts": {},
+  "humans": {
+    "h_e22d73abc85ef9": {
+      "author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
