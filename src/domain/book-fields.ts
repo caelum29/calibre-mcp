@@ -148,7 +148,8 @@ function sameDay(a: unknown, b: unknown): boolean {
 }
 
 function sameNumber(a: unknown, b: unknown): boolean {
-  const num = (v: unknown) => (typeof v === "number" || (typeof v === "string" && v.trim() !== "") ? Number(v) : NaN);
+  const num = (v: unknown) =>
+    typeof v === "number" || (typeof v === "string" && v.trim() !== "") ? Number(v) : Number.NaN;
   return Number.isFinite(num(a)) && num(a) === num(b);
 }
 
