@@ -136,6 +136,11 @@ export default defineConfig({
     { files: ["test/**"], rules: { "quality/no-object-parameters": "off" } },
     // Report builders: one `lines.push()` per Markdown line reads like the output it renders.
     { files: ["test/eval/**", "scripts/**"], rules: { "unicorn/prefer-single-call": "off" } },
+    // Workflow-tool script: the runner injects these globals.
+    {
+      files: ["scripts/*.workflow.js"],
+      globals: { agent: "readonly", args: "readonly", log: "readonly", parallel: "readonly", pipeline: "readonly" },
+    },
     // MIGRATION BASELINE (temporary): preset rules that fail today, with their finding counts.
     // Each one is either enabled with fixes or kept off with a reason, one commit per rule.
     // Last override, so it also beats preset overrides that re-enable a rule (tests, *.ts).
@@ -152,7 +157,6 @@ export default defineConfig({
         "quality/no-conditional-empty-object-spread": "off", // 223
         "quality/no-unsafe-dictionary-type": "off", // 206
         "unicorn/catch-error-name": "off", // 131
-        "no-undef": "off", // 127
         "quality/no-known-value-widening": "off", // 111
         "quality/no-array-filter-map": "off", // 59
         "unicorn/prefer-string-raw": "off", // 46
