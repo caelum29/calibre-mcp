@@ -1,0 +1,87 @@
+scripts/matter-kind-measure.ts
+  s_94481645943414::t_b79b161d36b20a 254,259,266,268
+test/eval/retrieval/run.ts
+  s_94481645943414::t_b79b161d36b20a 397,399,428,438
+scripts/judged-lib.ts
+  s_94481645943414::t_b79b161d36b20a 211,213
+test/integration/write-gate-preview-hint-554.test.ts
+  s_94481645943414::t_b79b161d36b20a 22,24
+scripts/reindex.ts
+  s_94481645943414::t_b79b161d36b20a 151,153
+src/domain/figures/markers.ts
+  s_94481645943414::t_b79b161d36b20a 223,225
+scripts/pool-analysis.ts
+  s_94481645943414::t_b79b161d36b20a 54,56,127,131,288,297
+test/eval/retrieval/axes.ts
+  s_94481645943414::t_b79b161d36b20a 97,99
+test/logging.test.ts
+  s_94481645943414::t_b79b161d36b20a 131,133
+src/tools/calibre_add_book.ts
+  s_94481645943414::t_b79b161d36b20a 103,107,145,147
+src/tools/calibre_search.ts
+  s_94481645943414::t_b79b161d36b20a 447,449
+test/eval/retrieval/stats.ts
+  s_94481645943414::t_b79b161d36b20a 200,208
+test/ui/widget-shared-tokens.test.ts
+  s_94481645943414::t_b79b161d36b20a 29,31
+src/tools/calibre_build_index.ts
+  s_94481645943414::t_b79b161d36b20a 157,159
+test/tools/search-deadline.test.ts
+  s_94481645943414::t_b79b161d36b20a 49,51
+scripts/judged-store.ts
+  s_94481645943414::t_b79b161d36b20a 272-273,275-276,363-364,366-367,398,402
+scripts/judged-compare-lib.ts
+  s_94481645943414::t_b79b161d36b20a 93,95,99-100,106-108,113,193,201
+test/domain/error-codes.test.ts
+  s_94481645943414::t_b79b161d36b20a 137,139
+oxlint.config.ts
+  s_94481645943414::t_b79b161d36b20a 37-39
+src/domain/structure/front-matter.ts
+  s_94481645943414::t_b79b161d36b20a 80,84
+test/integration/cancellation-progress.test.ts
+  s_94481645943414::t_b79b161d36b20a 62,64
+src/semantic/stem.ts
+  s_94481645943414::t_b79b161d36b20a 51,53
+src/tools/calibre_manage_bundles.ts
+  s_94481645943414::t_b79b161d36b20a 123,125
+scripts/pool-analysis-lib.ts
+  s_94481645943414::t_b79b161d36b20a 167,169
+test/eval/retrieval/gate-guards.ts
+  s_94481645943414::t_b79b161d36b20a 95,97,182,184,224,226
+test/tools/channel-parity.test.ts
+  s_94481645943414::t_b79b161d36b20a 100,102
+src/tools/result.ts
+  s_94481645943414::t_b79b161d36b20a 63,65
+test/app/library-index-live-walk-496.test.ts
+  s_94481645943414::t_b79b161d36b20a 22,26
+test/tools/semantic-stale-hits-579.test.ts
+  s_94481645943414::t_b79b161d36b20a 41,57,225,229
+scripts/pair-search-reads.ts
+  s_94481645943414::t_b79b161d36b20a 149,151
+src/semantic/book-encoder.ts
+  s_94481645943414::t_b79b161d36b20a 95,97
+test/integration/book-resource-library-432.test.ts
+  s_94481645943414::t_b79b161d36b20a 37,46-47,49
+test/tools/prune-removed-496.test.ts
+  s_94481645943414::t_b79b161d36b20a 51,53,63,67
+test/eval/retrieval/harness.ts
+  s_94481645943414::t_b79b161d36b20a 577,579
+src/app/library-index.ts
+  s_94481645943414::t_b79b161d36b20a 143,145
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "68036c390cf3a8786c43f33f6f88cb4cfc32d399",
+  "prompts": {},
+  "sessions": {
+    "s_94481645943414": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "acee565e-100c-4076-8da7-87b8ef382183",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
