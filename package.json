@@ -84,20 +84,20 @@
   "devDependencies": {
     "@cloudflare/oxlint-config": "0.2.0",
     "@modelcontextprotocol/client": "2.4.0",
-    "@modelcontextprotocol/inspector": "2.13.0",
+    "@modelcontextprotocol/inspector": "2.16.0",
     "@types/node": "24.19.2",
-    "@vitest/coverage-v8": "5.1.0",
+    "@vitest/coverage-v8": "5.1.1",
     "ajv": "8.20.0",
     "husky": "9.1.7",
-    "knip": "6.44.1",
-    "lint-staged": "17.6.0",
-    "oxc-parser": "0.155.0",
-    "oxfmt": "0.75.0",
+    "knip": "6.47.0",
+    "lint-staged": "17.6.2",
+    "oxc-parser": "0.159.0",
+    "oxfmt": "0.79.0",
     "oxlint": "1.94.0",
     "tsrs": "7.1.0-beta.tsrs4",
     "tsx": "4.23.15",
     "typescript": "7.0.2",
-    "vite": "8.3.5",
-    "vitest": "5.1.0"
+    "vite": "8.3.8",
+    "vitest": "5.1.1"
   }
 }
