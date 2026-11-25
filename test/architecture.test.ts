@@ -30,7 +30,7 @@ function stripComments(source: string): string {
 }
 
 /** Repo-relative paths of files outside the allowlist that import the MCP SDK. */
-function findSdkImportViolations(files: ReadonlyArray<{ path: string; source: string }>): string[] {
+function findSdkImportViolations(files: readonly { path: string; source: string }[]): string[] {
   return files.filter((f) => !SDK_ALLOWLIST.has(f.path) && SDK_IMPORT.test(stripComments(f.source))).map((f) => f.path);
 }
 
@@ -46,7 +46,7 @@ describe("SDK-free seam", () => {
 
   it("detects every import form and ignores comments", () => {
     const sdk = "@modelcontextprotocol/sdk";
-    const cases: Array<[string, boolean]> = [
+    const cases: [string, boolean][] = [
       [`import { McpServer } from "${sdk}/server/mcp.js";`, true],
       [`import type { CallToolResult } from '${sdk}/types.js';`, true],
       [`export type { CallToolResult } from "${sdk}/types.js";`, true],

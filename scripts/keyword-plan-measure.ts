@@ -153,7 +153,7 @@ const isCyr = (s: string) => /\p{Script=Cyrillic}/u.test(s);
 const tokenRows: string[] = [
   "query\tcategory\tlibrary\traw\tstem\tlang\tshare_body_stem\tshare_body_raw\tshare_book_meta",
 ];
-const shares: Array<{ lib: string; lang: string; stem: string; share: number }> = [];
+const shares: { lib: string; lang: string; stem: string; share: number }[] = [];
 for (const q of queries) {
   const { stats } = open(q.library);
   const N = stats.totalDocs;

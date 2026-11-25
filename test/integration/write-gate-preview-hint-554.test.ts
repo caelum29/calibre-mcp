@@ -63,7 +63,7 @@ async function withClient<T>(writeEnabled: boolean, fn: (client: Client) => Prom
 async function removeBook(writeEnabled: boolean, args: Record<string, unknown>) {
   return withClient(writeEnabled, async (client) => {
     const r = await client.callTool({ name: "calibre_remove_book", arguments: args });
-    const text = (r.content as Array<{ type: string; text?: string }>).map((b) => b.text ?? "").join("\n");
+    const text = (r.content as { type: string; text?: string }[]).map((b) => b.text ?? "").join("\n");
     return { isError: r.isError === true, text, sc: r.structuredContent as Record<string, unknown> | undefined };
   });
 }

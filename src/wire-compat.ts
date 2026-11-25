@@ -49,8 +49,8 @@ export function installWireCompat<M extends object, T extends MessageSender<M>>(
 }
 
 /** The `tools` array of a tools/list result, or none for any other value. */
-function toolsOf(result: unknown): Array<Record<string, unknown>> {
+function toolsOf(result: unknown): Record<string, unknown>[] {
   if (!result || typeof result !== "object") return [];
   const tools = (result as { tools?: unknown }).tools;
-  return Array.isArray(tools) ? (tools as Array<Record<string, unknown>>) : [];
+  return Array.isArray(tools) ? (tools as Record<string, unknown>[]) : [];
 }

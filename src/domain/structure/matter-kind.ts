@@ -200,7 +200,7 @@ function chapterAt(chapters: readonly ChapterSpan[], offset: number): ChapterSpa
  */
 export function matterKinds(
   text: string,
-  spans: ReadonlyArray<{ charStart: number; charEnd: number }>,
+  spans: readonly { charStart: number; charEnd: number }[],
   opts: DetectOptions = {},
 ): MatterKind[] {
   if (spans.length === 0 || text.length === 0) return [];

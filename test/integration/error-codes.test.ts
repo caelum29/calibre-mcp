@@ -28,7 +28,7 @@ describe("#249 over the wire", () => {
     const { client, close } = await connect();
     try {
       const r = await client.callTool({ name: "calibre_ping", arguments: {} });
-      const sc = r.structuredContent as { recentErrors: Array<{ msg: string; meta?: Record<string, unknown> }> };
+      const sc = r.structuredContent as { recentErrors: { msg: string; meta?: Record<string, unknown> }[] };
       const last = sc.recentErrors.at(-1);
       expect({ msg: last?.msg, code: last?.meta?.errorCode, hint: typeof last?.meta?.hint }).toEqual({
         msg: "ping failed",

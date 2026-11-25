@@ -24,7 +24,7 @@ const LISTED_WRITE_TOOLS = [
 const HIDDEN_WRITE_TOOLS = ["calibre_update_book", "calibre_add_book"];
 
 // The Write call per tool (the issue's table); stringified booleans as Cowork sends them included.
-const WRITE_CALLS: Array<[string, Record<string, unknown>]> = [
+const WRITE_CALLS: [string, Record<string, unknown>][] = [
   ["calibre_extract_isbn", { id: 1, apply: true }],
   ["calibre_bulk_update", { ids: [1], changes: { publisher: "Acme" }, preview: false }],
   ["calibre_remove_book", { ids: [1], confirm: true }],
@@ -36,7 +36,7 @@ const WRITE_CALLS: Array<[string, Record<string, unknown>]> = [
 ];
 
 // Calls that write nothing: the gate must let them reach the handler.
-const PREVIEW_CALLS: Array<[string, Record<string, unknown>]> = [
+const PREVIEW_CALLS: [string, Record<string, unknown>][] = [
   ["calibre_extract_isbn", { id: 1 }],
   ["calibre_bulk_update", { ids: [1], changes: { publisher: "Acme" } }],
   ["calibre_remove_book", { ids: [1] }],
@@ -83,7 +83,7 @@ async function call(writeEnabled: boolean, name: string, args: Record<string, un
   const { client, close } = await connect(writeEnabled);
   try {
     const r = await client.callTool({ name, arguments: args });
-    const text = (r.content as Array<{ type: string; text?: string }>).map((b) => b.text ?? "").join("\n");
+    const text = (r.content as { type: string; text?: string }[]).map((b) => b.text ?? "").join("\n");
     const code = (r.structuredContent as { errorCode?: string } | undefined)?.errorCode;
     return { isError: r.isError === true, text, code };
   } finally {

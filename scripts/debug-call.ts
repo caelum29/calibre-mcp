@@ -35,7 +35,7 @@ try {
     const args = JSON.parse(rawArgs) as Record<string, unknown>;
     const started = performance.now();
     const result = await client.callTool({ name: toolName, arguments: args });
-    const text = (result.content as Array<{ type: string; text?: string }>)
+    const text = (result.content as { type: string; text?: string }[])
       .filter((b) => b.type === "text")
       .map((b) => b.text)
       .join("\n");

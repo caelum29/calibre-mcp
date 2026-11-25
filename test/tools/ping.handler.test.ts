@@ -20,7 +20,7 @@ function pingTool(): AnyToolDescriptor {
 }
 
 function deps(o: { resolveLibraryId?: () => Promise<string>; listLibraries?: (lib?: string) => Promise<string> }) {
-  const listCalls: Array<string | undefined> = [];
+  const listCalls: (string | undefined)[] = [];
   const d: ToolDeps = {
     config: loadConfig({ CALIBRE_MCP_SERVER_URL: SERVER_URL, CALIBRE_MCP_INDEX_DIR: ":memory:" }),
     content: {
@@ -43,7 +43,7 @@ function deps(o: { resolveLibraryId?: () => Promise<string>; listLibraries?: (li
   return { d, listCalls };
 }
 
-function text(r: { content: Array<{ type: string; text?: string }> }): string {
+function text(r: { content: { type: string; text?: string }[] }): string {
   return r.content.map((b) => b.text ?? "").join("\n");
 }
 
@@ -110,7 +110,7 @@ describe("calibre_ping handler", () => {
     const r = await pingTool().handler({}, d);
     expect(r.isError).toBe(true);
     expect(text(r)).toContain("Calibre unreachable: calibredb: Library Programming_Books not found");
-    const sc = r.structuredContent as { recentErrors: Array<{ msg: string }> };
+    const sc = r.structuredContent as { recentErrors: { msg: string }[] };
     expect(sc.recentErrors.at(-1)?.msg).toBe("ping failed");
   });
 });

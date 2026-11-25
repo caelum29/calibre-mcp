@@ -7,7 +7,7 @@ export interface CaptionQuirkFixture {
   /** Book id + page in the "Programming Books" library the snippet was cut from. */
   source: string;
   page: string;
-  expected: Array<{ label: string; text: string }>;
+  expected: { label: string; text: string }[];
 }
 
 /**

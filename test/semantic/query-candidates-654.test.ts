@@ -15,7 +15,7 @@ import { queryStemmedTokens } from "../../src/semantic/stem.js";
 import { type IndexedChunk, SqliteIndexStore } from "../../src/semantic/store/index.js";
 import { l2normalize } from "../../src/semantic/vector.js";
 
-const stems = (query: string, langs: ReadonlyArray<string | undefined>) =>
+const stems = (query: string, langs: readonly (string | undefined)[]) =>
   [...queryStemmedTokens(query, new Set(langs))].map((t) => t.stems);
 
 describe("candidate packs keep the script default (#716 review, fix 1)", () => {

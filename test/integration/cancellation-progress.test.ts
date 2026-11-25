@@ -208,7 +208,7 @@ describe.runIf(posix)("progress", () => {
   it("calibre_build_index sends monotonic progress notifications when asked", async () => {
     const { client, close } = await connect();
     try {
-      const seen: Array<{ progress: number; total?: number; message?: string }> = [];
+      const seen: { progress: number; total?: number; message?: string }[] = [];
       const r = await client.callTool(
         {
           name: "calibre_build_index",

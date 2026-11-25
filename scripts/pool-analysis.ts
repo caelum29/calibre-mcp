@@ -144,7 +144,7 @@ function admission(): void {
     const all = { queries: 0, misses: 0, withMiss: 0, unjudged: 0, unclassified: 0 };
     for (const [cat, c] of [...perCat].sort(([a], [b]) => a.localeCompare(b))) {
       say(`| ${cat} | ${c.queries} | ${c.misses} | ${c.withMiss} | ${c.unjudged} | ${c.unclassified} |`);
-      for (const k of Object.keys(all) as Array<keyof typeof all>) all[k] += c[k];
+      for (const k of Object.keys(all) as (keyof typeof all)[]) all[k] += c[k];
     }
     say(`| **all** | ${all.queries} | ${all.misses} | ${all.withMiss} | ${all.unjudged} | ${all.unclassified} |`);
   }
@@ -157,7 +157,7 @@ function admission(): void {
 
 /** The arms #619's rule names: the α grid plus the two cosine tie-break rows. */
 const GRID = Array.from({ length: 21 }, (_, i) => Math.round(i * 5) / 100);
-const ARMS: Array<{ name: string; order: PoolOrder }> = [
+const ARMS: { name: string; order: PoolOrder }[] = [
   ...GRID.map((alpha) => ({ name: `a=${alpha.toFixed(2)}`, order: { kind: "blend", alpha } as PoolOrder })),
   { name: "tie-exact", order: { kind: "tieBreak", bucket: false } },
   { name: "tie-0.01", order: { kind: "tieBreak", bucket: true } },

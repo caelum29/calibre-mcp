@@ -174,7 +174,7 @@ describe("calibre_semantic_search handler", () => {
 
   it("mirrors library hits into structuredContent.results for structured-only clients", async () => {
     const r = await semanticSearchTool.handler(args(), deps(preloaded()));
-    const results = r.structuredContent?.results as Array<Record<string, unknown>>;
+    const results = r.structuredContent?.results as Record<string, unknown>[];
     expect(results).toBeInstanceOf(Array);
     expect(results.length).toBe((r.structuredContent?.bookIds as number[] | undefined)?.length);
     const top = results[0];
@@ -224,7 +224,7 @@ describe("calibre_semantic_search handler", () => {
 
   it("mirrors book passages into structuredContent.passages for structured-only clients", async () => {
     const r = await semanticSearchTool.handler(args({ scope: "book", bookId: 1 }), deps(preloaded()));
-    const passages = r.structuredContent?.passages as Array<Record<string, unknown>>;
+    const passages = r.structuredContent?.passages as Record<string, unknown>[];
     expect(passages).toBeInstanceOf(Array);
     expect(passages.length).toBe(r.structuredContent?.count as number);
     const top = passages[0];
@@ -485,7 +485,7 @@ describe("calibre_semantic_search front-matter demotion (issue #18)", () => {
       deps(frontMatterStore()),
     );
     expect(r.isError).toBeUndefined();
-    const passages = (r.structuredContent as { passages: Array<{ body: string; matterKind?: string }> }).passages;
+    const passages = (r.structuredContent as { passages: { body: string; matterKind?: string }[] }).passages;
     expect(passages[0]!.body).toContain("real body definition"); // body first despite lower cosine
     expect(passages[1]!.matterKind).toBe("front");
   });
@@ -507,7 +507,7 @@ describe("calibre_semantic_search front-matter demotion (issue #18)", () => {
       deps(frontMatterStore(), throwingEmbedder),
     );
     expect(r.isError).toBeUndefined();
-    const passages = (r.structuredContent as { passages: Array<{ matterKind?: string }> }).passages;
+    const passages = (r.structuredContent as { passages: { matterKind?: string }[] }).passages;
     expect(passages.at(-1)!.matterKind).toBe("front");
   });
 
@@ -611,7 +611,7 @@ describe("target=figures (D-018/#83/#86)", () => {
     const r = await semanticSearchTool.handler(figArgs(), deps(withFigures()));
     expect(r.isError).toBeUndefined();
     expect(r.structuredContent?.target).toBe("figures");
-    const figs = r.structuredContent?.figures as Array<Record<string, unknown>>;
+    const figs = r.structuredContent?.figures as Record<string, unknown>[];
     expect(figs.length).toBeGreaterThan(0);
     expect(figs[0]).toMatchObject({
       bookId: 1,
@@ -643,7 +643,7 @@ describe("target=figures (D-018/#83/#86)", () => {
 
   it("should_give_epub_hits_a_section_and_pdf_hits_a_page (#553)", async () => {
     const r = await semanticSearchTool.handler(figArgs(), deps(withFigures()));
-    const figs = r.structuredContent?.figures as Array<Record<string, unknown>>;
+    const figs = r.structuredContent?.figures as Record<string, unknown>[];
     const byBook = Object.fromEntries(figs.map((f) => [f.bookId, f]));
     expect([byBook[1]!.page, "section" in byBook[1]!, byBook[2]!.section, "page" in byBook[2]!]).toEqual([
       42,
@@ -686,7 +686,7 @@ describe("target=figures (D-018/#83/#86)", () => {
       deps(withFigures()),
     );
     expect(r.isError).toBeUndefined();
-    const figs = r.structuredContent?.figures as Array<Record<string, unknown>>;
+    const figs = r.structuredContent?.figures as Record<string, unknown>[];
     expect(figs).toHaveLength(1);
     expect(figs[0]!.bookId).toBe(2);
     expect(figs[0]!.source).toBe("raster");
@@ -726,7 +726,7 @@ describe("target=figures (D-018/#83/#86)", () => {
     );
     expect(r.isError).toBeUndefined();
     expect(rr.calls).toBe(1);
-    const figs = r.structuredContent?.figures as Array<Record<string, unknown>>;
+    const figs = r.structuredContent?.figures as Record<string, unknown>[];
     // the reranker (keyed on caption text) put the hive figure first despite the vector half
     expect(figs[0]!.bookId).toBe(2);
     expect(figs[0]!.rerankScore).toBe(0.9);

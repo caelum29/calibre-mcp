@@ -29,7 +29,7 @@ function reportWith(goldenSetHash: string | undefined, rows: PerQueryRow[] = [])
 
 /** queries.json with the first library-scope query's first relevant bookId swapped for 999. */
 function withEditedLabel(text: string): string {
-  const qs = JSON.parse(text) as Array<{ scope: string; relevant: unknown[] }>;
+  const qs = JSON.parse(text) as { scope: string; relevant: unknown[] }[];
   const q = qs.find((x) => x.scope === "library" && typeof x.relevant[0] === "number")!;
   q.relevant[0] = 999;
   return JSON.stringify(qs, null, 2) + "\n";
@@ -186,7 +186,7 @@ describe("pruneHashAllowEntries (re-freeze leaves no stale hash entries)", () =>
 
 describe("golden-set failures print the re-freeze command (#398 review)", () => {
   // compares hashes without a run, so the failure message (the check detail) is all `pnpm test` shows
-  const tiers: Array<[Parameters<typeof evaluateGoldenSet>[2], string]> = [
+  const tiers: [Parameters<typeof evaluateGoldenSet>[2], string][] = [
     ["on", thresholds.baselineReport],
     ["fusionOnly", thresholds.fusionOnly!.baselineReport!],
     ["hash", thresholds.hashGate!.baselineReport!],

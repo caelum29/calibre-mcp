@@ -8,7 +8,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 /** Every .ts file under src/, as [repo-relative path, source]. */
-function srcFiles(root = "src"): Array<[string, string]> {
+function srcFiles(root = "src"): [string, string][] {
   return readdirSync(root).flatMap((n) => {
     const p = path.join(root, n);
     if (statSync(p).isDirectory()) return srcFiles(p);

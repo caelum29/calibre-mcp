@@ -879,7 +879,7 @@ const oneBookStore = (): SqliteIndexStore => {
   ]);
   return s;
 };
-const STEER_ONCE: Array<{ scenario: Scenario; code: string; step: string }> = [
+const STEER_ONCE: { scenario: Scenario; code: string; step: string }[] = [
   {
     scenario: {
       tool: "calibre_search",

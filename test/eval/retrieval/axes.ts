@@ -115,7 +115,7 @@ export function renderAxes(
   axes: Partial<Record<Mode, ModeAxes>>,
   cfg: NonNullable<Thresholds["reportOnlyAxes"]>,
 ): string[] {
-  const entries = Object.entries(axes) as Array<[Mode, ModeAxes]>;
+  const entries = Object.entries(axes) as [Mode, ModeAxes][];
   const perMode: Record<string, (m: Mode, a: ModeAxes) => string> = {
     snippetMarker: (m, a) => `    ${m}: marker shown ${ratio(a.snippetMarker.shown, a.snippetMarker.n)}`,
     spanHit: (m, { spanHit: s }) =>

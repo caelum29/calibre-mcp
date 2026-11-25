@@ -40,11 +40,11 @@ function deps(b: Book, hits: ProviderHit[], seen: string[]): BaseDeps {
 
 const flagged = (title: string) => runQualityChecks([book({ title })], ["raw_filename_title"]).map((i) => i.check);
 const hits: ProviderHit[] = [{ source: "openlibrary", confidence: 0.6, title: "Some Real Title", publisher: "P" }];
-const text = (r: { content: Array<{ type: string }> }) => (r.content[0] as unknown as { text: string }).text;
+const text = (r: { content: { type: string }[] }) => (r.content[0] as unknown as { text: string }).text;
 
 // [raw title, the title query recover_metadata must search]. The first four are books
 // 1080, 470, 1325 and 863 from the acceptance pass.
-const RECOVERABLE: Array<[string, string]> = [
+const RECOVERABLE: [string, string][] = [
   ["building.large.language.models.from.scratch", "building large language models from scratch"],
   ["1233 2 PostgreSQL MADE EASY Kindle img", "PostgreSQL MADE EASY"],
   ["Bayesian Methods for Hackers - PDFDrive.com", "Bayesian Methods for Hackers"],

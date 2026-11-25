@@ -66,7 +66,7 @@ export interface FloorResult {
 
 /** The selection re-run per fold: the floor chosen without the fold and its false-flag rate on it. */
 export interface FoldEstimate {
-  perFold: Array<{ fitted: number; score: number; n: number }>;
+  perFold: { fitted: number; score: number; n: number }[];
   mean: number;
   sd: number;
 }

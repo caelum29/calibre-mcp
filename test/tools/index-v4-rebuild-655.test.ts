@@ -48,7 +48,7 @@ function v4File(): string {
   return file;
 }
 
-const text = (r: { content: Array<{ type: string; text?: string }> }) => r.content.map((b) => b.text ?? "").join("\n");
+const text = (r: { content: { type: string; text?: string }[] }) => r.content.map((b) => b.text ?? "").join("\n");
 
 describe("version-4 index: the steer names the delete step (#655)", () => {
   it("calibre_build_index force=true says to delete the index file and its -wal/-shm first", async () => {
@@ -113,7 +113,7 @@ describe("version-4 index: the steer names the delete step (#655)", () => {
       .find((l) => l.startsWith("Index:"))!;
     expect(indexLine).toContain("stale index");
     expect(indexLine).toContain(`delete ${file}`);
-    const entry = (r.structuredContent!.indexes as Array<Record<string, unknown>>)[0]!;
+    const entry = (r.structuredContent!.indexes as Record<string, unknown>[])[0]!;
     expect(entry.state).toBe("stale");
     expect(String(entry.rebuild)).toContain(`Delete ${file}`);
   });

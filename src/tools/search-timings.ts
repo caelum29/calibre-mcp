@@ -44,7 +44,7 @@ export class TimingRecorder {
   /** The breakdown so far, in ms (rounded), with totalMs measured from construction. */
   snapshot(): SearchTimings {
     const out: SearchTimings = { totalMs: Math.round(performance.now() - this.t0) };
-    for (const [k, v] of Object.entries(this.stages) as Array<[StageKey, number]>) out[k] = Math.round(v);
+    for (const [k, v] of Object.entries(this.stages) as [StageKey, number][]) out[k] = Math.round(v);
     return out;
   }
 
@@ -85,7 +85,7 @@ export class TimingRecorder {
 
 /** One header line: stages in pipeline order, then the total. */
 export function timingsLine(t: SearchTimings): string {
-  const order: Array<[StageKey | "totalMs", string]> = [
+  const order: [StageKey | "totalMs", string][] = [
     ["embedMs", "embed"],
     ["vectorMs", "vector"],
     ["keywordMs", "keyword"],

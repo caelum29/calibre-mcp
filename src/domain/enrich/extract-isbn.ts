@@ -85,7 +85,7 @@ function adIsbns(matches: { isbn: string; start: number; end: number }[], text: 
  */
 export function extractIsbns(text: string, limit = 5, opts: ExtractIsbnOptions = {}): string[] {
   const prefixes = opts.prefixes ? new Set(opts.prefixes) : DEFAULT_ISBN13_PREFIXES;
-  const sources: Array<[RegExp, boolean]> = opts.labeledOnly
+  const sources: [RegExp, boolean][] = opts.labeledOnly
     ? [[LABELED, true]]
     : [
         [LABELED, true],

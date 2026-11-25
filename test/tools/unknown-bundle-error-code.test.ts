@@ -42,7 +42,7 @@ const listingTimesOut = () =>
   });
 
 type Call = (d: ToolDeps) => Promise<ToolResult>;
-const CALLS: Array<[string, Call]> = [
+const CALLS: [string, Call][] = [
   [
     "calibre_search",
     (d) => searchTool.handler({ query: "x", mode: "meta", scope: "library", limit: 20, filter: "Golang" }, d),

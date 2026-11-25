@@ -77,7 +77,7 @@ describe("ping's live-id walk is capped (#496 review)", () => {
     void libraryIndexReport(deps(6000, 1, searches)).then((r) => (settled = r));
     await vi.advanceTimersByTimeAsync(100);
     expect(searches.filter((s) => s.library === "Big")).toHaveLength(5);
-    expect((settled as Array<Record<string, unknown>>)[0]).toMatchObject({ indexed: 1001, indexedUnchecked: true });
+    expect((settled as Record<string, unknown>[])[0]).toMatchObject({ indexed: 1001, indexedUnchecked: true });
   });
 
   it("should_count_only_live_rows_when_the_walk_finishes", async () => {

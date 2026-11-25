@@ -35,15 +35,15 @@ async function call(name: string, args: Record<string, unknown>) {
 }
 
 const textOf = (r: { content?: unknown }): string =>
-  (r.content as Array<{ type: string; text?: string }>)
+  (r.content as { type: string; text?: string }[])
     .filter((b) => b.type === "text")
     .map((b) => b.text)
     .join("\n");
 
 /** Replace a tool's handler with one that records the parsed args and returns a minimal success. */
-function spyHandler(name: string, structured: Record<string, unknown>): { seen: Array<Record<string, unknown>> } {
+function spyHandler(name: string, structured: Record<string, unknown>): { seen: Record<string, unknown>[] } {
   const tool = allTools.find((t) => t.name === name)!;
-  const seen: Array<Record<string, unknown>> = [];
+  const seen: Record<string, unknown>[] = [];
   vi.spyOn(tool, "handler").mockImplementation(async (args: unknown) => {
     seen.push(args as Record<string, unknown>);
     return toolText("ok", structured);

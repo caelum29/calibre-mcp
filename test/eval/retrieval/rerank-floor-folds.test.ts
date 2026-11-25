@@ -31,7 +31,7 @@ function row(id: string, kind: QueryKind, maxRerank: number, mode: "hybrid" | "v
 }
 
 // sp-08 is held out (#632) and sits at 0.005: it must stay out of every fold
-const SPEC: Array<[string, QueryKind, number]> = [
+const SPEC: [string, QueryKind, number][] = [
   ...["sp-01", "sp-02", "sp-03", "sp-04", "sp-05", "sp-06", "sp-07", "sp-09"].map((id): [string, QueryKind, number] => [
     id,
     "semantic-paraphrase",

@@ -32,6 +32,8 @@ export default defineConfig({
     // `typeof import("@huggingface/transformers")` types the lazily loaded optional dependency and
     // vitest's importActual; a static `import type * as` would trip import/no-namespace instead.
     "typescript/consistent-type-imports": ["error", { disallowTypeAnnotations: false }],
+    // Our style: `T[]` everywhere (the preset prefers `Array<T>`).
+    "typescript/array-type": ["error", { default: "array" }],
   },
   overrides: [
     {
@@ -150,7 +152,6 @@ export default defineConfig({
     {
       files: ["**/*"],
       rules: {
-        "typescript/array-type": "off", // 1954
         curly: "off", // 1934
         "typescript/no-unsafe-type-assertion": "off", // 1266
         "import/consistent-type-specifier-style": "off", // 458

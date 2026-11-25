@@ -132,7 +132,7 @@ describe("calibre_ping Index budget against a slow Content Server (#318)", () =>
 
   it("should_give_the_count_only_the_budget_left_after_libraryInfo", async () => {
     vi.useFakeTimers();
-    const seen: Array<number | undefined> = [];
+    const seen: (number | undefined)[] = [];
     const slowInfo = () =>
       new Promise((resolve) => {
         setTimeout(() => resolve({ libraryMap: MAP, defaultLibrary: "" }), 3000);

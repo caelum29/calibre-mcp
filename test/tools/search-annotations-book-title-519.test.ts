@@ -57,7 +57,7 @@ describe("whole-book annotations fill the title from the book (#519)", () => {
 
   it("should_fill_the_title_field_of_the_structured_records_of_that_book", async () => {
     const r = await run(deps(async () => ({ title: "Event Streams" })).d);
-    const list = sc(r).annotations as Array<{ bookId: number; title?: string }>;
+    const list = sc(r).annotations as { bookId: number; title?: string }[];
     // the real capture mixes in rows of book 94: only the requested book's rows get its title
     expect(list.map((a) => [a.bookId, a.title])).toEqual(
       list.map((a) => [a.bookId, a.bookId === 644 ? "Event Streams" : undefined]),

@@ -43,7 +43,7 @@ const book = (id: number): Book => ({
 
 interface FakeOpts {
   /** query → SearchPage; the LAST entry is the fallback. Captures every query received. */
-  pages?: Array<{ match?: (q: string) => boolean; page: Partial<SearchPage> }>;
+  pages?: { match?: (q: string) => boolean; page: Partial<SearchPage> }[];
   ftsHits?: FakeFtsHit[];
   savedSearches?: string;
   vls?: Record<string, string>;

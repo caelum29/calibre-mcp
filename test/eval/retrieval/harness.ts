@@ -99,7 +99,7 @@ export interface GoldenQuery {
   /** #359: one-line note on what makes the query hard (authoring record, never read). */
   why?: string;
   /** Library scope: relevant bookIds. Book scope: spans. Figures: figure labels. Empty for negatives. */
-  relevant: Array<number | SpanLabel | FigureLabel>;
+  relevant: (number | SpanLabel | FigureLabel)[];
 }
 
 export interface CorpusBook {
@@ -444,7 +444,7 @@ async function buildFixtureIndex(deps: ToolDeps, corpus: Corpus): Promise<void> 
   }
 }
 
-function firstText(content: Array<{ type: string }>): string {
+function firstText(content: { type: string }[]): string {
   const t = content.find((b): b is { type: "text"; text: string } => b.type === "text");
   return t?.text ?? "";
 }
@@ -567,7 +567,7 @@ function top2Rerank(r: RankedHits<unknown>): number | undefined {
  * passage still shows the marker. Exported for the literal-fixture test.
  */
 export function localise(
-  hits: Array<{ hit: { charStart: number; charEnd: number; body: string } }>,
+  hits: { hit: { charStart: number; charEnd: number; body: string } }[],
   labels: SpanLabel[],
   query: string,
 ): { spanHit: number | null; snippetHasMarker?: boolean } {
@@ -602,7 +602,7 @@ async function assertHandlerMatches(q: GoldenQuery, mode: Mode, ctx: QueryCtx, o
   const got =
     q.scope === "library"
       ? ((sc.bookIds as number[] | undefined) ?? []).map(String)
-      : ((sc.passages as Array<{ charStart: number; charEnd: number }> | undefined) ?? []).map(
+      : ((sc.passages as { charStart: number; charEnd: number }[] | undefined) ?? []).map(
           (p) => `@${p.charStart}-${p.charEnd}`,
         );
   if (JSON.stringify(got) !== JSON.stringify(out.retrieved)) {

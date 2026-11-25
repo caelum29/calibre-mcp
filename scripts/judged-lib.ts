@@ -14,7 +14,7 @@ export interface JudgedQuery {
   target?: "text" | "figures";
   query: string;
   mustCover: string;
-  expectedBooks: Array<{ id: number; title: string }>;
+  expectedBooks: { id: number; title: string }[];
 }
 
 /** One hit as the tool returned it, with the location that identifies it across modes. */
@@ -204,8 +204,8 @@ export function isDispute(a: Pick<Grade, "grade" | "coverage">, b: Pick<Grade, "
 }
 
 /** Rubric violations in one judge's grades: -1 without a reason, a positive grade without coverage. */
-export function rubricViolations(grades: readonly Grade[]): Array<{ hid: string; problem: string }> {
-  const out: Array<{ hid: string; problem: string }> = [];
+export function rubricViolations(grades: readonly Grade[]): { hid: string; problem: string }[] {
+  const out: { hid: string; problem: string }[] = [];
   for (const g of grades) {
     if (g.grade === -1 && !g.reason?.trim()) out.push({ hid: g.hid, problem: "-1 without a reason" });
     if (g.grade >= 1 && g.coverage === undefined)
@@ -218,7 +218,7 @@ export function rubricViolations(grades: readonly Grade[]): Array<{ hid: string;
 export interface Resolution {
   final: Map<string, FinalGrade>;
   /** Pairs for Cohen's κ: only items both judges graded 0–2 (a -1 is no opinion on relevance). */
-  kappaPairs: Array<[number, number]>;
+  kappaPairs: [number, number][];
   /** Items both judges graded, including those with a -1 (raw agreement counts them). */
   gradedPairs: number;
   agreedPairs: number;
@@ -234,7 +234,7 @@ export function resolveGrades(
   adjudicated: ReadonlyMap<string, Grade>,
 ): Resolution {
   const final = new Map<string, FinalGrade>();
-  const kappaPairs: Array<[number, number]> = [];
+  const kappaPairs: [number, number][] = [];
   let gradedPairs = 0;
   let agreedPairs = 0;
   let unresolved = 0;
@@ -259,7 +259,7 @@ function pick(g: Grade): FinalGrade {
 }
 
 /** Cohen's kappa over paired categorical grades (1 = perfect agreement, 0 = chance). */
-export function cohenKappa(pairs: Array<[number, number]>): number {
+export function cohenKappa(pairs: [number, number][]): number {
   if (pairs.length === 0) return Number.NaN;
   const cats = [...new Set(pairs.flat())];
   const agree = pairs.filter(([a, b]) => a === b).length / pairs.length;
@@ -274,7 +274,7 @@ export function gradesFor(
   mode: "hybrid" | "keyword",
   key: BlindKey,
   final: ReadonlyMap<string, number | FinalGrade>,
-): Array<number | null> {
+): (number | null)[] {
   const ranked = Object.entries(key)
     .filter(([hid, seen]) => hid.startsWith(`${qid}#`) && seen[mode] !== undefined)
     .sort(([, a], [, b]) => (a[mode] ?? 0) - (b[mode] ?? 0));
@@ -296,11 +296,11 @@ export interface CategoryMetrics {
 }
 
 /** hit@k / MRR / P@5 over lists of grades (a 2 = answers the query; -1 = unjudged, never a hit). */
-export function metrics(lists: Array<Array<number | null>>): CategoryMetrics {
+export function metrics(lists: (number | null)[][]): CategoryMetrics {
   const n = lists.length;
-  const has2 = (l: Array<number | null>, k: number) => l.slice(0, k).includes(2);
-  const share = (f: (l: Array<number | null>) => boolean) => (n ? lists.filter(f).length / n : 0);
-  const rr = (l: Array<number | null>) => {
+  const has2 = (l: (number | null)[], k: number) => l.slice(0, k).includes(2);
+  const share = (f: (l: (number | null)[]) => boolean) => (n ? lists.filter(f).length / n : 0);
+  const rr = (l: (number | null)[]) => {
     const i = l.indexOf(2);
     return i < 0 ? 0 : 1 / (i + 1);
   };

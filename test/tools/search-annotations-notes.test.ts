@@ -76,7 +76,7 @@ describe("calibre_search_annotations kind=annotations (#500)", () => {
 
   it("should_keep_calibres_relevance_order", async () => {
     const r = await run({ query: "commit", kind: "annotations" }, deps(() => raw("annotations-search-commit")).d);
-    expect((sc(r).annotations as Array<{ id: number }>).map((a) => a.id)).toEqual([23, 16]);
+    expect((sc(r).annotations as { id: number }[]).map((a) => a.id)).toEqual([23, 16]);
   });
 
   it("should_map_a_highlight_with_its_note_chapter_and_book", async () => {
@@ -137,7 +137,7 @@ describe("calibre_search_annotations kind=annotations (#500)", () => {
       { query: "commit", kind: "annotations", limit: 1 },
       deps(() => raw("annotations-search-commit")).d,
     );
-    expect({ total: sc(r).total, ids: (sc(r).annotations as Array<{ id: number }>).map((a) => a.id) }).toEqual({
+    expect({ total: sc(r).total, ids: (sc(r).annotations as { id: number }[]).map((a) => a.id) }).toEqual({
       total: 2,
       ids: [23],
     });
@@ -197,7 +197,7 @@ describe("calibre_search_annotations kind=annotations (#500)", () => {
       "--search",
       "id:644",
     ]);
-    expect((sc(r).annotations as Array<{ id: number }>).map((a) => a.id)).toEqual([23]);
+    expect((sc(r).annotations as { id: number }[]).map((a) => a.id)).toEqual([23]);
   });
 });
 

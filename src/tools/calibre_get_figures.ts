@@ -229,7 +229,7 @@ async function fetchFigures(
   });
 
   const blocks: ContentBlock[] = [];
-  const returned: Array<{ index: number; mimeType: string; bytes: number }> = [];
+  const returned: { index: number; mimeType: string; bytes: number }[] = [];
   for (const f of outcome.images) {
     const entry = inventory.entries[f.index];
     const cap = entry?.caption ? ` — ${entry.label ? `Figure ${entry.label}: ` : ""}${entry.caption}` : "";

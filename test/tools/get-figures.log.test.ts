@@ -20,7 +20,7 @@ const inventory: FigureInventory = {
 };
 
 function setup() {
-  const infos: Array<{ msg: string; meta: unknown }> = [];
+  const infos: { msg: string; meta: unknown }[] = [];
   const book: Book = {
     id: 929,
     uuid: "u",

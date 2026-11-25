@@ -48,7 +48,7 @@ import { defaultHint, errorCodeFor } from "./domain/error-codes.js";
 // under NodeNext (ext-apps#704); only the /server entry resolves, and it doesn't re-export this.
 interface UiToolMeta {
   resourceUri?: string;
-  visibility?: Array<"model" | "app">;
+  visibility?: ("model" | "app")[];
 }
 
 // MCP Apps wiring (issues #19/#22) — always-attach per issue #24 (per-call suppression is
@@ -344,7 +344,7 @@ function registerUiResources(server: McpServer, config: Config): void {
   }
   const cspMeta = { ui: { csp: { resourceDomains: [origin] } } };
 
-  const widgets: Array<{ name: string; uri: string; description: string; html: string }> = [
+  const widgets: { name: string; uri: string; description: string; html: string }[] = [
     {
       name: "Cover board (search)",
       uri: BOARD_KEYWORD_URI,

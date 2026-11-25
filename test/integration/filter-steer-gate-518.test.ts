@@ -39,9 +39,9 @@ const deps = (writeEnabled: boolean) =>
     log,
   }) as never;
 
-const text = (r: { content: Array<{ type: string; text?: string }> }) => r.content.map((b) => b.text ?? "").join("\n");
+const text = (r: { content: { type: string; text?: string }[] }) => r.content.map((b) => b.text ?? "").join("\n");
 
-const TOOLS: Array<[string, AnyToolDescriptor, Record<string, unknown>]> = [
+const TOOLS: [string, AnyToolDescriptor, Record<string, unknown>][] = [
   ["calibre_search meta", searchTool, { query: "x", mode: "meta", scope: "library", limit: 5 }],
   [
     "calibre_search_annotations",

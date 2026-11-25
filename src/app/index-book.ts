@@ -389,13 +389,11 @@ async function figureRows(
   invArgs: { bookId: number; format: string; downloadUrl: string; cacheKey: string; signal?: AbortSignal },
   markers: FigureMarker[],
 ): Promise<IndexedFigure[]> {
-  let entries: Array<
-    Pick<FigureEntry, "label" | "caption"> & {
-      source?: "raster" | "page-render" | "svg-render";
-      width?: number;
-      height?: number;
-    }
-  > = [];
+  let entries: (Pick<FigureEntry, "label" | "caption"> & {
+    source?: "raster" | "page-render" | "svg-render";
+    width?: number;
+    height?: number;
+  })[] = [];
   try {
     const { inventory } = await deps.figures.getInventory(invArgs);
     entries = inventory.entries;

@@ -47,7 +47,7 @@ function deps(titleHits: ProviderHit[], calls: string[]): BaseDeps {
   };
 }
 
-const text = (r: { content: Array<{ type: string }> }) => (r.content[0] as unknown as { text: string }).text;
+const text = (r: { content: { type: string }[] }) => (r.content[0] as unknown as { text: string }).text;
 
 describe("calibre_recover_metadata — ISBN miss falls back to title (#593)", () => {
   it("matches by title after the ISBN finds nothing and names both queries", async () => {

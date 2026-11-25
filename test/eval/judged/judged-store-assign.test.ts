@@ -29,7 +29,7 @@ const WIDE: StoredJudgment = {
   run: "r1",
   date: "2026-11-16T10:00:00.000Z",
 };
-const SPANS: Array<[number, number]> = [
+const SPANS: [number, number][] = [
   [100, 600],
   [5000, 5500],
   [9000, 9500],

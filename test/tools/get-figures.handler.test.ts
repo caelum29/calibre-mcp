@@ -49,7 +49,7 @@ function deps(formats: string[], inv: FigureInventory = inventory): BaseDeps {
 
 const args = (over: Record<string, unknown> = {}) => z.object(getFiguresTool.inputSchema).parse({ id: 929, ...over });
 
-const textOf = (r: { content: Array<{ type: string }> }) => (r.content[0] as unknown as { text: string }).text;
+const textOf = (r: { content: { type: string }[] }) => (r.content[0] as unknown as { text: string }).text;
 
 describe("calibre_get_figures list header", () => {
   it("should_name_the_other_figure_format_when_the_book_has_both", async () => {

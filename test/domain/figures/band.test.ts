@@ -5,7 +5,7 @@
 import { describe, expect, it } from "vitest";
 import { computeBand, findAnchors, parseBboxPage, selectAnchor } from "../../../src/domain/figures/band.js";
 
-function bbox(words: Array<[number, number, number, number, string]>): string {
+function bbox(words: [number, number, number, number, string][]): string {
   const w = words
     .map(([x0, y0, x1, y1, t]) => `<word xMin="${x0}" yMin="${y0}" xMax="${x1}" yMax="${y1}">${t}</word>`)
     .join("\n");

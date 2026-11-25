@@ -23,8 +23,8 @@ export interface BundleEntry {
  * pair per search, and prepends unrelated noise ("Integration status: False") that must be
  * tolerated rather than parsed. A pair is only emitted once its search string arrives.
  */
-export function parseSavedSearches(stdout: string): Array<{ name: string; expression: string }> {
-  const out: Array<{ name: string; expression: string }> = [];
+export function parseSavedSearches(stdout: string): { name: string; expression: string }[] {
+  const out: { name: string; expression: string }[] = [];
   let pending: string | undefined;
   for (const line of stripCalibredbBanner(stdout).split(/\r?\n/)) {
     const name = /^Name:\s*(.*)$/.exec(line);
@@ -52,7 +52,7 @@ export function isExclusionMarker(name: string): boolean {
 
 /** Merge saved searches (writable) with virtual libraries (read-only) into one bundle list. */
 export function mergeBundles(
-  savedSearches: Array<{ name: string; expression: string }>,
+  savedSearches: { name: string; expression: string }[],
   virtualLibraries: Record<string, string>,
 ): BundleEntry[] {
   const entries: BundleEntry[] = savedSearches.map((s) => ({

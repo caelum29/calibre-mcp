@@ -37,7 +37,7 @@ describe("pnpm eval rerank flags (#644)", () => {
   });
 
   it("a pass with --rerank-pool 4 --rerank-max-tokens 128 scores at most 4 pairs at 128 tokens and records both", async () => {
-    const calls: Array<{ pairs: number; opts?: RerankCallOptions }> = [];
+    const calls: { pairs: number; opts?: RerankCallOptions }[] = [];
     const reranker: Reranker = {
       async rerank(_q, ps, opts) {
         calls.push({ pairs: ps.length, ...(opts ? { opts } : {}) });

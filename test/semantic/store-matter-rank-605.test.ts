@@ -41,7 +41,7 @@ function seeded(): SqliteIndexStore {
   return s;
 }
 
-const view = (hits: Array<{ bookId: number; charStart: number; matterKind?: MatterKind }>) =>
+const view = (hits: { bookId: number; charStart: number; matterKind?: MatterKind }[]) =>
   hits.map((h) => [h.bookId, h.charStart, h.matterKind]);
 
 describe("library-scope representative chunk (#605)", () => {

@@ -9,7 +9,7 @@ import { TransformersReranker } from "../../src/semantic/reranker.js";
 const cfg = loadConfig({ CALIBRE_MCP_INDEX_DIR: "/tmp/unused-index" });
 
 /** Fake transformers.js module whose tokenizer records the max_length and pair count of every call. */
-function recordingModule(seen: Array<{ maxLength: number; pairs: number }>) {
+function recordingModule(seen: { maxLength: number; pairs: number }[]) {
   return {
     env: {},
     AutoTokenizer: {
@@ -26,7 +26,7 @@ function recordingModule(seen: Array<{ maxLength: number; pairs: number }>) {
 
 describe("TransformersReranker maxTokens (#644)", () => {
   it("truncates pairs to 512 tokens when no maxTokens is given", async () => {
-    const seen: Array<{ maxLength: number; pairs: number }> = [];
+    const seen: { maxLength: number; pairs: number }[] = [];
     const reranker = new TransformersReranker(cfg, async () => recordingModule(seen));
     await reranker.rerank("q", ["p1", "p2"]);
     expect(seen).toEqual([
@@ -36,7 +36,7 @@ describe("TransformersReranker maxTokens (#644)", () => {
   });
 
   it("truncates every pair to the call's maxTokens, still one pair per forward", async () => {
-    const seen: Array<{ maxLength: number; pairs: number }> = [];
+    const seen: { maxLength: number; pairs: number }[] = [];
     const reranker = new TransformersReranker(cfg, async () => recordingModule(seen));
     await reranker.rerank("q", ["p1", "p2"], { maxTokens: 256 });
     expect(seen).toEqual([

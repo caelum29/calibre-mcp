@@ -61,7 +61,7 @@ function deps(o: {
   return { d, spies: { libraryInfo, search, stats } };
 }
 
-const text = (r: { content: Array<{ type: string; text?: string }> }): string =>
+const text = (r: { content: { type: string; text?: string }[] }): string =>
   r.content.map((b) => b.text ?? "").join("\n");
 
 afterEach(() => vi.useRealTimers());

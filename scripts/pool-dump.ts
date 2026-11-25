@@ -74,7 +74,7 @@ try {
       ...(q.scope === "book" && q.bookId !== null && q.bookId !== undefined ? { bookId: q.bookId } : {}),
     };
     const r = await client.callTool({ name: "calibre_semantic_search", arguments: args });
-    const text = (r.content as Array<{ type: string; text?: string }>)
+    const text = (r.content as { type: string; text?: string }[])
       .filter((b) => b.type === "text")
       .map((b) => b.text ?? "")
       .join("\n");

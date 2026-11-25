@@ -165,7 +165,7 @@ describe("calibre_ping shows a collapsed burst in both channels (#370)", () => {
 
     const r = await pingTool().handler({}, pingDeps());
     const sc = r.structuredContent as {
-      recentErrors: Array<{ msg: string; ts: string; count: number; firstTs?: string }>;
+      recentErrors: { msg: string; ts: string; count: number; firstTs?: string }[];
     };
     expect(sc.recentErrors.map((e) => [e.msg, e.count, e.firstTs, e.ts])).toEqual([
       ["burst A", 1, undefined, at(0)],

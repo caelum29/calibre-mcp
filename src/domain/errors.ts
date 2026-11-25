@@ -10,7 +10,7 @@
 export class UnknownLibraryError extends Error {
   constructor(
     readonly input: string,
-    readonly known: ReadonlyArray<{ id: string; name: string }>,
+    readonly known: readonly { id: string; name: string }[],
     /** True when `input` is the configured default (no `library` arg): only the user's env can fix it. */
     readonly fromConfig = false,
   ) {

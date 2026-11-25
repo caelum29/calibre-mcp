@@ -16,7 +16,7 @@ import { uk } from "./uk.js";
 export const PACKS: readonly LanguagePack[] = [en, ru, uk];
 
 // Checked in this order: a mixed-script token with any Cyrillic letter counts as Cyrillic.
-const SCRIPT_TESTS: ReadonlyArray<readonly [Script, RegExp]> = [
+const SCRIPT_TESTS: readonly (readonly [Script, RegExp])[] = [
   ["Cyrillic", /\p{Script=Cyrillic}/u],
   ["Latin", /\p{Script=Latin}/u],
 ];

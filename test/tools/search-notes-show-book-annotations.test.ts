@@ -125,7 +125,7 @@ describe('kind=annotations scope=book query "*" lists the whole book (#500, deci
       { query: "*", kind: "annotations", scope: "book", bookId: 644 },
       deps(stdout("annotations-export")).d,
     );
-    const list = sc(r).annotations as Array<Record<string, unknown>>;
+    const list = sc(r).annotations as Record<string, unknown>[];
     expect(list[0]).toEqual({
       bookId: 644,
       format: "EPUB",
@@ -147,7 +147,7 @@ describe('kind=annotations scope=book query "*" lists the whole book (#500, deci
       { query: "*", kind: "annotations", scope: "book", bookId: 94 },
       deps(stdout("annotations-export")).d,
     );
-    const bookmarks = (sc(r).annotations as Array<Record<string, unknown>>).filter((a) => a.type === "bookmark");
+    const bookmarks = (sc(r).annotations as Record<string, unknown>[]).filter((a) => a.type === "bookmark");
     expect(bookmarks.map((b) => [b.bookId, b.text])).toEqual([
       [94, "Ветвление"],
       [94, "Rebase и конфликты"],

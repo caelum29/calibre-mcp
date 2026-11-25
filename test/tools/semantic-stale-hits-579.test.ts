@@ -107,7 +107,7 @@ describe("calibre_semantic_search drops books the library no longer holds (#579)
       expect(r.isError).toBeUndefined();
       expect(r.structuredContent?.bookIds).toEqual([1]);
       expect(r.structuredContent?.count).toBe(1);
-      const results = r.structuredContent?.results as Array<{ bookId: number }>;
+      const results = r.structuredContent?.results as { bookId: number }[];
       expect(results.map((x) => x.bookId)).toEqual([1]);
       expect(text(r)).not.toContain("book 2");
       expect(text(r)).toContain("Top 1 book(s)");
@@ -144,14 +144,14 @@ describe("calibre_semantic_search drops books the library no longer holds (#579)
       deps(store(), liveSearch([1])),
     );
     expect(r.isError).toBeUndefined();
-    const figs = r.structuredContent?.figures as Array<{ bookId: number }>;
+    const figs = r.structuredContent?.figures as { bookId: number }[];
     expect(figs.map((f) => f.bookId)).toEqual([1]);
     expect(text(r)).not.toContain("book 2");
   });
 
   it("should_drop_every_figure_hit_of_a_gone_book_at_library_scope", async () => {
     const r = await semanticSearchTool.handler(args({ target: "figures" }), deps(store(), liveSearch([2])));
-    const figs = r.structuredContent?.figures as Array<{ bookId: number }>;
+    const figs = r.structuredContent?.figures as { bookId: number }[];
     expect(figs.map((f) => f.bookId)).toEqual([2]);
   });
 

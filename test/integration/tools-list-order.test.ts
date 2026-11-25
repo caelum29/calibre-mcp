@@ -92,7 +92,7 @@ describe("tools/list order", () => {
   // ORDER; the pinned list is the order of record and the catalog is checked as a SET only.
   it("should_pin_exactly_the_tools_in_the_generated_catalog", () => {
     const raw = readFileSync(new URL("../../docs/tool-catalog.json", import.meta.url), "utf8");
-    const catalogNames = (JSON.parse(raw) as { tools: Array<{ name: string }> }).tools.map((t) => t.name).sort();
+    const catalogNames = (JSON.parse(raw) as { tools: { name: string }[] }).tools.map((t) => t.name).sort();
     expect([...PINNED_ORDER].sort()).toEqual(catalogNames);
   });
 });

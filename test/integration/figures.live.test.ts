@@ -59,7 +59,7 @@ describe.skipIf(!RUN || !ready)("calibre_get_figures (live Content Server)", () 
     const s = r.structuredContent as {
       format: string;
       counts: { figures: number };
-      entries: Array<{ caption?: string }>;
+      entries: { caption?: string }[];
     };
     expect(s.format).toBe("pdf");
     expect(s.counts.figures).toBeGreaterThan(50);
@@ -69,7 +69,7 @@ describe.skipIf(!RUN || !ready)("calibre_get_figures (live Content Server)", () 
 
   it("fetches a PDF raster figure as an image block", { timeout: 180_000 }, async () => {
     const list = await getFiguresTool.handler({ id: PDF_BOOK, detail: "standard", include_uncaptioned: false }, deps);
-    const entries = (list.structuredContent as { entries: Array<{ index: number; source: string }> }).entries;
+    const entries = (list.structuredContent as { entries: { index: number; source: string }[] }).entries;
     const raster = entries.find((e) => e.source === "raster");
     expect(raster).toBeDefined();
     const r = await getFiguresTool.handler(
@@ -89,7 +89,7 @@ describe.skipIf(!RUN || !ready)("calibre_get_figures (live Content Server)", () 
     const s = list.structuredContent as {
       format: string;
       counts: { figures: number };
-      entries: Array<{ index: number; source: string }>;
+      entries: { index: number; source: string }[];
     };
     expect(s.format).toBe("epub");
     expect(s.counts.figures).toBeGreaterThan(50);

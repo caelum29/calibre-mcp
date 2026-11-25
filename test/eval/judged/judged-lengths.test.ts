@@ -64,7 +64,7 @@ const RAWS = [
   rawOf(q("m1", { library: "M" }), [1]), // no lengths for library M: no breakdown
   rawOf(q("n1", { category: "neg" }), [8, 6, 1]),
 ];
-const GRADES: Record<string, Array<FinalGrade["grade"] | undefined>> = {
+const GRADES: Record<string, (FinalGrade["grade"] | undefined)[]> = {
   p1: [2, 0, 1, 2, 0],
   p2: [2, 0],
   b1: [2, 2],

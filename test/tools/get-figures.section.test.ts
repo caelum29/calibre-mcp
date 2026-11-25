@@ -53,7 +53,7 @@ function deps(formats: string[]): BaseDeps {
 }
 
 const args = (over: Record<string, unknown> = {}) => z.object(getFiguresTool.inputSchema).parse({ id: 929, ...over });
-const texts = (r: { content: Array<{ type: string; text?: string }> }) =>
+const texts = (r: { content: { type: string; text?: string }[] }) =>
   r.content.filter((b) => b.type === "text").map((b) => b.text ?? "");
 
 describe("calibre_get_figures EPUB section vs PDF page (#553)", () => {
@@ -72,7 +72,7 @@ describe("calibre_get_figures EPUB section vs PDF page (#553)", () => {
 
   it("should_put_section_and_no_page_in_epub_structured_entries", async () => {
     const r = await getFiguresTool.handler(args(), deps(["epub"]));
-    const entries = r.structuredContent?.entries as Array<Record<string, unknown>>;
+    const entries = r.structuredContent?.entries as Record<string, unknown>[];
     expect(entries.map((e) => [e.section, "page" in e])).toEqual([
       [5, false],
       [6, false],
@@ -82,7 +82,7 @@ describe("calibre_get_figures EPUB section vs PDF page (#553)", () => {
   it("should_keep_pdf_list_rows_and_entries_unchanged", async () => {
     const r = await getFiguresTool.handler(args(), deps(["pdf"]));
     expect(texts(r)[0]).toContain("index | page | source | caption\n0 | p.5 | raster 1-1 | A model");
-    const entries = r.structuredContent?.entries as Array<Record<string, unknown>>;
+    const entries = r.structuredContent?.entries as Record<string, unknown>[];
     expect(entries.map((e) => [e.page, "section" in e])).toEqual([
       [5, false],
       [6, false],

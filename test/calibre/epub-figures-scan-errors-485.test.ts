@@ -39,7 +39,7 @@ describe.runIf(ZIP && UNZIP)("scanEpubFile broken EPUBs (#485)", () => {
   });
   afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
-  const cases: Array<[string, Record<string, string>]> = [
+  const cases: [string, Record<string, string>][] = [
     ["no_container_xml", { mimetype: "application/epub+zip", "OEBPS/ch1.xhtml": "<html/>" }],
     ["container_points_to_missing_opf", { mimetype: "application/epub+zip", "META-INF/container.xml": CONTAINER }],
   ];

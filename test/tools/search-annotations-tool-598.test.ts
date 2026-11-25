@@ -63,7 +63,7 @@ describe("calibre_search_annotations (#598)", () => {
     expect(f.calls.filter((c) => c[0] !== "saved_searches")).toEqual([
       ["annotations", "search", "commit", "--format", "json"],
     ]);
-    const sc = r.structuredContent as { mode: string; annotations: Array<{ id: number }> };
+    const sc = r.structuredContent as { mode: string; annotations: { id: number }[] };
     expect({ mode: sc.mode, ids: sc.annotations.map((a) => a.id) }).toEqual({ mode: "annotations", ids: [23, 16] });
   });
 });

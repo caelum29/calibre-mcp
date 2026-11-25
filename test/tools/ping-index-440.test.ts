@@ -73,8 +73,8 @@ const lines = (r: ToolResult): string[] =>
     .map((b) => (b.type === "text" ? b.text : ""))
     .join("\n")
     .split("\n");
-const indexes = (r: ToolResult): Array<{ id: string; state: string; isDefault: boolean }> =>
-  (r.structuredContent?.indexes ?? []) as Array<{ id: string; state: string; isDefault: boolean }>;
+const indexes = (r: ToolResult): { id: string; state: string; isDefault: boolean }[] =>
+  (r.structuredContent?.indexes ?? []) as { id: string; state: string; isDefault: boolean }[];
 const line = (r: ToolResult, label: string): string | undefined => lines(r).find((l) => l.startsWith(`${label}: `));
 
 describe("calibre_ping names libraries by id (#440)", () => {

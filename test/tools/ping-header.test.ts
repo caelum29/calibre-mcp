@@ -59,7 +59,7 @@ function deps(o: Over = {}): PingDeps {
   };
 }
 
-const text = (r: { content: Array<{ type: string; text?: string }> }): string =>
+const text = (r: { content: { type: string; text?: string }[] }): string =>
   r.content.map((b) => b.text ?? "").join("\n");
 
 describe("calibre_ping header (#304)", () => {

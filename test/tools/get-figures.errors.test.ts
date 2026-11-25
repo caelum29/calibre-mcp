@@ -45,7 +45,7 @@ function deps(figures: unknown): BaseDeps {
 }
 
 const args = (over: Record<string, unknown> = {}) => z.object(getFiguresTool.inputSchema).parse({ id: 929, ...over });
-const textOf = (r: { content: Array<{ type: string }> }) => (r.content[0] as unknown as { text: string }).text;
+const textOf = (r: { content: { type: string }[] }) => (r.content[0] as unknown as { text: string }).text;
 
 describe("FiguresError", () => {
   it("should_carry_its_code_and_stay_an_Error", () => {
@@ -57,7 +57,7 @@ describe("FiguresError", () => {
 });
 
 describe("calibre_get_figures scan failures", () => {
-  const cases: Array<[ConstructorParameters<typeof FiguresError>[0], string]> = [
+  const cases: [ConstructorParameters<typeof FiguresError>[0], string][] = [
     [
       "NO_POPPLER",
       "No poppler tools found (pdfimages/pdftotext) — install with `brew install poppler` to scan PDF figures.\nCode: dependency_missing\nNext: install the tool the error names, then retry",

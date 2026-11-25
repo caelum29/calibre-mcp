@@ -85,7 +85,7 @@ export function gradeList(
   hits: readonly RawHit[],
   store: readonly StoredJudgment[],
   k = 5,
-): Array<number | null> {
+): (number | null)[] {
   const run = { ...rec.runs.hybrid!, hits: hits.slice(0, k) };
   const one: RawRecord = { query: rec.query, runs: { hybrid: run } };
   const { key } = blindRecord(one);
@@ -93,7 +93,7 @@ export function gradeList(
 }
 
 /** hit@5 and reciprocal rank of one graded list (relevant = grade 2, as judged-lib `metrics`). */
-export function hitAndRr(grades: ReadonlyArray<number | null>): { hit5: number; rr: number } {
+export function hitAndRr(grades: readonly (number | null)[]): { hit5: number; rr: number } {
   const i = grades.slice(0, 5).indexOf(2);
   return { hit5: i >= 0 ? 1 : 0, rr: i >= 0 ? 1 / (i + 1) : 0 };
 }

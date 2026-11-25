@@ -25,7 +25,7 @@ async function connect() {
 }
 
 const textOf = (r: { content?: unknown }): string =>
-  (r.content as Array<{ type: string; text?: string }>)
+  (r.content as { type: string; text?: string }[])
     .filter((b) => b.type === "text")
     .map((b) => b.text)
     .join("\n");

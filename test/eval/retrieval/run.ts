@@ -363,7 +363,7 @@ function mergeGates(a: GateResult, b: GateResult): GateResult {
  */
 function failFastOnGoldenSet(baselines: GateBaselines, tiers: ListDiffTier[]): void {
   const now = { meta: { goldenSetHash: currentGoldenSetHash() } } as EvalReport;
-  const pairs: Array<[ListDiffTier, EvalReport | undefined]> = [
+  const pairs: [ListDiffTier, EvalReport | undefined][] = [
     ["on", baselines.on],
     ["fusionOnly", baselines.off],
   ];
