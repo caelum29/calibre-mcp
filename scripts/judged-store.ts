@@ -269,9 +269,11 @@ export function gradeFromStore(
   opts: MatchOptions = {},
 ): Map<string, FinalGrade> {
   const out = new Map<string, FinalGrade>();
-  for (const rec of raws)
-    for (const [hid, m] of assign(rec, store, opts))
+  for (const rec of raws) {
+    for (const [hid, m] of assign(rec, store, opts)) {
       out.set(hid, m.coverage ? { grade: m.grade, coverage: m.coverage } : { grade: m.grade });
+    }
+  }
   return out;
 }
 
@@ -358,9 +360,11 @@ const jsonFiles = (dir: string) =>
 /** Load a judged run dir: queries, raw hits, key, the blind batches the judges read and their grades. */
 export function loadRunDir(dir: string): JudgedRunDir {
   const blindText = new Map<string, string>();
-  for (const f of jsonFiles(join(dir, "blind")))
-    for (const q of JSON.parse(readFileSync(join(dir, "blind", f), "utf8")) as BlindQuery[])
+  for (const f of jsonFiles(join(dir, "blind"))) {
+    for (const q of JSON.parse(readFileSync(join(dir, "blind", f), "utf8")) as BlindQuery[]) {
       for (const item of q.items) blindText.set(item.hid, item.text);
+    }
+  }
   // judgements/<judge>-batch-NN.json and adjudicated-batch-NN.json; other files there (human.json
   // calibration labels, #659) are not judge output
   const jdir = join(dir, "judgements");
@@ -391,10 +395,11 @@ export function loadRunDir(dir: string): JudgedRunDir {
 
 /** Final grades of a run's judged items: the hids the judges graded (or every key item without batches). */
 export function resolveRun(run: JudgedRunDir) {
-  if (run.judges.size !== 2)
+  if (run.judges.size !== 2) {
     throw new Error(
       `expected 2 judges in ${join(run.dir, "judgements")}, found: ${[...run.judges.keys()].join(", ") || "none"}`,
     );
+  }
   const sent = run.blindText.size ? [...run.blindText.keys()] : Object.keys(run.key);
   const [a, b] = [...run.judges.values()] as [Map<string, Grade>, Map<string, Grade>];
   return resolveGrades(sent, a, b, run.adjudicated);

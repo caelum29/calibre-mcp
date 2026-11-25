@@ -208,8 +208,9 @@ export function rubricViolations(grades: readonly Grade[]): { hid: string; probl
   const out: { hid: string; problem: string }[] = [];
   for (const g of grades) {
     if (g.grade === -1 && !g.reason?.trim()) out.push({ hid: g.hid, problem: "-1 without a reason" });
-    if (g.grade >= 1 && g.coverage === undefined)
+    if (g.grade >= 1 && g.coverage === undefined) {
       out.push({ hid: g.hid, problem: `grade ${g.grade} without coverage` });
+    }
   }
   return out;
 }

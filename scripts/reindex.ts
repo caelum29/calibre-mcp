@@ -148,8 +148,9 @@ await runBookPipeline<PrepareResult>(todo, concurrency, {
     if (!o.ok && describeError(o.error) === "ABORTED_LOW_DISK") return;
     const ready = o.ok && o.prepared.kind === "ready" ? o.prepared : undefined;
     const detail = ready ? { ...ready.detail, phaseMs: ready.phaseMs } : {};
-    if (ready)
+    if (ready) {
       for (const k of Object.keys(phaseTotals) as (keyof typeof phaseTotals)[]) phaseTotals[k] += ready.phaseMs[k];
+    }
     appendProgress(progressFile, {
       bookId: o.bookId,
       ok: o.ok,

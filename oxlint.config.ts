@@ -34,6 +34,9 @@ export default defineConfig({
     "typescript/consistent-type-imports": ["error", { disallowTypeAnnotations: false }],
     // Our style: `T[]` everywhere (the preset prefers `Array<T>`).
     "typescript/array-type": ["error", { default: "array" }],
+    // Our style: one-line `if (x) return;` stays brace-free; a body on its own line needs braces,
+    // which is where a misleading indent hides a bug (the preset wants braces everywhere).
+    curly: ["error", "multi-line"],
   },
   overrides: [
     {
@@ -152,7 +155,6 @@ export default defineConfig({
     {
       files: ["**/*"],
       rules: {
-        curly: "off", // 1934
         "typescript/no-unsafe-type-assertion": "off", // 1266
         "import/consistent-type-specifier-style": "off", // 458
         "typescript/no-non-null-assertion": "off", // 333

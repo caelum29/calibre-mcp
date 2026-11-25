@@ -164,8 +164,9 @@ export function admissionCandidates(
     // a half with no rank shown is empty: its rank 1 (RRF ≥ 1/61) would beat every other single-half item
     if (ranks.size === 0) continue;
     const top = Math.max(...ranks);
-    for (let r = 1; r <= n; r++)
+    for (let r = 1; r <= n; r++) {
       if (!ranks.has(r) && (r < top || hits.length >= topK)) unclassified.push({ half, rank: r });
+    }
   }
   return { candidates, unclassified };
 }

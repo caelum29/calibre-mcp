@@ -220,8 +220,9 @@ function findCaptionLine(
     // +1: a page-first line starts on the form feed that opens its page (book 836)
     const page = pageOf(line.start + 1, pageStarts);
     if (page > entry.page) break;
-    if (line.bare && page === entry.page && normalizeLabel(line.label) === normalizeLabel(label))
+    if (line.bare && page === entry.page && normalizeLabel(line.label) === normalizeLabel(label)) {
       return { index: i, byPage: true };
+    }
   }
   return null;
 }

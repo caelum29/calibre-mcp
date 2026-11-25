@@ -574,8 +574,9 @@ export function localise(
   for (const [i, h] of hits.entries()) {
     const span = { start: h.hit.charStart, end: h.hit.charEnd };
     const label = labels.find((l) => h.hit.body.includes(l.marker) && overlap(span, l) > 0);
-    if (label)
+    if (label) {
       return { spanHit: i + 1, snippetHasMarker: snippetWindow(h.hit.body, query).text.includes(label.marker) };
+    }
   }
   return { spanHit: null };
 }

@@ -394,8 +394,9 @@ function compareFiles([a, b]: [string, string]): void {
 export async function main(platform: string = process.platform): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   if (args.compare) {
-    if (args.gate || args.live)
+    if (args.gate || args.live) {
       throw new Error("--compare reads two existing reports; it can't combine with --gate/--live.");
+    }
     compareFiles(args.compare);
     return;
   }
@@ -424,7 +425,7 @@ export async function main(platform: string = process.platform): Promise<void> {
   // #358 list diff + #392 golden-set hash run beside each tier's own gate, vs the same baseline
   const withList = (r: GateResult, cur: EvalReport, base: EvalReport, tier: "on" | "fusionOnly") => {
     let out = goldenTiers.includes(tier) ? mergeGates(r, evaluateGoldenSet(cur, base, tier)) : r;
-    if (listDiff)
+    if (listDiff) {
       out = mergeGates(
         out,
         evaluateListDiff(cur, base, {
@@ -434,6 +435,7 @@ export async function main(platform: string = process.platform): Promise<void> {
           blocking: rule.listDiffBlocking,
         }),
       );
+    }
     return out;
   };
 

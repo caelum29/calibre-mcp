@@ -60,8 +60,9 @@ export function toolError(code: ErrorCode, message: string, opts: ToolErrorOptio
   const lines = [opts.bare ? message : `Error: ${message}`, labelledLine(ERROR_LINE_LABELS.code, code)];
   // a message that already spells out the step needs no duplicate Next: line; a bare report
   // (ping) always gets it — its log excerpt may quote the hint as data, not as the steer
-  if (hint !== undefined && (opts.bare || !message.includes(hint)))
+  if (hint !== undefined && (opts.bare || !message.includes(hint))) {
     lines.push(labelledLine(ERROR_LINE_LABELS.next, hint));
+  }
   return {
     content: [{ type: "text", text: lines.join("\n") }],
     // a caller's own `error` field (e.g. ping's raw cause) wins over the mirrored message

@@ -92,8 +92,9 @@ export function inThreadEncoder(embedder: Embedder): BookEncoder {
       // No context prefix: its text already starts with the title and authors.
       const [metadataVector] = job.metadataText ? await embedder.embedPassages([job.metadataText]) : [];
       const withMeta = metadataVector ? { metadataVector } : {};
-      if (chunks.length === 0)
+      if (chunks.length === 0) {
         return { chunks, kinds, ...withMeta, phaseMs: { chunk: t1 - t0, embed: Date.now() - t1 } };
+      }
       const vectors = await embedSliced(
         embedder,
         chunks.map((c) => job.ctx + c.body),

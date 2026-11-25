@@ -154,8 +154,9 @@ async function runOrReport(
     // A cancelled build's result must not answer the next call: that call should build.
     { signal, keep: (r) => r.structuredContent?.cancelled !== true },
   );
-  if (outcome.kind === "running")
+  if (outcome.kind === "running") {
     return stillRunningResult(outcome, { ids: requestedIds(args), mode: buildModeKey(args) });
+  }
   if (outcome.kind === "failed") {
     return backgroundFailedResult(describeError(outcome.error), outcome.earlierCallFinishedAgoMs);
   }

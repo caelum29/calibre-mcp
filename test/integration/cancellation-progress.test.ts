@@ -59,8 +59,9 @@ beforeAll(async () => {
       res.setHeader("content-type", "application/json");
       res.end(JSON.stringify(body));
     };
-    if (url.pathname === "/ajax/library-info")
+    if (url.pathname === "/ajax/library-info") {
       return json({ library_map: { [LIB]: "Test Lib" }, default_library: LIB });
+    }
     const book = /^\/ajax\/book\/(\d+)\//.exec(url.pathname);
     if (book) return json(rawBook(Number(book[1])));
     if (url.pathname.startsWith("/ajax/search/")) {

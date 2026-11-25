@@ -197,7 +197,7 @@ export function compareReports(
       if (sub.length) rows.push(compareRows(mode, group, sub));
     }
     const kinds = [...new Set(pairs.map(([r]) => r.kind))].sort();
-    for (const kind of kinds)
+    for (const kind of kinds) {
       rows.push(
         compareRows(
           mode,
@@ -205,6 +205,7 @@ export function compareReports(
           pairs.filter(([r]) => r.kind === kind),
         ),
       );
+    }
   }
   return rows;
 }

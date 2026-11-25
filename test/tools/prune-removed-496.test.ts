@@ -48,8 +48,9 @@ function chunk(body: string): IndexedChunk {
 
 /** An index holding books 10, 12 and 13, each with one "ownership" chunk. */
 function seeded(store: SqliteIndexStore): SqliteIndexStore {
-  for (const id of [10, 12, 13])
+  for (const id of [10, 12, 13]) {
     store.replaceBook(LIB, { bookId: id, title: `Book ${id}`, authors: [] }, [chunk("ownership moves")]);
+  }
   return store;
 }
 const memoryIndex = () => seeded(new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" })));
@@ -59,10 +60,11 @@ function busyIndex(): ToolDeps["index"] {
   const real = memoryIndex();
   return new Proxy(real, {
     get(target, prop, recv) {
-      if (prop === "deleteBooks")
+      if (prop === "deleteBooks") {
         return () => {
           throw Object.assign(new Error("database is locked"), { errcode: 5 });
         };
+      }
       const v = Reflect.get(target, prop, recv) as unknown;
       return typeof v === "function" ? (v as (...a: unknown[]) => unknown).bind(target) : v;
     },

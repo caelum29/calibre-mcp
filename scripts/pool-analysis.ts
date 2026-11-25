@@ -51,8 +51,9 @@ const deepTopK = poolDir
 // the judge dir must carry the store's query set verbatim, so new grades land in the same store
 const queriesJson = (): string => {
   const dir = poolDir ?? baseDir;
-  if (!dir || !existsSync(join(dir, "queries.json")))
+  if (!dir || !existsSync(join(dir, "queries.json"))) {
     throw new Error("--judge-dir needs queries.json in --pool or --base");
+  }
   return readFileSync(join(dir, "queries.json"), "utf8");
 };
 const out: string[] = [];
@@ -123,10 +124,11 @@ function admission(): void {
         const g = grades[i];
         if (g === null) c.unjudged++;
         if (g === 2) misses++;
-        if (g === 2 || g === 1 || g === null)
+        if (g === 2 || g === 1 || g === null) {
           say(
             `| ${rec.query.id} | ${rec.query.category} | ${cand.hit.bookId} | ${cand.half} | ${cand.vectorRank ?? "–"} | ${cand.keywordRank ?? "–"} | ${cand.fusedRank ?? "–"} | ${gradeText(g)} | ${cand.hit.title.slice(0, 60)} |`,
           );
+        }
       });
       c.misses += misses;
       if (misses) c.withMiss++;
@@ -283,7 +285,7 @@ function blend(): void {
     );
   }
   const jsonFile = flag("--json");
-  if (jsonFile)
+  if (jsonFile) {
     writeFileSync(
       jsonFile,
       JSON.stringify(
@@ -292,6 +294,7 @@ function blend(): void {
         1,
       ),
     );
+  }
 }
 
 // dispatch last: the arm tables above are module consts

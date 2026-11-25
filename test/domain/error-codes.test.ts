@@ -134,8 +134,9 @@ function helperViolations(source: string, file?: string): string[] {
     }
   }
   for (const { at, args } of helperCalls(source, "errorFromCatch", file)) {
-    if (args.length !== 1 || !/^[A-Za-z_$][\w$]*$/.test(args[0]!))
+    if (args.length !== 1 || !/^[A-Za-z_$][\w$]*$/.test(args[0]!)) {
       bad.push(`${at}: errorFromCatch(${args.join(", ")})`);
+    }
   }
   return bad;
 }

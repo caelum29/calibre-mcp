@@ -90,23 +90,27 @@ export function compareRefusal(
   opts: MatchOptions = {},
 ): string | undefined {
   const [ha, hb] = [a, b].map((r) => querySetHash(r.queriesJson).slice(0, 12));
-  if (ha !== hb)
+  if (ha !== hb) {
     return `refusing: query sets differ (${a.name} ${ha}, ${b.name} ${hb}); compare runs of the same queries.json`;
+  }
   for (const run of [a, b]) {
     const graded = gradeFromStore(run.raws, store, opts);
     const holes: string[] = [];
-    for (const mode of sharedModes(a, b))
-      for (const r of scored(run, mode))
+    for (const mode of sharedModes(a, b)) {
+      for (const r of scored(run, mode)) {
         gradesFor(r.query.id, mode, run.key, graded)
           .slice(0, 5)
           .forEach((g, i) => {
             if (g === null) holes.push(`${r.query.id} ${mode} rank ${i + 1}`);
           });
-    if (holes.length)
+      }
+    }
+    if (holes.length) {
       return (
         `refusing: run ${run.name} has ${holes.length} unjudged hit(s) in a top 5 (first: ${holes[0]}); fill the holes with ` +
         `pnpm eval:judged:dump ${run.dir} --store ${storeFile}, judge the new batches, then pnpm eval:judged:score ${run.dir} --store ${storeFile}`
       );
+    }
   }
   return undefined;
 }
@@ -186,7 +190,7 @@ export function compareJudgedRuns(
       ),
     );
     const cats = [...new Set(ids.map((id) => qa.get(id)!.category))].sort();
-    for (const c of cats)
+    for (const c of cats) {
       rows.push(
         pairedRow(
           mode,
@@ -194,6 +198,7 @@ export function compareJudgedRuns(
           pairsOf((id) => qa.get(id)!.category === c),
         ),
       );
+    }
   }
   return rows;
 }

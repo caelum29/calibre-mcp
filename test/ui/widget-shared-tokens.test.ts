@@ -26,8 +26,9 @@ function resolve(html: string, ctx: Context): Tokens {
       (ctx === "dark theme" && sel === ':root[data-theme="dark"]') ||
       (ctx === "dark media" && sel.startsWith(":root:not"));
     if (!applies) continue;
-    for (const d of m[2]!.matchAll(/--([\w-]+)\s*:\s*([^;]+)/g))
+    for (const d of m[2]!.matchAll(/--([\w-]+)\s*:\s*([^;]+)/g)) {
       out[`--${d[1]}`] = d[2]!.replaceAll(/\s+/g, " ").trim();
+    }
   }
   return out;
 }

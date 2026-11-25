@@ -19,8 +19,9 @@ beforeAll(async () => {
       res.setHeader("content-type", "application/json");
       res.end(JSON.stringify(body));
     };
-    if (url.pathname === "/ajax/library-info")
+    if (url.pathname === "/ajax/library-info") {
       return json({ library_map: { [LIB]: "Test Lib" }, default_library: LIB });
+    }
     if (url.pathname === `/ajax/books/${LIB}`) {
       return json({ "1": { application_id: 1, title: "Rust in Action", authors: ["Tim McNamara"], formats: [] } });
     }

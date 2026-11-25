@@ -38,7 +38,7 @@ const embedder: Embedder = {
 /** Books 1 and 2, both matching "ownership", each with one figure caption. */
 function store(): SqliteIndexStore {
   const s = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
-  for (const id of [1, 2])
+  for (const id of [1, 2]) {
     s.replaceBook(
       LIB,
       { bookId: id, title: `Book ${id}`, authors: ["A"] },
@@ -54,6 +54,7 @@ function store(): SqliteIndexStore {
         },
       ],
     );
+  }
   return s;
 }
 
@@ -221,10 +222,11 @@ describe("a slow or failing existence check keeps today's hits (#579)", () => {
     const index = store();
     const busy = new Proxy(index, {
       get(target, prop, recv) {
-        if (prop === "deleteBooks")
+        if (prop === "deleteBooks") {
           return () => {
             throw Object.assign(new Error("database is locked"), { errcode: 5 });
           };
+        }
         const v = Reflect.get(target, prop, recv) as unknown;
         return typeof v === "function" ? (v as (...a: unknown[]) => unknown).bind(target) : v;
       },

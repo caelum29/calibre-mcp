@@ -100,10 +100,11 @@ export const addBookTool = defineTool({
   handler: async (args, deps) => {
     try {
       const check = validateAddPath(args.path, deps.config.addRoots);
-      if (!check.ok)
+      if (!check.ok) {
         return check.outsideRoots
           ? toolError("path_not_allowed", check.reason, { hint: ADD_ROOTS_STEP })
           : toolError("not_found", check.reason);
+      }
 
       // calibredb --with-library needs the library ID, not the display name (routed-write 404 fix).
       const libId = await deps.content.resolveLibraryId(args.library);
@@ -141,8 +142,9 @@ export const addBookTool = defineTool({
       // Hints and notes go in the text too: some clients surface only text blocks.
       const lines = [summary, ...dups.map(renderHint)];
       if (failure !== undefined) lines.push(renderProbeFailed(failure));
-      if (notProbed.length > 0)
+      if (notProbed.length > 0) {
         lines.push(renderNotProbed(addedIds.length - notProbed.length, addedIds.length, notProbed));
+      }
       return toolOk([{ type: "text", text: lines.join("\n") }], {
         addedIds,
         path: check.resolved,

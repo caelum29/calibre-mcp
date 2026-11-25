@@ -46,8 +46,9 @@ function deps(stall: Stalls): SearchDeps {
     virtualLibraries: async () => ({}),
     ftsSearch: async (_q: string, libId: string, o: { timeoutMs?: number }) => {
       if (stall.fts === "disabled") throw new FtsError("FTS_DISABLED", libId);
-      if (stall.fts === "hang")
+      if (stall.fts === "hang") {
         return hangUntilTimeout(() => new CalibreHttpTimeoutError("http://x/fts/search"))(o.timeoutMs);
+      }
       return MATCHES;
     },
     ftsSnippets: async (_q: string, _l: string, ids: number[]) =>

@@ -77,10 +77,11 @@ function scanHeadings(text: string): Heading[] {
 export function anchorNumber(title: string): number | null {
   // "Part I" / "Part 1: Introduction" — chapterNumber knows Часть/Частина but not "Part".
   const part = /^(?:part|часть|частина)\s+(\d{1,2}|[ivx]{1,4})\b/i.exec(title);
-  if (part)
+  if (part) {
     return /^\d/.test(part[1]!)
       ? Number(part[1])
       : (({ i: 1, ii: 2, iii: 3, iv: 4 } as Record<string, number>)[part[1]!.toLowerCase()] ?? null);
+  }
   const n = chapterNumber(title);
   if (n !== null) return n;
   if (/^\d{1,2}\.\d/.test(title)) return null;

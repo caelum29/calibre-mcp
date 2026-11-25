@@ -19,10 +19,11 @@ function deps(bigTotal: number, pageMs: number, searches: SearchParams[] = []): 
         const total = p.library === "Big" ? bigTotal : 3;
         const from = p.offset ?? 0;
         const bookIds = ids(from + 1, Math.max(0, Math.min(p.num ?? total, total - from)));
-        if (p.library === "Big")
+        if (p.library === "Big") {
           await new Promise((r) => {
             setTimeout(r, pageMs);
           });
+        }
         return { bookIds, total, num: bookIds.length, offset: from, sort: "id", libraryId: p.library ?? "" };
       },
     },

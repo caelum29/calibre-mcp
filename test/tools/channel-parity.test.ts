@@ -97,8 +97,9 @@ function structuredOnly(structured: unknown, text: string, at = "$"): string[] {
       for (const n of [v].flat()) {
         if (typeof n === "number" && !hasNumber(text, n)) gaps.push(`${where} id ${n} missing from text`);
         // String ids (library ids): whole-token match so "Lib" isn't satisfied by "Library".
-        else if (typeof n === "string" && STRING_ID_KEY.test(k) && !hasToken(text, n))
+        else if (typeof n === "string" && STRING_ID_KEY.test(k) && !hasToken(text, n)) {
           gaps.push(`${where} id "${n}" missing from text`);
+        }
       }
     } else if (FAILURE_KEY.test(k) && (typeof v === "string" || Array.isArray(v))) {
       for (const s of [v].flat()) {

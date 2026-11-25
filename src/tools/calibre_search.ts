@@ -444,8 +444,9 @@ function searchErrorSteer(err: unknown, deadline: Deadline, query: string): Stee
         "Retry with the phrase wrapped in double quotes, or drop - and : from bare words; AND/OR/NOT go between terms (a NOT b), never first or last.",
     };
   }
-  if (err instanceof CalibreBusyError)
+  if (err instanceof CalibreBusyError) {
     return { message: `${err.message} ${KEYWORD_SEARCH_FALLBACK}`, hint: err.message };
+  }
   if (
     err instanceof DeadlineExceededError ||
     err instanceof CalibreHttpTimeoutError ||

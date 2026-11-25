@@ -94,8 +94,9 @@ export function computeAxes(report: EvalReport): Partial<Record<Mode, ModeAxes>>
       axes.confuserAt1 = { n: confuser.length, atRank1: atRank1.length };
     }
     const adjacent = rows.filter((r) => r.kind === "adjacent-negative");
-    if (adjacent.length)
+    if (adjacent.length) {
       axes.adjacentNegative = { n: adjacent.length, flagged: adjacent.filter((r) => r.flagged === true).length };
+    }
     out[mode] = axes;
   }
   return out;

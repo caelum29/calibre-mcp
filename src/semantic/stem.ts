@@ -48,8 +48,9 @@ export function* stemmedTokens(
   lang?: string,
   packs: readonly LanguagePack[] = PACKS,
 ): Generator<{ stem: string; index: number; length: number }> {
-  for (const m of text.matchAll(TOKEN))
+  for (const m of text.matchAll(TOKEN)) {
     yield { stem: stemToken(m[0], lang, packs), index: m.index, length: m[0].length };
+  }
 }
 
 /**

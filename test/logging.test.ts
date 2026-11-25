@@ -128,8 +128,9 @@ describe("logger file sink", () => {
 
   it("should_keep_exactly_7_days_today_included", () => {
     const dir = tempDir();
-    for (const d of ["2026-10-23", "2026-10-24", "2026-10-29"])
+    for (const d of ["2026-10-23", "2026-10-24", "2026-10-29"]) {
       writeFileSync(path.join(dir, `calibre-mcp-${d}.jsonl`), "{}\n");
+    }
     const { logger } = setup();
     logger.configure({ dir });
     logger.info("a");
