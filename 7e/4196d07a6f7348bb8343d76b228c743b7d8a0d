@@ -1,0 +1,31 @@
+test/architecture.test.ts
+  s_d4033055c09703::t_55640a078a3189 798-803,811
+  s_d4033055c09703::t_1b56f78a386dd1 271-273,276-285,288-294,306-310,338-355,357-367,371-377,782-796,809-810,812-814
+  s_d4033055c09703::t_621e8fa892dce9 6-14
+  s_d4033055c09703::t_f72065a7acefb1 797
+CHANGELOG.md
+  s_d4033055c09703::t_0e7a1cde3d7b31 12-21
+.github/dependabot.yml
+  s_d4033055c09703::t_64b280960d0b8e 28-29
+package.json
+  s_d4033055c09703::t_c4caff56086765 99
+  s_d4033055c09703::t_74bd44721bea75 94
+pnpm-lock.yaml
+  s_d4033055c09703::t_ff4cd3c91ad848 61-63,77-78,1321-1440,2191-2193,3120-3179,3989-4010
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7e4196d07a6f7348bb8343d76b228c743b7d8a0d",
+  "prompts": {},
+  "sessions": {
+    "s_d4033055c09703": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa4ca495-350e-400d-bf0a-cf358c7f58f7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Artem Sorochynskyi <caelum29@gmail.com>"
+    }
+  }
+}
