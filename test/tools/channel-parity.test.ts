@@ -61,7 +61,7 @@ const PREFIX = 60;
 const hasNumber = (text: string, n: number): boolean => new RegExp(`(^|[^\\d.])${n}($|[^\\d])`).test(text);
 
 const hasToken = (text: string, t: string): boolean =>
-  new RegExp(`(^|[^\\w])${t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}($|[^\\w])`).test(text);
+  new RegExp(`(^|[^\\w])${t.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&")}($|[^\\w])`).test(text);
 
 /** Every scalar leaf of a diff entry (field names, before/after values). */
 function diffLeaves(v: unknown, out: (string | number)[] = []): (string | number)[] {
@@ -97,8 +97,9 @@ function structuredOnly(structured: unknown, text: string, at = "$"): string[] {
       for (const n of [v].flat()) {
         if (typeof n === "number" && !hasNumber(text, n)) gaps.push(`${where} id ${n} missing from text`);
         // String ids (library ids): whole-token match so "Lib" isn't satisfied by "Library".
-        else if (typeof n === "string" && STRING_ID_KEY.test(k) && !hasToken(text, n))
+        else if (typeof n === "string" && STRING_ID_KEY.test(k) && !hasToken(text, n)) {
           gaps.push(`${where} id "${n}" missing from text`);
+        }
       }
     } else if (FAILURE_KEY.test(k) && (typeof v === "string" || Array.isArray(v))) {
       for (const s of [v].flat()) {
@@ -669,7 +670,7 @@ describe("dual-channel parity: pagination (#211)", () => {
 
 // #199: text payloads (issue lines, snippets, dup groups, compare diff) must have a
 // structured counterpart — Claude Code drops the text channel.
-const RAW = LIBRARY.map((b, i) => ({ ...b, title: `${795731065 + i}` }));
+const RAW = LIBRARY.map((b, i) => ({ ...b, title: `${795_731_065 + i}` }));
 const DUPES: Book[] = [
   ...LIBRARY,
   book({ id: 104, uuid: "u-104", title: "rust in action", formats: ["pdf"] }),
@@ -807,7 +808,7 @@ describe("dual-channel parity: scenarios are not vacuous", () => {
       // the message alone: drop the prefix and the labelled Code:/Next: lines (#437)
       const steer = textChannel(r)
         .replace(/^Error: /, "")
-        .replace(/\n(Code|Next): .*$/gm, "")
+        .replaceAll(/\n(Code|Next): .*$/gm, "")
         .slice(0, PREFIX);
       expect({
         gaps: parityGaps(r),
@@ -879,7 +880,7 @@ const oneBookStore = (): SqliteIndexStore => {
   ]);
   return s;
 };
-const STEER_ONCE: Array<{ scenario: Scenario; code: string; step: string }> = [
+const STEER_ONCE: { scenario: Scenario; code: string; step: string }[] = [
   {
     scenario: {
       tool: "calibre_search",
@@ -1125,11 +1126,11 @@ const PING_FIXTURES: Scenario[] = [
 ];
 // real + unknown ids: both results print `Not found (skipped): …` (#522, #529); gate on for the apply
 const REMOVE_MIXED: Scenario[] = [
-  { tool: "calibre_remove_book", label: "dry run, mixed ids", args: { ids: [101, 999998, 102, 999999] } },
+  { tool: "calibre_remove_book", label: "dry run, mixed ids", args: { ids: [101, 999_998, 102, 999_999] } },
   {
     tool: "calibre_remove_book",
     label: "confirmed, mixed ids",
-    args: { ids: [101, 999998, 102, 999999], confirm: "true" },
+    args: { ids: [101, 999_998, 102, 999_999], confirm: "true" },
     deps: () => fakeDeps({ env: { CALIBRE_MCP_ENABLE_WRITE: "1" } }),
   },
 ];
@@ -1145,7 +1146,9 @@ function fieldValues(sc: unknown, field: string): unknown[] {
     const key = each ? part.slice(0, -2) : part;
     cur = cur.flatMap((v) => {
       const x = v && typeof v === "object" ? (v as Record<string, unknown>)[key] : undefined;
-      return each ? (Array.isArray(x) ? x : []) : x === undefined ? [] : [x];
+      if (!each) return x === undefined ? [] : [x];
+      const xs: unknown[] = Array.isArray(x) ? x : [];
+      return xs;
     });
   }
   return cur;
@@ -1226,7 +1229,7 @@ describe("Labelled lines (#454)", () => {
     "calibre_remove_book's Not found line is registered and carries notFoundIds (%s)",
     async (_label, sc) => {
       const hit = (await rendered).find(({ s }) => s === sc)!;
-      expect(hit.r.structuredContent).toMatchObject({ notFoundIds: [999998, 999999] });
+      expect(hit.r.structuredContent).toMatchObject({ notFoundIds: [999_998, 999_999] });
       expect(occurrences(textChannel(hit.r), registered("calibre_remove_book", "Not found"))).toEqual([
         "999998",
         "999999",

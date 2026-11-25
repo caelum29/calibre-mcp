@@ -58,7 +58,7 @@ function allowlistFromManifest(yaml) {
     // Pull every quoted string; fall back to the bare value.
     const quoted = [...val.matchAll(/["']([^"']+)["']/g)].map((q) => q[1]);
     if (quoted.length) phrases.push(...quoted);
-    else phrases.push(val.replace(/^[[\]]+|[[\]]+$/g, ""));
+    else phrases.push(val.replaceAll(/^[[\]]+|[[\]]+$/g, ""));
   }
   return phrases.filter(Boolean);
 }
@@ -142,7 +142,7 @@ async function main() {
   process.exit(result.pass ? 0 : 1);
 }
 
-main().catch((e) => {
+main().catch((/** @type {unknown} */ e) => {
   err(`legal-gate error: ${e instanceof Error ? e.stack : String(e)}`);
   process.exit(2);
 });

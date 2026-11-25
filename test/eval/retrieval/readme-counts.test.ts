@@ -4,10 +4,9 @@
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
+const HERE = import.meta.dirname;
 const README = readFileSync(path.join(HERE, "..", "README.md"), "utf8");
 const queries = JSON.parse(readFileSync(path.join(HERE, "queries.json"), "utf8")) as {
   heldOut?: boolean;

@@ -15,7 +15,9 @@ import { textOf } from "./text-of.js";
 
 /** A boundary call that hangs until its own timeout fires, like a request queued behind a held lock. */
 const hangUntilTimeout = (err: () => Error) => (timeoutMs: number | undefined) =>
-  new Promise<never>((_, reject) => setTimeout(() => reject(err()), timeoutMs ?? 30_000));
+  new Promise<never>((_, reject) => {
+    setTimeout(() => reject(err()), timeoutMs ?? 30_000);
+  });
 
 const MATCHES: FtsMatches = {
   bookIds: [1235],
@@ -44,8 +46,9 @@ function deps(stall: Stalls): SearchDeps {
     virtualLibraries: async () => ({}),
     ftsSearch: async (_q: string, libId: string, o: { timeoutMs?: number }) => {
       if (stall.fts === "disabled") throw new FtsError("FTS_DISABLED", libId);
-      if (stall.fts === "hang")
+      if (stall.fts === "hang") {
         return hangUntilTimeout(() => new CalibreHttpTimeoutError("http://x/fts/search"))(o.timeoutMs);
+      }
       return MATCHES;
     },
     ftsSnippets: async (_q: string, _l: string, ids: number[]) =>
@@ -61,7 +64,7 @@ function deps(stall: Stalls): SearchDeps {
     config: loadConfig({}),
     content: content as unknown as ToolDeps["content"],
     calibre: calibre as unknown as ToolDeps["calibre"],
-    fts: new FullTextSearch(content as unknown as ConstructorParameters<typeof FullTextSearch>[0]),
+    fts: new FullTextSearch(content),
     extractor: {} as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],
     embedder: {} as ToolDeps["embedder"],
@@ -100,7 +103,7 @@ describe("calibre_search deadline (2026-10-31 hang)", () => {
   it("should_still_search_when_saved_searches_times_out", async () => {
     const { r, ms } = await timed(deps({ savedSearches: true }));
     expect(r.isError).toBeFalsy();
-    expect(ms).toBeLessThanOrEqual(5_000); // the exclusion sweep waits its short cold cap, not 30 s
+    expect(ms).toBeLessThanOrEqual(5000); // the exclusion sweep waits its short cold cap, not 30 s
     expect(textOf(r)).toContain("Found 1 books with full-text matches");
     expect(textOf(r)).toContain("exclusion check unavailable");
   });

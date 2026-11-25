@@ -364,7 +364,7 @@ export class FigureInventoryService implements FigureSource {
     const pages = labelOnlyPages(scanCaptions(text));
     if (pages.length === 0) return undefined;
     const first = pages[0] as number;
-    const last = pages[pages.length - 1] as number;
+    const last = pages.at(-1) as number;
     const tmpHtml = `${tmpTxt}.bbox.html`;
     try {
       await this.#run(

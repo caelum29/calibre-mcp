@@ -123,16 +123,20 @@ describe("calibre_ping Index budget against a slow Content Server (#318)", () =>
   it("should_share_one_budget_between_a_slow_libraryInfo_and_a_hanging_count", async () => {
     vi.useFakeTimers();
     const slowInfo = () =>
-      new Promise((resolve) => setTimeout(() => resolve({ libraryMap: MAP, defaultLibrary: "" }), 3000));
+      new Promise((resolve) => {
+        setTimeout(() => resolve({ libraryMap: MAP, defaultLibrary: "" }), 3000);
+      });
     const p = ping.handler({}, deps({ libraryInfo: slowInfo, search: never }));
     expect(await settledBy(p, BUDGET_MS)).toBe(true);
   });
 
   it("should_give_the_count_only_the_budget_left_after_libraryInfo", async () => {
     vi.useFakeTimers();
-    const seen: Array<number | undefined> = [];
+    const seen: (number | undefined)[] = [];
     const slowInfo = () =>
-      new Promise((resolve) => setTimeout(() => resolve({ libraryMap: MAP, defaultLibrary: "" }), 3000));
+      new Promise((resolve) => {
+        setTimeout(() => resolve({ libraryMap: MAP, defaultLibrary: "" }), 3000);
+      });
     const search = async (q: { timeoutMs?: number }) => {
       seen.push(q.timeoutMs);
       return { total: 1092 };

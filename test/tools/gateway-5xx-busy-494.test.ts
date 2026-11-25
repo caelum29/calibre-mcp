@@ -38,23 +38,22 @@ const failing = () =>
     throw new CalibreCliError(1, "calibredb command failed", GATEWAY);
   });
 
-const deps = (calibredb: ReturnType<typeof failing>): WithPrune =>
-  ({
-    config: loadConfig({}),
-    content: {
-      resolveLibraryId: async () => "Programming_Books",
-      getBook: async (id: number) => book(id, id === 10 ? ["epub"] : ["pdf"]),
-      booksByIds: async (ids: number[]) =>
-        new Map(ids.map((id) => [id, book(id, id === 10 ? ["epub"] : ["pdf"])] as const)),
-      bookMergeFacts: async () => ({ customFields: [], hasCover: true }),
-    } as unknown as ToolDeps["content"],
-    calibre: { calibredb } as unknown as ToolDeps["calibre"],
-    extractor: {} as ToolDeps["extractor"],
-    figures: {} as ToolDeps["figures"],
-    embedder: {} as ToolDeps["embedder"],
-    log,
-    ...noPruneIndex,
-  }) as WithPrune;
+const deps = (calibredb: ReturnType<typeof failing>): WithPrune => ({
+  config: loadConfig({}),
+  content: {
+    resolveLibraryId: async () => "Programming_Books",
+    getBook: async (id: number) => book(id, id === 10 ? ["epub"] : ["pdf"]),
+    booksByIds: async (ids: number[]) =>
+      new Map(ids.map((id) => [id, book(id, id === 10 ? ["epub"] : ["pdf"])] as const)),
+    bookMergeFacts: async () => ({ customFields: [], hasCover: true }),
+  } as unknown as ToolDeps["content"],
+  calibre: { calibredb } as unknown as ToolDeps["calibre"],
+  extractor: {} as ToolDeps["extractor"],
+  figures: {} as ToolDeps["figures"],
+  embedder: {} as ToolDeps["embedder"],
+  log,
+  ...noPruneIndex,
+});
 
 describe("gateway 5xx on a write is calibre_busy (#494)", () => {
   it("should_code_update_book_calibre_busy_with_the_status_text_and_no_next_line", async () => {

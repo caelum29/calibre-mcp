@@ -6,7 +6,6 @@
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { loadConfig, type Config } from "../../../src/config.js";
 import { log } from "../../../src/logging.js";
 import type { Book } from "../../../src/domain/book.js";
@@ -100,7 +99,7 @@ export interface GoldenQuery {
   /** #359: one-line note on what makes the query hard (authoring record, never read). */
   why?: string;
   /** Library scope: relevant bookIds. Book scope: spans. Figures: figure labels. Empty for negatives. */
-  relevant: Array<number | SpanLabel | FigureLabel>;
+  relevant: (number | SpanLabel | FigureLabel)[];
 }
 
 export interface CorpusBook {
@@ -126,7 +125,7 @@ export interface Corpus {
 /** A retrieved chunk must cover ≥30% of a labeled span to count (excludes corner clips). */
 const SPAN_OVERLAP_MIN = 0.3;
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
+const HERE = import.meta.dirname;
 
 export interface LoadedCorpus {
   corpus: Corpus;
@@ -445,7 +444,7 @@ async function buildFixtureIndex(deps: ToolDeps, corpus: Corpus): Promise<void> 
   }
 }
 
-function firstText(content: Array<{ type: string }>): string {
+function firstText(content: { type: string }[]): string {
   const t = content.find((b): b is { type: "text"; text: string } => b.type === "text");
   return t?.text ?? "";
 }
@@ -568,15 +567,16 @@ function top2Rerank(r: RankedHits<unknown>): number | undefined {
  * passage still shows the marker. Exported for the literal-fixture test.
  */
 export function localise(
-  hits: Array<{ hit: { charStart: number; charEnd: number; body: string } }>,
+  hits: { hit: { charStart: number; charEnd: number; body: string } }[],
   labels: SpanLabel[],
   query: string,
 ): { spanHit: number | null; snippetHasMarker?: boolean } {
   for (const [i, h] of hits.entries()) {
     const span = { start: h.hit.charStart, end: h.hit.charEnd };
     const label = labels.find((l) => h.hit.body.includes(l.marker) && overlap(span, l) > 0);
-    if (label)
+    if (label) {
       return { spanHit: i + 1, snippetHasMarker: snippetWindow(h.hit.body, query).text.includes(label.marker) };
+    }
   }
   return { spanHit: null };
 }
@@ -603,7 +603,7 @@ async function assertHandlerMatches(q: GoldenQuery, mode: Mode, ctx: QueryCtx, o
   const got =
     q.scope === "library"
       ? ((sc.bookIds as number[] | undefined) ?? []).map(String)
-      : ((sc.passages as Array<{ charStart: number; charEnd: number }> | undefined) ?? []).map(
+      : ((sc.passages as { charStart: number; charEnd: number }[] | undefined) ?? []).map(
           (p) => `@${p.charStart}-${p.charEnd}`,
         );
   if (JSON.stringify(got) !== JSON.stringify(out.retrieved)) {
@@ -674,7 +674,7 @@ export async function runRetrievalEval(opts: HarnessOptions): Promise<EvalReport
   const { corpus, texts, markers } = loaded;
   let queries = loadQueries(texts, markers);
 
-  const cfg = loadConfig({ CALIBRE_MCP_INDEX_DIR: opts.indexDir } as NodeJS.ProcessEnv);
+  const cfg = loadConfig({ CALIBRE_MCP_INDEX_DIR: opts.indexDir });
   const store = new SqliteIndexStore(cfg);
   const embedder = opts.embedder ?? new TransformersEmbedder(cfg);
 
@@ -786,7 +786,7 @@ function assemble(perQuery: PerQueryRow[], meta: EvalReport["meta"]): EvalReport
     figureNegatives[mode] = negAgg(rows.filter((r) => r.kind === "figure-negative"));
     for (const kind of new Set(scored.map((r) => r.kind))) {
       byKind[kind] ??= {};
-      byKind[kind]![mode] = aggregate(scored.filter((r) => r.kind === kind).map((r) => r.metrics!));
+      byKind[kind][mode] = aggregate(scored.filter((r) => r.kind === kind).map((r) => r.metrics!));
     }
   }
   return { meta, overall, ruInvolved, byKind, negatives, figureNegatives, perQuery };

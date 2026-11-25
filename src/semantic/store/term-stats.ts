@@ -55,7 +55,7 @@ export function fts5TermStats(db: DatabaseSync, opts: { maxEntries?: number } = 
       if (row === undefined) {
         lookups++;
         row = { body_stem: 0, body: 0, book_meta: 0 };
-        for (const r of byTerm.all(term) as Array<{ col: string; doc: number }>) {
+        for (const r of byTerm.all(term) as { col: string; doc: number }[]) {
           if ((KEYWORD_COLUMNS as readonly string[]).includes(r.col)) row[r.col as KeywordColumn] = Number(r.doc);
         }
         if (cache.size >= maxEntries) cache.delete(cache.keys().next().value as string);

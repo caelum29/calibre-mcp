@@ -45,7 +45,9 @@ function deps(count: number, rec: Recorder): BaseDeps {
       inFlight++;
       rec.maxConcurrent = Math.max(rec.maxConcurrent, inFlight);
       rec.batchSizes.push(batch.length);
-      await new Promise((r) => setTimeout(r, 5));
+      await new Promise((r) => {
+        setTimeout(r, 5);
+      });
       inFlight--;
       return new Map(batch.map((id) => [id, book(id)] as const));
     },

@@ -22,7 +22,7 @@ const RUN = process.env.RUN_CALIBRE_TESTS === "1";
 const PDF_BOOK = 164; // Software Architecture Metrics
 const EPUB_BOOK = 755; // Learning Domain-Driven Design
 
-const config = loadRuntimeConfig(process.env as Record<string, string | undefined>);
+const config = loadRuntimeConfig(process.env);
 
 let ready = false;
 if (RUN) {
@@ -30,7 +30,7 @@ if (RUN) {
     const probe = async (id: number) =>
       (
         await fetch(`${config.serverUrl}/ajax/book/${id}/Programming_Books`, {
-          signal: AbortSignal.timeout(3_000),
+          signal: AbortSignal.timeout(3000),
         })
       ).ok;
     ready = (await probe(PDF_BOOK)) && (await probe(EPUB_BOOK));
@@ -39,7 +39,6 @@ if (RUN) {
   }
 }
 if (RUN && !ready) {
-  // eslint-disable-next-line no-console
   console.error(`[figures.live] Content Server/probe books not reachable at ${config.serverUrl} — skipping`);
 }
 
@@ -60,7 +59,7 @@ describe.skipIf(!RUN || !ready)("calibre_get_figures (live Content Server)", () 
     const s = r.structuredContent as {
       format: string;
       counts: { figures: number };
-      entries: Array<{ caption?: string }>;
+      entries: { caption?: string }[];
     };
     expect(s.format).toBe("pdf");
     expect(s.counts.figures).toBeGreaterThan(50);
@@ -70,7 +69,7 @@ describe.skipIf(!RUN || !ready)("calibre_get_figures (live Content Server)", () 
 
   it("fetches a PDF raster figure as an image block", { timeout: 180_000 }, async () => {
     const list = await getFiguresTool.handler({ id: PDF_BOOK, detail: "standard", include_uncaptioned: false }, deps);
-    const entries = (list.structuredContent as { entries: Array<{ index: number; source: string }> }).entries;
+    const entries = (list.structuredContent as { entries: { index: number; source: string }[] }).entries;
     const raster = entries.find((e) => e.source === "raster");
     expect(raster).toBeDefined();
     const r = await getFiguresTool.handler(
@@ -90,7 +89,7 @@ describe.skipIf(!RUN || !ready)("calibre_get_figures (live Content Server)", () 
     const s = list.structuredContent as {
       format: string;
       counts: { figures: number };
-      entries: Array<{ index: number; source: string }>;
+      entries: { index: number; source: string }[];
     };
     expect(s.format).toBe("epub");
     expect(s.counts.figures).toBeGreaterThan(50);

@@ -42,7 +42,7 @@ const passages = (first: number, n: number) => Array.from({ length: n }, (_, i) 
 
 /** Reranker that records each call's pair count and third argument; scores fall with input order. */
 function recordingReranker() {
-  const calls: Array<{ pairs: number; opts: RerankCallOptions | undefined; argc: number }> = [];
+  const calls: { pairs: number; opts: RerankCallOptions | undefined; argc: number }[] = [];
   const reranker: Reranker = {
     async rerank(...args: [string, string[], RerankCallOptions?]) {
       const [, ps, opts] = args;

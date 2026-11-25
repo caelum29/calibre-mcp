@@ -24,7 +24,10 @@ function registry(opts: { keptTtlMs?: number } = {}) {
   return { reg, advance: (ms: number) => (t += ms) };
 }
 
-const flush = () => new Promise((r) => setTimeout(r, 5));
+const flush = () =>
+  new Promise((r) => {
+    setTimeout(r, 5);
+  });
 
 /** Start a build that outlasts the deadline, then settle it in the background. */
 async function detachedBuild(reg: IndexBuildRegistry<string>, key = "k") {
@@ -60,11 +63,11 @@ describe("IndexBuildRegistry", () => {
   });
 
   it("should_honour_an_injected_ttl", async () => {
-    const { reg, advance } = registry({ keptTtlMs: 1_000 });
+    const { reg, advance } = registry({ keptTtlMs: 1000 });
     const d = await detachedBuild(reg);
     d.resolve("r1");
     await flush();
-    advance(1_001);
+    advance(1001);
 
     const out = await reg.run(LIB, "k", async () => "r2");
 
@@ -89,7 +92,7 @@ describe("IndexBuildRegistry", () => {
     const d = await detachedBuild(reg);
     d.reject(new Error("content server 503"));
     await flush();
-    advance(2_000);
+    advance(2000);
 
     const failed = await reg.run(LIB, "k", async () => "unused");
     const next = await reg.run(LIB, "k", async () => "fresh");
@@ -97,7 +100,7 @@ describe("IndexBuildRegistry", () => {
     expect(failed.kind).toBe("failed");
     const f = failed as Extract<BuildOutcome<string>, { kind: "failed" }>;
     expect((f.error as Error).message).toBe("content server 503");
-    expect(f.earlierCallFinishedAgoMs).toBe(2_000);
+    expect(f.earlierCallFinishedAgoMs).toBe(2000);
     expect(next).toEqual({ kind: "done", result: "fresh" });
   });
 

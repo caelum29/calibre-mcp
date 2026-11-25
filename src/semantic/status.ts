@@ -9,7 +9,6 @@
 
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import type { Config } from "../config.js";
 import type { Embedder, EmbedderLoadState } from "./embedder.js";
 import type { IndexFreshness, IndexMeta } from "./store/index.js";
@@ -95,7 +94,7 @@ interface StatusDeps {
 export function computeSemanticStatus(
   deps: StatusDeps,
   libraryId?: string,
-  fromDir: string = path.dirname(fileURLToPath(import.meta.url)),
+  fromDir: string = import.meta.dirname,
 ): SemanticStatus {
   const dependencyInstalled = dependencyInstalledFrom(fromDir);
   const loaded = deps.embedder.loadState?.() ?? "not-attempted";
@@ -230,10 +229,7 @@ function shortModel(model: string): string {
  * Is the embedding model usable in this process (#559)? The in-process load outcome decides when
  * there is one; before any load, the disk-level dependency probe does. Never loads the model.
  */
-export function embedderUsable(
-  embedder: Pick<Embedder, "loadState">,
-  fromDir: string = path.dirname(fileURLToPath(import.meta.url)),
-): boolean {
+export function embedderUsable(embedder: Pick<Embedder, "loadState">, fromDir: string = import.meta.dirname): boolean {
   const state = embedder.loadState?.() ?? "not-attempted";
   if (state !== "not-attempted") return state === "loaded";
   return dependencyInstalledFrom(fromDir);

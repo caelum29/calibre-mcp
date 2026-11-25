@@ -31,7 +31,7 @@ export function parseAddedIds(stdout: string): number[] {
   return m[1]
     .split(/[,\s]+/)
     .filter((s) => s.length > 0) // drop empties first — Number("") is 0, not NaN
-    .map((s) => Number(s))
+    .map(Number)
     .filter((n) => Number.isInteger(n));
 }
 
@@ -65,7 +65,7 @@ function skipHint(matchId: number | undefined, title: string | undefined): strin
     );
   }
   const find = title
-    ? `calibre_search query='title:"${title.replace(/"/g, "")}"'`
+    ? `calibre_search query='title:"${title.replaceAll('"', "")}"'`
     : "calibre_search by the book's title";
   return `Find the existing book with ${find}, then review it with calibre_find_duplicates mode=compare.`;
 }
@@ -100,10 +100,11 @@ export const addBookTool = defineTool({
   handler: async (args, deps) => {
     try {
       const check = validateAddPath(args.path, deps.config.addRoots);
-      if (!check.ok)
+      if (!check.ok) {
         return check.outsideRoots
           ? toolError("path_not_allowed", check.reason, { hint: ADD_ROOTS_STEP })
           : toolError("not_found", check.reason);
+      }
 
       // calibredb --with-library needs the library ID, not the display name (routed-write 404 fix).
       const libId = await deps.content.resolveLibraryId(args.library);
@@ -141,8 +142,9 @@ export const addBookTool = defineTool({
       // Hints and notes go in the text too: some clients surface only text blocks.
       const lines = [summary, ...dups.map(renderHint)];
       if (failure !== undefined) lines.push(renderProbeFailed(failure));
-      if (notProbed.length > 0)
+      if (notProbed.length > 0) {
         lines.push(renderNotProbed(addedIds.length - notProbed.length, addedIds.length, notProbed));
+      }
       return toolOk([{ type: "text", text: lines.join("\n") }], {
         addedIds,
         path: check.resolved,

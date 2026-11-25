@@ -16,7 +16,7 @@ type Context = "base" | "dark theme" | "dark media";
 
 /** Custom properties a `:root` rule set gives in `ctx`, applied in document order (last wins). */
 function resolve(html: string, ctx: Context): Tokens {
-  const css = html.replace(/\/\*[\s\S]*?\*\//g, "");
+  const css = html.replaceAll(/\/\*[\s\S]*?\*\//g, "");
   const out: Tokens = {};
   const rule = /(:root(?:\[data-theme="(?:light|dark)"\]|:not\(\[data-theme="light"\]\))?)\s*\{([^{}]*)\}/g;
   for (const m of css.matchAll(rule)) {
@@ -26,7 +26,9 @@ function resolve(html: string, ctx: Context): Tokens {
       (ctx === "dark theme" && sel === ':root[data-theme="dark"]') ||
       (ctx === "dark media" && sel.startsWith(":root:not"));
     if (!applies) continue;
-    for (const d of m[2]!.matchAll(/--([\w-]+)\s*:\s*([^;]+)/g)) out[`--${d[1]}`] = d[2]!.replace(/\s+/g, " ").trim();
+    for (const d of m[2]!.matchAll(/--([\w-]+)\s*:\s*([^;]+)/g)) {
+      out[`--${d[1]}`] = d[2]!.replaceAll(/\s+/g, " ").trim();
+    }
   }
   return out;
 }

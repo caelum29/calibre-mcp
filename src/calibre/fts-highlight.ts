@@ -127,7 +127,7 @@ function splitAt(matches: RegExpMatchArray[], cuts: number[]): Word[] {
  * NOT's operand (word, prefix, phrase or group) skipped — those words must NOT be in the match.
  */
 function parseQuery(query: string): QueryUnit[] {
-  const tokens = query.replace(/,\s*\d+\s*\)/g, ")").match(QUERY_TOKEN) ?? [];
+  const tokens = query.replaceAll(/,\s*\d+\s*\)/g, ")").match(QUERY_TOKEN) ?? [];
   const units: QueryUnit[] = [];
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i]!;
@@ -197,5 +197,5 @@ function commonPrefix(a: string, b: string): number {
 }
 
 function escapeRe(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return s.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

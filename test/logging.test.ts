@@ -73,7 +73,9 @@ describe("logger call context", () => {
     const { logger, records } = setup();
     logger.setClient("claude-code");
     await logger.withContext({ tool: "calibre_search", call: "c1" }, async () => {
-      await new Promise((r) => setTimeout(r, 1));
+      await new Promise((r) => {
+        setTimeout(r, 1);
+      });
       logger.error("calibredb failed");
     });
     expect(records()[0]).toMatchObject({ client: "claude-code", tool: "calibre_search", call: "c1" });
@@ -107,7 +109,7 @@ describe("logger file sink", () => {
     const msgs = readFileSync(today, "utf8")
       .trim()
       .split("\n")
-      .map((l) => JSON.parse(l).msg);
+      .map((l): unknown => JSON.parse(l).msg);
     expect({ msgs, current: logger.currentFile() }).toEqual({ msgs: ["a", "b"], current: today });
   });
 
@@ -126,8 +128,9 @@ describe("logger file sink", () => {
 
   it("should_keep_exactly_7_days_today_included", () => {
     const dir = tempDir();
-    for (const d of ["2026-10-23", "2026-10-24", "2026-10-29"])
+    for (const d of ["2026-10-23", "2026-10-24", "2026-10-29"]) {
       writeFileSync(path.join(dir, `calibre-mcp-${d}.jsonl`), "{}\n");
+    }
     const { logger } = setup();
     logger.configure({ dir });
     logger.info("a");

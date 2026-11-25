@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { classifyChunk } from "../../../src/domain/structure/matter-kind.js";
 
-const TEXT_LENGTH = 565806;
+const TEXT_LENGTH = 565_806;
 const place = (charStart: number, heading: string) => ({ position: charStart / TEXT_LENGTH, inFront: false, heading });
 
 // @541401: index entries wrapped over several lines ("hybrid search approach" / "combining …").
@@ -27,27 +27,27 @@ const BODY_PAGE_CITES_490245 =
 
 describe("index pages under an outline Index heading (#722)", () => {
   it("the wrapped-entry chunk at @541401 is back_index", () => {
-    expect(classifyChunk(INDEX_WRAPPED_541401, place(541401, "Index"))).toBe("back_index");
+    expect(classifyChunk(INDEX_WRAPPED_541401, place(541_401, "Index"))).toBe("back_index");
   });
 
   it("the wrapped sub-entry chunk at @548541 is back_index", () => {
-    expect(classifyChunk(INDEX_WRAPPED_548541, place(548541, "Index"))).toBe("back_index");
+    expect(classifyChunk(INDEX_WRAPPED_548541, place(548_541, "Index"))).toBe("back_index");
   });
 
   it("the About the Author chunk at @563479 stays body, though it starts in the Index section", () => {
-    expect(classifyChunk(ABOUT_THE_AUTHOR_563479, place(563479, "Index"))).toBe("body");
+    expect(classifyChunk(ABOUT_THE_AUTHOR_563479, place(563_479, "Index"))).toBe("body");
   });
 });
 
 describe("guards: unchanged behaviour (#722)", () => {
   it("a body chapter past 0.85 whose prose cites page numbers stays body", () => {
-    expect(classifyChunk(BODY_PAGE_CITES_490245, place(490245, "Chapter 10. Evaluating RAG Systems"))).toBe("body");
+    expect(classifyChunk(BODY_PAGE_CITES_490245, place(490_245, "Chapter 10. Evaluating RAG Systems"))).toBe("body");
   });
 
   it("a chapter titled Indexes or Indexing stays body past 0.85", () => {
     expect([
-      classifyChunk(BODY_PAGE_CITES_490245, place(490245, "Indexes")),
-      classifyChunk(BODY_PAGE_CITES_490245, place(490245, "Indexing")),
+      classifyChunk(BODY_PAGE_CITES_490245, place(490_245, "Indexes")),
+      classifyChunk(BODY_PAGE_CITES_490245, place(490_245, "Indexing")),
     ]).toEqual(["body", "body"]);
   });
 });

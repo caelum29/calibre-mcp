@@ -89,7 +89,7 @@ function searchable(main: string): string {
 
 // Calibre's quoted search string escapes `\` and `"` with a backslash.
 function escapeQuoted(s: string): string {
-  return s.replace(/[\\"]/g, "\\$&");
+  return s.replaceAll(/[\\"]/g, "\\$&");
 }
 
 /** One advisory line per flagged book, with the exact next call to compare them. */

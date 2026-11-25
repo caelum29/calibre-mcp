@@ -6,7 +6,6 @@ import { execFile } from "node:child_process";
 import { mkdtempSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { describe, expect, it, vi } from "vitest";
 import type { Reranker } from "../../../src/semantic/reranker.js";
@@ -18,7 +17,7 @@ import { runRetrievalEval, type EvalReport, type Mode, type PerQueryRow } from "
 import { degradedWarning, parseArgs, passSummary, runPass } from "./run.js";
 import { saturationLines } from "./saturation.js";
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
+const HERE = import.meta.dirname;
 const ROOT = path.resolve(HERE, "../../..");
 const thresholds = JSON.parse(readFileSync(path.join(HERE, "thresholds.json"), "utf8")) as Thresholds;
 const read = (rel: string) => readFileSync(path.join(HERE, rel), "utf8");
@@ -120,7 +119,11 @@ describe("CLI entry rejects bad --gate flags before any model load", () => {
   const cli = (entry: string, ...args: string[]) =>
     exec(process.execPath, ["--import", "tsx", entry, ...args], { cwd: ROOT, env, timeout: 20_000 }).then(
       (r) => ({ code: 0, stderr: r.stderr }),
-      (e: { code?: number; stderr?: string }) => ({ code: e.code, stderr: e.stderr ?? "" }),
+      (e: unknown) => {
+        // exec rejects with the child's exit code and stderr attached
+        const { code, stderr } = e as { code?: number; stderr?: string };
+        return { code, stderr: stderr ?? "" };
+      },
     );
   // only our own lines: Node 22 adds an ExperimentalWarning (node:sqlite) to stderr
   const evalLines = (r: { code?: number; stderr: string }) => ({

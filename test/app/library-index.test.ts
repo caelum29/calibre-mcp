@@ -80,7 +80,13 @@ describe("libraryIndexReport (#346)", () => {
   });
 
   it("a count that errors reports total null, not a failure", async () => {
-    const out = await libraryIndexReport(deps({ search: async () => Promise.reject(new Error("timeout")) }));
+    const out = await libraryIndexReport(
+      deps({
+        search: async () => {
+          throw new Error("timeout");
+        },
+      }),
+    );
     expect(out?.[0]).toEqual({
       id: "A",
       name: "Alpha",
@@ -99,9 +105,9 @@ describe("libraryIndexReport (#346)", () => {
     const slowInfo = deps(
       {
         libraryInfo: () =>
-          new Promise((resolve) =>
-            setTimeout(() => resolve({ libraryMap: { A: "Alpha" }, defaultLibrary: "A" }), 3000),
-          ),
+          new Promise((resolve) => {
+            setTimeout(() => resolve({ libraryMap: { A: "Alpha" }, defaultLibrary: "A" }), 3000);
+          }),
         search: () => new Promise(() => {}),
       },
       searches,
@@ -144,9 +150,9 @@ describe("libraryIndexReport (#346)", () => {
     const lateInfo = deps(
       {
         libraryInfo: () =>
-          new Promise((resolve) =>
-            setTimeout(() => resolve({ libraryMap: { A: "Alpha" }, defaultLibrary: "A" }), 4900),
-          ),
+          new Promise((resolve) => {
+            setTimeout(() => resolve({ libraryMap: { A: "Alpha" }, defaultLibrary: "A" }), 4900);
+          }),
         search: () => new Promise(() => {}),
       },
       searches,

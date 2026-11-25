@@ -65,7 +65,7 @@ describe("content cursor v3 (#655)", () => {
 
   it("answers a version-2 cursor with the actionable invalid-cursor error, without reading the book", async () => {
     extracted = 0;
-    const r = await getContentTool.handler({ id: 1, maxChars: 8_000, sentenceAware: false, cursor: v2Cursor }, deps);
+    const r = await getContentTool.handler({ id: 1, maxChars: 8000, sentenceAware: false, cursor: v2Cursor }, deps);
     expect(r.isError).toBe(true);
     const text = (r.content[0] as { text: string }).text;
     expect(text).toContain("Cursors minted before a server upgrade are also invalid");

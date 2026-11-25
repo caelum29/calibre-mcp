@@ -48,7 +48,7 @@ import { defaultHint, errorCodeFor } from "./domain/error-codes.js";
 // under NodeNext (ext-apps#704); only the /server entry resolves, and it doesn't re-export this.
 interface UiToolMeta {
   resourceUri?: string;
-  visibility?: Array<"model" | "app">;
+  visibility?: ("model" | "app")[];
 }
 
 // MCP Apps wiring (issues #19/#22) — always-attach per issue #24 (per-call suppression is
@@ -308,7 +308,7 @@ function startBootProbes(deps: ToolDeps, extractor: Extractor): void {
   void extractor
     .detectBackends()
     .then((r) => log.info("extractor backends", r))
-    .catch((e) => log.warn("extractor detection failed", { msg: String(e) }));
+    .catch((e: unknown) => log.warn("extractor detection failed", { msg: String(e) }));
 
   void deps.content
     .libraryInfo()
@@ -319,7 +319,7 @@ function startBootProbes(deps: ToolDeps, extractor: Extractor): void {
         default: info.defaultLibrary,
       }),
     )
-    .catch((err) =>
+    .catch((err: unknown) =>
       log.warn("content server unreachable at boot", {
         url: config.serverUrl,
         hint: "start it in Calibre (Connect/share → Start Content server) or set CALIBRE_MCP_SERVER_URL",
@@ -344,7 +344,7 @@ function registerUiResources(server: McpServer, config: Config): void {
   }
   const cspMeta = { ui: { csp: { resourceDomains: [origin] } } };
 
-  const widgets: Array<{ name: string; uri: string; description: string; html: string }> = [
+  const widgets: { name: string; uri: string; description: string; html: string }[] = [
     {
       name: "Cover board (search)",
       uri: BOARD_KEYWORD_URI,

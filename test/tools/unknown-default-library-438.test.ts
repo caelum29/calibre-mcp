@@ -24,11 +24,11 @@ const libInfo = {
 
 beforeEach(() => {
   mocked.mockReset();
-  mocked.mockImplementation(((url: string) => {
+  mocked.mockImplementation((url: string) => {
     if (url.includes("/ajax/library-info")) return Promise.resolve(libInfo);
     if (url.includes("/ajax/search/")) return Promise.resolve({ total_num: 0, offset: 0, num: 0, book_ids: [] });
     return Promise.reject(new Error("unexpected url " + url));
-  }) as typeof getJson);
+  });
 });
 
 const env = { CALIBRE_MCP_LIBRARY: "Programing Books", CALIBRE_MCP_INDEX_DIR: ":memory:" };
@@ -37,7 +37,7 @@ function deps(): ToolDeps {
   const config = loadConfig(env);
   return {
     config,
-    content: new ContentServerClient(config) as unknown as ToolDeps["content"],
+    content: new ContentServerClient(config),
     calibre: {
       listLibraries: async () => "category,count\ntags,12",
     } as unknown as ToolDeps["calibre"],
@@ -75,7 +75,7 @@ describe("calibre_ping with an unknown configured default library", () => {
   const ping = async () => {
     const t = allTools.find((x) => x.name === "calibre_ping");
     if (!t) throw new Error("calibre_ping is not in the registry");
-    return (await t.handler({}, deps(), {} as never)) as ToolResult;
+    return await t.handler({}, deps(), {} as never);
   };
 
   it("should_not_report_calibre_as_unreachable", async () => {

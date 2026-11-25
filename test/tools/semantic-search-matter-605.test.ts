@@ -94,9 +94,8 @@ describe("matter labels and matterKind (#605)", () => {
       { query: "ownership", scope: "library", mode: "vector", topK: 10 },
       deps(store()),
     );
-    const results = (
-      r.structuredContent as { results: Array<{ bookId: number; matterKind?: string; snippet: string }> }
-    ).results;
+    const results = (r.structuredContent as { results: { bookId: number; matterKind?: string; snippet: string }[] })
+      .results;
     const byBook = new Map(results.map((x) => [x.bookId, x]));
     expect([1, 2, 3, 4, 5].map((id) => byBook.get(id)?.matterKind)).toEqual([
       undefined,
@@ -124,7 +123,7 @@ describe("matter labels and matterKind (#605)", () => {
       deps(store()),
     );
     const passages = (
-      r.structuredContent as { passages: Array<{ body: string; matterKind?: string; frontMatter?: boolean }> }
+      r.structuredContent as { passages: { body: string; matterKind?: string; frontMatter?: boolean }[] }
     ).passages;
     const of = (k: MatterKind) => passages.find((p) => p.body.includes(`ownership passage ${k}`))!;
     expect(

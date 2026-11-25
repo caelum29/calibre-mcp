@@ -105,7 +105,7 @@ describe("calibre_bulk_update — dropped write is verified by re-read (#370)", 
 
   it("should_return_an_outputSchema_valid_result_for_a_landed_drop", async () => {
     const r = await bulkUpdateTool.handler(apply([1, 2, 3]), deps(scripted(DROP_ON_2), landed));
-    const schema = z.object(bulkUpdateTool.outputSchema!);
+    const schema = z.object(bulkUpdateTool.outputSchema);
     expect(schema.safeParse(JSON.parse(JSON.stringify(r.structuredContent))).success).toBe(true);
   });
 

@@ -74,12 +74,12 @@ async function call(s: SqliteIndexStore, scope: "library" | "book") {
     topK: 5,
     ...(scope === "book" ? { bookId: 1 } : {}),
   };
-  const r = await semanticSearchTool.handler(args as never, deps(s));
+  const r = await semanticSearchTool.handler(args, deps(s));
   expect(r.isError).toBeFalsy();
   const text = r.content.map((b) => ("text" in b ? b.text : "")).join("\n");
   const sc = r.structuredContent as {
-    results?: Array<Record<string, unknown>>;
-    passages?: Array<Record<string, unknown>>;
+    results?: Record<string, unknown>[];
+    passages?: Record<string, unknown>[];
   };
   const hit = (scope === "library" ? sc.results : sc.passages)![0]!;
   return { text, hit, sectionLines: text.split("\n").filter((l) => l.startsWith("section: ")) };

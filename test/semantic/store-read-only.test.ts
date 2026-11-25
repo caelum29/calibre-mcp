@@ -27,7 +27,7 @@ function builtIndex(): { dir: string; file: string } {
 const columns = (file: string): string[] => {
   const db = new DatabaseSync(file, { readOnly: true });
   try {
-    return (db.prepare("PRAGMA table_info(books)").all() as Array<{ name: string }>).map((c) => c.name);
+    return (db.prepare("PRAGMA table_info(books)").all() as { name: string }[]).map((c) => c.name);
   } finally {
     db.close();
   }

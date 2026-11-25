@@ -44,7 +44,7 @@ export const getContentTool = defineTool({
     id: BookId().optional(),
     bookId: BookId().optional(),
     format: z.string().optional(),
-    maxChars: limitParam(40_000, 8_000),
+    maxChars: limitParam(40_000, 8000),
     sentenceAware: CoercedBool().default(true),
     structure: CoercedBool().default(false),
     cursor: CursorParam.describe(

@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { formatMarker, indexedFigureCaption, injectFigureMarkers } from "../../../src/domain/figures/markers.js";
 import type { FigureEntry, FigureInventory } from "../../../src/domain/figures/inventory.js";
 
-function inv(entries: Array<Partial<FigureEntry>>): FigureInventory {
+function inv(entries: Partial<FigureEntry>[]): FigureInventory {
   const full = entries.map((e, i) => ({
     index: i,
     page: 1,

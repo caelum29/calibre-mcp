@@ -72,7 +72,7 @@ function openedRank(search: Call, read: Call): number | undefined {
     const before = hits
       .filter((h) => num(h.charStart) && h.charStart <= (args.offset as number))
       .sort((a, b) => b.charStart! - a.charStart!)[0];
-    return before && (args.offset as number) - before.charStart! <= BOOK_OFFSET_SLACK ? before.rank : undefined;
+    return before && args.offset - before.charStart! <= BOOK_OFFSET_SLACK ? before.rank : undefined;
   }
   return hits.find((h) => h.bookId === id)?.rank;
 }
@@ -146,8 +146,9 @@ export function pairSearchReads(lines: readonly string[], windowSec = DEFAULT_WI
 function defaultLogDir(): string {
   const explicit = process.env.CALIBRE_MCP_INDEX_DIR;
   if (explicit) return path.join(explicit, "logs");
-  if (process.platform === "darwin")
+  if (process.platform === "darwin") {
     return path.join(os.homedir(), "Library", "Application Support", "calibre-mcp", "index", "logs");
+  }
   const base = process.env.XDG_DATA_HOME ?? path.join(os.homedir(), ".local", "share");
   return path.join(base, "calibre-mcp", "index", "logs");
 }

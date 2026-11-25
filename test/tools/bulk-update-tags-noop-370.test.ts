@@ -50,7 +50,7 @@ describe("tags ops skip a no-op set_metadata (#370 / #333)", () => {
   it("should_return_an_outputSchema_valid_result_with_unchanged_books", async () => {
     const f = fakeBulkDeps({ selected: [book({ id: 1, tags: ["a"] }), book({ id: 2, tags: ["b", "DDD"] })] });
     const r = await run({ ids: [1, 2], tags_add: ["DDD"], preview: false }, f.deps);
-    const out = z.object(bulkUpdateTool.outputSchema!).strict();
+    const out = z.object(bulkUpdateTool.outputSchema).strict();
     expect(out.safeParse(JSON.parse(JSON.stringify(r.structuredContent))).success).toBe(true);
   });
 

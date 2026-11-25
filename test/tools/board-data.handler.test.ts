@@ -69,7 +69,7 @@ describe("calibre_board_data handler — library/filter scoping (#215)", () => {
     ...over,
   });
   const firstTitle = (r: Awaited<ReturnType<typeof boardDataTool.handler>>): unknown =>
-    (r.structuredContent as { books?: Array<{ title: string }> } | undefined)?.books?.[0]?.title;
+    (r.structuredContent as { books?: { title: string }[] } | undefined)?.books?.[0]?.title;
 
   function twoLibraries(): BoardCache {
     const cache = new BoardCache();

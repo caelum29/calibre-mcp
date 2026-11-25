@@ -21,7 +21,7 @@ function text(r: ToolResult): string {
 
 // The preview calls of the four tools the issue names, with a preview result shaped like the
 // handler's (its own #519 steer already names the remedy in the text).
-const PREVIEWS: Array<[string, Record<string, unknown>, ToolResult]> = [
+const PREVIEWS: [string, Record<string, unknown>, ToolResult][] = [
   [
     "calibre_bulk_update",
     { ids: [1019], changes: { tags_add: ["x"] } },

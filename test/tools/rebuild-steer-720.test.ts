@@ -120,7 +120,7 @@ describe("version-4 index: one delete-then-rebuild steer (#720)", () => {
     expect(lines.find((l) => l.startsWith("Index:"))).toBe(
       `Index: Programming Books (id: ${LIB}) [default]: stale index — ${steer(file)}.`,
     );
-    const sc = r.structuredContent as { semantic: { reason: string }; indexes: Array<{ rebuild?: string }> };
+    const sc = r.structuredContent as { semantic: { reason: string }; indexes: { rebuild?: string }[] };
     expect(sc.semantic.reason).toContain(`— ${steer(file)} (search refuses it until then).`);
     expect(sc.indexes[0]!.rebuild).toBe(`${Steer(file)}.`);
     for (const channel of [text(r), JSON.stringify(r.structuredContent)]) expect(forceAlone(channel)).toEqual([]);
@@ -128,7 +128,7 @@ describe("version-4 index: one delete-then-rebuild steer (#720)", () => {
 });
 
 /** Every .ts file under src/, as [repo-relative path, source]. */
-function srcFiles(root = "src"): Array<[string, string]> {
+function srcFiles(root = "src"): [string, string][] {
   return readdirSync(root).flatMap((n) => {
     const p = path.join(root, n);
     if (statSync(p).isDirectory()) return srcFiles(p);

@@ -54,8 +54,10 @@ describe("calibre_find_duplicates handler", () => {
     // 4 distinct duplicate groups; page size 2 → cursor after the first page.
     const fixture: Book[] = [];
     for (let g = 0; g < 4; g++) {
-      fixture.push(book({ id: g * 2 + 1, title: `T${g}`, authors: ["X"] }));
-      fixture.push(book({ id: g * 2 + 2, title: `t${g}`, authors: ["x"] }));
+      fixture.push(
+        book({ id: g * 2 + 1, title: `T${g}`, authors: ["X"] }),
+        book({ id: g * 2 + 2, title: `t${g}`, authors: ["x"] }),
+      );
     }
     const first = await findDuplicatesTool.handler(args({ limit: 2 }), deps(fixture));
     expect(first.structuredContent?.count).toBe(2);
@@ -137,7 +139,7 @@ describe("calibre_find_duplicates groups[] / diff[] in structuredContent (#199)"
     ];
     const r = await findDuplicatesTool.handler(args(), deps(fixture));
     const groups = r.structuredContent?.groups as Group[];
-    expect(groups.map((g) => [...g.bookIds].sort())).toEqual(
+    expect(groups.map((g) => [...g.bookIds].sort((a, b) => a - b))).toEqual(
       expect.arrayContaining([
         [1, 2],
         [3, 4],

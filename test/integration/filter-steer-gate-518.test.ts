@@ -39,19 +39,19 @@ const deps = (writeEnabled: boolean) =>
     log,
   }) as never;
 
-const text = (r: { content: Array<{ type: string; text?: string }> }) => r.content.map((b) => b.text ?? "").join("\n");
+const text = (r: { content: { type: string; text?: string }[] }) => r.content.map((b) => b.text ?? "").join("\n");
 
-const TOOLS: Array<[string, AnyToolDescriptor, Record<string, unknown>]> = [
-  ["calibre_search meta", searchTool as never, { query: "x", mode: "meta", scope: "library", limit: 5 }],
+const TOOLS: [string, AnyToolDescriptor, Record<string, unknown>][] = [
+  ["calibre_search meta", searchTool, { query: "x", mode: "meta", scope: "library", limit: 5 }],
   [
     "calibre_search_annotations",
-    searchAnnotationsTool as never,
+    searchAnnotationsTool,
     { query: "x", kind: "annotations", scope: "library", limit: 5 },
   ],
-  ["calibre_semantic_search", semanticSearchTool as never, { query: "x", scope: "library", limit: 5 }],
-  ["calibre_bulk_update", bulkUpdateTool as never, { query: "x", changes: { title: "t" } }],
-  ["calibre_quality_report", qualityReportTool as never, { limit: 5 }],
-  ["calibre_find_duplicates", findDuplicatesTool as never, { limit: 5 }],
+  ["calibre_semantic_search", semanticSearchTool, { query: "x", scope: "library", limit: 5 }],
+  ["calibre_bulk_update", bulkUpdateTool, { query: "x", changes: { title: "t" } }],
+  ["calibre_quality_report", qualityReportTool, { limit: 5 }],
+  ["calibre_find_duplicates", findDuplicatesTool, { limit: 5 }],
 ];
 
 describe("unknown-bundle steer follows the gate in every filter-taking tool (#518)", () => {
@@ -64,6 +64,6 @@ describe("unknown-bundle steer follows the gate in every filter-taking tool (#51
       ).handler({ ...args, filter: "Golang" }, deps(on));
       out.push(text(r));
     }
-    expect(out).toEqual([`${FACT} ${GATE_OFF}`, `${FACT} ${GATE_ON}`].map((t) => expect.stringContaining(t)));
+    expect(out).toEqual([`${FACT} ${GATE_OFF}`, `${FACT} ${GATE_ON}`].map((t): unknown => expect.stringContaining(t)));
   });
 });

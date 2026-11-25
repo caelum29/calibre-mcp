@@ -8,7 +8,10 @@ import { describe, expect, it } from "vitest";
 import { runBookPipeline } from "../../src/semantic/book-pipeline.js";
 import { appendProgress, readCompletedIds, resumeProgress } from "../../src/semantic/build-progress.js";
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const sleep = (ms: number) =>
+  new Promise((r) => {
+    setTimeout(r, ms);
+  });
 
 describe("runBookPipeline", () => {
   it("prepares books concurrently but never overlaps two commits", async () => {
@@ -69,7 +72,7 @@ describe("runBookPipeline", () => {
         store.set(id, p);
       },
     });
-    expect([...store.keys()].sort()).toEqual([1, 3, 5]);
+    expect([...store.keys()].sort((a, b) => a - b)).toEqual([1, 3, 5]);
     const failed = outcomes.filter((o) => !o.ok);
     expect(failed.map((o) => [o.bookId, !o.ok && o.stage])).toEqual([
       [2, "prepare"],

@@ -1,6 +1,6 @@
 // Mechanical guards for architecture invariants from CLAUDE.md, so violations fail CI
 // instead of relying on the model reading the docs. (The user-regex rule lives in
-// .oxlintrc.json as a `no-restricted-globals` override on src/tools/**.)
+// oxlint.config.ts as a `no-restricted-globals` override on src/tools/**.)
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, relative } from "node:path";
 import ts from "typescript";
@@ -26,11 +26,11 @@ function listTsFiles(dir: string): string[] {
 
 // Comments may name the package (e.g. src/tools/types.ts explains the seam) — only code counts.
 function stripComments(source: string): string {
-  return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`])\/\/.*$/gm, "$1");
+  return source.replaceAll(/\/\*[\s\S]*?\*\//g, "").replaceAll(/(^|[^:"'`])\/\/.*$/gm, "$1");
 }
 
 /** Repo-relative paths of files outside the allowlist that import the MCP SDK. */
-function findSdkImportViolations(files: ReadonlyArray<{ path: string; source: string }>): string[] {
+function findSdkImportViolations(files: readonly { path: string; source: string }[]): string[] {
   return files.filter((f) => !SDK_ALLOWLIST.has(f.path) && SDK_IMPORT.test(stripComments(f.source))).map((f) => f.path);
 }
 
@@ -46,7 +46,7 @@ describe("SDK-free seam", () => {
 
   it("detects every import form and ignores comments", () => {
     const sdk = "@modelcontextprotocol/sdk";
-    const cases: Array<[string, boolean]> = [
+    const cases: [string, boolean][] = [
       [`import { McpServer } from "${sdk}/server/mcp.js";`, true],
       [`import type { CallToolResult } from '${sdk}/types.js';`, true],
       [`export type { CallToolResult } from "${sdk}/types.js";`, true],
@@ -334,7 +334,7 @@ function valueImports(source: string, includeTypes = false): string[] {
     } else if (ts.isCallExpression(n) && isLiteral(n.arguments[0])) {
       const callee = n.expression;
       if (callee.kind === ts.SyntaxKind.ImportKeyword || (ts.isIdentifier(callee) && callee.text === "require")) {
-        out.push((n.arguments[0] as ts.StringLiteralLike).text);
+        out.push(n.arguments[0].text);
       }
     }
     ts.forEachChild(n, visit);
@@ -718,7 +718,7 @@ describe("one home per mechanism — #347 leftovers", () => {
 const STORE_DIR = "src/semantic/store";
 // One module per concern; index.ts composes them behind the full IndexStore.
 const STORE_MODULES = ["schema.ts", "writer.ts", "freshness.ts", "chunks.ts", "figures.ts", "index.ts"];
-// Mirrors .oxlintrc.json max-lines (skipBlankLines + skipComments) — the split must stay split.
+// Mirrors oxlint.config.ts max-lines (skipBlankLines + skipComments) — the split must stay split.
 const STORE_MAX_LINES = 500;
 
 /** Lines that are neither blank nor comment-only (the oxlint max-lines counting rule). */

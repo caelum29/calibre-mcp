@@ -120,8 +120,9 @@ async function tryWrite(deps: BaseDeps, args: readonly string[], libId: LibId): 
     invalidateBundleCache(libId);
     return undefined;
   } catch (err) {
-    if (isWriteRefused(err))
+    if (isWriteRefused(err)) {
       return { message: WRITE_REFUSED_MESSAGE, error: toolError("write_refused", WRITE_REFUSED_MESSAGE) };
+    }
     const message = err instanceof Error ? err.message : String(err);
     return { message, error: toolError(errorCodeFor(err), message) };
   }

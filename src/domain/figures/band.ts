@@ -128,10 +128,10 @@ function normalizeLabel(s: string): string {
 /** Decode the XML entities `pdftotext -bbox` emits (numeric + the five named ones). */
 export function decodeXml(text: string): string {
   return text
-    .replace(/&#(\d+);/g, (_, n: string) => String.fromCodePoint(Number(n)))
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'");
+    .replaceAll(/&#(\d+);/g, (_, n: string) => String.fromCodePoint(Number(n)))
+    .replaceAll("&amp;", "&")
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">")
+    .replaceAll("&quot;", '"')
+    .replaceAll("&apos;", "'");
 }

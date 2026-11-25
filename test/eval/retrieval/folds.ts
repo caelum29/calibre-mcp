@@ -25,7 +25,7 @@ export interface FoldSplit {
 }
 
 /** Units grouped by stratum, strata and ids sorted, so input order never changes the split. */
-function byStratum(units: FoldUnit[]): Array<[string, string[]]> {
+function byStratum(units: FoldUnit[]): [string, string[]][] {
   const groups = new Map<string, string[]>();
   for (const u of units) groups.set(u.stratum, [...(groups.get(u.stratum) ?? []), u.id]);
   return [...groups.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)).map(([s, ids]) => [s, ids.sort()]);

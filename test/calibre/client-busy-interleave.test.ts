@@ -32,8 +32,8 @@ function parkedSpawns() {
     () =>
       new Promise<SpawnResult>((resolve, reject) => {
         handles.push({
-          ok: () => resolve({ code: 0, stdout: "", stderr: "" } as SpawnResult),
-          exit: (code) => resolve({ code, stdout: "", stderr: "nope" } as SpawnResult),
+          ok: () => resolve({ code: 0, stdout: "", stderr: "" }),
+          exit: (code) => resolve({ code, stdout: "", stderr: "nope" }),
           timeout: () => reject(new SpawnTimeoutError("timed out")),
         });
         for (const w of waiters) if (handles.length >= w.n) w.resolve();
@@ -42,7 +42,11 @@ function parkedSpawns() {
   );
   // a signal rather than a sync assumption: calibredb may gain an await before it spawns
   const spawned = (n: number) =>
-    handles.length >= n ? Promise.resolve() : new Promise<void>((resolve) => waiters.push({ n, resolve }));
+    handles.length >= n
+      ? Promise.resolve()
+      : new Promise<void>((resolve) => {
+          waiters.push({ n, resolve });
+        });
   return { handles, spawned };
 }
 

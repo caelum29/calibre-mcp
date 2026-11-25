@@ -269,9 +269,11 @@ export function gradeFromStore(
   opts: MatchOptions = {},
 ): Map<string, FinalGrade> {
   const out = new Map<string, FinalGrade>();
-  for (const rec of raws)
-    for (const [hid, m] of assign(rec, store, opts))
+  for (const rec of raws) {
+    for (const [hid, m] of assign(rec, store, opts)) {
       out.set(hid, m.coverage ? { grade: m.grade, coverage: m.coverage } : { grade: m.grade });
+    }
+  }
   return out;
 }
 
@@ -297,7 +299,7 @@ export function uncoveredBlind(
 }
 
 /** Share of the top-k hits that are unjudged (null), over the hits present; 0 when there are none. */
-export function holeAt(lists: ReadonlyArray<ReadonlyArray<number | null>>, k: number): number {
+export function holeAt(lists: readonly (readonly (number | null)[])[], k: number): number {
   const top = lists.flatMap((l) => l.slice(0, k));
   return top.length ? top.filter((g) => g === null).length / top.length : 0;
 }
@@ -317,11 +319,11 @@ export function idealGrades(
     .slice(0, 5);
 }
 
-const dcg5 = (grades: ReadonlyArray<number | null>) =>
+const dcg5 = (grades: readonly (number | null)[]) =>
   grades.slice(0, 5).reduce<number>((s, g, i) => s + (g !== null && g > 0 ? 2 ** g - 1 : 0) / Math.log2(i + 2), 0);
 
 /** NDCG@5: gain 2^grade − 1 (unjudged / −1 / 0 → 0), discount log2(rank + 1), over the ideal grades. */
-export function ndcgAt5(grades: ReadonlyArray<number | null>, ideal: readonly number[]): number {
+export function ndcgAt5(grades: readonly (number | null)[], ideal: readonly number[]): number {
   const best = dcg5([...ideal].sort((a, b) => b - a));
   const ndcg = best === 0 ? 0 : dcg5(grades) / best;
   // grades come from distinct stored records (assign), so this only trips on a wrong ideal: fail loudly
@@ -358,9 +360,11 @@ const jsonFiles = (dir: string) =>
 /** Load a judged run dir: queries, raw hits, key, the blind batches the judges read and their grades. */
 export function loadRunDir(dir: string): JudgedRunDir {
   const blindText = new Map<string, string>();
-  for (const f of jsonFiles(join(dir, "blind")))
-    for (const q of JSON.parse(readFileSync(join(dir, "blind", f), "utf8")) as BlindQuery[])
+  for (const f of jsonFiles(join(dir, "blind"))) {
+    for (const q of JSON.parse(readFileSync(join(dir, "blind", f), "utf8")) as BlindQuery[]) {
       for (const item of q.items) blindText.set(item.hid, item.text);
+    }
+  }
   // judgements/<judge>-batch-NN.json and adjudicated-batch-NN.json; other files there (human.json
   // calibration labels, #659) are not judge output
   const jdir = join(dir, "judgements");
@@ -391,10 +395,11 @@ export function loadRunDir(dir: string): JudgedRunDir {
 
 /** Final grades of a run's judged items: the hids the judges graded (or every key item without batches). */
 export function resolveRun(run: JudgedRunDir) {
-  if (run.judges.size !== 2)
+  if (run.judges.size !== 2) {
     throw new Error(
       `expected 2 judges in ${join(run.dir, "judgements")}, found: ${[...run.judges.keys()].join(", ") || "none"}`,
     );
+  }
   const sent = run.blindText.size ? [...run.blindText.keys()] : Object.keys(run.key);
   const [a, b] = [...run.judges.values()] as [Map<string, Grade>, Map<string, Grade>];
   return resolveGrades(sent, a, b, run.adjudicated);

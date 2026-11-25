@@ -24,7 +24,7 @@ const LISTED_WRITE_TOOLS = [
 const HIDDEN_WRITE_TOOLS = ["calibre_update_book", "calibre_add_book"];
 
 // The Write call per tool (the issue's table); stringified booleans as Cowork sends them included.
-const WRITE_CALLS: Array<[string, Record<string, unknown>]> = [
+const WRITE_CALLS: [string, Record<string, unknown>][] = [
   ["calibre_extract_isbn", { id: 1, apply: true }],
   ["calibre_bulk_update", { ids: [1], changes: { publisher: "Acme" }, preview: false }],
   ["calibre_remove_book", { ids: [1], confirm: true }],
@@ -36,7 +36,7 @@ const WRITE_CALLS: Array<[string, Record<string, unknown>]> = [
 ];
 
 // Calls that write nothing: the gate must let them reach the handler.
-const PREVIEW_CALLS: Array<[string, Record<string, unknown>]> = [
+const PREVIEW_CALLS: [string, Record<string, unknown>][] = [
   ["calibre_extract_isbn", { id: 1 }],
   ["calibre_bulk_update", { ids: [1], changes: { publisher: "Acme" } }],
   ["calibre_remove_book", { ids: [1] }],
@@ -83,7 +83,7 @@ async function call(writeEnabled: boolean, name: string, args: Record<string, un
   const { client, close } = await connect(writeEnabled);
   try {
     const r = await client.callTool({ name, arguments: args });
-    const text = (r.content as Array<{ type: string; text?: string }>).map((b) => b.text ?? "").join("\n");
+    const text = (r.content as { type: string; text?: string }[]).map((b) => b.text ?? "").join("\n");
     const code = (r.structuredContent as { errorCode?: string } | undefined)?.errorCode;
     return { isError: r.isError === true, text, code };
   } finally {
@@ -94,13 +94,13 @@ async function call(writeEnabled: boolean, name: string, args: Record<string, un
 describe("write gate per call (#435)", () => {
   describe("gate off", () => {
     it("should_list_the_five_previewable_write_tools", async () => {
-      const names = (await listTools(false)).map((t) => t.name);
-      expect(LISTED_WRITE_TOOLS.filter((n) => names.includes(n))).toEqual(LISTED_WRITE_TOOLS);
+      const names = new Set((await listTools(false)).map((t) => t.name));
+      expect(LISTED_WRITE_TOOLS.filter((n) => names.has(n))).toEqual(LISTED_WRITE_TOOLS);
     });
 
     it("should_hide_update_book_and_add_book", async () => {
-      const names = (await listTools(false)).map((t) => t.name);
-      expect(HIDDEN_WRITE_TOOLS.filter((n) => names.includes(n))).toEqual([]);
+      const names = new Set((await listTools(false)).map((t) => t.name));
+      expect(HIDDEN_WRITE_TOOLS.filter((n) => names.has(n))).toEqual([]);
     });
 
     it("should_announce_the_listed_write_tools_as_read_only_without_destructiveHint", async () => {
@@ -129,9 +129,9 @@ describe("write gate per call (#435)", () => {
 
   describe("gate on", () => {
     it("should_list_every_write_tool", async () => {
-      const names = (await listTools(true)).map((t) => t.name);
+      const names = new Set((await listTools(true)).map((t) => t.name));
       const all = [...LISTED_WRITE_TOOLS, ...HIDDEN_WRITE_TOOLS];
-      expect(all.filter((n) => names.includes(n))).toEqual(all);
+      expect(all.filter((n) => names.has(n))).toEqual(all);
     });
 
     it("should_announce_the_declared_annotations_unchanged", async () => {
@@ -154,7 +154,7 @@ describe("write_disabled error code (#435)", () => {
   });
 
   it("should_name_the_mcp_side_gate_in_its_default_hint", () => {
-    const hint = defaultHint("write_disabled" as never) ?? "";
+    const hint = defaultHint("write_disabled") ?? "";
     expect(hint).toContain("CALIBRE_MCP_ENABLE_WRITE=1");
     expect(hint).toContain("Enable writes");
   });

@@ -19,20 +19,25 @@ beforeAll(async () => {
       res.setHeader("content-type", "application/json");
       res.end(JSON.stringify(body));
     };
-    if (url.pathname === "/ajax/library-info")
+    if (url.pathname === "/ajax/library-info") {
       return json({ library_map: { [LIB]: "Test Lib" }, default_library: LIB });
+    }
     if (url.pathname === `/ajax/books/${LIB}`) {
       return json({ "1": { application_id: 1, title: "Rust in Action", authors: ["Tim McNamara"], formats: [] } });
     }
     res.statusCode = 404;
     res.end();
   });
-  await new Promise<void>((resolve) => http.listen(0, "127.0.0.1", resolve));
+  await new Promise<void>((resolve) => {
+    http.listen(0, "127.0.0.1", resolve);
+  });
   baseUrl = `http://127.0.0.1:${(http.address() as AddressInfo).port}`;
 });
 
 afterAll(async () => {
-  await new Promise<void>((resolve) => http.close(() => resolve()));
+  await new Promise<void>((resolve) => {
+    http.close(() => resolve());
+  });
 });
 
 async function withClient<T>(writeEnabled: boolean, fn: (client: Client) => Promise<T>): Promise<T> {
@@ -59,7 +64,7 @@ async function withClient<T>(writeEnabled: boolean, fn: (client: Client) => Prom
 async function removeBook(writeEnabled: boolean, args: Record<string, unknown>) {
   return withClient(writeEnabled, async (client) => {
     const r = await client.callTool({ name: "calibre_remove_book", arguments: args });
-    const text = (r.content as Array<{ type: string; text?: string }>).map((b) => b.text ?? "").join("\n");
+    const text = (r.content as { type: string; text?: string }[]).map((b) => b.text ?? "").join("\n");
     return { isError: r.isError === true, text, sc: r.structuredContent as Record<string, unknown> | undefined };
   });
 }

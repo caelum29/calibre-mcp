@@ -100,7 +100,7 @@ describe("figure↔chunk linkage through the real inject→chunk→store pipelin
         expect(store.chunkAt(LIB, BOOK, f.charOffset)!.charStart).toBe(c.charStart);
       }
     }
-    expect(seen.sort()).toEqual([0, 1]);
+    expect(seen.sort((a, b) => a - b)).toEqual([0, 1]);
     store.close();
   });
 

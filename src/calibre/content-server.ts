@@ -19,11 +19,11 @@ import { asLibId, type LibId } from "./lib-id.js";
 interface RawFtsSearch {
   metadata?: Record<string, { title?: string; authors?: string }>;
   indexing_status?: { left?: number; total?: number };
-  results?: Array<{ book_id?: number; format?: string }>;
+  results?: { book_id?: number; format?: string }[];
 }
 
 interface RawFtsSnippets {
-  snippets?: Record<string, Array<{ formats?: string[]; text?: string }>>;
+  snippets?: Record<string, { formats?: string[]; text?: string }[]>;
 }
 
 interface RawLibraryInfo {

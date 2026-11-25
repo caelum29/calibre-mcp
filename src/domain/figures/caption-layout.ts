@@ -189,7 +189,7 @@ function blockBelowText(page: LayoutPage, anchor: LayoutLine): LayoutLine[] | nu
   const out = [first];
   for (let i = page.lines.indexOf(first) + 1; i < page.lines.length && out.length < MAX_LINES; i++) {
     const line = page.lines[i]!;
-    const gap = line.y0 - out[out.length - 1]!.y1;
+    const gap = line.y0 - out.at(-1)!.y1;
     if (line.block !== first.block || (flush(line) & side) === 0 || gap < -1 || gap > h) break;
     side &= flush(line);
     out.push(line);
@@ -219,7 +219,7 @@ function wideLineBelow(page: LayoutPage, anchor: LayoutLine): LayoutLine[] | nul
   const block = page.lines.filter((l) => l.block === first.block);
   if (block[0] !== first || block.length > WIDE_BLOCK_LINES_MAX) return null;
   if (block.some((l) => Math.abs(l.x0 - first.x0) > ALIGN_TOLERANCE || !similarSize(l, first))) return null;
-  return SENTENCE_END.test(block[block.length - 1]!.text.trim()) ? block : null;
+  return SENTENCE_END.test(block.at(-1)!.text.trim()) ? block : null;
 }
 
 /**
@@ -290,5 +290,5 @@ function similarSize(a: LayoutLine, b: LayoutLine): boolean {
 
 /** Label as printed → comparable form (`1.5.` ≙ `1.5`, `2-1` ≙ `2.1`). */
 function normalizeLabel(s: string): string {
-  return s.replace(/[.:,]+$/u, "").replace(/[-–.,]/gu, ".");
+  return s.replace(/[.:,]+$/u, "").replaceAll(/[-–.,]/gu, ".");
 }

@@ -6,7 +6,7 @@ import path from "node:path";
 
 /** The index file name for a library: the id sanitized into a safe filename component. */
 export function indexFileName(libraryId: string): string {
-  const safe = libraryId.replace(/[^A-Za-z0-9._-]/g, "_") || "default";
+  const safe = libraryId.replaceAll(/[^A-Za-z0-9._-]/g, "_") || "default";
   return `${safe}.sqlite`;
 }
 

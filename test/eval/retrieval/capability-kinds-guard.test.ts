@@ -4,12 +4,11 @@
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { capabilityKindsOf, evaluateFusionOnlyGate, evaluateGate, type Thresholds } from "./gate.js";
-import type { EvalReport, QueryKind } from "./harness.js";
+import type { EvalReport } from "./harness.js";
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
+const HERE = import.meta.dirname;
 const shipped = JSON.parse(readFileSync(path.join(HERE, "thresholds.json"), "utf8")) as Thresholds;
 const withBlock = (block: unknown) =>
   ({ baselineReport: "x", nonRegression: {}, capabilityKinds: block }) as unknown as Thresholds;
@@ -62,7 +61,7 @@ describe("capabilityKindsOf", () => {
       '"semantic-paraphrase" is not a capability kind',
     );
     const fusion: NonNullable<Thresholds["fusionOnly"]> = { rerank: "off", nonRegression: {}, reportOnlyKinds: [] };
-    expect(() => evaluateFusionOnlyGate(empty, empty, fusion, [], ["semantic-paraphrase" as QueryKind])).toThrow(
+    expect(() => evaluateFusionOnlyGate(empty, empty, fusion, [], ["semantic-paraphrase"])).toThrow(
       '"semantic-paraphrase" is not a capability kind',
     );
   });

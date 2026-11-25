@@ -57,6 +57,6 @@ describe("calibre_too_old error code (#499)", () => {
   });
 
   it("should_have_a_default_hint_naming_the_update", () => {
-    expect(defaultHint("calibre_too_old" as never)).toContain("calibre-ebook.com/download");
+    expect(defaultHint("calibre_too_old")).toContain("calibre-ebook.com/download");
   });
 });

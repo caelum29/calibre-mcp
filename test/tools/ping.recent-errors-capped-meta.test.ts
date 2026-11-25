@@ -56,7 +56,7 @@ describe("calibre_ping shows a capped-meta collapse in both channels (#389)", ()
 
     const r = await pingTool().handler({}, pingDeps());
     const sc = r.structuredContent as {
-      recentErrors: Array<{ msg: string; ts: string; count: number; firstTs?: string; meta?: unknown }>;
+      recentErrors: { msg: string; ts: string; count: number; firstTs?: string; meta?: unknown }[];
     };
     expect(sc.recentErrors).toHaveLength(1);
     expect(sc.recentErrors[0]).toMatchObject({

@@ -38,7 +38,7 @@ const embedder: Embedder = {
 /** Books 1 and 2, both matching "ownership", each with one figure caption. */
 function store(): SqliteIndexStore {
   const s = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
-  for (const id of [1, 2])
+  for (const id of [1, 2]) {
     s.replaceBook(
       LIB,
       { bookId: id, title: `Book ${id}`, authors: ["A"] },
@@ -54,6 +54,7 @@ function store(): SqliteIndexStore {
         },
       ],
     );
+  }
   return s;
 }
 
@@ -107,7 +108,7 @@ describe("calibre_semantic_search drops books the library no longer holds (#579)
       expect(r.isError).toBeUndefined();
       expect(r.structuredContent?.bookIds).toEqual([1]);
       expect(r.structuredContent?.count).toBe(1);
-      const results = r.structuredContent?.results as Array<{ bookId: number }>;
+      const results = r.structuredContent?.results as { bookId: number }[];
       expect(results.map((x) => x.bookId)).toEqual([1]);
       expect(text(r)).not.toContain("book 2");
       expect(text(r)).toContain("Top 1 book(s)");
@@ -144,14 +145,14 @@ describe("calibre_semantic_search drops books the library no longer holds (#579)
       deps(store(), liveSearch([1])),
     );
     expect(r.isError).toBeUndefined();
-    const figs = r.structuredContent?.figures as Array<{ bookId: number }>;
+    const figs = r.structuredContent?.figures as { bookId: number }[];
     expect(figs.map((f) => f.bookId)).toEqual([1]);
     expect(text(r)).not.toContain("book 2");
   });
 
   it("should_drop_every_figure_hit_of_a_gone_book_at_library_scope", async () => {
     const r = await semanticSearchTool.handler(args({ target: "figures" }), deps(store(), liveSearch([2])));
-    const figs = r.structuredContent?.figures as Array<{ bookId: number }>;
+    const figs = r.structuredContent?.figures as { bookId: number }[];
     expect(figs.map((f) => f.bookId)).toEqual([2]);
   });
 
@@ -221,10 +222,11 @@ describe("a slow or failing existence check keeps today's hits (#579)", () => {
     const index = store();
     const busy = new Proxy(index, {
       get(target, prop, recv) {
-        if (prop === "deleteBooks")
+        if (prop === "deleteBooks") {
           return () => {
             throw Object.assign(new Error("database is locked"), { errcode: 5 });
           };
+        }
         const v = Reflect.get(target, prop, recv) as unknown;
         return typeof v === "function" ? (v as (...a: unknown[]) => unknown).bind(target) : v;
       },

@@ -16,7 +16,6 @@ describe.skipIf(!RUN)("TransformersEmbedder (live model)", () => {
   it("cold-starts and returns a unit-norm 384-dim vector", async () => {
     const t0 = performance.now();
     const v = await embedder.embedQuery("hello world");
-    // eslint-disable-next-line no-console
     console.error(`[embedder] cold-start embed took ${Math.round(performance.now() - t0)}ms`);
     expect(v.length).toBe(EMBED_DIM);
     expect(dot(v, v)).toBeCloseTo(1, 3); // normalize=true → ~unit norm

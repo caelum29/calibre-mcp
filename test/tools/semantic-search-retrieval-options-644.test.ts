@@ -39,7 +39,7 @@ const embedder: Embedder = {
 
 /** Reranker recording the pair count and options of each call. */
 function recording() {
-  const calls: Array<{ pairs: number; maxTokens?: number }> = [];
+  const calls: { pairs: number; maxTokens?: number }[] = [];
   const reranker: Reranker = {
     async rerank(_q, ps, opts) {
       calls.push({ pairs: ps.length, ...(opts ? { maxTokens: opts.maxTokens } : {}) });

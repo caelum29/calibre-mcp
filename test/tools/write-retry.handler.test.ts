@@ -173,7 +173,7 @@ describe("calibre_bulk_update transient retry (#233)", () => {
     expect(text(r)).toContain("re-run with ids=[2,3]");
     // a down server is not a permissions problem — don't steer to --enable-local-write
     expect(text(r)).not.toContain("--enable-local-write");
-    const schema = z.object(bulkUpdateTool.outputSchema!);
+    const schema = z.object(bulkUpdateTool.outputSchema);
     expect(schema.safeParse(JSON.parse(JSON.stringify(r.structuredContent))).success).toBe(true);
   });
 

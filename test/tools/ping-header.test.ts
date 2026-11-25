@@ -59,7 +59,7 @@ function deps(o: Over = {}): PingDeps {
   };
 }
 
-const text = (r: { content: Array<{ type: string; text?: string }> }): string =>
+const text = (r: { content: { type: string; text?: string }[] }): string =>
   r.content.map((b) => b.text ?? "").join("\n");
 
 describe("calibre_ping header (#304)", () => {
@@ -130,7 +130,14 @@ describe("calibre_ping per-library index breakdown (#304)", () => {
   });
 
   it("still pings ok when libraries cannot be listed", async () => {
-    const r = await ping.handler({}, deps({ libraryInfo: async () => Promise.reject(new Error("down")) }));
+    const r = await ping.handler(
+      {},
+      deps({
+        libraryInfo: async () => {
+          throw new Error("down");
+        },
+      }),
+    );
     expect(r.isError).toBeUndefined();
     expect(text(r).split("\n")).toContain("Index: libraries unavailable");
   });

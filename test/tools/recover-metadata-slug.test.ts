@@ -14,7 +14,7 @@ function book(over: Partial<Book> = {}): Book {
 }
 
 interface Seen {
-  titles: Array<{ title: string; author: string | undefined }>;
+  titles: { title: string; author: string | undefined }[];
 }
 
 /** Deps whose providers record the title query they were asked for and return `hits`. */
@@ -41,10 +41,10 @@ function deps(b: Book, hits: ProviderHit[], seen: Seen): BaseDeps {
   };
 }
 
-const text = (r: { content: Array<{ type: string }> }) => (r.content[0] as unknown as { text: string }).text;
+const text = (r: { content: { type: string }[] }) => (r.content[0] as unknown as { text: string }).text;
 
 // Real titles of books 1370, 1229 and 595 from the acceptance pass.
-const SLUGS: Array<[string, string]> = [
+const SLUGS: [string, string][] = [
   ["modular-monoliths", "modular monoliths"],
   ["functional-design-and-architecture", "functional design and architecture"],
   [

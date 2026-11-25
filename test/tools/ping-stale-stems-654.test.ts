@@ -77,7 +77,7 @@ const indexLine = (r: ToolResult): string | undefined =>
     .split("\n")
     .find((l) => l.startsWith("Index: "));
 const staleStems = (r: ToolResult): unknown[] =>
-  ((r.structuredContent?.indexes ?? []) as Array<{ staleStems?: number }>).map((i) => i.staleStems);
+  ((r.structuredContent?.indexes ?? []) as { staleStems?: number }[]).map((i) => i.staleStems);
 
 describe("calibre_ping stale keyword stems (#654)", () => {
   it("should_warn_with_the_count_and_the_rebuild_in_both_channels", async () => {

@@ -104,8 +104,8 @@ function headStart(body: string, width: number): number {
 
 // A UTF-16 cut between the two halves of an astral char (emoji, 𝔸) leaves a lone surrogate:
 // ill-formed text that some clients reject or render as "�". Cuts move to the pair boundary.
-const isHigh = (code: number) => code >= 0xd800 && code <= 0xdbff;
-const isLow = (code: number) => code >= 0xdc00 && code <= 0xdfff;
+const isHigh = (code: number) => code >= 0xd8_00 && code <= 0xdb_ff;
+const isLow = (code: number) => code >= 0xdc_00 && code <= 0xdf_ff;
 
 /** `at`, moved forward past a low surrogate whose high half sits before it. */
 function pairStart(body: string, at: number): number {
@@ -125,7 +125,7 @@ function queryTerms(query: string): Set<string> {
     const raw = query
       .slice(t.index, t.index + t.length)
       .toLowerCase()
-      .replace(/ё/g, "е");
+      .replaceAll("ё", "е");
     if (!STOPWORDS.has(raw) && t.stem.length >= MIN_TERM_CHARS) terms.add(t.stem);
   }
   return terms;

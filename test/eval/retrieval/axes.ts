@@ -94,8 +94,9 @@ export function computeAxes(report: EvalReport): Partial<Record<Mode, ModeAxes>>
       axes.confuserAt1 = { n: confuser.length, atRank1: atRank1.length };
     }
     const adjacent = rows.filter((r) => r.kind === "adjacent-negative");
-    if (adjacent.length)
+    if (adjacent.length) {
       axes.adjacentNegative = { n: adjacent.length, flagged: adjacent.filter((r) => r.flagged === true).length };
+    }
     out[mode] = axes;
   }
   return out;
@@ -115,7 +116,7 @@ export function renderAxes(
   axes: Partial<Record<Mode, ModeAxes>>,
   cfg: NonNullable<Thresholds["reportOnlyAxes"]>,
 ): string[] {
-  const entries = Object.entries(axes) as Array<[Mode, ModeAxes]>;
+  const entries = Object.entries(axes) as [Mode, ModeAxes][];
   const perMode: Record<string, (m: Mode, a: ModeAxes) => string> = {
     snippetMarker: (m, a) => `    ${m}: marker shown ${ratio(a.snippetMarker.shown, a.snippetMarker.n)}`,
     spanHit: (m, { spanHit: s }) =>

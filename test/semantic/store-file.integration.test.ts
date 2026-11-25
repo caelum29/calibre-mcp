@@ -111,13 +111,13 @@ describe("SqliteIndexStore on a temp file, two connections (#322)", () => {
     expect(a.deleteBooks(LIB, [2, 4, 99])).toEqual({ books: 2, chunks: 4, figures: 2 });
     const c = open();
     try {
-      expect(c.indexedBookIds(LIB).sort()).toEqual([1, 3]);
+      expect(c.indexedBookIds(LIB).sort((a, b) => a - b)).toEqual([1, 3]);
       expect(c.stats(LIB)).toEqual({ books: 2, chunks: 4, figures: 2 });
       expect(
         c
           .searchLibraryFts(LIB, "kernel", 10)
           .map((h) => h.bookId)
-          .sort(),
+          .sort((a, b) => a - b),
       ).toEqual([1, 3]);
       expect(c.figureCount(LIB)).toBe(2);
       expect(c.vectorCount(LIB)).toBe(4);
@@ -136,7 +136,7 @@ describe("SqliteIndexStore on a temp file, two connections (#322)", () => {
     expect(a.searchLibraryFts(LIB, "downgraded", 10)).toEqual([]);
     // A book with no embeddings yet is written by the same keyword-only call.
     expect(b.replaceBook(LIB, meta(5), chunks("plain words"), [], { preserveEmbedded: true })).toBe("written");
-    expect(a.indexedBookIds(LIB).sort()).toEqual([1, 2, 3, 4, 5]);
+    expect(a.indexedBookIds(LIB).sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 5]);
   });
 });
 

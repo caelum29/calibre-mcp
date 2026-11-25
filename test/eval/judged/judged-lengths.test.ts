@@ -64,7 +64,7 @@ const RAWS = [
   rawOf(q("m1", { library: "M" }), [1]), // no lengths for library M: no breakdown
   rawOf(q("n1", { category: "neg" }), [8, 6, 1]),
 ];
-const GRADES: Record<string, Array<FinalGrade["grade"] | undefined>> = {
+const GRADES: Record<string, (FinalGrade["grade"] | undefined)[]> = {
   p1: [2, 0, 1, 2, 0],
   p2: [2, 0],
   b1: [2, 2],
@@ -74,7 +74,7 @@ const GRADES: Record<string, Array<FinalGrade["grade"] | undefined>> = {
 };
 const key = Object.assign({}, ...RAWS.map((r) => blindRecord(r).key));
 const final = new Map<string, FinalGrade>();
-for (const [hid, seen] of Object.entries(key) as Array<[string, { hybrid?: number }]>) {
+for (const [hid, seen] of Object.entries<{ hybrid?: number }>(key)) {
   const g = GRADES[hid.slice(0, hid.lastIndexOf("#"))]![seen.hybrid! - 1];
   if (g !== undefined) final.set(hid, { grade: g });
 }

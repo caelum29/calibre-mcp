@@ -30,7 +30,7 @@ async function librarySpelling(
   tag: string,
   library?: string,
 ): Promise<string | undefined> {
-  const quoted = tag.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  const quoted = tag.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
   const page = await deps.content.search({ query: `tags:"=${quoted}"`, library, num: 1 });
   const id = page.bookIds[0];
   if (id === undefined) return undefined;

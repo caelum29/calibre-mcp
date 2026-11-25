@@ -57,7 +57,7 @@ describe("SqliteIndexStore across processes (#196)", () => {
     holder.close();
     // Lock released → the same write now goes through.
     b.replaceBook(LIB, { bookId: 2, title: "B", authors: [] }, [chunk("beta")]);
-    expect(a.indexedBookIds(LIB).sort()).toEqual([1, 2]);
+    expect(a.indexedBookIds(LIB).sort((a, b) => a - b)).toEqual([1, 2]);
     a.close();
     b.close();
   });

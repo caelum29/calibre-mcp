@@ -4,14 +4,13 @@
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import type { EvalReport, Mode, PerQueryRow, QueryKind } from "./harness.js";
 import { heldOutIds, type GoldenQuery } from "./harness.js";
 import { scoreFloors, type FloorThresholds } from "./rerank-floor.js";
 import { scoreWeight, type SweepThresholds, type WeightReports } from "./rrf-sweep.js";
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
+const HERE = import.meta.dirname;
 const queries = JSON.parse(readFileSync(path.join(HERE, "queries.json"), "utf8")) as GoldenQuery[];
 
 const FROZEN = [

@@ -274,7 +274,7 @@ function isBodyHit(h: { matterKind?: MatterKind; body: string }): boolean {
  * among all reranked hits only when no body hit was reranked. Book scope passes no `isBody`:
  * weak passages keep their rerank position there, so the best reranked hit is the one shown.
  */
-function maxRerankOf<H>(hits: Array<{ hit: H; rerankScore?: number }>, isBody?: (h: H) => boolean) {
+function maxRerankOf<H>(hits: { hit: H; rerankScore?: number }[], isBody?: (h: H) => boolean) {
   const scored = hits.filter((r) => r.rerankScore !== undefined);
   const body = isBody ? scored.filter((r) => isBody(r.hit)) : scored;
   const pick = body.length > 0 ? body : scored;
@@ -297,7 +297,7 @@ function outcome<H>(
   rr: RerankOutcome<unknown>,
   hits: Ranked<H>[],
   conf: { maxScore?: number; lowConfidence: boolean },
-  ...notes: Array<string | undefined>
+  ...notes: (string | undefined)[]
 ): RankedHits<H> {
   return {
     hits,
@@ -339,7 +339,7 @@ function rerankActive(req: BaseRequest, deps: RetrievalDeps): boolean {
  * stages use (#392, #457).
  */
 interface Halves<H> {
-  vec: Array<H & { score: number }>;
+  vec: (H & { score: number })[];
   kw: H[];
   idOf: (h: H) => number;
   tieOf: (h: H) => readonly [number, number];
@@ -381,7 +381,7 @@ function rankMap<H>(list: H[], idOf: (h: H) => number): Map<number, number> {
 }
 
 /** One half's hits as ranked items with their half rank (keyword/vector modes, #650). */
-function single<H>(hits: Array<H & { score: number }>, half: "vector" | "keyword"): Ranked<H>[] {
+function single<H>(hits: (H & { score: number })[], half: "vector" | "keyword"): Ranked<H>[] {
   return hits.map((hit, i) =>
     half === "vector"
       ? { hit, cosine: hit.score, provenance: { vectorRank: i + 1, rerankPool: false } }
@@ -650,7 +650,7 @@ async function dropGone<T extends { hit: { bookId: number }; rerankScore?: numbe
  * weak). Either signal alone marks the result set low-confidence; both raw maxima are surfaced.
  * `floor` null = no cosine floor (figures, until FIGURES_SEMANTIC_FLOOR is calibrated).
  */
-function confidence(ranked: Array<{ cosine?: number }>, floor: number | null, rr: RerankOutcome<unknown>) {
+function confidence(ranked: { cosine?: number }[], floor: number | null, rr: RerankOutcome<unknown>) {
   const cosines = ranked.map((r) => r.cosine).filter((c): c is number => c !== undefined);
   const maxScore = cosines.length ? Math.max(...cosines) : undefined;
   const cosineLow = floor !== null && maxScore !== undefined && maxScore < floor;

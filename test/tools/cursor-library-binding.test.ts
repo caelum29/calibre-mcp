@@ -29,7 +29,7 @@ const rawBook = (id: number) => ({
 
 beforeEach(() => {
   vi.mocked(getJson).mockReset();
-  vi.mocked(getJson).mockImplementation(((url: string) => {
+  vi.mocked(getJson).mockImplementation((url: string) => {
     if (url.includes("/ajax/library-info")) return Promise.resolve(libInfo);
     if (url.includes("/ajax/search/")) {
       const offset = Number(new URL(url).searchParams.get("offset") ?? 0);
@@ -46,7 +46,7 @@ beforeEach(() => {
       return Promise.resolve(Object.fromEntries([1, 2, 3, 4, 5, 6].map((i) => [String(i), rawBook(i)])));
     }
     return Promise.reject(new Error(`unexpected url ${url}`));
-  }) as typeof getJson);
+  });
 });
 
 const deps = (): SearchDeps => ({
@@ -61,7 +61,7 @@ const deps = (): SearchDeps => ({
 });
 
 const meta = (a: Record<string, unknown>, d = deps()) =>
-  searchTool.handler({ query: "x", mode: "meta", scope: "library", limit: 2, ...a } as never, d);
+  searchTool.handler({ query: "x", mode: "meta", scope: "library", limit: 2, ...a }, d);
 const nextOf = (r: ToolResult): string => String(r.structuredContent?.nextCursor);
 
 describe("cursor library binding via the real resolveLibraryId (#325)", () => {

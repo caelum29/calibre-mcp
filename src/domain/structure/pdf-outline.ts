@@ -20,10 +20,10 @@ const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"'
 
 /** Decode the XML/HTML entities that show up in outline and TOC titles. */
 export function decodeEntities(s: string): string {
-  return s.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e: string) => {
+  return s.replaceAll(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e: string) => {
     if (e[0] === "#") {
-      const cp = e[1] === "x" || e[1] === "X" ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10);
-      return Number.isFinite(cp) && cp > 0 && cp <= 0x10ffff ? String.fromCodePoint(cp) : m;
+      const cp = e[1] === "x" || e[1] === "X" ? Number.parseInt(e.slice(2), 16) : Number.parseInt(e.slice(1), 10);
+      return Number.isFinite(cp) && cp > 0 && cp <= 0x10_ff_ff ? String.fromCodePoint(cp) : m;
     }
     return ENTITIES[e.toLowerCase()] ?? m;
   });
@@ -47,8 +47,8 @@ export function parsePdfOutlineXml(xml: string): OutlineEntry[] {
     } else if (depth > 0) {
       const pageAttr = /\bpage\s*=\s*"(\d+)"/.exec(m[2] ?? "");
       const page = pageAttr ? Number(pageAttr[1]) : null;
-      const title = decodeEntities((m[3] ?? "").replace(/<[^>]*>/g, ""))
-        .replace(/\s+/g, " ")
+      const title = decodeEntities((m[3] ?? "").replaceAll(/<[^>]*>/g, ""))
+        .replaceAll(/\s+/g, " ")
         .trim();
       if (title) out.push({ title, page: page !== null && page >= 1 ? page : null, level: depth });
     }
@@ -87,8 +87,8 @@ function buildTree<T extends LeveledTitle>(entries: T[]): OutlineNode<T>[] {
   const stack: OutlineNode<T>[] = [];
   for (const entry of entries) {
     const node: OutlineNode<T> = { entry, children: [] };
-    while (stack.length > 0 && stack[stack.length - 1]!.entry.level >= entry.level) stack.pop();
-    (stack.length > 0 ? stack[stack.length - 1]!.children : roots).push(node);
+    while (stack.length > 0 && stack.at(-1)!.entry.level >= entry.level) stack.pop();
+    (stack.length > 0 ? stack.at(-1)!.children : roots).push(node);
     stack.push(node);
   }
   return roots;
@@ -220,7 +220,7 @@ export function outlineChapters(text: string, entries: OutlineEntry[]): ChapterS
     const pageStart = pageStarts[p - 1]!;
     const pageEnd = p < pageStarts.length ? pageStarts[p]! : text.length;
     const startChar = snapToTitle(text, pageStart, pageEnd, e.title);
-    const prev = starts[starts.length - 1];
+    const prev = starts.at(-1);
     // Out-of-order or same-offset bookmarks would yield empty/negative spans — drop them.
     if (prev && startChar <= prev.startChar) continue;
     starts.push({ heading: e.title, startChar });

@@ -101,7 +101,7 @@ const TOC_HEADERS = [
   "содержание",
   "зміст",
 ];
-const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const escapeRe = (s: string) => s.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const TOC_PATTERN = new RegExp(`^\\s*(?:${TOC_HEADERS.map(escapeRe).join("|")})\\s*$`, "im");
 
 // ATX heading ("# Title", "== Section"); required space distinguishes AsciiDoc "== X"
@@ -154,7 +154,7 @@ function romanToInt(raw: string): number | null {
 /** Parse a Chinese (or ASCII-digit) chapter numeral into an int (1..999). */
 function cnNumeralToInt(s: string): number | null {
   if (/^[0-9０-９]+$/.test(s)) {
-    const n = Number(s.replace(/[０-９]/g, (d) => String(d.charCodeAt(0) - 0xff10)));
+    const n = Number(s.replaceAll(/[０-９]/g, (d) => String(d.charCodeAt(0) - 0xff_10)));
     return n >= 1 && n <= 999 ? n : null;
   }
   let section = 0;

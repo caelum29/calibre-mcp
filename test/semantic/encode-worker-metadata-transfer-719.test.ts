@@ -3,10 +3,10 @@
 import { describe, expect, it, vi } from "vitest";
 
 const port = vi.hoisted(() => {
-  const handlers: Array<(req: unknown) => void> = [];
+  const handlers: ((req: unknown) => void)[] = [];
   return {
     handlers,
-    posted: [] as Array<{ reply: unknown; transfer: ArrayBuffer[] }>,
+    posted: [] as { reply: unknown; transfer: ArrayBuffer[] }[],
     on(_event: string, fn: (req: unknown) => void) {
       handlers.push(fn);
     },

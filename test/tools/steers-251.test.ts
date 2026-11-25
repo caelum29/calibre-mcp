@@ -33,7 +33,11 @@ function deps(content: object, calibre: object): SearchDeps {
 // 422 "Failed to parse search query: a:b- with error: no such column: a" → FTS_QUERY_INVALID.
 const ftsFails = (err: Error): SearchDeps => ({
   ...deps({}, {}),
-  fts: fakeFts([], { match: async () => Promise.reject(err) }),
+  fts: fakeFts([], {
+    match: async () => {
+      throw err;
+    },
+  }),
 });
 const ftsArgs = { query: "LOGTEST-LONG event sourcing", mode: "fts", scope: "library", limit: 20 } as const;
 const LIB = asLibId("Programming_Books");
@@ -81,12 +85,13 @@ describe("calibre_update_book missing id (#251)", () => {
   it("maps a 404 on the pre-read to the same message as get_book, without raw HTTP text", async () => {
     const d = deps(
       {
-        getBook: async () =>
-          Promise.reject(new CalibreHttpError(404, "http://x/ajax/book/999999/L", "Content Server returned HTTP 404")),
+        getBook: async () => {
+          throw new CalibreHttpError(404, "http://x/ajax/book/999999/L", "Content Server returned HTTP 404");
+        },
       },
       { calibredb: async () => ({ stdout: "", stderr: "" }) },
     );
-    const r = await updateBookTool.handler({ id: 999999, changes: { tags: ["x"] } }, d);
+    const r = await updateBookTool.handler({ id: 999_999, changes: { tags: ["x"] } }, d);
     expect(r.isError).toBe(true);
     expect(textOf(r)).toContain("No book with id 999999 in the requested library");
     expect(textOf(r)).not.toContain("HTTP");

@@ -35,7 +35,7 @@ beforeEach(() => {
   libraryInfoCalls = 0;
   currentLibInfo = libInfo;
   mocked.mockReset();
-  mocked.mockImplementation(((url: string) => {
+  mocked.mockImplementation((url: string) => {
     if (url.includes("/ajax/library-info")) {
       libraryInfoCalls++;
       return Promise.resolve(currentLibInfo);
@@ -43,7 +43,7 @@ beforeEach(() => {
     if (url.includes("/ajax/book/7/")) return Promise.resolve(book7);
     if (url.includes("/ajax/book/")) return Promise.reject(new CalibreHttpError(404, url, "HTTP 404"));
     return Promise.reject(new Error("unexpected url " + url));
-  }) as typeof getJson);
+  });
 });
 
 const client = () => new ContentServerClient(loadConfig({}));
@@ -114,7 +114,7 @@ describe("resolveLibraryId on an unknown library (#438)", () => {
 function deps(): BaseDeps {
   return {
     config: loadConfig({}),
-    content: client() as unknown as ToolDeps["content"],
+    content: client(),
     calibre: {} as ToolDeps["calibre"],
     extractor: {} as ToolDeps["extractor"],
     figures: {} as ToolDeps["figures"],

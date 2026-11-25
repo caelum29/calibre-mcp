@@ -134,7 +134,7 @@ export function vectorCoverage(db: DatabaseSync, bookId: number): { chunks: numb
     | undefined;
   if (!row) return undefined;
   let embedded = row.embedded_chunks;
-  if (embedded == null) {
+  if (embedded === null || embedded === undefined) {
     // Legacy row (written before embedded_chunks existed) — count its embeddings instead.
     const n = db.prepare("SELECT COUNT(*) AS n FROM embeddings WHERE book_id = ?").get(bookId) as Row;
     embedded = n?.n;

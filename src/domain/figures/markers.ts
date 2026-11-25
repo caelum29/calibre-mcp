@@ -137,17 +137,17 @@ function scanCaptionLines(text: string, markdown: boolean): CaptionLine[] {
     let stripped = raw.replace(/^[\s>#]+/, "");
     // Inline code is literal: `managed_new_default` must not pair `_new_` as emphasis.
     // Escape its markers and drop the backticks (#101).
-    if (markdown) stripped = stripped.replace(/`([^`]*)`/g, (_, code: string) => code.replace(/[*_]/g, "\\$&"));
+    if (markdown) stripped = stripped.replaceAll(/`([^`]*)`/g, (_, code: string) => code.replaceAll(/[*_]/g, "\\$&"));
     // Markdown only: in pdftotext output `_` is literal, and pairing it mangled identifier
     // captions ("task_struct, thread_info" → "taskstruct, thread  info"), leaving 57 of
     // book 175's figures on the page-boundary fallback (#107).
-    if (markdown) stripped = stripped.replace(/(?<!\\)[*_]{1,2}((?:\\[*_]|[^*_])+?)(?<!\\)[*_]{1,2}/g, "$1  ");
+    if (markdown) stripped = stripped.replaceAll(/(?<!\\)[*_]{1,2}((?:\\[*_]|[^*_])+?)(?<!\\)[*_]{1,2}/g, "$1  ");
     // Then drop the unpaired leftovers: BPB's italic-wrapped bold label `***Figure 1.1:**
     // Text*` keeps its outer `*` after the pairing pass, and inline code inside a bold
     // caption leaves `****\`Book\`****` debris that pushed long Manning captions past the
     // 300-char guard (#101). Unescaped `*`/backticks are always markup in ebook-convert
     // markdown (it escapes literal ones) — but literal text in pdftotext output.
-    if (markdown) stripped = stripped.replace(/(?<!\\)[*`]+/g, "");
+    if (markdown) stripped = stripped.replaceAll(/(?<!\\)[*`]+/g, "");
     stripped = stripped.trim();
     // A markdown heading is ebook-convert's rendering of a caption-dedicated element
     // (`<h5>Figure 1.1 Text</h5>` → `##### Figure 1.1 Text`, newer Manning EPUBs): give it
@@ -220,8 +220,9 @@ function findCaptionLine(
     // +1: a page-first line starts on the form feed that opens its page (book 836)
     const page = pageOf(line.start + 1, pageStarts);
     if (page > entry.page) break;
-    if (line.bare && page === entry.page && normalizeLabel(line.label) === normalizeLabel(label))
+    if (line.bare && page === entry.page && normalizeLabel(line.label) === normalizeLabel(label)) {
       return { index: i, byPage: true };
+    }
   }
   return null;
 }
@@ -260,14 +261,14 @@ function isCaptionPrefix(line: CaptionLine, fullComparable: string): boolean {
  */
 function comparable(s: string): string {
   return characterClean(s)
-    .replace(/\s+/g, "")
-    .replace(/[\\\-\u2010\u2011]/g, "")
+    .replaceAll(/\s+/g, "")
+    .replaceAll(/[\\\-\u2010\u2011]/g, "")
     .toLowerCase();
 }
 
 /** The text stage's character rules; plain printable ASCII has nothing for them to do. */
 function characterClean(s: string): string {
-  return /[^\x20-\x7E]/.test(s) ? normaliseText(s, [CHARACTER_RULES]).text : s;
+  return /[^\u0020-\u007E]/.test(s) ? normaliseText(s, [CHARACTER_RULES]).text : s;
 }
 
 /**
@@ -311,11 +312,11 @@ export function indexedFigureCaption(
 
 /** Label separators vary between scans (`2-1` vs `2.1` vs `2–1`) — compare canonically. */
 function normalizeLabel(label: string): string {
-  return label.replace(/[-–.,]/g, ".");
+  return label.replaceAll(/[-–.,]/g, ".");
 }
 
 function collapseWs(s: string): string {
-  return s.replace(/\s+/g, " ").trim();
+  return s.replaceAll(/\s+/g, " ").trim();
 }
 
 function truncate(s: string, max: number): string {

@@ -17,7 +17,7 @@ describe("rrfFuse", () => {
       [1, 2],
       [3, 4],
     ]);
-    expect(fused.map((f) => f.id).sort()).toEqual([1, 2, 3, 4]);
+    expect(fused.map((f) => f.id).sort((a, b) => a - b)).toEqual([1, 2, 3, 4]);
   });
 
   it("preserves single-list order", () => {

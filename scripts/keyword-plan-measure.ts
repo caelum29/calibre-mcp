@@ -153,7 +153,7 @@ const isCyr = (s: string) => /\p{Script=Cyrillic}/u.test(s);
 const tokenRows: string[] = [
   "query\tcategory\tlibrary\traw\tstem\tlang\tshare_body_stem\tshare_body_raw\tshare_book_meta",
 ];
-const shares: Array<{ lib: string; lang: string; stem: string; share: number }> = [];
+const shares: { lib: string; lang: string; stem: string; share: number }[] = [];
 for (const q of queries) {
   const { stats } = open(q.library);
   const N = stats.totalDocs;
@@ -195,7 +195,7 @@ for (const thr of thresholds) {
     const toks = tokensOf(q.query);
     const p = planKeywordQuery(toks, stats, { maxDocShare: thr, bigrams: false });
     let m = plans.get(q.id);
-    if (!m) plans.set(q.id, (m = new Map()));
+    if (!m) plans.set(q.id, (m = new Map<number, KeywordPlan>()));
     m.set(thr, p);
     const tooCommon = new Set(p.dropped.filter((d) => d.reason === "too-common").map((d) => d.term));
     occ += toks.filter((t) => tooCommon.has(t.stem)).length;
@@ -244,7 +244,7 @@ process.stderr.write(`wrote token-shares.tsv + thresholds.md to ${outDir}\n`);
 
 // ---- 3. keyword-half timing (needs the exclusive machine token) ----------------------------
 if (timing) {
-  const phrase = (t: string) => `"${t.replace(/"/g, '""')}"`;
+  const phrase = (t: string) => `"${t.replaceAll('"', '""')}"`;
   // the identifier extras ftsMatch adds after the stems (#634) stay in every arm
   const extrasOf = (query: string, stemCount: number) => (ftsMatch(query) ?? "").split(" OR ").slice(stemCount);
   // the unfiltered library branch of searchLibraryFts, pool = max(k*20, 200) at k=10

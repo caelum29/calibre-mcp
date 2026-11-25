@@ -75,7 +75,7 @@ describe("front_matter dual-write removed (#693)", () => {
       deps(store),
     );
 
-    const passages = (r.structuredContent as { passages: Array<Record<string, unknown>> }).passages;
+    const passages = (r.structuredContent as { passages: Record<string, unknown>[] }).passages;
     const front = passages.find((p) => String(p.body).includes("passage front"))!;
     expect({ matterKind: front.matterKind, hasFrontMatter: "frontMatter" in front }).toEqual({
       matterKind: "front",
@@ -97,7 +97,7 @@ describe("front_matter dual-write removed (#693)", () => {
       store.replaceBook(LIB, { bookId: 1, title: "Book", authors: ["A"] }, [ch(0, "contents", "front")]);
       store.close();
       const db = new DatabaseSync(path.join(dir, `${LIB}.sqlite`), { readOnly: true });
-      const cols = (db.prepare("PRAGMA table_info(chunks)").all() as Array<{ name: string }>).map((c) => c.name);
+      const cols = (db.prepare("PRAGMA table_info(chunks)").all() as { name: string }[]).map((c) => c.name);
       db.close();
       expect(cols).not.toContain("front_matter");
     } finally {

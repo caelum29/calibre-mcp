@@ -15,7 +15,7 @@ import { queryStemmedTokens } from "../../src/semantic/stem.js";
 import { type IndexedChunk, SqliteIndexStore } from "../../src/semantic/store/index.js";
 import { l2normalize } from "../../src/semantic/vector.js";
 
-const stems = (query: string, langs: ReadonlyArray<string | undefined>) =>
+const stems = (query: string, langs: readonly (string | undefined)[]) =>
   [...queryStemmedTokens(query, new Set(langs))].map((t) => t.stems);
 
 describe("candidate packs keep the script default (#716 review, fix 1)", () => {
@@ -71,6 +71,6 @@ describe("a NULL-language book and a Ukrainian book both match (#716 review, fix
     s.replaceBook(LIB, { bookId: 2, title: "Uk", authors: ["B"], lang: "uk" }, [chunk(1, "основи програмування")]);
     const books = s.searchLibraryFts(LIB, "програмування", 10).map((h) => h.bookId);
     s.close();
-    expect(books.sort()).toEqual([1, 2]);
+    expect(books.sort((a, b) => a - b)).toEqual([1, 2]);
   });
 });

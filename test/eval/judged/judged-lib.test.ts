@@ -287,6 +287,6 @@ describe("baseline import fields", () => {
 describe("blindTextLengths", () => {
   it("should_map_each_blind_item_to_its_text_length", () => {
     const lengths = blindTextLengths([rec]);
-    expect([...lengths.values()].sort()).toEqual([2, 2, 2, 2]);
+    expect([...lengths.values()].sort((a, b) => a - b)).toEqual([2, 2, 2, 2]);
   });
 });

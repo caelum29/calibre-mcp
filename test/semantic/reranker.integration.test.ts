@@ -18,7 +18,6 @@ describe.skipIf(!RUN)("TransformersReranker (live model)", () => {
       "Ownership is Rust's memory model: each value has a single owner and borrowing rules.",
       "A recipe for chocolate chip cookies with brown butter.",
     ]);
-    // eslint-disable-next-line no-console
     console.error(`[reranker] cold-start rerank took ${Math.round(performance.now() - t0)}ms`);
     expect(scores).toHaveLength(2);
     for (const s of scores) expect(s).toBeGreaterThanOrEqual(0);

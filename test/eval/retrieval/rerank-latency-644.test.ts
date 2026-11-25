@@ -5,7 +5,6 @@
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import type { RerankCallOptions, Reranker } from "../../../src/semantic/reranker.js";
 import { rerankLatencyArms } from "./gate-guards.js";
@@ -13,7 +12,7 @@ import type { Thresholds } from "./gate.js";
 import { hashEmbedder } from "./hash-embedder.js";
 import { parseArgs, runPass } from "./run.js";
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
+const HERE = import.meta.dirname;
 const thresholds = JSON.parse(readFileSync(path.join(HERE, "thresholds.json"), "utf8")) as Thresholds;
 
 describe("pnpm eval rerank flags (#644)", () => {
@@ -38,7 +37,7 @@ describe("pnpm eval rerank flags (#644)", () => {
   });
 
   it("a pass with --rerank-pool 4 --rerank-max-tokens 128 scores at most 4 pairs at 128 tokens and records both", async () => {
-    const calls: Array<{ pairs: number; opts?: RerankCallOptions }> = [];
+    const calls: { pairs: number; opts?: RerankCallOptions }[] = [];
     const reranker: Reranker = {
       async rerank(_q, ps, opts) {
         calls.push({ pairs: ps.length, ...(opts ? { opts } : {}) });
@@ -100,7 +99,7 @@ describe("thresholds.rerankLatency (#644): pre-registered arms", () => {
   });
 
   it("no block → no arms", () => {
-    expect(rerankLatencyArms({ baselineReport: "r.json", nonRegression: {} } as unknown as Thresholds).size).toBe(0);
+    expect(rerankLatencyArms({ baselineReport: "r.json", nonRegression: {} }).size).toBe(0);
   });
 
   it("rejects an unknown top-level key", () => {

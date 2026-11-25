@@ -90,7 +90,7 @@ function sentenceBreak(text: string, w: BreakWindow, locale: string): number {
 
 /** True for a UTF-16 high surrogate (first half of an astral code point). */
 function isHighSurrogate(code: number): boolean {
-  return code >= 0xd800 && code <= 0xdbff;
+  return code >= 0xd8_00 && code <= 0xdb_ff;
 }
 
 /**
@@ -194,7 +194,9 @@ export async function chunkForEmbeddingAsync(text: string, opts: ChunkForEmbeddi
   for (const c of chunkSteps(text, opts)) {
     chunks.push(c);
     if (Date.now() - slice >= YIELD_EVERY_MS) {
-      await new Promise<void>((r) => setImmediate(r));
+      await new Promise<void>((r) => {
+        setImmediate(r);
+      });
       slice = Date.now();
     }
   }

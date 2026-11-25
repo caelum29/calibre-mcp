@@ -92,7 +92,7 @@ function deps(store: SqliteIndexStore, embedder: Embedder, ed: Edition): ToolDep
         outline: [],
         epubToc: ed.epubToc,
       }),
-    } satisfies Partial<ToolDeps["extractor"]> as ToolDeps["extractor"],
+    } satisfies Partial<ToolDeps["extractor"]>,
     figures: {} as ToolDeps["figures"],
     embedder,
     index: store,

@@ -34,7 +34,7 @@ function stubServer(): string[] {
       const m = /^\/ajax\/book\/(\d+)\/([^/]+)$/.exec(path);
       if (m) return json({ application_id: Number(m[1]), title: `Book ${m[1]} of ${m[2]}`, authors: ["A"] });
       const search = /^\/ajax\/search\/([^/]+)$/.exec(path);
-      if (search)
+      if (search) {
         return json({
           book_ids: [42],
           total_num: 1,
@@ -43,8 +43,10 @@ function stubServer(): string[] {
           sort: "title",
           library_id: decodeURIComponent(search[1]!),
         });
-      if (/^\/ajax\/books\/[^/]+$/.test(path))
+      }
+      if (/^\/ajax\/books\/[^/]+$/.test(path)) {
         return json({ "42": { application_id: 42, title: "Plato", authors: ["P"] } });
+      }
       return new Response("nope", { status: 404 });
     }),
   );

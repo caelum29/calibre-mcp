@@ -10,13 +10,13 @@
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { pathToFileURL } from "node:url";
 import { evaluateGate, type Thresholds } from "./gate.js";
 import { heldOutIds, type EvalReport, type Mode, type PerQueryRow } from "./harness.js";
 import { crossValidate, kFold } from "./folds.js";
 import { signTest } from "./stats.js";
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
+const HERE = import.meta.dirname;
 // Mirrors config.ts's default semanticFloor — the cosine half of confidence().
 const SEMANTIC_FLOOR = 0.78;
 
@@ -66,7 +66,7 @@ export interface FloorResult {
 
 /** The selection re-run per fold: the floor chosen without the fold and its false-flag rate on it. */
 export interface FoldEstimate {
-  perFold: Array<{ fitted: number; score: number; n: number }>;
+  perFold: { fitted: number; score: number; n: number }[];
   mean: number;
   sd: number;
 }
@@ -203,7 +203,7 @@ function scoreRows(
     zeroBrokenPass && !!best && best.floor !== t.currentFloor && current.falseFlagRate - best.falseFlagRate >= 0.15;
   return {
     verdicts,
-    selected: adopted ? best!.floor : t.currentFloor,
+    selected: adopted ? best.floor : t.currentFloor,
     adopted,
     maxNegative,
     minHit1Positive,

@@ -410,7 +410,7 @@ const COLUMN_FILTER_STEER =
 
 // `word:` or `{a b}:` outside quotes; a colon inside a word (`std::vector`) is no filter.
 function hasColumnFilter(query: string): boolean {
-  return /(?:^|[\s(])(?:\{[^}]*\}|[\p{L}\p{N}_]+)\s*:(?!:)/u.test(query.replace(/"[^"]*"/g, '""'));
+  return /(?:^|[\s(])(?:\{[^}]*\}|[\p{L}\p{N}_]+)\s*:(?!:)/u.test(query.replaceAll(/"[^"]*"/g, '""'));
 }
 
 /** A site's own steer, plus the part of it that is the next step (passed as the hint, so no second `Next:` line). */
@@ -444,8 +444,9 @@ function searchErrorSteer(err: unknown, deadline: Deadline, query: string): Stee
         "Retry with the phrase wrapped in double quotes, or drop - and : from bare words; AND/OR/NOT go between terms (a NOT b), never first or last.",
     };
   }
-  if (err instanceof CalibreBusyError)
+  if (err instanceof CalibreBusyError) {
     return { message: `${err.message} ${KEYWORD_SEARCH_FALLBACK}`, hint: err.message };
+  }
   if (
     err instanceof DeadlineExceededError ||
     err instanceof CalibreHttpTimeoutError ||

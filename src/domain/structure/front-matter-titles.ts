@@ -127,7 +127,7 @@ export function normalizeTitle(s: string): string {
   return s
     .normalize("NFKC")
     .toLowerCase()
-    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .replaceAll(/[^\p{L}\p{N}]+/gu, " ")
     .trim();
 }
 

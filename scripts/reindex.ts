@@ -148,8 +148,9 @@ await runBookPipeline<PrepareResult>(todo, concurrency, {
     if (!o.ok && describeError(o.error) === "ABORTED_LOW_DISK") return;
     const ready = o.ok && o.prepared.kind === "ready" ? o.prepared : undefined;
     const detail = ready ? { ...ready.detail, phaseMs: ready.phaseMs } : {};
-    if (ready)
-      for (const k of Object.keys(phaseTotals) as Array<keyof typeof phaseTotals>) phaseTotals[k] += ready.phaseMs[k];
+    if (ready) {
+      for (const k of Object.keys(phaseTotals) as (keyof typeof phaseTotals)[]) phaseTotals[k] += ready.phaseMs[k];
+    }
     appendProgress(progressFile, {
       bookId: o.bookId,
       ok: o.ok,
@@ -166,7 +167,7 @@ await runBookPipeline<PrepareResult>(todo, concurrency, {
     if (settled % 10 === 0) {
       const avg = (Date.now() - t0) / settled;
       say(
-        `progress ${settled}/${todo.length} (${(avg / 1000).toFixed(1)} s/book wall, ~${Math.round(((todo.length - settled) * avg) / 60000)} min left)`,
+        `progress ${settled}/${todo.length} (${(avg / 1000).toFixed(1)} s/book wall, ~${Math.round(((todo.length - settled) * avg) / 60_000)} min left)`,
       );
     }
   },

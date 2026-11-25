@@ -27,7 +27,9 @@ function recordingClient(env: Record<string, string>): { client: CalibreClient; 
 
 describe("LibId brand (type level, checked by `pnpm typecheck`)", () => {
   it("should_reject_a_display_name_where_a_LibId_is_required", () => {
-    // Never invoked: the assertions are the compiler's.
+    // Never invoked: the assertions are the compiler's. The deliberate type errors also give
+    // the calls an error type, which the type-aware lint reads as unsafe.
+    /* oxlint-disable typescript/no-unsafe-call */
     const compileOnly = (client: CalibreClient) => {
       // @ts-expect-error a display name is not a LibId
       void client.calibredb(["list"], { library: "Programming Books" });
@@ -36,6 +38,7 @@ describe("LibId brand (type level, checked by `pnpm typecheck`)", () => {
       // @ts-expect-error library is required: no raw-config fallback
       void client.calibredb(["list"]);
     };
+    /* oxlint-enable typescript/no-unsafe-call */
     expect(typeof compileOnly).toBe("function");
   });
 });

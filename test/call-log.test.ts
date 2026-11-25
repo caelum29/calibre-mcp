@@ -351,7 +351,7 @@ describe("withCallLog result summary (#627)", () => {
     expect({ length: hits.length, last: hits[10], tenth: hits[9] }).toEqual({
       length: 11,
       last: "…(+2 items)",
-      tenth: { rank: 10, bookId: 109, charStart: 10000, snippetStart: 10040 },
+      tenth: { rank: 10, bookId: 109, charStart: 10_000, snippetStart: 10_040 },
     });
   });
 

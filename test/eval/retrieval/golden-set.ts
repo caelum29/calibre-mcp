@@ -5,11 +5,10 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { gateResult, refreezeHint, type GateResult, type ListDiffTier } from "./gate.js";
 import type { EvalReport } from "./harness.js";
 
-const QUERIES_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), "queries.json");
+const QUERIES_PATH = path.join(import.meta.dirname, "queries.json");
 
 /**
  * `sha256:<hex>` of the canonical golden set: queries.json parsed and re-serialized, so a

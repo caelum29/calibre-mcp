@@ -16,7 +16,7 @@ import type { ToolDeps } from "../../src/tools/deps.js";
 import type { ToolResult } from "../../src/tools/types.js";
 import { type PingDeps, pingTool as ping } from "../../src/tools/calibre_ping.js";
 
-const { opens } = vi.hoisted(() => ({ opens: [] as Array<{ file: string; readOnly: boolean }> }));
+const { opens } = vi.hoisted(() => ({ opens: [] as { file: string; readOnly: boolean }[] }));
 
 // Record every connection opened, with its mode; behaviour is the real node:sqlite.
 vi.mock("node:sqlite", async (importOriginal) => {

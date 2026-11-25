@@ -96,7 +96,7 @@ export const getFiguresTool = defineTool({
       }
 
       if (args.indexes !== undefined && args.indexes.length > 0) {
-        return fetchFigures(args, deps, { numericId, fmt, downloadUrl, inventory });
+        return await fetchFigures(args, deps, { numericId, fmt, downloadUrl, inventory });
       }
       const otherFormats = FIGURE_FORMATS.filter((f) => f !== fmt && book.formats.some((b) => b.toLowerCase() === f));
       return listFigures(args, { numericId, fmt, inventory }, otherFormats);
@@ -229,17 +229,19 @@ async function fetchFigures(
   });
 
   const blocks: ContentBlock[] = [];
-  const returned: Array<{ index: number; mimeType: string; bytes: number }> = [];
+  const returned: { index: number; mimeType: string; bytes: number }[] = [];
   for (const f of outcome.images) {
     const entry = inventory.entries[f.index];
     const cap = entry?.caption ? ` — ${entry.label ? `Figure ${entry.label}: ` : ""}${entry.caption}` : "";
     // mime + size go in the TEXT line too: Desktop strips structuredContent (#80).
     const kb = (f.image.bytes / 1024).toFixed(1);
-    blocks.push({
-      type: "text",
-      text: `Figure index ${f.index} (${figureLocationLabel(fmt, entry?.page)}, ${entry?.source}, ${f.image.mimeType} ${kb} KB${cap ? "" : ", uncaptioned"})${cap}`,
-    });
-    blocks.push({ type: "image", data: f.image.data, mimeType: f.image.mimeType });
+    blocks.push(
+      {
+        type: "text",
+        text: `Figure index ${f.index} (${figureLocationLabel(fmt, entry?.page)}, ${entry?.source}, ${f.image.mimeType} ${kb} KB${cap ? "" : ", uncaptioned"})${cap}`,
+      },
+      { type: "image", data: f.image.data, mimeType: f.image.mimeType },
+    );
     returned.push({ index: f.index, mimeType: f.image.mimeType, bytes: f.image.bytes });
     // stable msg, values in meta (#680): one greppable event instead of one msg per fetch
     deps.log.info("figure fetched", {

@@ -14,7 +14,7 @@ import { SqliteIndexStore } from "../../src/semantic/store/index.js";
 import { IndexFileOwners } from "../../src/semantic/store/library-owner.js";
 
 const dirs: string[] = [];
-const closers: Array<{ close(): void }> = [];
+const closers: { close(): void }[] = [];
 afterEach(() => {
   for (const c of closers.splice(0)) c.close();
   for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });

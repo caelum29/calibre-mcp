@@ -5,7 +5,7 @@
 import type { EvalReport, Mode, PerQueryRow } from "./harness.js";
 
 /** Fixed default seed — any constant works; it only has to never change between runs. */
-export const SEED = 0x358;
+export const SEED = 0x3_58;
 const ITERATIONS = 10_000;
 /** z for two-sided α = 0.05 and for 80% power. */
 const Z_ALPHA = 1.959964;
@@ -15,11 +15,11 @@ const Z_POWER = 0.841621;
 export function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
   return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
+    a = (a + 0x6d_2b_79_f5) >>> 0;
     let t = a;
     t = Math.imul(t ^ (t >>> 15), t | 1);
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    return ((t ^ (t >>> 14)) >>> 0) / 4_294_967_296;
   };
 }
 
@@ -197,7 +197,7 @@ export function compareReports(
       if (sub.length) rows.push(compareRows(mode, group, sub));
     }
     const kinds = [...new Set(pairs.map(([r]) => r.kind))].sort();
-    for (const kind of kinds)
+    for (const kind of kinds) {
       rows.push(
         compareRows(
           mode,
@@ -205,6 +205,7 @@ export function compareReports(
           pairs.filter(([r]) => r.kind === kind),
         ),
       );
+    }
   }
   return rows;
 }

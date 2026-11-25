@@ -110,7 +110,7 @@ describe("#325 write gate", () => {
     const { client, close } = await connect();
     try {
       const call = client.callTool({ name: "calibre_update_book", arguments: { id: 1 } });
-      await expect(call).rejects.toMatchObject({ code: -32602, message: "Tool calibre_update_book disabled" });
+      await expect(call).rejects.toMatchObject({ code: -32_602, message: "Tool calibre_update_book disabled" });
     } finally {
       await close();
     }
@@ -154,7 +154,7 @@ describe("#325 review — channels and 4xx", () => {
     const { client, close } = await connect();
     try {
       const r = await client.callTool({ name: "calibre_get_book", arguments: { id: 1 } });
-      const text = (r.content as Array<{ type: string; text?: string }>).map((b) => b.text ?? "").join("\n");
+      const text = (r.content as { type: string; text?: string }[]).map((b) => b.text ?? "").join("\n");
       const sc = r.structuredContent as { error: string };
       expect({
         steerInText: sc.error.length > 0 && text.includes(sc.error),
@@ -171,6 +171,8 @@ describe("#325 review — channels and 4xx", () => {
     const { client, close } = await connect();
     try {
       const r = await client.callTool({ name: "calibre_search", arguments: { query: "ddd" } });
+      // tsc 5.9 needs the widening; tsrs (TS 7 beta, behind the type-aware lint) sees `lvl` already
+      // oxlint-disable-next-line typescript/no-unnecessary-type-assertion
       const closing = records(lines).find((rec) => rec.msg === "tool call" && rec.tool === "calibre_search") as
         | (Rec & { lvl?: string })
         | undefined;

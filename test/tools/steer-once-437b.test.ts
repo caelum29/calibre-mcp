@@ -27,7 +27,11 @@ function ftsFails(err: Error): SearchDeps {
     embedder: {} as ToolDeps["embedder"],
     index: { hasIndex: () => false, isBookIndexed: () => false } satisfies SearchIndex,
     log,
-    fts: fakeFts([], { match: async () => Promise.reject(err) }),
+    fts: fakeFts([], {
+      match: async () => {
+        throw err;
+      },
+    }),
   };
 }
 

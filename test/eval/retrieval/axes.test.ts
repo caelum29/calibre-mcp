@@ -5,7 +5,6 @@
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import type { Reranker } from "../../../src/semantic/reranker.js";
 import { ablationMatrix, auc, computeAxes, percentile, renderAxes } from "./axes.js";
@@ -13,7 +12,7 @@ import type { Thresholds } from "./gate.js";
 import { hashEmbedder } from "./hash-embedder.js";
 import { runRetrievalEval, type EvalReport, type Mode, type PerQueryRow } from "./harness.js";
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
+const HERE = import.meta.dirname;
 const thresholds = JSON.parse(readFileSync(path.join(HERE, "thresholds.json"), "utf8")) as Thresholds;
 
 function report(rows: PerQueryRow[], modes: Mode[] = ["hybrid", "keyword"]): EvalReport {
@@ -187,7 +186,7 @@ describe("harness row fields (hash embedder, fake reranker)", () => {
     expect(twoPlus.length).toBeGreaterThan(0);
     // a library book with two rerank candidates (#604) takes two positional scores (1/2, 1/3),
     // so the next book gets 1/4; one-candidate scopes keep 1/3
-    expect([...new Set(twoPlus.map((x) => x.top2Rerank))].sort()).toEqual([0.25, 0.3333]);
+    expect([...new Set(twoPlus.map((x) => x.top2Rerank))].sort((a, b) => (a ?? 0) - (b ?? 0))).toEqual([0.25, 0.3333]);
     expect(twoPlus.filter((x) => x.scope !== "library").every((x) => x.top2Rerank === 0.3333)).toBe(true);
     expect(
       r.perQuery.filter((x) => x.metrics && x.retrieved.length > 0).every((x) => typeof x.lowConfidence === "boolean"),

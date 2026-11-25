@@ -39,7 +39,7 @@ function embedder(state?: EmbedderLoadState): Embedder {
  * keyword-only indexed book (index exists, 0 embeddings); `vectors > 0` = that many vectors.
  */
 function memoryStore(vectors = -1): SqliteIndexStore {
-  const s = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" } as NodeJS.ProcessEnv));
+  const s = new SqliteIndexStore(loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" }));
   if (vectors >= 0) {
     const v = new Float32Array(EMBED_DIM);
     v[0] = 1;
@@ -76,7 +76,7 @@ afterEach(() => {
   while (tmpDirs.length) rmSync(tmpDirs.pop()!, { recursive: true, force: true });
 });
 
-const memCfg: Config = loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" } as NodeJS.ProcessEnv);
+const memCfg: Config = loadConfig({ CALIBRE_MCP_INDEX_DIR: ":memory:" });
 
 describe("computeSemanticStatus", () => {
   it("dep missing → unavailable, reason set, no restart hint", () => {
@@ -204,7 +204,7 @@ describe("computeSemanticStatus", () => {
   it("modelCached reflects the on-disk HF cache under indexDir/models", () => {
     const dir = mkdtempSync(path.join(tmpdir(), "calibre-idx-"));
     tmpDirs.push(dir);
-    const cfg = loadConfig({ CALIBRE_MCP_INDEX_DIR: dir } as NodeJS.ProcessEnv);
+    const cfg = loadConfig({ CALIBRE_MCP_INDEX_DIR: dir });
     const cold = computeSemanticStatus(
       { config: cfg, embedder: embedder(), index: memoryStore() },
       undefined,
@@ -227,7 +227,7 @@ describe("computeSemanticStatus — index provenance (#136)", () => {
   function fileStore(tamper?: Record<string, string>): { dir: string; store: SqliteIndexStore } {
     const dir = mkdtempSync(path.join(tmpdir(), "calibre-prov-"));
     tmpDirs.push(dir);
-    const cfg = loadConfig({ CALIBRE_MCP_INDEX_DIR: dir } as NodeJS.ProcessEnv);
+    const cfg = loadConfig({ CALIBRE_MCP_INDEX_DIR: dir });
     const a = new SqliteIndexStore(cfg);
     a.replaceBook(LIB, { bookId: 1, title: "Rust", authors: [] }, [{ body: "x", charStart: 0, charEnd: 1 }]);
     a.close();

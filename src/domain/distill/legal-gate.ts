@@ -29,7 +29,7 @@ export const MAX_HEADING_MATCH_FRACTION = 0.5;
 export function normalizeWords(text: string): string[] {
   return text
     .toLowerCase()
-    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .replaceAll(/[^\p{L}\p{N}]+/gu, " ")
     .trim()
     .split(/\s+/)
     .filter(Boolean);
@@ -53,10 +53,10 @@ export function stripFrontmatter(markdown: string): string {
  */
 export function extractProse(markdown: string): string {
   let s = stripFrontmatter(markdown);
-  s = s.replace(/<!--[\s\S]*?-->/g, " "); // HTML comments
-  s = s.replace(/```[\s\S]*?```/g, " "); // fenced code (backtick)
-  s = s.replace(/~~~[\s\S]*?~~~/g, " "); // fenced code (tilde)
-  s = s.replace(/`[^`\n]*`/g, " "); // inline code
+  s = s.replaceAll(/<!--[\s\S]*?-->/g, " "); // HTML comments
+  s = s.replaceAll(/```[\s\S]*?```/g, " "); // fenced code (backtick)
+  s = s.replaceAll(/~~~[\s\S]*?~~~/g, " "); // fenced code (tilde)
+  s = s.replaceAll(/`[^`\n]*`/g, " "); // inline code
 
   const kept: string[] = [];
   for (const raw of s.split("\n")) {
@@ -156,8 +156,8 @@ export interface QuoteBudgetResult {
 export function quoteBudget(skillText: string): QuoteBudgetResult {
   // Frontmatter is metadata — its quoted description: value is not a book quotation.
   const noCode = stripFrontmatter(skillText)
-    .replace(/```[\s\S]*?```/g, " ")
-    .replace(/`[^`\n]*`/g, " ");
+    .replaceAll(/```[\s\S]*?```/g, " ")
+    .replaceAll(/`[^`\n]*`/g, " ");
   const spans: QuoteSpan[] = [];
 
   const pushSpan = (text: string, kind: QuoteSpan["kind"]): void => {

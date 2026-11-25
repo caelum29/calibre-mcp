@@ -86,8 +86,8 @@ function splitHref(raw: string, tocDir: string): { href: string; fragment?: stri
 }
 
 const cleanTitle = (html: string): string =>
-  decodeEntities(html.replace(/<[^>]*>/g, " "))
-    .replace(/\s+/g, " ")
+  decodeEntities(html.replaceAll(/<[^>]*>/g, " "))
+    .replaceAll(/\s+/g, " ")
     .trim();
 
 const dirOf = (p: string): string => (p.includes("/") ? p.slice(0, p.lastIndexOf("/")) : "");
@@ -203,9 +203,9 @@ function bodyText(html: string): string {
   const body = /<body\b[^>]*>([\s\S]*)/i.exec(html)?.[1] ?? html;
   return decodeEntities(
     body
-      .replace(/<(script|style|head)\b[\s\S]*?<\/\1\s*>/gi, " ")
-      .replace(/<!--[\s\S]*?-->/g, " ")
-      .replace(/<[^>]*>/g, " "),
+      .replaceAll(/<(script|style|head)\b[\s\S]*?<\/\1\s*>/gi, " ")
+      .replaceAll(/<!--[\s\S]*?-->/g, " ")
+      .replaceAll(/<[^>]*>/g, " "),
   );
 }
 
@@ -239,7 +239,7 @@ export function anchorSpineDocs(text: string, docs: SpineHtml[]): SpineAnchor[] 
       if (at === -1) continue;
       // Snap back to the line start so the anchor includes the heading's own "# " prefix.
       const start = lineStartAt(text, map[at]!);
-      if (anchors.length === 0 || start > anchors[anchors.length - 1]!.start) {
+      if (anchors.length === 0 || start > anchors.at(-1)!.start) {
         anchors.push({ href: doc.href, start });
       }
       from = at + probe.length;
@@ -289,7 +289,7 @@ export function epubTocChapters(
     if (di === undefined) continue; // points at a doc that wasn't anchored
     const docStart = toc.anchors[di]!.start;
     const docEnd = di + 1 < toc.anchors.length ? toc.anchors[di + 1]!.start : text.length;
-    const prev = starts[starts.length - 1];
+    const prev = starts.at(-1);
     let startChar = docStart;
     if (e.fragment) {
       // Mid-doc target: search past the previous chapter so two entries can't share a heading.

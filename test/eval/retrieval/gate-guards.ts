@@ -38,7 +38,7 @@ export function loadGateBaselines(t: Thresholds, read: (rel: string) => string):
       return JSON.parse(read(rel)) as EvalReport;
     } catch (err) {
       const why = err instanceof Error ? err.message : String(err);
-      throw new Error(`thresholds.${key} "${rel}" is unreadable: ${why}`);
+      throw new Error(`thresholds.${key} "${rel}" is unreadable: ${why}`, { cause: err });
     }
   };
   const on = load(t.baselineReport, "baselineReport");
@@ -80,6 +80,7 @@ export function loadAllowEntries(
   } catch (err) {
     throw new Error(
       `thresholds.listDiff.allowFile "${cfg.allowFile}" is unreadable: ${err instanceof Error ? err.message : String(err)}`,
+      { cause: err },
     );
   }
   const entries = (parsed as { entries?: unknown }).entries;
@@ -91,8 +92,9 @@ export function loadAllowEntries(
     const bad = (why: string) => new Error(`${cfg.allowFile} entry #${i}: ${why}`);
     if (typeof e !== "object" || e === null) throw bad("must be an object");
     const r = e as Record<string, unknown>;
-    if (!LIST_DIFF_TIERS.includes(r.tier as ListDiffTier))
+    if (!LIST_DIFF_TIERS.includes(r.tier as ListDiffTier)) {
       throw bad(`tier must be one of ${LIST_DIFF_TIERS.join(", ")}`);
+    }
     if (!ALL_MODES.includes(r.mode as Mode)) throw bad(`mode must be one of ${ALL_MODES.join(", ")}`);
     if (typeof r.id !== "string" || r.id === "") throw bad("id must be a non-empty string");
     if (!Array.isArray(r.retrieved) || r.retrieved.some((k) => typeof k !== "string")) {
@@ -177,8 +179,9 @@ function checkPlatformDrift(entries: unknown): asserts entries is PlatformDriftE
     const bad = (why: string) => new Error(`${at} #${i}: ${why}`);
     if (typeof e !== "object" || e === null) throw bad("must be an object");
     const r = e as Record<string, unknown>;
-    if (!PLATFORM_DRIFT_TIERS.includes(r.tier as PlatformDriftEntry["tier"]))
+    if (!PLATFORM_DRIFT_TIERS.includes(r.tier as PlatformDriftEntry["tier"])) {
       throw bad(`tier must be one of ${PLATFORM_DRIFT_TIERS.join(", ")}`);
+    }
     if (!ALL_MODES.includes(r.mode as Mode)) throw bad(`mode must be one of ${ALL_MODES.join(", ")}`);
     for (const key of ["id", "reason", "seen"] as const) {
       const v = r[key];
@@ -218,8 +221,9 @@ export function rerankLatencyArms(t: Thresholds): Map<string, RerankLatencyArm> 
   };
   const onlyKeys = (o: Record<string, unknown>, allowed: string[], where: string) => {
     const unknown = Object.keys(o).filter((k) => !allowed.includes(k));
-    if (unknown.length)
+    if (unknown.length) {
       throw new Error(`${where} has unknown key ${unknown.join(", ")} (allowed: ${allowed.join(", ")})`);
+    }
   };
   const b = obj(block, at);
   onlyKeys(b, RERANK_LATENCY_KEYS, at);
@@ -258,8 +262,8 @@ export function rerankLatencyArms(t: Thresholds): Map<string, RerankLatencyArm> 
     }
     out.set(name, {
       role: a.role as RerankLatencyArm["role"],
-      options: o as RerankOptions,
-      ...(onlyIf ? { onlyIf: onlyIf as string[] } : {}),
+      options: o,
+      ...(onlyIf ? { onlyIf } : {}),
     });
   }
   const baselines = [...out.values()].filter((a) => a.role === "baseline").length;

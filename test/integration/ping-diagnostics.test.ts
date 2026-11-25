@@ -21,8 +21,8 @@ describe("calibre_ping diagnostics", () => {
     await client.connect(c);
     try {
       const r = await client.callTool({ name: "calibre_ping", arguments: {} });
-      const text = (r.content as Array<{ text: string }>).map((b) => b.text).join("\n");
-      const sc = r.structuredContent as { logFile: string | null; recentErrors: Array<{ msg: string; tool?: string }> };
+      const text = (r.content as { text: string }[]).map((b) => b.text).join("\n");
+      const sc = r.structuredContent as { logFile: string | null; recentErrors: { msg: string; tool?: string }[] };
       expect({
         text: /log file: off[\s\S]*\[calibre_ping call=\w+\] ping failed/.test(text),
         logFile: sc.logFile,

@@ -22,11 +22,11 @@ export const FM_MAX_FRACTION = 0.2;
 export const FM_MAX_CHARS = 60_000;
 // A section this short (heading to next heading) is a title page, copyright or
 // revision-history stub, not body content — real chapter sections run thousands of chars.
-export const FM_SHORT_SECTION_CHARS = 2_500;
+export const FM_SHORT_SECTION_CHARS = 2500;
 // The run rule only applies to heading-first texts (EPUB→Markdown conversions): the first
 // heading must sit this close to the start. PDF text has no headings, and the "# ..."
 // lines it does have are code comments deep in the body.
-export const FM_FIRST_HEADING_MAX_CHARS = 1_500;
+export const FM_FIRST_HEADING_MAX_CHARS = 1500;
 // The leading run never spans more sections than this (a TOC rendered as headings can be
 // long, but past this we are inside the body).
 export const FM_MAX_RUN_SECTIONS = 40;
@@ -42,9 +42,9 @@ interface Heading {
 /** Strip Markdown emphasis/escapes that EPUB→Markdown conversion wraps headings in. */
 export function cleanHeading(raw: string): string {
   return raw
-    .replace(/\\(.)/g, "$1")
-    .replace(/[*_]+/g, " ") // "CHAPTER 1**Routing**" → "CHAPTER 1 Routing"
-    .replace(/\s+/g, " ")
+    .replaceAll(/\\(.)/g, "$1")
+    .replaceAll(/[*_]+/g, " ") // "CHAPTER 1**Routing**" → "CHAPTER 1 Routing"
+    .replaceAll(/\s+/g, " ")
     .trim()
     .replace(/^\[\s*(.*?)\s*\]$/, "$1"); // "[ 1 ]" chapter-number boxes
 }
@@ -77,10 +77,11 @@ function scanHeadings(text: string): Heading[] {
 export function anchorNumber(title: string): number | null {
   // "Part I" / "Part 1: Introduction" — chapterNumber knows Часть/Частина but not "Part".
   const part = /^(?:part|часть|частина)\s+(\d{1,2}|[ivx]{1,4})\b/i.exec(title);
-  if (part)
+  if (part) {
     return /^\d/.test(part[1]!)
       ? Number(part[1])
       : (({ i: 1, ii: 2, iii: 3, iv: 4 } as Record<string, number>)[part[1]!.toLowerCase()] ?? null);
+  }
   const n = chapterNumber(title);
   if (n !== null) return n;
   if (/^\d{1,2}\.\d/.test(title)) return null;

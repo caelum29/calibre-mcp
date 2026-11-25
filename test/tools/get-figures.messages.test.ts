@@ -40,8 +40,7 @@ const deps = (figures: unknown): BaseDeps =>
   }) as unknown as BaseDeps;
 
 const args = (over: Record<string, unknown> = {}) => z.object(getFiguresTool.inputSchema).parse({ id: 929, ...over });
-const texts = (r: { content: Array<{ type: string }> }) =>
-  r.content.map((b) => (b as unknown as { text: string }).text);
+const texts = (r: { content: { type: string }[] }) => r.content.map((b) => (b as unknown as { text: string }).text);
 
 describe("calibre_get_figures remaining code wording", () => {
   it("should_leave_the_raw_code_when_the_scan_hits_NO_QLMANAGE", async () => {

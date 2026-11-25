@@ -28,14 +28,14 @@ import { noPruneIndex, type WithPrune } from "../tools/fake-prune-index.js";
 const RUN = process.env.RUN_CALIBRE_TESTS === "1";
 const TEST_LIBRARY = process.env.CALIBRE_TEST_LIBRARY; // display name or libId; default lib otherwise
 
-const config = loadRuntimeConfig(process.env as Record<string, string | undefined>);
+const config = loadRuntimeConfig(process.env);
 
 // Probe the server once at collection time: down → the whole suite SKIPS, not fails.
 let serverUp = false;
 if (RUN) {
   try {
     const res = await fetch(`${config.serverUrl}/ajax/library-info`, {
-      signal: AbortSignal.timeout(3_000),
+      signal: AbortSignal.timeout(3000),
     });
     serverUp = res.ok;
   } catch {
@@ -43,7 +43,6 @@ if (RUN) {
   }
 }
 if (RUN && !serverUp) {
-  // eslint-disable-next-line no-console
   console.error(`[merge.live] Content Server not reachable at ${config.serverUrl} — skipping`);
 }
 
@@ -122,7 +121,7 @@ describe.skipIf(!RUN || !serverUp)("calibre_merge_books (live Content Server)", 
     if (createdIds.length > 0) {
       await calibre
         .calibredb(["remove", createdIds.join(",")], { library: libId })
-        .catch((e) => log.warn("live-test cleanup remove failed", { msg: String(e) }));
+        .catch((e: unknown) => log.warn("live-test cleanup remove failed", { msg: String(e) }));
     }
     await rm(scratch, { recursive: true, force: true }).catch(() => {});
   });

@@ -10,7 +10,6 @@ import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
-import type { CallToolResult } from "@modelcontextprotocol/client";
 import { buildServer } from "../../src/server.js";
 
 const posix = process.platform !== "win32";
@@ -60,8 +59,9 @@ beforeAll(async () => {
       res.setHeader("content-type", "application/json");
       res.end(JSON.stringify(body));
     };
-    if (url.pathname === "/ajax/library-info")
+    if (url.pathname === "/ajax/library-info") {
       return json({ library_map: { [LIB]: "Test Lib" }, default_library: LIB });
+    }
     const book = /^\/ajax\/book\/(\d+)\//.exec(url.pathname);
     if (book) return json(rawBook(Number(book[1])));
     if (url.pathname.startsWith("/ajax/search/")) {
@@ -74,13 +74,17 @@ beforeAll(async () => {
     res.statusCode = 404;
     res.end();
   });
-  await new Promise<void>((resolve) => http.listen(0, "127.0.0.1", resolve));
+  await new Promise<void>((resolve) => {
+    http.listen(0, "127.0.0.1", resolve);
+  });
   baseUrl = `http://127.0.0.1:${(http.address() as AddressInfo).port}`;
 });
 
 afterAll(async () => {
   delete process.env.FAKE_CONVERT_SLOW;
-  await new Promise<void>((resolve) => http.close(() => resolve()));
+  await new Promise<void>((resolve) => {
+    http.close(() => resolve());
+  });
   rmSync(dir, { recursive: true, force: true });
 });
 
@@ -117,11 +121,13 @@ function isDead(pid: number): boolean {
   }
 }
 
-async function waitFor(cond: () => boolean, ms = 5_000): Promise<boolean> {
+async function waitFor(cond: () => boolean, ms = 5000): Promise<boolean> {
   const deadline = Date.now() + ms;
   while (Date.now() < deadline) {
     if (cond()) return true;
-    await new Promise((r) => setTimeout(r, 25));
+    await new Promise((r) => {
+      setTimeout(r, 25);
+    });
   }
   return cond();
 }
@@ -203,14 +209,14 @@ describe.runIf(posix)("progress", () => {
   it("calibre_build_index sends monotonic progress notifications when asked", async () => {
     const { client, close } = await connect();
     try {
-      const seen: Array<{ progress: number; total?: number; message?: string }> = [];
-      const r = (await client.callTool(
+      const seen: { progress: number; total?: number; message?: string }[] = [];
+      const r = await client.callTool(
         {
           name: "calibre_build_index",
           arguments: { query: "all", force: true, keywordOnly: true },
         },
         { onprogress: (p) => seen.push(p) },
-      )) as CallToolResult;
+      );
       expect(r.isError).toBeFalsy();
       expect(r.structuredContent).toMatchObject({ booksRequested: 3, booksIndexed: 3 });
       expect(seen.length).toBeGreaterThanOrEqual(2);
@@ -233,10 +239,10 @@ describe.runIf(posix)("progress", () => {
       notified++;
     });
     try {
-      const r = (await client.callTool({
+      const r = await client.callTool({
         name: "calibre_build_index",
         arguments: { query: "all", force: true, keywordOnly: true },
-      })) as CallToolResult;
+      });
       expect(r.isError).toBeFalsy();
       expect(notified).toBe(0);
     } finally {

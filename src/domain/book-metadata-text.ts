@@ -65,15 +65,15 @@ const ENTITIES: Record<string, string> = {
  */
 function plainBlurb(html: string): string {
   const text = html
-    .replace(/<(script|style)\b[\s\S]*?<\/\1\s*>/gi, "")
-    .replace(/<\s*br\s*\/?>/gi, "\n")
+    .replaceAll(/<(script|style)\b[\s\S]*?<\/\1\s*>/gi, "")
+    .replaceAll(/<\s*br\s*\/?>/gi, "\n")
     // Opening and closing block tags both separate, so `one<div>two</div>three` keeps three words.
-    .replace(/<\/?\s*(p|div|li|ul|ol|h[1-6]|blockquote|tr|table)\b[^>]*>/gi, "\n")
-    .replace(/<[^>]*>/g, "")
-    .replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e: string) => decodeEntity(e) ?? m);
+    .replaceAll(/<\/?\s*(p|div|li|ul|ol|h[1-6]|blockquote|tr|table)\b[^>]*>/gi, "\n")
+    .replaceAll(/<[^>]*>/g, "")
+    .replaceAll(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e: string) => decodeEntity(e) ?? m);
   return text
     .split("\n")
-    .map((line) => line.replace(/\s+/g, " ").trim())
+    .map((line) => line.replaceAll(/\s+/g, " ").trim())
     .filter((line) => line.length > 0)
     .join("\n");
 }
@@ -82,7 +82,7 @@ function decodeEntity(e: string): string | undefined {
   if (e[0] !== "#") return ENTITIES[e.toLowerCase()];
   const code = e[1] === "x" || e[1] === "X" ? Number.parseInt(e.slice(2), 16) : Number.parseInt(e.slice(1), 10);
   // Out-of-range code points stay as written rather than throw.
-  return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : undefined;
+  return code > 0 && code <= 0x10_ff_ff ? String.fromCodePoint(code) : undefined;
 }
 
 /** At most `max` chars, cut at the last whitespace within the cap; a hard cut when there is none. */

@@ -152,11 +152,11 @@ export class Extractor implements TextExtractor {
     const convertName = process.platform === "win32" ? "ebook-convert.exe" : "ebook-convert";
     const ebookConvertPath = dbDir === "." ? "ebook-convert" : path.join(dbDir, convertName);
     const hasEbookConvert =
-      dbDir === "." ? (await probeTool(ebookConvertPath, ["-v"], 5_000)) !== "missing" : existsSync(ebookConvertPath);
+      dbDir === "." ? (await probeTool(ebookConvertPath, ["-v"], 5000)) !== "missing" : existsSync(ebookConvertPath);
 
     const pdftotextPath = findBin("pdftotext") ?? "pdftotext";
     // pdftotext -v exits non-zero but exists, so only ENOENT means absent
-    const hasPdftotext = findBin("pdftotext") !== null || (await probeTool(pdftotextPath, ["-v"], 5_000)) !== "missing";
+    const hasPdftotext = findBin("pdftotext") !== null || (await probeTool(pdftotextPath, ["-v"], 5000)) !== "missing";
 
     // pdftohtml ships beside pdftotext in every poppler build; probe the sibling for a PATH install.
     const pdftohtmlPath =
@@ -166,7 +166,7 @@ export class Extractor implements TextExtractor {
         : undefined);
 
     const python3Path = findBin("python3") ?? "python3";
-    const hasFitz = (await probeTool(python3Path, ["-c", "import fitz"], 8_000)) === "ok"; // PyMuPDF importable
+    const hasFitz = (await probeTool(python3Path, ["-c", "import fitz"], 8000)) === "ok"; // PyMuPDF importable
 
     let pdf: PdfBackend | null = null;
     if (hasPdftotext) pdf = "pdftotext";

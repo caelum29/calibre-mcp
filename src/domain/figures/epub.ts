@@ -185,7 +185,7 @@ export function adjacentCaption(html: string, from: number): { label: string; te
       break;
     }
   }
-  const text = decodeEntities(collected).replace(/\s+/g, " ").trim();
+  const text = decodeEntities(collected).replaceAll(/\s+/g, " ").trim();
   if (!text) return null;
   // Caption-dedicated elements get the relaxed form FIRST — the strict pattern would
   // misparse a separator-less "Figure 4.1 Standard RL loop" (label dot read as separator).
@@ -233,7 +233,7 @@ const NAMED_ENTITIES: Record<string, string> = {
 /** Minimal entity decode — captions only need the common named/numeric forms. */
 function decodeEntities(text: string): string {
   return text
-    .replace(/&#(\d+);/g, (_, n: string) => String.fromCodePoint(Number(n)))
-    .replace(/&#x([0-9a-fA-F]+);/g, (_, n: string) => String.fromCodePoint(Number.parseInt(n, 16)))
-    .replace(/&([a-zA-Z]+);/g, (whole, name: string) => NAMED_ENTITIES[name] ?? whole);
+    .replaceAll(/&#(\d+);/g, (_, n: string) => String.fromCodePoint(Number(n)))
+    .replaceAll(/&#x([0-9a-fA-F]+);/g, (_, n: string) => String.fromCodePoint(Number.parseInt(n, 16)))
+    .replaceAll(/&([a-zA-Z]+);/g, (whole, name: string) => NAMED_ENTITIES[name] ?? whole);
 }

@@ -17,6 +17,7 @@ import { settleFailedRemove, unconfirmedRemove } from "../app/remove-settle.js";
 import { presentFailedWrite } from "./write-failure.js";
 import { pruneRemovedBooks } from "../app/prune-removed.js";
 import type { DepsWithIndex } from "./deps.js";
+import type { Book } from "../domain/book.js";
 import type { IndexWriter } from "../semantic/store/types.js";
 import type { ToolResult } from "./types.js";
 
@@ -62,7 +63,10 @@ export const removeBookTool = defineTool({
       }
 
       // A numeric id always "resolves"; only the library lookup says whether the book exists (#519).
-      const map = numericIds.length > 0 ? await deps.content.booksByIds(numericIds, args.library) : new Map();
+      const map =
+        numericIds.length > 0
+          ? await deps.content.booksByIds(numericIds, args.library)
+          : new Map<number, Book | null>();
       const targets: { id: number; title?: string }[] = [];
       for (const id of numericIds) {
         const found = map.get(id);

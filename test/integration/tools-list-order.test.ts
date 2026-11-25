@@ -36,8 +36,8 @@ const PINNED_ORDER = [
 
 // Gate off: only the write tools with no call that writes nothing drop out (#435, D-028);
 // the rest keep their order.
-const HIDDEN_WHEN_GATE_OFF = ["calibre_update_book", "calibre_add_book"];
-const PINNED_GATE_OFF = PINNED_ORDER.filter((n) => !HIDDEN_WHEN_GATE_OFF.includes(n));
+const HIDDEN_WHEN_GATE_OFF = new Set(["calibre_update_book", "calibre_add_book"]);
+const PINNED_GATE_OFF = PINNED_ORDER.filter((n) => !HIDDEN_WHEN_GATE_OFF.has(n));
 
 async function listToolNames(writeEnabled: boolean, calls = 1): Promise<string[][]> {
   const server = buildServer({
@@ -92,7 +92,7 @@ describe("tools/list order", () => {
   // ORDER; the pinned list is the order of record and the catalog is checked as a SET only.
   it("should_pin_exactly_the_tools_in_the_generated_catalog", () => {
     const raw = readFileSync(new URL("../../docs/tool-catalog.json", import.meta.url), "utf8");
-    const catalogNames = (JSON.parse(raw) as { tools: Array<{ name: string }> }).tools.map((t) => t.name).sort();
+    const catalogNames = (JSON.parse(raw) as { tools: { name: string }[] }).tools.map((t) => t.name).sort();
     expect([...PINNED_ORDER].sort()).toEqual(catalogNames);
   });
 });

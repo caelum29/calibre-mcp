@@ -140,8 +140,9 @@ export async function libraryIndexReport(deps: LibraryIndexDeps): Promise<Librar
         const { total, ids } = await liveIds(deps, id, deadline);
         // Only books the library still holds count (#496): rows of removed/merged books are
         // orphans. Without a complete live set, fall back to the raw row count.
-        if (!ids)
+        if (!ids) {
           return { ...lib, state: "ok", indexed: rows, total, withoutEmbeddings, indexedUnchecked: true, ...stems };
+        }
         const indexed = rowIds.filter((b) => ids.has(b)).length;
         return { ...lib, state: "ok", indexed, total, withoutEmbeddings, ...stems };
       } catch (err) {

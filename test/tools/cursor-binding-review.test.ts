@@ -77,13 +77,12 @@ function fake(opts: { ftsHits?: number } = {}): Fake {
 }
 
 type Args = Record<string, unknown>;
-const quality = (a: Args, f = fake()) => qualityReportTool.handler({ limit: 2, ...a } as never, f.deps);
-const dupes = (a: Args, f = fake()) =>
-  findDuplicatesTool.handler({ mode: "identical", limit: 2, ...a } as never, f.deps);
+const quality = (a: Args, f = fake()) => qualityReportTool.handler({ limit: 2, ...a }, f.deps);
+const dupes = (a: Args, f = fake()) => findDuplicatesTool.handler({ mode: "identical", limit: 2, ...a }, f.deps);
 const meta = (a: Args, f = fake()) =>
-  searchTool.handler({ query: "x", mode: "meta", scope: "library", limit: 2, ...a } as never, f.deps);
+  searchTool.handler({ query: "x", mode: "meta", scope: "library", limit: 2, ...a }, f.deps);
 const fts = (a: Args, f = fake()) =>
-  searchTool.handler({ query: "x", mode: "fts", scope: "library", limit: 2, ...a } as never, f.deps);
+  searchTool.handler({ query: "x", mode: "fts", scope: "library", limit: 2, ...a }, f.deps);
 
 const nextOf = (r: ToolResult): string => {
   const c = r.structuredContent?.nextCursor;
@@ -145,8 +144,8 @@ describe("a bad cursor is rejected early and on every path", () => {
 
   it("should_reject_a_cursor_passed_to_list_categories_without_a_field", async () => {
     const f = fake();
-    const cursor = nextOf(await listCategoriesTool.handler({ field: "tags", limit: 2 } as never, f.deps));
-    const r = await listCategoriesTool.handler({ limit: 2, cursor } as never, f.deps);
+    const cursor = nextOf(await listCategoriesTool.handler({ field: "tags", limit: 2 }, f.deps));
+    const r = await listCategoriesTool.handler({ limit: 2, cursor }, f.deps);
     expect(r.isError).toBe(true);
     expect(textOf(r)).toContain("without cursor");
   });

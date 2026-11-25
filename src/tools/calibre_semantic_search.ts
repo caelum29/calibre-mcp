@@ -829,7 +829,7 @@ function withNote(text: string, note?: string): string {
 }
 
 /** Fold the mode-degrade and rerank-degrade notes into one advisory string. */
-function joinNotes(...notes: Array<string | undefined>): string | undefined {
+function joinNotes(...notes: (string | undefined)[]): string | undefined {
   const kept = notes.filter((n): n is string => Boolean(n));
   return kept.length ? kept.join("\n") : undefined;
 }

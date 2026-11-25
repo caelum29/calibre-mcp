@@ -28,9 +28,9 @@ describe("getBytes", () => {
       "fetch",
       vi.fn(
         (_u: string, init: RequestInit) =>
-          new Promise((_res, rej) =>
-            init.signal!.addEventListener("abort", () => rej(Object.assign(new Error("a"), { name: "AbortError" }))),
-          ),
+          new Promise((_res, rej) => {
+            init.signal!.addEventListener("abort", () => rej(Object.assign(new Error("a"), { name: "AbortError" })));
+          }),
       ),
     );
     await expect(getBytes("http://x/hung", { timeoutMs: 20 })).rejects.toThrow("Content Server request timed out");

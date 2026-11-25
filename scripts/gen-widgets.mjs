@@ -16,9 +16,8 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const root = path.resolve(import.meta.dirname, "..");
 const UI = path.join(root, "src", "ui");
 const OUT = path.join(UI, "generated", "widgets.ts");
 const check = process.argv.includes("--check");
@@ -46,7 +45,7 @@ function assemble(file, stack = []) {
   if (!existsSync(file)) fail(`missing include ${path.relative(root, file)}`);
   const body = readFileSync(file, "utf8").replace(HEADER, "");
   const inline = (_, rel) => assemble(path.join(path.dirname(file), rel), [...stack, file]);
-  return body.replace(JS_INCLUDE_LINE, inline).replace(INCLUDE, inline);
+  return body.replaceAll(JS_INCLUDE_LINE, inline).replaceAll(INCLUDE, inline);
 }
 
 const lines = [

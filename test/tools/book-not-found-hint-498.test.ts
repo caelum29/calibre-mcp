@@ -45,7 +45,7 @@ function expectSteer(r: { isError?: boolean; structuredContent?: Record<string, 
 
 describe("book not found names one next step (#498)", () => {
   it("bookNotFound: text and structuredContent.hint", () => {
-    expectSteer(bookNotFound(999999999), "No book with id 999999999 in the requested library");
+    expectSteer(bookNotFound(999_999_999), "No book with id 999999999 in the requested library");
   });
 
   it("calibre_update_book: id/uuid variant", async () => {

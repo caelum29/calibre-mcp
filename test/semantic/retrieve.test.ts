@@ -54,7 +54,7 @@ describe("retrieve (library, hybrid)", () => {
 
   it("keeps the vector cosine on fused hits and reports the max without a reranker", async () => {
     const r = await retrieve(deps(), req);
-    expect(r.hits.map((h) => h.cosine).sort()).toEqual([0.8, 0.85, 0.9]);
+    expect(r.hits.map((h) => h.cosine).sort((a, b) => (a ?? 0) - (b ?? 0))).toEqual([0.8, 0.85, 0.9]);
     expect(r).toMatchObject({ maxScore: 0.9, reranked: false, lowConfidence: false, notes: [] });
   });
 });

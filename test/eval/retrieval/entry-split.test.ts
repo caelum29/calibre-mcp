@@ -4,12 +4,11 @@
 import { execFile } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
 
 const exec = promisify(execFile);
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+const ROOT = path.resolve(import.meta.dirname, "../../..");
 
 /** Import `entry` in a fresh node with argv[1] blanked (the fail-open scenario), flags after it. */
 async function importWithBlankArgv1(entry: string, ...flags: string[]) {
@@ -19,7 +18,11 @@ async function importWithBlankArgv1(entry: string, ...flags: string[]) {
     timeout: 20_000,
   }).then(
     (r) => ({ code: 0, stderr: r.stderr }),
-    (e: { code?: number; stderr?: string }) => ({ code: e.code, stderr: e.stderr ?? "" }),
+    (e: unknown) => {
+      // exec rejects with the child's exit code and stderr attached
+      const { code, stderr } = e as { code?: number; stderr?: string };
+      return { code, stderr: stderr ?? "" };
+    },
   );
 }
 const evalLines = (stderr: string) => stderr.split("\n").filter((l) => l.startsWith("[eval]"));

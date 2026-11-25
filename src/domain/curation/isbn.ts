@@ -4,7 +4,7 @@
 
 /** Strip hyphens, spaces, and surrounding junk; upper-case the ISBN-10 check char 'X'. */
 export function normalizeIsbn(raw: string): string {
-  return raw.replace(/[\s-]/g, "").toUpperCase();
+  return raw.replaceAll(/[\s-]/g, "").toUpperCase();
 }
 
 /** ISBN-10: Σ (i × digitᵢ) for i=1..10 ≡ 0 (mod 11); the last char may be 'X' = 10. */

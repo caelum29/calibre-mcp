@@ -76,7 +76,7 @@ type SentenceEmbeddingModel = (inputs: Record<string, unknown>) => Promise<{
 
 /** One loaded model, normalized to "texts in → raw rows out" whatever the output scheme. */
 interface Loaded {
-  embed(texts: string[]): Promise<number[][]>;
+  embed: (texts: string[]) => Promise<number[][]>;
   tokenizer: Tokenizer;
 }
 
@@ -177,7 +177,7 @@ export class TransformersEmbedder implements Embedder {
     } catch (err) {
       const code = (err as NodeJS.ErrnoException).code;
       if (code === "ERR_MODULE_NOT_FOUND" || code === "MODULE_NOT_FOUND") {
-        throw new Error("EMBEDDER_UNAVAILABLE");
+        throw new Error("EMBEDDER_UNAVAILABLE", { cause: err });
       }
       throw err;
     }

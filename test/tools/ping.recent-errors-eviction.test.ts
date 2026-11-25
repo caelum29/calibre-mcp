@@ -84,7 +84,7 @@ function pingDeps(): ToolDeps {
   };
 }
 
-const textOf = (r: { content: Array<{ type: string; text?: string }> }): string =>
+const textOf = (r: { content: { type: string; text?: string }[] }): string =>
   r.content.map((b) => (b.type === "text" ? b.text : "")).join("\n");
 
 describe("calibre_ping after an evicted error returns (#389)", () => {
@@ -92,7 +92,7 @@ describe("calibre_ping after an evicted error returns (#389)", () => {
     // the process logger, which calibre_ping reads (this file starts with an empty ring)
     refillWithEvictedRepeat(log);
     const r = await pingTool().handler({}, pingDeps());
-    const sc = r.structuredContent as { recentErrors: Array<{ msg: string; count: number; firstTs?: string }> };
+    const sc = r.structuredContent as { recentErrors: { msg: string; count: number; firstTs?: string }[] };
     expect(sc.recentErrors.map((e) => [e.msg, e.count])).toEqual([
       ...Array.from({ length: 19 }, (_, i) => [`e${i + 2}`, 1]),
       ["e0", 1],

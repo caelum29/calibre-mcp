@@ -138,13 +138,13 @@ describe("calibre_bulk_update — re-read provenance (#370)", () => {
 
   it("should_stay_outputSchema_valid_with_confirmed_books", async () => {
     const r = await bulk([1, 2], [TIMEOUT, null]);
-    const out = z.object(bulkUpdateTool.outputSchema!).strict();
+    const out = z.object(bulkUpdateTool.outputSchema).strict();
     expect(out.safeParse(JSON.parse(JSON.stringify(r.structuredContent))).success).toBe(true);
   });
 
   it("should_keep_update_book_outputSchema_valid_with_the_flag", async () => {
     const r = await single([TIMEOUT]);
-    const out = z.object(updateBookTool.outputSchema!).strict();
+    const out = z.object(updateBookTool.outputSchema).strict();
     expect(out.safeParse(JSON.parse(JSON.stringify(r.structuredContent))).success).toBe(true);
   });
 });

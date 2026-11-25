@@ -66,7 +66,7 @@ describe("calibre_remove_book handler", () => {
   // #519: unknown ids must not be counted as removable books
   it("dry-run with only unknown ids is a not_found error", async () => {
     const spy = vi.fn(async () => ({ stdout: "", stderr: "" }));
-    const r = await removeBookTool.handler({ ids: [999999] }, deps(spy));
+    const r = await removeBookTool.handler({ ids: [999_999] }, deps(spy));
     expect(r.isError).toBe(true);
     expect(r.content[0]).toEqual({
       type: "text",
@@ -78,7 +78,7 @@ describe("calibre_remove_book handler", () => {
 
   it("dry-run with real and unknown ids counts the real ones and names the unknown ones", async () => {
     const spy = vi.fn(async () => ({ stdout: "", stderr: "" }));
-    const r = await removeBookTool.handler({ ids: [1, 999999, 2] }, deps(spy));
+    const r = await removeBookTool.handler({ ids: [1, 999_999, 2] }, deps(spy));
     expect(r.isError).toBeFalsy();
     expect(r.content[0]).toEqual({
       type: "text",
@@ -94,14 +94,14 @@ describe("calibre_remove_book handler", () => {
         { id: 1, title: "Book 1" },
         { id: 2, title: "Book 2" },
       ],
-      notFoundIds: [999999],
+      notFoundIds: [999_999],
     });
     expect(spy).not.toHaveBeenCalled();
   });
 
   it("confirm with real and unknown ids removes only the real ones and names the skipped", async () => {
     const spy = vi.fn(async () => ({ stdout: "", stderr: "" }));
-    const r = await removeBookTool.handler({ ids: [1, 999999], confirm: true }, deps(spy));
+    const r = await removeBookTool.handler({ ids: [1, 999_999], confirm: true }, deps(spy));
     expect(r.isError).toBeFalsy();
     expect(spy).toHaveBeenCalledWith(["remove", "1"], expect.objectContaining({ library: "Programming_Books" }));
     expect(r.content[0]).toEqual({
@@ -110,12 +110,12 @@ describe("calibre_remove_book handler", () => {
         "Removed 1 book(s): 1. They went to Calibre's Trash and can be restored from the Calibre GUI.\n" +
         "Not found (skipped): #999999",
     });
-    expect(r.structuredContent).toEqual({ deleted: true, removedIds: [1], notFoundIds: [999999] });
+    expect(r.structuredContent).toEqual({ deleted: true, removedIds: [1], notFoundIds: [999_999] });
   });
 
   it("confirm with only unknown ids is a not_found error and never calls calibredb", async () => {
     const spy = vi.fn(async () => ({ stdout: "", stderr: "" }));
-    const r = await removeBookTool.handler({ ids: [999999], confirm: true }, deps(spy));
+    const r = await removeBookTool.handler({ ids: [999_999], confirm: true }, deps(spy));
     expect(r.isError).toBe(true);
     expect(r.structuredContent?.errorCode).toBe("not_found");
     expect(spy).not.toHaveBeenCalled();

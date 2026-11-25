@@ -42,19 +42,16 @@ const listingTimesOut = () =>
   });
 
 type Call = (d: ToolDeps) => Promise<ToolResult>;
-const CALLS: Array<[string, Call]> = [
+const CALLS: [string, Call][] = [
   [
     "calibre_search",
-    (d) => searchTool.handler({ query: "x", mode: "meta", scope: "library", limit: 20, filter: "Golang" }, d as never),
+    (d) => searchTool.handler({ query: "x", mode: "meta", scope: "library", limit: 20, filter: "Golang" }, d),
   ],
-  ["calibre_quality_report", (d) => qualityReportTool.handler({ limit: 10, filter: "Golang" }, d as never)],
-  [
-    "calibre_find_duplicates",
-    (d) => findDuplicatesTool.handler({ mode: "identical", filter: "Golang" } as never, d as never),
-  ],
+  ["calibre_quality_report", (d) => qualityReportTool.handler({ limit: 10, filter: "Golang" }, d)],
+  ["calibre_find_duplicates", (d) => findDuplicatesTool.handler({ mode: "identical", filter: "Golang" }, d)],
   [
     "calibre_bulk_update",
-    (d) => bulkUpdateTool.handler({ changes: { publisher: "Acme" }, filter: "Golang", preview: true }, d as never),
+    (d) => bulkUpdateTool.handler({ changes: { publisher: "Acme" }, filter: "Golang", preview: true }, d),
   ],
 ];
 

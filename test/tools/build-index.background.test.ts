@@ -63,7 +63,9 @@ const extracted = (): ExtractedText => {
 
 function gate() {
   let open!: () => void;
-  const opened = new Promise<void>((resolve) => (open = resolve));
+  const opened = new Promise<void>((resolve) => {
+    open = resolve;
+  });
   return { opened, open };
 }
 const gates: ReturnType<typeof gate>[] = [];
@@ -111,7 +113,10 @@ const args = (over: Record<string, unknown> = {}) => ({
 });
 const ctx = (signal = new AbortController().signal): ToolContext => ({ signal });
 const text = (r: ToolResult) => (r.content[0] as { text: string }).text;
-const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const pause = (ms: number) =>
+  new Promise((r) => {
+    setTimeout(r, ms);
+  });
 
 afterEach(() => {
   for (const g of gates.splice(0)) g.open();

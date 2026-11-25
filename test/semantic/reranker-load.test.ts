@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 import { loadConfig } from "../../src/config.js";
 import { RERANK_MAX_WAITING, TransformersReranker } from "../../src/semantic/reranker.js";
 
-const cfg = loadConfig({ CALIBRE_MCP_INDEX_DIR: "/tmp/unused-index" } as NodeJS.ProcessEnv);
+const cfg = loadConfig({ CALIBRE_MCP_INDEX_DIR: "/tmp/unused-index" });
 
 /** ERR_MODULE_NOT_FOUND as Node raises it for a missing optional dep. */
 function moduleNotFound(): NodeJS.ErrnoException {
@@ -59,7 +59,9 @@ describe("TransformersReranker concurrency (#156)", () => {
       AutoTokenizer: { from_pretrained: async () => (texts: string[]) => ({ q: texts[0] }) },
       AutoModelForSequenceClassification: {
         from_pretrained: async () => async (inputs: { q: string }) => {
-          await new Promise((r) => setTimeout(r, ms));
+          await new Promise((r) => {
+            setTimeout(r, ms);
+          });
           log.push(inputs.q);
           return { logits: { sigmoid: () => ({ tolist: () => [[0.5]] }) } };
         },

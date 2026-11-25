@@ -201,7 +201,12 @@ describe("runIndexBuild (#346)", () => {
     const ids = Array.from({ length: 101 }, (_, i) => i + 1);
     const s = state();
     const out = await runIndexBuild(
-      deps({ libraryIds: ids, getText: async () => Promise.reject(new Error("EXTRACT_FAILED")) }),
+      deps({
+        libraryIds: ids,
+        getText: async () => {
+          throw new Error("EXTRACT_FAILED");
+        },
+      }),
       req({ query: "tag:rust" }),
       LIB,
       s,
@@ -251,8 +256,8 @@ describe("runIndexBuild (#346)", () => {
   });
 
   it("reports whole-book progress steps and hands each book a phase reporter", async () => {
-    const sent: Array<[number, string, number | undefined]> = [];
-    const phases: Array<[number, string]> = [];
+    const sent: [number, string, number | undefined][] = [];
+    const phases: [number, string][] = [];
     await runIndexBuild(deps({ libraryIds: [1, 2] }), req({ ids: [1, 2] }), LIB, state(), {
       progress: (v, m, t) => sent.push([v, m, t]),
       bookPhases: (_report, base, label) => {

@@ -44,7 +44,7 @@ export class TimingRecorder {
   /** The breakdown so far, in ms (rounded), with totalMs measured from construction. */
   snapshot(): SearchTimings {
     const out: SearchTimings = { totalMs: Math.round(performance.now() - this.t0) };
-    for (const [k, v] of Object.entries(this.stages) as Array<[StageKey, number]>) out[k] = Math.round(v);
+    for (const [k, v] of Object.entries(this.stages) as [StageKey, number][]) out[k] = Math.round(v);
     return out;
   }
 
@@ -60,12 +60,16 @@ export class TimingRecorder {
         if (typeof value !== "function") return value;
         const stage = typeof prop === "string" ? stageOf(prop) : undefined;
         // bind to the real object so private fields and `this`-reliant methods keep working
-        if (!stage) return value.bind(obj);
+        if (!stage) {
+          const bound: unknown = value.bind(obj);
+          return bound;
+        }
         return (...callArgs: unknown[]) => {
           const start = performance.now();
           const stop = () => this.add(stage, performance.now() - start);
           try {
             const result: unknown = value.apply(obj, callArgs);
+            // oxlint-disable-next-line @nkzw/no-instanceof -- only native promises from the wrapped port get .finally
             if (result instanceof Promise) return result.finally(stop);
             stop();
             return result;
@@ -81,7 +85,7 @@ export class TimingRecorder {
 
 /** One header line: stages in pipeline order, then the total. */
 export function timingsLine(t: SearchTimings): string {
-  const order: Array<[StageKey | "totalMs", string]> = [
+  const order: [StageKey | "totalMs", string][] = [
     ["embedMs", "embed"],
     ["vectorMs", "vector"],
     ["keywordMs", "keyword"],

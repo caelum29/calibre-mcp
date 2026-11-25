@@ -34,7 +34,7 @@ function report(breaks: string[] = [], rerank = "off"): EvalReport {
         ["cp-01", "confuser-pair"],
         ["no-01", "no-overlap-paraphrase"],
         ["neg-01", "negative"],
-      ] as Array<[string, QueryKind]>
+      ] as [string, QueryKind][]
     ).map(([id, k]) => row(id, k, m, breaks.includes(`${m}/${id}`) ? 0 : 1)),
   );
   return {

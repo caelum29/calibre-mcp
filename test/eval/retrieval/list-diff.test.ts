@@ -4,7 +4,6 @@
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { reversed } from "./broken-store.js";
 import { evaluateGate, evaluateListDiff, type AllowEntry, type Thresholds } from "./gate.js";
@@ -185,7 +184,7 @@ describe("evaluateGate no longer gates aggregate ε (#358)", () => {
 });
 
 describe("hash tier list diff vs hash-baseline.json", () => {
-  const HERE = path.dirname(fileURLToPath(import.meta.url));
+  const HERE = import.meta.dirname;
   const thresholds = JSON.parse(readFileSync(path.join(HERE, "thresholds.json"), "utf8")) as Thresholds;
   const frozen = JSON.parse(
     readFileSync(path.join(HERE, thresholds.hashGate!.baselineReport!), "utf8"),
@@ -212,7 +211,7 @@ describe("hash tier list diff vs hash-baseline.json", () => {
       const report = await runHashEval({ patchDeps: (deps) => ({ ...deps, index: reversed(deps.index) }) });
       const res = evaluateListDiff(report, fromRankBaseline(frozen), hashOpts);
       expect(res.pass).toBe(false);
-      const modes = new Set(res.drops.map((d) => d.split("/")[0]));
+      const modes = new Set(res.drops.map((d) => d.split("/")[0] ?? ""));
       expect([...modes].sort()).toEqual(["hybrid", "keyword", "vector"]);
     },
     thresholds.hashGate!.maxDurationMs,

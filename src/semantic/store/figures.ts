@@ -69,11 +69,11 @@ export class SqliteFigureIndex implements FigureIndex {
        FROM m JOIN figures f ON f.id = m.id
        WHERE ${filter} ORDER BY m.s, f.book_id, f.id LIMIT ?`;
     if (bookId !== undefined) {
-      rows = db.prepare(ftsFirst("f.book_id = ?")).all(match, bookId, k) as Row[];
+      rows = db.prepare(ftsFirst("f.book_id = ?")).all(match, bookId, k);
     } else if (allow !== undefined) {
       rows = db
         .prepare(ftsFirst("f.book_id IN (SELECT value FROM json_each(?))"))
-        .all(match, JSON.stringify([...allow]), k) as Row[];
+        .all(match, JSON.stringify([...allow]), k);
     } else {
       rows = db
         .prepare(
@@ -81,7 +81,7 @@ export class SqliteFigureIndex implements FigureIndex {
            FROM figure_fts JOIN figures f ON f.id = figure_fts.rowid
            WHERE figure_fts MATCH ? ORDER BY score, f.book_id, f.id LIMIT ?`,
         )
-        .all(match, k) as Row[];
+        .all(match, k);
     }
     return rows
       .map((r) => this.#figureHit(db, Number(r.fig_id), Number(r.score)))
@@ -113,7 +113,7 @@ export class SqliteFigureIndex implements FigureIndex {
       caption: String(r.caption ?? ""),
       charOffset: Number(r.char_offset),
       format: String(r.format ?? ""),
-      ...(r.source != null ? { source: String(r.source) } : {}),
+      ...(r.source !== null && r.source !== undefined ? { source: String(r.source) } : {}),
     }));
   }
 
@@ -135,7 +135,7 @@ export class SqliteFigureIndex implements FigureIndex {
       caption: String(r.caption ?? ""),
       charOffset: Number(r.char_offset),
       format: String(r.format ?? ""),
-      ...(r.source != null ? { source: String(r.source) } : {}),
+      ...(r.source !== null && r.source !== undefined ? { source: String(r.source) } : {}),
       score,
     };
   }

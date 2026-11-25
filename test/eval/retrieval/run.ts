@@ -37,7 +37,6 @@
 import { execSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { loadConfig } from "../../../src/config.js";
 import type { Embedder } from "../../../src/semantic/embedder.js";
 import { RERANKER_MODEL_ID, TransformersReranker, type Reranker } from "../../../src/semantic/reranker.js";
@@ -75,7 +74,7 @@ import { heldOutLines } from "./held-out.js";
 import { saturationLines } from "./saturation.js";
 import { compareReports, pairingWarnings, renderCompare } from "./stats.js";
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
+const HERE = import.meta.dirname;
 const progress = (msg: string) => process.stderr.write(`[eval] ${msg}\n`);
 
 export interface CliArgs {
@@ -129,7 +128,7 @@ export function parseArgs(argv: string[]): CliArgs {
     else if (a === "--work-dir") args.workDir = next();
     else if (a === "--out-dir") args.outDir = next();
     else if (a === "--help" || a === "-h") {
-      process.stderr.write(readFileSync(fileURLToPath(import.meta.url), "utf8").split("\n\nimport")[0]! + "\n");
+      process.stderr.write(readFileSync(import.meta.filename, "utf8").split("\n\nimport")[0]! + "\n");
       process.exit(0);
     } else throw new Error(`unknown flag ${a} (see --help)`);
   }
@@ -174,7 +173,7 @@ function parseWeights(v: string): number[] {
  * model cache).
  */
 function defaultIndexDir(): string {
-  return loadConfig({} as NodeJS.ProcessEnv).indexDir;
+  return loadConfig({}).indexDir;
 }
 
 /** Reuse an already-downloaded e5 model: copy the cache into the work dir once. */
@@ -194,7 +193,7 @@ function ensureModelCache(workDir: string): void {
 
 /** Store filename for a library id — mirrors SqliteIndexStore's sanitizer. */
 function sqliteName(libraryId: string): string {
-  return `${libraryId.replace(/[^A-Za-z0-9._-]/g, "_") || "default"}.sqlite`;
+  return `${libraryId.replaceAll(/[^A-Za-z0-9._-]/g, "_") || "default"}.sqlite`;
 }
 
 interface LiveRelevance {
@@ -288,8 +287,7 @@ export async function runPass(
   // Rerank stage mirrors the shipped default: ON for hybrid/vector unless --rerank off.
   const reranker = rerankOff
     ? undefined
-    : (deps.reranker ??
-      new TransformersReranker(loadConfig({ CALIBRE_MCP_INDEX_DIR: args.workDir } as NodeJS.ProcessEnv)));
+    : (deps.reranker ?? new TransformersReranker(loadConfig({ CALIBRE_MCP_INDEX_DIR: args.workDir })));
   const rerankLabel = rerankOff ? "off" : (args.rerank ?? `${RERANKER_MODEL_ID} q8`);
   const rerankOptions = rerankOptionsOf(args);
 
@@ -365,7 +363,7 @@ function mergeGates(a: GateResult, b: GateResult): GateResult {
  */
 function failFastOnGoldenSet(baselines: GateBaselines, tiers: ListDiffTier[]): void {
   const now = { meta: { goldenSetHash: currentGoldenSetHash() } } as EvalReport;
-  const pairs: Array<[ListDiffTier, EvalReport | undefined]> = [
+  const pairs: [ListDiffTier, EvalReport | undefined][] = [
     ["on", baselines.on],
     ["fusionOnly", baselines.off],
   ];
@@ -396,8 +394,9 @@ function compareFiles([a, b]: [string, string]): void {
 export async function main(platform: string = process.platform): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   if (args.compare) {
-    if (args.gate || args.live)
+    if (args.gate || args.live) {
       throw new Error("--compare reads two existing reports; it can't combine with --gate/--live.");
+    }
     compareFiles(args.compare);
     return;
   }
@@ -426,7 +425,7 @@ export async function main(platform: string = process.platform): Promise<void> {
   // #358 list diff + #392 golden-set hash run beside each tier's own gate, vs the same baseline
   const withList = (r: GateResult, cur: EvalReport, base: EvalReport, tier: "on" | "fusionOnly") => {
     let out = goldenTiers.includes(tier) ? mergeGates(r, evaluateGoldenSet(cur, base, tier)) : r;
-    if (listDiff)
+    if (listDiff) {
       out = mergeGates(
         out,
         evaluateListDiff(cur, base, {
@@ -436,6 +435,7 @@ export async function main(platform: string = process.platform): Promise<void> {
           blocking: rule.listDiffBlocking,
         }),
       );
+    }
     return out;
   };
 

@@ -115,7 +115,7 @@ function hitsOf(env: Record<string, unknown>): Record<string, unknown>[] {
 interface ResultLike {
   isError?: boolean;
   structuredContent?: unknown;
-  content?: ReadonlyArray<{ type: string; text?: string }>;
+  content?: readonly { type: string; text?: string }[];
 }
 
 /** What identifies one tool call in the log. */

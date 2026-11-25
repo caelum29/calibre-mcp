@@ -19,8 +19,9 @@ const deps = (): ToolDeps =>
     config: loadConfig({}),
     content: {
       resolveLibraryId: async (d?: string) => d || "Programming_Books",
-      getBook: async () =>
-        Promise.reject(new CalibreHttpError(404, "http://x/ajax/book/777/L", "Content Server returned HTTP 404")),
+      getBook: async () => {
+        throw new CalibreHttpError(404, "http://x/ajax/book/777/L", "Content Server returned HTTP 404");
+      },
     },
     calibre: {},
     extractor: {},
