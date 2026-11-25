@@ -25,7 +25,8 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "@modelcontextprotocol/ext-apps"
         update-types: ["version-update:semver-major"]
-      # TS 7 (native compiler) is a toolchain migration, not a routine bump
+      # on TS 7 (native compiler) since the 5.9 -> 7.0 migration; a major stays a hand-made
+      # toolchain migration (7.0 dropped the JS compiler API), minors/patches come in as usual
       - dependency-name: typescript
         update-types: ["version-update:semver-major"]
       # typings must match the supported Node runtimes (engines >=22.16), not the latest Node
