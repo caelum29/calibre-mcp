@@ -37,6 +37,14 @@ export default defineConfig({
     // Our style: one-line `if (x) return;` stays brace-free; a body on its own line needs braces,
     // which is where a misleading indent hides a bug (the preset wants braces everywhere).
     curly: ["error", "multi-line"],
+    // Kept off: names are mixed on purpose (`err`, `e` in one-line callbacks, `error` feeding a
+    // `{ error }` shorthand); the autofix renames those shorthand keys and so changes object shapes.
+    "unicorn/catch-error-name": "off",
+    // Kept off: consistent-type-imports already marks every type import; we write `import type`
+    // for type-only imports and inline `type` in mixed ones (the preset wants top-level only).
+    "import/consistent-type-specifier-style": "off",
+    // Kept off: escaped backslashes in regex sources and test strings read fine; String.raw adds noise.
+    "unicorn/prefer-string-raw": "off",
   },
   overrides: [
     {
@@ -156,16 +164,13 @@ export default defineConfig({
       files: ["**/*"],
       rules: {
         "typescript/no-unsafe-type-assertion": "off", // 1266
-        "import/consistent-type-specifier-style": "off", // 458
         "typescript/no-non-null-assertion": "off", // 333
         "quality/no-chained-type-assertions": "off", // 276
         "unicorn/consistent-function-scoping": "off", // 234
         "quality/no-conditional-empty-object-spread": "off", // 223
         "quality/no-unsafe-dictionary-type": "off", // 206
-        "unicorn/catch-error-name": "off", // 131
         "quality/no-known-value-widening": "off", // 111
         "quality/no-array-filter-map": "off", // 59
-        "unicorn/prefer-string-raw": "off", // 46
         "quality/no-unknown-returns": "off", // 23
       },
     },
